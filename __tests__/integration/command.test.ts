@@ -45,7 +45,7 @@ describe('command', () => {
     }
   });
 
-  it.skip('can specify a parametrized query', async () => {
+  it.skip('can specify a parameterized query', async () => {
     client = createClient();
     await client.command({
       query: 'CREATE TABLE {table_name: String} (id UInt64, name String, sku Array(UInt8), timestamp DateTime) Engine = Memory',

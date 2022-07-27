@@ -38,7 +38,7 @@ describe('select', () => {
     expect(response).toBe('0\n1\n');
   });
 
-  it('can specify a parametrized query', async () => {
+  it('can specify a parameterized query', async () => {
     client = createClient();
     const rows = await client.select({
       query: 'SELECT number FROM system.numbers WHERE number > {min_limit: UInt64} LIMIT 3',
@@ -190,7 +190,7 @@ describe('select', () => {
   });
 
   describe('select result asStream()', () => {
-    it('trows an exception if format is not stream-able', async () => {
+    it('throws an exception if format is not stream-able', async () => {
       expect.assertions(1);
       client = createClient();
       const result = await client.select({

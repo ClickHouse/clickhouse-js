@@ -38,7 +38,7 @@ describe('insert', () => {
     ]);
   });
 
-  it('can insert strings with non-latin symols', async() => {
+  it('can insert strings with non-latin symbols', async() => {
     const dataToInsert = [
       [42, "привет", [0,1]],
       [43, "мир", [3,4]]

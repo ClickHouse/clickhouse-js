@@ -8,7 +8,7 @@ const supportedFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
   'CSV',
-  'TabSeparated'
+  'TabSeparated',
 ] as const;
 export type DataFormat = typeof supportedFormats[number];
 
@@ -27,7 +27,7 @@ type StreamableJsonDataFormat = typeof streamableJSONFormats[number];
 const streamableFormat = [
   ...streamableJSONFormats,
   'CSV',
-  'TabSeparated'
+  'TabSeparated',
 ] as const;
 type StreamableDataFormat = typeof streamableFormat[number];
 

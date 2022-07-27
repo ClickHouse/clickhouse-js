@@ -152,9 +152,9 @@ export class ClickHouseClient {
     return await this.connection.close();
   }
 }
-
-const formatRe = /\bformat\b/i;
-function validateSelectQuery(query: string): void {
+// /i.test('select format from table format json limit 1')
+const formatRe = /\bformat\b\s([a-z]*)$/i;
+export function validateSelectQuery(query: string): void {
   if(formatRe.test(query)){
     throw new Error('Specifying format is not supported, use "format" parameter instead.')
   }
