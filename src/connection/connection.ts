@@ -18,8 +18,7 @@ export interface BaseParams {
   clickhouse_settings?: ClickHouseSettings;
   query_params?: Record<string, unknown>;
 }
-export type SelectParams = BaseParams;
-export type CommandParams = BaseParams;
+
 export interface InsertParams extends BaseParams {
   values: string | Stream.Readable;
 }
@@ -27,8 +26,8 @@ export interface InsertParams extends BaseParams {
 export interface Connection {
   ping(): Promise<boolean>;
   close(): Promise<void>;
-  select(params: SelectParams): Promise<Stream.Readable>
-  command(params: CommandParams): Promise<void>
+  select(params: BaseParams): Promise<Stream.Readable>
+  command(params: BaseParams): Promise<void>
   insert(params: InsertParams): Promise<void>
 }
 

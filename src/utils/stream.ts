@@ -1,5 +1,4 @@
 import Stream from 'stream';
-import { TextDecoder } from 'util';
 
 export function isStream (obj: any): obj is Stream.Readable {
   return obj != null && typeof obj.pipe === 'function'

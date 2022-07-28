@@ -3,7 +3,7 @@
       "target": "es2019",
       "module": "commonjs",
       "moduleResolution": "node",
-      "declaration": true,
+      "declaration": false,
       "pretty": true,
       "noEmitOnError": true,
       "strict": true,
@@ -19,7 +19,8 @@
       "importHelpers": true,
       "outDir": "lib",
       "lib": [
-        "esnext"
+        "esnext",
+        "dom"
       ],
       "types": [
         "node",

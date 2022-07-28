@@ -5,8 +5,7 @@ import { parseError } from '../../error/parse_error';
 import type {
   Connection,
   ConnectionParams,
-  SelectParams,
-  CommandParams,
+  BaseParams,
   InsertParams
 } from '../connection';
 import { toSearchParams } from './http_search_params';
@@ -51,7 +50,7 @@ export class HttpAdapter implements Connection {
         path: params.path,
         method: params.method,
         agent: this.agent,
-        headers: this.headers
+        headers: this.headers,
       });
 
       function onError (err: Error): void {
@@ -99,27 +98,27 @@ export class HttpAdapter implements Connection {
   }
 
   async ping(): Promise<boolean> {
+    // TODO add status code check
     const response = await this.request({
       method: 'GET',
       path: '/ping',
     });
-
     response.destroy();
     return true;
   }
 
-  async select(params: SelectParams): Promise<Stream.Readable> {
+  async select(params: BaseParams): Promise<Stream.Readable> {
     // TODO: add retry
     const searchParams = toSearchParams(params.clickhouse_settings, params.query_params);
     const result = await this.request({
       method: 'POST',
       path: '/?' + searchParams?.toString(),
-      body: params.query,
+      body: params.query
     });
     return result;
   }
 
-  async command(params: CommandParams): Promise<void> {
+  async command(params: BaseParams): Promise<void> {
     const searchParams = toSearchParams(params.clickhouse_settings, params.query_params);
     await this.request({
       method: 'POST',
@@ -139,9 +138,8 @@ export class HttpAdapter implements Connection {
     });
   }
 
-
   async close(): Promise<void> {
-    if (this.agent !== undefined) {
+    if (this.agent !== undefined && this.agent.destroy !== undefined) {
       this.agent.destroy()
     }
   }

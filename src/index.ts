@@ -1,6 +1,11 @@
+import { createClient } from './client';
+
+export { createClient };
+export default {
+  createClient
+}
 
 export {
-  createClient,
   type ClickHouseClientConfigOptions,
   type ClickHouseClient,
   type BaseParams,
@@ -12,3 +17,4 @@ export {
 export type { Rows, Row } from './result';
 export type { Connection } from './connection';
 export type { DataFormat } from './data_formatter';
+export type { ClickHouseError } from './error'

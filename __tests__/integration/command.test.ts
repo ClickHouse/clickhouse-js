@@ -1,3 +1,4 @@
+import { expect } from 'chai';
 import { createClient, type ClickHouseClient } from '../../src';
 import type { ResponseJSON } from '../../src/clickhouse_types';
 
@@ -21,28 +22,28 @@ describe('command', () => {
 
     const { data, rows } = await result.json<ResponseJSON<{ name: string, engine: string, create_table_query: string }>>();
 
-    expect(rows).toBe(1);
+    expect(rows).to.equal(1);
     const table = data[0];
-    expect(table.name).toBe('example');
-    expect(table.engine).toBe('Memory');
-    expect(table.create_table_query).toEqual(expect.any(String));
+    expect(table.name).equal('example');
+    expect(table.engine).equal('Memory');
+    expect(table.create_table_query).to.be.a('string');
   });
 
-  it('does not swallow ClickHouse error', async() => {
-    expect.assertions(3);
+  it('does not swallow ClickHouse error', (done) => {
     client = createClient();
 
     const ddl = 'CREATE TABLE example (id UInt64, name String, sku Array(UInt8), timestamp DateTime) Engine = Memory';
 
-    try {
-      await client.command({ query: ddl });
-      await client.command({ query: ddl });
-    } catch (e: any) {
-      expect(e.code).toBe('57');
-      expect(e.type).toBe('TABLE_ALREADY_EXISTS');
-      // TODO remove whitespace from end
-      expect(e.message).toBe('Table default.example already exists. ');
-    }
+    Promise.resolve()
+      .then(() => client.command({ query: ddl }))
+      .then(() => client.command({ query: ddl }))
+      .catch ((e: any) =>  {
+        expect(e.code).to.equal('57');
+        expect(e.type).to.equal('TABLE_ALREADY_EXISTS');
+        // TODO remove whitespace from end
+        expect(e.message).equal('Table default.example already exists. ');
+        done();
+      });
   });
 
   it.skip('can specify a parameterized query', async () => {
@@ -61,8 +62,8 @@ describe('command', () => {
 
     const { data, rows } = await result.json<ResponseJSON<{ name: string, engine: string, create_table_query: string }>>();
 
-    expect(rows).toBe(1);
+    expect(rows).to.equal(1);
     const table = data[0];
-    expect(table.name).toBe('example');
+    expect(table.name).to.equal('example');
   });
 });
