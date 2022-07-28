@@ -36,7 +36,7 @@ module.exports = function(config) {
 
     customLaunchers:{
       Chrome_without_security:{
-        base: 'Chrome',
+        base: 'ChromeHeadless',
         // to disable CORS
         flags: ['--disable-web-security']
       }
