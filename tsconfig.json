@@ -23,7 +23,7 @@
       ],
       "types": [
         "node",
-        "jest"
+        "mocha"
       ]
     },
     "exclude": [

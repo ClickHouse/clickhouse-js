@@ -1,3 +1,4 @@
+import { expect } from 'chai';
 import { createClient, type ClickHouseClient } from '../../src';
 describe('ping', () => {
   let client: ClickHouseClient;
@@ -8,11 +9,11 @@ describe('ping', () => {
   it('makes a ping request', async() => {
     client = createClient();
     const response = await client.ping();
-    expect(response).toBe(true);
+    expect(response).to.be.true;
   });
 
   it('does not swallow a client error', async() => {
-    expect.assertions(1);
+    // expect.assertions(1);
     client = createClient({
       host: 'http://localhost:3333'
     });
@@ -20,7 +21,7 @@ describe('ping', () => {
     try {
       await client.ping();
     } catch (e: any) {
-      expect(e.message).toMatch(/connect ECONNREFUSED/);
+      expect(e.message).to.match(/connect ECONNREFUSED/);
     }
   });
 });
