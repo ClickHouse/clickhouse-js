@@ -110,6 +110,7 @@ export class HttpAdapter implements Connection {
   async select(params: BaseParams): Promise<Stream.Readable> {
     // TODO: add retry
     const searchParams = toSearchParams(params.clickhouse_settings, params.query_params);
+
     const result = await this.request({
       method: 'POST',
       path: '/?' + searchParams?.toString(),
