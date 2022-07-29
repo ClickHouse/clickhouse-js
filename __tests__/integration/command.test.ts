@@ -9,18 +9,21 @@ describe('command', () => {
     await client.close();
   });
 
-  it('sends a command to execute', async() => {
+  it('sends a command to execute', async () => {
     client = createClient();
-    const ddl = 'CREATE TABLE example (id UInt64, name String, sku Array(UInt8), timestamp DateTime) Engine = Memory';
+    const ddl =
+      'CREATE TABLE example (id UInt64, name String, sku Array(UInt8), timestamp DateTime) Engine = Memory';
 
     await client.command({ query: ddl });
 
     const result = await client.select({
       query: `SELECT * from system.tables where name = 'example'`,
-      format: 'JSON'
+      format: 'JSON',
     });
 
-    const { data, rows } = await result.json<ResponseJSON<{ name: string, engine: string, create_table_query: string }>>();
+    const { data, rows } = await result.json<
+      ResponseJSON<{ name: string; engine: string; create_table_query: string }>
+    >();
 
     expect(rows).to.equal(1);
     const table = data[0];
@@ -32,12 +35,13 @@ describe('command', () => {
   it('does not swallow ClickHouse error', (done) => {
     client = createClient();
 
-    const ddl = 'CREATE TABLE example (id UInt64, name String, sku Array(UInt8), timestamp DateTime) Engine = Memory';
+    const ddl =
+      'CREATE TABLE example (id UInt64, name String, sku Array(UInt8), timestamp DateTime) Engine = Memory';
 
     Promise.resolve()
       .then(() => client.command({ query: ddl }))
       .then(() => client.command({ query: ddl }))
-      .catch ((e: any) =>  {
+      .catch((e: any) => {
         expect(e.code).to.equal('57');
         expect(e.type).to.equal('TABLE_ALREADY_EXISTS');
         // TODO remove whitespace from end
@@ -49,18 +53,21 @@ describe('command', () => {
   it.skip('can specify a parameterized query', async () => {
     client = createClient();
     await client.command({
-      query: 'CREATE TABLE {table_name: String} (id UInt64, name String, sku Array(UInt8), timestamp DateTime) Engine = Memory',
+      query:
+        'CREATE TABLE {table_name: String} (id UInt64, name String, sku Array(UInt8), timestamp DateTime) Engine = Memory',
       query_params: {
-        table_name: 'example'
-      }
+        table_name: 'example',
+      },
     });
 
     const result = await client.select({
       query: `SELECT * from system.tables where name = 'example'`,
-      format: 'JSON'
+      format: 'JSON',
     });
 
-    const { data, rows } = await result.json<ResponseJSON<{ name: string, engine: string, create_table_query: string }>>();
+    const { data, rows } = await result.json<
+      ResponseJSON<{ name: string; engine: string; create_table_query: string }>
+    >();
 
     expect(rows).to.equal(1);
     const table = data[0];

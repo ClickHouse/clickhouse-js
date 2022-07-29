@@ -5,14 +5,17 @@
     "node": true
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "prettier"
   ],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
   ],
   "rules": {
+    "prettier/prettier": "error",
     // Disable some inherited recommended checks until they all are fixed in targeted PRs.
     "@typescript-eslint/no-explicit-any": "off"
   }

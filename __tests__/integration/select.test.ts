@@ -1,6 +1,11 @@
 import { expect } from 'chai';
 import Stream from 'stream';
-import { createClient, type ClickHouseClient, type Row, type ClickHouseError } from '../../src';
+import {
+  createClient,
+  type ClickHouseClient,
+  type Row,
+  type ClickHouseError,
+} from '../../src';
 import type { ResponseJSON } from '../../src/clickhouse_types';
 
 async function rowsValues(stream: Stream.Readable): Promise<any[]> {
@@ -80,8 +85,8 @@ describe('select', () => {
       query: 'SELECT number FROM system.numbers LIMIT 5',
       format: 'CSV',
       clickhouse_settings: {
-        limit: 2
-      }
+        limit: 2,
+      },
     });
 
     const response = await rows.text();
@@ -91,99 +96,101 @@ describe('select', () => {
   it('does not swallow a client error', (done) => {
     client = createClient({});
 
-    client.select({ query: 'SELECT number FR' })
-      .catch((e: ClickHouseError) => {
-        expect(e.type).to.equal('UNKNOWN_IDENTIFIER');
-        done();
-      });
+    client.select({ query: 'SELECT number FR' }).catch((e: ClickHouseError) => {
+      expect(e.type).to.equal('UNKNOWN_IDENTIFIER');
+      done();
+    });
   });
 
   it('returns an error details provided by ClickHouse', (done) => {
     client = createClient();
-    client.select({ query: ';' })
-      .catch((e: ClickHouseError) => {
-        expect(e.message).to.be.a('string');
-        expect(e.message).to.have.lengthOf.above(0);
-        expect(e.code).to.equal('62');
-        expect(e.type).to.equal('SYNTAX_ERROR');
-        done();
-      });
+    client.select({ query: ';' }).catch((e: ClickHouseError) => {
+      expect(e.message).to.be.a('string');
+      expect(e.message).to.have.lengthOf.above(0);
+      expect(e.code).to.equal('62');
+      expect(e.type).to.equal('SYNTAX_ERROR');
+      done();
+    });
   });
 
   describe('select result', () => {
-    describe('text()', function() {
-      it('returns values from SELECT query in specified format', async() => {
+    describe('text()', function () {
+      it('returns values from SELECT query in specified format', async () => {
         client = createClient();
         const Rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 3',
-          format: 'CSV'
+          format: 'CSV',
         });
 
         expect(await Rows.text()).to.equal('0\n1\n2\n');
       });
-      it('returns values from SELECT query in specified format', async() => {
+      it('returns values from SELECT query in specified format', async () => {
         client = createClient();
         const Rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 3',
-          format: 'JSONEachRow'
+          format: 'JSONEachRow',
         });
 
-        expect(await Rows.text()).to.equal('{"number":"0"}\n{"number":"1"}\n{"number":"2"}\n');
+        expect(await Rows.text()).to.equal(
+          '{"number":"0"}\n{"number":"1"}\n{"number":"2"}\n'
+        );
       });
     });
 
     describe('json()', () => {
-      it('returns an array of values in data property', async() => {
+      it('returns an array of values in data property', async () => {
         client = createClient();
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON'
+          format: 'JSON',
         });
 
-        const { data: nums } = await rows.json<ResponseJSON<{number: string}>>();
+        const { data: nums } = await rows.json<
+          ResponseJSON<{ number: string }>
+        >();
         expect(nums).to.be.an('array');
         expect(nums).to.have.length(5);
-        const values = nums.map(i => i.number);
+        const values = nums.map((i) => i.number);
         expect(values).to.deep.equal(['0', '1', '2', '3', '4']);
       });
 
-      it('returns columns data in response', async() => {
+      it('returns columns data in response', async () => {
         client = createClient();
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON'
+          format: 'JSON',
         });
 
-        const { meta } = await rows.json<ResponseJSON<{number: string}>>();
+        const { meta } = await rows.json<ResponseJSON<{ number: string }>>();
 
         expect(meta?.length).to.equal(1);
         const column = meta ? meta[0] : undefined;
         expect(column).to.deep.equal({
           name: 'number',
-          type: 'UInt64'
+          type: 'UInt64',
         });
       });
 
-      it('returns number of rows in response', async() => {
+      it('returns number of rows in response', async () => {
         client = createClient();
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON'
+          format: 'JSON',
         });
 
-        const response = await rows.json<ResponseJSON<{number: string}>>();
+        const response = await rows.json<ResponseJSON<{ number: string }>>();
 
         expect(response.rows).to.equal(5);
       });
 
-      it('returns statistics in response', async() => {
+      it('returns statistics in response', async () => {
         client = createClient();
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON'
+          format: 'JSON',
         });
 
-        const response = await rows.json<ResponseJSON<{number: string}>>();
+        const response = await rows.json<ResponseJSON<{ number: string }>>();
 
         expect(response.statistics).to.have.own.property('elapsed');
         expect(response.statistics?.elapsed).to.be.a('number');
@@ -193,14 +200,14 @@ describe('select', () => {
         expect(response.statistics?.bytes_read).to.be.a('number');
       });
 
-      it.skip('returns queryId in response', async() => {
+      it.skip('returns queryId in response', async () => {
         client = createClient();
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON'
+          format: 'JSON',
         });
 
-        const response = await rows.json<ResponseJSON<{number: string}>>();
+        const response = await rows.json<ResponseJSON<{ number: string }>>();
 
         expect(response.query_id).to.be.a('number');
       });
@@ -212,20 +219,22 @@ describe('select', () => {
       client = createClient();
       const result = await client.select({
         query: 'SELECT number FROM system.numbers LIMIT 5',
-        format: 'JSON'
+        format: 'JSON',
       });
-      try{
-        expect(() => result.asStream()).to.throw('JSON format is not streamable');
+      try {
+        expect(() => result.asStream()).to.throw(
+          'JSON format is not streamable'
+        );
       } finally {
         result.close();
       }
     });
 
-    it('can pause response stream', async() => {
+    it('can pause response stream', async () => {
       client = createClient();
       const result = await client.select({
         query: 'SELECT number FROM system.numbers LIMIT 10000',
-        format: 'CSV'
+        format: 'CSV',
       });
 
       const stream = result.asStream();
@@ -235,12 +244,12 @@ describe('select', () => {
       for await (const chunk of stream) {
         last = chunk.text();
         i++;
-        if(i % 1000 === 0) {
+        if (i % 1000 === 0) {
           stream.pause();
           setTimeout(() => stream.resume(), 100);
         }
       }
-      expect(last).to.equal('9999')
+      expect(last).to.equal('9999');
     });
 
     describe('text()', () => {
@@ -248,36 +257,24 @@ describe('select', () => {
         client = createClient();
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'CSV'
+          format: 'CSV',
         });
 
         const rows = await rowsText(result.asStream());
 
-        expect(rows).to.deep.equal([
-          '0',
-          '1',
-          '2',
-          '3',
-          '4'
-        ]);
+        expect(rows).to.deep.equal(['0', '1', '2', '3', '4']);
       });
 
       it('returns stream of rows in TabSeparated format', async () => {
         client = createClient();
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'TabSeparated'
+          format: 'TabSeparated',
         });
 
         const rows = await rowsText(result.asStream());
 
-        expect(rows).to.deep.equal([
-          '0',
-          '1',
-          '2',
-          '3',
-          '4'
-        ]);
+        expect(rows).to.deep.equal(['0', '1', '2', '3', '4']);
       });
     });
 
@@ -286,17 +283,17 @@ describe('select', () => {
         client = createClient();
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONEachRow'
+          format: 'JSONEachRow',
         });
 
         const rows = await rowsValues(result.asStream());
 
         expect(rows).to.deep.equal([
-          [ { number: '0' } ],
-          [ { number: '1' } ],
-          [ { number: '2' } ],
-          [ { number: '3' } ],
-          [ { number: '4' } ],
+          [{ number: '0' }],
+          [{ number: '1' }],
+          [{ number: '2' }],
+          [{ number: '3' }],
+          [{ number: '4' }],
         ]);
       });
 
@@ -304,17 +301,17 @@ describe('select', () => {
         client = createClient();
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONStringsEachRow'
+          format: 'JSONStringsEachRow',
         });
 
         const rows = await rowsValues(result.asStream());
 
         expect(rows).to.deep.equal([
-          [ { number: '0' } ],
-          [ { number: '1' } ],
-          [ { number: '2' } ],
-          [ { number: '3' } ],
-          [ { number: '4' } ],
+          [{ number: '0' }],
+          [{ number: '1' }],
+          [{ number: '2' }],
+          [{ number: '3' }],
+          [{ number: '4' }],
         ]);
       });
 
@@ -322,17 +319,17 @@ describe('select', () => {
         client = createClient();
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactEachRow'
+          format: 'JSONCompactEachRow',
         });
 
         const rows = await rowsValues(result.asStream());
 
         expect(rows).to.deep.equal([
-          [ ['0'] ],
-          [ ['1'] ],
-          [ ['2'] ],
-          [ ['3'] ],
-          [ ['4'] ]
+          [['0']],
+          [['1']],
+          [['2']],
+          [['3']],
+          [['4']],
         ]);
       });
 
@@ -340,18 +337,18 @@ describe('select', () => {
         client = createClient();
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactEachRowWithNames'
+          format: 'JSONCompactEachRowWithNames',
         });
 
         const rows = await rowsValues(result.asStream());
 
         expect(rows).to.deep.equal([
-          [ ['number'] ],
-          [ ['0'] ],
-          [ ['1'] ],
-          [ ['2'] ],
-          [ ['3'] ],
-          [ ['4'] ]
+          [['number']],
+          [['0']],
+          [['1']],
+          [['2']],
+          [['3']],
+          [['4']],
         ]);
       });
 
@@ -359,19 +356,19 @@ describe('select', () => {
         client = createClient();
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactEachRowWithNamesAndTypes'
+          format: 'JSONCompactEachRowWithNamesAndTypes',
         });
 
         const rows = await rowsValues(result.asStream());
 
         expect(rows).to.deep.equal([
-          [ ['number'] ],
-          [ ['UInt64'] ],
-          [ ['0'] ],
-          [ ['1'] ],
-          [ ['2'] ],
-          [ ['3'] ],
-          [ ['4'] ]
+          [['number']],
+          [['UInt64']],
+          [['0']],
+          [['1']],
+          [['2']],
+          [['3']],
+          [['4']],
         ]);
       });
 
@@ -379,18 +376,18 @@ describe('select', () => {
         client = createClient();
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactStringsEachRowWithNames'
+          format: 'JSONCompactStringsEachRowWithNames',
         });
 
         const rows = await rowsValues(result.asStream());
 
         expect(rows).to.deep.equal([
-          [ ['number'] ],
-          [ ['0'] ],
-          [ ['1'] ],
-          [ ['2'] ],
-          [ ['3'] ],
-          [ ['4'] ]
+          [['number']],
+          [['0']],
+          [['1']],
+          [['2']],
+          [['3']],
+          [['4']],
         ]);
       });
 
@@ -398,19 +395,19 @@ describe('select', () => {
         client = createClient();
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactStringsEachRowWithNamesAndTypes'
+          format: 'JSONCompactStringsEachRowWithNamesAndTypes',
         });
 
         const rows = await rowsValues(result.asStream());
 
         expect(rows).to.deep.equal([
-          [ ['number'] ],
-          [ ['UInt64'] ],
-          [ ['0'] ],
-          [ ['1'] ],
-          [ ['2'] ],
-          [ ['3'] ],
-          [ ['4'] ]
+          [['number']],
+          [['UInt64']],
+          [['0']],
+          [['1']],
+          [['2']],
+          [['3']],
+          [['4']],
         ]);
       });
     });

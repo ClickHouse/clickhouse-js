@@ -6,11 +6,24 @@ export type ClickHouseSettings = {
   enable_optimize_predicate_expression?: 0 | 1;
   extremes?: 0 | 1;
   limit?: number;
-}
+};
 
 // TODO list other data types
-export type DataType = 'UInt8' | 'UInt16' | 'UInt32' | 'UInt64' | 'UInt128' | 'UInt256' | 'Int8' | 'Int16' | 'Int32' | 'Int64' | 'Int128' | 'Int256' |
-'Float32' | 'Float64';
+export type DataType =
+  | 'UInt8'
+  | 'UInt16'
+  | 'UInt32'
+  | 'UInt64'
+  | 'UInt128'
+  | 'UInt256'
+  | 'Int8'
+  | 'Int16'
+  | 'Int32'
+  | 'Int64'
+  | 'Int128'
+  | 'Int256'
+  | 'Float32'
+  | 'Float64';
 
 export interface ResponseJSON<T = unknown> {
   data: Array<T>;
@@ -21,6 +34,6 @@ export interface ResponseJSON<T = unknown> {
   // summary?: ResponseSummary
   // # Supported only by responses in JSON, XML. Otherwise it can be read from x-clickhouse-summary header
   meta?: Array<{ name: string; type: DataType }>;
-  statistics?: { elapsed: number; rows_read: number; bytes_read: number }
+  statistics?: { elapsed: number; rows_read: number; bytes_read: number };
   rows?: number;
 }

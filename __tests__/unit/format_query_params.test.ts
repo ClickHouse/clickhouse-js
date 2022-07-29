@@ -31,7 +31,7 @@ describe('formatQueryParams', () => {
   });
 
   it('formats an array', () => {
-    expect(formatQueryParams([1,2,3])).to.equal('[1,2,3]');
+    expect(formatQueryParams([1, 2, 3])).to.equal('[1,2,3]');
   });
 
   it('formats an empty Array', () => {
@@ -52,8 +52,8 @@ describe('formatQueryParams', () => {
   });
 
   it('escapes special characters in an input string', () => {
-    expect(formatQueryParams("hel'lo")).to.equal('hel\\\'lo');
-    expect(formatQueryParams("hel\\lo")).to.equal('hel\\\\lo');
+    expect(formatQueryParams("hel'lo")).to.equal("hel\\'lo");
+    expect(formatQueryParams('hel\\lo')).to.equal('hel\\\\lo');
   });
 
   it('wraps strings in an array in quotes', () => {
@@ -61,21 +61,29 @@ describe('formatQueryParams', () => {
   });
 
   it('formats an object and escapes keys and values', () => {
-    expect(formatQueryParams({
-      ["na'me"]: "cust'om",
-    })).to.equal("{'na\\'me':'cust\\'om'}");
+    expect(
+      formatQueryParams({
+        ["na'me"]: "cust'om",
+      })
+    ).to.equal("{'na\\'me':'cust\\'om'}");
   });
 
   it('formats a nested object', () => {
-    expect(formatQueryParams({
-      name: 'custom',
-      id: 42,
-      params: { refs: [44] }
-    })).to.equal("{'name':'custom','id':42,'params':{'refs':[44]}}");
+    expect(
+      formatQueryParams({
+        name: 'custom',
+        id: 42,
+        params: { refs: [44] },
+      })
+    ).to.equal("{'name':'custom','id':42,'params':{'refs':[44]}}");
   });
 
   it('throws on unsupported values', () => {
-    expect(() => formatQueryParams(undefined)).to.throw('Unsupported value in query parameters: [undefined].');
-    expect(() => formatQueryParams(undefined)).to.throw('Unsupported value in query parameters: [undefined].');
+    expect(() => formatQueryParams(undefined)).to.throw(
+      'Unsupported value in query parameters: [undefined].'
+    );
+    expect(() => formatQueryParams(undefined)).to.throw(
+      'Unsupported value in query parameters: [undefined].'
+    );
   });
 });

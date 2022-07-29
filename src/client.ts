@@ -27,7 +27,7 @@ export interface ClickHouseClientConfigOptions {
   clickhouse_settings?: ClickHouseSettings;
   log?: {
     enable?: boolean;
-  }
+  };
 }
 
 export interface BaseParams {
@@ -46,14 +46,15 @@ export interface CommandParams extends BaseParams {
 
 export interface InsertParams extends BaseParams {
   table: string;
-  values : ReadonlyArray<any> | Stream.Readable;
+  values: ReadonlyArray<any> | Stream.Readable;
 }
 
-
-function validateConfig(config:Required<ClickHouseClientConfigOptions>): void {
+function validateConfig(config: Required<ClickHouseClientConfigOptions>): void {
   const host = new URL(config.host);
-  if(host.protocol !== 'http:' && host.protocol !== 'https:') {
-    throw new Error(`Only http(s) protocol is supported, but given: [${host.protocol}]`);
+  if (host.protocol !== 'http:' && host.protocol !== 'https:') {
+    throw new Error(
+      `Only http(s) protocol is supported, but given: [${host.protocol}]`
+    );
   }
   // TODO add SSL validation
 }
@@ -63,8 +64,10 @@ export class ClickHouseClient {
   private readonly connection: Connection;
 
   constructor(config: ClickHouseClientConfigOptions = {}) {
-    const loggingEnabled = Boolean(config.log?.enable || process.env.CLICKHOUSE_LOG_ENABLE);
-    if(loggingEnabled) {
+    const loggingEnabled = Boolean(
+      config.log?.enable || process.env.CLICKHOUSE_LOG_ENABLE
+    );
+    if (loggingEnabled) {
       Logger.enable();
     } else {
       Logger.disable();
@@ -83,8 +86,8 @@ export class ClickHouseClient {
       database: config.password ?? 'default',
       clickhouse_settings: config.clickhouse_settings ?? {},
       log: {
-        enable: loggingEnabled
-      }
+        enable: loggingEnabled,
+      },
     };
 
     validateConfig(this.config);
@@ -95,13 +98,13 @@ export class ClickHouseClient {
     return {
       clickhouse_settings: {
         ...this.config.clickhouse_settings,
-        ...params.clickhouse_settings
+        ...params.clickhouse_settings,
       },
       query_params: {
         database: this.config.database,
         ...params.query_params,
-      }
-    }
+      },
+    };
   }
 
   async select(params: SelectParams): Promise<Rows> {
@@ -155,8 +158,10 @@ export class ClickHouseClient {
 
 const formatRe = /\bformat\b\s([a-z]*)$/i;
 export function validateSelectQuery(query: string): void {
-  if(formatRe.test(query)){
-    throw new Error('Specifying format is not supported, use "format" parameter instead.')
+  if (formatRe.test(query)) {
+    throw new Error(
+      'Specifying format is not supported, use "format" parameter instead.'
+    );
   }
 }
 
@@ -165,12 +170,16 @@ function formatSelectQuery(query: string, format: DataFormat): string {
   return query + ' FORMAT ' + format;
 }
 
-function validateInsertValues(values: ReadonlyArray<any> | Stream.Readable): void {
-  if(Array.isArray(values) === false && isStream(values) == false) {
-    throw new Error('Insert expected "values" to be an array or a stream of values.');
+function validateInsertValues(
+  values: ReadonlyArray<any> | Stream.Readable
+): void {
+  if (Array.isArray(values) === false && isStream(values) == false) {
+    throw new Error(
+      'Insert expected "values" to be an array or a stream of values.'
+    );
   }
 
-  if(isStream(values) && !values.readableObjectMode){
+  if (isStream(values) && !values.readableObjectMode) {
     throw new Error('Insert expected Readable Stream in an object mode.');
   }
 }
@@ -183,15 +192,22 @@ function validateInsertValues(values: ReadonlyArray<any> | Stream.Readable): voi
  * @param values a set of values to send to ClickHouse.
  * @param format a format to encode value to.
  */
-function encodeValues(values: ReadonlyArray<any> | Stream.Readable, format: DataFormat): string | Stream.Readable {
-  if(isStream(values)) {
-    return values.pipe(mapStream(function(value: any) {
-      return encode(value, format);
-    }));
+function encodeValues(
+  values: ReadonlyArray<any> | Stream.Readable,
+  format: DataFormat
+): string | Stream.Readable {
+  if (isStream(values)) {
+    return values.pipe(
+      mapStream(function (value: any) {
+        return encode(value, format);
+      })
+    );
   }
-  return values.map(value => encode(value, format)).join('');
+  return values.map((value) => encode(value, format)).join('');
 }
 
-export function createClient(config?: ClickHouseClientConfigOptions): ClickHouseClient {
+export function createClient(
+  config?: ClickHouseClientConfigOptions
+): ClickHouseClient {
   return new ClickHouseClient(config);
 }
