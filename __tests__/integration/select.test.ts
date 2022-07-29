@@ -25,6 +25,55 @@ describe('select', () => {
     await client.close();
   });
 
+  it('can send a multiline query', async () => {
+    client = createClient();
+    const rows = await client.select({
+      query: `
+        SELECT number
+        FROM system.numbers
+        LIMIT 2
+      `,
+      format: 'CSV',
+    });
+
+    const response = await rows.text();
+    expect(response).to.equal('0\n1\n');
+  });
+
+  it('can send a query with an inline comment', async () => {
+    client = createClient();
+    const rows = await client.select({
+      query: `
+        SELECT number
+        -- a comment
+        FROM system.numbers
+        LIMIT 2
+      `,
+      format: 'CSV',
+    });
+
+    const response = await rows.text();
+    expect(response).to.equal('0\n1\n');
+  });
+
+  it('can send a query with a multiline comment', async () => {
+    client = createClient();
+    const rows = await client.select({
+      query: `
+        SELECT number
+        /* This is:
+         a multiline comment
+        */
+        FROM system.numbers
+        LIMIT 2
+      `,
+      format: 'CSV',
+    });
+
+    const response = await rows.text();
+    expect(response).to.equal('0\n1\n');
+  });
+
   it('can specify settings in select', async () => {
     client = createClient();
     const rows = await client.select({
@@ -37,20 +86,6 @@ describe('select', () => {
 
     const response = await rows.text();
     expect(response).to.equal('0\n1\n');
-  });
-
-  it('can specify a parameterized query', async () => {
-    client = createClient();
-    const rows = await client.select({
-      query: 'SELECT number FROM system.numbers WHERE number > {min_limit: UInt64} LIMIT 3',
-      format: 'CSV',
-      query_params: {
-        min_limit: 2
-      }
-    });
-
-    const response = await rows.text();
-    expect(response).to.equal('3\n4\n5\n');
   });
 
   it('does not swallow a client error', (done) => {
