@@ -34,8 +34,7 @@ describe('formatQueryParams', () => {
   });
 
   it('formats a date without timezone', () => {
-    const timestamp = 1659081134861;
-    const date = new Date(timestamp);
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14));
     expect(formatQueryParams(date)).to.equal('2022-07-29 09:52:14');
   });
 
