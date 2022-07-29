@@ -1,0 +1,47 @@
+name: 'run tests'
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 9 * * *"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        node-version:
+          - 14.x
+          - 16.x
+        clickhouse:
+          - latest
+
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:${{ matrix.clickhouse }}
+        ports:
+          - 8123:8123
+          - 9000:9000
+        options: --ulimit nofile=262144:262144
+
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Install Nodejs ${{ matrix.go }}
+        uses: actions/setup-node@master
+        with:
+          go-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run tests
+        run: |
+          npm run test
