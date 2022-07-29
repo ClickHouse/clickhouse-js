@@ -14,12 +14,12 @@ export function formatQueryParams(value: any, wrapStringInQuotes = false): strin
   if (typeof value === 'string') {
     const escapedValue = value.replaceAll(`\\`, `\\\\`).replaceAll(`'`, `\\'`);
     return wrapStringInQuotes ? `'${escapedValue}'` : escapedValue
-  };
+  }
 
   if (Array.isArray(value)) {
     const formatted = value.map(v => formatQueryParams(v, true));
     return `[${formatted.join(',')}]`
-  };
+  }
 
   if (value instanceof Date) {
     // TODO add timezone support

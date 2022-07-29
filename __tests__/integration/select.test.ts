@@ -157,8 +157,7 @@ describe('select', () => {
         const { meta } = await rows.json<ResponseJSON<{number: string}>>();
 
         expect(meta?.length).to.equal(1);
-
-        const column = meta![0];
+        const column = meta ? meta[0] : undefined;
         expect(column).to.deep.equal({
           name: 'number',
           type: 'UInt64'

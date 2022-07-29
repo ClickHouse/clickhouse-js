@@ -32,7 +32,7 @@ const streamableFormat = [
 type StreamableDataFormat = typeof streamableFormat[number];
 
 function isStreamableJSONFamily(format: DataFormat): format is StreamableJsonDataFormat {
-  // @ts-expect-error
+  // @ts-expect-error JSON is not assignable to streamableJSONFormats
   return streamableJSONFormats.includes(format);
 }
 

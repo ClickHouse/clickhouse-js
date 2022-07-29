@@ -42,7 +42,7 @@ export class HttpAdapter implements Connection {
   }
 
   private async request(params: RequestParams): Promise<Stream.Readable> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const request = Http.request({
         protocol: this.url.protocol,
         hostname: this.url.hostname,

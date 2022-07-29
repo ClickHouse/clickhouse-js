@@ -26,7 +26,7 @@ describe('insert', () => {
   it('can insert values as a Stream', async() => {
     const stream = new Stream.Readable({
       objectMode: true,
-      read() {}
+      read() { /* stub */ }
     });
 
     stream.push([42, "hello", [0,1]]);
@@ -52,7 +52,7 @@ describe('insert', () => {
   it('does not throw if stream closes prematurely', async() => {
     const stream = new Stream.Readable({
       objectMode: true,
-      read (size: number) {
+      read () {
         this.push(null); // close stream
       }
     });
@@ -67,7 +67,7 @@ describe('insert', () => {
     let closed = false;
     const stream = new Stream.Readable({
       objectMode: true,
-      read (size: number) {
+      read () {
         setTimeout(() => {
           this.push([42, "hello", [0,1]]);
           this.push([43, "world", [3,4]]);

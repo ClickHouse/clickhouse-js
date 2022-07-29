@@ -8,7 +8,7 @@ export function log (...args: any[]) : void {
 
 export function enable (): void {
   Debug.enable('clickhouse');
-};
+}
 
 export function disable (): void {
   Debug.disable();
