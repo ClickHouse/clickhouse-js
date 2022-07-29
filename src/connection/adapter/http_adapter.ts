@@ -6,7 +6,7 @@ import type {
   Connection,
   ConnectionParams,
   BaseParams,
-  InsertParams
+  InsertParams,
 } from '../connection';
 import { toSearchParams } from './http_search_params';
 import { isStream, getAsText } from '../../utils';
@@ -35,14 +35,19 @@ export class HttpAdapter implements Connection {
     this.headers = this.buildDefaultHeaders(config.username, config.password);
   }
 
-  private buildDefaultHeaders(username: string, password: string): Http.OutgoingHttpHeaders {
-      return {
-        'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
-      }
+  private buildDefaultHeaders(
+    username: string,
+    password: string
+  ): Http.OutgoingHttpHeaders {
+    return {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
+        'base64'
+      )}`,
+    };
   }
 
   private async request(params: RequestParams): Promise<Stream.Readable> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const request = Http.request({
         protocol: this.url.protocol,
         hostname: this.url.hostname,
@@ -53,9 +58,9 @@ export class HttpAdapter implements Connection {
         headers: this.headers,
       });
 
-      function onError (err: Error): void {
-        removeRequestListeners()
-        reject(err)
+      function onError(err: Error): void {
+        removeRequestListeners();
+        reject(err);
       }
 
       function onClose() {
@@ -65,8 +70,8 @@ export class HttpAdapter implements Connection {
       async function onResponse(response: Http.IncomingMessage): Promise<void> {
         removeRequestListeners();
 
-        if(isSuccessfulResponse(response.statusCode)) {
-          return resolve(response)
+        if (isSuccessfulResponse(response.statusCode)) {
+          return resolve(response);
         } else {
           reject(parseError(await getAsText(response)));
         }
@@ -90,9 +95,9 @@ export class HttpAdapter implements Connection {
             removeRequestListeners();
             reject(err);
           }
-        })
+        });
       } else {
-        request.end(params.body)
+        request.end(params.body);
       }
     });
   }
@@ -109,18 +114,24 @@ export class HttpAdapter implements Connection {
 
   async select(params: BaseParams): Promise<Stream.Readable> {
     // TODO: add retry
-    const searchParams = toSearchParams(params.clickhouse_settings, params.query_params);
+    const searchParams = toSearchParams(
+      params.clickhouse_settings,
+      params.query_params
+    );
 
     const result = await this.request({
       method: 'POST',
       path: '/?' + searchParams?.toString(),
-      body: params.query
+      body: params.query,
     });
     return result;
   }
 
   async command(params: BaseParams): Promise<void> {
-    const searchParams = toSearchParams(params.clickhouse_settings, params.query_params);
+    const searchParams = toSearchParams(
+      params.clickhouse_settings,
+      params.query_params
+    );
     await this.request({
       method: 'POST',
       path: '/?' + searchParams?.toString(),
@@ -131,17 +142,21 @@ export class HttpAdapter implements Connection {
   }
 
   async insert(params: InsertParams): Promise<void> {
-    const searchParams = toSearchParams(params.clickhouse_settings, params.query_params, params.query);
+    const searchParams = toSearchParams(
+      params.clickhouse_settings,
+      params.query_params,
+      params.query
+    );
     await this.request({
       method: 'POST',
       path: '/?' + searchParams?.toString(),
-      body: params.values
+      body: params.values,
     });
   }
 
   async close(): Promise<void> {
     if (this.agent !== undefined && this.agent.destroy !== undefined) {
-      this.agent.destroy()
+      this.agent.destroy();
     }
   }
 }

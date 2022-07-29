@@ -14,11 +14,12 @@ describe('select with query binding', () => {
 
   it('can specify a parameterized query', async () => {
     const rows = await client.select({
-      query: 'SELECT number FROM system.numbers WHERE number > {min_limit: UInt64} LIMIT 3',
+      query:
+        'SELECT number FROM system.numbers WHERE number > {min_limit: UInt64} LIMIT 3',
       format: 'CSV',
       query_params: {
-        min_limit: 2
-      }
+        min_limit: 2,
+      },
     });
 
     const response = await rows.text();
@@ -32,7 +33,7 @@ describe('select with query binding', () => {
       query_params: {
         val1: true,
         val2: true,
-      }
+      },
     });
 
     expect(await rows1.text()).to.equal('true\n');
@@ -43,7 +44,7 @@ describe('select with query binding', () => {
       query_params: {
         val1: true,
         val2: false,
-      }
+      },
     });
 
     expect(await rows2.text()).to.equal('false\n');
@@ -56,20 +57,19 @@ describe('select with query binding', () => {
       query_params: {
         val1: 10,
         val2: 20,
-      }
+      },
     });
 
     expect(await rows.text()).to.equal('30\n');
   });
-
 
   it('handles Dates in a parameterized query', async () => {
     const rows = await client.select({
       query: 'SELECT toDateTime({min_time: DateTime})',
       format: 'CSV',
       query_params: {
-        min_time: new Date(2022, 4, 2)
-      }
+        min_time: new Date(2022, 4, 2),
+      },
     });
 
     const response = await rows.text();
@@ -83,7 +83,7 @@ describe('select with query binding', () => {
       query_params: {
         arr1: ['1', '2'],
         arr2: ['3', '4'],
-      }
+      },
     });
 
     const response = await rows.text();
@@ -97,13 +97,12 @@ describe('select with query binding', () => {
       query_params: {
         arr1: [1, 2],
         arr2: [3, 4],
-      }
+      },
     });
 
     const response = await rows.text();
     expect(response).to.equal(`"[1,2,3,4]"\n`);
   });
-
 
   it('escapes strings in a parameterized query', async () => {
     const rows = await client.select({
@@ -112,21 +111,20 @@ describe('select with query binding', () => {
       query_params: {
         str1: "co'n",
         str2: "ca't",
-      }
+      },
     });
 
     const response = await rows.text();
     expect(response).to.equal('"co\'nca\'t"\n');
   });
 
-
   it('handles an object a parameterized query', async () => {
     const rows = await client.select({
       query: 'SELECT mapKeys({obj: Map(String, UInt32)})',
       format: 'CSV',
       query_params: {
-        obj: {id: 42},
-      }
+        obj: { id: 42 },
+      },
     });
 
     const response = await rows.text();

@@ -26,14 +26,14 @@ export interface InsertParams extends BaseParams {
 export interface Connection {
   ping(): Promise<boolean>;
   close(): Promise<void>;
-  select(params: BaseParams): Promise<Stream.Readable>
-  command(params: BaseParams): Promise<void>
-  insert(params: InsertParams): Promise<void>
+  select(params: BaseParams): Promise<Stream.Readable>;
+  command(params: BaseParams): Promise<void>;
+  insert(params: InsertParams): Promise<void>;
 }
 
 export function createConnection(config: ConnectionParams): Connection {
   const url = new URL(config.host);
-  if(url.protocol === 'http:' || url.protocol === 'https:') {
+  if (url.protocol === 'http:' || url.protocol === 'https:') {
     return new HttpAdapter(config);
   }
   throw new Error('Only http adapter is supported');

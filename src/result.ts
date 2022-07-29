@@ -2,10 +2,17 @@ import Stream from 'stream';
 import split from 'split2';
 
 import { getAsText } from './utils';
-import { type DataFormat, decode,  validateStreamFormat } from './data_formatter';
+import {
+  type DataFormat,
+  decode,
+  validateStreamFormat,
+} from './data_formatter';
 
 export class Row {
-  constructor(private readonly chunk: string, private readonly format: DataFormat) {}
+  constructor(
+    private readonly chunk: string,
+    private readonly format: DataFormat
+  ) {}
   /**
    * Returns a string representation of a row.
    */
@@ -22,12 +29,15 @@ export class Row {
 }
 
 export class Rows {
-  constructor(private readonly stream: Stream.Readable, private readonly format: DataFormat) {}
+  constructor(
+    private readonly stream: Stream.Readable,
+    private readonly format: DataFormat
+  ) {}
   /**
    * The method waits for all the rows to be fully loaded and returns the result as a string.
    */
   async text() {
-    return (await getAsText(this.stream)).toString()
+    return (await getAsText(this.stream)).toString();
   }
 
   /**
@@ -48,11 +58,11 @@ export class Rows {
 
     return Stream.pipeline(
       this.stream,
-      split(function(this: Stream.Transform, row: string) {
+      split(function (this: Stream.Transform, row: string) {
         return new Row(row, format);
       }),
       function pipelineCb(err) {
-        if(err) console.error(err);
+        if (err) console.error(err);
       }
     );
   }

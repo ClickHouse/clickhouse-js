@@ -31,14 +31,22 @@ const streamableFormat = [
 ] as const;
 type StreamableDataFormat = typeof streamableFormat[number];
 
-function isStreamableJSONFamily(format: DataFormat): format is StreamableJsonDataFormat {
-  // @ts-expect-error
+function isStreamableJSONFamily(
+  format: DataFormat
+): format is StreamableJsonDataFormat {
+  // @ts-expect-error JSON is not assignable to streamableJSONFormats
   return streamableJSONFormats.includes(format);
 }
 
-export function validateStreamFormat(format: any): format is StreamableDataFormat {
-  if(!streamableFormat.includes(format)) {
-    throw new Error(`${format} format is not streamable. Streamable formats: ${streamableFormat.join(',')}`);
+export function validateStreamFormat(
+  format: any
+): format is StreamableDataFormat {
+  if (!streamableFormat.includes(format)) {
+    throw new Error(
+      `${format} format is not streamable. Streamable formats: ${streamableFormat.join(
+        ','
+      )}`
+    );
   }
   return true;
 }
@@ -49,11 +57,16 @@ export function validateStreamFormat(format: any): format is StreamableDataForma
  * @param format One of the supported formats: https://clickhouse.com/docs/en/interfaces/formats/
  */
 export function decode(text: string, format: DataFormat): any {
-  if(format === 'JSON') {
-    return JSON.parse(text)
-  } if (isStreamableJSONFamily(format)) {
-    return text.split('\n').filter(Boolean).map(l => decode(l, 'JSON'));
-  } if (format === 'CSV' || format === 'TabSeparated') {
+  if (format === 'JSON') {
+    return JSON.parse(text);
+  }
+  if (isStreamableJSONFamily(format)) {
+    return text
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => decode(l, 'JSON'));
+  }
+  if (format === 'CSV' || format === 'TabSeparated') {
     throw new Error(`cannot decode ${format} to JSON`);
   }
   throw new Error(`The client does not support [${format}] format decoding.`);
@@ -66,8 +79,10 @@ export function decode(text: string, format: DataFormat): any {
  * @returns string
  */
 export function encode(value: any, format: DataFormat): string {
-  if(format === 'JSONCompactEachRow') {
+  if (format === 'JSONCompactEachRow') {
     return JSON.stringify(value) + '\n';
   }
-  throw new Error(`The client does not support encoding in [${format}] format.`);
+  throw new Error(
+    `The client does not support encoding in [${format}] format.`
+  );
 }

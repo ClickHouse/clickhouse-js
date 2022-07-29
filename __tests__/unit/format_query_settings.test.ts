@@ -15,7 +15,11 @@ describe('formatQuerySettings', () => {
     expect(formatQuerySettings('42')).to.equal('42');
   });
   it('throws on unsupported values', () => {
-    expect(() => formatQuerySettings(undefined as any)).to.throw('Unsupported value in query settings: [undefined].');
-    expect(() => formatQuerySettings([1,2] as any)).to.throw('Unsupported value in query settings: [1,2].');
+    expect(() => formatQuerySettings(undefined as any)).to.throw(
+      'Unsupported value in query settings: [undefined].'
+    );
+    expect(() => formatQuerySettings([1, 2] as any)).to.throw(
+      'Unsupported value in query settings: [1,2].'
+    );
   });
 });

@@ -1,8 +1,9 @@
-const errorRe = /(Code|Error): (?<code>\d+).*Exception: (?<message>.+?)\((?<type>\w+?)\)/m;
+const errorRe =
+  /(Code|Error): (?<code>\d+).*Exception: (?<message>.+?)\((?<type>\w+?)\)/m;
 interface ParsedClickHouseError {
   message: string;
   code: string;
-  type?: string
+  type?: string;
 }
 
 export class ClickHouseError extends Error {
@@ -19,10 +20,10 @@ export class ClickHouseError extends Error {
   }
 }
 
-export function parseError(input:string): ClickHouseError | Error {
+export function parseError(input: string): ClickHouseError | Error {
   const match = input.match(errorRe);
   const groups = match?.groups as ParsedClickHouseError | undefined;
-  if(groups) {
+  if (groups) {
     return new ClickHouseError(groups);
   } else {
     return new Error(input);
