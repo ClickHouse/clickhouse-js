@@ -35,7 +35,7 @@ describe('select with query binding', () => {
       }
     });
 
-    expect(await rows1.text()).to.equal('1\n');
+    expect(await rows1.text()).to.equal('true\n');
 
     const rows2 = await client.select({
       query: 'SELECT and({val1: Boolean}, {val2: Boolean})',
@@ -46,7 +46,7 @@ describe('select with query binding', () => {
       }
     });
 
-    expect(await rows2.text()).to.equal('0\n');
+    expect(await rows2.text()).to.equal('false\n');
   });
 
   it('handles numbers in a parameterized query', async () => {
