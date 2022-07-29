@@ -20,6 +20,7 @@ jobs:
           - 14.x
           - 16.x
         clickhouse:
+          - head
           - latest
 
     services:
