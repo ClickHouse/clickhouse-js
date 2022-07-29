@@ -152,7 +152,7 @@ export class ClickHouseClient {
     return await this.connection.close();
   }
 }
-// /i.test('select format from table format json limit 1')
+
 const formatRe = /\bformat\b\s([a-z]*)$/i;
 export function validateSelectQuery(query: string): void {
   if(formatRe.test(query)){

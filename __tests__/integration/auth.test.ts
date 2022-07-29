@@ -1,3 +1,4 @@
+import { expect } from 'chai';
 import { createClient, type ClickHouseClient } from '../../src';
 
 describe('authentication', () => {
@@ -6,30 +7,19 @@ describe('authentication', () => {
     await client.close();
   });
 
-  it('uses credentials provided during configuration', async () => {
-    client = createClient({
-      username: 'default',
-      password: ''
-    });
-    await expect(
-      client.select({ query: 'SELECT number FROM system.numbers LIMIT 3' })
-    ).resolves.not.toThrow();
-  });
-
   it('provides authentication error details', async () => {
-    expect.assertions(3);
-
-    const client = createClient({
+    client = createClient({
       username: 'gibberish',
       password: 'gibberish'
     });
 
     try {
       await client.select({ query: 'SELECT number FROM system.numbers LIMIT 3' });
+      throw new Error('Did not throw');
     } catch(e: any) {
-      expect(e.code).toBe('516');
-      expect(e.type).toBe('AUTHENTICATION_FAILED');
-      expect(e.message).toMatch(/Authentication failed/i);
+      expect(e.code).to.equal('516');
+      expect(e.type).to.equal('AUTHENTICATION_FAILED');
+      expect(e.message).to.match(/Authentication failed/i);
     }
   });
 });
