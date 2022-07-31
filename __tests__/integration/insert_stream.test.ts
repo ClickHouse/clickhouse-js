@@ -3,7 +3,7 @@ import { createClient, type ClickHouseClient } from '../../src';
 import Stream from 'stream';
 import type { ResponseJSON } from '../../src/clickhouse_types';
 
-describe('insert', () => {
+describe('insert stream', () => {
   before(function () {
     if (process.env.browser) {
       this.skip();

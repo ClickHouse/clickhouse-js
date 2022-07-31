@@ -76,7 +76,7 @@ export class ClickHouseClient {
     this.config = {
       host: config.host ?? 'http://localhost:8123',
       connect_timeout: config.connect_timeout ?? 10_000,
-      request_timeout: config.request_timeout ?? 30_000,
+      request_timeout: config.request_timeout ?? 300_000,
       // max_open_connections: options.max_open_connections ?? 256,
       // tls: _config.tls,
       // compression:

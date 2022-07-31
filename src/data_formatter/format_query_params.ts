@@ -1,3 +1,5 @@
+import { replaceAll } from '../utils';
+
 function withPadding(value: number): string {
   if (value > 9) return String(value);
   return `0${value}`;
@@ -15,7 +17,11 @@ export function formatQueryParams(
   if (typeof value === 'number') return String(value);
   if (typeof value === 'boolean') return value ? '1' : '0';
   if (typeof value === 'string') {
-    const escapedValue = value.replaceAll(`\\`, `\\\\`).replaceAll(`'`, `\\'`);
+    const escapedValue = replaceAll(
+      replaceAll(value, `\\`, `\\\\`),
+      `'`,
+      `\\'`
+    );
     return wrapStringInQuotes ? `'${escapedValue}'` : escapedValue;
   }
 
