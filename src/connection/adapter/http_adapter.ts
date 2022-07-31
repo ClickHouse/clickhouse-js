@@ -77,15 +77,24 @@ export class HttpAdapter implements Connection {
         }
       }
 
+      function onTimeout() {
+        removeRequestListeners();
+        request.once('error', function () {
+          /** catch the request aborted error */
+        });
+        request.abort();
+        reject(new Error('Timeout error'));
+      }
+
       function removeRequestListeners() {
         request.removeListener('response', onResponse);
         request.removeListener('error', onError);
         request.removeListener('close', onClose);
+        request.removeListener('timeout', onTimeout);
       }
 
       request.on('response', onResponse);
-      // TODO check whether it's closed automatically
-      // request.on('timeout', onTimeout)
+      request.on('timeout', onTimeout);
       request.on('error', onError);
       request.on('close', onClose);
 
