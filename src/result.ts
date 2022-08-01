@@ -62,7 +62,9 @@ export class Rows {
         return new Row(row, format);
       }),
       function pipelineCb(err) {
-        if (err) console.error(err);
+        if (err) {
+          console.error(err);
+        }
       }
     );
   }

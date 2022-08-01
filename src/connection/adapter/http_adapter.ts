@@ -16,12 +16,16 @@ interface RequestParams {
   path: string;
   headers?: Record<string, string>;
   body?: string | Stream.Readable;
+  abort_signal?: AbortSignal;
 }
 
 function isSuccessfulResponse(statusCode?: number): boolean {
   return Boolean(statusCode && 200 <= statusCode && statusCode < 300);
 }
 
+function isEventTarget(signal: any): signal is EventTarget {
+  return 'removeEventListener' in signal;
+}
 export class HttpAdapter implements Connection {
   private readonly agent: Http.Agent;
   private readonly url: URL;
@@ -57,19 +61,12 @@ export class HttpAdapter implements Connection {
         agent: this.agent,
         headers: this.headers,
       });
-
       function onError(err: Error): void {
         removeRequestListeners();
         reject(err);
       }
 
-      function onClose() {
-        removeRequestListeners();
-      }
-
       async function onResponse(response: Http.IncomingMessage): Promise<void> {
-        removeRequestListeners();
-
         if (isSuccessfulResponse(response.statusCode)) {
           return resolve(response);
         } else {
@@ -77,30 +74,79 @@ export class HttpAdapter implements Connection {
         }
       }
 
-      function onTimeout() {
+      function onTimeout(): void {
         removeRequestListeners();
         request.once('error', function () {
-          /** catch the request aborted error */
+          /**
+           * catch "Error: ECONNRESET" error which shouldn't be reported to users.
+           * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
+           * */
         });
-        request.abort();
+        request.destroy();
         reject(new Error('Timeout error'));
       }
 
-      function removeRequestListeners() {
+      function onAbortSignal(): void {
+        // instead of deprecated request.abort()
+        request.destroy(new Error('The request was aborted.'));
+      }
+
+      function onAbort(): void {
+        // Prefer 'abort' event since it always triggered unlike 'error' and 'close'
+        // * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
+        removeRequestListeners();
+        request.once('error', function () {
+          /**
+           * catch "Error: ECONNRESET" error which shouldn't be reported to users.
+           * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
+           * */
+        });
+        reject(new Error('The request was aborted.'));
+      }
+
+      function onClose(): void {
+        // Adapter uses 'close' event to cleanup listeners after the successful response.
+        // It's necessary in order to handle 'abort' and 'timeout' events while response is streamed.
+        // setImmediate is a workaround. If a request cancelled before sent, the 'abort' happens after 'close'.
+        // Which contradicts the docs https://nodejs.org/docs/latest-v14.x/api/http.html#http_http_request_url_options_callback
+        setImmediate(removeRequestListeners);
+      }
+
+      function removeRequestListeners(): void {
         request.removeListener('response', onResponse);
         request.removeListener('error', onError);
-        request.removeListener('close', onClose);
         request.removeListener('timeout', onTimeout);
+        request.removeListener('abort', onAbort);
+        request.removeListener('close', onClose);
+        if (params.abort_signal !== undefined) {
+          if (isEventTarget(params.abort_signal)) {
+            params.abort_signal.removeEventListener('abort', onAbortSignal);
+          } else {
+            // @ts-expect-error if it's EventEmitter
+            params.abort_signal.removeListener('abort', onAbortSignal);
+          }
+        }
+      }
+
+      if (params.abort_signal) {
+        // We should use signal API when nodejs v14 is not supported anymore.
+        // However, it seems that Http.request doesn't abort after 'response' event.
+        // Requires an additional investigation
+        // https://nodejs.org/api/globals.html#class-abortsignal
+        params.abort_signal.addEventListener('abort', onAbortSignal, {
+          once: true,
+        });
       }
 
       request.on('response', onResponse);
       request.on('timeout', onTimeout);
       request.on('error', onError);
+      request.on('abort', onAbort);
       request.on('close', onClose);
 
       if (isStream(params.body)) {
         Stream.pipeline(params.body, request, (err) => {
-          if (err != null) {
+          if (err) {
             removeRequestListeners();
             reject(err);
           }
@@ -132,6 +178,7 @@ export class HttpAdapter implements Connection {
       method: 'POST',
       path: '/?' + searchParams?.toString(),
       body: params.query,
+      abort_signal: params.abort_signal,
     });
     return result;
   }
@@ -145,6 +192,7 @@ export class HttpAdapter implements Connection {
       method: 'POST',
       path: '/?' + searchParams?.toString(),
       body: params.query,
+      abort_signal: params.abort_signal,
     });
 
     // return await getAsText(result);
@@ -160,6 +208,7 @@ export class HttpAdapter implements Connection {
       method: 'POST',
       path: '/?' + searchParams?.toString(),
       body: params.values,
+      abort_signal: params.abort_signal,
     });
   }
 
