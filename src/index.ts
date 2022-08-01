@@ -18,3 +18,9 @@ export type { Rows, Row } from './result';
 export type { Connection } from './connection';
 export type { DataFormat } from './data_formatter';
 export type { ClickHouseError } from './error';
+
+export type {
+  ResponseJSON,
+  DataType,
+  ClickHouseSettings,
+} from './clickhouse_types';

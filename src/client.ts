@@ -33,6 +33,7 @@ export interface ClickHouseClientConfigOptions {
 export interface BaseParams {
   clickhouse_settings?: ClickHouseSettings;
   query_params?: Record<string, unknown>;
+  abort_signal?: AbortSignal;
 }
 
 export interface SelectParams extends BaseParams {
@@ -104,6 +105,7 @@ export class ClickHouseClient {
         database: this.config.database,
         ...params.query_params,
       },
+      abort_signal: params.abort_signal,
     };
   }
 
@@ -197,10 +199,16 @@ function encodeValues(
   format: DataFormat
 ): string | Stream.Readable {
   if (isStream(values)) {
-    return values.pipe(
+    return Stream.pipeline(
+      values,
       mapStream(function (value: any) {
         return encode(value, format);
-      })
+      }),
+      function pipelineCb(err) {
+        if (err) {
+          console.error(err);
+        }
+      }
     );
   }
   return values.map((value) => encode(value, format)).join('');
