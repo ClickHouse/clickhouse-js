@@ -101,10 +101,9 @@ describe('abort request', () => {
             }
           }
         })
-        .catch((error: Error & { code?: string }) => {
-          console.log('>>', error);
-          // expect(error.message).to.equal('Premature close');
-          // expect(error.code).to.equal('ERR_STREAM_PREMATURE_CLOSE');
+        .catch(() => {
+          // There is no assertion against an error message.
+          // A race condition on events might lead to Request Aborted or ERR_STREAM_PREMATURE_CLOSE errors.
           done();
         });
     });
