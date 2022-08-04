@@ -28,6 +28,7 @@ const streamableFormat = [
   ...streamableJSONFormats,
   'CSV',
   'TabSeparated',
+  'CSVWithNamesAndTypes',
 ] as const;
 type StreamableDataFormat = typeof streamableFormat[number];
 

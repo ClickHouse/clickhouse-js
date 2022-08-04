@@ -1,15 +1,23 @@
-import Debug from 'debug';
+export class Logger {
+  constructor(readonly enabled = false) {}
 
-const debug = Debug('clickhouse');
+  debug(message: string): void {
+    if (!this.enabled) return;
+    console.log(message);
+  }
 
-export function log(...args: any[]): void {
-  debug(':', ...args);
-}
+  info(message: string): void {
+    if (!this.enabled) return;
+    console.log(message);
+  }
 
-export function enable(): void {
-  Debug.enable('clickhouse');
-}
+  warning(message: string): void {
+    if (!this.enabled) return;
+    console.warn(message);
+  }
 
-export function disable(): void {
-  Debug.disable();
+  error(message: string): void {
+    if (!this.enabled) return;
+    console.error(message);
+  }
 }
