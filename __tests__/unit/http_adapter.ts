@@ -228,6 +228,48 @@ describe('HttpAdapter', () => {
           expect(e.message).to.equal('Unexpected encoding: br');
         }
       });
+
+      it('decompression error is provided to a stream consumer', async () => {
+        const adapter = buildHttpAdapter({
+          compression: {
+            decompress_response: true,
+            compress_request: false,
+          },
+        });
+
+        const request = new Stream.Writable({
+          write() {
+            /** stub */
+          },
+        });
+
+        httpRequestStub?.returns(request);
+
+        const selectPromise = adapter.select({
+          query: 'SELECT * from system.numbers LIMIT 5',
+        });
+
+        request.emit(
+          'response',
+          buildIncomingMessage({
+            body: 'abc',
+            headers: {
+              'content-encoding': 'gzip',
+            },
+          })
+        );
+
+        try {
+          const response = await selectPromise;
+          for await (const chunk of response) {
+            chunk; // stub
+          }
+          throw new Error('did not throw');
+        } catch (e: any) {
+          expect(e.message).to.equal('incorrect header check');
+          expect(e.code).to.equal('Z_DATA_ERROR');
+        }
+      });
     });
 
     describe('request compression', () => {
