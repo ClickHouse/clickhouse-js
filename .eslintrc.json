@@ -16,6 +16,8 @@
   ],
   "rules": {
     "prettier/prettier": "error",
+    "@typescript-eslint/no-floating-promises": "error",
+    "eqeqeq": "error",
     // Disable some inherited recommended checks until they all are fixed in targeted PRs.
     "@typescript-eslint/no-explicit-any": "off"
   }
