@@ -16,9 +16,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node-version:
-          - 14.x
-          - 16.x
+        node: [ 14, 16 ]
         clickhouse:
           - head
           - latest
@@ -34,10 +32,10 @@ jobs:
     steps:
       - uses: actions/checkout@main
 
-      - name: Install Nodejs ${{ matrix.go }}
-        uses: actions/setup-node@master
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@v3
         with:
-          go-version: ${{ matrix.node-version }}
+          node-version: ${{ matrix.node }}
 
       - name: Install dependencies
         run: |
