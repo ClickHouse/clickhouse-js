@@ -1,19 +1,27 @@
 import { expect } from 'chai';
-import { createClient, type ClickHouseClient } from '../../src';
-import type { ResponseJSON } from '../../src/clickhouse_types';
+import type { ResponseJSON } from '../../src';
+import { type ClickHouseClient } from '../../src';
+import { createClientWithRandomDatabase } from '../utils';
 
 describe('insert', () => {
   let client: ClickHouseClient;
+  let databaseName: string;
+  let tableName: string;
   beforeEach(async () => {
-    client = createClient();
-    const ddl =
-      'CREATE TABLE test_table (id UInt64, name String, sku Array(UInt8)) Engine = Memory';
+    ({ client, databaseName } = await createClientWithRandomDatabase({
+      useCloud: true,
+    }));
+    tableName = `${databaseName}.test_table`;
+    const ddl = `
+        CREATE TABLE ${tableName} 
+        (id UInt64, name String, sku Array(UInt8)) 
+        Engine = Memory
+    `;
     await client.command({
       query: ddl,
     });
   });
   afterEach(async () => {
-    await client.command({ query: 'DROP TABLE test_table' });
     await client.close();
   });
 
@@ -23,12 +31,12 @@ describe('insert', () => {
       [43, 'world', [3, 4]],
     ];
     await client.insert({
-      table: 'test_table',
+      table: tableName,
       values: dataToInsert,
     });
 
     const Rows = await client.select({
-      query: 'SELECT * FROM test_table',
+      query: `SELECT * FROM ${tableName}`,
       format: 'JSONEachRow',
     });
 
@@ -45,12 +53,12 @@ describe('insert', () => {
       [43, 'мир', [3, 4]],
     ];
     await client.insert({
-      table: 'test_table',
+      table: tableName,
       values: dataToInsert,
     });
 
     const Rows = await client.select({
-      query: 'SELECT * FROM test_table',
+      query: `SELECT * FROM ${tableName}`,
       format: 'JSONEachRow',
     });
 

@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  clickhouse:
+    image: 'clickhouse/clickhouse-server:22.3.10.22-alpine'
+    container_name: 'clickhouse-js-clickhouse-server'
+    ports:
+      - '8123:8123'
+      - '9000:9000'
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
