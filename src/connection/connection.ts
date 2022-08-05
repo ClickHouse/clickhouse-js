@@ -4,7 +4,7 @@ import type { Logger } from '../logger';
 import { HttpAdapter } from './adapter';
 
 export interface ConnectionParams {
-  host: string;
+  host: URL;
 
   connect_timeout: number;
   request_timeout: number;

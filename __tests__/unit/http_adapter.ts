@@ -38,7 +38,7 @@ function buildHttpAdapter(config: Partial<ConnectionParams>) {
   return new HttpAdapter(
     {
       ...{
-        host: 'http://localhost:8132',
+        host: new URL('http://localhost:8132'),
 
         connect_timeout: 10_000,
         request_timeout: 30_000,

@@ -1,5 +1,11 @@
 import { expect } from 'chai';
-import { validateSelectQuery } from '../../src/client';
+import { validateSelectQuery, createClient } from '../../src/client';
+
+describe('createClient', () => {
+  it('throws on incorrect "host" config value', () => {
+    expect(() => createClient({ host: 'foo' })).to.throw('Invalid URL: foo');
+  });
+});
 
 describe('validateSelectQuery', () => {
   it('throws on a query containing FORMAT clause', () => {
