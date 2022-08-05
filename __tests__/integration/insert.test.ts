@@ -15,7 +15,6 @@ describe('insert', () => {
     const ddl = `
         CREATE TABLE ${tableName} 
         (id UInt64, name String, sku Array(UInt8))
-        ENGINE = MergeTree()
         ORDER BY (id)
     `;
     await client.command({
