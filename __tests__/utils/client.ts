@@ -13,10 +13,11 @@ export function createTestClient(
   config?: TestClientConfiguration
 ): ClickHouseClient {
   if (config?.useCloud === true && isClickHouseCloudEnabled()) {
+    console.log('Using ClickHouse Cloud client');
     return createClient({
-      host: process.env['CLICKHOUSE_CLOUD_HOST'] ?? undefined,
-      username: process.env['CLICKHOUSE_CLOUD_USERNAME'] ?? undefined,
-      password: process.env['CLICKHOUSE_CLOUD_PASSWORD'] ?? undefined,
+      host: getFromEnv('CLICKHOUSE_CLOUD_HOST'),
+      username: getFromEnv('CLICKHOUSE_CLOUD_USERNAME'),
+      password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
       ...config,
     });
   } else {
@@ -25,25 +26,11 @@ export function createTestClient(
 }
 
 export async function createRandomDatabase(
-  client: ClickHouseClient,
-  useCloud?: boolean
+  client: ClickHouseClient
 ): Promise<string> {
-  let databaseId;
-  // See https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
   const uuid = randomUUID().replace(/-/g, '');
-  let databaseName = 'clickhousejs__';
-  if (useCloud === true && isClickHouseCloudEnabled()) {
-    databaseId = [
-      process.env['GITHUB_RUN_ID'],
-      process.env['GITHUB_RUN_NUMBER'],
-      process.env['GITHUB_RUN_ATTEMPT'],
-      uuid,
-    ].join('__');
-    databaseName += databaseId;
-    console.log(`Using ClickHouse Cloud database ${databaseName}`);
-  } else {
-    databaseName += uuid;
-  }
+  const databaseName = `clickhousejs__${uuid}`;
+  console.log(`Using database ${databaseName}`);
   await client.command({
     query: `CREATE DATABASE IF NOT EXISTS ${databaseName}`,
   });
@@ -54,7 +41,7 @@ export async function createClientWithRandomDatabase(
   config?: TestClientConfiguration
 ): Promise<{ client: ClickHouseClient; databaseName: string }> {
   const client = createTestClient(config);
-  const databaseName = await createRandomDatabase(client, config?.useCloud);
+  const databaseName = await createRandomDatabase(client);
   return {
     client,
     databaseName,
@@ -63,4 +50,12 @@ export async function createClientWithRandomDatabase(
 
 function isClickHouseCloudEnabled() {
   return process.env['CLICKHOUSE_CLOUD_ENABLED'] === 'true';
+}
+
+function getFromEnv(key: string): string {
+  const value = process.env[key];
+  if (value === undefined) {
+    throw Error(`Environment variable ${key} is not set`);
+  }
+  return value;
 }
