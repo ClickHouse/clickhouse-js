@@ -1,5 +1,5 @@
 const errorRe =
-  /(Code|Error): (?<code>\d+).*Exception: (?<message>.+?)\((?<type>\w+?)\)/m;
+  /(Code|Error): (?<code>\d+).*Exception: (?<message>.+?)\((?<type>\w+?)\)/is;
 interface ParsedClickHouseError {
   message: string;
   code: string;
