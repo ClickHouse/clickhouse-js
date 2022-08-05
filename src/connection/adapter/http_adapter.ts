@@ -301,7 +301,9 @@ export class HttpAdapter implements Connection {
     const duration = Date.now() - startTimestamp;
 
     this.logger.debug(
-      `[http adapter] response: ${params.method} ${params.url.pathname} ${response.statusCode} ${duration}ms`
+      `[http adapter] response: ${params.method} ${params.url.pathname}${
+        params.url.search ? ` ${params.url.search}` : ''
+      } ${response.statusCode} ${duration}ms`
     );
   }
 
