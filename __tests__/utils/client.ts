@@ -30,16 +30,20 @@ export async function createRandomDatabase(
 ): Promise<string> {
   let databaseId;
   // See https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+  const uuid = randomUUID().replace(/-/g, '');
+  let databaseName = 'clickhousejs__';
   if (useCloud === true && isClickHouseCloudEnabled()) {
     databaseId = [
       process.env['GITHUB_RUN_ID'],
       process.env['GITHUB_RUN_NUMBER'],
       process.env['GITHUB_RUN_ATTEMPT'],
+      uuid,
     ].join('__');
+    databaseName += databaseId;
+    console.log(`Using ClickHouse Cloud database ${databaseName}`);
   } else {
-    databaseId = randomUUID().replace(/-/g, '');
+    databaseName += uuid;
   }
-  const databaseName = `clickhousejs__${databaseId}`;
   await client.command({
     query: `CREATE DATABASE IF NOT EXISTS ${databaseName}`,
   });
