@@ -4,6 +4,7 @@ export type ClickHouseSettings = {
   distributed_product_mode?: 'deny' | 'local' | 'global' | 'allow';
   prefer_global_in_and_join?: 0 | 1;
   enable_optimize_predicate_expression?: 0 | 1;
+  enable_http_compression?: 0 | 1;
   extremes?: 0 | 1;
   limit?: number;
 };

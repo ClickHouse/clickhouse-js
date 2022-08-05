@@ -1,6 +1,10 @@
 import Stream from 'stream';
 import Http from 'http';
+import Zlib from 'zlib';
 import { parseError } from '../../error/parse_error';
+
+import type { ClickHouseSettings } from '../../clickhouse_types';
+import type { Logger } from '../../logger';
 
 import type {
   Connection,
@@ -14,9 +18,10 @@ import { isStream, getAsText } from '../../utils';
 interface RequestParams {
   method: 'GET' | 'POST';
   path: string;
-  headers?: Record<string, string>;
   body?: string | Stream.Readable;
   abort_signal?: AbortSignal;
+  decompress_response?: boolean;
+  compress_request?: boolean;
 }
 
 function isSuccessfulResponse(statusCode?: number): boolean {
@@ -26,32 +31,85 @@ function isSuccessfulResponse(statusCode?: number): boolean {
 function isEventTarget(signal: any): signal is EventTarget {
   return 'removeEventListener' in signal;
 }
+
+function withHttpSettings(
+  clickhouse_settings?: ClickHouseSettings,
+  compression?: boolean
+): ClickHouseSettings {
+  return {
+    ...(compression
+      ? {
+          enable_http_compression: 1,
+        }
+      : {}),
+    ...clickhouse_settings,
+  };
+}
+
+function buildDefaultHeaders(
+  username: string,
+  password: string
+): Http.OutgoingHttpHeaders {
+  return {
+    Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
+      'base64'
+    )}`,
+  };
+}
+
+function decompressResponse(response: Http.IncomingMessage):
+  | {
+      response: Stream.Readable;
+    }
+  | { error: Error } {
+  const encoding = response.headers['content-encoding'];
+
+  if (encoding === 'gzip') {
+    return {
+      response: Stream.pipeline(
+        response,
+        Zlib.createGunzip(),
+        function pipelineCb(err) {
+          if (err) {
+            console.error(err);
+          }
+        }
+      ),
+    };
+  } else if (encoding !== undefined) {
+    return {
+      error: new Error(`Unexpected encoding: ${encoding}`),
+    };
+  }
+
+  return { response };
+}
+
+function isDecompressionError(result: any): result is { error: Error } {
+  return result.error !== undefined;
+}
+
 export class HttpAdapter implements Connection {
   private readonly agent: Http.Agent;
   private readonly url: URL;
   private readonly headers: Http.OutgoingHttpHeaders;
-  constructor(private readonly config: ConnectionParams) {
+  constructor(
+    private readonly config: ConnectionParams,
+    private readonly logger: Logger
+  ) {
     this.url = new URL(this.config.host);
     this.agent = new Http.Agent({
       keepAlive: true,
       timeout: config.request_timeout,
     });
-    this.headers = this.buildDefaultHeaders(config.username, config.password);
-  }
-
-  private buildDefaultHeaders(
-    username: string,
-    password: string
-  ): Http.OutgoingHttpHeaders {
-    return {
-      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
-        'base64'
-      )}`,
-    };
+    this.headers = buildDefaultHeaders(config.username, config.password);
   }
 
   private async request(params: RequestParams): Promise<Stream.Readable> {
     return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const headers = this.getHeaders(params);
+      // TODO use URL
       const request = Http.request({
         protocol: this.url.protocol,
         hostname: this.url.hostname,
@@ -59,20 +117,31 @@ export class HttpAdapter implements Connection {
         path: params.path,
         method: params.method,
         agent: this.agent,
-        headers: this.headers,
+        headers,
       });
+
       function onError(err: Error): void {
         removeRequestListeners();
         reject(err);
       }
 
-      async function onResponse(response: Http.IncomingMessage): Promise<void> {
-        if (isSuccessfulResponse(response.statusCode)) {
-          return resolve(response);
-        } else {
-          reject(parseError(await getAsText(response)));
+      const onResponse = async (
+        _response: Http.IncomingMessage
+      ): Promise<void> => {
+        this.logResponse(params, _response, start);
+
+        const decompressionResult = decompressResponse(_response);
+
+        if (isDecompressionError(decompressionResult)) {
+          return reject(decompressionResult.error);
         }
-      }
+
+        if (isSuccessfulResponse(_response.statusCode)) {
+          return resolve(decompressionResult.response);
+        } else {
+          reject(parseError(await getAsText(decompressionResult.response)));
+        }
+      };
 
       function onTimeout(): void {
         removeRequestListeners();
@@ -144,15 +213,23 @@ export class HttpAdapter implements Connection {
       request.on('abort', onAbort);
       request.on('close', onClose);
 
-      if (isStream(params.body)) {
-        Stream.pipeline(params.body, request, (err) => {
-          if (err) {
-            removeRequestListeners();
-            reject(err);
-          }
-        });
+      if (!params.body) return request.end();
+
+      const bodyStream = isStream(params.body)
+        ? params.body
+        : Stream.Readable.from([params.body]);
+
+      const callback = (err: NodeJS.ErrnoException | null): void => {
+        if (err) {
+          removeRequestListeners();
+          reject(err);
+        }
+      };
+
+      if (params.compress_request) {
+        Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback);
       } else {
-        request.end(params.body);
+        Stream.pipeline(bodyStream, request, callback);
       }
     });
   }
@@ -168,17 +245,19 @@ export class HttpAdapter implements Connection {
   }
 
   async select(params: BaseParams): Promise<Stream.Readable> {
-    // TODO: add retry
-    const searchParams = toSearchParams(
+    const settings = withHttpSettings(
       params.clickhouse_settings,
-      params.query_params
+      this.config.compression.decompress_response
     );
+
+    const searchParams = toSearchParams(settings, params.query_params);
 
     const result = await this.request({
       method: 'POST',
       path: '/?' + searchParams?.toString(),
       body: params.query,
       abort_signal: params.abort_signal,
+      decompress_response: settings.enable_http_compression === 1,
     });
     return result;
   }
@@ -209,6 +288,7 @@ export class HttpAdapter implements Connection {
       path: '/?' + searchParams?.toString(),
       body: params.values,
       abort_signal: params.abort_signal,
+      compress_request: this.config.compression.compress_request,
     });
   }
 
@@ -216,5 +296,25 @@ export class HttpAdapter implements Connection {
     if (this.agent !== undefined && this.agent.destroy !== undefined) {
       this.agent.destroy();
     }
+  }
+
+  private logResponse(
+    params: RequestParams,
+    response: Http.IncomingMessage,
+    startTimestamp: number
+  ) {
+    const duration = Date.now() - startTimestamp;
+
+    this.logger.debug(
+      `[http adapter] response: ${params.method} ${params.path} ${response.statusCode} ${duration}ms`
+    );
+  }
+
+  private getHeaders(params: RequestParams) {
+    return {
+      ...this.headers,
+      ...(params.decompress_response ? { 'Accept-Encoding': 'gzip' } : {}),
+      ...(params.compress_request ? { 'Content-Encoding': 'gzip' } : {}),
+    };
   }
 }

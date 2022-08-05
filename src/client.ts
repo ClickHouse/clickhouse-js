@@ -2,7 +2,7 @@ import Stream from 'stream';
 // import type { ConnectionOptions as TlsOptions } from 'tls'
 import type { ClickHouseSettings } from './clickhouse_types';
 import { type Connection, createConnection } from './connection';
-import * as Logger from './logger';
+import { Logger } from './logger';
 import { isStream, mapStream } from './utils';
 import { type DataFormat, encode } from './data_formatter';
 import { Rows } from './result';
@@ -13,10 +13,10 @@ export interface ClickHouseClientConfigOptions {
   request_timeout?: number;
   // max_open_connections?: number;
 
-  // compression?: {
-  //   read?: boolean;
-  //   write?: boolean;
-  // }
+  compression?: {
+    response?: boolean;
+    request?: boolean;
+  };
   // tls?: TlsOptions;
 
   username?: string;
@@ -27,6 +27,7 @@ export interface ClickHouseClientConfigOptions {
   clickhouse_settings?: ClickHouseSettings;
   log?: {
     enable?: boolean;
+    LoggerClass?: new (enabled: boolean) => Logger;
   };
 }
 
@@ -50,7 +51,7 @@ export interface InsertParams extends BaseParams {
   values: ReadonlyArray<any> | Stream.Readable;
 }
 
-function validateConfig(config: Required<ClickHouseClientConfigOptions>): void {
+function validateConfig(config: NormalizedConfig): void {
   const host = new URL(config.host);
   if (host.protocol !== 'http:' && host.protocol !== 'https:') {
     throw new Error(
@@ -60,39 +61,48 @@ function validateConfig(config: Required<ClickHouseClientConfigOptions>): void {
   // TODO add SSL validation
 }
 
+function normalizeConfig(
+  config: ClickHouseClientConfigOptions,
+  loggingEnabled: boolean
+) {
+  return {
+    host: config.host ?? 'http://localhost:8123', // cast to URL
+    connect_timeout: config.connect_timeout ?? 10_000,
+    request_timeout: config.request_timeout ?? 300_000,
+    // max_open_connections: options.max_open_connections ?? 256,
+    // tls: _config.tls,
+    compression: {
+      decompress_response: config.compression?.response ?? true,
+      compress_request: config.compression?.request ?? false,
+    },
+    username: config.username ?? 'default',
+    password: config.password ?? '',
+    application: config.password ?? 'clickhouse-js',
+    database: config.password ?? 'default',
+    clickhouse_settings: config.clickhouse_settings ?? {},
+    log: {
+      enable: loggingEnabled,
+      LoggerClass: config.log?.LoggerClass ?? Logger,
+    },
+  };
+}
+
+type NormalizedConfig = ReturnType<typeof normalizeConfig>;
+
 export class ClickHouseClient {
-  private readonly config: Required<ClickHouseClientConfigOptions>;
+  private readonly config: NormalizedConfig;
   private readonly connection: Connection;
+  readonly logger: Logger;
 
   constructor(config: ClickHouseClientConfigOptions = {}) {
     const loggingEnabled = Boolean(
       config.log?.enable || process.env.CLICKHOUSE_LOG_ENABLE
     );
-    if (loggingEnabled) {
-      Logger.enable();
-    } else {
-      Logger.disable();
-    }
-
-    this.config = {
-      host: config.host ?? 'http://localhost:8123',
-      connect_timeout: config.connect_timeout ?? 10_000,
-      request_timeout: config.request_timeout ?? 300_000,
-      // max_open_connections: options.max_open_connections ?? 256,
-      // tls: _config.tls,
-      // compression:
-      username: config.username ?? 'default',
-      password: config.password ?? '',
-      application: config.password ?? 'clickhouse-js',
-      database: config.password ?? 'default',
-      clickhouse_settings: config.clickhouse_settings ?? {},
-      log: {
-        enable: loggingEnabled,
-      },
-    };
-
+    this.config = normalizeConfig(config, loggingEnabled);
     validateConfig(this.config);
-    this.connection = createConnection(this.config);
+
+    this.logger = new this.config.log.LoggerClass(this.config.log.enable);
+    this.connection = createConnection(this.config, this.logger);
   }
 
   private getBaseParams(params: BaseParams) {
@@ -114,8 +124,6 @@ export class ClickHouseClient {
     const format = params.format ?? 'JSON';
     const query = formatSelectQuery(params.query, format);
 
-    Logger.log('query: ', query);
-
     const stream = await this.connection.select({
       query,
       ...this.getBaseParams(params),
@@ -127,8 +135,6 @@ export class ClickHouseClient {
   async command(params: CommandParams): Promise<void> {
     const query = params.query.trim();
 
-    Logger.log('query: ', query);
-
     await this.connection.command({
       query,
       ...this.getBaseParams(params),
@@ -139,8 +145,6 @@ export class ClickHouseClient {
     validateInsertValues(params.values);
 
     const query = `INSERT into ${params.table.trim()} FORMAT JSONCompactEachRow`;
-
-    Logger.log('query: ', query);
 
     await this.connection.insert({
       query,
