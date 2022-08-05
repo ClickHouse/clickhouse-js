@@ -13,11 +13,12 @@ import type {
   InsertParams,
 } from '../connection';
 import { toSearchParams } from './http_search_params';
+import { transformUrl } from './transform_url';
 import { isStream, getAsText } from '../../utils';
 
 interface RequestParams {
   method: 'GET' | 'POST';
-  path: string;
+  url: URL;
   body?: string | Stream.Readable;
   abort_signal?: AbortSignal;
   decompress_response?: boolean;
@@ -91,13 +92,11 @@ function isDecompressionError(result: any): result is { error: Error } {
 
 export class HttpAdapter implements Connection {
   private readonly agent: Http.Agent;
-  private readonly url: URL;
   private readonly headers: Http.OutgoingHttpHeaders;
   constructor(
     private readonly config: ConnectionParams,
     private readonly logger: Logger
   ) {
-    this.url = new URL(this.config.host);
     this.agent = new Http.Agent({
       keepAlive: true,
       timeout: config.request_timeout,
@@ -108,16 +107,11 @@ export class HttpAdapter implements Connection {
   private async request(params: RequestParams): Promise<Stream.Readable> {
     return new Promise((resolve, reject) => {
       const start = Date.now();
-      const headers = this.getHeaders(params);
-      // TODO use URL
-      const request = Http.request({
-        protocol: this.url.protocol,
-        hostname: this.url.hostname,
-        port: this.url.port,
-        path: params.path,
+
+      const request = Http.request(params.url, {
         method: params.method,
         agent: this.agent,
-        headers,
+        headers: this.getHeaders(params),
       });
 
       function onError(err: Error): void {
@@ -238,7 +232,7 @@ export class HttpAdapter implements Connection {
     // TODO add status code check
     const response = await this.request({
       method: 'GET',
-      path: '/ping',
+      url: transformUrl({ url: this.config.host, pathname: '/ping' }),
     });
     response.destroy();
     return true;
@@ -254,7 +248,7 @@ export class HttpAdapter implements Connection {
 
     const result = await this.request({
       method: 'POST',
-      path: '/?' + searchParams?.toString(),
+      url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
       decompress_response: settings.enable_http_compression === 1,
@@ -267,9 +261,10 @@ export class HttpAdapter implements Connection {
       params.clickhouse_settings,
       params.query_params
     );
+
     await this.request({
       method: 'POST',
-      path: '/?' + searchParams?.toString(),
+      url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
     });
@@ -285,7 +280,7 @@ export class HttpAdapter implements Connection {
     );
     await this.request({
       method: 'POST',
-      path: '/?' + searchParams?.toString(),
+      url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
       body: params.values,
       abort_signal: params.abort_signal,
       compress_request: this.config.compression.compress_request,
@@ -306,7 +301,9 @@ export class HttpAdapter implements Connection {
     const duration = Date.now() - startTimestamp;
 
     this.logger.debug(
-      `[http adapter] response: ${params.method} ${params.path} ${response.statusCode} ${duration}ms`
+      `[http adapter] response: ${params.method} ${params.url.pathname}${
+        params.url.search ? ` ${params.url.search}` : ''
+      } ${response.statusCode} ${duration}ms`
     );
   }
 

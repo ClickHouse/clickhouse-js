@@ -52,7 +52,7 @@ export interface InsertParams extends BaseParams {
 }
 
 function validateConfig(config: NormalizedConfig): void {
-  const host = new URL(config.host);
+  const host = config.host;
   if (host.protocol !== 'http:' && host.protocol !== 'https:') {
     throw new Error(
       `Only http(s) protocol is supported, but given: [${host.protocol}]`
@@ -61,12 +61,20 @@ function validateConfig(config: NormalizedConfig): void {
   // TODO add SSL validation
 }
 
+function createUrl(host: string): URL {
+  try {
+    return new URL(host);
+  } catch (err) {
+    throw new Error('Configuration parameter "host" contains malformed url.');
+  }
+}
+
 function normalizeConfig(
   config: ClickHouseClientConfigOptions,
   loggingEnabled: boolean
 ) {
   return {
-    host: config.host ?? 'http://localhost:8123', // cast to URL
+    host: createUrl(config.host ?? 'http://localhost:8123'),
     connect_timeout: config.connect_timeout ?? 10_000,
     request_timeout: config.request_timeout ?? 300_000,
     // max_open_connections: options.max_open_connections ?? 256,
