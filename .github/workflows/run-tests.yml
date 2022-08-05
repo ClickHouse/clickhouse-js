@@ -48,5 +48,7 @@ jobs:
           npm run lint
 
       - name: Run tests
+        env:
+          CLICKHOUSE_CLOUD_ENABLED: 'true'
         run: |
           npm run test
