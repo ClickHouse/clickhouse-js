@@ -5,8 +5,8 @@ import {
   type ClickHouseClient,
   type Row,
   type ClickHouseError,
+  type ResponseJSON,
 } from '../../src';
-import type { ResponseJSON } from '../../src/clickhouse_types';
 
 async function rowsValues(stream: Stream.Readable): Promise<any[]> {
   const result: any[] = [];
@@ -77,6 +77,21 @@ describe('select', () => {
 
     const response = await rows.text();
     expect(response).to.equal('0\n1\n');
+  });
+
+  it('can send a query with a trailing comment', async () => {
+    client = createClient();
+    const rows = await client.select({
+      query: `
+        SELECT number
+        FROM system.numbers
+        LIMIT 2
+        -- comment`,
+      format: 'JSON',
+    });
+
+    const response = await rows.json<ResponseJSON<{ number: string }>>();
+    expect(response.data).to.deep.equal([{ number: '0' }, { number: '1' }]);
   });
 
   it('can specify settings in select', async () => {

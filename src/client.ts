@@ -173,7 +173,7 @@ export function validateSelectQuery(query: string): void {
 
 function formatSelectQuery(query: string, format: DataFormat): string {
   query = query.trim();
-  return query + ' FORMAT ' + format;
+  return query + ' \nFORMAT ' + format;
 }
 
 function validateInsertValues(

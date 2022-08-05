@@ -52,7 +52,30 @@ describe('error', () => {
       })
       .catch((e: ClickHouseError) => {
         expect(e.message).to.be.a('string');
-        expect(e.message).to.match(/failed at position 15/);
+        expect(e.message).to.match(/failed at position/);
+        expect(e.message).to.have.lengthOf.above(0);
+
+        expect(e.code).to.equal('62');
+        expect(e.type).to.equal('SYNTAX_ERROR');
+        done();
+      });
+  });
+
+  it('returns "syntax error" error in a multiline query', (done) => {
+    client = createClient();
+    client
+      .select({
+        query: `
+        SELECT *
+        /* This is:
+         a multiline comment
+        */
+        FRON unknown_table
+        `,
+      })
+      .catch((e: ClickHouseError) => {
+        expect(e.message).to.be.a('string');
+        expect(e.message).to.match(/failed at position/);
         expect(e.message).to.have.lengthOf.above(0);
 
         expect(e.code).to.equal('62');
