@@ -18,7 +18,6 @@
     "plugin:@typescript-eslint/recommended",
     "prettier"
   ],
-  "ignorePatterns": ["__tests__/**"],
   "rules": {
     "prettier/prettier": "error",
     "@typescript-eslint/no-floating-promises": "error",

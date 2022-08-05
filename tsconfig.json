@@ -31,6 +31,7 @@
       "node_modules"
     ],
     "include": [
-      "./src/**/*.ts"
+      "./src/**/*.ts",
+      "__tests__/**/*.ts"
     ]
   }
