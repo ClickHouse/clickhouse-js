@@ -3,7 +3,7 @@ import { validateSelectQuery, createClient } from '../../src/client';
 
 describe('createClient', () => {
   it('throws on incorrect "host" config value', () => {
-    expect(() => createClient({ host: 'foo' })).to.throw('Invalid URL: foo');
+    expect(() => createClient({ host: 'foo' })).to.throw(/Invalid URL/);
   });
 });
 
