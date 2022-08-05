@@ -3,7 +3,9 @@ import { validateSelectQuery, createClient } from '../../src/client';
 
 describe('createClient', () => {
   it('throws on incorrect "host" config value', () => {
-    expect(() => createClient({ host: 'foo' })).to.throw(/Invalid URL/);
+    expect(() => createClient({ host: 'foo' })).to.throw(
+      'Configuration parameter "host" contains malformed url.'
+    );
   });
 });
 
