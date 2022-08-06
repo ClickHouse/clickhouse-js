@@ -109,7 +109,7 @@ describe('abort request', () => {
     });
 
     it('cancels a select query while reading response by closing response stream', (done) => {
-      client
+      void client
         .select({
           query: 'SELECT * from system.numbers',
           format: 'JSONCompactEachRow',
@@ -119,7 +119,7 @@ describe('abort request', () => {
           const stream = rows.asStream();
           for await (const chunk of stream) {
             const [[number]] = chunk.json();
-            // abort when when reach number 3
+            // abort when reach number 3
             if (number === '3') {
               stream.destroy();
             }
@@ -132,7 +132,7 @@ describe('abort request', () => {
       const controller = new AbortController();
 
       const longRunningQuery = 'SELECT * FROM system.numbers';
-      client.select({
+      await client.select({
         query: longRunningQuery,
         abort_signal: controller.signal as AbortSignal,
         format: 'JSONCompactEachRow',
@@ -194,7 +194,7 @@ describe('abort request', () => {
 
       stream.push(null);
 
-      client
+      void client
         .insert({
           table: 'test_table',
           values: stream,
