@@ -31,7 +31,7 @@ describe('select', () => {
     await client.close();
   });
   beforeEach(async () => {
-    client = createTestClient({ useCloud: true });
+    client = createTestClient();
   });
 
   it('can send a multiline query', async () => {

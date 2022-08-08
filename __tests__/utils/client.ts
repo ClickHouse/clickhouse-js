@@ -3,16 +3,12 @@ import {
   ClickHouseClientConfigOptions,
   createClient,
 } from '../../src';
-import { randomUUID } from 'crypto';
-
-export type TestClientConfiguration = ClickHouseClientConfigOptions & {
-  useCloud?: boolean;
-};
+import { guid } from './guid';
 
 export function createTestClient(
-  config?: TestClientConfiguration
+  config?: ClickHouseClientConfigOptions
 ): ClickHouseClient {
-  if (config?.useCloud === true && isClickHouseCloudEnabled()) {
+  if (isClickHouseCloudEnabled()) {
     console.log('Using ClickHouse Cloud client');
     return createClient({
       host: getFromEnv('CLICKHOUSE_CLOUD_HOST'),
@@ -28,28 +24,31 @@ export function createTestClient(
 export async function createRandomDatabase(
   client: ClickHouseClient
 ): Promise<string> {
-  const uuid = randomUUID().replace(/-/g, '');
-  const databaseName = `clickhousejs__${uuid}`;
-  console.log(`Using database ${databaseName}`);
+  const databaseName = `clickhousejs__${guid()}`;
   await client.command({
     query: `CREATE DATABASE IF NOT EXISTS ${databaseName}`,
   });
+  console.log(`Created database ${databaseName}`);
   return databaseName;
 }
 
-export async function createClientWithRandomDatabase(
-  config?: TestClientConfiguration
-): Promise<{ client: ClickHouseClient; databaseName: string }> {
-  const client = createTestClient(config);
-  const databaseName = await createRandomDatabase(client);
-  return {
-    client,
-    databaseName,
-  };
-}
-
-function isClickHouseCloudEnabled() {
-  return process.env['CLICKHOUSE_CLOUD_ENABLED'] === 'true';
+export async function createTable(
+  client: ClickHouseClient,
+  definition: (engine: string) => string,
+  engine = 'MergeTree()'
+) {
+  // By default, no ENGINE statement in the table definition
+  // while using Cloud results in Distributed engine and that's what we want
+  // https://clickhouse.com/docs/en/engines/table-engines/special/distributed/
+  // However, this is not a valid syntax for a local run
+  // that's why we set it explicitly while not using Cloud
+  // (with ClickHouse as a Docker container instead)
+  const ddl = isClickHouseCloudEnabled()
+    ? definition('')
+    : definition(`ENGINE ${engine}`);
+  await client.command({
+    query: ddl,
+  });
 }
 
 function getFromEnv(key: string): string {
@@ -58,4 +57,8 @@ function getFromEnv(key: string): string {
     throw Error(`Environment variable ${key} is not set`);
   }
   return value;
+}
+
+function isClickHouseCloudEnabled() {
+  return process.env['CLICKHOUSE_CLOUD_ENABLED'] === 'true';
 }

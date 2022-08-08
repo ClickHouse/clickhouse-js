@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "rm -rf dist; webpack --mode=development",
+    "compile": "tsc --project tsconfig.eslint.json --noEmit",
     "lint": "eslint . --ext .ts",
     "test": "mocha __tests__/**/*.test.ts",
     "test:browser": "karma start",

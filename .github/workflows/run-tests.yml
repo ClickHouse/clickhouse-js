@@ -44,6 +44,10 @@ jobs:
         run: |
           npm run lint
 
+      - name: Compile
+        run: |
+          npm run compile
+
       - name: Run tests
         env:
           CLICKHOUSE_CLOUD_HOST: ${{ secrets.CLICKHOUSE_CLOUD_HOST }}
@@ -51,4 +55,4 @@ jobs:
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.CLICKHOUSE_CLOUD_PASSWORD }}
           CLICKHOUSE_CLOUD_ENABLED: 'true'
         run: |
-          npm run test
+          npm test

@@ -1,24 +1,21 @@
 import { expect } from 'chai';
 import type { ResponseJSON } from '../../src';
 import { type ClickHouseClient } from '../../src';
-import { createClientWithRandomDatabase } from '../utils';
+import { createTable, createTestClient, guid } from '../utils';
 
 describe('insert', () => {
   let client: ClickHouseClient;
-  let databaseName: string;
   let tableName: string;
   beforeEach(async () => {
-    ({ client, databaseName } = await createClientWithRandomDatabase({
-      useCloud: true,
-    }));
-    tableName = `${databaseName}.test_table`;
-    const ddl = `
+    client = await createTestClient();
+    tableName = `test_table_${guid()}`;
+    await createTable(client, (engine) => {
+      return `
         CREATE TABLE ${tableName} 
         (id UInt64, name String, sku Array(UInt8))
+        ${engine}
         ORDER BY (id)
-    `;
-    await client.command({
-      query: ddl,
+      `;
     });
   });
   afterEach(async () => {
