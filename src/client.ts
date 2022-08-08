@@ -187,7 +187,7 @@ function formatSelectQuery(query: string, format: DataFormat): string {
 function validateInsertValues(
   values: ReadonlyArray<any> | Stream.Readable
 ): void {
-  if (Array.isArray(values) === false && isStream(values) == false) {
+  if (Array.isArray(values) === false && isStream(values) === false) {
     throw new Error(
       'Insert expected "values" to be an array or a stream of values.'
     );

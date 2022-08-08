@@ -86,7 +86,7 @@ describe('HttpAdapter', () => {
 
         httpRequestStub?.returns(request);
 
-        adapter.select({
+        await adapter.select({
           query: 'SELECT * from system.numbers LIMIT 5',
         });
         expect(httpRequestStub?.callCount).of.equal(1);
@@ -113,7 +113,7 @@ describe('HttpAdapter', () => {
 
         httpRequestStub?.returns(request);
 
-        adapter.select({
+        await adapter.select({
           query: 'SELECT * from system.numbers LIMIT 5',
         });
         expect(httpRequestStub?.callCount).of.equal(1);
@@ -140,7 +140,7 @@ describe('HttpAdapter', () => {
 
         httpRequestStub?.returns(request);
 
-        adapter.select({
+        await adapter.select({
           query: 'SELECT * from system.numbers LIMIT 5',
           clickhouse_settings: {
             enable_http_compression: 1,
@@ -299,7 +299,7 @@ describe('HttpAdapter', () => {
 
         httpRequestStub?.returns(request);
 
-        adapter.insert({
+        void adapter.insert({
           query: 'INSERT INTO insert_compression_table',
           values,
         });
