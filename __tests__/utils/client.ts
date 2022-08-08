@@ -38,7 +38,7 @@ export async function createTable(
   engine = 'MergeTree()'
 ) {
   const ddl = isClickHouseCloudEnabled()
-    ? definition('ENGINE ReplicatedMergeTree()')
+    ? definition('')
     : definition(`ENGINE ${engine}`);
   await client.command({
     query: ddl,

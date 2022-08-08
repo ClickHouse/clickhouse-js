@@ -3,12 +3,6 @@ import type { ResponseJSON } from '../../src';
 import { type ClickHouseClient } from '../../src';
 import { createTable, createTestClient, guid } from '../utils';
 
-function sleep(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 describe('insert', () => {
   let client: ClickHouseClient;
   let tableName: string;
@@ -36,9 +30,11 @@ describe('insert', () => {
     await client.insert({
       table: tableName,
       values: dataToInsert,
+      query_params: {
+        insert_distributed_sync: 1,
+      },
     });
 
-    await sleep(2000);
     const Rows = await client.select({
       query: `SELECT * FROM ${tableName}`,
       format: 'JSONEachRow',
@@ -59,9 +55,11 @@ describe('insert', () => {
     await client.insert({
       table: tableName,
       values: dataToInsert,
+      query_params: {
+        insert_distributed_sync: 1,
+      },
     });
 
-    await sleep(2000);
     const Rows = await client.select({
       query: `SELECT * FROM ${tableName}`,
       format: 'JSONEachRow',
