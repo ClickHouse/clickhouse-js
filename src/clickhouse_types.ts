@@ -33,7 +33,8 @@ export interface ResponseJSON<T = unknown> {
   totals?: Record<string, number>;
   extremes?: Record<string, any>;
   // summary?: ResponseSummary
-  // # Supported only by responses in JSON, XML. Otherwise it can be read from x-clickhouse-summary header
+  // # Supported only by responses in JSON, XML.
+  // # Otherwise, it can be read from x-clickhouse-summary header
   meta?: Array<{ name: string; type: DataType }>;
   statistics?: { elapsed: number; rows_read: number; bytes_read: number };
   rows?: number;
