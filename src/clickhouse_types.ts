@@ -1,5 +1,6 @@
 // TODO add other settings
 export type ClickHouseSettings = {
+  insert_distributed_sync?: 0 | 1;
   allow_nondeterministic_mutations?: 0 | 1;
   distributed_product_mode?: 'deny' | 'local' | 'global' | 'allow';
   prefer_global_in_and_join?: 0 | 1;

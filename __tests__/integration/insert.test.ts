@@ -30,7 +30,7 @@ describe('insert', () => {
     await client.insert({
       table: tableName,
       values: dataToInsert,
-      query_params: {
+      clickhouse_settings: {
         insert_distributed_sync: 1,
       },
     });
@@ -55,7 +55,7 @@ describe('insert', () => {
     await client.insert({
       table: tableName,
       values: dataToInsert,
-      query_params: {
+      clickhouse_settings: {
         insert_distributed_sync: 1,
       },
     });
