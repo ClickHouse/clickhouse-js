@@ -34,6 +34,7 @@ module.exports = {
       '.js' // for 3rd party modules in node_modules
     ],
     fallback: {
+      assert: require.resolve('assert'),
       buffer: require.resolve('buffer'),
       stream: require.resolve('stream-browserify'),
       http: require.resolve('stream-http'),
@@ -41,6 +42,7 @@ module.exports = {
       querystring: require.resolve('querystring-es3'),
       util: false,
       process: require.resolve('process/browser'),
+      zlib: require.resolve('browserify-zlib'),
     }
   },
   plugins: [
