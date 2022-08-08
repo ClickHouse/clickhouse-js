@@ -37,14 +37,8 @@ export async function createTable(
   definition: (engine: string) => string,
   engine = 'MergeTree()'
 ) {
-  // By default, no ENGINE statement in the table definition
-  // while using Cloud results in Distributed engine and that's what we want
-  // https://clickhouse.com/docs/en/engines/table-engines/special/distributed/
-  // However, this is not a valid syntax for a local run
-  // that's why we set it explicitly while not using Cloud
-  // (with ClickHouse as a Docker container instead)
   const ddl = isClickHouseCloudEnabled()
-    ? definition('')
+    ? definition('ENGINE ReplicatedMergeTree()')
     : definition(`ENGINE ${engine}`);
   await client.command({
     query: ddl,
