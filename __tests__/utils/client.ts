@@ -14,6 +14,9 @@ export function createTestClient(
       host: getFromEnv('CLICKHOUSE_CLOUD_HOST'),
       username: getFromEnv('CLICKHOUSE_CLOUD_USERNAME'),
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
+      clickhouse_settings: {
+        insert_quorum: 2,
+      },
       ...config,
     });
   } else {
@@ -43,6 +46,7 @@ export async function createTable(
   await client.command({
     query: ddl,
   });
+  console.log(`Created a table using DDL:\n${ddl}`);
 }
 
 function getFromEnv(key: string): string {

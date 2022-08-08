@@ -30,9 +30,6 @@ describe('insert', () => {
     await client.insert({
       table: tableName,
       values: dataToInsert,
-      clickhouse_settings: {
-        insert_distributed_sync: 1,
-      },
     });
 
     const Rows = await client.select({
@@ -55,9 +52,6 @@ describe('insert', () => {
     await client.insert({
       table: tableName,
       values: dataToInsert,
-      clickhouse_settings: {
-        insert_distributed_sync: 1,
-      },
     });
 
     const Rows = await client.select({
