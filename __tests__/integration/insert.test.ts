@@ -7,16 +7,24 @@ describe('insert', () => {
   let client: ClickHouseClient;
   let tableName: string;
   beforeEach(async () => {
-    client = await createTestClient();
-    tableName = `test_table_${guid()}`;
-    await createTable(client, (engine) => {
-      return `
-        CREATE TABLE ${tableName} 
-        (id UInt64, name String, sku Array(UInt8))
-        ${engine}
-        ORDER BY (id)
-      `;
+    client = await createTestClient({
+      clickhouse_settings: {
+        insert_quorum: 2,
+      },
     });
+    tableName = `test_table_${guid()}`;
+    await createTable(
+      client,
+      (engine) => {
+        return `
+          CREATE TABLE ${tableName} ON CLUSTER '{cluster}'
+          (id UInt64, name String, sku Array(UInt8))
+          ${engine}
+          ORDER BY (id)
+        `;
+      },
+      `ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')`
+    );
   });
   afterEach(async () => {
     await client.close();
