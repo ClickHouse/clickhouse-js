@@ -38,4 +38,16 @@ describe('parseError', () => {
       'Number of alive replicas (2) is less than requested quorum (3). '
     );
   });
+
+  it('should handle error codes with numbers', async () => {
+    const message = `Code: 499. DB::Exception: Could not list objects in bucket my-bucket with prefix my-organization, S3 exception: Some S3 error, message: Could not list objects. (S3_ERROR) (version 22.8.1.11291 (official build))`;
+    const error = parseError(message) as ClickHouseError;
+
+    expect(error).to.be.instanceof(ClickHouseError);
+    expect(error.code).to.equal('499');
+    expect(error.type).to.equal('S3_ERROR');
+    expect(error.message).to.equal(
+      'Could not list objects in bucket my-bucket with prefix my-organization, S3 exception: Some S3 error, message: Could not list objects. '
+    );
+  });
 });
