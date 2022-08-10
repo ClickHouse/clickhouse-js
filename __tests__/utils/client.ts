@@ -7,9 +7,9 @@ import {
 import { guid } from './guid';
 
 export enum TestEnv {
-  Cloud = 'CLOUD',
-  LocalSingleNode = 'LOCAL_SINGLE_NODE',
-  LocalCluster = 'LOCAL_CLUSTER',
+  Cloud = 'cloud',
+  LocalSingleNode = 'local_single_node',
+  LocalCluster = 'local_cluster',
 }
 
 export function createTestClient(
