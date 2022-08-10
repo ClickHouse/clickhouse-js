@@ -72,7 +72,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          npm test:integration
+          npm run test:integration
 
   integration-tests-local-cluster:
     needs: build
@@ -109,7 +109,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          npm test:integration:local_cluster
+          npm run test:integration:local_cluster
 
   integration-tests-cloud:
     needs: build
@@ -137,4 +137,4 @@ jobs:
           CLICKHOUSE_CLOUD_USERNAME: ${{ secrets.CLICKHOUSE_CLOUD_USERNAME }}
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.CLICKHOUSE_CLOUD_PASSWORD }}
         run: |
-          npm test:integration:cloud
+          npm run test:integration:cloud
