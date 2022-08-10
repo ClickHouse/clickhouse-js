@@ -268,7 +268,7 @@ export abstract class BaseHttpAdapter implements Connection {
 
     const rows = new Rows(stream, 'TabSeparated');
     const text = await rows.text();
-    console.log(`Server returned:\n${text}`);
+    console.log(`Command returned:\n${text}`);
     // return await getAsText(result);
   }
 

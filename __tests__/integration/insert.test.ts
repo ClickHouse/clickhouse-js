@@ -23,7 +23,7 @@ describe('insert', () => {
         ORDER BY (id)
       `;
     });
-    await sleep(3000);
+    await sleep(0);
   });
   afterEach(async () => {
     await client.close();
