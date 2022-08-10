@@ -52,6 +52,6 @@ jobs:
           CLICKHOUSE_CLOUD_HOST: ${{ secrets.CLICKHOUSE_CLOUD_HOST }}
           CLICKHOUSE_CLOUD_USERNAME: ${{ secrets.CLICKHOUSE_CLOUD_USERNAME }}
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.CLICKHOUSE_CLOUD_PASSWORD }}
-          CLICKHOUSE_CLOUD_ENABLED: 'true'
+          CLICKHOUSE_TEST_ENVIRONMENT: 'cloud'
         run: |
           npm test

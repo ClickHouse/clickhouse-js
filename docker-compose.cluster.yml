@@ -14,8 +14,8 @@ services:
       - '9000:9000'
       - '9181:9181'
     volumes:
-      - './.docker/clickhouse/cluster/config1.xml:/etc/clickhouse-server/config.xml'
-      - './.docker/clickhouse/cluster/macros1.xml:/etc/clickhouse-server/config.d/macros.xml'
+      - './.docker/clickhouse/cluster/server1_config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/cluster/server1_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
       - './.docker/clickhouse/cluster/users.xml:/etc/clickhouse-server/users.xml'
 
   clickhouse2:
@@ -31,8 +31,8 @@ services:
       - '9001:9000'
       - '9182:9181'
     volumes:
-      - './.docker/clickhouse/cluster/config2.xml:/etc/clickhouse-server/config.xml'
-      - './.docker/clickhouse/cluster/macros2.xml:/etc/clickhouse-server/config.d/macros.xml'
+      - './.docker/clickhouse/cluster/server2_config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/cluster/server2_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
       - './.docker/clickhouse/cluster/users.xml:/etc/clickhouse-server/users.xml'
 
   # Using Nginx as a cluster entrypoint and a round-robin load balancer for HTTP requests
