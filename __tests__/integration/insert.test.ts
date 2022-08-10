@@ -1,19 +1,43 @@
 import { expect } from 'chai';
-import { createClient, type ClickHouseClient } from '../../src';
-import type { ResponseJSON } from '../../src/clickhouse_types';
+import type { ResponseJSON } from '../../src';
+import { type ClickHouseClient } from '../../src';
+import { createTable, createTestClient, guid } from '../utils';
+import { TestEnv } from '../utils/client';
 
 describe('insert', () => {
   let client: ClickHouseClient;
+  let tableName: string;
   beforeEach(async () => {
-    client = createClient();
-    const ddl =
-      'CREATE TABLE test_table (id UInt64, name String, sku Array(UInt8)) Engine = Memory';
-    await client.command({
-      query: ddl,
+    client = await createTestClient();
+    tableName = `test_table_${guid()}`;
+    await createTable(client, (env) => {
+      switch (env) {
+        // ENGINE can be omitted in the cloud statements:
+        // it will use ReplicatedMergeTree and will add ON CLUSTER as well
+        case TestEnv.Cloud:
+          return `
+            CREATE TABLE ${tableName}
+            (id UInt64, name String, sku Array(UInt8))
+            ORDER BY (id)
+          `;
+        case TestEnv.LocalSingleNode:
+          return `
+            CREATE TABLE ${tableName}
+            (id UInt64, name String, sku Array(UInt8))
+            ENGINE MergeTree()
+            ORDER BY (id)
+          `;
+        case TestEnv.LocalCluster:
+          return `
+            CREATE TABLE ${tableName} ON CLUSTER '{cluster}'
+            (id UInt64, name String, sku Array(UInt8))
+            ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
+            ORDER BY (id)
+          `;
+      }
     });
   });
   afterEach(async () => {
-    await client.command({ query: 'DROP TABLE test_table' });
     await client.close();
   });
 
@@ -23,12 +47,12 @@ describe('insert', () => {
       [43, 'world', [3, 4]],
     ];
     await client.insert({
-      table: 'test_table',
+      table: tableName,
       values: dataToInsert,
     });
 
     const Rows = await client.select({
-      query: 'SELECT * FROM test_table',
+      query: `SELECT * FROM ${tableName}`,
       format: 'JSONEachRow',
     });
 
@@ -45,12 +69,12 @@ describe('insert', () => {
       [43, 'мир', [3, 4]],
     ];
     await client.insert({
-      table: 'test_table',
+      table: tableName,
       values: dataToInsert,
     });
 
     const Rows = await client.select({
-      query: 'SELECT * FROM test_table',
+      query: `SELECT * FROM ${tableName}`,
       format: 'JSONEachRow',
     });
 

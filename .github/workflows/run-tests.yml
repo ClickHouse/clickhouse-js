@@ -8,7 +8,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 9 * * *"
+    - cron: '0 9 * * *'
 
 jobs:
   run:
@@ -16,12 +16,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node-version:
-          - 14.x
-          - 16.x
-        clickhouse:
-          - head
-          - latest
+        node: [14, 16]
+        clickhouse: [head, latest]
 
     services:
       clickhouse:
@@ -34,10 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@main
 
-      - name: Install Nodejs ${{ matrix.go }}
-        uses: actions/setup-node@master
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@v3
         with:
-          go-version: ${{ matrix.node-version }}
+          node-version: ${{ matrix.node }}
 
       - name: Install dependencies
         run: |
@@ -47,6 +43,15 @@ jobs:
         run: |
           npm run lint
 
-      - name: Run tests
+      - name: Compile
         run: |
-          npm run test
+          npm run compile
+
+      - name: Run tests
+        env:
+          CLICKHOUSE_CLOUD_HOST: ${{ secrets.CLICKHOUSE_CLOUD_HOST }}
+          CLICKHOUSE_CLOUD_USERNAME: ${{ secrets.CLICKHOUSE_CLOUD_USERNAME }}
+          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.CLICKHOUSE_CLOUD_PASSWORD }}
+          CLICKHOUSE_TEST_ENVIRONMENT: 'cloud'
+        run: |
+          npm test

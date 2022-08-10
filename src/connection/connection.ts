@@ -1,7 +1,7 @@
 import Stream from 'stream';
 import type { ClickHouseSettings } from '../clickhouse_types';
 import type { Logger } from '../logger';
-import { HttpAdapter } from './adapter';
+import { HttpAdapter, HttpsAdapter } from './adapter';
 
 export interface ConnectionParams {
   host: URL;
@@ -34,7 +34,7 @@ export interface Connection {
   ping(): Promise<boolean>;
   close(): Promise<void>;
   select(params: BaseParams): Promise<Stream.Readable>;
-  command(params: BaseParams): Promise<void>;
+  command(params: BaseParams): Promise<Stream.Readable>;
   insert(params: InsertParams): Promise<void>;
 }
 
@@ -44,8 +44,12 @@ export function createConnection(
 ): Connection {
   // TODO throw ClickHouseClient error
   const url = new URL(config.host);
-  if (url.protocol === 'http:' || url.protocol === 'https:') {
-    return new HttpAdapter(config, logger);
+  switch (url.protocol) {
+    case 'http:':
+      return new HttpAdapter(config, logger);
+    case 'https:':
+      return new HttpsAdapter(config, logger);
+    default:
+      throw new Error('Only HTTP(s) adapters are supported');
   }
-  throw new Error('Only http adapter is supported');
 }
