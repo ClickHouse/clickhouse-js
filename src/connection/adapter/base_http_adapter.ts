@@ -15,7 +15,6 @@ import type {
 import { toSearchParams } from './http_search_params';
 import { transformUrl } from './transform_url';
 import { getAsText, isStream } from '../../utils';
-import { Rows } from '../../result';
 
 export interface RequestParams {
   method: 'GET' | 'POST';
@@ -253,23 +252,18 @@ export abstract class BaseHttpAdapter implements Connection {
     });
   }
 
-  async command(params: BaseParams): Promise<void> {
+  async command(params: BaseParams): Promise<Stream.Readable> {
     const searchParams = toSearchParams(
       params.clickhouse_settings,
       params.query_params
     );
 
-    const stream = await this.request({
+    return await this.request({
       method: 'POST',
       url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
     });
-
-    const rows = new Rows(stream, 'TabSeparated');
-    const text = await rows.text();
-    console.log(`Command returned:\n${text}`);
-    // return await getAsText(result);
   }
 
   async insert(params: InsertParams): Promise<void> {

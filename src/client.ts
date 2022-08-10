@@ -44,6 +44,7 @@ export interface SelectParams extends BaseParams {
 
 export interface CommandParams extends BaseParams {
   query: string;
+  format?: DataFormat;
 }
 
 export interface InsertParams extends BaseParams {
@@ -140,13 +141,16 @@ export class ClickHouseClient {
     return new Rows(stream, format);
   }
 
-  async command(params: CommandParams): Promise<void> {
-    const query = params.query.trim();
+  async command(params: CommandParams): Promise<Rows> {
+    const format = params.format ?? 'JSON';
+    const query = formatCommandQuery(params.query, format);
 
-    await this.connection.command({
+    const stream = await this.connection.command({
       query,
       ...this.getBaseParams(params),
     });
+
+    return new Rows(stream, format);
   }
 
   async insert(params: InsertParams): Promise<void> {
@@ -180,6 +184,12 @@ export function validateSelectQuery(query: string): void {
 }
 
 function formatSelectQuery(query: string, format: DataFormat): string {
+  query = query.trim();
+  return query + ' \nFORMAT ' + format;
+}
+
+// it is a duplicate of `formatSelectQuery`, but it might differ in the future
+function formatCommandQuery(query: string, format: DataFormat): string {
   query = query.trim();
   return query + ' \nFORMAT ' + format;
 }

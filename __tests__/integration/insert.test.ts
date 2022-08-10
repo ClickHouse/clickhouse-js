@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import type { ResponseJSON } from '../../src';
 import { type ClickHouseClient } from '../../src';
 import { createTable, createTestClient, guid } from '../utils';
+import { TestEnv } from '../utils/client';
 
 describe('insert', () => {
   let client: ClickHouseClient;
@@ -9,13 +10,31 @@ describe('insert', () => {
   beforeEach(async () => {
     client = await createTestClient();
     tableName = `test_table_${guid()}`;
-    await createTable(client, (engine) => {
-      return `
-        CREATE TABLE ${tableName} 
-        (id UInt64, name String, sku Array(UInt8))
-        ${engine}
-        ORDER BY (id)
-      `;
+    await createTable(client, (env) => {
+      switch (env) {
+        // ENGINE can be omitted in the cloud statements:
+        // it will use ReplicatedMergeTree and will add ON CLUSTER as well
+        case TestEnv.Cloud:
+          return `
+            CREATE TABLE ${tableName}
+            (id UInt64, name String, sku Array(UInt8))
+            ORDER BY (id)
+          `;
+        case TestEnv.LocalSingleNode:
+          return `
+            CREATE TABLE ${tableName}
+            (id UInt64, name String, sku Array(UInt8))
+            ENGINE MergeTree()
+            ORDER BY (id)
+          `;
+        case TestEnv.LocalCluster:
+          return `
+            CREATE TABLE ${tableName} ON CLUSTER '{cluster}'
+            (id UInt64, name String, sku Array(UInt8))
+            ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
+            ORDER BY (id)
+          `;
+      }
     });
   });
   afterEach(async () => {

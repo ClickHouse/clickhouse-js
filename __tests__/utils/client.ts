@@ -1,26 +1,39 @@
 import {
   ClickHouseClient,
   ClickHouseClientConfigOptions,
+  ClickHouseSettings,
   createClient,
 } from '../../src';
 import { guid } from './guid';
 
+export enum TestEnv {
+  Cloud = 'cloud',
+  LocalSingleNode = 'local_single_node',
+  LocalCluster = 'local_cluster',
+}
+
 export function createTestClient(
-  config?: ClickHouseClientConfigOptions
+  config: ClickHouseClientConfigOptions = {}
 ): ClickHouseClient {
-  if (isClickHouseCloudEnabled()) {
+  const env = getClickHouseTestEnvironment();
+  const clickHouseSettings: ClickHouseSettings = {};
+  if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {
+    clickHouseSettings.insert_quorum = 2;
+  }
+  if (env === TestEnv.Cloud) {
     console.log('Using ClickHouse Cloud client');
     return createClient({
       host: getFromEnv('CLICKHOUSE_CLOUD_HOST'),
       username: getFromEnv('CLICKHOUSE_CLOUD_USERNAME'),
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
-      clickhouse_settings: {
-        insert_quorum: 2,
-      },
+      ...clickHouseSettings,
       ...config,
     });
   } else {
-    return createClient(config);
+    return createClient({
+      ...clickHouseSettings,
+      ...config,
+    });
   }
 }
 
@@ -37,12 +50,10 @@ export async function createRandomDatabase(
 
 export async function createTable(
   client: ClickHouseClient,
-  definition: (engine: string) => string,
-  engine = 'MergeTree()'
+  definition: (environment: TestEnv) => string
 ) {
-  const ddl = isClickHouseCloudEnabled()
-    ? definition('')
-    : definition(`ENGINE ${engine}`);
+  const env = getClickHouseTestEnvironment();
+  const ddl = definition(env);
   await client.command({
     query: ddl,
   });
@@ -57,6 +68,19 @@ function getFromEnv(key: string): string {
   return value;
 }
 
-function isClickHouseCloudEnabled() {
-  return process.env['CLICKHOUSE_CLOUD_ENABLED'] === 'true';
+export function getClickHouseTestEnvironment(): TestEnv {
+  let env;
+  switch (process.env['CLICKHOUSE_TEST_ENVIRONMENT']) {
+    case 'CLOUD':
+      env = TestEnv.Cloud;
+      break;
+    case 'LOCAL_CLUSTER':
+      env = TestEnv.LocalCluster;
+      break;
+    default:
+      env = TestEnv.LocalSingleNode;
+      break;
+  }
+  console.log(`Using ${env} test environment`);
+  return env;
 }
