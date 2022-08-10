@@ -8,11 +8,7 @@ describe('insert', () => {
   let client: ClickHouseClient;
   let tableName: string;
   beforeEach(async () => {
-    client = await createTestClient({
-      clickhouse_settings: {
-        insert_quorum: 2,
-      },
-    });
+    client = await createTestClient();
     tableName = `test_table_${guid()}`;
     await createTable(client, (env) => {
       switch (env) {
