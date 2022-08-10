@@ -17,13 +17,14 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [ 14, 16 ]
+        node: [14, 16]
     steps:
       - uses: actions/checkout@main
 
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
+          cache: 'npm'
           node-version: ${{ matrix.node }}
 
       - name: Install dependencies
@@ -37,6 +38,10 @@ jobs:
       - name: Compile
         run: |
           npm run compile
+
+      - name: Build
+        run: |
+          npm run build
 
       - name: Run unit tests
         run: |
@@ -54,16 +59,18 @@ jobs:
     steps:
       - uses: actions/checkout@main
 
-      - uses: isbang/compose-action@v1.1.0
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@v1.1.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: "docker-compose.yml"
-          down-flags: "--volumes"
+          compose-file: 'docker-compose.yml'
+          down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
+          cache: 'npm'
           node-version: ${{ matrix.node }}
 
       - name: Install dependencies
@@ -86,21 +93,18 @@ jobs:
     steps:
       - uses: actions/checkout@main
 
-      - uses: isbang/compose-action@v1.1.0
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@v1.1.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: "docker-compose.cluster.yml"
-          down-flags: "--volumes"
-
-#      - name: Start docker containers
-#        env:
-#          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-#        run: docker-compose -f docker-compose.cluster.yml up -d
+          compose-file: 'docker-compose.cluster.yml'
+          down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
+          cache: 'npm'
           node-version: ${{ matrix.node }}
 
       - name: Install dependencies
@@ -125,6 +129,7 @@ jobs:
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
+          cache: 'npm'
           node-version: ${{ matrix.node }}
 
       - name: Install dependencies
