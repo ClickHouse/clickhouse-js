@@ -3,12 +3,6 @@ import type { ResponseJSON } from '../../src';
 import { type ClickHouseClient } from '../../src';
 import { createTable, createTestClient, guid } from '../utils';
 
-function sleep(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve({}), ms);
-  });
-}
-
 describe('insert', () => {
   let client: ClickHouseClient;
   let tableName: string;
@@ -23,7 +17,6 @@ describe('insert', () => {
         ORDER BY (id)
       `;
     });
-    await sleep(0);
   });
   afterEach(async () => {
     await client.close();
