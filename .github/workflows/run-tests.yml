@@ -24,7 +24,6 @@ jobs:
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
-          cache: 'npm'
           node-version: ${{ matrix.node }}
 
       - name: Install dependencies
@@ -70,7 +69,6 @@ jobs:
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
-          cache: 'npm'
           node-version: ${{ matrix.node }}
 
       - name: Install dependencies
@@ -104,7 +102,6 @@ jobs:
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
-          cache: 'npm'
           node-version: ${{ matrix.node }}
 
       - name: Install dependencies
@@ -129,7 +126,6 @@ jobs:
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
-          cache: 'npm'
           node-version: ${{ matrix.node }}
 
       - name: Install dependencies
