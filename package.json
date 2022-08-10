@@ -8,6 +8,10 @@
     "compile": "tsc --project tsconfig.eslint.json --noEmit",
     "lint": "eslint . --ext .ts",
     "test": "mocha __tests__/**/*.test.ts",
+    "test:unit": "mocha __tests__/unit/**/*.test.ts",
+    "test:integration": "mocha __tests__/integration/**/*.test.ts",
+    "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster mocha __tests__/integration/**/*.test.ts",
+    "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud mocha __tests__/integration/**/*.test.ts",
     "test:browser": "karma start",
     "test:all": "npm run test; npm run test:browser",
     "prepare": "husky install"
