@@ -2,14 +2,14 @@ import { expect } from 'chai';
 import type { ResponseJSON } from '../../src';
 import { type ClickHouseClient } from '../../src';
 import { createTable, createTestClient, guid } from '../utils';
-import { TestEnv } from '../utils/client';
+import { TestEnv } from '../utils';
 
 describe('insert', () => {
   let client: ClickHouseClient;
   let tableName: string;
   beforeEach(async () => {
     client = await createTestClient();
-    tableName = `test_table_${guid()}`;
+    tableName = `insert_test_${guid()}`;
     await createTable(client, (env) => {
       switch (env) {
         // ENGINE can be omitted in the cloud statements:
