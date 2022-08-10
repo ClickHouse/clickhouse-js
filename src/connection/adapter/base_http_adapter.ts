@@ -15,6 +15,7 @@ import type {
 import { toSearchParams } from './http_search_params';
 import { transformUrl } from './transform_url';
 import { getAsText, isStream } from '../../utils';
+import { Rows } from '../../result';
 
 export interface RequestParams {
   method: 'GET' | 'POST';
@@ -258,13 +259,16 @@ export abstract class BaseHttpAdapter implements Connection {
       params.query_params
     );
 
-    await this.request({
+    const stream = await this.request({
       method: 'POST',
       url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
     });
 
+    const rows = new Rows(stream, 'TabSeparated');
+    const text = await rows.text();
+    console.log(`Server returned:\n${text}`);
     // return await getAsText(result);
   }
 
