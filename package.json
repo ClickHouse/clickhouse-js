@@ -7,9 +7,13 @@
     "build": "rm -rf dist; webpack --mode=development",
     "compile": "tsc --project tsconfig.eslint.json --noEmit",
     "lint": "eslint . --ext .ts",
-    "test": "mocha __tests__/**/*.test.ts",
+    "test": "mocha __tests__/**/*.test.ts --exit",
+    "test:unit": "mocha __tests__/unit/**/*.test.ts --exit",
+    "test:integration": "mocha __tests__/integration/**/*.test.ts --exit --require ts-node/register --require __tests__/utils/global_setup.ts",
+    "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster mocha __tests__/integration/**/*.test.ts --exit --require ts-node/register --require __tests__/utils/global_setup.ts",
+    "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud mocha __tests__/integration/**/*.test.ts --exit --require ts-node/register --require __tests__/utils/global_setup.ts",
     "test:browser": "karma start",
-    "test:all": "npm run test; npm run test:browser",
+    "test:all": "npm run test --exit; npm run test:browser --exit",
     "prepare": "husky install"
   },
   "author": {

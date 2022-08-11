@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { createClient, type ClickHouseClient } from '../../src';
+import { type ClickHouseClient } from '../../src';
+import { createTestClient } from '../utils';
 
 describe('config', () => {
   before(function () {
@@ -14,7 +15,7 @@ describe('config', () => {
   });
 
   it('request_timeout sets request timeout', (done) => {
-    client = createClient({
+    client = createTestClient({
       request_timeout: 100,
     });
 

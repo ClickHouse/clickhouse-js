@@ -1,7 +1,8 @@
 import { expect } from 'chai';
 import { formatQueryParams } from '../../src/data_formatter';
 
-// js alway creates Date object in local timezone, so we might need to convert the date to another timezone
+// JS always creates Date object in local timezone,
+// so we might need to convert the date to another timezone
 function convertDateToTimezone(date: Date, tz: string) {
   return new Date(date.toLocaleString('en-US', { timeZone: tz }));
 }

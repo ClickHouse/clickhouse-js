@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { createClient, type ClickHouseClient } from '../../src';
+import { type ClickHouseClient } from '../../src';
+import { createTestClient } from '../utils';
 
 describe('response compression', () => {
   let client: ClickHouseClient;
@@ -8,7 +9,7 @@ describe('response compression', () => {
   });
 
   it('accepts a compressed response', async () => {
-    client = createClient({
+    client = createTestClient({
       compression: {
         response: true,
       },

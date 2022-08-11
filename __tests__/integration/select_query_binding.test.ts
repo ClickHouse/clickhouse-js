@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 
-import { createClient, type ClickHouseClient } from '../../src';
+import { type ClickHouseClient } from '../../src';
+import { createTestClient } from '../utils';
 
 describe('select with query binding', () => {
   let client: ClickHouseClient;
-
   beforeEach(() => {
-    client = createClient();
+    client = createTestClient();
   });
   afterEach(async () => {
     await client.close();

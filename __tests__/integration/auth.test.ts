@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { createClient, type ClickHouseClient } from '../../src';
+import { type ClickHouseClient } from '../../src';
+import { createTestClient } from '../utils';
 
 describe('authentication', () => {
   let client: ClickHouseClient;
@@ -8,7 +9,7 @@ describe('authentication', () => {
   });
 
   it('provides authentication error details', (done) => {
-    client = createClient({
+    client = createTestClient({
       username: 'gibberish',
       password: 'gibberish',
     });

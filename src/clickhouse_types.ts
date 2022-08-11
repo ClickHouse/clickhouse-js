@@ -1,5 +1,6 @@
 // TODO add other settings
 export type ClickHouseSettings = {
+  wait_end_of_query?: 0 | 1;
   insert_quorum?: number;
   allow_nondeterministic_mutations?: 0 | 1;
   distributed_product_mode?: 'deny' | 'local' | 'global' | 'allow';

@@ -7,7 +7,7 @@ import Zlib from 'zlib';
 import { expect } from 'chai';
 import { ConnectionParams } from '../../src/connection';
 import { HttpAdapter } from '../../src/connection/adapter';
-import { DummyLogger } from '../utils';
+import { TestLogger } from '../utils';
 import { getAsText } from '../../src/utils';
 
 const gzip = Util.promisify(Zlib.gzip);
@@ -53,7 +53,7 @@ function buildHttpAdapter(config: Partial<ConnectionParams>) {
       },
       ...config,
     },
-    new DummyLogger(false)
+    new TestLogger(false)
   );
 }
 

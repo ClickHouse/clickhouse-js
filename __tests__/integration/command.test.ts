@@ -1,11 +1,15 @@
 import { expect } from 'chai';
-import type { ResponseJSON } from '../../src';
+import type {
+  ClickHouseSettings,
+  CommandParams,
+  ResponseJSON,
+} from '../../src';
 import { type ClickHouseClient } from '../../src';
 import {
   createTestClient,
   getClickHouseTestEnvironment,
   TestEnv,
-} from '../utils/client';
+} from '../utils';
 import { guid } from '../utils';
 
 describe('command', () => {
@@ -17,14 +21,17 @@ describe('command', () => {
     await client.close();
   });
 
+  const clickHouseSettings: ClickHouseSettings = {
+    wait_end_of_query: 1,
+  };
+
   it('sends a command to execute', async () => {
     const { ddl, tableName, engine } = getDDL();
 
-    const commandResult = await client.command({
+    await runCommand(client, {
       query: ddl,
-      format: 'TabSeparated',
+      format: 'JSONCompactEachRow',
     });
-    await commandResult.text();
 
     const selectResult = await client.select({
       query: `SELECT * from system.tables where name = '${tableName}'`,
@@ -45,25 +52,40 @@ describe('command', () => {
   it('does not swallow ClickHouse error', (done) => {
     const { ddl, tableName } = getDDL();
     Promise.resolve()
-      .then(() => client.command({ query: ddl }))
-      .then(() => client.command({ query: ddl }))
+      .then(() =>
+        runCommand(client, {
+          query: ddl,
+          format: 'JSONCompactEachRow',
+          clickhouse_settings: clickHouseSettings,
+        })
+      )
+      .then(() =>
+        runCommand(client, {
+          query: ddl,
+          format: 'JSONCompactEachRow',
+          clickhouse_settings: clickHouseSettings,
+        })
+      )
       .catch((e: any) => {
         expect(e.code).to.equal('57');
         expect(e.type).to.equal('TABLE_ALREADY_EXISTS');
         // TODO remove whitespace from end
-        expect(e.message).equal(`Table default.${tableName} already exists. `);
+        // FIXME: https://github.com/ClickHouse/clickhouse-js/issues/39
+        //  assertion should be replaced with `equal`
+        expect(e.message).includes(
+          `Table default.${tableName} already exists.`
+        );
         done();
       });
   });
 
   it.skip('can specify a parameterized query', async () => {
-    const commandResult = await client.command({
+    await runCommand(client, {
       query: '',
       query_params: {
         table_name: 'example',
       },
     });
-    await commandResult.text();
 
     // FIXME: use different DDL based on the TestEnv
     const result = await client.select({
@@ -119,4 +141,12 @@ function getDDL(): {
       return { ddl, tableName, engine: 'ReplicatedMergeTree' };
     }
   }
+}
+
+async function runCommand(
+  client: ClickHouseClient,
+  params: CommandParams
+): Promise<string> {
+  console.log(`Running command:\n${params.query}`);
+  return (await client.command(params)).text();
 }

@@ -5,34 +5,40 @@ import {
   createClient,
 } from '../../src';
 import { guid } from './guid';
-
-export enum TestEnv {
-  Cloud = 'cloud',
-  LocalSingleNode = 'local_single_node',
-  LocalCluster = 'local_cluster',
-}
+import { TestLogger } from './test_logger';
+import { getClickHouseTestEnvironment, TestEnv } from './test_env';
 
 export function createTestClient(
   config: ClickHouseClientConfigOptions = {}
 ): ClickHouseClient {
   const env = getClickHouseTestEnvironment();
+  console.log(`Using ${env} test environment to create a Client instance`);
   const clickHouseSettings: ClickHouseSettings = {};
   if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {
     clickHouseSettings.insert_quorum = 2;
   }
+  // Allow to override `insert_quorum` if necessary
+  Object.assign(clickHouseSettings, config?.clickhouse_settings || {});
+  const logging = {
+    log: {
+      enable: true,
+      LoggerClass: TestLogger,
+    },
+  };
   if (env === TestEnv.Cloud) {
-    console.log('Using ClickHouse Cloud client');
     return createClient({
       host: getFromEnv('CLICKHOUSE_CLOUD_HOST'),
       username: getFromEnv('CLICKHOUSE_CLOUD_USERNAME'),
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
-      ...clickHouseSettings,
+      ...logging,
       ...config,
+      clickhouse_settings: clickHouseSettings,
     });
   } else {
     return createClient({
-      ...clickHouseSettings,
+      ...logging,
       ...config,
+      clickhouse_settings: clickHouseSettings,
     });
   }
 }
@@ -41,9 +47,11 @@ export async function createRandomDatabase(
   client: ClickHouseClient
 ): Promise<string> {
   const databaseName = `clickhousejs__${guid()}`;
-  await client.command({
-    query: `CREATE DATABASE IF NOT EXISTS ${databaseName}`,
-  });
+  await (
+    await client.command({
+      query: `CREATE DATABASE IF NOT EXISTS ${databaseName}`,
+    })
+  ).text();
   console.log(`Created database ${databaseName}`);
   return databaseName;
 }
@@ -54,9 +62,11 @@ export async function createTable(
 ) {
   const env = getClickHouseTestEnvironment();
   const ddl = definition(env);
-  await client.command({
-    query: ddl,
-  });
+  await (
+    await client.command({
+      query: ddl,
+    })
+  ).text();
   console.log(`Created a table using DDL:\n${ddl}`);
 }
 
@@ -66,21 +76,4 @@ function getFromEnv(key: string): string {
     throw Error(`Environment variable ${key} is not set`);
   }
   return value;
-}
-
-export function getClickHouseTestEnvironment(): TestEnv {
-  let env;
-  switch (process.env['CLICKHOUSE_TEST_ENVIRONMENT']) {
-    case 'CLOUD':
-      env = TestEnv.Cloud;
-      break;
-    case 'LOCAL_CLUSTER':
-      env = TestEnv.LocalCluster;
-      break;
-    default:
-      env = TestEnv.LocalSingleNode;
-      break;
-  }
-  console.log(`Using ${env} test environment`);
-  return env;
 }

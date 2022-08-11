@@ -1,18 +1,17 @@
 import { expect } from 'chai';
-import {
-  createClient,
-  type ClickHouseClient,
-  type ClickHouseError,
-} from '../../src';
+import { type ClickHouseClient, type ClickHouseError } from '../../src';
+import { createTestClient } from '../utils';
 
 describe('error', () => {
   let client: ClickHouseClient;
+  beforeEach(() => {
+    client = createTestClient();
+  });
   afterEach(async () => {
     await client.close();
   });
 
   it('returns "unknown identifier" error', (done) => {
-    client = createClient();
     client
       .select({
         query: 'SELECT number FR',
@@ -28,7 +27,6 @@ describe('error', () => {
   });
 
   it('returns "unknown table" error', (done) => {
-    client = createClient();
     client
       .select({
         query: 'SELECT * FROM unknown_table',
@@ -45,7 +43,6 @@ describe('error', () => {
   });
 
   it('returns "syntax error" error', (done) => {
-    client = createClient();
     client
       .select({
         query: 'SELECT * FRON unknown_table',
@@ -62,7 +59,6 @@ describe('error', () => {
   });
 
   it('returns "syntax error" error in a multiline query', (done) => {
-    client = createClient();
     client
       .select({
         query: `

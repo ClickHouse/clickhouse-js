@@ -3,7 +3,6 @@ import Stream from 'stream';
 import {
   type ClickHouseClient,
   type ClickHouseError,
-  createClient,
   type ResponseJSON,
   type Row,
 } from '../../src';
@@ -108,8 +107,6 @@ describe('select', () => {
   });
 
   it('does not swallow a client error', (done) => {
-    client = createClient({});
-
     client.select({ query: 'SELECT number FR' }).catch((e: ClickHouseError) => {
       expect(e.type).to.equal('UNKNOWN_IDENTIFIER');
       done();
