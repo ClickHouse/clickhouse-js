@@ -1,3 +1,6 @@
+// Run a single hook before starting any tests (database setup, etc)
+import './global_setup';
+
 import {
   ClickHouseClient,
   ClickHouseClientConfigOptions,
