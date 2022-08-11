@@ -31,7 +31,6 @@ export function createTestClient(
     },
   };
   if (env === TestEnv.Cloud) {
-    console.log('Using ClickHouse Cloud client');
     return createClient({
       host: getFromEnv('CLICKHOUSE_CLOUD_HOST'),
       username: getFromEnv('CLICKHOUSE_CLOUD_USERNAME'),
@@ -93,9 +92,16 @@ export function getClickHouseTestEnvironment(): TestEnv {
     case 'local_cluster':
       env = TestEnv.LocalCluster;
       break;
-    default:
+    case 'local_single_node':
+    case undefined:
       env = TestEnv.LocalSingleNode;
       break;
+    default:
+      throw new Error(
+        'Unexpected CLICKHOUSE_TEST_ENVIRONMENT value. ' +
+          'Possible options: `local_single_node`, `local_cluster`, `cloud` ' +
+          'or keep it unset to fall back to `local_single_node`'
+      );
   }
   return env;
 }

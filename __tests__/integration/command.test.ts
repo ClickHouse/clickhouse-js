@@ -1,5 +1,9 @@
 import { expect } from 'chai';
-import type { CommandParams, ResponseJSON } from '../../src';
+import type {
+  ClickHouseSettings,
+  CommandParams,
+  ResponseJSON,
+} from '../../src';
 import { type ClickHouseClient } from '../../src';
 import {
   createTestClient,
@@ -17,12 +21,16 @@ describe('command', () => {
     await client.close();
   });
 
+  const clickHouseSettings: ClickHouseSettings = {
+    wait_end_of_query: 1,
+  };
+
   it('sends a command to execute', async () => {
     const { ddl, tableName, engine } = getDDL();
 
     await runCommand(client, {
       query: ddl,
-      format: 'TabSeparated',
+      format: 'JSONCompactEachRow',
     });
 
     const selectResult = await client.select({
@@ -41,16 +49,32 @@ describe('command', () => {
     expect(table.create_table_query).to.be.a('string');
   });
 
-  it.skip('does not swallow ClickHouse error', (done) => {
+  it('does not swallow ClickHouse error', (done) => {
     const { ddl, tableName } = getDDL();
     Promise.resolve()
-      .then(() => runCommand(client, { query: ddl, format: 'TabSeparated' }))
-      .then(() => runCommand(client, { query: ddl, format: 'TabSeparated' }))
+      .then(() =>
+        runCommand(client, {
+          query: ddl,
+          format: 'JSONCompactEachRow',
+          clickhouse_settings: clickHouseSettings,
+        })
+      )
+      .then(() =>
+        runCommand(client, {
+          query: ddl,
+          format: 'JSONCompactEachRow',
+          clickhouse_settings: clickHouseSettings,
+        })
+      )
       .catch((e: any) => {
         expect(e.code).to.equal('57');
         expect(e.type).to.equal('TABLE_ALREADY_EXISTS');
         // TODO remove whitespace from end
-        expect(e.message).equal(`Table default.${tableName} already exists. `);
+        // FIXME: https://github.com/ClickHouse/clickhouse-js/issues/39
+        //  assertion should be replaced with `equal`
+        expect(e.message).includes(
+          `Table default.${tableName} already exists.`
+        );
         done();
       });
   });
