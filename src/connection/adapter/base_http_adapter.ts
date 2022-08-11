@@ -92,7 +92,7 @@ function isDecompressionError(result: any): result is { error: Error } {
 
 export abstract class BaseHttpAdapter implements Connection {
   protected readonly headers: Http.OutgoingHttpHeaders;
-  constructor(
+  protected constructor(
     private readonly config: ConnectionParams,
     private readonly logger: Logger,
     protected readonly agent: Http.Agent

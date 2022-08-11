@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import { transformUrl } from '../../src/connection/adapter/transform_url';
 
 describe('transformUrl', () => {
@@ -9,7 +8,7 @@ describe('transformUrl', () => {
       pathname: '/foo',
       searchParams: new URLSearchParams({ bar: 'baz' }),
     });
-    expect(newUrl.toString()).to.equal('http://clickhouse.com/foo?bar=baz');
+    expect(newUrl.toString()).toBe('http://clickhouse.com/foo?bar=baz');
   });
 
   it('attaches pathname without a leading slash', () => {
@@ -18,7 +17,7 @@ describe('transformUrl', () => {
       url,
       pathname: 'foo',
     });
-    expect(newUrl.toString()).to.equal('http://clickhouse.com/foo');
+    expect(newUrl.toString()).toBe('http://clickhouse.com/foo');
   });
 
   it('does not mutate an original url', () => {
@@ -27,8 +26,8 @@ describe('transformUrl', () => {
       url,
       pathname: 'foo',
     });
-    expect(newUrl.toString()).to.equal('http://clickhouse.com/foo');
-    expect(url.toString()).to.equal('http://clickhouse.com/');
+    expect(newUrl.toString()).toBe('http://clickhouse.com/foo');
+    expect(url.toString()).toBe('http://clickhouse.com/');
   });
 
   it('does not mutate an original url search params', () => {
@@ -37,7 +36,7 @@ describe('transformUrl', () => {
       url,
       searchParams: new URLSearchParams({ bar: 'baz' }),
     });
-    expect(newUrl.toString()).to.equal('http://clickhouse.com/?bar=baz');
-    expect(url.toString()).to.equal('http://clickhouse.com/?slim=shady');
+    expect(newUrl.toString()).toBe('http://clickhouse.com/?bar=baz');
+    expect(url.toString()).toBe('http://clickhouse.com/?slim=shady');
   });
 });

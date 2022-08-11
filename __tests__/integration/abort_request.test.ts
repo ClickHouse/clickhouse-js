@@ -1,37 +1,16 @@
 import Stream from 'stream';
 import { AbortController } from 'node-abort-controller';
-import { expect } from 'chai';
 import { type ClickHouseClient, type ResponseJSON } from '../../src';
 import { createTable, createTestClient, guid } from '../utils';
 import { TestEnv } from '../utils';
 
-async function assertActiveQueries(
-  client: ClickHouseClient,
-  assertQueries: (queries: Array<{ query: string }>) => boolean
-) {
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const rows = await client.select({
-      query: 'SELECT query FROM system.processes',
-      format: 'JSON',
-    });
-
-    const queries = await rows.json<ResponseJSON<{ query: string }>>();
-
-    if (assertQueries(queries.data)) {
-      break;
-    }
-
-    await new Promise((res) => setTimeout(res, 100));
-  }
-}
-
 describe('abort request', () => {
   let client: ClickHouseClient;
-  before(function () {
-    if (process.env.browser) {
-      this.skip();
-    }
+  beforeAll(function () {
+    // FIXME: Jest does not seem to have it
+    // if (process.env.browser) {
+    //   this.skip();
+    // }
   });
 
   beforeEach(() => {
@@ -53,7 +32,7 @@ describe('abort request', () => {
           abort_signal: controller.signal as AbortSignal,
         })
         .catch((error: Error) => {
-          expect(error.message).to.equal('The request was aborted.');
+          expect(error.message).toBe('The request was aborted.');
           done();
         });
 
@@ -70,7 +49,7 @@ describe('abort request', () => {
           abort_signal: controller.signal as AbortSignal,
         })
         .catch((error: Error) => {
-          expect(error.message).to.equal('The request was aborted.');
+          expect(error.message).toBe('The request was aborted.');
           done();
         });
 
@@ -201,7 +180,7 @@ describe('abort request', () => {
           abort_signal: controller.signal as AbortSignal,
         })
         .catch((error: Error & { code?: string }) => {
-          expect(error.message).to.equal('The request was aborted.');
+          expect(error.message).toBe('The request was aborted.');
           done();
         });
 
@@ -243,7 +222,7 @@ describe('abort request', () => {
           abort_signal: controller.signal as AbortSignal,
         })
         .catch((error: Error) => {
-          expect(error.message).to.equal('The request was aborted.');
+          expect(error.message).toBe('The request was aborted.');
           done();
         });
 
@@ -253,3 +232,24 @@ describe('abort request', () => {
     });
   });
 });
+
+async function assertActiveQueries(
+  client: ClickHouseClient,
+  assertQueries: (queries: Array<{ query: string }>) => boolean
+) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const rows = await client.select({
+      query: 'SELECT query FROM system.processes',
+      format: 'JSON',
+    });
+
+    const queries = await rows.json<ResponseJSON<{ query: string }>>();
+
+    if (assertQueries(queries.data)) {
+      break;
+    }
+
+    await new Promise((res) => setTimeout(res, 100));
+  }
+}

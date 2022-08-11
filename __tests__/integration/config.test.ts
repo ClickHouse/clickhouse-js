@@ -1,12 +1,12 @@
-import { expect } from 'chai';
 import { type ClickHouseClient } from '../../src';
 import { createTestClient } from '../utils';
 
 describe('config', () => {
-  before(function () {
-    if (process.env.browser) {
-      this.skip();
-    }
+  beforeAll(function () {
+    // FIXME: Jest does not seem to have it
+    // if (process.env.browser) {
+    //   this.skip();
+    // }
   });
 
   let client: ClickHouseClient;
@@ -24,7 +24,7 @@ describe('config', () => {
         query: 'SELECT sleep(3)',
       })
       .catch((e: any) => {
-        expect(e.message).to.equal('Timeout error');
+        expect(e.message).toBe('Timeout error');
         done();
       });
   });

@@ -31,7 +31,7 @@ module.exports = {
   resolve: {
     extensions: [
       '.ts',
-      '.js' // for 3rd party modules in node_modules
+      '.js', // for 3rd party modules in node_modules
     ],
     fallback: {
       buffer: require.resolve('buffer'),
@@ -41,17 +41,17 @@ module.exports = {
       querystring: require.resolve('querystring-es3'),
       util: false,
       process: require.resolve('process/browser'),
-    }
+    },
   },
   plugins: [
     new webpack.DefinePlugin({
       'process.env': JSON.stringify({
-        browser: true
-      })
+        browser: true,
+      }),
     }),
     new webpack.ProvidePlugin({
       Buffer: ['buffer', 'Buffer'],
       process: 'process/browser',
     }),
-  ]
-}
+  ],
+};

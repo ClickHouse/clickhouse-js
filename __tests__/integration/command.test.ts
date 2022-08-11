@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import type {
   ClickHouseSettings,
   CommandParams,
@@ -42,41 +41,33 @@ describe('command', () => {
       ResponseJSON<{ name: string; engine: string; create_table_query: string }>
     >();
 
-    expect(rows).to.equal(1);
+    expect(rows).toBe(1);
     const table = data[0];
-    expect(table.name).equal(tableName);
-    expect(table.engine).equal(engine);
-    expect(table.create_table_query).to.be.a('string');
+    expect(table.name).toBe(tableName);
+    expect(table.engine).toBe(engine);
+    expect(typeof table.create_table_query).toBe('string');
   });
 
-  it('does not swallow ClickHouse error', (done) => {
+  it('does not swallow ClickHouse error', async () => {
     const { ddl, tableName } = getDDL();
-    Promise.resolve()
-      .then(() =>
+    await expect(async () => {
+      const command = () =>
         runCommand(client, {
           query: ddl,
           format: 'JSONCompactEachRow',
           clickhouse_settings: clickHouseSettings,
-        })
-      )
-      .then(() =>
-        runCommand(client, {
-          query: ddl,
-          format: 'JSONCompactEachRow',
-          clickhouse_settings: clickHouseSettings,
-        })
-      )
-      .catch((e: any) => {
-        expect(e.code).to.equal('57');
-        expect(e.type).to.equal('TABLE_ALREADY_EXISTS');
-        // TODO remove whitespace from end
-        // FIXME: https://github.com/ClickHouse/clickhouse-js/issues/39
-        //  assertion should be replaced with `equal`
-        expect(e.message).includes(
-          `Table default.${tableName} already exists.`
-        );
-        done();
-      });
+        });
+      await command();
+      await command();
+    }).rejects.toEqual(
+      expect.objectContaining({
+        code: '57',
+        type: 'TABLE_ALREADY_EXISTS',
+        message: expect.stringContaining(
+          `Table default.${tableName} already exists. `
+        ),
+      })
+    );
   });
 
   it.skip('can specify a parameterized query', async () => {
@@ -97,9 +88,9 @@ describe('command', () => {
       ResponseJSON<{ name: string; engine: string; create_table_query: string }>
     >();
 
-    expect(rows).to.equal(1);
+    expect(rows).toBe(1);
     const table = data[0];
-    expect(table.name).to.equal('example');
+    expect(table.name).toBe('example');
   });
 });
 

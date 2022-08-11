@@ -1,5 +1,3 @@
-import { expect } from 'chai';
-
 import { type ClickHouseClient } from '../../src';
 import { createTestClient } from '../utils';
 
@@ -23,7 +21,7 @@ describe('select with query binding', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal('3\n4\n5\n');
+    expect(response).toBe('3\n4\n5\n');
   });
 
   it('handles boolean in a parameterized query', async () => {
@@ -36,7 +34,7 @@ describe('select with query binding', () => {
       },
     });
 
-    expect(await rows1.text()).to.equal('true\n');
+    expect(await rows1.text()).toBe('true\n');
 
     const rows2 = await client.select({
       query: 'SELECT and({val1: Boolean}, {val2: Boolean})',
@@ -47,7 +45,7 @@ describe('select with query binding', () => {
       },
     });
 
-    expect(await rows2.text()).to.equal('false\n');
+    expect(await rows2.text()).toBe('false\n');
   });
 
   it('handles numbers in a parameterized query', async () => {
@@ -60,7 +58,7 @@ describe('select with query binding', () => {
       },
     });
 
-    expect(await rows.text()).to.equal('30\n');
+    expect(await rows.text()).toBe('30\n');
   });
 
   it('handles Dates in a parameterized query', async () => {
@@ -73,7 +71,7 @@ describe('select with query binding', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal('"2022-05-02 00:00:00"\n');
+    expect(response).toBe('"2022-05-02 00:00:00"\n');
   });
 
   it('handles an array of strings in a parameterized query', async () => {
@@ -87,7 +85,7 @@ describe('select with query binding', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal(`"['1','2','3','4']"\n`);
+    expect(response).toBe(`"['1','2','3','4']"\n`);
   });
 
   it('handles an array of numbers in a parameterized query', async () => {
@@ -101,7 +99,7 @@ describe('select with query binding', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal(`"[1,2,3,4]"\n`);
+    expect(response).toBe(`"[1,2,3,4]"\n`);
   });
 
   it('escapes strings in a parameterized query', async () => {
@@ -115,7 +113,7 @@ describe('select with query binding', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal('"co\'nca\'t"\n');
+    expect(response).toBe('"co\'nca\'t"\n');
   });
 
   it('handles an object a parameterized query', async () => {
@@ -128,6 +126,6 @@ describe('select with query binding', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal(`"['id']"\n`);
+    expect(response).toBe(`"['id']"\n`);
   });
 });

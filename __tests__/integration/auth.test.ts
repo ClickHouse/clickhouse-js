@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import { type ClickHouseClient } from '../../src';
 import { createTestClient } from '../utils';
 
@@ -19,9 +18,9 @@ describe('authentication', () => {
         query: 'SELECT number FROM system.numbers LIMIT 3',
       })
       .catch((e) => {
-        expect(e.code).to.equal('516');
-        expect(e.type).to.equal('AUTHENTICATION_FAILED');
-        expect(e.message).to.match(/Authentication failed/i);
+        expect(e.code).toBe('516');
+        expect(e.type).toBe('AUTHENTICATION_FAILED');
+        expect(e.message).toMatch(/Authentication failed/i);
         done();
       });
   });

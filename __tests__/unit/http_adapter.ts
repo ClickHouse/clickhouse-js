@@ -1,74 +1,17 @@
-import Http from 'http';
+import Http, { ClientRequest } from 'http';
 import Stream from 'stream';
-import sinon, { type SinonStub } from 'sinon';
 import Util from 'util';
 import Zlib from 'zlib';
-
-import { expect } from 'chai';
 import { ConnectionParams } from '../../src/connection';
 import { HttpAdapter } from '../../src/connection/adapter';
 import { TestLogger } from '../utils';
 import { getAsText } from '../../src/utils';
 
-const gzip = Util.promisify(Zlib.gzip);
-
-function buildIncomingMessage({
-  body = '',
-  statusCode = 200,
-  headers = {},
-}: {
-  body?: string | Buffer;
-  statusCode?: number;
-  headers?: Http.IncomingHttpHeaders;
-}): Http.IncomingMessage {
-  // @ts-expect-error doesn't mock all the props
-  const response: Http.IncomingMessage = new Stream.Readable({
-    read() {
-      this.push(body);
-      this.push(null);
-    },
-  });
-
-  response.statusCode = statusCode;
-  response.headers = headers;
-  return response;
-}
-
-function buildHttpAdapter(config: Partial<ConnectionParams>) {
-  return new HttpAdapter(
-    {
-      ...{
-        host: new URL('http://localhost:8132'),
-
-        connect_timeout: 10_000,
-        request_timeout: 30_000,
-        compression: {
-          decompress_response: true,
-          compress_request: false,
-        },
-        // max_open_connections: number;
-
-        username: '',
-        password: '',
-      },
-      ...config,
-    },
-    new TestLogger(false)
-  );
-}
-
 describe('HttpAdapter', () => {
+  const gzip = Util.promisify(Zlib.gzip);
+  const httpRequestStub = jest.spyOn(Http, 'request');
+
   describe('compression', () => {
-    let httpRequestStub: SinonStub | undefined;
-
-    beforeEach(() => {
-      httpRequestStub = sinon.stub(Http, 'request');
-    });
-
-    afterEach(() => {
-      httpRequestStub?.restore();
-    });
-
     describe('response decompression', () => {
       it('hints ClickHouse server to send a gzip compressed response if compress_request: true', async () => {
         const adapter = buildHttpAdapter({
@@ -78,23 +21,17 @@ describe('HttpAdapter', () => {
           },
         });
 
-        const request = new Stream.Writable({
-          write() {
-            /** stub */
-          },
+        const request = stubRequest();
+
+        const selectPromise = adapter.select({
+          query: 'SELECT * FROM system.numbers LIMIT 5',
         });
 
-        httpRequestStub?.returns(request);
+        const responseBody = 'foobar';
+        await emitCompressedBody(request, responseBody);
 
-        await adapter.select({
-          query: 'SELECT * from system.numbers LIMIT 5',
-        });
-        expect(httpRequestStub?.callCount).of.equal(1);
-
-        const calledWith: { headers: Record<string, string> } =
-          httpRequestStub?.getCall(0).args[0];
-
-        expect(calledWith?.headers['Accept-Encoding']).to.equal('gzip');
+        expect(await getAsText(await selectPromise)).toBe(responseBody);
+        assertStub('gzip');
       });
 
       it('does not send a compression algorithm hint if compress_request: false', async () => {
@@ -104,89 +41,64 @@ describe('HttpAdapter', () => {
             compress_request: false,
           },
         });
+        const request = stubRequest();
 
-        const request = new Stream.Writable({
-          write() {
-            /** stub */
-          },
+        const selectPromise = adapter.select({
+          query: 'SELECT * FROM system.numbers LIMIT 5',
         });
 
-        httpRequestStub?.returns(request);
+        const responseBody = 'foobar';
+        request.emit(
+          'response',
+          buildIncomingMessage({
+            body: responseBody,
+          })
+        );
 
-        await adapter.select({
-          query: 'SELECT * from system.numbers LIMIT 5',
-        });
-        expect(httpRequestStub?.callCount).of.equal(1);
-
-        const calledWith: { headers: Record<string, string> } =
-          httpRequestStub?.getCall(0).args[0];
-
-        expect(calledWith?.headers['Accept-Encoding']).to.equal(undefined);
+        expect(await getAsText(await selectPromise)).toBe(responseBody);
+        assertStub(undefined);
       });
 
-      it('request-specific settings take precedence over config settings', async () => {
+      it('uses request-specific settings over config settings', async () => {
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: false,
             compress_request: false,
           },
         });
+        const request = stubRequest();
 
-        const request = new Stream.Writable({
-          write() {
-            /** stub */
-          },
-        });
-
-        httpRequestStub?.returns(request);
-
-        await adapter.select({
-          query: 'SELECT * from system.numbers LIMIT 5',
+        const selectPromise = adapter.select({
+          query: 'SELECT * FROM system.numbers LIMIT 5',
           clickhouse_settings: {
             enable_http_compression: 1,
           },
         });
-        expect(httpRequestStub?.callCount).of.equal(1);
 
-        const calledWith: { headers: Record<string, string> } =
-          httpRequestStub?.getCall(0).args[0];
+        const responseBody = 'foobar';
+        await emitCompressedBody(request, responseBody);
 
-        expect(calledWith?.headers['Accept-Encoding']).to.equal('gzip');
+        expect(await getAsText(await selectPromise)).toBe(responseBody);
+        assertStub('gzip');
       });
 
-      it('decompress a gzip response', async () => {
+      it('decompresses a gzip response', async () => {
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: true,
             compress_request: false,
           },
         });
-
-        const request = new Stream.Writable({
-          write() {
-            /** stub */
-          },
-        });
-
-        httpRequestStub?.returns(request);
+        const request = stubRequest();
 
         const selectPromise = adapter.select({
-          query: 'SELECT * from system.numbers LIMIT 5',
+          query: 'SELECT * FROM system.numbers LIMIT 5',
         });
 
         const responseBody = 'abc'.repeat(1_000);
-        const compressedBody = await gzip(responseBody);
-        request.emit(
-          'response',
-          buildIncomingMessage({
-            body: compressedBody,
-            headers: {
-              'content-encoding': 'gzip',
-            },
-          })
-        );
+        await emitCompressedBody(request, responseBody);
 
-        expect(await getAsText(await selectPromise)).to.equal(responseBody);
+        expect(await getAsText(await selectPromise)).toBe(responseBody);
       });
 
       it('throws on an unexpected encoding', async () => {
@@ -196,59 +108,33 @@ describe('HttpAdapter', () => {
             compress_request: false,
           },
         });
-
-        const request = new Stream.Writable({
-          write() {
-            /** stub */
-          },
-        });
-
-        httpRequestStub?.returns(request);
+        const request = stubRequest();
 
         const selectPromise = adapter.select({
-          query: 'SELECT * from system.numbers LIMIT 5',
+          query: 'SELECT * FROM system.numbers LIMIT 5',
         });
 
-        const responseBody = 'abc'.repeat(1_000);
-        const compressedBody = await gzip(responseBody);
-        request.emit(
-          'response',
-          buildIncomingMessage({
-            body: compressedBody,
-            headers: {
-              'content-encoding': 'br',
-            },
-          })
-        );
+        await emitCompressedBody(request, 'abc', 'br');
 
-        try {
-          await selectPromise;
-          throw new Error('did not throw');
-        } catch (e: any) {
-          expect(e.message).to.equal('Unexpected encoding: br');
-        }
+        await expect(selectPromise).rejects.toMatchObject({
+          message: 'Unexpected encoding: br',
+        });
       });
 
-      it('decompression error is provided to a stream consumer', async () => {
+      it('provides decompression error to a stream consumer', async () => {
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: true,
             compress_request: false,
           },
         });
-
-        const request = new Stream.Writable({
-          write() {
-            /** stub */
-          },
-        });
-
-        httpRequestStub?.returns(request);
+        const request = stubRequest();
 
         const selectPromise = adapter.select({
-          query: 'SELECT * from system.numbers LIMIT 5',
+          query: 'SELECT * FROM system.numbers LIMIT 5',
         });
 
+        // No GZIP encoding for the body here
         request.emit(
           'response',
           buildIncomingMessage({
@@ -259,17 +145,22 @@ describe('HttpAdapter', () => {
           })
         );
 
-        try {
+        await expect(async () => {
           const response = await selectPromise;
           for await (const chunk of response) {
-            chunk; // stub
+            void chunk; // stub
           }
-          throw new Error('did not throw');
-        } catch (e: any) {
-          expect(e.message).to.equal('incorrect header check');
-          expect(e.code).to.equal('Z_DATA_ERROR');
-        }
+        }).rejects.toMatchObject({
+          message: 'incorrect header check',
+          code: 'Z_DATA_ERROR',
+        });
       });
+
+      function assertStub(encoding: string | undefined) {
+        expect(httpRequestStub).toBeCalledTimes(1);
+        const calledWith = httpRequestStub.mock.calls[0][1];
+        expect(calledWith.headers!['Accept-Encoding']).toBe(encoding);
+      }
     });
 
     describe('request compression', () => {
@@ -291,25 +182,98 @@ describe('HttpAdapter', () => {
           },
           final() {
             Zlib.unzip(chunks, (err, result) => {
-              expect(result.toString('utf8')).to.equal(values);
+              expect(result.toString('utf8')).toBe(values);
               done();
             });
           },
-        });
+        }) as ClientRequest;
 
-        httpRequestStub?.returns(request);
+        httpRequestStub.mockReturnValueOnce(request);
 
         void adapter.insert({
           query: 'INSERT INTO insert_compression_table',
           values,
         });
-        expect(httpRequestStub?.callCount).of.equal(1);
 
-        const calledWith: { headers: Record<string, string> } =
-          httpRequestStub?.getCall(0).args[0];
-
-        expect(calledWith?.headers['Content-Encoding']).to.equal('gzip');
+        assertStub('gzip');
       });
+
+      function assertStub(encoding: string | undefined) {
+        expect(httpRequestStub).toBeCalledTimes(1);
+        const calledWith = httpRequestStub.mock.calls[0][1];
+        expect(calledWith.headers!['Content-Encoding']).toBe(encoding);
+      }
     });
+
+    function stubRequest() {
+      const request = new Stream.Writable({
+        write() {
+          /** stub */
+        },
+      }) as ClientRequest;
+      httpRequestStub.mockReturnValueOnce(request);
+      return request;
+    }
+
+    async function emitCompressedBody(
+      request: ClientRequest,
+      body: string,
+      encoding = 'gzip'
+    ) {
+      const compressedBody = await gzip(body);
+      request.emit(
+        'response',
+        buildIncomingMessage({
+          body: compressedBody,
+          headers: {
+            'content-encoding': encoding,
+          },
+        })
+      );
+    }
   });
+
+  function buildIncomingMessage({
+    body = '',
+    statusCode = 200,
+    headers = {},
+  }: {
+    body?: string | Buffer;
+    statusCode?: number;
+    headers?: Http.IncomingHttpHeaders;
+  }): Http.IncomingMessage {
+    const response = new Stream.Readable({
+      read() {
+        this.push(body);
+        this.push(null);
+      },
+    }) as Http.IncomingMessage;
+
+    response.statusCode = statusCode;
+    response.headers = headers;
+    return response;
+  }
+
+  function buildHttpAdapter(config: Partial<ConnectionParams>) {
+    return new HttpAdapter(
+      {
+        ...{
+          host: new URL('http://localhost:8132'),
+
+          connect_timeout: 10_000,
+          request_timeout: 30_000,
+          compression: {
+            decompress_response: true,
+            compress_request: false,
+          },
+          // max_open_connections: number;
+
+          username: '',
+          password: '',
+        },
+        ...config,
+      },
+      new TestLogger(true)
+    );
+  }
 });

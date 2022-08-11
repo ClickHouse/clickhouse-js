@@ -1,5 +1,5 @@
-import { randomUUID } from 'crypto';
+import { v4 as uuid_v4 } from 'uuid';
 
 export function guid() {
-  return randomUUID().replace(/-/g, '');
+  return uuid_v4().replace(/-/g, '');
 }
