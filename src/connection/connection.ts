@@ -17,6 +17,7 @@ export interface ConnectionParams {
 
   username: string;
   password: string;
+  database: string;
 }
 
 export interface BaseParams {

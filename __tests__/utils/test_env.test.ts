@@ -1,4 +1,4 @@
-import { getClickHouseTestEnvironment, TestEnv } from '../utils';
+import { getClickHouseTestEnvironment, TestEnv } from './index';
 
 describe('TestEnv environment variable parsing', () => {
   const key = 'CLICKHOUSE_TEST_ENVIRONMENT';

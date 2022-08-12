@@ -7,12 +7,11 @@
     "build": "rm -rf dist; webpack --mode=development",
     "compile": "tsc --project tsconfig.eslint.json --noEmit",
     "lint": "eslint . --ext .ts",
-    "test": "jest --testPathPattern=__tests__",
-    "test:unit": "jest --testPathPattern=__tests__/unit",
-    "test:integration": "jest --runInBand --testPathPattern=__tests__/integration",
-    "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster jest --runInBand --testPathPattern=__tests__/integration",
-    "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud jest --runInBand --testPathPattern=__tests__/integration",
-    "test:all": "npm run test --exit",
+    "test": "jest --testPathPattern=__tests__ --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
+    "test:unit": "jest --testMatch=**/__tests__/{unit,utils}/*.test.ts",
+    "test:integration": "jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
+    "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
+    "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
     "prepare": "husky install"
   },
   "author": {

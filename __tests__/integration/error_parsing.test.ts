@@ -1,5 +1,5 @@
 import { type ClickHouseClient } from '../../src';
-import { createTestClient } from '../utils';
+import { createTestClient, getTestDatabaseName } from '../utils';
 
 describe('error', () => {
   let client: ClickHouseClient;
@@ -31,7 +31,7 @@ describe('error', () => {
       })
     ).rejects.toEqual(
       expect.objectContaining({
-        message: `Table default.unknown_table doesn't exist. `,
+        message: `Table ${getTestDatabaseName()}.unknown_table doesn't exist. `,
         code: '60',
         type: 'UNKNOWN_TABLE',
       })

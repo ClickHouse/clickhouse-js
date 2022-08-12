@@ -7,9 +7,10 @@ import { type ClickHouseClient } from '../../src';
 import {
   createTestClient,
   getClickHouseTestEnvironment,
+  getTestDatabaseName,
+  guid,
   TestEnv,
 } from '../utils';
-import { guid } from '../utils';
 
 describe('command', () => {
   let client: ClickHouseClient;
@@ -65,7 +66,7 @@ describe('command', () => {
         code: '57',
         type: 'TABLE_ALREADY_EXISTS',
         message: expect.stringContaining(
-          `Table default.${tableName} already exists. `
+          `Table ${getTestDatabaseName()}.${tableName} already exists. `
         ),
       })
     );

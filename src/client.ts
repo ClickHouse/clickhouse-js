@@ -86,8 +86,8 @@ function normalizeConfig(
     },
     username: config.username ?? 'default',
     password: config.password ?? '',
-    application: config.password ?? 'clickhouse-js',
-    database: config.password ?? 'default',
+    application: config.application ?? 'clickhouse-js',
+    database: config.database ?? 'default',
     clickhouse_settings: config.clickhouse_settings ?? {},
     log: {
       enable: loggingEnabled,
@@ -120,10 +120,7 @@ export class ClickHouseClient {
         ...this.config.clickhouse_settings,
         ...params.clickhouse_settings,
       },
-      query_params: {
-        database: this.config.database,
-        ...params.query_params,
-      },
+      query_params: params.query_params,
       abort_signal: params.abort_signal,
     };
   }

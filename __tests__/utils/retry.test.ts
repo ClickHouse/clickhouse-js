@@ -1,5 +1,5 @@
-import { retryOnFailure } from '../utils';
-import { RetryOnFailureOptions } from '../utils/retry';
+import { retryOnFailure } from './index';
+import { RetryOnFailureOptions } from './retry';
 
 describe('retryOnFailure', () => {
   it('should resolve after some failures', async () => {
@@ -19,7 +19,7 @@ describe('retryOnFailure', () => {
       // FIXME: setTimeout has typings of window.setTimeout & globals.setTimeout
       //  remove when DOM lib is excluded from typings.
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-nocheck
+      // @ts-ignore
     }, 1000).unref();
     await expect(
       retryOnFailure(
