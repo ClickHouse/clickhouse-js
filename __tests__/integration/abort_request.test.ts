@@ -108,15 +108,11 @@ describe('abort request', () => {
 
       const longRunningQuery = `SELECT sleep(3), '${guid()}'`;
       console.log(`Long running query: ${longRunningQuery}`);
-      void client
-        .select({
-          query: longRunningQuery,
-          abort_signal: controller.signal as AbortSignal,
-          format: 'JSONCompactEachRow',
-        })
-        .then(() => {
-          //
-        });
+      void client.select({
+        query: longRunningQuery,
+        abort_signal: controller.signal as AbortSignal,
+        format: 'JSONCompactEachRow',
+      });
 
       await assertActiveQueries(client, (queries) => {
         console.log(`Active queries: ${JSON.stringify(queries, null, 2)}`);
