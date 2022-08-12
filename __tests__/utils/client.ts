@@ -54,9 +54,13 @@ export async function createRandomDatabase(
   client: ClickHouseClient
 ): Promise<string> {
   const databaseName = `clickhousejs__${guid()}`;
+  let maybeOnCluster = '';
+  if (getClickHouseTestEnvironment() === TestEnv.LocalCluster) {
+    maybeOnCluster = `ON CLUSTER '{cluster}'`;
+  }
   await (
     await client.command({
-      query: `CREATE DATABASE IF NOT EXISTS ${databaseName}`,
+      query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
     })
   ).text();
   console.log(`Created database ${databaseName}`);
