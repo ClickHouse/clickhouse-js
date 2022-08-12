@@ -21,6 +21,7 @@ describe('command', () => {
   });
 
   const clickHouseSettings: ClickHouseSettings = {
+    // ClickHouse responds to a command when it's completely finished
     wait_end_of_query: 1,
   };
 

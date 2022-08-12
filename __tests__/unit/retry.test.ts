@@ -16,7 +16,9 @@ describe('retryOnFailure', () => {
     let result = 0;
     setTimeout(() => {
       result = 42;
-    }, 1000);
+      // @ts-expect-error. setTimeout has typings of window.setTimeout & globals.setTimeout
+      // remove me when DOM lib is excluded from typings.
+    }, 1000).unref();
     await expect(
       retryOnFailure(
         async () => {

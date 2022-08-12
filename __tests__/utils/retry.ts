@@ -41,7 +41,9 @@ export async function retryOnFailure<T>(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
-    setTimeout(resolve, ms);
+    // @ts-expect-error. setTimeout has typings of window.setTimeout & globals.setTimeout
+    // remove me when DOM lib is excluded from typings.
+    setTimeout(resolve, ms).unref();
   });
 }
 
