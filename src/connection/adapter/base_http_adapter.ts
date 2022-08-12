@@ -236,32 +236,31 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   async select(params: BaseParams): Promise<Stream.Readable> {
-    const settings = withHttpSettings(
+    const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
       this.config.compression.decompress_response
     );
-
-    const searchParams = toSearchParams(
-      this.config.database,
-      settings,
-      params.query_params
-    );
+    const searchParams = toSearchParams({
+      database: this.config.database,
+      clickhouse_settings,
+      query_params: params.query_params,
+    });
 
     return await this.request({
       method: 'POST',
       url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
-      decompress_response: settings.enable_http_compression === 1,
+      decompress_response: clickhouse_settings.enable_http_compression === 1,
     });
   }
 
   async command(params: BaseParams): Promise<Stream.Readable> {
-    const searchParams = toSearchParams(
-      this.config.database,
-      params.clickhouse_settings,
-      params.query_params
-    );
+    const searchParams = toSearchParams({
+      database: this.config.database,
+      clickhouse_settings: params.clickhouse_settings,
+      query_params: params.query_params,
+    });
 
     return await this.request({
       method: 'POST',
@@ -272,12 +271,13 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   async insert(params: InsertParams): Promise<void> {
-    const searchParams = toSearchParams(
-      this.config.database,
-      params.clickhouse_settings,
-      params.query_params,
-      params.query
-    );
+    const searchParams = toSearchParams({
+      database: this.config.database,
+      clickhouse_settings: params.clickhouse_settings,
+      query_params: params.query_params,
+      query: params.query,
+    });
+
     await this.request({
       method: 'POST',
       url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
