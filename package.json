@@ -12,8 +12,7 @@
     "test:integration": "jest --runInBand --testPathPattern=__tests__/integration",
     "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster jest --runInBand --testPathPattern=__tests__/integration",
     "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud jest --runInBand --testPathPattern=__tests__/integration",
-    "test:browser": "karma start",
-    "test:all": "npm run test --exit; npm run test:browser --exit",
+    "test:all": "npm run test --exit",
     "prepare": "husky install"
   },
   "author": {
@@ -54,11 +53,6 @@
     "eslint-plugin-prettier": "^4.2.1",
     "husky": "^7.0.0",
     "jest": "^28.1.3",
-    "karma": "^6.4.0",
-    "karma-chai": "^0.1.0",
-    "karma-chrome-launcher": "^3.1.1",
-    "karma-mocha": "^2.0.1",
-    "karma-webpack": "^5.0.0",
     "lint-staged": "^13.0.3",
     "prettier": "2.7.1",
     "ts-jest": "^28.0.7",
