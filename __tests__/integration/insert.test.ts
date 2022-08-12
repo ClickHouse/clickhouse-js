@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import type { ResponseJSON } from '../../src';
 import { type ClickHouseClient } from '../../src';
 import { createTable, createTestClient, guid } from '../utils';
@@ -57,7 +56,7 @@ describe('insert', () => {
     });
 
     const result = await Rows.json<ResponseJSON>();
-    expect(result).to.deep.equal([
+    expect(result).toEqual([
       { id: '42', name: 'hello', sku: [0, 1] },
       { id: '43', name: 'world', sku: [3, 4] },
     ]);
@@ -79,7 +78,7 @@ describe('insert', () => {
     });
 
     const result = await Rows.json<ResponseJSON>();
-    expect(result).to.deep.equal([
+    expect(result).toEqual([
       { id: '42', name: 'привет', sku: [0, 1] },
       { id: '43', name: 'мир', sku: [3, 4] },
     ]);

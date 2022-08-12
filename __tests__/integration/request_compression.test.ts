@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import { type ClickHouseClient, type ResponseJSON } from '../../src';
 import { createTable, createTestClient, guid } from '../utils';
 import { TestEnv } from '../utils';
@@ -61,6 +60,6 @@ describe('insert compression', () => {
     });
 
     const result = await Rows.json<ResponseJSON>();
-    expect(result.data.length).to.equal(1_000);
+    expect(result.data.length).toBe(1_000);
   });
 });

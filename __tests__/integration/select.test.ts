@@ -1,11 +1,5 @@
-import { expect } from 'chai';
 import Stream from 'stream';
-import {
-  type ClickHouseClient,
-  type ClickHouseError,
-  type ResponseJSON,
-  type Row,
-} from '../../src';
+import { type ClickHouseClient, type ResponseJSON, type Row } from '../../src';
 import { createTestClient } from '../utils';
 
 async function rowsValues(stream: Stream.Readable): Promise<any[]> {
@@ -44,7 +38,7 @@ describe('select', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal('0\n1\n');
+    expect(response).toBe('0\n1\n');
   });
 
   it('can send a query with an inline comment', async () => {
@@ -59,7 +53,7 @@ describe('select', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal('0\n1\n');
+    expect(response).toBe('0\n1\n');
   });
 
   it('can send a query with a multiline comment', async () => {
@@ -76,7 +70,7 @@ describe('select', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal('0\n1\n');
+    expect(response).toBe('0\n1\n');
   });
 
   it('can send a query with a trailing comment', async () => {
@@ -90,7 +84,7 @@ describe('select', () => {
     });
 
     const response = await rows.json<ResponseJSON<{ number: string }>>();
-    expect(response.data).to.deep.equal([{ number: '0' }, { number: '1' }]);
+    expect(response.data).toEqual([{ number: '0' }, { number: '1' }]);
   });
 
   it('can specify settings in select', async () => {
@@ -103,24 +97,25 @@ describe('select', () => {
     });
 
     const response = await rows.text();
-    expect(response).to.equal('0\n1\n');
+    expect(response).toBe('0\n1\n');
   });
 
-  it('does not swallow a client error', (done) => {
-    client.select({ query: 'SELECT number FR' }).catch((e: ClickHouseError) => {
-      expect(e.type).to.equal('UNKNOWN_IDENTIFIER');
-      done();
-    });
+  it('does not swallow a client error', async () => {
+    await expect(client.select({ query: 'SELECT number FR' })).rejects.toEqual(
+      expect.objectContaining({
+        type: 'UNKNOWN_IDENTIFIER',
+      })
+    );
   });
 
-  it('returns an error details provided by ClickHouse', (done) => {
-    client.select({ query: ';' }).catch((e: ClickHouseError) => {
-      expect(e.message).to.be.a('string');
-      expect(e.message).to.have.lengthOf.above(0);
-      expect(e.code).to.equal('62');
-      expect(e.type).to.equal('SYNTAX_ERROR');
-      done();
-    });
+  it('returns an error details provided by ClickHouse', async () => {
+    await expect(client.select({ query: ';' })).rejects.toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('Empty query'),
+        code: '62',
+        type: 'SYNTAX_ERROR',
+      })
+    );
   });
 
   describe('select result', () => {
@@ -131,7 +126,7 @@ describe('select', () => {
           format: 'CSV',
         });
 
-        expect(await Rows.text()).to.equal('0\n1\n2\n');
+        expect(await Rows.text()).toBe('0\n1\n2\n');
       });
       it('returns values from SELECT query in specified format', async () => {
         const Rows = await client.select({
@@ -139,7 +134,7 @@ describe('select', () => {
           format: 'JSONEachRow',
         });
 
-        expect(await Rows.text()).to.equal(
+        expect(await Rows.text()).toBe(
           '{"number":"0"}\n{"number":"1"}\n{"number":"2"}\n'
         );
       });
@@ -155,10 +150,10 @@ describe('select', () => {
         const { data: nums } = await rows.json<
           ResponseJSON<{ number: string }>
         >();
-        expect(nums).to.be.an('array');
-        expect(nums).to.have.length(5);
+        expect(Array.isArray(nums)).toBe(true);
+        expect(nums).toHaveLength(5);
         const values = nums.map((i) => i.number);
-        expect(values).to.deep.equal(['0', '1', '2', '3', '4']);
+        expect(values).toEqual(['0', '1', '2', '3', '4']);
       });
 
       it('returns columns data in response', async () => {
@@ -169,9 +164,9 @@ describe('select', () => {
 
         const { meta } = await rows.json<ResponseJSON<{ number: string }>>();
 
-        expect(meta?.length).to.equal(1);
+        expect(meta?.length).toBe(1);
         const column = meta ? meta[0] : undefined;
-        expect(column).to.deep.equal({
+        expect(column).toEqual({
           name: 'number',
           type: 'UInt64',
         });
@@ -185,7 +180,7 @@ describe('select', () => {
 
         const response = await rows.json<ResponseJSON<{ number: string }>>();
 
-        expect(response.rows).to.equal(5);
+        expect(response.rows).toBe(5);
       });
 
       it('returns statistics in response', async () => {
@@ -195,13 +190,15 @@ describe('select', () => {
         });
 
         const response = await rows.json<ResponseJSON<{ number: string }>>();
-
-        expect(response.statistics).to.have.own.property('elapsed');
-        expect(response.statistics?.elapsed).to.be.a('number');
-        expect(response.statistics).to.have.own.property('rows_read');
-        expect(response.statistics?.rows_read).to.be.a('number');
-        expect(response.statistics).to.have.own.property('bytes_read');
-        expect(response.statistics?.bytes_read).to.be.a('number');
+        expect(response).toEqual(
+          expect.objectContaining({
+            statistics: {
+              elapsed: expect.any(Number),
+              rows_read: expect.any(Number),
+              bytes_read: expect.any(Number),
+            },
+          })
+        );
       });
 
       it.skip('returns queryId in response', async () => {
@@ -212,7 +209,7 @@ describe('select', () => {
 
         const response = await rows.json<ResponseJSON<{ number: string }>>();
 
-        expect(response.query_id).to.be.a('number');
+        expect(response.query_id).toBeInstanceOf(Number);
       });
     });
   });
@@ -224,7 +221,7 @@ describe('select', () => {
         format: 'JSON',
       });
       try {
-        expect(() => result.asStream()).to.throw(
+        expect(() => result.asStream()).toThrowError(
           'JSON format is not streamable'
         );
       } finally {
@@ -250,7 +247,7 @@ describe('select', () => {
           setTimeout(() => stream.resume(), 100);
         }
       }
-      expect(last).to.equal('9999');
+      expect(last).toBe('9999');
     });
 
     describe('text()', () => {
@@ -262,7 +259,7 @@ describe('select', () => {
 
         const rows = await rowsText(result.asStream());
 
-        expect(rows).to.deep.equal(['0', '1', '2', '3', '4']);
+        expect(rows).toEqual(['0', '1', '2', '3', '4']);
       });
 
       it('returns stream of rows in TabSeparated format', async () => {
@@ -273,7 +270,7 @@ describe('select', () => {
 
         const rows = await rowsText(result.asStream());
 
-        expect(rows).to.deep.equal(['0', '1', '2', '3', '4']);
+        expect(rows).toEqual(['0', '1', '2', '3', '4']);
       });
     });
 
@@ -286,7 +283,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream());
 
-        expect(rows).to.deep.equal([
+        expect(rows).toEqual([
           [{ number: '0' }],
           [{ number: '1' }],
           [{ number: '2' }],
@@ -303,7 +300,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream());
 
-        expect(rows).to.deep.equal([
+        expect(rows).toEqual([
           [{ number: '0' }],
           [{ number: '1' }],
           [{ number: '2' }],
@@ -320,13 +317,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream());
 
-        expect(rows).to.deep.equal([
-          [['0']],
-          [['1']],
-          [['2']],
-          [['3']],
-          [['4']],
-        ]);
+        expect(rows).toEqual([[['0']], [['1']], [['2']], [['3']], [['4']]]);
       });
 
       it('returns stream of objects in JSONCompactEachRowWithNames format', async () => {
@@ -337,7 +328,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream());
 
-        expect(rows).to.deep.equal([
+        expect(rows).toEqual([
           [['number']],
           [['0']],
           [['1']],
@@ -355,7 +346,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream());
 
-        expect(rows).to.deep.equal([
+        expect(rows).toEqual([
           [['number']],
           [['UInt64']],
           [['0']],
@@ -374,7 +365,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream());
 
-        expect(rows).to.deep.equal([
+        expect(rows).toEqual([
           [['number']],
           [['0']],
           [['1']],
@@ -392,7 +383,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream());
 
-        expect(rows).to.deep.equal([
+        expect(rows).toEqual([
           [['number']],
           [['UInt64']],
           [['0']],

@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import { type ClickHouseClient } from '../../src';
 import { createTestClient } from '../utils';
 
@@ -26,6 +25,6 @@ describe('response compression', () => {
 
     const response = await rows.json<{ number: string }[]>();
     const last = response[response.length - 1];
-    expect(last.number).to.equal('19999');
+    expect(last.number).toBe('19999');
   });
 });

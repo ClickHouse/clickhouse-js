@@ -1,9 +1,8 @@
-import { expect } from 'chai';
 import { validateSelectQuery, createClient } from '../../src/client';
 
 describe('createClient', () => {
   it('throws on incorrect "host" config value', () => {
-    expect(() => createClient({ host: 'foo' })).to.throw(
+    expect(() => createClient({ host: 'foo' })).toThrowError(
       'Configuration parameter "host" contains malformed url.'
     );
   });
@@ -13,7 +12,7 @@ describe('validateSelectQuery', () => {
   it('throws on a query containing FORMAT clause', () => {
     expect(() =>
       validateSelectQuery('select * from table format JSON')
-    ).to.throw(
+    ).toThrowError(
       'Specifying format is not supported, use "format" parameter instead.'
     );
   });
@@ -21,12 +20,12 @@ describe('validateSelectQuery', () => {
   it('does not throw on a "format" column name', () => {
     expect(() =>
       validateSelectQuery('select format from my_table')
-    ).not.to.throw();
+    ).not.toThrowError();
   });
 
   it('does not throw on a query without "format" word', () => {
     expect(() =>
       validateSelectQuery('select * from my_format limit 1')
-    ).not.to.throw();
+    ).not.toThrowError();
   });
 });

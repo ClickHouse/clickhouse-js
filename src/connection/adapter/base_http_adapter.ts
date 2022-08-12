@@ -92,7 +92,7 @@ function isDecompressionError(result: any): result is { error: Error } {
 
 export abstract class BaseHttpAdapter implements Connection {
   protected readonly headers: Http.OutgoingHttpHeaders;
-  constructor(
+  protected constructor(
     private readonly config: ConnectionParams,
     private readonly logger: Logger,
     protected readonly agent: Http.Agent
@@ -241,7 +241,11 @@ export abstract class BaseHttpAdapter implements Connection {
       this.config.compression.decompress_response
     );
 
-    const searchParams = toSearchParams(settings, params.query_params);
+    const searchParams = toSearchParams(
+      this.config.database,
+      settings,
+      params.query_params
+    );
 
     return await this.request({
       method: 'POST',
@@ -254,6 +258,7 @@ export abstract class BaseHttpAdapter implements Connection {
 
   async command(params: BaseParams): Promise<Stream.Readable> {
     const searchParams = toSearchParams(
+      this.config.database,
       params.clickhouse_settings,
       params.query_params
     );
@@ -268,6 +273,7 @@ export abstract class BaseHttpAdapter implements Connection {
 
   async insert(params: InsertParams): Promise<void> {
     const searchParams = toSearchParams(
+      this.config.database,
       params.clickhouse_settings,
       params.query_params,
       params.query

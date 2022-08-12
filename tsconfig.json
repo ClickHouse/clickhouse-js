@@ -1,36 +1,26 @@
 {
-    "compilerOptions": {
-      "target": "es2019",
-      "module": "commonjs",
-      "moduleResolution": "node",
-      "declaration": false,
-      "pretty": true,
-      "noEmitOnError": true,
-      "strict": true,
-      "resolveJsonModule": true,
-      "removeComments": false,
-      "sourceMap": true,
-      "noUnusedLocals": true,
-      "noFallthroughCasesInSwitch": true,
-      "useDefineForClassFields": true,
-      "forceConsistentCasingInFileNames": true,
-      "skipLibCheck": false,
-      "esModuleInterop": true,
-      "importHelpers": true,
-      "outDir": "lib",
-      "lib": [
-        "esnext",
-        "dom"
-      ],
-      "types": [
-        "node",
-        "mocha"
-      ]
-    },
-    "exclude": [
-      "node_modules"
-    ],
-    "include": [
-      "./src/**/*.ts"
-    ]
-  }
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "declaration": false,
+    "pretty": true,
+    "noEmitOnError": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "removeComments": false,
+    "sourceMap": true,
+    "noUnusedLocals": true,
+    "noFallthroughCasesInSwitch": true,
+    "useDefineForClassFields": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": false,
+    "esModuleInterop": true,
+    "importHelpers": true,
+    "outDir": "lib",
+    "lib": ["esnext", "dom"],
+    "types": ["node", "jest"]
+  },
+  "exclude": ["node_modules"],
+  "include": ["./src/**/*.ts"]
+}

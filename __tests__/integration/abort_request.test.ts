@@ -1,37 +1,16 @@
 import Stream from 'stream';
 import { AbortController } from 'node-abort-controller';
-import { expect } from 'chai';
 import { type ClickHouseClient, type ResponseJSON } from '../../src';
 import { createTable, createTestClient, guid } from '../utils';
 import { TestEnv } from '../utils';
 
-async function assertActiveQueries(
-  client: ClickHouseClient,
-  assertQueries: (queries: Array<{ query: string }>) => boolean
-) {
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const rows = await client.select({
-      query: 'SELECT query FROM system.processes',
-      format: 'JSON',
-    });
-
-    const queries = await rows.json<ResponseJSON<{ query: string }>>();
-
-    if (assertQueries(queries.data)) {
-      break;
-    }
-
-    await new Promise((res) => setTimeout(res, 100));
-  }
-}
-
 describe('abort request', () => {
   let client: ClickHouseClient;
-  before(function () {
-    if (process.env.browser) {
-      this.skip();
-    }
+  beforeAll(function () {
+    // FIXME: Jest does not seem to have it
+    // if (process.env.browser) {
+    //   this.skip();
+    // }
   });
 
   beforeEach(() => {
@@ -43,53 +22,50 @@ describe('abort request', () => {
   });
 
   describe('select', () => {
-    it('cancels a select query before it is sent', (done) => {
+    it('cancels a select query before it is sent', async () => {
       const controller = new AbortController();
-
-      client
-        .select({
-          query: 'SELECT sleep(3)',
-          format: 'CSV',
-          abort_signal: controller.signal as AbortSignal,
-        })
-        .catch((error: Error) => {
-          expect(error.message).to.equal('The request was aborted.');
-          done();
-        });
-
+      const selectPromise = client.select({
+        query: 'SELECT sleep(3)',
+        format: 'CSV',
+        abort_signal: controller.signal as AbortSignal,
+      });
       controller.abort();
+
+      await expect(selectPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('The request was aborted'),
+        })
+      );
     });
 
-    it('cancels a select query after it is sent', (done) => {
+    it('cancels a select query after it is sent', async () => {
       const controller = new AbortController();
-
-      client
-        .select({
-          query: 'SELECT sleep(3)',
-          format: 'CSV',
-          abort_signal: controller.signal as AbortSignal,
-        })
-        .catch((error: Error) => {
-          expect(error.message).to.equal('The request was aborted.');
-          done();
-        });
+      const selectPromise = client.select({
+        query: 'SELECT sleep(3)',
+        format: 'CSV',
+        abort_signal: controller.signal as AbortSignal,
+      });
 
       setTimeout(() => {
         controller.abort();
       }, 50);
+
+      await expect(selectPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('The request was aborted'),
+        })
+      );
     });
 
-    it('cancels a select query while reading response', (done) => {
+    it('cancels a select query while reading response', async () => {
       const controller = new AbortController();
-
-      client
+      const selectPromise = client
         .select({
           query: 'SELECT * from system.numbers',
           format: 'JSONCompactEachRow',
           abort_signal: controller.signal as AbortSignal,
         })
-
-        .then(async function (rows) {
+        .then(async (rows) => {
           const stream = rows.asStream();
           for await (const chunk of stream) {
             const [[number]] = chunk.json();
@@ -98,21 +74,20 @@ describe('abort request', () => {
               controller.abort();
             }
           }
-        })
-        .catch(() => {
-          // There is no assertion against an error message.
-          // A race condition on events might lead to Request Aborted or ERR_STREAM_PREMATURE_CLOSE errors.
-          done();
         });
+
+      // There is no assertion against an error message.
+      // A race condition on events might lead to
+      // Request Aborted or ERR_STREAM_PREMATURE_CLOSE errors.
+      await expect(selectPromise).rejects.toThrowError();
     });
 
-    it('cancels a select query while reading response by closing response stream', (done) => {
-      void client
+    it('cancels a select query while reading response by closing response stream', async () => {
+      const selectPromise = client
         .select({
           query: 'SELECT * from system.numbers',
           format: 'JSONCompactEachRow',
         })
-
         .then(async function (rows) {
           const stream = rows.asStream();
           for await (const chunk of stream) {
@@ -122,8 +97,8 @@ describe('abort request', () => {
               stream.destroy();
             }
           }
-          done();
         });
+      expect(await selectPromise).toEqual(undefined);
     });
 
     // FIXME: it does not work with ClickHouse Cloud.
@@ -133,7 +108,7 @@ describe('abort request', () => {
 
       const longRunningQuery = `SELECT sleep(3), '${guid()}'`;
       console.log(`Long running query: ${longRunningQuery}`);
-      await client.select({
+      void client.select({
         query: longRunningQuery,
         abort_signal: controller.signal as AbortSignal,
         format: 'JSONCompactEachRow',
@@ -184,72 +159,83 @@ describe('abort request', () => {
       });
     });
 
-    it('cancels an insert query before it is sent', (done) => {
+    it('cancels an insert query before it is sent', async () => {
       const controller = new AbortController();
-
-      const stream = new Stream.Readable({
-        objectMode: true,
-        read() {
-          /* stub */
-        },
+      const stream = getStubStream();
+      const insertPromise = client.insert({
+        table: tableName,
+        values: stream,
+        abort_signal: controller.signal as AbortSignal,
       });
-
-      client
-        .insert({
-          table: tableName,
-          values: stream,
-          abort_signal: controller.signal as AbortSignal,
-        })
-        .catch((error: Error & { code?: string }) => {
-          expect(error.message).to.equal('The request was aborted.');
-          done();
-        });
-
       controller.abort();
+
+      await expect(insertPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('The request was aborted'),
+        })
+      );
     });
 
-    it('cancels an insert query before it is sent by closing a stream', (done) => {
-      const stream = new Stream.Readable({
-        objectMode: true,
-        read() {
-          /* stub */
-        },
-      });
-
+    it('cancels an insert query before it is sent by closing a stream', async () => {
+      const stream = getStubStream();
       stream.push(null);
 
-      void client
-        .insert({
+      expect(
+        await client.insert({
           table: tableName,
           values: stream,
         })
-        .then(done);
+      ).toEqual(undefined);
     });
 
-    it('cancels an insert query after it is sent', (done) => {
+    it('cancels an insert query after it is sent', async () => {
       const controller = new AbortController();
-
-      const stream = new Stream.Readable({
-        objectMode: true,
-        read() {
-          /* stub */
-        },
+      const stream = getStubStream();
+      const insertPromise = client.insert({
+        table: tableName,
+        values: stream,
+        abort_signal: controller.signal as AbortSignal,
       });
-
-      client
-        .insert({
-          table: tableName,
-          values: stream,
-          abort_signal: controller.signal as AbortSignal,
-        })
-        .catch((error: Error) => {
-          expect(error.message).to.equal('The request was aborted.');
-          done();
-        });
 
       setTimeout(() => {
         controller.abort();
       }, 50);
+
+      await expect(insertPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('The request was aborted'),
+        })
+      );
     });
   });
 });
+
+async function assertActiveQueries(
+  client: ClickHouseClient,
+  assertQueries: (queries: Array<{ query: string }>) => boolean
+) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const rows = await client.select({
+      query: 'SELECT query FROM system.processes',
+      format: 'JSON',
+    });
+
+    const queries = await rows.json<ResponseJSON<{ query: string }>>();
+
+    if (assertQueries(queries.data)) {
+      break;
+    }
+
+    await new Promise((res) => setTimeout(res, 100));
+  }
+}
+
+function getStubStream(): Stream.Readable {
+  return new Stream.Readable({
+    objectMode: true,
+    read() {
+      /* stub */
+    },
+  });
+}

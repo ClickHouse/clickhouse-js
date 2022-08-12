@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import type { ResponseJSON } from '../../src';
 import { type ClickHouseClient } from '../../src';
 import Stream from 'stream';
@@ -6,10 +5,11 @@ import { createTable, createTestClient, guid } from '../utils';
 import { TestEnv } from '../utils';
 
 describe('insert stream', () => {
-  before(function () {
-    if (process.env.browser) {
-      this.skip();
-    }
+  beforeAll(function () {
+    // FIXME: Jest does not seem to have it
+    // if (process.env.browser) {
+    //   this.skip();
+    // }
   });
 
   let client: ClickHouseClient;
@@ -70,7 +70,7 @@ describe('insert stream', () => {
     });
 
     const result = await Rows.json<ResponseJSON>();
-    expect(result).to.deep.equal([
+    expect(result).toEqual([
       { id: '42', name: 'hello', sku: [0, 1] },
       { id: '43', name: 'world', sku: [3, 4] },
     ]);
@@ -104,11 +104,11 @@ describe('insert stream', () => {
       },
     });
 
-    expect(closed).to.equal(false);
+    expect(closed).toBe(false);
     await client.insert({
       table: tableName,
       values: stream,
     });
-    expect(closed).to.equal(true);
+    expect(closed).toBe(true);
   });
 });

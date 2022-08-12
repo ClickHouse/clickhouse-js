@@ -1,6 +1,5 @@
-import { expect } from 'chai';
-import { type ClickHouseClient, type ClickHouseError } from '../../src';
-import { createTestClient } from '../utils';
+import { type ClickHouseClient } from '../../src';
+import { createTestClient, getTestDatabaseName } from '../utils';
 
 describe('error', () => {
   let client: ClickHouseClient;
@@ -11,56 +10,51 @@ describe('error', () => {
     await client.close();
   });
 
-  it('returns "unknown identifier" error', (done) => {
-    client
-      .select({
+  it('returns "unknown identifier" error', async () => {
+    await expect(
+      client.select({
         query: 'SELECT number FR',
       })
-      .catch((e: ClickHouseError) => {
-        expect(e.message).to.be.a('string');
-        expect(e.message).to.have.lengthOf.above(0);
-
-        expect(e.code).to.equal('47');
-        expect(e.type).to.equal('UNKNOWN_IDENTIFIER');
-        done();
-      });
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: `Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'. `,
+        code: '47',
+        type: 'UNKNOWN_IDENTIFIER',
+      })
+    );
   });
 
-  it('returns "unknown table" error', (done) => {
-    client
-      .select({
+  it('returns "unknown table" error', async () => {
+    await expect(
+      client.select({
         query: 'SELECT * FROM unknown_table',
       })
-      .catch((e: ClickHouseError) => {
-        expect(e.message).to.be.a('string');
-        expect(e.message).to.match(/unknown_table doesn't exist/);
-        expect(e.message).to.have.lengthOf.above(0);
-
-        expect(e.code).to.equal('60');
-        expect(e.type).to.equal('UNKNOWN_TABLE');
-        done();
-      });
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: `Table ${getTestDatabaseName()}.unknown_table doesn't exist. `,
+        code: '60',
+        type: 'UNKNOWN_TABLE',
+      })
+    );
   });
 
-  it('returns "syntax error" error', (done) => {
-    client
-      .select({
+  it('returns "syntax error" error', async () => {
+    await expect(
+      client.select({
         query: 'SELECT * FRON unknown_table',
       })
-      .catch((e: ClickHouseError) => {
-        expect(e.message).to.be.a('string');
-        expect(e.message).to.match(/failed at position/);
-        expect(e.message).to.have.lengthOf.above(0);
-
-        expect(e.code).to.equal('62');
-        expect(e.type).to.equal('SYNTAX_ERROR');
-        done();
-      });
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('Syntax error: failed at position'),
+        code: '62',
+        type: 'SYNTAX_ERROR',
+      })
+    );
   });
 
-  it('returns "syntax error" error in a multiline query', (done) => {
-    client
-      .select({
+  it('returns "syntax error" error in a multiline query', async () => {
+    await expect(
+      client.select({
         query: `
         SELECT *
         /* This is:
@@ -69,14 +63,12 @@ describe('error', () => {
         FRON unknown_table
         `,
       })
-      .catch((e: ClickHouseError) => {
-        expect(e.message).to.be.a('string');
-        expect(e.message).to.match(/failed at position/);
-        expect(e.message).to.have.lengthOf.above(0);
-
-        expect(e.code).to.equal('62');
-        expect(e.type).to.equal('SYNTAX_ERROR');
-        done();
-      });
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('Syntax error: failed at position'),
+        code: '62',
+        type: 'SYNTAX_ERROR',
+      })
+    );
   });
 });
