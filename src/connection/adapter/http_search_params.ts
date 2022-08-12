@@ -1,7 +1,7 @@
 import { type ClickHouseSettings } from '../../clickhouse_types';
 import { formatQueryParams, formatQuerySettings } from '../../data_formatter/';
 
-export type ToSearchParamsOptions = {
+type ToSearchParamsOptions = {
   database: string;
   clickhouse_settings?: ClickHouseSettings;
   query_params?: Record<string, unknown>;
