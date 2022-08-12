@@ -4,7 +4,7 @@ import Util from 'util';
 import Zlib from 'zlib';
 import { ConnectionParams } from '../../src/connection';
 import { HttpAdapter } from '../../src/connection/adapter';
-import { TestLogger } from '../utils';
+import { retryOnFailure, TestLogger } from '../utils';
 import { getAsText } from '../../src/utils';
 
 describe('HttpAdapter', () => {
@@ -164,7 +164,7 @@ describe('HttpAdapter', () => {
     });
 
     describe('request compression', () => {
-      it('sends a compressed request if compress_request: true', (done) => {
+      it('sends a compressed request if compress_request: true', async () => {
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: false,
@@ -175,6 +175,7 @@ describe('HttpAdapter', () => {
         const values = 'abc'.repeat(1_000);
 
         let chunks = Buffer.alloc(0);
+        let finalResult: Buffer | undefined = undefined;
         const request = new Stream.Writable({
           write(chunk, encoding, next) {
             chunks = Buffer.concat([chunks, chunk]);
@@ -182,8 +183,7 @@ describe('HttpAdapter', () => {
           },
           final() {
             Zlib.unzip(chunks, (err, result) => {
-              expect(result.toString('utf8')).toBe(values);
-              done();
+              finalResult = result;
             });
           },
         }) as ClientRequest;
@@ -195,6 +195,9 @@ describe('HttpAdapter', () => {
           values,
         });
 
+        await retryOnFailure(async () => {
+          expect(finalResult!.toString('utf8')).toEqual(values);
+        });
         assertStub('gzip');
       });
 

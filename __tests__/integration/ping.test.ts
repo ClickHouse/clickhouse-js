@@ -13,14 +13,13 @@ describe('ping', () => {
     expect(response).toBe(true);
   });
 
-  it('does not swallow a client error', (done) => {
+  it('does not swallow a client error', async () => {
     client = createTestClient({
       host: 'http://localhost:3333',
     });
 
-    client.ping().catch((e) => {
-      expect(typeof e.message).toBe('string');
-      done();
-    });
+    await expect(client.ping()).rejects.toEqual(
+      expect.objectContaining({ code: 'ECONNREFUSED' })
+    );
   });
 });

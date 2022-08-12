@@ -6,6 +6,7 @@ module.exports = {
   clearMocks: true,
   collectCoverageFrom: ['<rootDir>/src/**/*.ts'],
   transform: tsjPreset.transform,
+  testTimeout: 30000,
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.eslint.json',

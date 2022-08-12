@@ -4,3 +4,4 @@ export { createTestClient, createRandomDatabase, createTable } from './client';
 export { guid } from './guid';
 export { getClickHouseTestEnvironment } from './test_env';
 export { TestEnv } from './test_env';
+export { retryOnFailure } from './retry';

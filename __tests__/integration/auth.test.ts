@@ -7,21 +7,22 @@ describe('authentication', () => {
     await client.close();
   });
 
-  it('provides authentication error details', (done) => {
+  it('provides authentication error details', async () => {
     client = createTestClient({
       username: 'gibberish',
       password: 'gibberish',
     });
 
-    client
-      .select({
+    await expect(
+      client.select({
         query: 'SELECT number FROM system.numbers LIMIT 3',
       })
-      .catch((e) => {
-        expect(e.code).toBe('516');
-        expect(e.type).toBe('AUTHENTICATION_FAILED');
-        expect(e.message).toMatch(/Authentication failed/i);
-        done();
-      });
+    ).rejects.toEqual(
+      expect.objectContaining({
+        code: '516',
+        type: 'AUTHENTICATION_FAILED',
+        message: expect.stringMatching('Authentication failed'),
+      })
+    );
   });
 });
