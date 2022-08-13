@@ -20,7 +20,7 @@ export const Str = {
   render(): string {
     return 'String';
   },
-} as Str & Render;
+} as Str;
 
 export type Bool = Brand<string, 'Bool'> & {
   underlying: boolean;
@@ -37,7 +37,7 @@ export type Arr<T extends ClickHousePrimitiveType> = Brand<
 > & {
   underlying: Array<T['underlying']>;
 } & Render;
-export const Arr = <T extends ClickHousePrimitiveType>(inner: T & Render) =>
+export const Arr = <T extends ClickHousePrimitiveType>(inner: T) =>
   ({
     render(): string {
       return `Array(${inner.render()})`;
@@ -50,9 +50,7 @@ export type Nullable<T extends ClickHousePrimitiveType> = Brand<
 > & {
   underlying: T['underlying'] | null;
 } & Render;
-export const Nullable = <T extends ClickHousePrimitiveType>(
-  inner: T & Render
-) =>
+export const Nullable = <T extends ClickHousePrimitiveType>(inner: T) =>
   ({
     render(): string {
       return `Nullable(${inner.render()})`;
