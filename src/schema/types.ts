@@ -1,65 +1,73 @@
+/* eslint-disable @typescript-eslint/ban-types */
 import { Brand } from 'utility-types';
 
-interface Render {
-  render(): string;
-}
+// TODO: rest of the types
+
+export type Primitive = Bool | String | UInt8;
+export type Type = Primitive | Array<any> | Nullable<Primitive> | Map<any, any>;
 
 export type UInt8 = Brand<number, 'UInt8'> & {
   underlying: number;
-} & Render;
+};
 export const UInt8 = {
-  render(): string {
+  toString(): string {
     return 'UInt8';
   },
 } as UInt8;
 
-export type Str = Brand<string, 'String'> & {
+export type String = Brand<string, 'String'> & {
   underlying: string;
-} & Render;
-export const Str = {
-  render(): string {
+};
+export const String = {
+  toString(): string {
     return 'String';
   },
-} as Str;
+} as String;
 
 export type Bool = Brand<string, 'Bool'> & {
   underlying: boolean;
-} & Render;
+};
 export const Bool = {
-  render(): string {
+  toString(): string {
     return 'Bool';
   },
 } as Bool;
 
-export type Arr<T extends ClickHousePrimitiveType> = Brand<
-  Array<T['underlying']>,
+export type Array<T extends Primitive> = Brand<
+  globalThis.Array<T['underlying']>,
   'Array'
 > & {
-  underlying: Array<T['underlying']>;
-} & Render;
-export const Arr = <T extends ClickHousePrimitiveType>(inner: T) =>
+  underlying: globalThis.Array<T['underlying']>;
+};
+export const Array = <T extends Primitive>(inner: T) =>
   ({
-    render(): string {
-      return `Array(${inner.render()})`;
+    toString(): string {
+      return `Array(${inner.toString()})`;
     },
-  } as Arr<T>);
+  } as Array<T>);
 
-export type Nullable<T extends ClickHousePrimitiveType> = Brand<
+export type Nullable<T extends Primitive> = Brand<
   T['underlying'] | null,
   'Nullable'
 > & {
   underlying: T['underlying'] | null;
-} & Render;
-export const Nullable = <T extends ClickHousePrimitiveType>(inner: T) =>
+};
+export const Nullable = <T extends Primitive>(inner: T) =>
   ({
-    render(): string {
-      return `Nullable(${inner.render()})`;
+    toString(): string {
+      return `Nullable(${inner.toString()})`;
     },
   } as Nullable<T>);
 
-export type ClickHousePrimitiveType = Bool | Str | UInt8;
-
-export type ClickHouseType =
-  | ClickHousePrimitiveType
-  | Arr<ClickHousePrimitiveType>
-  | Nullable<ClickHousePrimitiveType>;
+export type Map<K extends Primitive, V extends Type> = Brand<
+  globalThis.Map<K['underlying'], V['underlying']>,
+  'Map'
+> & {
+  underlying: globalThis.Map<K['underlying'], V['underlying']>;
+};
+export const Map = <K extends Primitive, V extends Type>(k: K, v: V) =>
+  ({
+    toString(): string {
+      return `Map(${k.toString()}, ${v.toString()})`;
+    },
+  } as Map<K, V>);

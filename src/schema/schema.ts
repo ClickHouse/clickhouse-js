@@ -1,26 +1,14 @@
-import { ClickHouseType } from './types';
-
-type Shape = {
-  [key: string]: ClickHouseType;
-};
-
-type ClickHouseEngine = 'MergeTree' | 'ReplacingMergeTree';
+import { Shape } from './common';
 
 export class Schema<S extends Shape> {
-  constructor(
-    private readonly tableName: string,
-    private readonly engine: ClickHouseEngine,
-    public readonly shape: S
-  ) {}
+  constructor(public readonly shape: S) {}
 
-  testCreateTableRender(): string {
-    let result = `CREATE TABLE ${this.tableName} (\n`;
-    result += Object.entries(this.shape)
-      .map(([k, v]) => `  ${k} ${v.render()}`)
-      .join(',\n');
-    result += '\n)\n';
-    result += `ENGINE ${this.engine}`;
-    return result;
+  toString(): string;
+  toString(delimiter?: string): string;
+  toString(delimiter?: string): string {
+    return Object.entries(this.shape)
+      .map(([column, type]) => `${column} ${type.toString()}`)
+      .join(delimiter ?? ', ');
   }
 }
 
