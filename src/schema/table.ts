@@ -59,7 +59,7 @@ export class Table<S extends Shape> {
   // TODO: better types
   async create(options: CreateTableOptions<S>): Promise<unknown> {
     const query = QueryFormatter.createTable(this.options, options);
-    return (await this.client.command({ query })).json();
+    return (await this.client.command({ query })).text();
   }
 
   insert({
