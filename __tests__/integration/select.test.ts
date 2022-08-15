@@ -1,31 +1,31 @@
-import Stream from 'stream';
-import { type ClickHouseClient, type ResponseJSON, type Row } from '../../src';
-import { createTestClient } from '../utils';
+import Stream from 'stream'
+import { type ClickHouseClient, type ResponseJSON, type Row } from '../../src'
+import { createTestClient } from '../utils'
 
 async function rowsValues(stream: Stream.Readable): Promise<any[]> {
-  const result: any[] = [];
+  const result: any[] = []
   for await (const chunk of stream) {
-    result.push((chunk as Row).json());
+    result.push((chunk as Row).json())
   }
-  return result;
+  return result
 }
 
 async function rowsText(stream: Stream.Readable): Promise<string[]> {
-  const result: string[] = [];
+  const result: string[] = []
   for await (const chunk of stream) {
-    result.push((chunk as Row).text());
+    result.push((chunk as Row).text())
   }
-  return result;
+  return result
 }
 
 describe('select', () => {
-  let client: ClickHouseClient;
+  let client: ClickHouseClient
   afterEach(async () => {
-    await client.close();
-  });
+    await client.close()
+  })
   beforeEach(async () => {
-    client = createTestClient();
-  });
+    client = createTestClient()
+  })
 
   it('can send a multiline query', async () => {
     const rows = await client.select({
@@ -35,11 +35,11 @@ describe('select', () => {
         LIMIT 2
       `,
       format: 'CSV',
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe('0\n1\n');
-  });
+    const response = await rows.text()
+    expect(response).toBe('0\n1\n')
+  })
 
   it('can send a query with an inline comment', async () => {
     const rows = await client.select({
@@ -50,11 +50,11 @@ describe('select', () => {
         LIMIT 2
       `,
       format: 'CSV',
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe('0\n1\n');
-  });
+    const response = await rows.text()
+    expect(response).toBe('0\n1\n')
+  })
 
   it('can send a query with a multiline comment', async () => {
     const rows = await client.select({
@@ -67,11 +67,11 @@ describe('select', () => {
         LIMIT 2
       `,
       format: 'CSV',
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe('0\n1\n');
-  });
+    const response = await rows.text()
+    expect(response).toBe('0\n1\n')
+  })
 
   it('can send a query with a trailing comment', async () => {
     const rows = await client.select({
@@ -81,11 +81,11 @@ describe('select', () => {
         LIMIT 2
         -- comment`,
       format: 'JSON',
-    });
+    })
 
-    const response = await rows.json<ResponseJSON<{ number: string }>>();
-    expect(response.data).toEqual([{ number: '0' }, { number: '1' }]);
-  });
+    const response = await rows.json<ResponseJSON<{ number: string }>>()
+    expect(response.data).toEqual([{ number: '0' }, { number: '1' }])
+  })
 
   it('can specify settings in select', async () => {
     const rows = await client.select({
@@ -94,19 +94,19 @@ describe('select', () => {
       clickhouse_settings: {
         limit: 2,
       },
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe('0\n1\n');
-  });
+    const response = await rows.text()
+    expect(response).toBe('0\n1\n')
+  })
 
   it('does not swallow a client error', async () => {
     await expect(client.select({ query: 'SELECT number FR' })).rejects.toEqual(
       expect.objectContaining({
         type: 'UNKNOWN_IDENTIFIER',
       })
-    );
-  });
+    )
+  })
 
   it('returns an error details provided by ClickHouse', async () => {
     await expect(client.select({ query: ';' })).rejects.toEqual(
@@ -115,8 +115,8 @@ describe('select', () => {
         code: '62',
         type: 'SYNTAX_ERROR',
       })
-    );
-  });
+    )
+  })
 
   describe('select result', () => {
     describe('text()', function () {
@@ -124,72 +124,72 @@ describe('select', () => {
         const Rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 3',
           format: 'CSV',
-        });
+        })
 
-        expect(await Rows.text()).toBe('0\n1\n2\n');
-      });
+        expect(await Rows.text()).toBe('0\n1\n2\n')
+      })
       it('returns values from SELECT query in specified format', async () => {
         const Rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 3',
           format: 'JSONEachRow',
-        });
+        })
 
         expect(await Rows.text()).toBe(
           '{"number":"0"}\n{"number":"1"}\n{"number":"2"}\n'
-        );
-      });
-    });
+        )
+      })
+    })
 
     describe('json()', () => {
       it('returns an array of values in data property', async () => {
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
-        });
+        })
 
         const { data: nums } = await rows.json<
           ResponseJSON<{ number: string }>
-        >();
-        expect(Array.isArray(nums)).toBe(true);
-        expect(nums).toHaveLength(5);
-        const values = nums.map((i) => i.number);
-        expect(values).toEqual(['0', '1', '2', '3', '4']);
-      });
+        >()
+        expect(Array.isArray(nums)).toBe(true)
+        expect(nums).toHaveLength(5)
+        const values = nums.map((i) => i.number)
+        expect(values).toEqual(['0', '1', '2', '3', '4'])
+      })
 
       it('returns columns data in response', async () => {
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
-        });
+        })
 
-        const { meta } = await rows.json<ResponseJSON<{ number: string }>>();
+        const { meta } = await rows.json<ResponseJSON<{ number: string }>>()
 
-        expect(meta?.length).toBe(1);
-        const column = meta ? meta[0] : undefined;
+        expect(meta?.length).toBe(1)
+        const column = meta ? meta[0] : undefined
         expect(column).toEqual({
           name: 'number',
           type: 'UInt64',
-        });
-      });
+        })
+      })
 
       it('returns number of rows in response', async () => {
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
-        });
+        })
 
-        const response = await rows.json<ResponseJSON<{ number: string }>>();
+        const response = await rows.json<ResponseJSON<{ number: string }>>()
 
-        expect(response.rows).toBe(5);
-      });
+        expect(response.rows).toBe(5)
+      })
 
       it('returns statistics in response', async () => {
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
-        });
+        })
 
-        const response = await rows.json<ResponseJSON<{ number: string }>>();
+        const response = await rows.json<ResponseJSON<{ number: string }>>()
         expect(response).toEqual(
           expect.objectContaining({
             statistics: {
@@ -198,90 +198,90 @@ describe('select', () => {
               bytes_read: expect.any(Number),
             },
           })
-        );
-      });
+        )
+      })
 
       it.skip('returns queryId in response', async () => {
         const rows = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
-        });
+        })
 
-        const response = await rows.json<ResponseJSON<{ number: string }>>();
+        const response = await rows.json<ResponseJSON<{ number: string }>>()
 
-        expect(response.query_id).toBeInstanceOf(Number);
-      });
-    });
-  });
+        expect(response.query_id).toBeInstanceOf(Number)
+      })
+    })
+  })
 
   describe('select result asStream()', () => {
     it('throws an exception if format is not stream-able', async () => {
       const result = await client.select({
         query: 'SELECT number FROM system.numbers LIMIT 5',
         format: 'JSON',
-      });
+      })
       try {
         expect(() => result.asStream()).toThrowError(
           'JSON format is not streamable'
-        );
+        )
       } finally {
-        result.close();
+        result.close()
       }
-    });
+    })
 
     it('can pause response stream', async () => {
       const result = await client.select({
         query: 'SELECT number FROM system.numbers LIMIT 10000',
         format: 'CSV',
-      });
+      })
 
-      const stream = result.asStream();
+      const stream = result.asStream()
 
-      let last = null;
-      let i = 0;
+      let last = null
+      let i = 0
       for await (const chunk of stream) {
-        last = chunk.text();
-        i++;
+        last = chunk.text()
+        i++
         if (i % 1000 === 0) {
-          stream.pause();
-          setTimeout(() => stream.resume(), 100);
+          stream.pause()
+          setTimeout(() => stream.resume(), 100)
         }
       }
-      expect(last).toBe('9999');
-    });
+      expect(last).toBe('9999')
+    })
 
     describe('text()', () => {
       it('returns stream of rows in CSV format', async () => {
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'CSV',
-        });
+        })
 
-        const rows = await rowsText(result.asStream());
+        const rows = await rowsText(result.asStream())
 
-        expect(rows).toEqual(['0', '1', '2', '3', '4']);
-      });
+        expect(rows).toEqual(['0', '1', '2', '3', '4'])
+      })
 
       it('returns stream of rows in TabSeparated format', async () => {
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'TabSeparated',
-        });
+        })
 
-        const rows = await rowsText(result.asStream());
+        const rows = await rowsText(result.asStream())
 
-        expect(rows).toEqual(['0', '1', '2', '3', '4']);
-      });
-    });
+        expect(rows).toEqual(['0', '1', '2', '3', '4'])
+      })
+    })
 
     describe('json()', () => {
       it('returns stream of objects in JSONEachRow format', async () => {
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONEachRow',
-        });
+        })
 
-        const rows = await rowsValues(result.asStream());
+        const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
           [{ number: '0' }],
@@ -289,16 +289,16 @@ describe('select', () => {
           [{ number: '2' }],
           [{ number: '3' }],
           [{ number: '4' }],
-        ]);
-      });
+        ])
+      })
 
       it('returns stream of objects in JSONStringsEachRow format', async () => {
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONStringsEachRow',
-        });
+        })
 
-        const rows = await rowsValues(result.asStream());
+        const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
           [{ number: '0' }],
@@ -306,27 +306,27 @@ describe('select', () => {
           [{ number: '2' }],
           [{ number: '3' }],
           [{ number: '4' }],
-        ]);
-      });
+        ])
+      })
 
       it('returns stream of objects in JSONCompactEachRow format', async () => {
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactEachRow',
-        });
+        })
 
-        const rows = await rowsValues(result.asStream());
+        const rows = await rowsValues(result.asStream())
 
-        expect(rows).toEqual([[['0']], [['1']], [['2']], [['3']], [['4']]]);
-      });
+        expect(rows).toEqual([[['0']], [['1']], [['2']], [['3']], [['4']]])
+      })
 
       it('returns stream of objects in JSONCompactEachRowWithNames format', async () => {
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactEachRowWithNames',
-        });
+        })
 
-        const rows = await rowsValues(result.asStream());
+        const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
           [['number']],
@@ -335,16 +335,16 @@ describe('select', () => {
           [['2']],
           [['3']],
           [['4']],
-        ]);
-      });
+        ])
+      })
 
       it('returns stream of objects in JSONCompactEachRowWithNamesAndTypes format', async () => {
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactEachRowWithNamesAndTypes',
-        });
+        })
 
-        const rows = await rowsValues(result.asStream());
+        const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
           [['number']],
@@ -354,16 +354,16 @@ describe('select', () => {
           [['2']],
           [['3']],
           [['4']],
-        ]);
-      });
+        ])
+      })
 
       it('returns stream of objects in JSONCompactStringsEachRowWithNames format', async () => {
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactStringsEachRowWithNames',
-        });
+        })
 
-        const rows = await rowsValues(result.asStream());
+        const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
           [['number']],
@@ -372,16 +372,16 @@ describe('select', () => {
           [['2']],
           [['3']],
           [['4']],
-        ]);
-      });
+        ])
+      })
 
       it('returns stream of objects in JSONCompactStringsEachRowWithNamesAndTypes format', async () => {
         const result = await client.select({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactStringsEachRowWithNamesAndTypes',
-        });
+        })
 
-        const rows = await rowsValues(result.asStream());
+        const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
           [['number']],
@@ -391,8 +391,8 @@ describe('select', () => {
           [['2']],
           [['3']],
           [['4']],
-        ]);
-      });
-    });
-  });
-});
+        ])
+      })
+    })
+  })
+})

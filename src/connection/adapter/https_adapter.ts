@@ -1,16 +1,16 @@
-import { BaseHttpAdapter, RequestParams } from './base_http_adapter';
-import { Connection, ConnectionParams } from '../connection';
-import { Logger } from '../../logger';
-import Https from 'https';
-import Http from 'http';
+import { BaseHttpAdapter, RequestParams } from './base_http_adapter'
+import { Connection, ConnectionParams } from '../connection'
+import { Logger } from '../../logger'
+import Https from 'https'
+import Http from 'http'
 
 export class HttpsAdapter extends BaseHttpAdapter implements Connection {
   constructor(config: ConnectionParams, logger: Logger) {
     const agent = new Https.Agent({
       keepAlive: true,
       timeout: config.request_timeout,
-    });
-    super(config, logger, agent);
+    })
+    super(config, logger, agent)
   }
 
   protected createClientRequest(
@@ -21,6 +21,6 @@ export class HttpsAdapter extends BaseHttpAdapter implements Connection {
       method: params.method,
       agent: this.agent,
       headers: this.getHeaders(params),
-    });
+    })
   }
 }

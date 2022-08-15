@@ -9,8 +9,8 @@ const supportedFormats = [
   'JSONCompactStringsEachRowWithNamesAndTypes',
   'CSV',
   'TabSeparated',
-] as const;
-export type DataFormat = typeof supportedFormats[number];
+] as const
+export type DataFormat = typeof supportedFormats[number]
 
 const streamableJSONFormats = [
   'JSONEachRow',
@@ -20,8 +20,8 @@ const streamableJSONFormats = [
   'JSONCompactEachRowWithNamesAndTypes',
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
-] as const;
-type StreamableJsonDataFormat = typeof streamableJSONFormats[number];
+] as const
+type StreamableJsonDataFormat = typeof streamableJSONFormats[number]
 
 // TODO add others formats
 const streamableFormat = [
@@ -29,14 +29,14 @@ const streamableFormat = [
   'CSV',
   'TabSeparated',
   'CSVWithNamesAndTypes',
-] as const;
-type StreamableDataFormat = typeof streamableFormat[number];
+] as const
+type StreamableDataFormat = typeof streamableFormat[number]
 
 function isStreamableJSONFamily(
   format: DataFormat
 ): format is StreamableJsonDataFormat {
   // @ts-expect-error JSON is not assignable to streamableJSONFormats
-  return streamableJSONFormats.includes(format);
+  return streamableJSONFormats.includes(format)
 }
 
 export function validateStreamFormat(
@@ -47,9 +47,9 @@ export function validateStreamFormat(
       `${format} format is not streamable. Streamable formats: ${streamableFormat.join(
         ','
       )}`
-    );
+    )
   }
-  return true;
+  return true
 }
 
 /**
@@ -59,18 +59,18 @@ export function validateStreamFormat(
  */
 export function decode(text: string, format: DataFormat): any {
   if (format === 'JSON') {
-    return JSON.parse(text);
+    return JSON.parse(text)
   }
   if (isStreamableJSONFamily(format)) {
     return text
       .split('\n')
       .filter(Boolean)
-      .map((l) => decode(l, 'JSON'));
+      .map((l) => decode(l, 'JSON'))
   }
   if (format === 'CSV' || format === 'TabSeparated') {
-    throw new Error(`cannot decode ${format} to JSON`);
+    throw new Error(`cannot decode ${format} to JSON`)
   }
-  throw new Error(`The client does not support [${format}] format decoding.`);
+  throw new Error(`The client does not support [${format}] format decoding.`)
 }
 
 /**
@@ -81,9 +81,7 @@ export function decode(text: string, format: DataFormat): any {
  */
 export function encode(value: any, format: DataFormat): string {
   if (format === 'JSONCompactEachRow') {
-    return JSON.stringify(value) + '\n';
+    return JSON.stringify(value) + '\n'
   }
-  throw new Error(
-    `The client does not support encoding in [${format}] format.`
-  );
+  throw new Error(`The client does not support encoding in [${format}] format.`)
 }
