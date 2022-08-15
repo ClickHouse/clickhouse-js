@@ -79,10 +79,6 @@ describe('schema', () => {
     sku: [3, 4],
   };
 
-  // const compactJson = ({ id, name, sku }: Data) => [id, name, sku];
-  // const decompactJson = ([id, name, sku]: unknown[]) =>
-  //   ({ id, name, sku } as Data);
-
   it('should insert and select data using arrays', async () => {
     const values = [value1, value2];
     await table.insert({

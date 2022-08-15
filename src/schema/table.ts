@@ -3,7 +3,7 @@ import { Schema } from './schema';
 import { Infer, Shape } from './common';
 import { getTableName, QueryFormatter } from './query_formatter';
 import { ClickHouseClient } from '../client';
-import { Row, Rows } from '../result';
+import { Row } from '../result';
 import { WhereExpr } from './where';
 import { InsertStream, SelectResult } from './stream';
 import { ClickHouseSettings } from '../clickhouse_types';
@@ -56,10 +56,10 @@ export class Table<S extends Shape> {
     private readonly options: TableOptions<S>
   ) {}
 
-  create(options: CreateTableOptions<S>): Promise<Rows> {
+  // TODO: better types
+  async create(options: CreateTableOptions<S>): Promise<unknown> {
     const query = QueryFormatter.createTable(this.options, options);
-    // TODO consume Rows into something else?
-    return this.client.command({ query });
+    return (await this.client.command({ query })).json();
   }
 
   insert({
