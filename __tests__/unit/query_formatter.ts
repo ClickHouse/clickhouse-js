@@ -1,8 +1,8 @@
 import * as ch from '../../src/schema';
 import { MergeTree } from '../../src/schema';
-import { QueryRenderer } from '../../src/schema/query_renderer';
+import { QueryFormatter } from '../../src/schema/query_formatter';
 
-describe('QueryRenderer', () => {
+describe('QueryFormatter', () => {
   it('should render a simple CREATE TABLE statement', async () => {
     const schema = new ch.Schema({
       foo: ch.String,
@@ -13,9 +13,12 @@ describe('QueryRenderer', () => {
       schema,
     };
     expect(
-      QueryRenderer.createTable(tableOptions, { engine: MergeTree() })
+      QueryFormatter.createTable(tableOptions, {
+        engine: MergeTree(),
+        orderBy: ['foo'],
+      })
     ).toEqual(
-      'CREATE TABLE my_table (foo String, bar UInt8) ENGINE MergeTree()'
+      'CREATE TABLE my_table (foo String, bar UInt8) ENGINE MergeTree() ORDER BY (foo)'
     );
   });
 
@@ -29,7 +32,7 @@ describe('QueryRenderer', () => {
       schema,
     };
     expect(
-      QueryRenderer.createTable(tableOptions, {
+      QueryFormatter.createTable(tableOptions, {
         engine: MergeTree(),
         ifNotExist: true,
         onCluster: '{cluster}',

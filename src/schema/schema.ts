@@ -11,7 +11,3 @@ export class Schema<S extends Shape> {
       .join(delimiter ?? ', ');
   }
 }
-
-export type Infer<T extends Shape> = {
-  [Key in keyof T]: T[Key]['underlying'];
-};

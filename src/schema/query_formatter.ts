@@ -1,11 +1,12 @@
 import { Shape } from './common';
-import { CreateTableOptions, Infer, TableOptions } from './index';
+import { CreateTableOptions, TableOptions } from './index';
+import { WhereExpr } from './where';
 
-export const QueryRenderer = {
+export const QueryFormatter = {
   // See https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree/#table_engine-mergetree-creating-a-table
   createTable: <S extends Shape>(
     tableOptions: TableOptions<S>,
-    createTableOptions: CreateTableOptions
+    createTableOptions: CreateTableOptions<S>
   ) => {
     const ifNotExist = createTableOptions.ifNotExist ? ' IF NOT EXISTS' : '';
     const tableName = getTableName(tableOptions);
@@ -32,27 +33,23 @@ export const QueryRenderer = {
             .join(', ')}`
         : '';
     return (
-      `CREATE TABLE${ifNotExist}${tableName}${onCluster}${columns}${engine}` +
+      `CREATE TABLE${ifNotExist} ${tableName}${onCluster}${columns}${engine}` +
       `${orderBy}${partitionBy}${primaryKey}${settings}`
     );
   },
 
-  // https://clickhouse.com/docs/en/sql-reference/statements/insert-into
-  insert: <S extends Shape>(
+  // https://clickhouse.com/docs/en/sql-reference/statements/select/
+  select: <S extends Shape>(
     tableOptions: TableOptions<S>,
-    rows: Infer<S>[]
+    whereExpr?: WhereExpr<S>,
+    columns?: Array<keyof S>,
+    orderBy?: Array<keyof S>
   ) => {
     const tableName = getTableName(tableOptions);
-    // FIXME: likely the order of the columns might be off here
-    const values = rows
-      .map((row) => {
-        // Maybe replace with `Object.keys` and a bit uglier code for better performance
-        return `(${Object.entries(row)
-          .map(([, v]) => v)
-          .join(', ')})`;
-      })
-      .join(', ');
-    return `INSERT INTO ${tableName} VALUES ${values}`;
+    const where = whereExpr ? ` WHERE ${whereExpr.toString()}` : '';
+    const cols = columns ? columns.join(', ') : '*';
+    const order = orderBy ? ` ORDER BY ${orderBy?.join(', ')}` : '';
+    return `SELECT ${cols} FROM ${tableName}${where}${order}`;
   },
 };
 
@@ -60,5 +57,5 @@ export function getTableName<S extends Shape>({
   database,
   name,
 }: TableOptions<S>) {
-  return database !== undefined ? ` ${database}.${name}` : ` ${name}`;
+  return database !== undefined ? `${database}.${name}` : name;
 }

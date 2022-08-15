@@ -6,3 +6,7 @@ import { Type } from './types';
 export type Shape = {
   [key: string]: Type;
 };
+
+export type Infer<S extends Shape> = {
+  [Field in keyof S]: S[Field]['underlying'];
+};

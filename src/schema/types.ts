@@ -33,13 +33,13 @@ export const Bool = {
   },
 } as Bool;
 
-export type Array<T extends Primitive> = Brand<
+export type Array<T extends Type> = Brand<
   globalThis.Array<T['underlying']>,
   'Array'
 > & {
   underlying: globalThis.Array<T['underlying']>;
 };
-export const Array = <T extends Primitive>(inner: T) =>
+export const Array = <T extends Type>(inner: T) =>
   ({
     toString(): string {
       return `Array(${inner.toString()})`;

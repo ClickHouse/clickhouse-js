@@ -44,7 +44,7 @@ export const ReplicatedMergeTree: (
   parameters: ReplicatedMergeTreeParameters
 ) => Engine = ({ zoo_path, replica_name, ver }) => ({
   toString: () =>
-    `ReplicatedMergeTree('${zoo_path}', '${replica_name}', ${ver})`,
+    `ReplicatedMergeTree('${zoo_path}', '${replica_name}', ${ver})`, // FIXME ver
   type: 'ReplicatedMergeTree',
 });
 
