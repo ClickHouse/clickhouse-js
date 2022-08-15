@@ -1,5 +1,10 @@
 // See https://clickhouse.com/docs/en/engines/table-engines/
 
+interface Engine {
+  toString(): string;
+  type: 'MergeTree' | 'ReplicatedMergeTree';
+}
+
 export type TableEngine = MergeTreeFamily;
 
 type MergeTreeFamily =
@@ -43,8 +48,10 @@ export interface ReplicatedMergeTreeParameters {
 export const ReplicatedMergeTree: (
   parameters: ReplicatedMergeTreeParameters
 ) => Engine = ({ zoo_path, replica_name, ver }) => ({
-  toString: () =>
-    `ReplicatedMergeTree('${zoo_path}', '${replica_name}', ${ver})`, // FIXME ver
+  toString: () => {
+    const _ver = ver ? `, ${ver}` : '';
+    return `ReplicatedMergeTree('${zoo_path}', '${replica_name}'${_ver})`;
+  },
   type: 'ReplicatedMergeTree',
 });
 
@@ -93,8 +100,3 @@ export const ReplicatedMergeTree: (
 //     return `CollapsingMergeTree(${this.config_section})`;
 //   }
 // }
-
-interface Engine {
-  toString(): string;
-  type: 'MergeTree' | 'ReplicatedMergeTree';
-}

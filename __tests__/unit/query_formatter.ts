@@ -1,5 +1,4 @@
 import * as ch from '../../src/schema';
-import { MergeTree } from '../../src/schema';
 import { QueryFormatter } from '../../src/schema/query_formatter';
 
 describe('QueryFormatter', () => {
@@ -14,7 +13,7 @@ describe('QueryFormatter', () => {
     };
     expect(
       QueryFormatter.createTable(tableOptions, {
-        engine: MergeTree(),
+        engine: ch.MergeTree(),
         orderBy: ['foo'],
       })
     ).toEqual(
@@ -33,7 +32,7 @@ describe('QueryFormatter', () => {
     };
     expect(
       QueryFormatter.createTable(tableOptions, {
-        engine: MergeTree(),
+        engine: ch.MergeTree(),
         ifNotExist: true,
         onCluster: '{cluster}',
         orderBy: ['foo', 'bar'],
