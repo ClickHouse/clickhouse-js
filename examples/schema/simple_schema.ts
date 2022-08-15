@@ -28,17 +28,10 @@ export default async () => {
   });
   await table.insert({
     values: insertStream,
-    // should match the order of the fields in the database
-    compactJson: ({ id, name, externalIds, settings }) => [
-      id,
-      name,
-      externalIds,
-      settings,
-    ],
   });
 
   const selectStream = await table.select();
-  selectStream.onData(({ id }) => {
-    console.log(id);
-  });
+  for await (const value of selectStream.asyncGenerator()) {
+    console.log(value.id);
+  }
 };

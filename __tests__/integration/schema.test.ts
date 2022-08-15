@@ -3,7 +3,6 @@ import {
   createTestClient,
   getClickHouseTestEnvironment,
   guid,
-  retryOnFailure,
   TestEnv,
 } from '../utils';
 
@@ -36,7 +35,7 @@ describe('schema', () => {
       case TestEnv.Cloud:
         await table.create({
           engine: ch.MergeTree(),
-          orderBy: ['id'],
+          order_by: ['id'],
           clickhouse_settings: {
             wait_end_of_query: 1,
           },
@@ -48,8 +47,8 @@ describe('schema', () => {
             zoo_path: '/clickhouse/{cluster}/tables/{database}/{table}/{shard}',
             replica_name: '{replica}',
           }),
-          onCluster: '{cluster}',
-          orderBy: ['id'],
+          on_cluster: '{cluster}',
+          order_by: ['id'],
           clickhouse_settings: {
             wait_end_of_query: 1,
           },
@@ -58,7 +57,7 @@ describe('schema', () => {
       case TestEnv.LocalSingleNode:
         await table.create({
           engine: ch.MergeTree(),
-          orderBy: ['id'],
+          order_by: ['id'],
         });
         break;
     }
@@ -79,13 +78,15 @@ describe('schema', () => {
     name: 'bar',
     sku: [3, 4],
   };
-  const compactJson = ({ id, name, sku }: Data) => [id, name, sku];
+
+  // const compactJson = ({ id, name, sku }: Data) => [id, name, sku];
+  // const decompactJson = ([id, name, sku]: unknown[]) =>
+  //   ({ id, name, sku } as Data);
 
   it('should insert and select data using arrays', async () => {
     const values = [value1, value2];
     await table.insert({
       values,
-      compactJson,
     });
     const result = await (
       await table.select({
@@ -93,28 +94,31 @@ describe('schema', () => {
           output_format_json_quote_64bit_integers: 0,
         },
       })
-    ).asResult();
-    expect(result.data).toEqual(values);
+    ).json();
+    expect(result).toEqual(values);
   });
 
-  it.skip('should insert and select data using streams', async () => {
-    const insertStream = new InsertStream<Data>();
+  it('should insert and select data using streams', async () => {
+    const values = new InsertStream<Data>();
+    values.add(value1);
+    values.add(value2);
+    setTimeout(() => values.complete(), 100);
 
-    insertStream.add(value1);
-    insertStream.add(value2);
-    setTimeout(() => insertStream.complete(), 100);
-    // await table.insert({
-    //   values: insertStream,
-    // });
+    await table.insert({
+      values,
+    });
 
     const result: Data[] = [];
-    const selectStream = await table.select();
-    selectStream.onData((data) => {
-      result.push(data);
+    const selectStream = await table.select({
+      clickhouse_settings: {
+        output_format_json_quote_64bit_integers: 0,
+      },
     });
 
-    await retryOnFailure(async () => {
-      expect(result).toEqual([value1, value2]);
-    });
+    for await (const value of selectStream.asyncGenerator()) {
+      result.push(value);
+    }
+
+    expect(result).toEqual([value1, value2]);
   });
 });

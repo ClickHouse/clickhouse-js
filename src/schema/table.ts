@@ -5,9 +5,11 @@ import { getTableName, QueryFormatter } from './query_formatter';
 import { ClickHouseClient } from '../client';
 import { Row, Rows } from '../result';
 import { WhereExpr } from './where';
-import { InsertStream, SelectStream } from './stream';
+import { InsertStream, SelectResult } from './stream';
 import { ClickHouseSettings } from '../clickhouse_types';
-import { SelectResult } from './result';
+import Stream from 'stream';
+import { mapStream } from '../utils';
+import { compactJson, decompactJson } from './compact';
 
 // TODO: non-empty schema constraint
 export interface TableOptions<S extends Shape> {
@@ -18,11 +20,11 @@ export interface TableOptions<S extends Shape> {
 
 export interface CreateTableOptions<S extends Shape> {
   engine: TableEngine;
-  orderBy: (keyof S)[]; // TODO: functions support
-  ifNotExist?: boolean;
-  onCluster?: string;
-  partitionBy?: (keyof S)[]; // TODO: functions support
-  primaryKey?: (keyof S)[]; // TODO: functions support
+  order_by: (keyof S)[]; // TODO: functions support
+  if_not_exists?: boolean;
+  on_cluster?: string;
+  partition_by?: (keyof S)[]; // TODO: functions support
+  primary_key?: (keyof S)[]; // TODO: functions support
   settings?: MergeTreeSettings; // TODO: more settings and type constraints
   clickhouse_settings?: ClickHouseSettings;
   // TODO: settings now moved to engines; decide whether we need it here
@@ -32,16 +34,18 @@ export interface CreateTableOptions<S extends Shape> {
 }
 
 export interface SelectOptions<S extends Shape> {
+  // decompactJson?: (row: unknown[]) => Infer<S>;
   columns?: (keyof S)[];
   where?: WhereExpr<S>;
-  orderBy?: (keyof S)[];
+  order_by?: (keyof S)[];
   clickhouse_settings?: ClickHouseSettings;
   abort_signal?: AbortSignal;
+  format?: 'JSONCompactEachRow' | 'JSON';
 }
 
 export interface InsertOptions<S extends Shape> {
   values: Infer<S>[] | InsertStream<Infer<S>>;
-  compactJson: (value: Infer<S>) => unknown[];
+  // compactJson?: (value: Infer<S>) => unknown[];
   clickhouse_settings?: ClickHouseSettings;
   abort_signal?: AbortSignal;
 }
@@ -58,34 +62,61 @@ export class Table<S extends Shape> {
     return this.client.command({ query });
   }
 
-  insert(options: InsertOptions<S>): Promise<void> {
+  insert({
+    abort_signal,
+    clickhouse_settings,
+    values,
+  }: InsertOptions<S>): Promise<void> {
     return this.client.insert({
+      clickhouse_settings,
+      abort_signal,
       table: getTableName(this.options),
-      clickhouse_settings: options.clickhouse_settings,
-      abort_signal: options.abort_signal,
-      values: Array.isArray(options.values)
-        ? options.values.map(options.compactJson)
-        : ({} as any), // FIXME add stream pipeline
+      values: Array.isArray(values)
+        ? values.map((value) => compactJson(this.options.schema.shape, value))
+        : Stream.pipeline(
+            values,
+            mapStream((value) => compactJson(this.options.schema.shape, value)),
+            (err) => {
+              if (err) {
+                console.error(err);
+              }
+            }
+          ),
     });
   }
 
-  async select(
-    options: SelectOptions<S> = {}
-  ): Promise<SelectStream<Infer<S>>> {
-    const { columns, where, orderBy } = options;
-    const query = QueryFormatter.select(this.options, where, columns, orderBy);
+  async select({
+    abort_signal,
+    clickhouse_settings,
+    columns,
+    format,
+    order_by,
+    where,
+  }: SelectOptions<S> = {}): Promise<SelectResult<Infer<S>>> {
+    const query = QueryFormatter.select(this.options, where, columns, order_by);
     const rows = await this.client.command({
       query,
-      clickhouse_settings: options.clickhouse_settings,
+      clickhouse_settings,
+      abort_signal,
+      format: format ?? 'JSONCompactEachRow',
     });
+
+    const stream = rows.asStream();
+    const shape = this.options.schema.shape;
+    async function* asyncGenerator() {
+      for await (const row of stream) {
+        yield decompactJson(shape, (row as Row).json()) as Infer<S>;
+      }
+    }
+
     return {
-      onData(cb: (t: Infer<S>) => void): void {
-        rows.asStream().on('data', (row: Row) => {
-          cb(row.json());
-        });
-      },
-      asResult(): Promise<SelectResult<Infer<S>>> {
-        return rows.json();
+      asyncGenerator,
+      json: async () => {
+        const result = [];
+        for await (const value of asyncGenerator()) {
+          result.push(value);
+        }
+        return result;
       },
     };
   }

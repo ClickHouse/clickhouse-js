@@ -1,9 +1,8 @@
 import Stream from 'stream';
-import { SelectResult } from './result';
 
-export interface SelectStream<T> {
-  onData(cb: (data: T) => void): void;
-  asResult(): Promise<SelectResult<T>>;
+export interface SelectResult<T> {
+  asyncGenerator(): AsyncGenerator<T, void>;
+  json(): Promise<T[]>;
 }
 
 export class InsertStream<T> extends Stream.Readable {

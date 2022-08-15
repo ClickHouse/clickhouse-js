@@ -8,21 +8,21 @@ export const QueryFormatter = {
     tableOptions: TableOptions<S>,
     createTableOptions: CreateTableOptions<S>
   ) => {
-    const ifNotExist = createTableOptions.ifNotExist ? ' IF NOT EXISTS' : '';
+    const ifNotExist = createTableOptions.if_not_exists ? ' IF NOT EXISTS' : '';
     const tableName = getTableName(tableOptions);
-    const onCluster = createTableOptions.onCluster
-      ? ` ON CLUSTER '${createTableOptions.onCluster}'`
+    const onCluster = createTableOptions.on_cluster
+      ? ` ON CLUSTER '${createTableOptions.on_cluster}'`
       : '';
     const columns = ` (${tableOptions.schema.toString()})`;
     const engine = ` ENGINE ${createTableOptions.engine}`;
-    const orderBy = createTableOptions.orderBy
-      ? ` ORDER BY (${createTableOptions.orderBy.join(', ')})`
+    const orderBy = createTableOptions.order_by
+      ? ` ORDER BY (${createTableOptions.order_by.join(', ')})`
       : '';
-    const partitionBy = createTableOptions.partitionBy
-      ? ` PARTITION BY (${createTableOptions.partitionBy.join(', ')})`
+    const partitionBy = createTableOptions.partition_by
+      ? ` PARTITION BY (${createTableOptions.partition_by.join(', ')})`
       : '';
-    const primaryKey = createTableOptions.primaryKey
-      ? ` PRIMARY KEY (${createTableOptions.primaryKey.join(', ')})`
+    const primaryKey = createTableOptions.primary_key
+      ? ` PRIMARY KEY (${createTableOptions.primary_key.join(', ')})`
       : '';
     const settings =
       createTableOptions.engine.type === 'MergeTree' &&

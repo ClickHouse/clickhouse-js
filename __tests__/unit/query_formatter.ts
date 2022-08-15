@@ -14,7 +14,7 @@ describe('QueryFormatter', () => {
     expect(
       QueryFormatter.createTable(tableOptions, {
         engine: ch.MergeTree(),
-        orderBy: ['foo'],
+        order_by: ['foo'],
       })
     ).toEqual(
       'CREATE TABLE my_table (foo String, bar UInt8) ENGINE MergeTree() ORDER BY (foo)'
@@ -33,11 +33,11 @@ describe('QueryFormatter', () => {
     expect(
       QueryFormatter.createTable(tableOptions, {
         engine: ch.MergeTree(),
-        ifNotExist: true,
-        onCluster: '{cluster}',
-        orderBy: ['foo', 'bar'],
-        partitionBy: ['foo'],
-        primaryKey: ['bar'],
+        if_not_exists: true,
+        on_cluster: '{cluster}',
+        order_by: ['foo', 'bar'],
+        partition_by: ['foo'],
+        primary_key: ['bar'],
         settings: {
           merge_max_block_size: 16384,
           enable_mixed_granularity_parts: 1,
