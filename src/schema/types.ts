@@ -3,7 +3,7 @@ import { Brand } from 'utility-types';
 
 // TODO: rest of the types
 
-export type Primitive = Bool | String | UInt8;
+export type Primitive = Bool | String | UInt8 | UInt64;
 export type Type = Primitive | Array<any> | Nullable<Primitive> | Map<any, any>;
 
 export type UInt8 = Brand<number, 'UInt8'> & {
@@ -14,6 +14,15 @@ export const UInt8 = {
     return 'UInt8';
   },
 } as UInt8;
+
+export type UInt64 = Brand<number, 'UInt64'> & {
+  underlying: number;
+};
+export const UInt64 = {
+  toString(): string {
+    return 'UInt64';
+  },
+} as UInt64;
 
 export type String = Brand<string, 'String'> & {
   underlying: string;

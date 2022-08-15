@@ -16,7 +16,9 @@ export function createTestClient(
   const env = getClickHouseTestEnvironment();
   const database = process.env[TestDatabaseEnvKey];
   console.log(
-    `Using ${env} test environment to create a Client instance for database ${database}`
+    `Using ${env} test environment to create a Client instance for database ${
+      database || 'default'
+    }`
   );
   const clickHouseSettings: ClickHouseSettings = {};
   if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {

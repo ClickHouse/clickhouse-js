@@ -5,3 +5,4 @@ export * from './engines';
 export * from './common';
 export * from './stream';
 export * from './where';
+export * from './result';

@@ -7,6 +7,7 @@ import { Row, Rows } from '../result';
 import { WhereExpr } from './where';
 import { InsertStream, SelectStream } from './stream';
 import { ClickHouseSettings } from '../clickhouse_types';
+import { SelectResult } from './result';
 
 // TODO: non-empty schema constraint
 export interface TableOptions<S extends Shape> {
@@ -23,6 +24,7 @@ export interface CreateTableOptions<S extends Shape> {
   partitionBy?: (keyof S)[]; // TODO: functions support
   primaryKey?: (keyof S)[]; // TODO: functions support
   settings?: MergeTreeSettings; // TODO: more settings and type constraints
+  clickhouse_settings?: ClickHouseSettings;
   // TODO: settings now moved to engines; decide whether we need it here
   // TODO: index
   // TODO: projections
@@ -39,6 +41,7 @@ export interface SelectOptions<S extends Shape> {
 
 export interface InsertOptions<S extends Shape> {
   values: Infer<S>[] | InsertStream<Infer<S>>;
+  compactJson: (value: Infer<S>) => unknown[];
   clickhouse_settings?: ClickHouseSettings;
   abort_signal?: AbortSignal;
 }
@@ -52,22 +55,28 @@ export class Table<S extends Shape> {
   create(options: CreateTableOptions<S>): Promise<Rows> {
     const query = QueryFormatter.createTable(this.options, options);
     // TODO consume Rows into something else?
-    return this.client.command({ query, format: 'JSONCompactEachRow' });
+    return this.client.command({ query });
   }
 
   insert(options: InsertOptions<S>): Promise<void> {
     return this.client.insert({
       table: getTableName(this.options),
-      ...options,
+      clickhouse_settings: options.clickhouse_settings,
+      abort_signal: options.abort_signal,
+      values: Array.isArray(options.values)
+        ? options.values.map(options.compactJson)
+        : ({} as any), // FIXME add stream pipeline
     });
   }
 
-  async select(options: SelectOptions<S>): Promise<SelectStream<Infer<S>>> {
+  async select(
+    options: SelectOptions<S> = {}
+  ): Promise<SelectStream<Infer<S>>> {
     const { columns, where, orderBy } = options;
     const query = QueryFormatter.select(this.options, where, columns, orderBy);
     const rows = await this.client.command({
       query,
-      format: 'JSONCompactEachRow',
+      clickhouse_settings: options.clickhouse_settings,
     });
     return {
       onData(cb: (t: Infer<S>) => void): void {
@@ -75,7 +84,7 @@ export class Table<S extends Shape> {
           cb(row.json());
         });
       },
-      asArray(): Promise<Infer<S>[]> {
+      asResult(): Promise<SelectResult<Infer<S>>> {
         return rows.json();
       },
     };

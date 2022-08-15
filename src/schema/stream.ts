@@ -1,8 +1,9 @@
 import Stream from 'stream';
+import { SelectResult } from './result';
 
 export interface SelectStream<T> {
   onData(cb: (data: T) => void): void;
-  asArray(): Promise<T[]>;
+  asResult(): Promise<SelectResult<T>>;
 }
 
 export class InsertStream<T> extends Stream.Readable {
@@ -17,7 +18,7 @@ export class InsertStream<T> extends Stream.Readable {
   add(data: T) {
     this.push(data);
   }
-  end(): void {
+  complete(): void {
     this.push(null);
   }
 }

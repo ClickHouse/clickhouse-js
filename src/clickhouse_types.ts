@@ -1,5 +1,6 @@
 // TODO add other settings
 export type ClickHouseSettings = {
+  output_format_json_quote_64bit_integers?: 0 | 1;
   wait_end_of_query?: 0 | 1;
   insert_quorum?: number;
   allow_nondeterministic_mutations?: 0 | 1;
