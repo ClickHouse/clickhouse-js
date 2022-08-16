@@ -105,13 +105,13 @@ describe('schema', () => {
     });
 
     const result: Data[] = [];
-    const selectStream = await table.select({
+    const { asyncGenerator } = await table.select({
       clickhouse_settings: {
         output_format_json_quote_64bit_integers: 0,
       },
     });
 
-    for await (const value of selectStream.asyncGenerator()) {
+    for await (const value of asyncGenerator()) {
       result.push(value);
     }
 

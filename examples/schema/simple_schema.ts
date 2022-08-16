@@ -30,8 +30,8 @@ export default async () => {
     values: insertStream,
   });
 
-  const selectStream = await table.select();
-  for await (const value of selectStream.asyncGenerator()) {
+  const { asyncGenerator } = await table.select();
+  for await (const value of asyncGenerator()) {
     console.log(value.id);
   }
 };
