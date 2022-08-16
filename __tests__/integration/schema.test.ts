@@ -69,12 +69,12 @@ describe('schema', () => {
   });
 
   const value1 = {
-    id: 42,
+    id: '42',
     name: 'foo',
     sku: [1, 2],
   };
   const value2 = {
-    id: 43,
+    id: '43',
     name: 'bar',
     sku: [3, 4],
   };
@@ -84,13 +84,7 @@ describe('schema', () => {
     await table.insert({
       values,
     });
-    const result = await (
-      await table.select({
-        clickhouse_settings: {
-          output_format_json_quote_64bit_integers: 0,
-        },
-      })
-    ).json();
+    const result = await (await table.select()).json();
     expect(result).toEqual(values);
   });
 
@@ -105,11 +99,7 @@ describe('schema', () => {
     });
 
     const result: Data[] = [];
-    const { asyncGenerator } = await table.select({
-      clickhouse_settings: {
-        output_format_json_quote_64bit_integers: 0,
-      },
-    });
+    const { asyncGenerator } = await table.select();
 
     for await (const value of asyncGenerator()) {
       result.push(value);

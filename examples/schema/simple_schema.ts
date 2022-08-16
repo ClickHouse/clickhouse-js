@@ -8,7 +8,7 @@ export default async () => {
   const schema = new ch.Schema({
     id: ch.UInt64,
     name: ch.String,
-    externalIds: ch.Array(ch.UInt64),
+    externalIds: ch.Array(ch.UInt32),
     settings: ch.Map(ch.String, ch.String),
   });
 
@@ -21,7 +21,7 @@ export default async () => {
 
   const insertStream = new InsertStream<Data>();
   insertStream.add({
-    id: 42,
+    id: '42',
     name: 'foo',
     externalIds: [1, 2],
     settings: new Map([['foo', 'bar']]),
