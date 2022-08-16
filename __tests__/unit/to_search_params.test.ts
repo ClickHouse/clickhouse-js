@@ -1,15 +1,15 @@
-import { toSearchParams } from '../../src/connection/adapter/http_search_params';
-import { URLSearchParams } from 'url';
+import { toSearchParams } from '../../src/connection/adapter/http_search_params'
+import { URLSearchParams } from 'url'
 
 describe('toSearchParams', () => {
   it('should return undefined with default settings', async () => {
-    expect(toSearchParams({ database: 'default' })).toBeUndefined();
-  });
+    expect(toSearchParams({ database: 'default' })).toBeUndefined()
+  })
 
   it('should set database', async () => {
-    const params = toSearchParams({ database: 'mydb' })!;
-    expect([...params.entries()]).toEqual([['database', 'mydb']]);
-  });
+    const params = toSearchParams({ database: 'mydb' })!
+    expect([...params.entries()]).toEqual([['database', 'mydb']])
+  })
 
   it('should set ClickHouse settings', async () => {
     const params = toSearchParams({
@@ -19,13 +19,13 @@ describe('toSearchParams', () => {
         distributed_product_mode: 'global',
         limit: 42,
       },
-    })!;
+    })!
     expect(toSortedArray(params)).toEqual([
       ['distributed_product_mode', 'global'],
       ['insert_quorum', '2'],
       ['limit', '42'],
-    ]);
-  });
+    ])
+  })
 
   it('should set query params', async () => {
     const params = toSearchParams({
@@ -35,25 +35,25 @@ describe('toSearchParams', () => {
         bar: true,
         qaz: 'qux',
       },
-    })!;
+    })!
     expect(toSortedArray(params)).toEqual([
       ['param_bar', '1'],
       ['param_foo', '42'],
       ['param_qaz', 'qux'],
-    ]);
-  });
+    ])
+  })
 
   it('should set query', async () => {
-    const query = 'SELECT * FROM system.settings';
+    const query = 'SELECT * FROM system.settings'
     const params = toSearchParams({
       database: 'default',
       query,
-    })!;
-    expect(toSortedArray(params)).toEqual([['query', query]]);
-  });
+    })!
+    expect(toSortedArray(params)).toEqual([['query', query]])
+  })
 
   it('should set everything', async () => {
-    const query = 'SELECT * FROM system.query_log';
+    const query = 'SELECT * FROM system.query_log'
     const params = toSearchParams({
       database: 'some_db',
       clickhouse_settings: {
@@ -65,8 +65,8 @@ describe('toSearchParams', () => {
         qaz: 'qux',
       },
       query,
-    })!;
-    const result = toSortedArray(params);
+    })!
+    const result = toSortedArray(params)
     expect(result).toEqual([
       ['database', 'some_db'],
       ['enable_optimize_predicate_expression', '0'],
@@ -74,12 +74,12 @@ describe('toSearchParams', () => {
       ['param_qaz', 'qux'],
       ['query', 'SELECT * FROM system.query_log'],
       ['wait_end_of_query', '1'],
-    ]);
-  });
-});
+    ])
+  })
+})
 
 function toSortedArray(params: URLSearchParams): [string, string][] {
   return [...params.entries()].sort(([key1], [key2]) =>
     String(key1).localeCompare(String(key2))
-  );
+  )
 }

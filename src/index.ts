@@ -1,9 +1,9 @@
-import { createClient } from './client';
+import { createClient } from './client'
 
-export { createClient };
+export { createClient }
 export default {
   createClient,
-};
+}
 
 export {
   type ClickHouseClientConfigOptions,
@@ -12,16 +12,16 @@ export {
   type SelectParams,
   type CommandParams,
   type InsertParams,
-} from './client';
+} from './client'
 
-export type { Rows, Row } from './result';
-export type { Connection } from './connection';
-export type { DataFormat } from './data_formatter';
-export type { ClickHouseError } from './error';
-export type { Logger } from './logger';
+export type { Rows, Row } from './result'
+export type { Connection } from './connection'
+export type { DataFormat } from './data_formatter'
+export type { ClickHouseError } from './error'
+export type { Logger } from './logger'
 
 export type {
   ResponseJSON,
   DataType,
   ClickHouseSettings,
-} from './clickhouse_types';
+} from './clickhouse_types'

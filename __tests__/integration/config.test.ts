@@ -1,5 +1,5 @@
-import { type ClickHouseClient } from '../../src';
-import { createTestClient } from '../utils';
+import { type ClickHouseClient } from '../../src'
+import { createTestClient } from '../utils'
 
 describe('config', () => {
   beforeAll(function () {
@@ -7,17 +7,17 @@ describe('config', () => {
     // if (process.env.browser) {
     //   this.skip();
     // }
-  });
+  })
 
-  let client: ClickHouseClient;
+  let client: ClickHouseClient
   afterEach(async () => {
-    await client.close();
-  });
+    await client.close()
+  })
 
   it('request_timeout sets request timeout', async () => {
     client = createTestClient({
       request_timeout: 100,
-    });
+    })
 
     await expect(
       client.select({
@@ -27,6 +27,6 @@ describe('config', () => {
       expect.objectContaining({
         message: expect.stringMatching('Timeout error'),
       })
-    );
-  });
-});
+    )
+  })
+})

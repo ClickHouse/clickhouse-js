@@ -1,14 +1,14 @@
-import { type ClickHouseClient } from '../../src';
-import { createTestClient, getTestDatabaseName } from '../utils';
+import { type ClickHouseClient } from '../../src'
+import { createTestClient, getTestDatabaseName } from '../utils'
 
 describe('error', () => {
-  let client: ClickHouseClient;
+  let client: ClickHouseClient
   beforeEach(() => {
-    client = createTestClient();
-  });
+    client = createTestClient()
+  })
   afterEach(async () => {
-    await client.close();
-  });
+    await client.close()
+  })
 
   it('returns "unknown identifier" error', async () => {
     await expect(
@@ -21,8 +21,8 @@ describe('error', () => {
         code: '47',
         type: 'UNKNOWN_IDENTIFIER',
       })
-    );
-  });
+    )
+  })
 
   it('returns "unknown table" error', async () => {
     await expect(
@@ -35,8 +35,8 @@ describe('error', () => {
         code: '60',
         type: 'UNKNOWN_TABLE',
       })
-    );
-  });
+    )
+  })
 
   it('returns "syntax error" error', async () => {
     await expect(
@@ -49,8 +49,8 @@ describe('error', () => {
         code: '62',
         type: 'SYNTAX_ERROR',
       })
-    );
-  });
+    )
+  })
 
   it('returns "syntax error" error in a multiline query', async () => {
     await expect(
@@ -69,6 +69,6 @@ describe('error', () => {
         code: '62',
         type: 'SYNTAX_ERROR',
       })
-    );
-  });
-});
+    )
+  })
+})

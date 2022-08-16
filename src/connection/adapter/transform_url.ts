@@ -3,19 +3,19 @@ export function transformUrl({
   pathname,
   searchParams,
 }: {
-  url: URL;
-  pathname?: string;
-  searchParams?: URLSearchParams;
+  url: URL
+  pathname?: string
+  searchParams?: URLSearchParams
 }): URL {
-  const newUrl = new URL(url);
+  const newUrl = new URL(url)
 
   if (pathname) {
-    newUrl.pathname = pathname;
+    newUrl.pathname = pathname
   }
 
   if (searchParams) {
-    newUrl.search = searchParams?.toString();
+    newUrl.search = searchParams?.toString()
   }
 
-  return newUrl;
+  return newUrl
 }

@@ -1,12 +1,12 @@
-import { type ClickHouseSettings } from '../../clickhouse_types';
-import { formatQueryParams, formatQuerySettings } from '../../data_formatter/';
+import { type ClickHouseSettings } from '../../clickhouse_types'
+import { formatQueryParams, formatQuerySettings } from '../../data_formatter/'
 
 type ToSearchParamsOptions = {
-  database: string;
-  clickhouse_settings?: ClickHouseSettings;
-  query_params?: Record<string, unknown>;
-  query?: string;
-};
+  database: string
+  clickhouse_settings?: ClickHouseSettings
+  query_params?: Record<string, unknown>
+  query?: string
+}
 
 // TODO validate max length of the resulting query
 // https://stackoverflow.com/questions/812925/what-is-the-maximum-possible-length-of-a-query-string
@@ -22,30 +22,30 @@ export function toSearchParams({
     query === undefined &&
     database === 'default'
   ) {
-    return;
+    return
   }
 
-  const params = new URLSearchParams();
+  const params = new URLSearchParams()
 
   if (query_params !== undefined) {
     for (const [key, value] of Object.entries(query_params)) {
-      params.set(`param_${key}`, formatQueryParams(value));
+      params.set(`param_${key}`, formatQueryParams(value))
     }
   }
 
   if (clickhouse_settings !== undefined) {
     for (const [key, value] of Object.entries(clickhouse_settings)) {
-      params.set(key, formatQuerySettings(value));
+      params.set(key, formatQuerySettings(value))
     }
   }
 
   if (database !== 'default') {
-    params.set('database', database);
+    params.set('database', database)
   }
 
   if (query) {
-    params.set('query', query);
+    params.set('query', query)
   }
 
-  return params;
+  return params
 }
