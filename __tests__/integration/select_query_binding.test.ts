@@ -1,14 +1,14 @@
-import { type ClickHouseClient } from '../../src';
-import { createTestClient } from '../utils';
+import { type ClickHouseClient } from '../../src'
+import { createTestClient } from '../utils'
 
 describe('select with query binding', () => {
-  let client: ClickHouseClient;
+  let client: ClickHouseClient
   beforeEach(() => {
-    client = createTestClient();
-  });
+    client = createTestClient()
+  })
   afterEach(async () => {
-    await client.close();
-  });
+    await client.close()
+  })
 
   it('can specify a parameterized query', async () => {
     const rows = await client.select({
@@ -18,11 +18,11 @@ describe('select with query binding', () => {
       query_params: {
         min_limit: 2,
       },
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe('3\n4\n5\n');
-  });
+    const response = await rows.text()
+    expect(response).toBe('3\n4\n5\n')
+  })
 
   it('handles boolean in a parameterized query', async () => {
     const rows1 = await client.select({
@@ -32,9 +32,9 @@ describe('select with query binding', () => {
         val1: true,
         val2: true,
       },
-    });
+    })
 
-    expect(await rows1.text()).toBe('true\n');
+    expect(await rows1.text()).toBe('true\n')
 
     const rows2 = await client.select({
       query: 'SELECT and({val1: Boolean}, {val2: Boolean})',
@@ -43,10 +43,10 @@ describe('select with query binding', () => {
         val1: true,
         val2: false,
       },
-    });
+    })
 
-    expect(await rows2.text()).toBe('false\n');
-  });
+    expect(await rows2.text()).toBe('false\n')
+  })
 
   it('handles numbers in a parameterized query', async () => {
     const rows = await client.select({
@@ -56,10 +56,10 @@ describe('select with query binding', () => {
         val1: 10,
         val2: 20,
       },
-    });
+    })
 
-    expect(await rows.text()).toBe('30\n');
-  });
+    expect(await rows.text()).toBe('30\n')
+  })
 
   it('handles Dates in a parameterized query', async () => {
     const rows = await client.select({
@@ -68,11 +68,11 @@ describe('select with query binding', () => {
       query_params: {
         min_time: new Date(2022, 4, 2),
       },
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe('"2022-05-02 00:00:00"\n');
-  });
+    const response = await rows.text()
+    expect(response).toBe('"2022-05-02 00:00:00"\n')
+  })
 
   it('handles an array of strings in a parameterized query', async () => {
     const rows = await client.select({
@@ -82,11 +82,11 @@ describe('select with query binding', () => {
         arr1: ['1', '2'],
         arr2: ['3', '4'],
       },
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe(`"['1','2','3','4']"\n`);
-  });
+    const response = await rows.text()
+    expect(response).toBe(`"['1','2','3','4']"\n`)
+  })
 
   it('handles an array of numbers in a parameterized query', async () => {
     const rows = await client.select({
@@ -96,11 +96,11 @@ describe('select with query binding', () => {
         arr1: [1, 2],
         arr2: [3, 4],
       },
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe(`"[1,2,3,4]"\n`);
-  });
+    const response = await rows.text()
+    expect(response).toBe(`"[1,2,3,4]"\n`)
+  })
 
   it('escapes strings in a parameterized query', async () => {
     const rows = await client.select({
@@ -110,11 +110,11 @@ describe('select with query binding', () => {
         str1: "co'n",
         str2: "ca't",
       },
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe('"co\'nca\'t"\n');
-  });
+    const response = await rows.text()
+    expect(response).toBe('"co\'nca\'t"\n')
+  })
 
   it('handles an object a parameterized query', async () => {
     const rows = await client.select({
@@ -123,9 +123,9 @@ describe('select with query binding', () => {
       query_params: {
         obj: { id: 42 },
       },
-    });
+    })
 
-    const response = await rows.text();
-    expect(response).toBe(`"['id']"\n`);
-  });
-});
+    const response = await rows.text()
+    expect(response).toBe(`"['id']"\n`)
+  })
+})

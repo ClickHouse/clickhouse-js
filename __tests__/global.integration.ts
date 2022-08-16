@@ -1,1 +1,1 @@
-export const TestDatabaseEnvKey = 'CLICKHOUSE_TEST_DATABASE';
+export const TestDatabaseEnvKey = 'CLICKHOUSE_TEST_DATABASE'
