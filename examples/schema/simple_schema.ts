@@ -32,7 +32,7 @@ export default async () => {
     id: '42',
     name: 'foo',
     externalIds: [1, 2],
-    settings: new Map([['foo', 'bar']]),
+    settings: { foo: 'bar' },
     role: UserRole.Admin,
     registeredAt: '2021-04-30 08:05:37.123',
   })

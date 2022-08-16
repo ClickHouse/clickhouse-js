@@ -8,10 +8,11 @@ TODO:
   Nested
   Special Data Types
   Geo (experimental)
-  Multiword Types
+  Multi-word Types
   Better Date(Time) parsing/handling, including timezones
   Tuple
   Named tuple
+  Decimal (without precision loss) - see https://github.com/ClickHouse/ClickHouse/issues/21875
 */
 
 type Int = UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256
@@ -27,7 +28,7 @@ export type Type =
   | Array<any>
   | Nullable<any>
   | Map<any, any>
-  | Decimal
+  // | Decimal
   | UUID
   | Enum<any>
   | LowCardinality<any>
@@ -191,7 +192,7 @@ export const Float64 = {
 
 export type Decimal = {
   type: 'Decimal'
-  underlying: string
+  underlying: number
 }
 export const Decimal = ({
   precision,
@@ -214,17 +215,17 @@ export const Decimal = ({
       if (precision > 10 && precision < 19) {
         return `Decimal64(${scale})`
       }
-      if (precision > 19 && precision < 39) {
-        return `Decimal128(${scale})`
-      }
-      if (precision > 19 && precision < 39) {
-        return `Decimal128(${scale})`
-      }
-      if (precision > 39 && precision < 77) {
-        return `Decimal256(${scale})`
-      }
+      // if (precision > 19 && precision < 39) {
+      //   return `Decimal128(${scale})`
+      // }
+      // if (precision > 19 && precision < 39) {
+      //   return `Decimal128(${scale})`
+      // }
+      // if (precision > 39 && precision < 77) {
+      //   return `Decimal256(${scale})`
+      // }
       throw Error(
-        `Invalid Decimal precision. Valid range: [ 1 : 76 ], got ${precision}`
+        `Unsupported Decimal precision. Valid range: [ 1 : 18 ], got ${precision}`
       )
     },
   } as Decimal)
@@ -367,7 +368,7 @@ type MapKey =
   | Date32
 export type Map<K extends MapKey, V extends Type> = {
   type: 'Map'
-  underlying: globalThis.Map<K['underlying'], V['underlying']>
+  underlying: Record<K['underlying'], V['underlying']>
 }
 export const Map = <K extends MapKey, V extends Type>(k: K, v: V) =>
   ({
