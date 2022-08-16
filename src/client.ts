@@ -50,6 +50,7 @@ export interface CommandParams extends BaseParams {
 export interface InsertParams extends BaseParams {
   table: string
   values: ReadonlyArray<any> | Stream.Readable
+  format?: DataFormat
 }
 
 function validateConfig(config: NormalizedConfig): void {
@@ -153,11 +154,12 @@ export class ClickHouseClient {
   async insert(params: InsertParams): Promise<void> {
     validateInsertValues(params.values)
 
-    const query = `INSERT into ${params.table.trim()} FORMAT JSONCompactEachRow`
+    const format = params.format || 'JSONCompactEachRow'
+    const query = `INSERT into ${params.table.trim()} FORMAT ${format}`
 
     await this.connection.insert({
       query,
-      values: encodeValues(params.values, 'JSONCompactEachRow'),
+      values: encodeValues(params.values, format),
       ...this.getBaseParams(params),
     })
   }
@@ -220,10 +222,10 @@ function encodeValues(
   if (isStream(values)) {
     return Stream.pipeline(
       values,
-      mapStream(function (value: any) {
+      mapStream((value: unknown) => {
         return encode(value, format)
       }),
-      function pipelineCb(err) {
+      (err) => {
         if (err) {
           console.error(err)
         }

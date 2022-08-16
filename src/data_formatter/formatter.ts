@@ -80,7 +80,7 @@ export function decode(text: string, format: DataFormat): any {
  * @returns string
  */
 export function encode(value: any, format: DataFormat): string {
-  if (format === 'JSONCompactEachRow') {
+  if (format === 'JSONCompactEachRow' || format === 'JSONEachRow') {
     return JSON.stringify(value) + '\n'
   }
   throw new Error(`The client does not support encoding in [${format}] format.`)

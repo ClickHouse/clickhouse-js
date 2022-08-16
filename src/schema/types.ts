@@ -1,22 +1,42 @@
 /* eslint-disable @typescript-eslint/ban-types */
-// TODO: rest of the types
 
-export type Primitive =
+/*
+TODO:
+  JSON (experimental)
+  AggregateFunction
+  SimpleAggregateFunction
+  Nested
+  Special Data Types
+  Geo (experimental)
+  Multiword Types
+  Better Date(Time) parsing/handling, including timezones
+  Tuple
+  Named tuple
+*/
+
+type Int = UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256
+type UInt = Int8 | Int16 | Int32 | Int64 | Int128 | Int256
+type Float = Float32 | Float64
+export type Type =
+  | Int
+  | UInt
+  | Float
   | Bool
   | String
-  | UInt8
-  | UInt16
-  | UInt32
-  | UInt64
-  | UInt128
-  | UInt256
-  | Int8
-  | Int16
-  | Int32
-  | Int64
-  | Int128
-  | Int256
-export type Type = Primitive | Array<any> | Nullable<Primitive> | Map<any, any>
+  | FixedString
+  | Array<any>
+  | Nullable<any>
+  | Map<any, any>
+  | Decimal
+  | UUID
+  | Enum<any>
+  | LowCardinality<any>
+  | Date
+  | Date32
+  | DateTime
+  | DateTime64
+  | IPv4
+  | IPv6
 
 export type UInt8 = {
   underlying: number
@@ -148,16 +168,66 @@ export const Int256 = {
   },
 } as Int256
 
-export type String = {
-  type: 'String'
+export type Float32 = {
+  type: 'Float32'
+  underlying: number
+}
+export const Float32 = {
+  type: 'Float32',
+  toString(): string {
+    return 'Float32'
+  },
+} as Float32
+export type Float64 = {
+  type: 'Float64'
   underlying: string
 }
-export const String = {
-  type: 'String',
+export const Float64 = {
+  type: 'Float64',
   toString(): string {
-    return 'String'
+    return 'Float64'
   },
-} as String
+} as Float64
+
+export type Decimal = {
+  type: 'Decimal'
+  underlying: string
+}
+export const Decimal = ({
+  precision,
+  scale,
+}: {
+  precision: number
+  scale: number
+}) =>
+  ({
+    type: 'Decimal',
+    toString(): string {
+      if (scale < 0) {
+        throw new Error(
+          `Invalid Decimal scale. Valid range: [ 0 : P ], got ${scale}`
+        )
+      }
+      if (precision > 0 && precision < 10) {
+        return `Decimal32(${scale})`
+      }
+      if (precision > 10 && precision < 19) {
+        return `Decimal64(${scale})`
+      }
+      if (precision > 19 && precision < 39) {
+        return `Decimal128(${scale})`
+      }
+      if (precision > 19 && precision < 39) {
+        return `Decimal128(${scale})`
+      }
+      if (precision > 39 && precision < 77) {
+        return `Decimal256(${scale})`
+      }
+      throw Error(
+        `Invalid Decimal precision. Valid range: [ 1 : 76 ], got ${precision}`
+      )
+    },
+  } as Decimal)
 
 export type Bool = {
   type: 'Bool'
@@ -169,6 +239,82 @@ export const Bool = {
     return 'Bool'
   },
 } as Bool
+
+export type String = {
+  type: 'String'
+  underlying: string
+}
+export const String = {
+  type: 'String',
+  toString(): string {
+    return 'String'
+  },
+} as String
+
+export type FixedString = {
+  type: 'FixedString'
+  underlying: string
+}
+export const FixedString = (bytes: number) =>
+  ({
+    type: 'FixedString',
+    toString(): string {
+      return `FixedString(${bytes})`
+    },
+  } as FixedString)
+
+export type UUID = {
+  type: 'UUID'
+  underlying: string
+}
+export const UUID = {
+  type: 'UUID',
+  toString(): string {
+    return 'UUID'
+  },
+} as UUID
+
+type StandardEnum<T> = {
+  [id: string]: T | string
+  [n: number]: string
+}
+
+export type Enum<T extends StandardEnum<unknown>> = {
+  type: 'Enum'
+  underlying: keyof T
+}
+// https://github.com/microsoft/TypeScript/issues/30611#issuecomment-479087883
+// Currently limited to only string enums
+export function Enum<T extends StandardEnum<unknown>>(enumVariable: T) {
+  return {
+    type: 'Enum',
+    toString(): string {
+      return `Enum(${Object.keys(enumVariable)
+        .map((k) => `'${k}'`)
+        .join(', ')})`
+    },
+  } as Enum<T>
+}
+
+type LowCardinalityDataType =
+  | String
+  | FixedString
+  | UInt
+  | Int
+  | Float
+  | Date
+  | DateTime
+export type LowCardinality<T extends LowCardinalityDataType> = {
+  type: 'LowCardinality'
+  underlying: T['underlying']
+}
+export const LowCardinality = <T extends LowCardinalityDataType>(type: T) =>
+  ({
+    type: 'LowCardinality',
+    toString(): string {
+      return `LowCardinality(${type})`
+    },
+  } as LowCardinality<T>)
 
 export type Array<T extends Type> = {
   type: 'Array'
@@ -182,11 +328,26 @@ export const Array = <T extends Type>(inner: T) =>
     },
   } as Array<T>)
 
-export type Nullable<T extends Primitive> = {
+type NullableType =
+  | Int
+  | UInt
+  | Float
+  | Bool
+  | String
+  | FixedString
+  | UUID
+  | Decimal
+  | Enum<any>
+  | Date
+  | DateTime
+  | Date32
+  | IPv4
+  | IPv6
+export type Nullable<T extends NullableType> = {
   type: 'Nullable'
   underlying: T['underlying'] | null
 }
-export const Nullable = <T extends Primitive>(inner: T) =>
+export const Nullable = <T extends NullableType>(inner: T) =>
   ({
     type: 'Nullable',
     toString(): string {
@@ -194,14 +355,107 @@ export const Nullable = <T extends Primitive>(inner: T) =>
     },
   } as Nullable<T>)
 
-export type Map<K extends Primitive, V extends Type> = {
+type MapKey =
+  | String
+  | Int
+  | UInt
+  | FixedString
+  | UUID
+  | Enum<any>
+  | Date
+  | DateTime
+  | Date32
+export type Map<K extends MapKey, V extends Type> = {
   type: 'Map'
   underlying: globalThis.Map<K['underlying'], V['underlying']>
 }
-export const Map = <K extends Primitive, V extends Type>(k: K, v: V) =>
+export const Map = <K extends MapKey, V extends Type>(k: K, v: V) =>
   ({
     type: 'Map',
     toString(): string {
       return `Map(${k.toString()}, ${v.toString()})`
     },
   } as Map<K, V>)
+
+export type Date = {
+  type: 'Date'
+  underlying: string // '1970-01-01' to '2149-06-06'
+}
+export const Date = {
+  type: 'Date',
+  toString(): string {
+    return 'Date'
+  },
+} as Date
+
+export type Date32 = {
+  type: 'Date32'
+  underlying: string // '1900-01-01' to '2299-12-31'
+}
+export const Date32 = {
+  type: 'Date32',
+  toString(): string {
+    return 'Date32'
+  },
+} as Date32
+
+export type DateTime = {
+  type: 'DateTime'
+  underlying: string // '1970-01-01 00:00:00' to '2106-02-07 06:28:15'
+}
+export const DateTime = (timezone?: string) =>
+  ({
+    type: 'DateTime',
+    toString(): string {
+      const tz = timezone ? ` (${timezone})` : ''
+      return `DateTime${tz}`
+    },
+  } as DateTime)
+
+export type DateTime64 = {
+  type: 'DateTime64'
+  underlying: string // '1900-01-01 00:00:00' to '2299-12-31 23:59:59.99999999'
+}
+export const DateTime64 = (precision: number, timezone?: string) =>
+  ({
+    type: 'DateTime64',
+    toString(): string {
+      const tz = timezone ? `, ${timezone}` : ''
+      return `DateTime64(${precision}${tz})`
+    },
+  } as DateTime64)
+
+export type IPv4 = {
+  type: 'IPv4'
+  underlying: string // 255.255.255.255
+}
+export const IPv4 = {
+  type: 'IPv4',
+  toString(): string {
+    return 'IPv4'
+  },
+} as IPv4
+
+export type IPv6 = {
+  type: 'IPv6'
+  underlying: string // 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+}
+export const IPv6 = {
+  type: 'IPv6',
+  toString(): string {
+    return 'IPv6'
+  },
+} as IPv6
+
+// TODO: Tuple is disabled for now. Figure out type derivation in this case
+// export type Tuple<T extends Type> = {
+//   type: 'Tuple'
+//   // underlying: globalThis.Array<T['underlying']>
+// }
+// export const Tuple = <T extends Type>(...inner: T[]) =>
+//   ({
+//     type: 'Tuple',
+//     toString(): string {
+//       return `Tuple(${inner.join(', ')})`
+//     },
+//   } as Tuple<T>)

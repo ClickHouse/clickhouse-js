@@ -7,11 +7,9 @@ import { Row } from '../result'
 import { WhereExpr } from './where'
 import { InsertStream, SelectResult } from './stream'
 import { ClickHouseSettings } from '../clickhouse_types'
-import Stream from 'stream'
-import { mapStream } from '../utils'
-import { compactJson, decompactJson } from './compact'
 
 // TODO: non-empty schema constraint
+// TODO support more formats (especially JSONCompactEachRow)
 export interface TableOptions<S extends Shape> {
   name: string
   schema: Schema<S>
@@ -34,18 +32,15 @@ export interface CreateTableOptions<S extends Shape> {
 }
 
 export interface SelectOptions<S extends Shape> {
-  // decompactJson?: (row: unknown[]) => Infer<S>;
   columns?: (keyof S)[]
   where?: WhereExpr<S>
   order_by?: (keyof S)[]
   clickhouse_settings?: ClickHouseSettings
   abort_signal?: AbortSignal
-  format?: 'JSONCompactEachRow' | 'JSON'
 }
 
 export interface InsertOptions<S extends Shape> {
   values: Infer<S>[] | InsertStream<Infer<S>>
-  // compactJson?: (value: Infer<S>) => unknown[];
   clickhouse_settings?: ClickHouseSettings
   abort_signal?: AbortSignal
 }
@@ -71,17 +66,8 @@ export class Table<S extends Shape> {
       clickhouse_settings,
       abort_signal,
       table: getTableName(this.options),
-      values: Array.isArray(values)
-        ? values.map((value) => compactJson(this.options.schema.shape, value))
-        : Stream.pipeline(
-            values,
-            mapStream((value) => compactJson(this.options.schema.shape, value)),
-            (err) => {
-              if (err) {
-                console.error(err)
-              }
-            }
-          ),
+      format: 'JSONEachRow',
+      values,
     })
   }
 
@@ -89,7 +75,6 @@ export class Table<S extends Shape> {
     abort_signal,
     clickhouse_settings,
     columns,
-    format,
     order_by,
     where,
   }: SelectOptions<S> = {}): Promise<SelectResult<Infer<S>>> {
@@ -98,14 +83,14 @@ export class Table<S extends Shape> {
       query,
       clickhouse_settings,
       abort_signal,
-      format: format ?? 'JSONCompactEachRow',
+      format: 'JSONEachRow',
     })
 
     const stream = rows.asStream()
-    const shape = this.options.schema.shape
     async function* asyncGenerator() {
       for await (const row of stream) {
-        yield decompactJson(shape, (row as Row).json()) as Infer<S>
+        const value = (row as Row).json() as unknown[]
+        yield value[0] as Infer<S> // FIXME why we have an array here?
       }
     }
 
@@ -114,7 +99,11 @@ export class Table<S extends Shape> {
       json: async () => {
         const result = []
         for await (const value of asyncGenerator()) {
-          result.push(value)
+          if (Array.isArray(value)) {
+            result.push(...value)
+          } else {
+            result.push(value)
+          }
         }
         return result
       },
