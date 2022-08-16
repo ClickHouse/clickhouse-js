@@ -1,36 +1,36 @@
-import { ClickHouseClient } from '../../src';
+import { ClickHouseClient } from '../../src'
 import {
   createTestClient,
   getClickHouseTestEnvironment,
   guid,
   TestEnv,
-} from '../utils';
+} from '../utils'
 
-import * as ch from '../../src/schema';
-import { Infer, InsertStream } from '../../src/schema';
+import * as ch from '../../src/schema'
+import { Infer, InsertStream } from '../../src/schema'
 
 describe('schema', () => {
   const shape = {
     id: ch.UInt64,
     name: ch.String,
     sku: ch.Array(ch.UInt8),
-  };
-  let table: ch.Table<typeof shape>;
-  const schema = new ch.Schema(shape);
+  }
+  let table: ch.Table<typeof shape>
+  const schema = new ch.Schema(shape)
 
-  type Data = Infer<typeof shape>;
+  type Data = Infer<typeof shape>
 
-  let client: ClickHouseClient;
-  let tableName: string;
+  let client: ClickHouseClient
+  let tableName: string
 
   beforeEach(async () => {
-    client = await createTestClient();
-    tableName = `schema_test_${guid()}`;
+    client = await createTestClient()
+    tableName = `schema_test_${guid()}`
     table = new ch.Table(client, {
       name: tableName,
       schema,
-    });
-    const env = getClickHouseTestEnvironment();
+    })
+    const env = getClickHouseTestEnvironment()
     switch (env) {
       case TestEnv.Cloud:
         await table.create({
@@ -39,8 +39,8 @@ describe('schema', () => {
           clickhouse_settings: {
             wait_end_of_query: 1,
           },
-        });
-        break;
+        })
+        break
       case TestEnv.LocalCluster:
         await table.create({
           engine: ch.ReplicatedMergeTree({
@@ -52,59 +52,59 @@ describe('schema', () => {
           clickhouse_settings: {
             wait_end_of_query: 1,
           },
-        });
-        break;
+        })
+        break
       case TestEnv.LocalSingleNode:
         await table.create({
           engine: ch.MergeTree(),
           order_by: ['id'],
-        });
-        break;
+        })
+        break
     }
-    console.log(`Created table ${tableName}`);
-  });
+    console.log(`Created table ${tableName}`)
+  })
 
   afterEach(async () => {
-    await client.close();
-  });
+    await client.close()
+  })
 
   const value1 = {
     id: '42',
     name: 'foo',
     sku: [1, 2],
-  };
+  }
   const value2 = {
     id: '43',
     name: 'bar',
     sku: [3, 4],
-  };
+  }
 
   it('should insert and select data using arrays', async () => {
-    const values = [value1, value2];
+    const values = [value1, value2]
     await table.insert({
       values,
-    });
-    const result = await (await table.select()).json();
-    expect(result).toEqual(values);
-  });
+    })
+    const result = await (await table.select()).json()
+    expect(result).toEqual(values)
+  })
 
   it('should insert and select data using streams', async () => {
-    const values = new InsertStream<Data>();
-    values.add(value1);
-    values.add(value2);
-    setTimeout(() => values.complete(), 100);
+    const values = new InsertStream<Data>()
+    values.add(value1)
+    values.add(value2)
+    setTimeout(() => values.complete(), 100)
 
     await table.insert({
       values,
-    });
+    })
 
-    const result: Data[] = [];
-    const { asyncGenerator } = await table.select();
+    const result: Data[] = []
+    const { asyncGenerator } = await table.select()
 
     for await (const value of asyncGenerator()) {
-      result.push(value);
+      result.push(value)
     }
 
-    expect(result).toEqual([value1, value2]);
-  });
-});
+    expect(result).toEqual([value1, value2])
+  })
+})

@@ -1,9 +1,9 @@
-import { Shape } from './common';
+import { Shape } from './common'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface WhereExpr<S extends Shape> {
-  toString(): string;
-  type: 'And' | 'Or' | 'Eq' | 'Le' | 'Lte' | 'Gt' | 'Gte';
+  toString(): string
+  type: 'And' | 'Or' | 'Eq' | 'Le' | 'Lte' | 'Gt' | 'Gte'
 }
 
 export function Eq<S extends Shape, F extends keyof S>(
@@ -12,37 +12,37 @@ export function Eq<S extends Shape, F extends keyof S>(
 ): WhereExpr<S> {
   return {
     toString(): string {
-      return `(${String(field)} == ${formatValue(value)})`;
+      return `(${String(field)} == ${formatValue(value)})`
     },
     type: 'Eq',
-  };
+  }
 }
 export function And<S extends Shape>(...expr: WhereExpr<S>[]): WhereExpr<S> {
   return {
     toString(): string {
-      return `(${expr.join(' AND ')})`;
+      return `(${expr.join(' AND ')})`
     },
     type: 'And',
-  };
+  }
 }
 export function Or<S extends Shape>(...expr: WhereExpr<S>[]): WhereExpr<S> {
   return {
     toString(): string {
-      return `(${expr.join(' OR ')})`;
+      return `(${expr.join(' OR ')})`
     },
     type: 'Or',
-  };
+  }
 }
 
 function formatValue(value: any): string {
   if (value === null || value === undefined) {
-    return 'NULL';
+    return 'NULL'
   }
   if (typeof value === 'string') {
-    return `'${value}'`;
+    return `'${value}'`
   }
   if (globalThis.Array.isArray(value)) {
-    return `[${value.join(', ')}]`;
+    return `[${value.join(', ')}]`
   }
-  return value.toString();
+  return value.toString()
 }

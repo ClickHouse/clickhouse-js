@@ -1,32 +1,32 @@
-import { MergeTreeSettings, TableEngine } from './engines';
-import { Schema } from './schema';
-import { Infer, Shape } from './common';
-import { getTableName, QueryFormatter } from './query_formatter';
-import { ClickHouseClient } from '../client';
-import { Row } from '../result';
-import { WhereExpr } from './where';
-import { InsertStream, SelectResult } from './stream';
-import { ClickHouseSettings } from '../clickhouse_types';
-import Stream from 'stream';
-import { mapStream } from '../utils';
-import { compactJson, decompactJson } from './compact';
+import { MergeTreeSettings, TableEngine } from './engines'
+import { Schema } from './schema'
+import { Infer, Shape } from './common'
+import { getTableName, QueryFormatter } from './query_formatter'
+import { ClickHouseClient } from '../client'
+import { Row } from '../result'
+import { WhereExpr } from './where'
+import { InsertStream, SelectResult } from './stream'
+import { ClickHouseSettings } from '../clickhouse_types'
+import Stream from 'stream'
+import { mapStream } from '../utils'
+import { compactJson, decompactJson } from './compact'
 
 // TODO: non-empty schema constraint
 export interface TableOptions<S extends Shape> {
-  name: string;
-  schema: Schema<S>;
-  database?: string;
+  name: string
+  schema: Schema<S>
+  database?: string
 }
 
 export interface CreateTableOptions<S extends Shape> {
-  engine: TableEngine;
-  order_by: (keyof S)[]; // TODO: functions support
-  if_not_exists?: boolean;
-  on_cluster?: string;
-  partition_by?: (keyof S)[]; // TODO: functions support
-  primary_key?: (keyof S)[]; // TODO: functions support
-  settings?: MergeTreeSettings; // TODO: more settings and type constraints
-  clickhouse_settings?: ClickHouseSettings;
+  engine: TableEngine
+  order_by: (keyof S)[] // TODO: functions support
+  if_not_exists?: boolean
+  on_cluster?: string
+  partition_by?: (keyof S)[] // TODO: functions support
+  primary_key?: (keyof S)[] // TODO: functions support
+  settings?: MergeTreeSettings // TODO: more settings and type constraints
+  clickhouse_settings?: ClickHouseSettings
   // TODO: settings now moved to engines; decide whether we need it here
   // TODO: index
   // TODO: projections
@@ -35,19 +35,19 @@ export interface CreateTableOptions<S extends Shape> {
 
 export interface SelectOptions<S extends Shape> {
   // decompactJson?: (row: unknown[]) => Infer<S>;
-  columns?: (keyof S)[];
-  where?: WhereExpr<S>;
-  order_by?: (keyof S)[];
-  clickhouse_settings?: ClickHouseSettings;
-  abort_signal?: AbortSignal;
-  format?: 'JSONCompactEachRow' | 'JSON';
+  columns?: (keyof S)[]
+  where?: WhereExpr<S>
+  order_by?: (keyof S)[]
+  clickhouse_settings?: ClickHouseSettings
+  abort_signal?: AbortSignal
+  format?: 'JSONCompactEachRow' | 'JSON'
 }
 
 export interface InsertOptions<S extends Shape> {
-  values: Infer<S>[] | InsertStream<Infer<S>>;
+  values: Infer<S>[] | InsertStream<Infer<S>>
   // compactJson?: (value: Infer<S>) => unknown[];
-  clickhouse_settings?: ClickHouseSettings;
-  abort_signal?: AbortSignal;
+  clickhouse_settings?: ClickHouseSettings
+  abort_signal?: AbortSignal
 }
 
 export class Table<S extends Shape> {
@@ -58,8 +58,8 @@ export class Table<S extends Shape> {
 
   // TODO: better types
   async create(options: CreateTableOptions<S>): Promise<unknown> {
-    const query = QueryFormatter.createTable(this.options, options);
-    return (await this.client.command({ query })).text();
+    const query = QueryFormatter.createTable(this.options, options)
+    return (await this.client.command({ query })).text()
   }
 
   insert({
@@ -78,11 +78,11 @@ export class Table<S extends Shape> {
             mapStream((value) => compactJson(this.options.schema.shape, value)),
             (err) => {
               if (err) {
-                console.error(err);
+                console.error(err)
               }
             }
           ),
-    });
+    })
   }
 
   async select({
@@ -93,31 +93,31 @@ export class Table<S extends Shape> {
     order_by,
     where,
   }: SelectOptions<S> = {}): Promise<SelectResult<Infer<S>>> {
-    const query = QueryFormatter.select(this.options, where, columns, order_by);
+    const query = QueryFormatter.select(this.options, where, columns, order_by)
     const rows = await this.client.command({
       query,
       clickhouse_settings,
       abort_signal,
       format: format ?? 'JSONCompactEachRow',
-    });
+    })
 
-    const stream = rows.asStream();
-    const shape = this.options.schema.shape;
+    const stream = rows.asStream()
+    const shape = this.options.schema.shape
     async function* asyncGenerator() {
       for await (const row of stream) {
-        yield decompactJson(shape, (row as Row).json()) as Infer<S>;
+        yield decompactJson(shape, (row as Row).json()) as Infer<S>
       }
     }
 
     return {
       asyncGenerator,
       json: async () => {
-        const result = [];
+        const result = []
         for await (const value of asyncGenerator()) {
-          result.push(value);
+          result.push(value)
         }
-        return result;
+        return result
       },
-    };
+    }
   }
 }

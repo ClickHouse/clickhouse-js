@@ -1,12 +1,12 @@
-import { Type } from './types';
+import { Type } from './types'
 
 // TODO: TTL
 // TODO: Materialized columns
 // TODO: alias
 export type Shape = {
-  [key: string]: Type;
-};
+  [key: string]: Type
+}
 
 export type Infer<S extends Shape> = {
-  [Field in keyof S]: S[Field]['underlying'];
-};
+  [Field in keyof S]: S[Field]['underlying']
+}

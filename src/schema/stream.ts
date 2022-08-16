@@ -1,8 +1,8 @@
-import Stream from 'stream';
+import Stream from 'stream'
 
 export interface SelectResult<T> {
-  asyncGenerator(): AsyncGenerator<T, void>;
-  json(): Promise<T[]>;
+  asyncGenerator(): AsyncGenerator<T, void>
+  json(): Promise<T[]>
 }
 
 export class InsertStream<T> extends Stream.Readable {
@@ -12,12 +12,12 @@ export class InsertStream<T> extends Stream.Readable {
       read() {
         // Avoid [ERR_METHOD_NOT_IMPLEMENTED]: The _read() method is not implemented
       },
-    });
+    })
   }
   add(data: T) {
-    this.push(data);
+    this.push(data)
   }
   complete(): void {
-    this.push(null);
+    this.push(null)
   }
 }

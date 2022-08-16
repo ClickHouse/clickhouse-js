@@ -1,6 +1,6 @@
-import { Shape } from './common';
-import { CreateTableOptions, TableOptions } from './index';
-import { WhereExpr } from './where';
+import { Shape } from './common'
+import { CreateTableOptions, TableOptions } from './index'
+import { WhereExpr } from './where'
 
 export const QueryFormatter = {
   // See https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree/#table_engine-mergetree-creating-a-table
@@ -16,18 +16,18 @@ export const QueryFormatter = {
       settings: _settings,
     }: CreateTableOptions<S>
   ) => {
-    const ifNotExist = if_not_exists ? ' IF NOT EXISTS' : '';
-    const tableName = getTableName(tableOptions);
-    const onCluster = on_cluster ? ` ON CLUSTER '${on_cluster}'` : '';
-    const columns = ` (${tableOptions.schema.toString()})`;
-    const engine = ` ENGINE ${_engine}`;
-    const orderBy = order_by ? ` ORDER BY (${order_by.join(', ')})` : '';
+    const ifNotExist = if_not_exists ? ' IF NOT EXISTS' : ''
+    const tableName = getTableName(tableOptions)
+    const onCluster = on_cluster ? ` ON CLUSTER '${on_cluster}'` : ''
+    const columns = ` (${tableOptions.schema.toString()})`
+    const engine = ` ENGINE ${_engine}`
+    const orderBy = order_by ? ` ORDER BY (${order_by.join(', ')})` : ''
     const partitionBy = partition_by
       ? ` PARTITION BY (${partition_by.join(', ')})`
-      : '';
+      : ''
     const primaryKey = primary_key
       ? ` PRIMARY KEY (${primary_key.join(', ')})`
-      : '';
+      : ''
     const settings =
       _engine.type === 'MergeTree' &&
       _settings &&
@@ -35,11 +35,11 @@ export const QueryFormatter = {
         ? ` SETTINGS ${Object.entries(_settings)
             .map(([k, v]) => `${k} = ${v}`)
             .join(', ')}`
-        : '';
+        : ''
     return (
       `CREATE TABLE${ifNotExist} ${tableName}${onCluster}${columns}${engine}` +
       `${orderBy}${partitionBy}${primaryKey}${settings}`
-    );
+    )
   },
 
   // https://clickhouse.com/docs/en/sql-reference/statements/select/
@@ -49,17 +49,17 @@ export const QueryFormatter = {
     columns?: Array<keyof S>,
     orderBy?: Array<keyof S>
   ) => {
-    const tableName = getTableName(tableOptions);
-    const where = whereExpr ? ` WHERE ${whereExpr.toString()}` : '';
-    const cols = columns ? columns.join(', ') : '*';
-    const order = orderBy ? ` ORDER BY ${orderBy?.join(', ')}` : '';
-    return `SELECT ${cols} FROM ${tableName}${where}${order}`;
+    const tableName = getTableName(tableOptions)
+    const where = whereExpr ? ` WHERE ${whereExpr.toString()}` : ''
+    const cols = columns ? columns.join(', ') : '*'
+    const order = orderBy ? ` ORDER BY ${orderBy?.join(', ')}` : ''
+    return `SELECT ${cols} FROM ${tableName}${where}${order}`
   },
-};
+}
 
 export function getTableName<S extends Shape>({
   database,
   name,
 }: TableOptions<S>) {
-  return database !== undefined ? `${database}.${name}` : name;
+  return database !== undefined ? `${database}.${name}` : name
 }

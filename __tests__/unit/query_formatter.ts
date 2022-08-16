@@ -1,16 +1,16 @@
-import * as ch from '../../src/schema';
-import { QueryFormatter } from '../../src/schema/query_formatter';
+import * as ch from '../../src/schema'
+import { QueryFormatter } from '../../src/schema/query_formatter'
 
 describe('QueryFormatter', () => {
   it('should render a simple CREATE TABLE statement', async () => {
     const schema = new ch.Schema({
       foo: ch.String,
       bar: ch.UInt8,
-    });
+    })
     const tableOptions = {
       name: 'my_table',
       schema,
-    };
+    }
     expect(
       QueryFormatter.createTable(tableOptions, {
         engine: ch.MergeTree(),
@@ -18,18 +18,18 @@ describe('QueryFormatter', () => {
       })
     ).toEqual(
       'CREATE TABLE my_table (foo String, bar UInt8) ENGINE MergeTree() ORDER BY (foo)'
-    );
-  });
+    )
+  })
 
   it('should render a complex CREATE TABLE statement', async () => {
     const schema = new ch.Schema({
       foo: ch.String,
       bar: ch.UInt8,
-    });
+    })
     const tableOptions = {
       name: 'my_table',
       schema,
-    };
+    }
     expect(
       QueryFormatter.createTable(tableOptions, {
         engine: ch.MergeTree(),
@@ -51,6 +51,6 @@ describe('QueryFormatter', () => {
         'PARTITION BY (foo) ' +
         'PRIMARY KEY (bar) ' +
         'SETTINGS merge_max_block_size = 16384, enable_mixed_granularity_parts = 1'
-    );
-  });
-});
+    )
+  })
+})
