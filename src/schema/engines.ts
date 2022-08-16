@@ -2,14 +2,29 @@
 
 interface Engine {
   toString(): string
-  type: 'MergeTree' | 'ReplicatedMergeTree'
+  type:
+    | 'MergeTree'
+    | 'ReplicatedMergeTree'
+    | 'ReplacingMergeTree'
+    | 'SummingMergeTree'
+    | 'AggregatingMergeTree'
+    | 'CollapsingMergeTree'
+    | 'VersionedCollapsingMergeTree'
+    | 'GraphiteMergeTree'
 }
 
+// TODO Log family
 export type TableEngine = MergeTreeFamily
 
 type MergeTreeFamily =
   | ReturnType<typeof MergeTree>
   | ReturnType<typeof ReplicatedMergeTree>
+  | ReturnType<typeof ReplacingMergeTree>
+  | ReturnType<typeof SummingMergeTree>
+  | ReturnType<typeof AggregatingMergeTree>
+  | ReturnType<typeof CollapsingMergeTree>
+  | ReturnType<typeof VersionedCollapsingMergeTree>
+  | ReturnType<typeof GraphiteMergeTree>
 
 // https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#settings
 // TODO: refined types?
@@ -55,48 +70,48 @@ export const ReplicatedMergeTree: (
   type: 'ReplicatedMergeTree',
 })
 
-// please ignore for now
+export const ReplacingMergeTree = (ver?: string) => ({
+  toString: () => {
+    const _ver = ver ? `, ${ver}` : ''
+    return `ReplacingMergeTree(${_ver})`
+  },
+  type: 'ReplacingMergeTree',
+})
 
-// class ReplacingMergeTree implements Show {
-//   constructor(private readonly ver?: string) {}
-//
-//   show(): string {
-//     return `ReplacingMergeTree(${this.ver || ''})`;
-//   }
-// }
-// class SummingMergeTree implements Show {
-//   constructor(private readonly columns?: string[]) {}
-//
-//   show(): string {
-//     return `SummingMergeTree(${(this.columns || []).join(', ')})`;
-//   }
-// }
-// class AggregatingMergeTree implements Show {
-//   show(): string {
-//     return 'AggregatingMergeTree()';
-//   }
-// }
-// class CollapsingMergeTree implements Show {
-//   constructor(private readonly sign: string) {}
-//
-//   show(): string {
-//     return `CollapsingMergeTree(${this.sign})`;
-//   }
-// }
-// class VersionedCollapsingMergeTree implements Show {
-//   constructor(
-//     private readonly sign: string,
-//     private readonly version: string
-//   ) {}
-//
-//   show(): string {
-//     return `VersionedCollapsingMergeTree(${this.sign}, ${this.version})`;
-//   }
-// }
-// class GraphiteMergeTree implements Show {
-//   constructor(private readonly config_section: string) {}
-//
-//   show(): string {
-//     return `CollapsingMergeTree(${this.config_section})`;
-//   }
-// }
+export const SummingMergeTree = (columns?: string[]) => ({
+  toString: () => {
+    return `SummingMergeTree(${(columns || []).join(', ')})`
+  },
+  type: 'SummingMergeTree',
+})
+
+export const AggregatingMergeTree = () => ({
+  toString: () => {
+    return `AggregatingMergeTree()`
+  },
+  type: 'AggregatingMergeTree',
+})
+
+export const CollapsingMergeTree = (sign: string) => ({
+  toString: () => {
+    return `CollapsingMergeTree(${sign})`
+  },
+  type: 'CollapsingMergeTree',
+})
+
+export const VersionedCollapsingMergeTree = (
+  sign: string,
+  version: string
+) => ({
+  toString: () => {
+    return `VersionedCollapsingMergeTree(${sign}, ${version})`
+  },
+  type: 'VersionedCollapsingMergeTree',
+})
+
+export const GraphiteMergeTree = (config_section: string) => ({
+  toString: () => {
+    return `CollapsingMergeTree(${config_section})`
+  },
+  type: 'GraphiteMergeTree',
+})
