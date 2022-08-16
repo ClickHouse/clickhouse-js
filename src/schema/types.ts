@@ -180,7 +180,7 @@ export const Float32 = {
 } as Float32
 export type Float64 = {
   type: 'Float64'
-  underlying: string
+  underlying: number
 }
 export const Float64 = {
   type: 'Float64',
@@ -438,7 +438,7 @@ export const IPv4 = {
 
 export type IPv6 = {
   type: 'IPv6'
-  underlying: string // 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+  underlying: string // 2001:db8:85a3::8a2e:370:7334
 }
 export const IPv6 = {
   type: 'IPv6',

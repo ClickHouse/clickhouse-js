@@ -1,8 +1,7 @@
 import type { ResponseJSON } from '../../src'
 import { type ClickHouseClient } from '../../src'
 import Stream from 'stream'
-import { createTable, createTestClient, guid } from '../utils'
-import { TestEnv } from '../utils'
+import { createTable, createTestClient, guid, TestEnv } from '../utils'
 
 describe('insert stream', () => {
   beforeAll(function () {
