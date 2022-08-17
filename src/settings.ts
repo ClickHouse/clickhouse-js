@@ -1199,173 +1199,167 @@ type Char = string
 type URI = string
 type Map = Record<string, string>
 
-export enum LoadBalancing {
+export type LoadBalancing =
   // among replicas with a minimum number of errors selected randomly
-  RANDOM = 0,
+  | 'random'
   // a replica is selected among the replicas with the minimum number of errors
   // with the minimum number of distinguished characters
   // in the replica name and local hostname
-  NEAREST_HOSTNAME = 1,
+  | 'nearest_hostname'
   // replicas with the same number of errors are accessed in the same order
   // as they are specified in the configuration.
-  IN_ORDER = 2,
+  | 'in_order'
   // if first replica one has higher number of errors,
   // pick a random one from replicas with minimum number of errors
-  FIRST_OR_RANDOM = 3,
+  | 'first_or_random'
   // round-robin across replicas with the same number of errors
-  ROUND_ROBIN = 4,
-}
+  | 'round_robin'
 
 // Which rows should be included in TOTALS.
-export enum TotalsMode {
+export type TotalsMode =
   // Count HAVING for all read rows
   // including those not in max_rows_to_group_by
   // and have not passed HAVING after grouping
-  BEFORE_HAVING = 0,
+  | 'before_having'
   // Count on all rows except those that have not passed HAVING;
   // that is, to include in TOTALS all the rows that did not pass max_rows_to_group_by.
-  AFTER_HAVING_INCLUSIVE = 1,
+  | 'after_having_inclusive'
   // Include only the rows that passed and max_rows_to_group_by, and HAVING.
-  AFTER_HAVING_EXCLUSIVE = 2,
+  | 'after_having_exclusive'
   // Automatically select between INCLUSIVE and EXCLUSIVE
-  AFTER_HAVING_AUTO = 3,
-}
+  | 'after_having_auto'
 
 /// The setting for executing distributed sub-queries inside IN or JOIN sections.
-export enum DistributedProductMode {
-  DENY = 0, /// Disable
-  LOCAL = 1, /// Convert to local query
-  GLOBAL = 2, /// Convert to global query
-  ALLOW = 3, /// Enable
-}
+export type DistributedProductMode =
+  | 'deny' /// Disable
+  | 'local' /// Convert to local query
+  | 'global' /// Convert to global query
+  | 'allow' /// Enable
 
-export enum LogsLevel {
-  none = 0, /// Disable
-  fatal = 1,
-  error = 2,
-  warning = 3,
-  information = 4,
-  debug = 5,
-  trace = 6,
-  test = 7,
-}
+export type LogsLevel =
+  | 'none' /// Disable
+  | 'fatal'
+  | 'error'
+  | 'warning'
+  | 'information'
+  | 'debug'
+  | 'trace'
+  | 'test'
 
-export enum LogQueriesType {
-  QUERY_START = 1,
-  QUERY_FINISH = 2,
-  EXCEPTION_BEFORE_START = 3,
-  EXCEPTION_WHILE_PROCESSING = 4,
-}
+export type LogQueriesType =
+  | 'QUERY_START'
+  | 'QUERY_FINISH'
+  | 'EXCEPTION_BEFORE_START'
+  | 'EXCEPTION_WHILE_PROCESSING'
 
-export enum DefaultTableEngine {
-  None = 0, // Disable. Need to use ENGINE =
-  Log = 1,
-  StripeLog = 2,
-  MergeTree = 3,
-  ReplacingMergeTree = 4,
-  ReplicatedMergeTree = 5,
-  ReplicatedReplacingMergeTree = 6,
-  Memory = 7,
-}
+export type DefaultTableEngine =
+  | 'Memory'
+  | 'ReplicatedMergeTree'
+  | 'ReplacingMergeTree'
+  | 'MergeTree'
+  | 'StripeLog'
+  | 'ReplicatedReplacingMergeTree'
+  | 'Log'
+  | 'None'
 
-export enum MySQLDataTypesSupport {
-  DECIMAL = 0, // convert MySQL decimal and number to ClickHouse Decimal when applicable
-  DATETIME64 = 1, // convert MySQL DATETIME and TIMESTAMP and ClickHouse DateTime64 if precision is > 0 or range is greater that for DateTime.
-  DATE2DATE32 = 2, // convert MySQL date type to ClickHouse Date32
-  DATE2STRING = 3, // convert MySQL date type to ClickHouse String(This is usually used when your mysql date is less than 1925)
-}
+export type MySQLDataTypesSupport =
+  // convert MySQL date type to ClickHouse String
+  // (This is usually used when your mysql date is less than 1925)
+  | 'date2String'
+  // convert MySQL date type to ClickHouse Date32
+  | 'date2Date32'
+  // convert MySQL DATETIME and TIMESTAMP and ClickHouse DateTime64
+  // if precision is > 0 or range is greater that for DateTime.
+  | 'datetime64'
+  // convert MySQL decimal and number to ClickHouse Decimal when applicable
+  | 'decimal'
 
-export enum UnionMode {
-  Unspecified = 0, // Query UNION without UnionMode will throw exception
-  ALL = 1, // Query UNION without UnionMode -> SELECT ... UNION ALL SELECT ...
-  DISTINCT = 2, // Query UNION without UnionMode -> SELECT ... UNION DISTINCT SELECT ...
-}
+export type UnionMode =
+  | '' // Query UNION without UnionMode will throw exception
+  | 'ALL' // Query UNION without UnionMode -> SELECT ... UNION ALL SELECT ...
+  | 'DISTINCT' // Query UNION without UnionMode -> SELECT ... UNION DISTINCT SELECT ...
 
-export enum DistributedDDLOutputMode {
-  NONE = 0,
-  THROW = 1,
-  NULL_STATUS_ON_TIMEOUT = 2,
-  NEVER_THROW = 3,
-}
+export type DistributedDDLOutputMode =
+  | 'never_throw'
+  | 'null_status_on_timeout'
+  | 'throw'
+  | 'none'
 
-export enum ShortCircuitFunctionEvaluation {
-  ENABLE = 0, // Use short-circuit function evaluation for functions that are suitable for it.
-  FORCE_ENABLE = 1, // Use short-circuit function evaluation for all functions.
-  DISABLE = 2, // Disable short-circuit function evaluation.
-}
+export type ShortCircuitFunctionEvaluation =
+  // Use short-circuit function evaluation for all functions.
+  | 'force_enable'
+  // Disable short-circuit function evaluation.
+  | 'disable'
+  // Use short-circuit function evaluation for functions that are suitable for it.
+  | 'enable'
 
-export enum TransactionsWaitCSNMode {
-  ASYNC = 0,
-  WAIT = 1,
-  WAIT_UNKNOWN = 2,
-}
+export type TransactionsWaitCSNMode = 'wait_unknown' | 'wait' | 'async'
 
-export enum EscapingRule {
-  None = 0,
-  Escaped = 1,
-  Quoted = 2,
-  CSV = 3,
-  JSON = 4,
-  XML = 5,
-  Raw = 6,
-}
+export type EscapingRule =
+  | 'CSV'
+  | 'JSON'
+  | 'Quoted'
+  | 'Raw'
+  | 'XML'
+  | 'Escaped'
+  | 'None'
 
-export enum DateTimeOutputFormat {
-  Simple = 0,
-  ISO = 1,
-  UnixTimestamp = 2,
-}
+export type DateTimeOutputFormat = 'simple' | 'iso' | 'unix_timestamp'
 
 /// For capnProto format we should determine how to
 /// compare ClickHouse Enum and Enum from schema.
-export enum EnumComparingMode {
-  BY_NAMES = 0, // Names in enums should be the same, values can be different.
-  BY_NAMES_CASE_INSENSITIVE = 1, // Case-insensitive name comparison.
-  BY_VALUES = 2, // Values should be the same, names can be different.
-}
+export type EnumComparingMode =
+  // Case-insensitive name comparison.
+  | 'by_names_case_insensitive'
+  // Values should be the same, names can be different.
+  | 'by_values'
+  // Names in enums should be the same, values can be different.
+  | 'by_names'
 
-export enum DateTimeInputFormat {
-  Basic = 0, /// Default format for fast parsing: YYYY-MM-DD hh:mm:ss (ISO-8601 without fractional part and timezone) or NNNNNNNNNN unix timestamp.
-  BestEffort = 1, /// Use sophisticated rules to parse whatever possible.
-  BestEffortUS = 2, /// Use sophisticated rules to parse American style: mm/dd/yyyy
-}
+export type DateTimeInputFormat =
+  // Use sophisticated rules to parse American style: mm/dd/yyyy
+  | 'best_effort_us'
+  // Use sophisticated rules to parse whatever possible.
+  | 'best_effort'
+  // Default format for fast parsing: YYYY-MM-DD hh:mm:ss
+  // (ISO-8601 without fractional part and timezone) or NNNNNNNNNN unix timestamp.
+  | 'basic'
 
-export enum MsgPackUUIDRepresentation {
-  STR = 0, // Output UUID as a string of 36 characters.
-  BIN = 1, // Output UUID as 16-bytes binary.
-  EXT = 2, // Output UUID as ExtType = 2
-}
+export type MsgPackUUIDRepresentation =
+  // Output UUID as ExtType = 2
+  | 'ext'
+  // Output UUID as a string of 36 characters.
+  | 'str'
+  // Output UUID as 16-bytes binary.
+  | 'bin'
 
 /// What to do if the limit is exceeded.
-export enum OverflowMode {
-  THROW = 0, /// Throw exception.
-  BREAK = 1, /// Abort query execution, return what is.
+export type OverflowMode =
+  // Abort query execution, return what is.
+  | 'break'
+  // Throw exception.
+  | 'throw'
 
-  /** Only for GROUP BY: do not add new rows to the set,
-   * but continue to aggregate for keys that are already in the set.
-   */
-  ANY = 2,
-}
-export type OverflowModeGroupBy = OverflowMode
+export type OverflowModeGroupBy =
+  | OverflowMode
+  // do not add new rows to the set,
+  // but continue to aggregate for keys that are already in the set.
+  | 'any'
 
 /// Allows more optimal JOIN for typical cases.
-export enum JoinStrictness {
-  Unspecified = 0,
-  RightAny = 1, /// Old ANY JOIN. If there are many suitable rows in right table, use any from them to join.
-  Any = 2, /// Semi Join with any value from filtering table. For LEFT JOIN with Any and RightAny are the same.
-  All = 3, /// If there are many suitable rows to join, use all of them and replicate rows of "left" table (usual semantic of JOIN).
-  Asof = 4, /// For the last JOIN column, pick the latest value
-  Semi = 5, /// LEFT or RIGHT. SEMI LEFT JOIN filters left table by values exists in right table. SEMI RIGHT - otherwise.
-  Anti = 6, /// LEFT or RIGHT. Same as SEMI JOIN but filter values that are NOT exists in other table.
-}
+export type JoinStrictness =
+  // Semi Join with any value from filtering table.
+  // For LEFT JOIN with Any and RightAny are the same.
+  | 'ANY'
+  // If there are many suitable rows to join,
+  // use all of them and replicate rows of "left" table (usual semantic of JOIN).
+  | 'ALL'
+  // Unspecified
+  | ''
 
-export enum JoinAlgorithm {
-  DEFAULT = 0,
-  AUTO = 1,
-  HASH = 2,
-  PARTIAL_MERGE = 3,
-  PREFER_PARTIAL_MERGE = 4,
-  PARALLEL_HASH = 5,
-  DIRECT = 6,
-  FULL_SORTING_MERGE = 7,
-}
+export type JoinAlgorithm =
+  | 'prefer_partial_merge'
+  | 'hash'
+  | 'parallel_hash'
+  | 'partial_merge'
+  | 'auto'
