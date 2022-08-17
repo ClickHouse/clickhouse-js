@@ -147,7 +147,7 @@ export class ClickHouseClient {
       ...this.getBaseParams(params),
     })
 
-    return new Rows(stream, 'JSON')
+    return new Rows(stream, format ?? 'JSON')
   }
 
   async insert(params: InsertParams): Promise<void> {

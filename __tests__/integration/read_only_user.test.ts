@@ -22,6 +22,7 @@ describe('read only user', () => {
     let createUser: string
     let grant: string
     switch (env) {
+      case TestEnv.Cloud: // we do not need 'ON CLUSTER' in the cloud
       case TestEnv.LocalSingleNode:
         createUser = `
           CREATE USER ${username} 
@@ -34,7 +35,6 @@ describe('read only user', () => {
           TO ${username}
         `
         break
-      case TestEnv.Cloud:
       case TestEnv.LocalCluster:
         createUser = `
           CREATE USER ${username} 
