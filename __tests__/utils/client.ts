@@ -1,7 +1,6 @@
 import {
   ClickHouseClient,
   ClickHouseClientConfigOptions,
-  ClickHouseSettings,
   createClient,
 } from '../../src'
 import { guid } from './guid'
@@ -9,6 +8,7 @@ import { TestLogger } from './test_logger'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
 import { getFromEnv } from './env'
 import { TestDatabaseEnvKey } from '../global.integration'
+import { ClickHouseSettings } from '../../src/settings'
 
 export function createTestClient(
   config: ClickHouseClientConfigOptions = {}

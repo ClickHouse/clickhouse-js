@@ -20,8 +20,5 @@ export type { DataFormat } from './data_formatter'
 export type { ClickHouseError } from './error'
 export type { Logger } from './logger'
 
-export type {
-  ResponseJSON,
-  DataType,
-  ClickHouseSettings,
-} from './clickhouse_types'
+export type { ResponseJSON, DataType } from './clickhouse_types'
+export type { ClickHouseSettings } from './settings'

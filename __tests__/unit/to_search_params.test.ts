@@ -1,5 +1,6 @@
 import { toSearchParams } from '../../src/connection/adapter/http_search_params'
 import { URLSearchParams } from 'url'
+import { DistributedProductMode } from '../../src/settings'
 
 describe('toSearchParams', () => {
   it('should return undefined with default settings', async () => {
@@ -16,12 +17,12 @@ describe('toSearchParams', () => {
       database: 'default',
       clickhouse_settings: {
         insert_quorum: 2,
-        distributed_product_mode: 'global',
+        distributed_product_mode: DistributedProductMode.GLOBAL,
         limit: 42,
       },
     })!
     expect(toSortedArray(params)).toEqual([
-      ['distributed_product_mode', 'global'],
+      ['distributed_product_mode', '2'],
       ['insert_quorum', '2'],
       ['limit', '42'],
     ])
@@ -59,7 +60,6 @@ describe('toSearchParams', () => {
       clickhouse_settings: {
         extremes: 1,
         enable_optimize_predicate_expression: 0,
-        wait_end_of_query: 1,
       },
       query_params: {
         qaz: 'qux',
@@ -73,7 +73,6 @@ describe('toSearchParams', () => {
       ['extremes', '1'],
       ['param_qaz', 'qux'],
       ['query', 'SELECT * FROM system.query_log'],
-      ['wait_end_of_query', '1'],
     ])
   })
 })

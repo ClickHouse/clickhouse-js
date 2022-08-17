@@ -13,12 +13,14 @@ describe('formatQuerySettings', () => {
   it('formats a string', () => {
     expect(formatQuerySettings('42')).toBe('42')
   })
+
+  it('formats a record', () => {
+    expect(formatQuerySettings({ foo: 'bar' })).toBe('{"foo":"bar"}')
+  })
+
   it('throws on unsupported values', () => {
     expect(() => formatQuerySettings(undefined as any)).toThrowError(
       'Unsupported value in query settings: [undefined].'
-    )
-    expect(() => formatQuerySettings([1, 2] as any)).toThrowError(
-      'Unsupported value in query settings: [1,2].'
     )
   })
 })
