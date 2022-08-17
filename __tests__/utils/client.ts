@@ -32,8 +32,7 @@ export function createTestClient(
   }
   if (env === TestEnv.Cloud) {
     return createClient({
-      host: getFromEnv('CLICKHOUSE_CLOUD_HOST'),
-      username: getFromEnv('CLICKHOUSE_CLOUD_USERNAME'),
+      host: `https://${getFromEnv('CLICKHOUSE_CLOUD_HOST')}:8443`,
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
       database,
       ...logging,
