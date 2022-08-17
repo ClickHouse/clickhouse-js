@@ -1,6 +1,5 @@
 import { toSearchParams } from '../../src/connection/adapter/http_search_params'
 import { URLSearchParams } from 'url'
-import { DistributedProductMode } from '../../src/settings'
 
 describe('toSearchParams', () => {
   it('should return undefined with default settings', async () => {
@@ -17,12 +16,12 @@ describe('toSearchParams', () => {
       database: 'default',
       clickhouse_settings: {
         insert_quorum: 2,
-        distributed_product_mode: DistributedProductMode.GLOBAL,
+        distributed_product_mode: 'global',
         limit: 42,
       },
     })!
     expect(toSortedArray(params)).toEqual([
-      ['distributed_product_mode', '2'],
+      ['distributed_product_mode', 'global'],
       ['insert_quorum', '2'],
       ['limit', '42'],
     ])
