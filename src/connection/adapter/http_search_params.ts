@@ -1,5 +1,5 @@
-import { type ClickHouseSettings } from '../../clickhouse_types'
 import { formatQueryParams, formatQuerySettings } from '../../data_formatter/'
+import type { ClickHouseSettings } from '../../settings'
 
 type ToSearchParamsOptions = {
   database: string
@@ -35,7 +35,9 @@ export function toSearchParams({
 
   if (clickhouse_settings !== undefined) {
     for (const [key, value] of Object.entries(clickhouse_settings)) {
-      params.set(key, formatQuerySettings(value))
+      if (value !== undefined) {
+        params.set(key, formatQuerySettings(value))
+      }
     }
   }
 

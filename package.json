@@ -7,6 +7,7 @@
     "build": "rm -rf dist; webpack --mode=development",
     "compile": "tsc --project tsconfig.eslint.json --noEmit",
     "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint --fix . --ext .ts",
     "test": "jest --testPathPattern=__tests__ --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
     "test:unit": "jest --testMatch=**/__tests__/{unit,utils}/*.test.ts",
     "test:integration": "jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",

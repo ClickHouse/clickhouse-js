@@ -1,4 +1,4 @@
-import { Logger } from '../../src'
+import type { Logger } from '../../src'
 
 export class TestLogger implements Logger {
   constructor(readonly enabled: boolean = true) {}

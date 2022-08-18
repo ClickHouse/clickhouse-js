@@ -1,9 +1,8 @@
 import Stream from 'stream'
-import Http from 'http'
+import type Http from 'http'
 import Zlib from 'zlib'
 import { parseError } from '../../error'
 
-import type { ClickHouseSettings } from '../../clickhouse_types'
 import type { Logger } from '../../logger'
 
 import type {
@@ -15,6 +14,7 @@ import type {
 import { toSearchParams } from './http_search_params'
 import { transformUrl } from './transform_url'
 import { getAsText, isStream } from '../../utils'
+import type { ClickHouseSettings } from '../../settings'
 
 export interface RequestParams {
   method: 'GET' | 'POST'

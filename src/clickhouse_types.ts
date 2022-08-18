@@ -1,17 +1,3 @@
-// TODO add other settings
-export type ClickHouseSettings = {
-  output_format_json_quote_64bit_integers?: 0 | 1
-  wait_end_of_query?: 0 | 1
-  insert_quorum?: number
-  allow_nondeterministic_mutations?: 0 | 1
-  distributed_product_mode?: 'deny' | 'local' | 'global' | 'allow'
-  prefer_global_in_and_join?: 0 | 1
-  enable_optimize_predicate_expression?: 0 | 1
-  enable_http_compression?: 0 | 1
-  extremes?: 0 | 1
-  limit?: number
-}
-
 // TODO list other data types
 export type DataType =
   | 'UInt8'

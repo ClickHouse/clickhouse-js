@@ -1,4 +1,4 @@
-import type { ClickHouseSettings, CommandParams, ResponseJSON } from '../../src'
+import type { CommandParams, ResponseJSON } from '../../src'
 import { type ClickHouseClient } from '../../src'
 import {
   createTestClient,
@@ -16,11 +16,6 @@ describe('command', () => {
   afterEach(async () => {
     await client.close()
   })
-
-  const clickHouseSettings: ClickHouseSettings = {
-    // ClickHouse responds to a command when it's completely finished
-    wait_end_of_query: 1,
-  }
 
   it('sends a command to execute', async () => {
     const { ddl, tableName, engine } = getDDL()
@@ -53,7 +48,10 @@ describe('command', () => {
         runCommand(client, {
           query: ddl,
           format: 'JSONCompactEachRow',
-          clickhouse_settings: clickHouseSettings,
+          clickhouse_settings: {
+            // ClickHouse responds to a command when it's completely finished
+            wait_end_of_query: 1,
+          },
         })
       await command()
       await command()

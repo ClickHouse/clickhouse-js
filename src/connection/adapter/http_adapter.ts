@@ -2,7 +2,8 @@ import Http from 'http'
 import type { Logger } from '../../logger'
 
 import type { Connection, ConnectionParams } from '../connection'
-import { BaseHttpAdapter, RequestParams } from './base_http_adapter'
+import type { RequestParams } from './base_http_adapter'
+import { BaseHttpAdapter } from './base_http_adapter'
 
 export class HttpAdapter extends BaseHttpAdapter implements Connection {
   constructor(config: ConnectionParams, logger: Logger) {

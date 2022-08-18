@@ -60,12 +60,11 @@ npm run test:integration:local_cluster
 
 Used when `CLICKHOUSE_TEST_ENVIRONMENT` is set to `cloud`.
 
-Three environment variables will be required to connect to the cluster in the Cloud.
+Two environment variables will be required to connect to the cluster in the Cloud.
 You can obtain it after creating an instance in the Control Plane.
 
 ```bash
-CLICKHOUSE_CLOUD_HOST=https://<host>:<port>
-CLICKHOUSE_CLOUD_USERNAME=<username>
+CLICKHOUSE_CLOUD_HOST=<host>
 CLICKHOUSE_CLOUD_PASSWORD=<password>;
 ```
 

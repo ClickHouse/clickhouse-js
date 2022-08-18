@@ -1,8 +1,9 @@
-import { BaseHttpAdapter, RequestParams } from './base_http_adapter'
-import { Connection, ConnectionParams } from '../connection'
-import { Logger } from '../../logger'
+import type { RequestParams } from './base_http_adapter'
+import { BaseHttpAdapter } from './base_http_adapter'
+import type { Connection, ConnectionParams } from '../connection'
+import type { Logger } from '../../logger'
 import Https from 'https'
-import Http from 'http'
+import type Http from 'http'
 
 export class HttpsAdapter extends BaseHttpAdapter implements Connection {
   constructor(config: ConnectionParams, logger: Logger) {

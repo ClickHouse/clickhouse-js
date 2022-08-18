@@ -1,14 +1,11 @@
-import {
-  ClickHouseClient,
-  ClickHouseClientConfigOptions,
-  ClickHouseSettings,
-  createClient,
-} from '../../src'
+import type { ClickHouseClient, ClickHouseClientConfigOptions } from '../../src'
+import { createClient } from '../../src'
 import { guid } from './guid'
 import { TestLogger } from './test_logger'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
 import { getFromEnv } from './env'
 import { TestDatabaseEnvKey } from '../global.integration'
+import type { ClickHouseSettings } from '../../src/settings'
 
 export function createTestClient(
   config: ClickHouseClientConfigOptions = {}
@@ -22,7 +19,7 @@ export function createTestClient(
   )
   const clickHouseSettings: ClickHouseSettings = {}
   if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {
-    clickHouseSettings.insert_quorum = 2
+    clickHouseSettings.insert_quorum = '2'
   }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
@@ -34,8 +31,7 @@ export function createTestClient(
   }
   if (env === TestEnv.Cloud) {
     return createClient({
-      host: getFromEnv('CLICKHOUSE_CLOUD_HOST'),
-      username: getFromEnv('CLICKHOUSE_CLOUD_USERNAME'),
+      host: `https://${getFromEnv('CLICKHOUSE_CLOUD_HOST')}:8443`,
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
       database,
       ...logging,
