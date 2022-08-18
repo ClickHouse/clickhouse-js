@@ -8,6 +8,7 @@ import { ClickHouseClient } from '../../../src'
 
 export async function createReadOnlyUser(client: ClickHouseClient) {
   const username = `clickhousejs__read_only_user_${guid()}`
+  const password = guid()
   const database = getTestDatabaseName()
   const env = getClickHouseTestEnvironment()
   let createUser: string
@@ -17,6 +18,7 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
     case TestEnv.LocalSingleNode:
       createUser = `
           CREATE USER ${username} 
+          IDENTIFIED WITH sha256_password BY '${password}'
           DEFAULT DATABASE ${database}
           SETTINGS readonly = 1
         `
@@ -30,6 +32,7 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
       createUser = `
           CREATE USER ${username} 
           ON CLUSTER '{cluster}'
+          IDENTIFIED WITH sha256_password BY '${password}'
           DEFAULT DATABASE ${database}
           SETTINGS readonly = 1
         `
@@ -51,5 +54,6 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
 
   return {
     username,
+    password,
   }
 }

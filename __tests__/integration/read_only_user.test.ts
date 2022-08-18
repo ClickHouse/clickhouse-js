@@ -10,7 +10,7 @@ describe('read only user', () => {
     const database = getTestDatabaseName()
     const defaultClient = createTestClient()
 
-    const { username } = await createReadOnlyUser(defaultClient)
+    const { username, password } = await createReadOnlyUser(defaultClient)
 
     // Populate some test table to select from
     tableName = `read_only_user_data_${guid()}`
@@ -25,6 +25,7 @@ describe('read only user', () => {
     // Create a client that connects read only user to the test database
     client = createTestClient({
       username,
+      password,
       database,
       clickhouse_settings: {
         insert_quorum: undefined,
