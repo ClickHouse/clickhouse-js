@@ -1,5 +1,7 @@
+import { SettingsMap } from '../settings'
+
 export function formatQuerySettings(
-  value: number | string | boolean | Record<string, string>
+  value: number | string | boolean | SettingsMap
 ): string {
   if (typeof value === 'boolean') return value ? '1' : '0'
   if (typeof value === 'number') return String(value)
@@ -7,8 +9,8 @@ export function formatQuerySettings(
   // ClickHouse requires a specific, non-JSON format for passing maps
   // as a setting value - single quotes instead of double
   // Example: {'system.numbers':'number != 3'}
-  if (typeof value === 'object') {
-    return JSON.stringify(value).replace(/"/g, `'`)
+  if (value instanceof SettingsMap) {
+    return value.toString()
   }
   throw new Error(`Unsupported value in query settings: [${value}].`)
 }

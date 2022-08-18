@@ -1,4 +1,4 @@
-import Stream from 'stream'
+import type Stream from 'stream'
 import { type ClickHouseClient, type ResponseJSON, type Row } from '../../src'
 import { createTestClient } from '../utils'
 
@@ -92,7 +92,7 @@ describe('select', () => {
       query: 'SELECT number FROM system.numbers LIMIT 5',
       format: 'CSV',
       clickhouse_settings: {
-        limit: 2,
+        limit: '2',
       },
     })
 

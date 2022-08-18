@@ -1,5 +1,5 @@
 import { toSearchParams } from '../../src/connection/adapter/http_search_params'
-import { URLSearchParams } from 'url'
+import type { URLSearchParams } from 'url'
 
 describe('toSearchParams', () => {
   it('should return undefined with default settings', async () => {
@@ -15,9 +15,9 @@ describe('toSearchParams', () => {
     const params = toSearchParams({
       database: 'default',
       clickhouse_settings: {
-        insert_quorum: 2,
+        insert_quorum: '2',
         distributed_product_mode: 'global',
-        limit: 42,
+        limit: '42',
       },
     })!
     expect(toSortedArray(params)).toEqual([

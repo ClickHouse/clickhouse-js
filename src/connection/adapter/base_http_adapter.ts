@@ -1,5 +1,5 @@
 import Stream from 'stream'
-import Http from 'http'
+import type Http from 'http'
 import Zlib from 'zlib'
 import { parseError } from '../../error'
 
@@ -14,7 +14,7 @@ import type {
 import { toSearchParams } from './http_search_params'
 import { transformUrl } from './transform_url'
 import { getAsText, isStream } from '../../utils'
-import { ClickHouseSettings } from '../../settings'
+import type { ClickHouseSettings } from '../../settings'
 
 export interface RequestParams {
   method: 'GET' | 'POST'

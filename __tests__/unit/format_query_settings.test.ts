@@ -1,4 +1,5 @@
 import { formatQuerySettings } from '../../src/data_formatter'
+import { SettingsMap } from '../../src'
 
 describe('formatQuerySettings', () => {
   it('formats boolean', () => {
@@ -15,12 +16,17 @@ describe('formatQuerySettings', () => {
   })
 
   it('formats a Map', () => {
-    expect(formatQuerySettings({ foo: 'bar' })).toBe(`{'foo':'bar'}`)
+    expect(
+      formatQuerySettings(SettingsMap.from({ foo: 'bar', baz: 'qux' }))
+    ).toBe(`{'foo':'bar','baz':'qux'}`)
   })
 
   it('throws on unsupported values', () => {
     expect(() => formatQuerySettings(undefined as any)).toThrowError(
       'Unsupported value in query settings: [undefined].'
+    )
+    expect(() => formatQuerySettings([1, 2] as any)).toThrowError(
+      'Unsupported value in query settings: [1,2].'
     )
   })
 })

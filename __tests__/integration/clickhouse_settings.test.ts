@@ -1,5 +1,6 @@
-import { ClickHouseClient } from '../../src'
+import type { ClickHouseClient } from '../../src'
 import { createTestClient } from '../utils'
+import { SettingsMap } from '../../src'
 
 // TODO: cover at least all enum settings
 describe('ClickHouse settings', () => {
@@ -17,9 +18,9 @@ describe('ClickHouse settings', () => {
         query: 'SELECT * FROM system.numbers LIMIT 5',
         format: 'CSV',
         clickhouse_settings: {
-          additional_table_filters: {
+          additional_table_filters: SettingsMap.from({
             'system.numbers': 'number != 3',
-          },
+          }),
         },
       })
       .then((r) => r.text())

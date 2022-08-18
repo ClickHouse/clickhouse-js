@@ -4,7 +4,7 @@ import { Logger } from './logger'
 import { isStream, mapStream } from './utils'
 import { type DataFormat, encode } from './data_formatter'
 import { Rows } from './result'
-import { ClickHouseSettings } from './settings'
+import type { ClickHouseSettings } from './settings'
 
 export interface ClickHouseClientConfigOptions {
   host?: string
@@ -31,9 +31,7 @@ export interface ClickHouseClientConfigOptions {
 }
 
 export interface BaseParams {
-  clickhouse_settings?: ClickHouseSettings & {
-    wait_end_of_query?: 0 | 1
-  }
+  clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
   abort_signal?: AbortSignal
 }

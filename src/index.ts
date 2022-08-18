@@ -22,3 +22,4 @@ export type { Logger } from './logger'
 
 export type { ResponseJSON, DataType } from './clickhouse_types'
 export type { ClickHouseSettings } from './settings'
+export { SettingsMap } from './settings'

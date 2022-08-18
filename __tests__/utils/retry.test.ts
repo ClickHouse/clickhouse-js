@@ -1,5 +1,5 @@
 import { retryOnFailure } from './index'
-import { RetryOnFailureOptions } from './retry'
+import type { RetryOnFailureOptions } from './retry'
 
 describe('retryOnFailure', () => {
   it('should resolve after some failures', async () => {
