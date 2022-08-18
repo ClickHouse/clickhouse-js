@@ -1,62 +1,16 @@
 import { ClickHouseClient } from '../../src'
-import {
-  createTestClient,
-  getClickHouseTestEnvironment,
-  getTestDatabaseName,
-  guid,
-  TestEnv,
-} from '../utils'
+import { createTestClient, getTestDatabaseName, guid } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
+import { createReadOnlyUser } from './fixtures/read_only_user'
 
 describe('read only user', () => {
   let client: ClickHouseClient
-  let username: string
   let tableName: string
   beforeAll(async () => {
-    username = `clickhousejs__read_only_user_${guid()}`
     const database = getTestDatabaseName()
     const defaultClient = createTestClient()
-    const env = getClickHouseTestEnvironment()
 
-    // Bootstrap read only user
-    let createUser: string
-    let grant: string
-    switch (env) {
-      case TestEnv.Cloud: // we do not need 'ON CLUSTER' in the cloud
-      case TestEnv.LocalSingleNode:
-        createUser = `
-          CREATE USER ${username} 
-          DEFAULT DATABASE ${database}
-          SETTINGS readonly = 1
-        `
-        grant = `
-          GRANT SHOW TABLES, SELECT 
-          ON ${database}.* 
-          TO ${username}
-        `
-        break
-      case TestEnv.LocalCluster:
-        createUser = `
-          CREATE USER ${username} 
-          ON CLUSTER '{cluster}'
-          DEFAULT DATABASE ${database}
-          SETTINGS readonly = 1
-        `
-        grant = `
-          GRANT ON CLUSTER '{cluster}'
-          SHOW TABLES, SELECT 
-          ON ${database}.* 
-          TO ${username}
-        `
-        break
-    }
-    await defaultClient
-      .command({ query: createUser, format: null })
-      .then((r) => r.text())
-    await defaultClient
-      .command({ query: grant, format: null })
-      .then((r) => r.text())
-    console.log(`Created user ${username} with default database ${database}`)
+    const { username } = await createReadOnlyUser(defaultClient)
 
     // Populate some test table to select from
     tableName = `read_only_user_data_${guid()}`
@@ -98,10 +52,7 @@ describe('read only user', () => {
       createSimpleTable(client, `should_not_be_created_${guid()}`)
     ).rejects.toEqual(
       expect.objectContaining({
-        message: expect.stringContaining(
-          'Not enough privileges. ' +
-            `To execute this query it's necessary to have grant CREATE TABLE`
-        ),
+        message: expect.stringContaining('Not enough privileges'),
       })
     )
   })
@@ -114,21 +65,20 @@ describe('read only user', () => {
       })
     ).rejects.toEqual(
       expect.objectContaining({
-        message: expect.stringContaining(
-          'Not enough privileges. ' +
-            `To execute this query it's necessary to have grant INSERT`
-        ),
+        message: expect.stringContaining('Not enough privileges'),
       })
     )
   })
 
-  // TODO: enabled by default
-  //  we can try to restrict the access using https://clickhouse.com/docs/en/sql-reference/statements/create/row-policy/
-  //  as suggested in https://github.com/ClickHouse/ClickHouse/issues/2451#issuecomment-1162497824
-  it.skip('should fail to query system tables', async () => {
-    const query = `SELECT * FROM system.data_type_families`
+  // TODO: find a way to restrict all the system tables access
+  it('should fail to query system tables', async () => {
+    const query = `SELECT * FROM system.users LIMIT 5`
     await expect(
       client.command({ query }).then((r) => r.text())
-    ).rejects.toThrowError()
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('Not enough privileges'),
+      })
+    )
   })
 })

@@ -18,6 +18,7 @@ describe('toSearchParams', () => {
         insert_quorum: 2,
         distributed_product_mode: 'global',
         limit: 42,
+        allow_nondeterministic_mutations: undefined, // will be omitted
       },
     })!
     expect(toSortedArray(params)).toEqual([
