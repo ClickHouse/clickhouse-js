@@ -1,5 +1,5 @@
-import { type ClickHouseSettings } from '../../clickhouse_types'
 import { formatQueryParams, formatQuerySettings } from '../../data_formatter/'
+import type { ClickHouseSettings } from '../../settings'
 
 type ToSearchParamsOptions = {
   database: string

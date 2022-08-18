@@ -40,7 +40,7 @@ export class Rows {
    * The method waits for the all the rows to be fully loaded.
    * When the response is received in full, it will be decoded to return JSON.
    */
-  async json<T>(): Promise<T> {
+  async json<T = { data: unknown[] }>(): Promise<T> {
     return decode(await this.text(), this.format)
   }
 

@@ -1,5 +1,5 @@
 import { createTable, TestEnv } from '../../utils'
-import { ClickHouseClient } from '../../../src'
+import type { ClickHouseClient } from '../../../src'
 
 export function createSimpleTable(client: ClickHouseClient, tableName: string) {
   return createTable(client, (env) => {

@@ -1,7 +1,7 @@
-import Stream from 'stream'
-import type { ClickHouseSettings } from '../clickhouse_types'
+import type Stream from 'stream'
 import type { Logger } from '../logger'
 import { HttpAdapter, HttpsAdapter } from './adapter'
+import type { ClickHouseSettings } from '../settings'
 
 export interface ConnectionParams {
   host: URL

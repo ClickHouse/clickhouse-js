@@ -1,11 +1,10 @@
 import Stream from 'stream'
-// import type { ConnectionOptions as TlsOptions } from 'tls'
-import type { ClickHouseSettings } from './clickhouse_types'
 import { type Connection, createConnection } from './connection'
 import { Logger } from './logger'
 import { isStream, mapStream } from './utils'
 import { type DataFormat, encode } from './data_formatter'
 import { Rows } from './result'
+import type { ClickHouseSettings } from './settings'
 
 export interface ClickHouseClientConfigOptions {
   host?: string
