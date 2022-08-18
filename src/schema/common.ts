@@ -1,4 +1,4 @@
-import { Type } from './types'
+import type { Type } from './types'
 
 // TODO: TTL
 // TODO: Materialized columns

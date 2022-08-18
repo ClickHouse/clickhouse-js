@@ -1,4 +1,4 @@
-import { Infer, Shape } from './common'
+import type { Infer, Shape } from './common'
 
 export function compactJson<S extends Shape>(shape: S, value: Infer<S>) {
   const compacted = []

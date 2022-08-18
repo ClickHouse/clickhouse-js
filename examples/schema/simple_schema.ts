@@ -1,5 +1,6 @@
 import * as ch from '../../src/schema'
-import { Infer, InsertStream } from '../../src/schema'
+import type { Infer } from '../../src/schema'
+import { InsertStream } from '../../src/schema'
 import { createClient } from '../../src'
 
 export default async () => {

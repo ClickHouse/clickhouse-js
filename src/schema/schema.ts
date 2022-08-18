@@ -1,4 +1,4 @@
-import { Shape } from './common'
+import type { Shape } from './common'
 
 export class Schema<S extends Shape> {
   constructor(public readonly shape: S) {}

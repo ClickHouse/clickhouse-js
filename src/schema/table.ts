@@ -1,12 +1,12 @@
-import { MergeTreeSettings, TableEngine } from './engines'
-import { Schema } from './schema'
-import { Infer, Shape } from './common'
+import type { MergeTreeSettings, TableEngine } from './engines'
+import type { Schema } from './schema'
+import type { Infer, Shape } from './common'
 import { getTableName, QueryFormatter } from './query_formatter'
-import { ClickHouseClient } from '../client'
-import { Row } from '../result'
-import { WhereExpr } from './where'
-import { InsertStream, SelectResult } from './stream'
-import { ClickHouseSettings } from '../clickhouse_types'
+import type { ClickHouseClient } from '../client'
+import type { Row } from '../result'
+import type { WhereExpr } from './where'
+import type { InsertStream, SelectResult } from './stream'
+import type { ClickHouseSettings } from '../settings'
 
 // TODO: non-empty schema constraint
 // TODO support more formats (especially JSONCompactEachRow)

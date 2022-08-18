@@ -1,6 +1,6 @@
-import { Shape } from './common'
-import { CreateTableOptions, TableOptions } from './index'
-import { WhereExpr } from './where'
+import type { Shape } from './common'
+import type { CreateTableOptions, TableOptions } from './index'
+import type { WhereExpr } from './where'
 
 export const QueryFormatter = {
   // See https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree/#table_engine-mergetree-creating-a-table

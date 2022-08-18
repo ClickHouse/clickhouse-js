@@ -1,4 +1,4 @@
-import { ClickHouseClient } from '../../src'
+import type { ClickHouseClient } from '../../src'
 import { createTableWithSchema, createTestClient, guid } from '../utils'
 
 import * as ch from '../../src/schema'

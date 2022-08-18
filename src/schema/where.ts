@@ -1,4 +1,4 @@
-import { Shape } from './common'
+import type { Shape } from './common'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface WhereExpr<S extends Shape> {
