@@ -2,7 +2,7 @@ version: '2.3'
 
 services:
   clickhouse1:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-22.6.5.22-alpine}'
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-22.7.3.5-alpine}'
     ulimits:
       nofile:
         soft: 262144
