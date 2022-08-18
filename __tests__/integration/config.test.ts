@@ -14,7 +14,7 @@ describe('config', () => {
     await client.close()
   })
 
-  it('request_timeout sets request timeout', async () => {
+  it('should set request timeout with "request_timeout" setting', async () => {
     client = createTestClient({
       request_timeout: 100,
     })

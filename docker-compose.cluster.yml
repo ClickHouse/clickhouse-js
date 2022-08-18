@@ -16,7 +16,7 @@ services:
     volumes:
       - './.docker/clickhouse/cluster/server1_config.xml:/etc/clickhouse-server/config.xml'
       - './.docker/clickhouse/cluster/server1_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
-      - './.docker/clickhouse/cluster/users.xml:/etc/clickhouse-server/users.xml'
+      - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
 
   clickhouse2:
     image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-22.7.3.5-alpine}'
@@ -33,7 +33,7 @@ services:
     volumes:
       - './.docker/clickhouse/cluster/server2_config.xml:/etc/clickhouse-server/config.xml'
       - './.docker/clickhouse/cluster/server2_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
-      - './.docker/clickhouse/cluster/users.xml:/etc/clickhouse-server/users.xml'
+      - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
 
   # Using Nginx as a cluster entrypoint and a round-robin load balancer for HTTP requests
   nginx:
