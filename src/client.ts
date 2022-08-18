@@ -44,7 +44,11 @@ export interface SelectParams extends BaseParams {
 
 export interface CommandParams extends BaseParams {
   query: string
-  format?: DataFormat
+  /**
+   * Use 'false' if your command does not support FORMAT statement,
+   * and it needs to be omitted from the query
+   */
+  format?: DataFormat | false
 }
 
 export interface InsertParams extends BaseParams {
@@ -139,7 +143,7 @@ export class ClickHouseClient {
   }
 
   async command(params: CommandParams): Promise<Rows> {
-    const format = params.format ?? 'JSON'
+    const format = params.format === undefined ? 'JSON' : params.format
     const query = formatCommandQuery(params.query, format)
 
     const stream = await this.connection.command({
@@ -147,7 +151,7 @@ export class ClickHouseClient {
       ...this.getBaseParams(params),
     })
 
-    return new Rows(stream, format)
+    return new Rows(stream, format as any)
   }
 
   async insert(params: InsertParams): Promise<void> {
@@ -185,10 +189,12 @@ function formatSelectQuery(query: string, format: DataFormat): string {
   return query + ' \nFORMAT ' + format
 }
 
-// it is a duplicate of `formatSelectQuery`, but it might differ in the future
-function formatCommandQuery(query: string, format: DataFormat): string {
+function formatCommandQuery(query: string, format: DataFormat | false): string {
   query = query.trim()
-  return query + ' \nFORMAT ' + format
+  if (format !== false) {
+    return query + ' \nFORMAT ' + format
+  }
+  return query
 }
 
 function validateInsertValues(
