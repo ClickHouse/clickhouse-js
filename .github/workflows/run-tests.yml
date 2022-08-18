@@ -45,11 +45,6 @@ jobs:
         run: |
           npm run compile
 
-      # FIXME: https://github.com/ClickHouse/clickhouse-js/runs/7776502170?check_suite_focus=true
-      #      - name: Build
-      #        run: |
-      #          npm run build
-
       - name: Run unit tests
         run: |
           npm run test:unit
@@ -142,8 +137,7 @@ jobs:
 
       - name: Run integration tests
         env:
-          CLICKHOUSE_CLOUD_HOST: ${{ secrets.CLICKHOUSE_CLOUD_HOST }}
-          CLICKHOUSE_CLOUD_USERNAME: ${{ secrets.CLICKHOUSE_CLOUD_USERNAME }}
-          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.CLICKHOUSE_CLOUD_PASSWORD }}
+          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST }}
+          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
         run: |
           npm run test:integration:cloud
