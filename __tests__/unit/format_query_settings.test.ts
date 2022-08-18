@@ -14,8 +14,8 @@ describe('formatQuerySettings', () => {
     expect(formatQuerySettings('42')).toBe('42')
   })
 
-  it('formats a record', () => {
-    expect(formatQuerySettings({ foo: 'bar' })).toBe('{"foo":"bar"}')
+  it('formats a Map', () => {
+    expect(formatQuerySettings({ foo: 'bar' })).toBe(`{'foo':'bar'}`)
   })
 
   it('throws on unsupported values', () => {
