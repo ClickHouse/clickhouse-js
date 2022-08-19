@@ -1,4 +1,3 @@
-export { InMemoryLogger } from './in_memory_logger'
 export { TestLogger } from './test_logger'
 export {
   createTestClient,

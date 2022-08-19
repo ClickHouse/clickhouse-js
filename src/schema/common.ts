@@ -10,3 +10,5 @@ export type Shape = {
 export type Infer<S extends Shape> = {
   [Field in keyof S]: S[Field]['underlying']
 }
+
+export type NonEmptyArray<T> = [T, ...T[]]

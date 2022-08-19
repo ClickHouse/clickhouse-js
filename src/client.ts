@@ -230,7 +230,7 @@ function encodeValues(
       mapStream((value: unknown) => {
         return encode(value, format)
       }),
-      (err) => {
+      function pipelineCb(err) {
         if (err) {
           console.error(err)
         }

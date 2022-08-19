@@ -1,18 +1,5 @@
 // See https://clickhouse.com/docs/en/engines/table-engines/
 
-interface Engine {
-  toString(): string
-  type:
-    | 'MergeTree'
-    | 'ReplicatedMergeTree'
-    | 'ReplacingMergeTree'
-    | 'SummingMergeTree'
-    | 'AggregatingMergeTree'
-    | 'CollapsingMergeTree'
-    | 'VersionedCollapsingMergeTree'
-    | 'GraphiteMergeTree'
-}
-
 // TODO Log family
 export type TableEngine = MergeTreeFamily
 
@@ -48,7 +35,7 @@ export interface MergeTreeSettings {
   min_compress_block_size?: number
   max_partitions_to_read?: number
 }
-export const MergeTree: () => Engine = () => ({
+export const MergeTree = () => ({
   toString: () => `MergeTree()`,
   type: 'MergeTree',
 })
@@ -60,9 +47,11 @@ export interface ReplicatedMergeTreeParameters {
   replica_name: string
   ver?: string
 }
-export const ReplicatedMergeTree: (
-  parameters: ReplicatedMergeTreeParameters
-) => Engine = ({ zoo_path, replica_name, ver }) => ({
+export const ReplicatedMergeTree = ({
+  zoo_path,
+  replica_name,
+  ver,
+}: ReplicatedMergeTreeParameters) => ({
   toString: () => {
     const _ver = ver ? `, ${ver}` : ''
     return `ReplicatedMergeTree('${zoo_path}', '${replica_name}'${_ver})`

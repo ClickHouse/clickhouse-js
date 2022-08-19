@@ -1,4 +1,4 @@
-import type { Shape } from './common'
+import type { NonEmptyArray, Shape } from './common'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface WhereExpr<S extends Shape> {
@@ -17,7 +17,9 @@ export function Eq<S extends Shape, F extends keyof S>(
     type: 'Eq',
   }
 }
-export function And<S extends Shape>(...expr: WhereExpr<S>[]): WhereExpr<S> {
+export function And<S extends Shape>(
+  ...expr: NonEmptyArray<WhereExpr<S>>
+): WhereExpr<S> {
   return {
     toString(): string {
       return `(${expr.join(' AND ')})`
@@ -25,7 +27,9 @@ export function And<S extends Shape>(...expr: WhereExpr<S>[]): WhereExpr<S> {
     type: 'And',
   }
 }
-export function Or<S extends Shape>(...expr: WhereExpr<S>[]): WhereExpr<S> {
+export function Or<S extends Shape>(
+  ...expr: NonEmptyArray<WhereExpr<S>>
+): WhereExpr<S> {
   return {
     toString(): string {
       return `(${expr.join(' OR ')})`

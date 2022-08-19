@@ -136,12 +136,18 @@ export const Int32 = {
 } as Int32
 
 export type Int64 = {
-  // Max Int64:                9223372036854775807
-  // Number.MAX_SAFE_INTEGER:  9007199254740991
-  // can be cast to number by disabling `output_format_json_quote_64bit_integers` CH setting
   underlying: string
   type: 'Int64'
 }
+/**
+ * Uses string as the inferred type, since its max value
+ * is greater than Number.MAX_SAFE_INTEGER
+ *
+ * Max Int64:                9223372036854775807
+ * Number.MAX_SAFE_INTEGER:  9007199254740991
+ *
+ * It could be cast to number by disabling `output_format_json_quote_64bit_integers` CH setting
+ */
 export const Int64 = {
   type: 'Int64',
   toString(): string {
@@ -215,15 +221,15 @@ export const Decimal = ({
       if (precision > 10 && precision < 19) {
         return `Decimal64(${scale})`
       }
-      // if (precision > 19 && precision < 39) {
-      //   return `Decimal128(${scale})`
-      // }
-      // if (precision > 19 && precision < 39) {
-      //   return `Decimal128(${scale})`
-      // }
-      // if (precision > 39 && precision < 77) {
-      //   return `Decimal256(${scale})`
-      // }
+      if (precision > 19 && precision < 39) {
+        return `Decimal128(${scale})`
+      }
+      if (precision > 19 && precision < 39) {
+        return `Decimal128(${scale})`
+      }
+      if (precision > 39 && precision < 77) {
+        return `Decimal256(${scale})`
+      }
       throw Error(
         `Unsupported Decimal precision. Valid range: [ 1 : 18 ], got ${precision}`
       )
@@ -449,6 +455,7 @@ export const IPv6 = {
 } as IPv6
 
 // TODO: Tuple is disabled for now. Figure out type derivation in this case
+
 // export type Tuple<T extends Type> = {
 //   type: 'Tuple'
 //   // underlying: globalThis.Array<T['underlying']>

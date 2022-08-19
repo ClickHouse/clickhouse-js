@@ -3,7 +3,7 @@ import type { Infer } from '../../src/schema'
 import { InsertStream } from '../../src/schema'
 import { createClient } from '../../src'
 
-export default async () => {
+void (async () => {
   const client = createClient()
 
   enum UserRole {
@@ -26,6 +26,11 @@ export default async () => {
     schema: userSchema,
   })
 
+  await usersTable.create({
+    engine: ch.MergeTree(),
+    order_by: ['id'],
+  })
+
   const insertStream = new InsertStream<Data>()
   insertStream.add({
     // NB: (U)Int64/128/256 are represented as strings
@@ -40,10 +45,16 @@ export default async () => {
   insertStream.complete()
   await usersTable.insert({
     values: insertStream,
+    clickhouse_settings: {
+      insert_quorum: '2',
+    },
   })
 
-  const { asyncGenerator } = await usersTable.select()
+  const { asyncGenerator } = await usersTable.select({
+    columns: ['id', 'name', 'registeredAt'],
+    order_by: [['name', 'DESC']],
+  })
   for await (const value of asyncGenerator()) {
     console.log(value.id)
   }
-}
+})()

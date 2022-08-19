@@ -1,6 +1,7 @@
 import type { Shape } from './common'
 import type { CreateTableOptions, TableOptions } from './index'
 import type { WhereExpr } from './where'
+import type { NonEmptyArray } from './common'
 
 export const QueryFormatter = {
   // See https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree/#table_engine-mergetree-creating-a-table
@@ -46,13 +47,17 @@ export const QueryFormatter = {
   select: <S extends Shape>(
     tableOptions: TableOptions<S>,
     whereExpr?: WhereExpr<S>,
-    columns?: Array<keyof S>,
-    orderBy?: Array<keyof S>
+    columns?: NonEmptyArray<keyof S>,
+    orderBy?: NonEmptyArray<[keyof S, 'ASC' | 'DESC']>
   ) => {
     const tableName = getTableName(tableOptions)
     const where = whereExpr ? ` WHERE ${whereExpr.toString()}` : ''
     const cols = columns ? columns.join(', ') : '*'
-    const order = orderBy ? ` ORDER BY ${orderBy?.join(', ')}` : ''
+    const order = orderBy
+      ? ` ORDER BY ${orderBy
+          .map(([column, order]) => `${column.toString()} ${order}`)
+          .join(', ')}`
+      : ''
     return `SELECT ${cols} FROM ${tableName}${where}${order}`
   },
 }
