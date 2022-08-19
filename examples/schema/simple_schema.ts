@@ -51,7 +51,7 @@ void (async () => {
   })
 
   const { asyncGenerator } = await usersTable.select({
-    columns: ['id', 'name', 'registeredAt'],
+    columns: ['id', 'name', 'registeredAt'], // or omit to select *
     order_by: [['name', 'DESC']],
   })
   for await (const value of asyncGenerator()) {

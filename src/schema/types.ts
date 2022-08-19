@@ -11,8 +11,10 @@ TODO:
   Multi-word Types
   Better Date(Time) parsing/handling, including timezones
   Tuple
-  Named tuple
-  Decimal (without precision loss) - see https://github.com/ClickHouse/ClickHouse/issues/21875
+    - Named tuple
+  Decimal (without precision loss)
+    - see https://github.com/ClickHouse/ClickHouse/issues/21875
+    - currently disabled due to precision loss when using JS numbers in runtime
 */
 
 type Int = UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256
@@ -69,14 +71,20 @@ export const UInt32 = {
     return 'UInt32'
   },
 } as UInt32
-
 export type UInt64 = {
-  // Max UInt64:               18446744073709551615
-  // Number.MAX_SAFE_INTEGER:  9007199254740991
-  // can be cast to number by disabling `output_format_json_quote_64bit_integers` CH setting
   underlying: string
   type: 'UInt64'
 }
+/**
+ * Uses string as the inferred type, since its max value
+ * is greater than Number.MAX_SAFE_INTEGER
+ *
+ * Max UInt64:               18446744073709551615
+ * Number.MAX_SAFE_INTEGER:  9007199254740991
+ *
+ * It can be cast to number
+ * by disabling `output_format_json_quote_64bit_integers` CH setting
+ */
 export const UInt64 = {
   type: 'UInt64',
   toString(): string {
@@ -87,6 +95,10 @@ export type UInt128 = {
   type: 'UInt128'
   underlying: string
 }
+/**
+ * Uses string as the inferred type, since its max value
+ * is greater than Number.MAX_SAFE_INTEGER
+ */
 export const UInt128 = {
   type: 'UInt128',
   toString(): string {
@@ -97,6 +109,10 @@ export type UInt256 = {
   type: 'UInt256'
   underlying: string
 }
+/**
+ * Uses string as the inferred type, since its max value
+ * is greater than Number.MAX_SAFE_INTEGER
+ */
 export const UInt256 = {
   type: 'UInt256',
   toString(): string {
@@ -146,7 +162,8 @@ export type Int64 = {
  * Max Int64:                9223372036854775807
  * Number.MAX_SAFE_INTEGER:  9007199254740991
  *
- * It could be cast to number by disabling `output_format_json_quote_64bit_integers` CH setting
+ * It could be cast to number
+ * by disabling `output_format_json_quote_64bit_integers` CH setting
  */
 export const Int64 = {
   type: 'Int64',
@@ -158,6 +175,10 @@ export type Int128 = {
   type: 'Int128'
   underlying: string
 }
+/**
+ * Uses string as the inferred type, since its max value
+ * is greater than Number.MAX_SAFE_INTEGER
+ */
 export const Int128 = {
   type: 'Int128',
   toString(): string {
@@ -168,6 +189,10 @@ export type Int256 = {
   type: 'Int256'
   underlying: string
 }
+/**
+ * Uses string as the inferred type, since its max value
+ * is greater than Number.MAX_SAFE_INTEGER
+ */
 export const Int256 = {
   type: 'Int256',
   toString(): string {
