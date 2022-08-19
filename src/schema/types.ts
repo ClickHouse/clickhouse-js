@@ -41,7 +41,7 @@ export type Type =
   | IPv4
   | IPv6
 
-export type UInt8 = {
+export interface UInt8 {
   underlying: number
   type: 'UInt8'
 }
@@ -51,7 +51,7 @@ export const UInt8 = {
     return 'UInt8'
   },
 } as UInt8
-export type UInt16 = {
+export interface UInt16 {
   type: 'UInt16'
   underlying: number
 }
@@ -61,7 +61,7 @@ export const UInt16 = {
     return 'UInt16'
   },
 } as UInt16
-export type UInt32 = {
+export interface UInt32 {
   type: 'UInt32'
   underlying: number
 }
@@ -71,7 +71,7 @@ export const UInt32 = {
     return 'UInt32'
   },
 } as UInt32
-export type UInt64 = {
+export interface UInt64 {
   underlying: string
   type: 'UInt64'
 }
@@ -91,7 +91,7 @@ export const UInt64 = {
     return 'UInt64'
   },
 } as UInt64
-export type UInt128 = {
+export interface UInt128 {
   type: 'UInt128'
   underlying: string
 }
@@ -105,7 +105,7 @@ export const UInt128 = {
     return 'UInt128'
   },
 } as UInt128
-export type UInt256 = {
+export interface UInt256 {
   type: 'UInt256'
   underlying: string
 }
@@ -120,7 +120,7 @@ export const UInt256 = {
   },
 } as UInt256
 
-export type Int8 = {
+export interface Int8 {
   underlying: number
   type: 'Int8'
 }
@@ -130,7 +130,7 @@ export const Int8 = {
     return 'Int8'
   },
 } as Int8
-export type Int16 = {
+export interface Int16 {
   type: 'Int16'
   underlying: number
 }
@@ -140,7 +140,7 @@ export const Int16 = {
     return 'Int16'
   },
 } as Int16
-export type Int32 = {
+export interface Int32 {
   type: 'Int32'
   underlying: number
 }
@@ -151,7 +151,7 @@ export const Int32 = {
   },
 } as Int32
 
-export type Int64 = {
+export interface Int64 {
   underlying: string
   type: 'Int64'
 }
@@ -171,7 +171,7 @@ export const Int64 = {
     return 'Int64'
   },
 } as Int64
-export type Int128 = {
+export interface Int128 {
   type: 'Int128'
   underlying: string
 }
@@ -185,7 +185,7 @@ export const Int128 = {
     return 'Int128'
   },
 } as Int128
-export type Int256 = {
+export interface Int256 {
   type: 'Int256'
   underlying: string
 }
@@ -200,7 +200,7 @@ export const Int256 = {
   },
 } as Int256
 
-export type Float32 = {
+export interface Float32 {
   type: 'Float32'
   underlying: number
 }
@@ -210,7 +210,7 @@ export const Float32 = {
     return 'Float32'
   },
 } as Float32
-export type Float64 = {
+export interface Float64 {
   type: 'Float64'
   underlying: number
 }
@@ -221,7 +221,7 @@ export const Float64 = {
   },
 } as Float64
 
-export type Decimal = {
+export interface Decimal {
   type: 'Decimal'
   underlying: number
 }
@@ -261,7 +261,7 @@ export const Decimal = ({
     },
   } as Decimal)
 
-export type Bool = {
+export interface Bool {
   type: 'Bool'
   underlying: boolean
 }
@@ -272,7 +272,7 @@ export const Bool = {
   },
 } as Bool
 
-export type String = {
+export interface String {
   type: 'String'
   underlying: string
 }
@@ -283,7 +283,7 @@ export const String = {
   },
 } as String
 
-export type FixedString = {
+export interface FixedString {
   type: 'FixedString'
   underlying: string
 }
@@ -295,7 +295,7 @@ export const FixedString = (bytes: number) =>
     },
   } as FixedString)
 
-export type UUID = {
+export interface UUID {
   type: 'UUID'
   underlying: string
 }
@@ -311,7 +311,7 @@ type StandardEnum<T> = {
   [n: number]: string
 }
 
-export type Enum<T extends StandardEnum<unknown>> = {
+export interface Enum<T extends StandardEnum<unknown>> {
   type: 'Enum'
   underlying: keyof T
 }
@@ -336,7 +336,7 @@ type LowCardinalityDataType =
   | Float
   | Date
   | DateTime
-export type LowCardinality<T extends LowCardinalityDataType> = {
+export interface LowCardinality<T extends LowCardinalityDataType> {
   type: 'LowCardinality'
   underlying: T['underlying']
 }
@@ -348,7 +348,7 @@ export const LowCardinality = <T extends LowCardinalityDataType>(type: T) =>
     },
   } as LowCardinality<T>)
 
-export type Array<T extends Type> = {
+export interface Array<T extends Type> {
   type: 'Array'
   underlying: globalThis.Array<T['underlying']>
 }
@@ -375,7 +375,7 @@ type NullableType =
   | Date32
   | IPv4
   | IPv6
-export type Nullable<T extends NullableType> = {
+export interface Nullable<T extends NullableType> {
   type: 'Nullable'
   underlying: T['underlying'] | null
 }
@@ -397,7 +397,7 @@ type MapKey =
   | Date
   | DateTime
   | Date32
-export type Map<K extends MapKey, V extends Type> = {
+export interface Map<K extends MapKey, V extends Type> {
   type: 'Map'
   underlying: Record<K['underlying'], V['underlying']>
 }
@@ -409,7 +409,7 @@ export const Map = <K extends MapKey, V extends Type>(k: K, v: V) =>
     },
   } as Map<K, V>)
 
-export type Date = {
+export interface Date {
   type: 'Date'
   underlying: string // '1970-01-01' to '2149-06-06'
 }
@@ -420,7 +420,7 @@ export const Date = {
   },
 } as Date
 
-export type Date32 = {
+export interface Date32 {
   type: 'Date32'
   underlying: string // '1900-01-01' to '2299-12-31'
 }
@@ -431,7 +431,7 @@ export const Date32 = {
   },
 } as Date32
 
-export type DateTime = {
+export interface DateTime {
   type: 'DateTime'
   underlying: string // '1970-01-01 00:00:00' to '2106-02-07 06:28:15'
 }
@@ -444,7 +444,7 @@ export const DateTime = (timezone?: string) =>
     },
   } as DateTime)
 
-export type DateTime64 = {
+export interface DateTime64 {
   type: 'DateTime64'
   underlying: string // '1900-01-01 00:00:00' to '2299-12-31 23:59:59.99999999'
 }
@@ -457,7 +457,7 @@ export const DateTime64 = (precision: number, timezone?: string) =>
     },
   } as DateTime64)
 
-export type IPv4 = {
+export interface IPv4 {
   type: 'IPv4'
   underlying: string // 255.255.255.255
 }
@@ -468,7 +468,7 @@ export const IPv4 = {
   },
 } as IPv4
 
-export type IPv6 = {
+export interface IPv6 {
   type: 'IPv6'
   underlying: string // 2001:db8:85a3::8a2e:370:7334
 }
@@ -481,7 +481,7 @@ export const IPv6 = {
 
 // TODO: Tuple is disabled for now. Figure out type derivation in this case
 
-// export type Tuple<T extends Type> = {
+// export interface Tuple<T extends Type> = {
 //   type: 'Tuple'
 //   // underlying: globalThis.Array<T['underlying']>
 // }
