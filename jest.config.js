@@ -14,4 +14,5 @@ module.exports = {
       tsconfig: 'tsconfig.eslint.json',
     },
   },
+  globalSetup: '<rootDir>/__tests__/setup.all.ts',
 }
