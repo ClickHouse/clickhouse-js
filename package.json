@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "rm -rf dist; webpack --mode=development",
-    "build:examples": "tsc --project tsconfig.eslint.json",
+    "build:all": "tsc --project tsconfig.eslint.json",
     "typecheck": "tsc --project tsconfig.eslint.json --noEmit",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint --fix . --ext .ts",
