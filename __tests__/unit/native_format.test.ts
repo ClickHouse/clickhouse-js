@@ -1,3 +1,5 @@
+// added as an example. based on
+// https://clickhouse.com/docs/en/native-protocol/basics
 describe('encoding', () => {
   describe('string', () => {
     const input = 'Hello, world!'
@@ -12,7 +14,7 @@ describe('encoding', () => {
       // max length of string is 2^53 - 1, we allocate 6 bytes manually
       counterBuffer.writeUintBE(input.length, 0, 6)
 
-      const contentBuffer = Buffer.from(input, 'utf-8')
+      const contentBuffer = Buffer.from(input, 'utf8')
       const finalBuffer = Buffer.concat([counterBuffer, contentBuffer])
 
       expect(Buffer.compare(finalBuffer, inputBinary)).toBe(0)
