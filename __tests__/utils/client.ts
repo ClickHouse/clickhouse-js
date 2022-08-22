@@ -18,9 +18,9 @@ export function createTestClient(
     }`
   )
   const clickHouseSettings: ClickHouseSettings = {}
-  if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {
-    clickHouseSettings.insert_quorum = '2'
-  }
+  // if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {
+  //   clickHouseSettings.insert_quorum = '2'
+  // }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
   const logging = {
