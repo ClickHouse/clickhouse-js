@@ -59,7 +59,7 @@ export async function createRandomDatabase(
   await client.command({
     query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
     clickhouse_settings: {
-      // wait_end_of_query: 1,
+      wait_end_of_query: 1,
     },
   })
   console.log(`Created database ${databaseName}`)
