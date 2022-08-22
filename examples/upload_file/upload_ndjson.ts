@@ -10,13 +10,13 @@ void (async () => {
       'CREATE TABLE example_ndjson (id UInt64) ENGINE MergeTree() ORDER BY (id)',
   })
 
-  // contains id as numbers in JSONCompactEachRow format
+  // contains id as numbers in JSONCompactEachRow format ["0"]\n["0"]\n...
   const filename = Path.resolve(__dirname, './data.ndjson')
 
   await client.insert({
     table: 'example_ndjson',
     values: Fs.createReadStream(filename).pipe(
-      // show be removed when "insert" accepts a stream of strings/bytes
+      // should be removed when "insert" accepts a stream of strings/bytes
       split((row: string) => JSON.parse(row))
     ),
   })
