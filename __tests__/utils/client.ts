@@ -18,9 +18,9 @@ export function createTestClient(
     }`
   )
   const clickHouseSettings: ClickHouseSettings = {}
-  // if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {
-  //   clickHouseSettings.insert_quorum = '2'
-  // }
+  if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {
+    clickHouseSettings.insert_quorum = '2'
+  }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
   const logging = {
@@ -56,11 +56,12 @@ export async function createRandomDatabase(
   if (getClickHouseTestEnvironment() === TestEnv.LocalCluster) {
     maybeOnCluster = `ON CLUSTER '{cluster}'`
   }
-  await (
-    await client.command({
-      query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
-    })
-  ).text()
+  await client.command({
+    query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
+    clickhouse_settings: {
+      wait_end_of_query: 1,
+    },
+  })
   console.log(`Created database ${databaseName}`)
   return databaseName
 }
@@ -71,11 +72,12 @@ export async function createTable(
 ) {
   const env = getClickHouseTestEnvironment()
   const ddl = definition(env)
-  await (
-    await client.command({
-      query: ddl,
-    })
-  ).text()
+  await client.command({
+    query: ddl,
+    clickhouse_settings: {
+      wait_end_of_query: 1,
+    },
+  })
   console.log(`Created a table using DDL:\n${ddl}`)
 }
 
