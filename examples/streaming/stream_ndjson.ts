@@ -26,7 +26,9 @@ void (async () => {
     format: 'JSON',
   })
 
-  console.log(await response.json())
+  for await (const row of response.asStream()) {
+    console.log(row.text())
+  }
 
   await client.command({
     query: 'DROP TABLE example_ndjson',
