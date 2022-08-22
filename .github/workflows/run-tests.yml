@@ -41,9 +41,9 @@ jobs:
         run: |
           npm run lint
 
-      - name: Compile
+      - name: Typecheck
         run: |
-          npm run compile
+          npm run typecheck
 
       - name: Run unit tests
         run: |

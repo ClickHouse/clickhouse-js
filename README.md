@@ -76,7 +76,7 @@ npm run test:integration:cloud
 
 ## GitHub Actions
 
-Integration tests jobs should be executed in parallel after we complete usual TypeScript stuff like compile and lint, as well as unit tests.
+Integration tests jobs should be executed in parallel after we complete usual TypeScript stuff like type check and lint, as well as unit tests.
 
 ```
 Build + Unit tests
