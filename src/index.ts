@@ -14,7 +14,7 @@ export {
   type InsertParams,
 } from './client'
 
-export { Rows, Row } from './result'
+export { Row, Rows } from './rows'
 export type { Connection } from './connection'
 export type { DataFormat } from './data_formatter'
 export type { ClickHouseError } from './error'
