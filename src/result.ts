@@ -49,14 +49,12 @@ export class Rows {
    * The method will throw if called on a response in non-streamable format.
    */
   asStream(): Stream.Readable {
-    const format = this.format
-    validateStreamFormat(format)
+    validateStreamFormat(this.format)
 
     return Stream.pipeline(
       this.stream,
-      split(function (this: Stream.Transform, row: string) {
-        return new Row(row, format)
-      }),
+      // only JSON-based format are supported at the moment
+      split((row: string) => new Row(row, 'JSON')),
       function pipelineCb(err) {
         if (err) {
           console.error(err)

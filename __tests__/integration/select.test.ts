@@ -284,11 +284,11 @@ describe('select', () => {
         const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
-          [{ number: '0' }],
-          [{ number: '1' }],
-          [{ number: '2' }],
-          [{ number: '3' }],
-          [{ number: '4' }],
+          { number: '0' },
+          { number: '1' },
+          { number: '2' },
+          { number: '3' },
+          { number: '4' },
         ])
       })
 
@@ -301,11 +301,11 @@ describe('select', () => {
         const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
-          [{ number: '0' }],
-          [{ number: '1' }],
-          [{ number: '2' }],
-          [{ number: '3' }],
-          [{ number: '4' }],
+          { number: '0' },
+          { number: '1' },
+          { number: '2' },
+          { number: '3' },
+          { number: '4' },
         ])
       })
 
@@ -317,7 +317,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream())
 
-        expect(rows).toEqual([[['0']], [['1']], [['2']], [['3']], [['4']]])
+        expect(rows).toEqual([['0'], ['1'], ['2'], ['3'], ['4']])
       })
 
       it('returns stream of objects in JSONCompactEachRowWithNames format', async () => {
@@ -328,14 +328,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream())
 
-        expect(rows).toEqual([
-          [['number']],
-          [['0']],
-          [['1']],
-          [['2']],
-          [['3']],
-          [['4']],
-        ])
+        expect(rows).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
       })
 
       it('returns stream of objects in JSONCompactEachRowWithNamesAndTypes format', async () => {
@@ -347,13 +340,13 @@ describe('select', () => {
         const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
-          [['number']],
-          [['UInt64']],
-          [['0']],
-          [['1']],
-          [['2']],
-          [['3']],
-          [['4']],
+          ['number'],
+          ['UInt64'],
+          ['0'],
+          ['1'],
+          ['2'],
+          ['3'],
+          ['4'],
         ])
       })
 
@@ -365,14 +358,7 @@ describe('select', () => {
 
         const rows = await rowsValues(result.asStream())
 
-        expect(rows).toEqual([
-          [['number']],
-          [['0']],
-          [['1']],
-          [['2']],
-          [['3']],
-          [['4']],
-        ])
+        expect(rows).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
       })
 
       it('returns stream of objects in JSONCompactStringsEachRowWithNamesAndTypes format', async () => {
@@ -384,13 +370,13 @@ describe('select', () => {
         const rows = await rowsValues(result.asStream())
 
         expect(rows).toEqual([
-          [['number']],
-          [['UInt64']],
-          [['0']],
-          [['1']],
-          [['2']],
-          [['3']],
-          [['4']],
+          ['number'],
+          ['UInt64'],
+          ['0'],
+          ['1'],
+          ['2'],
+          ['3'],
+          ['4'],
         ])
       })
     })
