@@ -49,14 +49,12 @@ export class Rows {
       return this.stream
     }
 
-    const format = this.format
-    validateStreamFormat(format)
+    validateStreamFormat(this.format)
 
     return Stream.pipeline(
       this.stream,
-      split(function (this: Stream.Transform, row: string) {
-        return new Row(row, format)
-      }),
+      // only JSON-based format are supported at the moment
+      split((row: string) => new Row(row, 'JSON')),
       function pipelineCb(err) {
         if (err) {
           console.error(err)
