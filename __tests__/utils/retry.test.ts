@@ -55,4 +55,8 @@ describe('retryOnFailure', () => {
       })
     }
   })
+
+  it('should throw', async () => {
+    await Promise.reject('boooooo')
+  })
 })

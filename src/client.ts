@@ -3,7 +3,7 @@ import { type Connection, createConnection } from './connection'
 import { Logger } from './logger'
 import { isStream, mapStream } from './utils'
 import { type DataFormat, encode } from './data_formatter'
-import { Rows } from './result'
+import { Rows } from './rows'
 import type { ClickHouseSettings } from './settings'
 
 export interface ClickHouseClientConfigOptions {

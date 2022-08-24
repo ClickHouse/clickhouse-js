@@ -14,7 +14,7 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
 
   // flush
   result += textDecoder.decode()
-
+  stream.destroy()
   return result
 }
 
