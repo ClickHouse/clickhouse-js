@@ -19,7 +19,7 @@ export class Rows {
    */
   async text() {
     if (this.stream.readableEnded) {
-      throw Error(StreamAlreadyConsumed)
+      throw Error(streamAlreadyConsumedMessage)
     }
     return (await getAsText(this.stream)).toString()
   }
@@ -33,7 +33,7 @@ export class Rows {
    */
   async json<T = { data: unknown[] }>(): Promise<T> {
     if (this.stream.readableEnded) {
-      throw Error(StreamAlreadyConsumed)
+      throw Error(streamAlreadyConsumedMessage)
     }
     return decode(await this.text(), this.format)
   }
@@ -51,7 +51,7 @@ export class Rows {
     // Stream.pipeline will create a new empty stream
     // but without "readableEnded" flag set to true
     if (this.stream.readableEnded) {
-      throw Error(StreamAlreadyConsumed)
+      throw Error(streamAlreadyConsumedMessage)
     }
 
     validateStreamFormat(this.format)
@@ -74,29 +74,27 @@ export class Rows {
 }
 
 export class Row {
-  private _json: unknown | undefined
   constructor(
     private readonly chunk: string,
     private readonly format: DataFormat
   ) {}
+
   /**
    * Returns a string representation of a row.
    */
   text() {
     return this.chunk
   }
+
   /**
    * Returns a JSON representation of a row.
    * The method will throw if called on a response in JSON incompatible format.
    *
-   * It is safe to call this method multiple times as the result is cached.
+   * It is safe to call this method multiple times.
    */
   json<T>(): T {
-    if (this._json === undefined) {
-      this._json = decode(this.text(), this.format)
-    }
-    return this._json as T
+    return decode(this.text(), this.format)
   }
 }
 
-const StreamAlreadyConsumed = 'Stream has been already consumed'
+const streamAlreadyConsumedMessage = 'Stream has been already consumed'
