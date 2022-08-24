@@ -42,6 +42,13 @@ export class Rows {
    * The method will throw if called on a response in non-streamable format.
    */
   asStream(): Stream.Readable {
+    // If the underlying stream has already ended by calling `text` or `json`,
+    // Stream.pipeline will create a new empty stream
+    // but without "readableEnded" flag set to true
+    if (this.stream.readableEnded) {
+      return this.stream
+    }
+
     const format = this.format
     validateStreamFormat(format)
 
@@ -64,6 +71,7 @@ export class Rows {
 }
 
 export class Row {
+  private _json: unknown | undefined
   constructor(
     private readonly chunk: string,
     private readonly format: DataFormat
@@ -79,6 +87,9 @@ export class Row {
    * The method will throw if called on a response in JSON incompatible format.
    */
   json<T>(): T {
-    return decode(this.text(), this.format)
+    if (this._json === undefined) {
+      this._json = decode(this.text(), this.format)
+    }
+    return this._json as T
   }
 }
