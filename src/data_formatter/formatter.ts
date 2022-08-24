@@ -8,6 +8,8 @@ const supportedFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
   'CSV',
+  'CSVWithNames',
+  'CSVWithNamesAndTypes',
   'TabSeparated',
 ] as const
 export type DataFormat = typeof supportedFormats[number]
@@ -79,7 +81,10 @@ export function decode(text: string, format: DataFormat): any {
  * @param format One of the supported formats: https://clickhouse.com/docs/en/interfaces/formats/
  * @returns string
  */
-export function encode(value: any, format: DataFormat): string {
+export function encode(value: any, format: DataFormat): string | Buffer {
+  if (format.startsWith('CSV')) {
+    return value
+  }
   if (format === 'JSONCompactEachRow' || format === 'JSONEachRow') {
     return JSON.stringify(value) + '\n'
   }

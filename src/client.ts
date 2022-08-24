@@ -155,9 +155,9 @@ export class ClickHouseClient {
   }
 
   async insert(params: InsertParams): Promise<void> {
-    validateInsertValues(params.values)
-
     const format = params.format || 'JSONCompactEachRow'
+
+    validateInsertValues(params.values, format)
     const query = `INSERT into ${params.table.trim()} FORMAT ${format}`
 
     await this.connection.insert({
@@ -199,12 +199,17 @@ function formatCommandQuery(query: string, format: DataFormat | false): string {
 }
 
 function validateInsertValues(
-  values: ReadonlyArray<any> | Stream.Readable
+  values: ReadonlyArray<any> | Stream.Readable,
+  format: DataFormat
 ): void {
   if (Array.isArray(values) === false && isStream(values) === false) {
     throw new Error(
       'Insert expected "values" to be an array or a stream of values.'
     )
+  }
+
+  if (format.startsWith('CSV')) {
+    return
   }
 
   if (isStream(values) && !values.readableObjectMode) {
