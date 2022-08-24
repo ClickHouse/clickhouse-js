@@ -5,48 +5,53 @@ import { getAsText } from './utils'
 import { type DataFormat, decode, validateStreamFormat } from './data_formatter'
 
 export class Rows {
-  private _text: string | undefined
-  private _json: unknown | undefined
   constructor(
-    private readonly stream: Stream.Readable,
+    private stream: Stream.Readable,
     private readonly format: DataFormat
   ) {}
 
   /**
    * The method waits for all the rows to be fully loaded
    * and returns the result as a string.
-   * The result is cached, so it's safe to call the method multiple times
+   *
+   * The method will throw if the underlying stream was already consumed
+   * by calling the other methods
    */
   async text() {
-    if (this._text === undefined) {
-      this._text = (await getAsText(this.stream)).toString()
+    if (this.stream.readableEnded) {
+      throw Error(StreamAlreadyConsumed)
     }
-    return this._text
+    return (await getAsText(this.stream)).toString()
   }
 
   /**
    * The method waits for the all the rows to be fully loaded.
    * When the response is received in full, it will be decoded to return JSON.
-   * The result is cached, so it's safe to call the method multiple times
+   *
+   * The method will throw if the underlying stream was already consumed
+   * by calling the other methods
    */
   async json<T = { data: unknown[] }>(): Promise<T> {
-    if (this._json === undefined) {
-      this._json = decode(await this.text(), this.format)
+    if (this.stream.readableEnded) {
+      throw Error(StreamAlreadyConsumed)
     }
-    return this._json as T
+    return decode(await this.text(), this.format)
   }
 
   /**
    * Returns a readable stream of {@link Row}s for responses
    * in {@link StreamableDataFormat} format.
-   * The method will throw if called on a response in non-streamable format.
+   *
+   * The method will throw if called on a response in non-streamable format,
+   * and if the underlying stream was already consumed
+   * by calling the other methods
    */
   asStream(): Stream.Readable {
     // If the underlying stream has already ended by calling `text` or `json`,
     // Stream.pipeline will create a new empty stream
     // but without "readableEnded" flag set to true
     if (this.stream.readableEnded) {
-      return this.stream
+      throw Error(StreamAlreadyConsumed)
     }
 
     validateStreamFormat(this.format)
@@ -83,6 +88,8 @@ export class Row {
   /**
    * Returns a JSON representation of a row.
    * The method will throw if called on a response in JSON incompatible format.
+   *
+   * It is safe to call this method multiple times as the result is cached.
    */
   json<T>(): T {
     if (this._json === undefined) {
@@ -91,3 +98,5 @@ export class Row {
     return this._json as T
   }
 }
+
+const StreamAlreadyConsumed = 'Stream has been already consumed'

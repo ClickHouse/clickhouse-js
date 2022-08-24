@@ -8,28 +8,22 @@ describe('rows', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`
   const expectedJson = [{ foo: 'bar' }, { qaz: 'qux' }]
 
+  const err = 'Stream has been already consumed'
+
   it('should consume the response as text, then as JSON', async () => {
     const rows = makeRows()
-    const stream = rows.asStream()
 
-    expect(stream.readableEnded).toBeFalsy()
     expect(await rows.text()).toEqual(expectedText)
-    expect(await rows.text()).toEqual(expectedText) // does not throw
-    expect(rows.asStream().readableEnded).toBeTruthy()
-    expect(await rows.json()).toEqual(expectedJson) // does not throw
-    expect(await rows.json()).toEqual(expectedJson)
+    await expect(rows.text()).rejects.toThrowError(err)
+    await expect(rows.json()).rejects.toThrowError(err)
   })
 
   it('should consume the response as JSON, then as text', async () => {
     const rows = makeRows()
-    const stream = rows.asStream()
 
-    expect(stream.readableEnded).toBeFalsy()
     expect(await rows.json()).toEqual(expectedJson)
-    expect(await rows.json()).toEqual(expectedJson) // does not throw
-    expect(rows.asStream().readableEnded).toBeTruthy()
-    expect(await rows.text()).toEqual(expectedText) // does not throw
-    expect(await rows.text()).toEqual(expectedText)
+    await expect(rows.json()).rejects.toThrowError(err)
+    await expect(rows.text()).rejects.toThrowError(err)
   })
 
   it('should consume the response as an arbitrary stream', async () => {
@@ -44,7 +38,11 @@ describe('rows', () => {
     }
 
     expect(result).toEqual(expectedJson)
-    expect(rows.asStream().readableEnded).toBeTruthy()
+    expect(stream.readableEnded).toBeTruthy()
+
+    expect(() => rows.asStream()).toThrowError(err)
+    await expect(rows.json()).rejects.toThrowError(err)
+    await expect(rows.text()).rejects.toThrowError(err)
   })
 
   function makeRows() {
