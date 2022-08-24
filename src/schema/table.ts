@@ -91,7 +91,7 @@ export class Table<S extends Shape> {
     async function* asyncGenerator() {
       for await (const row of stream) {
         const value = (row as Row).json() as unknown[]
-        yield value[0] as Infer<S> // FIXME why we have an array here?
+        yield value as Infer<S>
       }
     }
 
