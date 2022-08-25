@@ -69,6 +69,12 @@ describe('validateInsertValues', () => {
       'CSVWithNames',
       'CSVWithNamesAndTypes',
       'TabSeparated',
+      'TabSeparatedRaw',
+      'TabSeparatedWithNames',
+      'TabSeparatedWithNamesAndTypes',
+      'CustomSeparated',
+      'CustomSeparatedWithNames',
+      'CustomSeparatedWithNamesAndTypes',
     ]
     rawFormats.forEach((format) => {
       expect(() =>
