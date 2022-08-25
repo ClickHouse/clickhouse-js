@@ -2,7 +2,7 @@ import Stream from 'stream'
 import { type Connection, createConnection } from './connection'
 import { Logger } from './logger'
 import { isStream, mapStream } from './utils'
-import { type DataFormat, encode } from './data_formatter'
+import { type DataFormat, encode, isSupportedRawFormat } from './data_formatter'
 import { Rows } from './rows'
 import type { ClickHouseSettings } from './settings'
 
@@ -208,19 +208,18 @@ export function validateInsertValues(
     )
   }
 
-  if (format.startsWith('CSV') || format.startsWith('TabSeparated')) {
-    if (isStream(values) && values.readableObjectMode) {
+  if (isStream(values)) {
+    if (isSupportedRawFormat(format)) {
+      if (values.readableObjectMode) {
+        throw new Error(
+          `Insert for ${format} expected Readable Stream with disabled object mode.`
+        )
+      }
+    } else if (!values.readableObjectMode) {
       throw new Error(
-        `Insert for ${format} expected Readable Stream with disabled object mode.`
+        `Insert for ${format} expected Readable Stream with enabled object mode.`
       )
     }
-    return
-  }
-
-  if (isStream(values) && !values.readableObjectMode) {
-    throw new Error(
-      `Insert for ${format} expected Readable Stream with enabled object mode.`
-    )
   }
 }
 
