@@ -1,4 +1,0 @@
-id,name,sku
-UInt64,String,Array(UInt8)
-42,foo,"[1,2]"
-43,bar,"[3,4]"

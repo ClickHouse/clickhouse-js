@@ -198,7 +198,7 @@ function formatCommandQuery(query: string, format: DataFormat | false): string {
   return query
 }
 
-function validateInsertValues(
+export function validateInsertValues(
   values: ReadonlyArray<any> | Stream.Readable,
   format: DataFormat
 ): void {
@@ -208,12 +208,19 @@ function validateInsertValues(
     )
   }
 
-  if (format.startsWith('CSV')) {
+  if (format.startsWith('CSV') || format.startsWith('TabSeparated')) {
+    if (isStream(values) && values.readableObjectMode) {
+      throw new Error(
+        `Insert for ${format} expected Readable Stream with disabled object mode.`
+      )
+    }
     return
   }
 
   if (isStream(values) && !values.readableObjectMode) {
-    throw new Error('Insert expected Readable Stream in an object mode.')
+    throw new Error(
+      `Insert for ${format} expected Readable Stream with enabled object mode.`
+    )
   }
 }
 
@@ -221,6 +228,7 @@ function validateInsertValues(
  * A function encodes an array or a stream of JSON objects to a format compatible with ClickHouse.
  * If values are provided as an array of JSON objects, the function encodes it in place.
  * If values are provided as a stream of JSON objects, the function sets up the encoding of each chunk.
+ * If values are provided as a raw stream, the function only adds a listener for error events to log it.
  *
  * @param values a set of values to send to ClickHouse.
  * @param format a format to encode value to.
@@ -230,16 +238,14 @@ function encodeValues(
   format: DataFormat
 ): string | Stream.Readable {
   if (isStream(values)) {
+    if (!values.readableObjectMode) {
+      values.addListener('error', pipelineCb)
+      return values
+    }
     return Stream.pipeline(
       values,
-      mapStream((value: unknown) => {
-        return encode(value, format)
-      }),
-      function pipelineCb(err) {
-        if (err) {
-          console.error(err)
-        }
-      }
+      mapStream((value) => encode(value, format)),
+      pipelineCb
     )
   }
   return values.map((value) => encode(value, format)).join('')
@@ -249,4 +255,10 @@ export function createClient(
   config?: ClickHouseClientConfigOptions
 ): ClickHouseClient {
   return new ClickHouseClient(config)
+}
+
+function pipelineCb(err: NodeJS.ErrnoException | null) {
+  if (err) {
+    console.error(err)
+  }
 }

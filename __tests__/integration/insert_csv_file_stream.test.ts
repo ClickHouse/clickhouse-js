@@ -1,10 +1,12 @@
-import { createFileStream, createTestClient, guid } from '../utils'
+import { createTestClient, guid } from '../utils'
 import type { ClickHouseClient } from '../../src'
 import { createSimpleTable } from './fixtures/simple_table'
+import Stream from 'stream'
 
 describe('insert csv file stream', () => {
   let client: ClickHouseClient
   let tableName: string
+  let stream: Stream.Readable
 
   beforeEach(async () => {
     tableName = `insert_csv_${guid()}`
@@ -13,7 +15,9 @@ describe('insert csv file stream', () => {
   })
 
   it('should insert a CSV without names or types', async () => {
-    const stream = createFileStream('insert_csv_simple.csv')
+    stream = Stream.Readable.from(`42,foo,"[1,2]"\n43,bar,"[3,4]"\n`, {
+      objectMode: false,
+    })
     await client.insert({
       table: tableName,
       values: stream,
@@ -23,7 +27,12 @@ describe('insert csv file stream', () => {
   })
 
   it('should insert a CSV with names', async () => {
-    const stream = createFileStream('insert_csv_with_names.csv')
+    stream = Stream.Readable.from(
+      `id,name,sku\n42,foo,"[1,2]"\n43,bar,"[3,4]"\n`,
+      {
+        objectMode: false,
+      }
+    )
     await client.insert({
       table: tableName,
       values: stream,
@@ -33,7 +42,12 @@ describe('insert csv file stream', () => {
   })
 
   it('should insert a CSV with names and types', async () => {
-    const stream = createFileStream('insert_csv_with_names_and_types.csv')
+    stream = Stream.Readable.from(
+      `id,name,sku\nUInt64,String,Array(UInt8)\n42,foo,"[1,2]"\n43,bar,"[3,4]"\n`,
+      {
+        objectMode: false,
+      }
+    )
     await client.insert({
       table: tableName,
       values: stream,
@@ -43,7 +57,9 @@ describe('insert csv file stream', () => {
   })
 
   it('should throw in case of invalid CSV format', async () => {
-    const stream = createFileStream('insert_csv_invalid_format.csv')
+    stream = Stream.Readable.from(`foobar,42,,\n`, {
+      objectMode: false,
+    })
     await expect(
       client.insert({
         table: tableName,
