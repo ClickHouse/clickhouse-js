@@ -2,6 +2,7 @@
 <clickhouse>
 
     <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
 
     <users_config>users.xml</users_config>
     <default_profile>default</default_profile>
