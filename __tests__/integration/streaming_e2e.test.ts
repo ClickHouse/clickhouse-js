@@ -1,9 +1,23 @@
 import Fs from 'fs'
 import Path from 'path'
+import Stream from 'stream'
 import split from 'split2'
 import { type ClickHouseClient } from '../../src'
 import { createTestClient, createTable, guid } from '../utils'
 import { TestEnv } from '../utils'
+
+const expected = [
+  ['0'],
+  ['1'],
+  ['2'],
+  ['3'],
+  ['4'],
+  ['5'],
+  ['6'],
+  ['7'],
+  ['8'],
+  ['9'],
+]
 
 describe('streaming e2e', () => {
   let tableName: string
@@ -44,7 +58,7 @@ describe('streaming e2e', () => {
     await client.close()
   })
 
-  it('streams a file', async () => {
+  it('should stream a file', async () => {
     // contains id as numbers in JSONCompactEachRow format ["0"]\n["1"]\n...
     const filename = Path.resolve(
       __dirname,
@@ -57,6 +71,7 @@ describe('streaming e2e', () => {
         // should be removed when "insert" accepts a stream of strings/bytes
         split((row: string) => JSON.parse(row))
       ),
+      format: 'JSONCompactEachRow',
     })
 
     const response = await client.select({
@@ -64,9 +79,29 @@ describe('streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    let i = 0
+    const actual: string[] = []
     for await (const row of response.asStream()) {
-      expect(row.json()).toEqual([String(i++)])
+      actual.push(row.json())
     }
+    expect(actual).toEqual(expected)
+  })
+
+  it('should stream a stream created in-place', async () => {
+    await client.insert({
+      table: tableName,
+      values: Stream.Readable.from(expected),
+      format: 'JSONCompactEachRow',
+    })
+
+    const response = await client.select({
+      query: `SELECT * from ${tableName}`,
+      format: 'JSONCompactEachRow',
+    })
+
+    const actual: string[] = []
+    for await (const row of response.asStream()) {
+      actual.push(row.json())
+    }
+    expect(actual).toEqual(expected)
   })
 })
