@@ -2,3 +2,5 @@ package-lock.json
 dist/
 .idea
 node_modules
+lib
+out
