@@ -1,17 +1,3 @@
-const supportedFormats = [
-  'JSON',
-  'JSONEachRow',
-  'JSONStringsEachRow',
-  'JSONCompactEachRow',
-  'JSONCompactEachRowWithNames',
-  'JSONCompactEachRowWithNamesAndTypes',
-  'JSONCompactStringsEachRowWithNames',
-  'JSONCompactStringsEachRowWithNamesAndTypes',
-  'CSV',
-  'TabSeparated',
-] as const
-export type DataFormat = typeof supportedFormats[number]
-
 const streamableJSONFormats = [
   'JSONEachRow',
   'JSONStringsEachRow',
@@ -21,14 +7,30 @@ const streamableJSONFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
 ] as const
+const supportedJSONFormats = ['JSON', ...streamableJSONFormats] as const
+const supportedRawFormats = [
+  'CSV',
+  'CSVWithNames',
+  'CSVWithNamesAndTypes',
+  'TabSeparated',
+  'TabSeparatedRaw',
+  'TabSeparatedWithNames',
+  'TabSeparatedWithNamesAndTypes',
+  'CustomSeparated',
+  'CustomSeparatedWithNames',
+  'CustomSeparatedWithNamesAndTypes',
+] as const
+
+export type JSONDataFormat = typeof supportedJSONFormats[number]
+export type RawDataFormat = typeof supportedRawFormats[number]
+export type DataFormat = JSONDataFormat | RawDataFormat
+
 type StreamableJsonDataFormat = typeof streamableJSONFormats[number]
 
 // TODO add others formats
 const streamableFormat = [
   ...streamableJSONFormats,
-  'CSV',
-  'TabSeparated',
-  'CSVWithNamesAndTypes',
+  ...supportedRawFormats,
 ] as const
 type StreamableDataFormat = typeof streamableFormat[number]
 
@@ -37,6 +39,10 @@ function isStreamableJSONFamily(
 ): format is StreamableJsonDataFormat {
   // @ts-expect-error JSON is not assignable to streamableJSONFormats
   return streamableJSONFormats.includes(format)
+}
+
+export function isSupportedRawFormat(dataFormat: DataFormat) {
+  return (supportedRawFormats as readonly string[]).includes(dataFormat)
 }
 
 export function validateStreamFormat(
@@ -67,7 +73,7 @@ export function decode(text: string, format: DataFormat): any {
       .filter(Boolean)
       .map((l) => decode(l, 'JSON'))
   }
-  if (format === 'CSV' || format === 'TabSeparated') {
+  if (isSupportedRawFormat(format)) {
     throw new Error(`cannot decode ${format} to JSON`)
   }
   throw new Error(`The client does not support [${format}] format decoding.`)
@@ -80,6 +86,12 @@ export function decode(text: string, format: DataFormat): any {
  * @returns string
  */
 export function encode(value: any, format: DataFormat): string {
+  // TODO: add
+  //   'JSONStringsEachRow',
+  //   'JSONCompactEachRowWithNames',
+  //   'JSONCompactEachRowWithNamesAndTypes',
+  //   'JSONCompactStringsEachRowWithNames',
+  //   'JSONCompactStringsEachRowWithNamesAndTypes',
   if (format === 'JSONCompactEachRow' || format === 'JSONEachRow') {
     return JSON.stringify(value) + '\n'
   }

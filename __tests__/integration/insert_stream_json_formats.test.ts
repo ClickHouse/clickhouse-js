@@ -4,7 +4,7 @@ import Stream from 'stream'
 import { createTestClient, guid } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 
-describe('insert stream', () => {
+describe('insert stream (JSON formats)', () => {
   beforeAll(function () {
     // FIXME: Jest does not seem to have it
     // if (process.env.browser) {
@@ -16,7 +16,7 @@ describe('insert stream', () => {
   let tableName: string
   beforeEach(async () => {
     client = createTestClient()
-    tableName = `insert_stream_test_${guid()}`
+    tableName = `insert_stream_json_${guid()}`
     await createSimpleTable(client, tableName)
   })
   afterEach(async () => {
