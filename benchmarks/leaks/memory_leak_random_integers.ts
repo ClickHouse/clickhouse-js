@@ -5,11 +5,11 @@ import { randomInt } from 'crypto'
 import {
   attachExceptionHandlers,
   getMemoryUsageInMegabytes,
+  logFinalMemoryUsage,
   logMemoryUsageDiff,
 } from './shared'
 
 const program = async () => {
-  attachExceptionHandlers()
   const client = createClient({})
   const tableName = `memory_leak_test_${uuid_v4().replace(/-/g, '')}`
 
@@ -28,23 +28,29 @@ const program = async () => {
   console.info(`Created table ${tableName}`)
 
   console.log()
+  console.log(
+    `Batch size: ${BATCH_SIZE}, iterations count: ${ITERATIONS}, ` +
+      `logging memory usage every ${LOG_INTERVAL} iterations`
+  )
+
+  console.log()
   console.log('Initial memory usage:')
   const initialMemoryUsage = getMemoryUsageInMegabytes()
   let prevMemoryUsage = initialMemoryUsage
 
-  for (let i = 1; i <= 100000; i++) {
+  for (let i = 1; i <= ITERATIONS; i++) {
     const stream = makeRowsStream()
     await client.insert({
       table: tableName,
       values: stream,
       format: 'TabSeparated',
     })
-    if (i % 100 === 0) {
+    if (i % LOG_INTERVAL === 0) {
       console.log()
       console.log(
         '============================================================='
       )
-      console.log(`${i} iteration`)
+      console.log(`${i} iterations`)
       console.log(
         '============================================================='
       )
@@ -56,30 +62,29 @@ const program = async () => {
       })
       prevMemoryUsage = currentMemoryUsage
     }
-    // if (i % 1000 === 0) {
-    //   console.log('Calling GC manually')
-    //   global.gc()
-    // }
   }
 
-  console.log()
-  console.log('=============================================================')
-  console.log('Final diff between start and end of the test (before GC)')
-  console.log('=============================================================')
-  logMemoryUsageDiff({
-    prev: initialMemoryUsage,
-    cur: prevMemoryUsage,
-  })
-
+  logFinalMemoryUsage(initialMemoryUsage)
   process.exit(0)
 }
 
 function makeRowsStream() {
-  let str = ''
-  for (let i = 0; i < 10000; i++) {
-    str += `${randomInt(1, 1000)}\t${randomInt(1, 1000)}\n`
+  let i = 0
+  async function* gen() {
+    while (true) {
+      if (i >= BATCH_SIZE) {
+        return
+      }
+      yield `${randomInt(1, 1000)}\t${randomInt(1, 1000)}\n`
+      i++
+    }
   }
-  return Stream.Readable.from(str, { objectMode: false })
+  return Stream.Readable.from(gen(), { objectMode: false })
 }
+
+attachExceptionHandlers()
+const ITERATIONS = +(process.env['ITERATIONS'] || 10000)
+const BATCH_SIZE = +(process.env['BATCH_SIZE'] || 10000)
+const LOG_INTERVAL = +(process.env['LOG_INTERVAL'] || 1000)
 
 void program()

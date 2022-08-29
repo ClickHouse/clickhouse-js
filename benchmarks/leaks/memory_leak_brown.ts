@@ -5,11 +5,11 @@ import Fs from 'fs'
 import {
   attachExceptionHandlers,
   getMemoryUsageInMegabytes,
+  logFinalMemoryUsage,
   logMemoryUsageDiff,
 } from './shared'
 
 const program = async () => {
-  attachExceptionHandlers()
   const client = createClient({})
   const tableName = `memory_leak_test_file_${uuid_v4().replace(/-/g, '')}`
 
@@ -77,30 +77,9 @@ const program = async () => {
   })
   console.timeEnd('insert')
 
-  console.log()
-  console.log('=============================================================')
-  console.log('Final diff between start and end of the test (before GC call)')
-  console.log('=============================================================')
-  logMemoryUsageDiff({
-    prev: initialMemoryUsage,
-    cur: getMemoryUsageInMegabytes(false),
-  })
-
-  if (global.gc) {
-    global.gc()
-    console.log()
-    console.log('=============================================================')
-    console.log('Final diff between start and end of the test  (after GC call)')
-    console.log('=============================================================')
-    logMemoryUsageDiff({
-      prev: initialMemoryUsage,
-      cur: getMemoryUsageInMegabytes(false),
-    })
-  } else {
-    console.log('GC is not exposed. Re-run the test with --expose_gc node flag')
-  }
-
+  logFinalMemoryUsage(initialMemoryUsage)
   process.exit(0)
 }
 
+attachExceptionHandlers()
 void program()

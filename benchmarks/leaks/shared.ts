@@ -51,3 +51,28 @@ export function logMemoryUsageDiff({
     )
   }
 }
+
+export function logFinalMemoryUsage(initialMemoryUsage: MemoryUsage) {
+  console.log()
+  console.log('=============================================================')
+  console.log('Final diff between start and end of the test (before GC call)')
+  console.log('=============================================================')
+  logMemoryUsageDiff({
+    prev: initialMemoryUsage,
+    cur: getMemoryUsageInMegabytes(false),
+  })
+
+  if (global.gc) {
+    global.gc()
+    console.log()
+    console.log('=============================================================')
+    console.log('Final diff between start and end of the test  (after GC call)')
+    console.log('=============================================================')
+    logMemoryUsageDiff({
+      prev: initialMemoryUsage,
+      cur: getMemoryUsageInMegabytes(false),
+    })
+  } else {
+    console.log('GC is not exposed. Re-run the test with --expose_gc node flag')
+  }
+}
