@@ -66,6 +66,40 @@ describe('command', () => {
     )
   })
 
+  describe('trailing semi', () => {
+    it('should allow queries with trailing semi', async () => {
+      const numbers = await client.command({
+        query: 'SELECT * FROM system.numbers LIMIT 3;',
+        format: 'CSV',
+      })
+      expect(await numbers.text()).toEqual('0\n1\n2\n')
+    })
+
+    it('should allow queries with multiple trailing semis', async () => {
+      const numbers = await client.command({
+        query: 'SELECT * FROM system.numbers LIMIT 3;;;;;;;;;;;;;;;;;',
+        format: 'CSV',
+      })
+      expect(await numbers.text()).toEqual('0\n1\n2\n')
+    })
+
+    it('should allow commands without format but with trailing semi', async () => {
+      const result = await client.command({
+        query: 'EXISTS system.databases;',
+        format: false,
+      })
+      expect(await result.text()).toEqual('1\n')
+    })
+
+    it('should allow commands without format but with multiple trailing semi', async () => {
+      const result = await client.command({
+        query: 'EXISTS system.foobar;;;;;;',
+        format: false,
+      })
+      expect(await result.text()).toEqual('0\n')
+    })
+  })
+
   it.skip('can specify a parameterized query', async () => {
     await runCommand(client, {
       query: '',

@@ -142,7 +142,6 @@ export class ClickHouseClient {
     return new Rows(stream, format)
   }
 
-  // FIXME: allow ; in the end of the query
   async command(params: CommandParams): Promise<Rows> {
     const format = params.format === undefined ? 'JSON' : params.format
     const query = formatCommandQuery(params.query, format)
@@ -188,13 +187,23 @@ export function validateSelectQuery(query: string): void {
 
 function formatSelectQuery(query: string, format: DataFormat): string {
   query = query.trim()
+  query = removeSemi(query)
   return query + ' \nFORMAT ' + format
 }
 
 function formatCommandQuery(query: string, format: DataFormat | false): string {
   query = query.trim()
   if (format !== false) {
+    query = removeSemi(query)
     return query + ' \nFORMAT ' + format
+  }
+  return query
+}
+
+function removeSemi(query: string) {
+  const idx = query.indexOf(';')
+  if (idx !== -1) {
+    return query.slice(0, idx)
   }
   return query
 }
