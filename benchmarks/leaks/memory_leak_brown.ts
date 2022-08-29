@@ -6,6 +6,7 @@ import {
   attachExceptionHandlers,
   getMemoryUsageInMegabytes,
   logFinalMemoryUsage,
+  logMemoryUsage,
   logMemoryUsageDiff,
 } from './shared'
 
@@ -51,16 +52,18 @@ const program = async () => {
   console.log()
   console.log('Initial memory usage:')
   const initialMemoryUsage = getMemoryUsageInMegabytes()
+  logMemoryUsage(initialMemoryUsage)
   let prevMemoryUsage = initialMemoryUsage
 
   setInterval(() => {
     console.log()
     console.log('Current memory usage:')
     const currentMemoryUsage = getMemoryUsageInMegabytes()
+    logMemoryUsage(currentMemoryUsage)
     console.log('Diff from previous measurement:')
     logMemoryUsageDiff({
-      prev: prevMemoryUsage,
-      cur: currentMemoryUsage,
+      previous: prevMemoryUsage,
+      current: currentMemoryUsage,
     })
     prevMemoryUsage = currentMemoryUsage
   }, 1000)

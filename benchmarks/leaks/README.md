@@ -29,10 +29,9 @@ All commands assume that you are in the root project directory.
 
 ```sh
 mkdir -p benchmarks/leaks/input \
-&& wget https://datasets.clickhouse.com/mgbench1.csv.xz \
+&& curl https://datasets.clickhouse.com/mgbench1.csv.xz --output mgbench1.csv.xz \
 && xz -v -d mgbench1.csv.xz \
-&& mv mgbench1.csv benchmarks/leaks/input \
-&& rm mgbench1.csv.xz
+&& mv mgbench1.csv benchmarks/leaks/input
 ```
 
 See [official examples](https://clickhouse.com/docs/en/getting-started/example-datasets/brown-benchmark/) for more information.
@@ -40,9 +39,9 @@ See [official examples](https://clickhouse.com/docs/en/getting-started/example-d
 #### Run the test
 
 ```sh
-tsc --project benchmarks/tsconfig.benchmarks.json \
+tsc --project tsconfig.dev.json \
 && node --expose-gc --max-old-space-size=256 \
-benchmarks/build/benchmarks/leaks/memory_leak_brown.js
+build/benchmarks/leaks/memory_leak_brown.js
 ```
 
 ## Random integers streaming test
@@ -62,16 +61,16 @@ Configuration can be done via env variables:
 With default configuration:
 
 ```sh
-tsc --project benchmarks/tsconfig.benchmarks.json \
+tsc --project tsconfig.dev.json \
 && node --expose-gc --max-old-space-size=256 \
-benchmarks/build/benchmarks/leaks/memory_leak_random_integers.js
+build/benchmarks/leaks/memory_leak_random_integers.js
 ```
 
 With custom configuration via env variables:
 
 ```sh
-tsc --project benchmarks/tsconfig.benchmarks.json \
+tsc --project tsconfig.dev.json \
 && BATCH_SIZE=100000000 ITERATIONS=1000 LOG_INTERVAL=100 \
 node --expose-gc --max-old-space-size=256 \
-benchmarks/build/benchmarks/leaks/memory_leak_random_integers.js
+build/benchmarks/leaks/memory_leak_random_integers.js
 ```

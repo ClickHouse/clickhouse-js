@@ -1,9 +1,0 @@
-{
-  "extends": "../tsconfig.json",
-  "include": ["**/*.ts", "../src/**/*.ts"],
-  "compilerOptions": {
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "outDir": "build"
-  }
-}

@@ -8,6 +8,7 @@
   ],
   "compilerOptions": {
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "outDir": "build"
   }
 }

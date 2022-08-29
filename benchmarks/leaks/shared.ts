@@ -18,34 +18,34 @@ export interface MemoryUsage {
   arrayBuffers: number
 }
 
-export function getMemoryUsageInMegabytes(print = true): MemoryUsage {
+export function getMemoryUsageInMegabytes(): MemoryUsage {
   const mu = memoryUsage()
-  if (print) {
-    console.log('-------------------------------------------------------------')
-  }
   for (const key in mu) {
     const k = key as keyof MemoryUsage
     mu[k] = mu[k] / (1024 * 1024) // Bytes -> Megabytes
-    if (print) {
-      console.log(`${k}: ${mu[k].toFixed(2)} MB`)
-    }
-  }
-  if (print) {
-    console.log('-------------------------------------------------------------')
   }
   return mu
 }
 
-export function logMemoryUsageDiff({
-  prev,
-  cur,
-}: {
-  prev: MemoryUsage
-  cur: MemoryUsage
-}) {
-  for (const key in prev) {
+export function logMemoryUsage(mu: MemoryUsage) {
+  console.log('-------------------------------------------------------------')
+  for (const key in mu) {
     const k = key as keyof MemoryUsage
-    const diff = cur[k] - prev[k]
+    console.log(`${k}: ${mu[k].toFixed(2)} MB`)
+  }
+  console.log('-------------------------------------------------------------')
+}
+
+export function logMemoryUsageDiff({
+  previous,
+  current,
+}: {
+  previous: MemoryUsage
+  current: MemoryUsage
+}) {
+  for (const key in previous) {
+    const k = key as keyof MemoryUsage
+    const diff = current[k] - previous[k]
     console.log(
       `${k}: ${diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} MB`
     )
@@ -57,9 +57,11 @@ export function logFinalMemoryUsage(initialMemoryUsage: MemoryUsage) {
   console.log('=============================================================')
   console.log('Final diff between start and end of the test (before GC call)')
   console.log('=============================================================')
+  const finalMemoryUsageBeforeGC = getMemoryUsageInMegabytes()
+  logMemoryUsage(finalMemoryUsageBeforeGC)
   logMemoryUsageDiff({
-    prev: initialMemoryUsage,
-    cur: getMemoryUsageInMegabytes(false),
+    previous: initialMemoryUsage,
+    current: finalMemoryUsageBeforeGC,
   })
 
   if (global.gc) {
@@ -68,9 +70,11 @@ export function logFinalMemoryUsage(initialMemoryUsage: MemoryUsage) {
     console.log('=============================================================')
     console.log('Final diff between start and end of the test  (after GC call)')
     console.log('=============================================================')
+    const finalMemoryUsageAfterGC = getMemoryUsageInMegabytes()
+    logMemoryUsage(finalMemoryUsageAfterGC)
     logMemoryUsageDiff({
-      prev: initialMemoryUsage,
-      cur: getMemoryUsageInMegabytes(false),
+      previous: initialMemoryUsage,
+      current: finalMemoryUsageAfterGC,
     })
   } else {
     console.log('GC is not exposed. Re-run the test with --expose_gc node flag')
