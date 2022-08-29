@@ -5,3 +5,4 @@ node_modules
 lib
 out
 benchmarks/leaks/input
+build

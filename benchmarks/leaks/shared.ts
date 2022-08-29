@@ -18,15 +18,21 @@ export interface MemoryUsage {
   arrayBuffers: number
 }
 
-export function getMemoryUsageInMegabytes(): MemoryUsage {
+export function getMemoryUsageInMegabytes(print = true): MemoryUsage {
   const mu = memoryUsage()
-  console.log('-------------------------------------------------------------')
+  if (print) {
+    console.log('-------------------------------------------------------------')
+  }
   for (const key in mu) {
     const k = key as keyof MemoryUsage
     mu[k] = mu[k] / (1024 * 1024) // Bytes -> Megabytes
-    console.log(`${k}: ${mu[k].toFixed(2)} megabytes`)
+    if (print) {
+      console.log(`${k}: ${mu[k].toFixed(2)} MB`)
+    }
   }
-  console.log('-------------------------------------------------------------')
+  if (print) {
+    console.log('-------------------------------------------------------------')
+  }
   return mu
 }
 
@@ -37,12 +43,11 @@ export function logMemoryUsageDiff({
   prev: MemoryUsage
   cur: MemoryUsage
 }) {
-  console.log('Total diff:')
   for (const key in prev) {
     const k = key as keyof MemoryUsage
     const diff = cur[k] - prev[k]
     console.log(
-      `${k}: ${diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} megabytes`
+      `${k}: ${diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} MB`
     )
   }
 }

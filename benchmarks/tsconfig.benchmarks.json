@@ -3,6 +3,7 @@
   "include": ["**/*.ts", "../src/**/*.ts"],
   "compilerOptions": {
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "outDir": "build"
   }
 }

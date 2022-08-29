@@ -54,17 +54,22 @@ const program = async () => {
   let prevMemoryUsage = initialMemoryUsage
 
   setInterval(() => {
+    console.log()
     console.log('Current memory usage:')
     const currentMemoryUsage = getMemoryUsageInMegabytes()
+    console.log('Diff from previous measurement:')
     logMemoryUsageDiff({
       prev: prevMemoryUsage,
       cur: currentMemoryUsage,
     })
     prevMemoryUsage = currentMemoryUsage
-  }, 5000)
+  }, 1000)
 
   console.time('insert')
-  const filename = Path.resolve(__dirname, './input/mgbench1.csv')
+  const filename = Path.resolve(
+    process.cwd(),
+    'benchmarks/leaks/input/mgbench1.csv'
+  )
   await client.insert({
     table: tableName,
     values: Fs.createReadStream(filename),
@@ -74,12 +79,26 @@ const program = async () => {
 
   console.log()
   console.log('=============================================================')
-  console.log('Final diff between start and end of the test')
+  console.log('Final diff between start and end of the test (before GC call)')
   console.log('=============================================================')
   logMemoryUsageDiff({
     prev: initialMemoryUsage,
-    cur: getMemoryUsageInMegabytes(),
+    cur: getMemoryUsageInMegabytes(false),
   })
+
+  if (global.gc) {
+    global.gc()
+    console.log()
+    console.log('=============================================================')
+    console.log('Final diff between start and end of the test  (after GC call)')
+    console.log('=============================================================')
+    logMemoryUsageDiff({
+      prev: initialMemoryUsage,
+      cur: getMemoryUsageInMegabytes(false),
+    })
+  } else {
+    console.log('GC is not exposed. Re-run the test with --expose_gc node flag')
+  }
 
   process.exit(0)
 }

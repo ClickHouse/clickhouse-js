@@ -8,12 +8,16 @@ on:
     paths-ignore:
       - 'README.md'
       - 'LICENSE'
+      - 'benchmarks/**'
+      - 'examples/**'
   pull_request:
     branches:
       - main
     paths-ignore:
       - 'README.md'
       - 'LICENSE'
+      - 'benchmarks/**'
+      - 'examples/**'
 
   schedule:
     - cron: '0 9 * * *'
