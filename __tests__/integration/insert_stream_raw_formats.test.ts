@@ -3,9 +3,6 @@ import type { ClickHouseClient, ClickHouseSettings } from '../../src'
 import { createSimpleTable } from './fixtures/simple_table'
 import Stream from 'stream'
 
-// FIXME `npm run test -- --detectOpenHandles`
-//  Jest has detected the following 13 open handles
-//  potentially keeping Jest from exiting
 describe('insert stream (raw formats)', () => {
   let client: ClickHouseClient
   let tableName: string
@@ -15,6 +12,9 @@ describe('insert stream (raw formats)', () => {
     tableName = `insert_stream_raw_${guid()}`
     client = createTestClient()
     await createSimpleTable(client, tableName)
+  })
+  afterEach(async () => {
+    await client.close()
   })
 
   describe('TSV', () => {

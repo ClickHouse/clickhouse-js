@@ -11,7 +11,7 @@ module.exports = {
   testTimeout: 30000,
   globals: {
     'ts-jest': {
-      tsconfig: 'tsconfig.eslint.json',
+      tsconfig: 'tsconfig.dev.json',
     },
   },
 }

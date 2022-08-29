@@ -2,3 +2,5 @@ package-lock.json
 dist/
 .idea
 node_modules
+benchmarks/leaks/input
+build

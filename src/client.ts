@@ -142,6 +142,7 @@ export class ClickHouseClient {
     return new Rows(stream, format)
   }
 
+  // FIXME: allow ; in the end of the query
   async command(params: CommandParams): Promise<Rows> {
     const format = params.format === undefined ? 'JSON' : params.format
     const query = formatCommandQuery(params.query, format)
@@ -227,7 +228,7 @@ export function validateInsertValues(
  * A function encodes an array or a stream of JSON objects to a format compatible with ClickHouse.
  * If values are provided as an array of JSON objects, the function encodes it in place.
  * If values are provided as a stream of JSON objects, the function sets up the encoding of each chunk.
- * If values are provided as a raw stream, the function only adds a listener for error events to log it.
+ * If values are provided as a raw non-object stream, the function does nothing.
  *
  * @param values a set of values to send to ClickHouse.
  * @param format a format to encode value to.
@@ -238,7 +239,6 @@ function encodeValues(
 ): string | Stream.Readable {
   if (isStream(values)) {
     if (!values.readableObjectMode) {
-      values.addListener('error', pipelineCb)
       return values
     }
     return Stream.pipeline(

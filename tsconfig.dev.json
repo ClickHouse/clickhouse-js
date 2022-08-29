@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "./src/**/*.ts",
+    "__tests__/**/*.ts",
+    "examples/**/*.ts",
+    "benchmarks/**/*.ts"
+  ],
+  "compilerOptions": {
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "outDir": "build"
+  }
+}
