@@ -398,5 +398,13 @@ describe('select', () => {
       })
       expect(await numbers.text()).toEqual('0\n1\n2\n')
     })
+
+    it('should cut off the statements after the first semi', async () => {
+      const numbers = await client.select({
+        query: 'SELECT * FROM system.numbers LIMIT 3;asdf foobar',
+        format: 'CSV',
+      })
+      expect(await numbers.text()).toEqual('0\n1\n2\n')
+    })
   })
 })

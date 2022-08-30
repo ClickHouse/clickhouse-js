@@ -83,6 +83,14 @@ describe('command', () => {
       expect(await numbers.text()).toEqual('0\n1\n2\n')
     })
 
+    it('should cut off the statements after the first semi', async () => {
+      const numbers = await client.command({
+        query: 'SELECT * FROM system.numbers LIMIT 3;asdf foobar',
+        format: 'CSV',
+      })
+      expect(await numbers.text()).toEqual('0\n1\n2\n')
+    })
+
     it('should allow commands without format but with trailing semi', async () => {
       const result = await client.command({
         query: 'EXISTS system.databases;',
