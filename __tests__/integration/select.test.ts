@@ -109,9 +109,9 @@ describe('select', () => {
   })
 
   it('returns an error details provided by ClickHouse', async () => {
-    await expect(client.select({ query: ';' })).rejects.toEqual(
+    await expect(client.select({ query: 'foobar' })).rejects.toEqual(
       expect.objectContaining({
-        message: expect.stringContaining('Empty query'),
+        message: expect.stringContaining('Syntax error'),
         code: '62',
         type: 'SYNTAX_ERROR',
       })
@@ -379,6 +379,32 @@ describe('select', () => {
           ['4'],
         ])
       })
+    })
+  })
+
+  describe('trailing semi', () => {
+    it('should allow queries with trailing semicolon', async () => {
+      const numbers = await client.select({
+        query: 'SELECT * FROM system.numbers LIMIT 3;',
+        format: 'CSV',
+      })
+      expect(await numbers.text()).toEqual('0\n1\n2\n')
+    })
+
+    it('should allow queries with multiple trailing semicolons', async () => {
+      const numbers = await client.select({
+        query: 'SELECT * FROM system.numbers LIMIT 3;;;;;;;;;;;;;;;;;',
+        format: 'CSV',
+      })
+      expect(await numbers.text()).toEqual('0\n1\n2\n')
+    })
+
+    it('should cut off the statements after the first semi', async () => {
+      const numbers = await client.select({
+        query: 'SELECT * FROM system.numbers LIMIT 3;asdf foobar',
+        format: 'CSV',
+      })
+      expect(await numbers.text()).toEqual('0\n1\n2\n')
     })
   })
 })
