@@ -7,7 +7,7 @@ For that, we can have various tests with periodical memory usage logging such as
 
 NB: we supposedly avoid using `ts-node` as it adds some runtime overhead.
 
-Every test requires a local ClickHouse instance running. 
+Every test requires a local ClickHouse instance running.
 
 You can just use docker-compose.yml from the root directory:
 
@@ -73,4 +73,33 @@ tsc --project tsconfig.dev.json \
 && BATCH_SIZE=100000000 ITERATIONS=1000 LOG_INTERVAL=100 \
 node --expose-gc --max-old-space-size=256 \
 build/benchmarks/leaks/memory_leak_random_integers.js
+```
+
+## Random arrays and maps insertion (no streaming)
+
+This test does not use any streaming and supposed to do a lot of allocations and de-allocations.
+
+Configuration is the same as the previous test, but with different default values as it is much heavier:
+
+- `BATCH_SIZE` - number of random rows within one stream before sending it to ClickHouse (default: 1000)
+- `ITERATIONS` - number of streams (batches) to be sent to ClickHouse (default: 1000)
+- `LOG_INTERVAL` - memory usage will be logged every Nth iteration, where N is the number specified (default: 100)
+
+#### Run the test
+
+With default configuration:
+
+```sh
+tsc --project tsconfig.dev.json \
+&& node --expose-gc --max-old-space-size=256 \
+build/benchmarks/leaks/memory_leak_arrays.js
+```
+
+With custom configuration via env variables and different max heap size:
+
+```sh
+tsc --project tsconfig.dev.json \
+&& BATCH_SIZE=10000 ITERATIONS=1000 LOG_INTERVAL=100 \
+node --expose-gc --max-old-space-size=1024 \
+build/benchmarks/leaks/memory_leak_arrays.js
 ```

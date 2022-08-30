@@ -80,3 +80,32 @@ export function logFinalMemoryUsage(initialMemoryUsage: MemoryUsage) {
     console.log('GC is not exposed. Re-run the test with --expose_gc node flag')
   }
 }
+
+export function logMemoryUsageOnIteration({
+  currentMemoryUsage,
+  iteration,
+  prevMemoryUsage,
+}: {
+  iteration: number
+  prevMemoryUsage: MemoryUsage
+  currentMemoryUsage: MemoryUsage
+}) {
+  console.log()
+  console.log('=============================================================')
+  console.log(`${iteration} iterations`)
+  console.log('=============================================================')
+  console.log('Current memory usage:')
+  logMemoryUsage(currentMemoryUsage)
+  logMemoryUsageDiff({
+    previous: prevMemoryUsage,
+    current: currentMemoryUsage,
+  })
+}
+
+export function randomStr() {
+  return Math.random().toString(36).slice(2)
+}
+
+export function randomArray<T>(size: number, generator: () => T): T[] {
+  return [...Array(size).keys()].map(() => generator())
+}
