@@ -6,7 +6,7 @@ module.exports = {
   preset: 'ts-jest',
   clearMocks: true,
   collectCoverageFrom: ['<rootDir>/src/**/*.ts'],
-  testMatch: ['**/*.test.{js,mjs,ts,tsx}'],
+  testMatch: ['<rootDir>/__tests__/**/*.test.{js,mjs,ts,tsx}'],
   transform: tsjPreset.transform,
   testTimeout: 30000,
   globals: {
