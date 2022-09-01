@@ -946,7 +946,7 @@ interface ClickHouseServerSettings {
   allow_experimental_hash_functions?: Bool
   /** Allow Object and JSON data types (default: false) */
   allow_experimental_object_type?: Bool
-  /** If not empty (default: "") */
+  /** If not empty, used for duplicate detection instead of data digest (default: "") */
   insert_deduplication_token?: string
   /** Rewrite count distinct to subquery of group by (default: false) */
   count_distinct_optimization?: Bool
