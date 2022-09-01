@@ -68,7 +68,7 @@ const program = async () => {
 }
 
 function makeRows(): Row[] {
-  const batch: Row[] = []
+  const batch = new Array(BATCH_SIZE)
   for (let i = 0; i < BATCH_SIZE; i++) {
     const data: Row['data'] = randomArray(randomInt(5, 10), randomStr)
     const data2: Row['data2'] = {}

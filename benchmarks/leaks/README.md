@@ -79,7 +79,7 @@ build/benchmarks/leaks/memory_leak_random_integers.js
 
 This test does not use any streaming and supposed to do a lot of allocations and de-allocations.
 
-Configuration is the same as the previous test, but with different default values as it is much heavier:
+Configuration is the same as the previous test, but with different default values as it is much slower due to the random data generation for the entire batch in advance, using arrays of strings and maps of arrays of strings:
 
 - `BATCH_SIZE` - number of random rows within one stream before sending it to ClickHouse (default: 1000)
 - `ITERATIONS` - number of streams (batches) to be sent to ClickHouse (default: 1000)
