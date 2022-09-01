@@ -12,7 +12,7 @@ import {
 
 const program = async () => {
   const client = createClient({})
-  const tableName = `memory_leak_test_file_${uuid_v4().replace(/-/g, '')}`
+  const tableName = `memory_leak_test_brown_${uuid_v4().replace(/-/g, '')}`
 
   await client.command({
     query: `
