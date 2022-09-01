@@ -39,7 +39,7 @@ describe('QueryFormatter', () => {
         partition_by: ['foo'],
         primary_key: ['bar'],
         settings: {
-          merge_max_block_size: 16384,
+          merge_max_block_size: '16384',
           enable_mixed_granularity_parts: 1,
         },
       })
@@ -50,7 +50,7 @@ describe('QueryFormatter', () => {
         'ORDER BY (foo, bar) ' +
         'PARTITION BY (foo) ' +
         'PRIMARY KEY (bar) ' +
-        'SETTINGS merge_max_block_size = 16384, enable_mixed_granularity_parts = 1'
+        `SETTINGS merge_max_block_size = '16384', enable_mixed_granularity_parts = 1`
     )
   })
 })
