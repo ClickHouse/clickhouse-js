@@ -1,6 +1,7 @@
 /**
  * @see {@link https://github.com/ClickHouse/ClickHouse/blob/46ed4f6cdf68fbbdc59fbe0f0bfa9a361cc0dec1/src/Core/Settings.h}
  * @see {@link https://github.com/ClickHouse/ClickHouse/blob/5f84f06d6d26672da3d97d0b236ebb46b5080989/src/Core/Defines.h}
+ * @see {@link https://github.com/ClickHouse/ClickHouse/blob/eae2667a1c29565c801be0ffd465f8bfcffe77ef/src/Storages/MergeTree/MergeTreeSettings.h}
  */
 
 /////   regex / replace for common and format settings entries
@@ -1194,11 +1195,232 @@ interface ClickHouseServerSettings {
   /** Quote column names with '`' characters (default: true) */
   output_format_sql_insert_quote_names?: Bool
 }
+
 interface ClickHouseHTTPSettings {
   wait_end_of_query?: Bool
 }
+
 export type ClickHouseSettings = ClickHouseServerSettings &
   ClickHouseHTTPSettings
+
+export interface MergeTreeSettings {
+  /** When granule is written (default: 0) */
+  min_compress_block_size?: UInt64
+  /** Compress the pending uncompressed data in buffer if its size is larger or equal than the specified threshold. Block of data will be compressed even if the current granule is not finished. If this setting is not set (default: 0) */
+  max_compress_block_size?: UInt64
+  /** How many rows correspond to one primary key value. (default: 8192) */
+  index_granularity?: UInt64
+  /** Minimal uncompressed size in bytes to create part in wide format instead of compact (default: 10485760) */
+  min_bytes_for_wide_part?: UInt64
+  /** Minimal number of rows to create part in wide format instead of compact (default: 0) */
+  min_rows_for_wide_part?: UInt64
+  /** Experimental. Minimal uncompressed size in bytes to create part in compact format instead of saving it in RAM (default: 0) */
+  min_bytes_for_compact_part?: UInt64
+  /** Experimental. Minimal number of rows to create part in compact format instead of saving it in RAM (default: 0) */
+  min_rows_for_compact_part?: UInt64
+  /** Whether to write blocks in Native format to write-ahead-log before creation in-memory part (default: true) */
+  in_memory_parts_enable_wal?: Bool
+  /** Rotate WAL (default: 1024 * 1024 * 1024) */
+  write_ahead_log_max_bytes?: UInt64
+  /** Minimal ratio of number of default values to number of all values in column to store it in sparse serializations. If >= 1 (default: 1.0) */
+  ratio_of_defaults_for_sparse_serialization?: Float
+  /** How many rows in blocks should be formed for merge operations. (default: DEFAULT_MERGE_BLOCK_SIZE) */
+  merge_max_block_size?: UInt64
+  /** Maximum in total size of parts to merge (default: 150ULL * 1024 * 1024 * 1024) */
+  max_bytes_to_merge_at_max_space_in_pool?: UInt64
+  /** Maximum in total size of parts to merge (default: 1024 * 1024) */
+  max_bytes_to_merge_at_min_space_in_pool?: UInt64
+  /** How many tasks of merging and mutating parts are allowed simultaneously in ReplicatedMergeTree queue. (default: 16) */
+  max_replicated_merges_in_queue?: UInt64
+  /** How many tasks of mutating parts are allowed simultaneously in ReplicatedMergeTree queue. (default: 8) */
+  max_replicated_mutations_in_queue?: UInt64
+  /** How many tasks of merging parts with TTL are allowed simultaneously in ReplicatedMergeTree queue. (default: 1) */
+  max_replicated_merges_with_ttl_in_queue?: UInt64
+  /** When there is less than specified number of free entries in pool (or replicated queue) (default: 8) */
+  number_of_free_entries_in_pool_to_lower_max_size_of_merge?: UInt64
+  /** When there is less than specified number of free entries in pool (default: 20) */
+  number_of_free_entries_in_pool_to_execute_mutation?: UInt64
+  /** When there is more than specified number of merges with TTL entries in pool (default: 2) */
+  max_number_of_merges_with_ttl_in_pool?: UInt64
+  /** How many seconds to keep obsolete parts. (default: 8 * 60) */
+  old_parts_lifetime?: Seconds
+  /** How many seconds to keep tmp_-directories. You should not lower this value because merges and mutations may not be able to work with low value of this setting. (default: 86400) */
+  temporary_directories_lifetime?: Seconds
+  /** For background operations like merges (default: DBMS_DEFAULT_LOCK_ACQUIRE_TIMEOUT_SEC) */
+  lock_acquire_timeout_for_background_operations?: Seconds
+  /** Minimal number of rows to do fsync for part after merge (0 - disabled) (default: 0) */
+  min_rows_to_fsync_after_merge?: UInt64
+  /** Minimal number of compressed bytes to do fsync for part after merge (0 - disabled) (default: 0) */
+  min_compressed_bytes_to_fsync_after_merge?: UInt64
+  /** Minimal number of compressed bytes to do fsync for part after fetch (0 - disabled) (default: 0) */
+  min_compressed_bytes_to_fsync_after_fetch?: UInt64
+  /** Do fsync for every inserted part. Significantly decreases performance of inserts (default: false) */
+  fsync_after_insert?: Bool
+  /** Do fsync for part directory after all part operations (writes (default: false) */
+  fsync_part_directory?: Bool
+  /** Amount of bytes (default: 100ULL * 1024 * 1024) */
+  write_ahead_log_bytes_to_fsync?: UInt64
+  /** Interval in milliseconds after which fsync for WAL is being done. (default: 100) */
+  write_ahead_log_interval_ms_to_fsync?: UInt64
+  /** If true insert of part with in-memory format will wait for fsync of WAL (default: false) */
+  in_memory_parts_insert_sync?: Bool
+  /** How many last blocks of hashes should be kept on disk (0 - disabled). (default: 0) */
+  non_replicated_deduplication_window?: UInt64
+  /** Max amount of parts which can be merged at once (0 - disabled). Doesn't affect OPTIMIZE FINAL query. (default: 100) */
+  max_parts_to_merge_at_once?: UInt64
+  /** Sleep time for merge selecting when no part selected (default: 5000) */
+  merge_selecting_sleep_ms?: UInt64
+  /** The period of executing the clear old temporary directories operation in background. (default: 60) */
+  merge_tree_clear_old_temporary_directories_interval_seconds?: UInt64
+  /** The period of executing the clear old parts operation in background. (default: 1) */
+  merge_tree_clear_old_parts_interval_seconds?: UInt64
+  /** Remove old broken detached parts in the background if they remained untouched for a specified by this setting period of time. (default: 1ULL * 3600 * 24 * 30) */
+  merge_tree_clear_old_broken_detached_parts_ttl_timeout_seconds?: UInt64
+  /** Enable clearing old broken detached parts operation in background. (default: false) */
+  merge_tree_enable_clear_old_broken_detached?: UInt64
+  /** Setting for an incomplete experimental feature. (default: 1) */
+  remove_rolled_back_parts_immediately?: Bool
+  /** If table contains at least that many active parts in single partition (default: 150) */
+  parts_to_delay_insert?: UInt64
+  /** If table contains at least that many inactive parts in single partition (default: 0) */
+  inactive_parts_to_delay_insert?: UInt64
+  /** If more than this number active parts in single partition (default: 300) */
+  parts_to_throw_insert?: UInt64
+  /** If more than this number inactive parts in single partition (default: 0) */
+  inactive_parts_to_throw_insert?: UInt64
+  /** Max delay of inserting data into MergeTree table in seconds (default: 1) */
+  max_delay_to_insert?: UInt64
+  /** If more than this number active parts in all partitions in total (default: 100000) */
+  max_parts_in_total?: UInt64
+  /** How many last blocks of hashes should be kept in ZooKeeper (old blocks will be deleted). (default: 100) */
+  replicated_deduplication_window?: UInt64
+  /** Similar to "replicated_deduplication_window" (default: 7 * 24 * 60 * 60 // one week) */
+  replicated_deduplication_window_seconds?: UInt64
+  /** How many records may be in log (default: 1000) */
+  max_replicated_logs_to_keep?: UInt64
+  /** Keep about this number of last records in ZooKeeper log (default: 10) */
+  min_replicated_logs_to_keep?: UInt64
+  /** If time passed after replication log entry creation exceeds this threshold and sum size of parts is greater than \"prefer_fetch_merged_part_size_threshold\ (default: 3600) */
+  prefer_fetch_merged_part_time_threshold?: Seconds
+  /** If sum size of parts exceeds this threshold and time passed after replication log entry creation is greater than \"prefer_fetch_merged_part_time_threshold\ (default: 10ULL * 1024 * 1024 * 1024) */
+  prefer_fetch_merged_part_size_threshold?: UInt64
+  /** When greater than zero only a single replica starts the merge immediately (default: 0) */
+  execute_merges_on_single_replica_time_threshold?: Seconds
+  /** When greater than zero only a single replica starts the merge immediately if merged part on shared storage and 'allow_remote_fs_zero_copy_replication' is enabled. (default: 3 * 60 * 60) */
+  remote_fs_execute_merges_on_single_replica_time_threshold?: Seconds
+  /** Recompression works slow in most cases (default: 7200) */
+  try_fetch_recompressed_part_timeout?: Seconds
+  /** If true (default: false) */
+  always_fetch_merged_part?: Bool
+  /** Max broken parts (default: 10) */
+  max_suspicious_broken_parts?: UInt64
+  /** Max size of all broken parts (default: 1ULL * 1024 * 1024 * 1024) */
+  max_suspicious_broken_parts_bytes?: UInt64
+  /** Not apply ALTER if number of files for modification(deletion (default: 75) */
+  max_files_to_modify_in_alter_columns?: UInt64
+  /** Not apply ALTER (default: 50) */
+  max_files_to_remove_in_alter_columns?: UInt64
+  /** If ratio of wrong parts to total number of parts is less than this - allow to start. (default: 0.5) */
+  replicated_max_ratio_of_wrong_parts?: Float
+  /** Limit parallel fetches from endpoint (actually pool size). (default: DEFAULT_COUNT_OF_HTTP_CONNECTIONS_PER_ENDPOINT) */
+  replicated_max_parallel_fetches_for_host?: UInt64
+  /** HTTP connection timeout for part fetch requests. Inherited from default profile `http_connection_timeout` if not set explicitly. (default: 0) */
+  replicated_fetches_http_connection_timeout?: Seconds
+  /** HTTP send timeout for part fetch requests. Inherited from default profile `http_send_timeout` if not set explicitly. (default: 0) */
+  replicated_fetches_http_send_timeout?: Seconds
+  /** HTTP receive timeout for fetch part requests. Inherited from default profile `http_receive_timeout` if not set explicitly. (default: 0) */
+  replicated_fetches_http_receive_timeout?: Seconds
+  /** If true (default: true) */
+  replicated_can_become_leader?: Bool
+  /** ZooKeeper session expiration check period (default: 60) */
+  zookeeper_session_expiration_check_period?: Seconds
+  /** Retry period for table initialization (default: 60) */
+  initialization_retry_period?: Seconds
+  /** Do not remove old local parts when repairing lost replica. (default: true) */
+  detach_old_local_parts_when_cloning_replica?: Bool
+  /** Do not remove non byte-identical parts for ReplicatedMergeTree (default: false) */
+  detach_not_byte_identical_parts?: Bool
+  /** The maximum speed of data exchange over the network in bytes per second for replicated fetches. Zero means unlimited. (default: 0) */
+  max_replicated_fetches_network_bandwidth?: UInt64
+  /** The maximum speed of data exchange over the network in bytes per second for replicated sends. Zero means unlimited. (default: 0) */
+  max_replicated_sends_network_bandwidth?: UInt64
+  /** Calculate relative replica delay only if absolute delay is not less that this value. (default: 120) */
+  min_relative_delay_to_measure?: UInt64
+  /** Period to clean old queue logs (default: 30) */
+  cleanup_delay_period?: UInt64
+  /** Add uniformly distributed value from 0 to x seconds to cleanup_delay_period to avoid thundering herd effect and subsequent DoS of ZooKeeper in case of very large number of tables. (default: 10) */
+  cleanup_delay_period_random_add?: UInt64
+  /** Minimal delay from other replicas to close (default: 300) */
+  min_relative_delay_to_close?: UInt64
+  /** Minimal absolute delay to close (default: 0) */
+  min_absolute_delay_to_close?: UInt64
+  /** Enable usage of Vertical merge algorithm. (default: 1) */
+  enable_vertical_merge_algorithm?: UInt64
+  /** Minimal (approximate) sum of rows in merging parts to activate Vertical merge algorithm. (default: 16 * DEFAULT_MERGE_BLOCK_SIZE) */
+  vertical_merge_algorithm_min_rows_to_activate?: UInt64
+  /** Minimal amount of non-PK columns to activate Vertical merge algorithm. (default: 11) */
+  vertical_merge_algorithm_min_columns_to_activate?: UInt64
+  /** Allow to create a table with sampling expression not in primary key. This is needed only to temporarily allow to run the server with wrong tables for backward compatibility. (default: false) */
+  compatibility_allow_sampling_expression_not_in_primary_key?: Bool
+  /** Use small format (dozens bytes) for part checksums in ZooKeeper instead of ordinary ones (dozens KB). Before enabling check that all replicas support new format. (default: true) */
+  use_minimalistic_checksums_in_zookeeper?: Bool
+  /** Store part header (checksums and columns) in a compact format and a single part znode instead of separate znodes (<part>/columns and <part>/checksums). This can dramatically reduce snapshot size in ZooKeeper. Before enabling check that all replicas support new format. (default: true) */
+  use_minimalistic_part_header_in_zookeeper?: Bool
+  /** How many records about mutations that are done to keep. If zero (default: 100) */
+  finished_mutations_to_keep?: UInt64
+  /** Minimal amount of bytes to enable O_DIRECT in merge (0 - disabled). (default: 10ULL * 1024 * 1024 * 1024) */
+  min_merge_bytes_to_use_direct_io?: UInt64
+  /** Approximate amount of bytes in single granule (0 - disabled). (default: 10 * 1024 * 1024) */
+  index_granularity_bytes?: UInt64
+  /** Minimum amount of bytes in single granule. (default: 1024) */
+  min_index_granularity_bytes?: UInt64
+  /** Minimal time in seconds (default: 3600 * 4) */
+  merge_with_ttl_timeout?: Int64
+  /** Minimal time in seconds (default: 3600 * 4) */
+  merge_with_recompression_ttl_timeout?: Int64
+  /** Only drop altogether the expired parts and not partially prune them. (default: false) */
+  ttl_only_drop_parts?: Bool
+  /** Only recalculate ttl info when MATERIALIZE TTL (default: false) */
+  materialize_ttl_recalculate_only?: Bool
+  /** Enable parts with adaptive and non-adaptive granularity (default: true) */
+  enable_mixed_granularity_parts?: Bool
+  /** The number of threads to load data parts at startup. (default: 0) */
+  max_part_loading_threads?: MaxThreads
+  /** The number of threads for concurrent removal of inactive data parts. One is usually enough (default: 0) */
+  max_part_removal_threads?: MaxThreads
+  /** Activate concurrent part removal (see 'max_part_removal_threads') only if the number of inactive data parts is at least this. (default: 100) */
+  concurrent_part_removal_threshold?: UInt64
+  /** Name of storage disk policy (default: "default") */
+  storage_policy?: string
+  /** Allow Nullable types as primary keys. (default: false) */
+  allow_nullable_key?: Bool
+  /** Remove empty parts after they were pruned by TTL (default: true) */
+  remove_empty_parts?: Bool
+  /** Generate UUIDs for parts. Before enabling check that all replicas support new format. (default: false) */
+  assign_part_uuids?: Bool
+  /** Limit the max number of partitions that can be accessed in one query. <= 0 means unlimited. This setting is the default that can be overridden by the query-level setting with the same name. (default: -1) */
+  max_partitions_to_read?: Int64
+  /** Max number of concurrently executed queries related to the MergeTree table (0 - disabled). Queries will still be limited by other max_concurrent_queries settings. (default: 0) */
+  max_concurrent_queries?: UInt64
+  /** Minimal number of marks to honor the MergeTree-level's max_concurrent_queries (0 - disabled). Queries will still be limited by other max_concurrent_queries settings. (default: 0) */
+  min_marks_to_honor_max_concurrent_queries?: UInt64
+  /** Minimal amount of bytes to enable part rebalance over JBOD array (0 - disabled). (default: 0) */
+  min_bytes_to_rebalance_partition_over_jbod?: UInt64
+  /** Check columns or columns by hash for sampling are unsigned integer. (default: true) */
+  check_sample_column_is_correct?: Bool
+  /** Experimental/Incomplete feature to move parts between shards. Does not take into account sharding expressions. (default: 0) */
+  part_moves_between_shards_enable?: UInt64
+  /** Time to wait before/after moving parts between shards. (default: 30) */
+  part_moves_between_shards_delay_seconds?: UInt64
+  /** Experimental feature to speed up parts loading process by using MergeTree metadata cache (default: false) */
+  use_metadata_cache?: Bool
+  /** Don't use this setting in production (default: false) */
+  allow_remote_fs_zero_copy_replication?: Bool
+  /** ZooKeeper path for Zero-copy table-independent info. (default: "/clickhouse/zero_copy") */
+  remote_fs_zero_copy_zookeeper_path?: string
+  /** Run zero-copy in compatible mode during conversion process. (default: false) */
+  remote_fs_zero_copy_path_compatible_mode?: Bool
+}
 
 type Bool = 0 | 1
 type Int64 = string
@@ -1211,13 +1433,16 @@ type Milliseconds = number
 type Char = string
 type URI = string
 type Map = SettingsMap
+
 export class SettingsMap {
   private constructor(private readonly record: Record<string, string>) {}
+
   toString(): string {
     return `{${Object.entries(this.record)
       .map(([k, v]) => `'${k}':'${v}'`)
       .join(',')}}`
   }
+
   static from(record: Record<string, string>) {
     return new this(record)
   }
