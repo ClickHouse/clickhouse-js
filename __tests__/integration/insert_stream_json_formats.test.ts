@@ -5,15 +5,9 @@ import { createTestClient, guid } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 
 describe('insert stream (JSON formats)', () => {
-  beforeAll(function () {
-    // FIXME: Jest does not seem to have it
-    // if (process.env.browser) {
-    //   this.skip();
-    // }
-  })
-
   let client: ClickHouseClient
   let tableName: string
+
   beforeEach(async () => {
     client = createTestClient()
     tableName = `insert_stream_json_${guid()}`

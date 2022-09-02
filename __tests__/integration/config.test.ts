@@ -2,13 +2,6 @@ import { type ClickHouseClient } from '../../src'
 import { createTestClient } from '../utils'
 
 describe('config', () => {
-  beforeAll(function () {
-    // FIXME: Jest does not seem to have it
-    // if (process.env.browser) {
-    //   this.skip();
-    // }
-  })
-
   let client: ClickHouseClient
   afterEach(async () => {
     await client.close()

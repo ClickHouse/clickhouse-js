@@ -6,12 +6,6 @@ import { TestEnv } from '../utils'
 
 describe('abort request', () => {
   let client: ClickHouseClient
-  beforeAll(function () {
-    // FIXME: Jest does not seem to have it
-    // if (process.env.browser) {
-    //   this.skip();
-    // }
-  })
 
   beforeEach(() => {
     client = createTestClient()
@@ -102,7 +96,7 @@ describe('abort request', () => {
     })
 
     // FIXME: it does not work with ClickHouse Cloud.
-    //  Active queries never contain the long running query unlike local setup.
+    //  Active queries never contain the long-running query unlike local setup.
     it.skip('ClickHouse server must cancel query on abort', async () => {
       const controller = new AbortController()
 
