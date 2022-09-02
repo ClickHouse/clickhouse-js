@@ -1,8 +1,12 @@
-import Stream from 'stream'
 import { AbortController } from 'node-abort-controller'
 import { type ClickHouseClient, type ResponseJSON } from '../../src'
-import { createTable, createTestClient, guid } from '../utils'
-import { TestEnv } from '../utils'
+import {
+  createTable,
+  createTestClient,
+  guid,
+  makeObjectStream,
+  TestEnv,
+} from '../utils'
 
 describe('abort request', () => {
   let client: ClickHouseClient
@@ -155,7 +159,7 @@ describe('abort request', () => {
 
     it('cancels an insert query before it is sent', async () => {
       const controller = new AbortController()
-      const stream = getStubStream()
+      const stream = makeObjectStream()
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
@@ -171,7 +175,7 @@ describe('abort request', () => {
     })
 
     it('cancels an insert query before it is sent by closing a stream', async () => {
-      const stream = getStubStream()
+      const stream = makeObjectStream()
       stream.push(null)
 
       expect(
@@ -184,7 +188,7 @@ describe('abort request', () => {
 
     it('cancels an insert query after it is sent', async () => {
       const controller = new AbortController()
-      const stream = getStubStream()
+      const stream = makeObjectStream()
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
@@ -223,13 +227,4 @@ async function assertActiveQueries(
 
     await new Promise((res) => setTimeout(res, 100))
   }
-}
-
-function getStubStream(): Stream.Readable {
-  return new Stream.Readable({
-    objectMode: true,
-    read() {
-      /* stub */
-    },
-  })
 }

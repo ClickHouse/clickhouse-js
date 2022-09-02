@@ -1,7 +1,8 @@
-import { createTestClient, guid } from '../utils'
+import { createTestClient, guid, makeRawStream } from '../utils'
 import type { ClickHouseClient, ClickHouseSettings } from '../../src'
 import { createSimpleTable } from './fixtures/simple_table'
 import Stream from 'stream'
+import { assertJsonValues, jsonValues } from './fixtures/test_data'
 
 describe('insert stream (raw formats)', () => {
   let client: ClickHouseClient
@@ -95,6 +96,27 @@ describe('insert stream (raw formats)', () => {
         })
       )
     })
+
+    it('can insert multiple TSV streams at once', async () => {
+      const streams: Stream.Readable[] = Array(jsonValues.length)
+      const insertStreamPromises = Promise.all(
+        jsonValues.map(({ id, name, sku }, i) => {
+          const stream = makeRawStream()
+          streams[i] = stream
+          stream.push(`${id}\t${name}\t[${sku}]\n`)
+          return client.insert({
+            values: stream,
+            format: 'TabSeparated',
+            table: tableName,
+          })
+        })
+      )
+      setTimeout(() => {
+        streams.forEach((stream) => stream.push(null))
+      }, 100)
+      await insertStreamPromises
+      await assertJsonValues(client, tableName)
+    })
   })
 
   describe('CSV', () => {
@@ -155,6 +177,27 @@ describe('insert stream (raw formats)', () => {
           message: expect.stringContaining('Cannot parse input'),
         })
       )
+    })
+
+    it('can insert multiple CSV streams at once', async () => {
+      const streams: Stream.Readable[] = Array(jsonValues.length)
+      const insertStreamPromises = Promise.all(
+        jsonValues.map(({ id, name, sku }, i) => {
+          const stream = makeRawStream()
+          streams[i] = stream
+          stream.push(`${id},${name},"${sku}"\n`)
+          return client.insert({
+            values: stream,
+            format: 'CSV',
+            table: tableName,
+          })
+        })
+      )
+      setTimeout(() => {
+        streams.forEach((stream) => stream.push(null))
+      }, 100)
+      await insertStreamPromises
+      await assertJsonValues(client, tableName)
     })
   })
 
@@ -225,6 +268,28 @@ describe('insert stream (raw formats)', () => {
           message: expect.stringContaining('Cannot parse input'),
         })
       )
+    })
+
+    it('can insert multiple custom-separated streams at once', async () => {
+      const streams: Stream.Readable[] = Array(jsonValues.length)
+      const insertStreamPromises = Promise.all(
+        jsonValues.map(({ id, name, sku }, i) => {
+          const stream = makeRawStream()
+          streams[i] = stream
+          stream.push(`${id}^${name}^[${sku}]\n`)
+          return client.insert({
+            values: stream,
+            format: 'CustomSeparated',
+            table: tableName,
+            clickhouse_settings,
+          })
+        })
+      )
+      setTimeout(() => {
+        streams.forEach((stream) => stream.push(null))
+      }, 100)
+      await insertStreamPromises
+      await assertJsonValues(client, tableName)
     })
   })
 

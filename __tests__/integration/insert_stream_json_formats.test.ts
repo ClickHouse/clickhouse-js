@@ -1,8 +1,8 @@
-import type { ResponseJSON } from '../../src'
 import { type ClickHouseClient } from '../../src'
 import Stream from 'stream'
-import { createTestClient, guid } from '../utils'
+import { createTestClient, guid, makeObjectStream } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
+import { assertJsonValues, jsonValues } from './fixtures/test_data'
 
 describe('insert stream (JSON formats)', () => {
   let client: ClickHouseClient
@@ -18,31 +18,15 @@ describe('insert stream (JSON formats)', () => {
   })
 
   it('can insert values as a Stream', async () => {
-    const stream = new Stream.Readable({
-      objectMode: true,
-      read() {
-        /* stub */
-      },
-    })
-
-    stream.push([42, 'hello', [0, 1]])
-    stream.push([43, 'world', [3, 4]])
+    const stream = makeObjectStream()
+    jsonValues.forEach((value) => stream.push(value))
     setTimeout(() => stream.push(null), 100)
     await client.insert({
       table: tableName,
       values: stream,
-    })
-
-    const Rows = await client.select({
-      query: `SELECT * FROM ${tableName}`,
       format: 'JSONEachRow',
     })
-
-    const result = await Rows.json<ResponseJSON>()
-    expect(result).toEqual([
-      { id: '42', name: 'hello', sku: [0, 1] },
-      { id: '43', name: 'world', sku: [3, 4] },
-    ])
+    await assertJsonValues(client, tableName)
   })
 
   it('does not throw if stream closes prematurely', async () => {
@@ -79,5 +63,26 @@ describe('insert stream (JSON formats)', () => {
       values: stream,
     })
     expect(closed).toBe(true)
+  })
+
+  it('can insert multiple streams at once', async () => {
+    const streams: Stream.Readable[] = Array(jsonValues.length)
+    const insertStreamPromises = Promise.all(
+      jsonValues.map((value, i) => {
+        const stream = makeObjectStream()
+        streams[i] = stream
+        stream.push(value)
+        return client.insert({
+          values: stream,
+          format: 'JSONEachRow',
+          table: tableName,
+        })
+      })
+    )
+    setTimeout(() => {
+      streams.forEach((stream) => stream.push(null))
+    }, 100)
+    await insertStreamPromises
+    await assertJsonValues(client, tableName)
   })
 })
