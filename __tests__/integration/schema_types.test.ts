@@ -383,12 +383,6 @@ async function assertInsertAndSelect<S extends ch.Shape>(
   await table.insert({
     values: value,
   })
-  const result = await (
-    await table.select({
-      clickhouse_settings: {
-        s3_create_new_file_on_insert: 1,
-      },
-    })
-  ).json()
+  const result = await (await table.select()).json()
   expect(result).toEqual(value)
 }
