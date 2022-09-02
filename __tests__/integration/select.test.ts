@@ -27,6 +27,81 @@ describe('select', () => {
     client = createTestClient()
   })
 
+  it('can process an empty response', async () => {
+    expect(
+      await client
+        .select({
+          query: 'SELECT * FROM system.numbers LIMIT 0',
+          format: 'JSONEachRow',
+        })
+        .then((r) => r.json())
+    ).toEqual([])
+    expect(
+      await client
+        .select({
+          query: 'SELECT * FROM system.numbers LIMIT 0',
+          format: 'TabSeparated',
+        })
+        .then((r) => r.text())
+    ).toEqual('')
+  })
+
+  describe('consume the response only once', () => {
+    async function assertAlreadyConsumed$<T>(fn: () => Promise<T>) {
+      await expect(fn()).rejects.toMatchObject(
+        expect.objectContaining({
+          message: 'Stream has been already consumed',
+        })
+      )
+    }
+    function assertAlreadyConsumed<T>(fn: () => T) {
+      expect(fn).toThrow(
+        expect.objectContaining({
+          message: 'Stream has been already consumed',
+        })
+      )
+    }
+    it('should consume a JSON response only once', async () => {
+      const rows = await client.select({
+        query: 'SELECT * FROM system.numbers LIMIT 1',
+        format: 'JSONEachRow',
+      })
+      expect(await rows.json()).toEqual([{ number: '0' }])
+      // wrap in a func to avoid changing inner "this"
+      await assertAlreadyConsumed$(() => rows.json())
+      await assertAlreadyConsumed$(() => rows.text())
+      await assertAlreadyConsumed(() => rows.asStream())
+    })
+
+    it('should consume a text response only once', async () => {
+      const rows = await client.select({
+        query: 'SELECT * FROM system.numbers LIMIT 1',
+        format: 'TabSeparated',
+      })
+      expect(await rows.text()).toEqual('0\n')
+      // wrap in a func to avoid changing inner "this"
+      await assertAlreadyConsumed$(() => rows.json())
+      await assertAlreadyConsumed$(() => rows.text())
+      await assertAlreadyConsumed(() => rows.asStream())
+    })
+
+    it('should consume a stream response only once', async () => {
+      const rows = await client.select({
+        query: 'SELECT * FROM system.numbers LIMIT 1',
+        format: 'TabSeparated',
+      })
+      let result = ''
+      for await (const r of rows.asStream()) {
+        result += r.text()
+      }
+      expect(result).toEqual('0')
+      // wrap in a func to avoid changing inner "this"
+      await assertAlreadyConsumed$(() => rows.json())
+      await assertAlreadyConsumed$(() => rows.text())
+      await assertAlreadyConsumed(() => rows.asStream())
+    })
+  })
+
   it('can send a multiline query', async () => {
     const rows = await client.select({
       query: `
