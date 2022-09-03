@@ -21,29 +21,20 @@ describe('multiple clients', () => {
   })
 
   it('should send multiple parallel selects', async () => {
-    type Res = Array<{ number: string }>
-    const results: Record<string, number> = {}
+    type Res = Array<{ sum: number }>
+    const results: number[] = []
     await Promise.all(
       clients.map((client, i) =>
         client
           .select({
-            query: `SELECT * FROM system.numbers LIMIT ${i + 1}`,
+            query: `SELECT toInt32(sum(*)) AS sum FROM numbers(0, ${i + 2});`,
             format: 'JSONEachRow',
           })
-          .then(async (r) => {
-            results[i] = (await r.json<Res>())
-              .map((r) => +r.number)
-              .reduce((prev, cur) => prev + cur)
-          })
+          .then((r) => r.json<Res>())
+          .then((json: Res) => results.push(json[0].sum))
       )
     )
-    expect(results).toEqual({
-      0: 0,
-      1: 1,
-      2: 3,
-      3: 6,
-      4: 10,
-    })
+    expect(results.sort((a, b) => a - b)).toEqual([1, 3, 6, 10, 15])
   })
 
   it('should be able to send parallel DDLs', async () => {

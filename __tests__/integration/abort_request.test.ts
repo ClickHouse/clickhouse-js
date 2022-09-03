@@ -1,17 +1,12 @@
-import Stream from 'stream'
 import { AbortController } from 'node-abort-controller'
 import { type ClickHouseClient, type ResponseJSON } from '../../src'
-import { createTable, createTestClient, guid } from '../utils'
-import { TestEnv } from '../utils'
+import { createTestClient, guid, makeObjectStream } from '../utils'
+import { createSimpleTable } from './fixtures/simple_table'
+import type Stream from 'stream'
+import { jsonValues } from './fixtures/test_data'
 
 describe('abort request', () => {
   let client: ClickHouseClient
-  beforeAll(function () {
-    // FIXME: Jest does not seem to have it
-    // if (process.env.browser) {
-    //   this.skip();
-    // }
-  })
 
   beforeEach(() => {
     client = createTestClient()
@@ -102,7 +97,7 @@ describe('abort request', () => {
     })
 
     // FIXME: it does not work with ClickHouse Cloud.
-    //  Active queries never contain the long running query unlike local setup.
+    //  Active queries never contain the long-running query unlike local setup.
     it.skip('ClickHouse server must cancel query on abort', async () => {
       const controller = new AbortController()
 
@@ -125,43 +120,53 @@ describe('abort request', () => {
         queries.every((q) => !q.query.includes(longRunningQuery))
       )
     })
+
+    it('should cancel of the select queries while keeping the others', async () => {
+      type Res = Array<{ foo: number }>
+
+      const controller = new AbortController()
+      const results: number[] = []
+
+      const selectPromises = Promise.all(
+        [...Array(5)].map((_, i) => {
+          const shouldAbort = i === 3
+          const requestPromise = client
+            .select({
+              query: `SELECT sleep(0.5), ${i} AS foo`,
+              format: 'JSONEachRow',
+              abort_signal:
+                // we will cancel the request that should've yielded '3'
+                shouldAbort ? (controller.signal as AbortSignal) : undefined,
+            })
+            .then((r) => r.json<Res>())
+            .then((r) => results.push(r[0].foo))
+          // this way, the cancelled request will not cancel the others
+          if (shouldAbort) {
+            return requestPromise.catch(() => {
+              // ignored
+            })
+          }
+          return requestPromise
+        })
+      )
+
+      controller.abort()
+      await selectPromises
+
+      expect(results.sort((a, b) => a - b)).toEqual([0, 1, 2, 4])
+    })
   })
 
   describe('insert', () => {
     let tableName: string
     beforeEach(async () => {
       tableName = `abort_request_insert_test_${guid()}`
-      await createTable(client, (env) => {
-        switch (env) {
-          // ENGINE can be omitted in the cloud statements:
-          // it will use ReplicatedMergeTree and will add ON CLUSTER as well
-          case TestEnv.Cloud:
-            return `
-              CREATE TABLE ${tableName}
-              (id UInt64)
-              ORDER BY (id)
-            `
-          case TestEnv.LocalSingleNode:
-            return `
-              CREATE TABLE ${tableName}
-              (id UInt64)
-              ENGINE MergeTree()
-              ORDER BY (id)
-            `
-          case TestEnv.LocalCluster:
-            return `
-              CREATE TABLE ${tableName} ON CLUSTER '{cluster}'
-              (id UInt64)
-              ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
-              ORDER BY (id)
-            `
-        }
-      })
+      await createSimpleTable(client, tableName)
     })
 
     it('cancels an insert query before it is sent', async () => {
       const controller = new AbortController()
-      const stream = getStubStream()
+      const stream = makeObjectStream()
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
@@ -177,7 +182,7 @@ describe('abort request', () => {
     })
 
     it('cancels an insert query before it is sent by closing a stream', async () => {
-      const stream = getStubStream()
+      const stream = makeObjectStream()
       stream.push(null)
 
       expect(
@@ -190,7 +195,7 @@ describe('abort request', () => {
 
     it('cancels an insert query after it is sent', async () => {
       const controller = new AbortController()
-      const stream = getStubStream()
+      const stream = makeObjectStream()
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
@@ -206,6 +211,63 @@ describe('abort request', () => {
           message: expect.stringMatching('The request was aborted'),
         })
       )
+    })
+
+    it('should cancel one insert while keeping the others', async () => {
+      function shouldAbort(i: number) {
+        // we will cancel the request
+        // that should've inserted a value at index 3
+        return i === 3
+      }
+
+      const controller = new AbortController()
+      const streams: Stream.Readable[] = Array(jsonValues.length)
+      const insertStreamPromises = Promise.all(
+        jsonValues.map((value, i) => {
+          const stream = makeObjectStream()
+          streams[i] = stream
+          stream.push(value)
+          const insertPromise = client.insert({
+            values: stream,
+            format: 'JSONEachRow',
+            table: tableName,
+            abort_signal: shouldAbort(i)
+              ? (controller.signal as AbortSignal)
+              : undefined,
+          })
+          if (shouldAbort(i)) {
+            return insertPromise.catch(() => {
+              // ignored
+            })
+          }
+          return insertPromise
+        })
+      )
+
+      setTimeout(() => {
+        streams.forEach((stream, i) => {
+          if (shouldAbort(i)) {
+            controller.abort()
+          }
+          stream.push(null)
+        })
+      }, 100)
+
+      await insertStreamPromises
+
+      const result = await client
+        .select({
+          query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+          format: 'JSONEachRow',
+        })
+        .then((r) => r.json())
+
+      expect(result).toEqual([
+        jsonValues[0],
+        jsonValues[1],
+        jsonValues[2],
+        jsonValues[4],
+      ])
     })
   })
 })
@@ -229,13 +291,4 @@ async function assertActiveQueries(
 
     await new Promise((res) => setTimeout(res, 100))
   }
-}
-
-function getStubStream(): Stream.Readable {
-  return new Stream.Readable({
-    objectMode: true,
-    read() {
-      /* stub */
-    },
-  })
 }
