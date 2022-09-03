@@ -74,6 +74,7 @@ export async function createTable(
   await (
     await client.command({
       query: ddl,
+      format: false,
     })
   ).text()
   console.log(`Created a table using DDL:\n${ddl}`)

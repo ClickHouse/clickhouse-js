@@ -1,13 +1,12 @@
-import type { MergeTreeSettings, TableEngine } from './engines'
+import type { TableEngine } from './engines'
 import type { Schema } from './schema'
-import type { Infer, Shape } from './common'
+import type { Infer, NonEmptyArray, Shape } from './common'
 import { getTableName, QueryFormatter } from './query_formatter'
 import type { ClickHouseClient } from '../client'
 import type { Row } from '../rows'
 import type { WhereExpr } from './where'
 import type { InsertStream, SelectResult } from './stream'
-import type { ClickHouseSettings } from '../settings'
-import type { NonEmptyArray } from './common'
+import type { ClickHouseSettings, MergeTreeSettings } from '../settings'
 
 // TODO: non-empty schema constraint
 // TODO support more formats (especially JSONCompactEachRow)
@@ -24,7 +23,7 @@ export interface CreateTableOptions<S extends Shape> {
   on_cluster?: string
   partition_by?: NonEmptyArray<keyof S> // TODO: functions support
   primary_key?: NonEmptyArray<keyof S> // TODO: functions support
-  settings?: MergeTreeSettings // TODO: more settings and type constraints
+  settings?: MergeTreeSettings
   clickhouse_settings?: ClickHouseSettings
   // TODO: settings now moved to engines; decide whether we need it here
   // TODO: index

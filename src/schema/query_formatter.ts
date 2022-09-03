@@ -30,12 +30,14 @@ export const QueryFormatter = {
       ? ` PRIMARY KEY (${primary_key.join(', ')})`
       : ''
     const settings =
-      _engine.type === 'MergeTree' &&
-      _settings &&
-      Object.keys(_settings).length > 0
-        ? ` SETTINGS ${Object.entries(_settings)
-            .map(([k, v]) => `${k} = ${v}`)
-            .join(', ')}`
+      _settings && Object.keys(_settings).length
+        ? ' SETTINGS ' +
+          Object.entries(_settings)
+            .map(([key, value]) => {
+              const v = typeof value === 'string' ? `'${value}'` : value
+              return `${key} = ${v}`
+            })
+            .join(', ')
         : ''
     return (
       `CREATE TABLE${ifNotExist} ${tableName}${onCluster}${columns}${engine}` +
