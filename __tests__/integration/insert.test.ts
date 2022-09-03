@@ -26,14 +26,15 @@ describe('insert', () => {
     await assertJsonValues(client, tableName)
   })
 
-  it('can insert strings with non-latin symbols', async () => {
-    const dataToInsert = [
-      [42, 'привет', [0, 1]],
-      [43, 'мир', [3, 4]],
+  it('can insert strings with non-ASCII symbols', async () => {
+    const values = [
+      { id: '42', name: '🅷🅴🅻🅻🅾', sku: [0, 1] },
+      { id: '43', name: '🆆🅾🆁🅻🅳 ♥', sku: [3, 4] },
     ]
     await client.insert({
       table: tableName,
-      values: dataToInsert,
+      values,
+      format: 'JSONEachRow',
     })
 
     const Rows = await client.select({
@@ -42,10 +43,7 @@ describe('insert', () => {
     })
 
     const result = await Rows.json<ResponseJSON>()
-    expect(result).toEqual([
-      { id: '42', name: 'привет', sku: [0, 1] },
-      { id: '43', name: 'мир', sku: [3, 4] },
-    ])
+    expect(result).toEqual(values)
   })
 
   it('can do multiple inserts simultaneously', async () => {

@@ -66,6 +66,18 @@ describe('command', () => {
     )
   })
 
+  it('should send a parametrized query', async () => {
+    const rows = await client.command({
+      query: 'SELECT plus({val1: Int32}, {val2: Int32})',
+      format: 'CSV',
+      query_params: {
+        val1: 10,
+        val2: 20,
+      },
+    })
+    expect(await rows.text()).toBe('30\n')
+  })
+
   describe('trailing semi', () => {
     it('should allow queries with trailing semi', async () => {
       const numbers = await client.command({

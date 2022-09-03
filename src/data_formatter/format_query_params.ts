@@ -5,6 +5,20 @@ function withPadding(value: number): string {
   return `0${value}`
 }
 
+function formatMillis(value: Date) {
+  const ms = value.getMilliseconds()
+  if (ms === 0) {
+    return ''
+  }
+  if (ms > 99) {
+    return `.${ms}`
+  }
+  if (ms > 9) {
+    return `.0${ms}`
+  }
+  return `.00${ms}`
+}
+
 export function formatQueryParams(
   value: any,
   wrapStringInQuotes = false
@@ -34,7 +48,9 @@ export function formatQueryParams(
     const time = `${withPadding(value.getHours())}:${withPadding(
       value.getMinutes()
     )}:${withPadding(value.getSeconds())}`
-    return `${date} ${time}`
+
+    const ms = formatMillis(value)
+    return `${date} ${time}${ms}`
   }
 
   if (typeof value === 'object') {
