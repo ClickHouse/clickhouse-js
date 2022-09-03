@@ -232,7 +232,7 @@ describe('select with query binding', () => {
       })
 
       const response = await rows.text()
-      expect(response).toBe('"foobar"\n')
+      expect(response).toBe('foobar\n')
     })
 
     // this one is taken from https://clickhouse.com/docs/en/sql-reference/data-types/enum/#usage-examples
