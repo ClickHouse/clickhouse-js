@@ -48,10 +48,6 @@ describe('command', () => {
         runCommand(client, {
           query: ddl,
           format: 'JSONCompactEachRow',
-          clickhouse_settings: {
-            // ClickHouse responds to a command when it's completely finished
-            wait_end_of_query: 1,
-          },
         })
       await command()
       await command()
@@ -189,5 +185,13 @@ async function runCommand(
   params: CommandParams
 ): Promise<string> {
   console.log(`Running command:\n${params.query}`)
-  return (await client.command(params)).text()
+  return (
+    await client.command({
+      ...params,
+      clickhouse_settings: {
+        // ClickHouse responds to a command when it's completely finished
+        wait_end_of_query: 1,
+      },
+    })
+  ).text()
 }
