@@ -1,4 +1,4 @@
-import { type ClickHouseClient } from '../../src'
+import { type ClickHouseClient, createClient } from '../../src'
 import { createTestClient, getTestDatabaseName } from '../utils'
 
 describe('error', () => {
@@ -68,6 +68,24 @@ describe('error', () => {
         message: expect.stringContaining('Syntax error: failed at position'),
         code: '62',
         type: 'SYNTAX_ERROR',
+      })
+    )
+  })
+
+  it('should return an error when URL is unreachable', async () => {
+    await client.close()
+    client = createClient({
+      host: 'http://localhost:1111',
+    })
+    await expect(
+      client.select({
+        query: 'SELECT * FROM system.numbers LIMIT 3',
+      })
+    ).rejects.toEqual(
+      expect.objectContaining({
+        code: 'ECONNREFUSED',
+        address: '127.0.0.1',
+        port: 1111,
       })
     )
   })

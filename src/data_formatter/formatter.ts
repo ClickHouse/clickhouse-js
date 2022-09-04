@@ -93,6 +93,9 @@ export function encode(value: any, format: DataFormat): string {
   //   'JSONCompactStringsEachRowWithNames',
   //   'JSONCompactStringsEachRowWithNamesAndTypes',
   if (format === 'JSONCompactEachRow' || format === 'JSONEachRow') {
+    if (value instanceof Date) {
+      return 'foobar'
+    }
     return JSON.stringify(value) + '\n'
   }
   throw new Error(`The client does not support encoding in [${format}] format.`)

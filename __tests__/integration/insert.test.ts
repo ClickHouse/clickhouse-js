@@ -3,6 +3,7 @@ import { type ClickHouseClient } from '../../src'
 import { createTestClient, guid } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 import { assertJsonValues, jsonValues } from './fixtures/test_data'
+import Stream from 'stream'
 
 describe('insert', () => {
   let client: ClickHouseClient
@@ -57,5 +58,40 @@ describe('insert', () => {
       )
     )
     await assertJsonValues(client, tableName)
+  })
+
+  it('should provide error details when sending a request with an unknown clickhouse settings', async () => {
+    await expect(
+      client.insert({
+        table: tableName,
+        values: jsonValues,
+        format: 'JSONEachRow',
+        clickhouse_settings: { foobar: 1 } as any,
+      })
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('Unknown setting foobar'),
+        code: '115',
+        type: 'UNKNOWN_SETTING',
+      })
+    )
+  })
+
+  it('should provide error details about a dataset with an invalid type', async () => {
+    await expect(
+      client.insert({
+        table: tableName,
+        values: Stream.Readable.from(['42,foobar,"[1,2]"'], {
+          objectMode: false,
+        }),
+        format: 'TabSeparated',
+      })
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('Cannot parse input'),
+        code: '27',
+        type: 'CANNOT_PARSE_INPUT_ASSERTION_FAILED',
+      })
+    )
   })
 })
