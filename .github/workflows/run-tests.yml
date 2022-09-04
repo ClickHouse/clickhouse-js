@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [14, 16]
+        node: [ 14, 16 ]
     steps:
       - uses: actions/checkout@main
 
@@ -53,71 +53,71 @@ jobs:
         run: |
           npm run test:unit
 
-  integration-tests-local-single-node:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        node: [14, 16]
-        clickhouse: [head, latest]
-
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.1.0
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run integration tests
-        run: |
-          npm run test:integration
-
-  integration-tests-local-cluster:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        node: [14, 16]
-        clickhouse: [head, latest]
-
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.1.0
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.cluster.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run integration tests
-        run: |
-          npm run test:integration:local_cluster
+#  integration-tests-local-single-node:
+#    needs: build
+#    runs-on: ubuntu-latest
+#    strategy:
+#      fail-fast: true
+#      matrix:
+#        node: [ 14, 16 ]
+#        clickhouse: [ head, latest ]
+#
+#    steps:
+#      - uses: actions/checkout@main
+#
+#      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+#        uses: isbang/compose-action@v1.1.0
+#        env:
+#          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+#        with:
+#          compose-file: 'docker-compose.yml'
+#          down-flags: '--volumes'
+#
+#      - name: Setup NodeJS ${{ matrix.node }}
+#        uses: actions/setup-node@v3
+#        with:
+#          node-version: ${{ matrix.node }}
+#
+#      - name: Install dependencies
+#        run: |
+#          npm install
+#
+#      - name: Run integration tests
+#        run: |
+#          npm run test:integration
+#
+#  integration-tests-local-cluster:
+#    needs: build
+#    runs-on: ubuntu-latest
+#    strategy:
+#      fail-fast: true
+#      matrix:
+#        node: [ 14, 16 ]
+#        clickhouse: [ head, latest ]
+#
+#    steps:
+#      - uses: actions/checkout@main
+#
+#      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+#        uses: isbang/compose-action@v1.1.0
+#        env:
+#          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+#        with:
+#          compose-file: 'docker-compose.cluster.yml'
+#          down-flags: '--volumes'
+#
+#      - name: Setup NodeJS ${{ matrix.node }}
+#        uses: actions/setup-node@v3
+#        with:
+#          node-version: ${{ matrix.node }}
+#
+#      - name: Install dependencies
+#        run: |
+#          npm install
+#
+#      - name: Run integration tests
+#        run: |
+#          npm run test:integration:local_cluster
 
   integration-tests-cloud:
     needs: build
@@ -125,7 +125,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [14, 16]
+        node: [ 14, 16 ]
 
     steps:
       - uses: actions/checkout@main
@@ -141,7 +141,7 @@ jobs:
 
       - name: Run integration tests
         env:
-          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST }}
-          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
+          CLICKHOUSE_CLOUD_HOST: ${{ secrets.CLICKHOUSE_CLOUD_HOST }}
+          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.CLICKHOUSE_CLOUD_PASSWORD }}
         run: |
           npm run test:integration:cloud
