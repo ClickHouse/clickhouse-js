@@ -3,7 +3,18 @@ import { formatQueryParams } from '../../src/data_formatter'
 // JS always creates Date object in local timezone,
 // so we might need to convert the date to another timezone
 function convertDateToTimezone(date: Date, tz: string) {
-  return new Date(date.toLocaleString('en-US', { timeZone: tz }))
+  return new Date(
+    date.toLocaleString('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      fractionalSecondDigits: 3, // print millis
+    })
+  )
 }
 
 describe('formatQueryParams', () => {
@@ -45,6 +56,33 @@ describe('formatQueryParams', () => {
     )
 
     expect(formatQueryParams(date)).toBe('2022-07-29 07:52:14')
+  })
+
+  it('formats a date with millis', () => {
+    expect(
+      formatQueryParams(
+        convertDateToTimezone(
+          new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123)),
+          'UTC'
+        )
+      )
+    ).toBe('2022-07-29 07:52:14.123')
+    expect(
+      formatQueryParams(
+        convertDateToTimezone(
+          new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 42)),
+          'UTC'
+        )
+      )
+    ).toBe('2022-07-29 07:52:14.042')
+    expect(
+      formatQueryParams(
+        convertDateToTimezone(
+          new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 5)),
+          'UTC'
+        )
+      )
+    ).toBe('2022-07-29 07:52:14.005')
   })
 
   it('does not wrap a string in quotes', () => {

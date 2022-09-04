@@ -59,11 +59,12 @@ export async function createRandomDatabase(
   if (getClickHouseTestEnvironment() === TestEnv.LocalCluster) {
     maybeOnCluster = `ON CLUSTER '{cluster}'`
   }
-  await (
-    await client.command({
-      query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
-    })
-  ).text()
+  await client.command({
+    query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
+    clickhouse_settings: {
+      wait_end_of_query: 1,
+    },
+  })
   console.log(`Created database ${databaseName}`)
   return databaseName
 }
@@ -74,12 +75,13 @@ export async function createTable(
 ) {
   const env = getClickHouseTestEnvironment()
   const ddl = definition(env)
-  await (
-    await client.command({
-      query: ddl,
-      format: false,
-    })
-  ).text()
+  await client.command({
+    query: ddl,
+    format: false,
+    clickhouse_settings: {
+      wait_end_of_query: 1,
+    },
+  })
   console.log(`Created a table using DDL:\n${ddl}`)
 }
 

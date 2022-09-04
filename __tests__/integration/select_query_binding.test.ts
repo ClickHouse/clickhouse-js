@@ -61,17 +61,71 @@ describe('select with query binding', () => {
     expect(await rows.text()).toBe('30\n')
   })
 
-  it('handles Dates in a parameterized query', async () => {
-    const rows = await client.select({
-      query: 'SELECT toDateTime({min_time: DateTime})',
-      format: 'CSV',
-      query_params: {
-        min_time: new Date(2022, 4, 2),
-      },
+  describe('Date(Time)', () => {
+    it('handles Date in a parameterized query', async () => {
+      const rows = await client.select({
+        query: 'SELECT toDate({min_time: DateTime})',
+        format: 'CSV',
+        query_params: {
+          min_time: new Date(2022, 4, 2),
+        },
+      })
+
+      const response = await rows.text()
+      expect(response).toBe('"2022-05-02"\n')
     })
 
-    const response = await rows.text()
-    expect(response).toBe('"2022-05-02 00:00:00"\n')
+    it('handles DateTime in a parameterized query', async () => {
+      const rows = await client.select({
+        query: 'SELECT toDateTime({min_time: DateTime})',
+        format: 'CSV',
+        query_params: {
+          min_time: new Date(2022, 4, 2, 13, 25, 55),
+        },
+      })
+
+      const response = await rows.text()
+      expect(response).toBe('"2022-05-02 13:25:55"\n')
+    })
+
+    it('handles DateTime64(3) in a parameterized query', async () => {
+      const rows = await client.select({
+        query: 'SELECT toDateTime64({min_time: DateTime64(3)}, 3)',
+        format: 'CSV',
+        query_params: {
+          min_time: new Date(2022, 4, 2, 13, 25, 55, 789),
+        },
+      })
+
+      const response = await rows.text()
+      expect(response).toBe('"2022-05-02 13:25:55.789"\n')
+    })
+
+    it('handles DateTime64(6) with timestamp as a string', async () => {
+      const rows = await client.select({
+        query: `SELECT toDateTime64(toDecimal64({ts: String}, 6), 6, 'Europe/Amsterdam')`,
+        format: 'CSV',
+        query_params: {
+          ts: '1651490755.123456',
+        },
+      })
+
+      const response = await rows.text()
+      expect(response).toBe('"2022-05-02 13:25:55.123456"\n')
+    })
+
+    it('handles DateTime64(9) with timestamp as a string', async () => {
+      const rows = await client.select({
+        query: `SELECT toDateTime64(toDecimal128({ts: String}, 9), 9, 'Europe/Amsterdam')`,
+        format: 'CSV',
+        query_params: {
+          ts: '1651490755.123456789',
+        },
+      })
+
+      const response = await rows.text()
+      expect(response).toBe('"2022-05-02 13:25:55.123456789"\n')
+    })
   })
 
   it('handles an array of strings in a parameterized query', async () => {
@@ -127,5 +181,72 @@ describe('select with query binding', () => {
 
     const response = await rows.text()
     expect(response).toBe(`"['id']"\n`)
+  })
+
+  it('should accept non-ASCII symbols in a parameterized query', async () => {
+    const rows = await client.select({
+      query: 'SELECT concat({str1: String},{str2: String})',
+      format: 'CSV',
+      query_params: {
+        str1: '𝓯𝓸𝓸',
+        str2: '𝓫𝓪𝓻',
+      },
+    })
+
+    const response = await rows.text()
+    expect(response).toBe('"𝓯𝓸𝓸𝓫𝓪𝓻"\n')
+  })
+
+  describe('Enum', () => {
+    it('should accept numeric enums in a parametrized query', async () => {
+      enum MyEnum {
+        foo = 0,
+        bar = 1,
+        qaz = 2,
+      }
+      const rows = await client.select({
+        query:
+          'SELECT * FROM system.numbers WHERE number = {filter: Int64} LIMIT 1',
+        format: 'TabSeparated',
+        query_params: {
+          filter: MyEnum.qaz, // translated to 2
+        },
+      })
+
+      const response = await rows.text()
+      expect(response).toBe('2\n')
+    })
+
+    it('should accept numeric enums in a parametrized query', async () => {
+      enum MyEnum {
+        foo = 'foo',
+        bar = 'bar',
+      }
+      const rows = await client.select({
+        query: 'SELECT concat({str1: String},{str2: String})',
+        format: 'TabSeparated',
+        query_params: {
+          str1: MyEnum.foo,
+          str2: MyEnum.bar,
+        },
+      })
+
+      const response = await rows.text()
+      expect(response).toBe('foobar\n')
+    })
+
+    // this one is taken from https://clickhouse.com/docs/en/sql-reference/data-types/enum/#usage-examples
+    it('should accept the entire enum definition in a parametrized query', async () => {
+      const rows = await client.select({
+        query: `SELECT toTypeName(CAST('a', {e: String}))`,
+        format: 'TabSeparated',
+        query_params: {
+          e: `Enum('a' = 1, 'b' = 2)`,
+        },
+      })
+
+      const response = await rows.text()
+      expect(response).toBe(`Enum8(\\'a\\' = 1, \\'b\\' = 2)\n`)
+    })
   })
 })

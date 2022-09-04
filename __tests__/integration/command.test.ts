@@ -48,10 +48,6 @@ describe('command', () => {
         runCommand(client, {
           query: ddl,
           format: 'JSONCompactEachRow',
-          clickhouse_settings: {
-            // ClickHouse responds to a command when it's completely finished
-            wait_end_of_query: 1,
-          },
         })
       await command()
       await command()
@@ -64,6 +60,18 @@ describe('command', () => {
         ),
       })
     )
+  })
+
+  it('should send a parametrized query', async () => {
+    const rows = await client.command({
+      query: 'SELECT plus({val1: Int32}, {val2: Int32})',
+      format: 'CSV',
+      query_params: {
+        val1: 10,
+        val2: 20,
+      },
+    })
+    expect(await rows.text()).toBe('30\n')
   })
 
   describe('trailing semi', () => {
@@ -177,5 +185,13 @@ async function runCommand(
   params: CommandParams
 ): Promise<string> {
   console.log(`Running command:\n${params.query}`)
-  return (await client.command(params)).text()
+  return (
+    await client.command({
+      ...params,
+      clickhouse_settings: {
+        // ClickHouse responds to a command when it's completely finished
+        wait_end_of_query: 1,
+      },
+    })
+  ).text()
 }
