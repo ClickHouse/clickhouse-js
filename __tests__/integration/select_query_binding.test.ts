@@ -248,5 +248,24 @@ describe('select with query binding', () => {
       const response = await rows.text()
       expect(response).toBe(`Enum8(\\'a\\' = 1, \\'b\\' = 2)\n`)
     })
+
+    it('should provide error details when sending a request with an unknown parameter', async () => {
+      await expect(
+        client.select({
+          query: `
+            SELECT * FROM system.numbers 
+            WHERE number > {min_limit: UInt64} LIMIT 3
+          `,
+        })
+      ).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringContaining(
+            'Query parameter `min_limit` was not set'
+          ),
+          code: '456',
+          type: 'UNKNOWN_QUERY_PARAMETER',
+        })
+      )
+    })
   })
 })

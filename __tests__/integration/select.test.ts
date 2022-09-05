@@ -193,6 +193,21 @@ describe('select', () => {
     )
   })
 
+  it('should provide error details when sending a request with an unknown clickhouse settings', async () => {
+    await expect(
+      client.select({
+        query: 'SELECT * FROM system.numbers',
+        clickhouse_settings: { foobar: 1 } as any,
+      })
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('Unknown setting foobar'),
+        code: '115',
+        type: 'UNKNOWN_SETTING',
+      })
+    )
+  })
+
   it('can send multiple simultaneous requests', async () => {
     type Res = Array<{ sum: number }>
     const results: number[] = []
