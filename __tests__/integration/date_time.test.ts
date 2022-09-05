@@ -33,6 +33,28 @@ describe('DateTime', () => {
     })
   })
 
+  describe('Date32', () => {
+    it('should insert Date32 and get it back', async () => {
+      // currently, there is no way to insert a Date32 as a number via HTTP
+      // the conversion is not performed automatically like in VALUES clause
+      const table = await createTableWithFields(client, 'd Date32')
+      await client.insert({
+        table,
+        values: [{ d: '2022-09-05' }],
+        format: 'JSONEachRow',
+      })
+
+      expect(
+        await client
+          .select({
+            query: `SELECT * EXCEPT id FROM ${table}`,
+            format: 'JSONEachRow',
+          })
+          .then((r) => r.json())
+      ).toEqual([{ d: '2022-09-05' }])
+    })
+  })
+
   describe('DateTime', () => {
     it('should insert DateTime and get it back', async () => {
       const table = await createTableWithFields(client, 'd DateTime')

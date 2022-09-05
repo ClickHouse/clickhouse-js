@@ -83,9 +83,8 @@ describe('error', () => {
       })
     ).rejects.toEqual(
       expect.objectContaining({
+        message: 'connect ECONNREFUSED 127.0.0.1:1111',
         code: 'ECONNREFUSED',
-        address: '127.0.0.1',
-        port: 1111,
       })
     )
   })
