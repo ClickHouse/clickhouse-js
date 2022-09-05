@@ -2,7 +2,11 @@ import Stream from 'stream'
 import { type Connection, createConnection } from './connection'
 import { Logger } from './logger'
 import { isStream, mapStream } from './utils'
-import { type DataFormat, encode, isSupportedRawFormat } from './data_formatter'
+import {
+  type DataFormat,
+  encodeJSON,
+  isSupportedRawFormat,
+} from './data_formatter'
 import { Rows } from './rows'
 import type { ClickHouseSettings } from './settings'
 
@@ -247,16 +251,19 @@ function encodeValues(
   format: DataFormat
 ): string | Stream.Readable {
   if (isStream(values)) {
+    // TSV/CSV/CustomSeparated formats don't require additional serialization
     if (!values.readableObjectMode) {
       return values
     }
+    // JSON* formats streams
     return Stream.pipeline(
       values,
-      mapStream((value) => encode(value, format)),
+      mapStream((value) => encodeJSON(value, format)),
       pipelineCb
     )
   }
-  return values.map((value) => encode(value, format)).join('')
+  // JSON* arrays
+  return values.map((value) => encodeJSON(value, format)).join('')
 }
 
 export function createClient(

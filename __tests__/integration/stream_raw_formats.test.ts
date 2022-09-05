@@ -3,6 +3,7 @@ import type { ClickHouseClient, ClickHouseSettings } from '../../src'
 import { createSimpleTable } from './fixtures/simple_table'
 import Stream from 'stream'
 import { assertJsonValues, jsonValues } from './fixtures/test_data'
+import type { RawDataFormat } from '../../src/data_formatter'
 
 describe('insert stream (raw formats)', () => {
   let client: ClickHouseClient
@@ -20,7 +21,8 @@ describe('insert stream (raw formats)', () => {
 
   describe('TSV', () => {
     it('should insert a TSV without names or types', async () => {
-      stream = Stream.Readable.from(`42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`, {
+      const values = `42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`
+      stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -28,41 +30,38 @@ describe('insert stream (raw formats)', () => {
         values: stream,
         format: 'TabSeparated',
       })
-      await assertInsertedValues()
+      await assertInsertedValues('TabSeparated', values)
     })
 
     it('should insert a TSV with names', async () => {
-      stream = Stream.Readable.from(
-        `id\tname\tsku\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`,
-        {
-          objectMode: false,
-        }
-      )
+      const values = `id\tname\tsku\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`
+      stream = Stream.Readable.from(values, {
+        objectMode: false,
+      })
       await client.insert({
         table: tableName,
         values: stream,
         format: 'TabSeparatedWithNames',
       })
-      await assertInsertedValues()
+      await assertInsertedValues('TabSeparatedWithNames', values)
     })
 
     it('should insert a TSV with names and types', async () => {
-      stream = Stream.Readable.from(
-        `id\tname\tsku\nUInt64\tString\tArray(UInt8)\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`,
-        {
-          objectMode: false,
-        }
-      )
+      const values = `id\tname\tsku\nUInt64\tString\tArray(UInt8)\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`
+      stream = Stream.Readable.from(values, {
+        objectMode: false,
+      })
       await client.insert({
         table: tableName,
         values: stream,
         format: 'TabSeparatedWithNamesAndTypes',
       })
-      await assertInsertedValues()
+      await assertInsertedValues('TabSeparatedWithNamesAndTypes', values)
     })
 
     it('should insert a TSV (unescaped)', async () => {
-      stream = Stream.Readable.from(`42\t\\bfoo\t[1,2]\n43\tba\\tr\t[3,4]\n`, {
+      const values = `42\t\\bfoo\t[1,2]\n43\tba\\tr\t[3,4]\n`
+      stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -70,14 +69,7 @@ describe('insert stream (raw formats)', () => {
         values: stream,
         format: 'TabSeparatedRaw',
       })
-      const result = await client.select({
-        query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
-        format: 'JSONEachRow',
-      })
-      expect(await result.json()).toEqual([
-        { id: '42', name: '\\bfoo', sku: [1, 2] },
-        { id: '43', name: 'ba\\tr', sku: [3, 4] },
-      ])
+      await assertInsertedValues('TabSeparatedRaw', values)
     })
 
     it('should throw in case of invalid TSV format', async () => {
@@ -121,7 +113,8 @@ describe('insert stream (raw formats)', () => {
 
   describe('CSV', () => {
     it('should insert a CSV without names or types', async () => {
-      stream = Stream.Readable.from(`42,foo,"[1,2]"\n43,bar,"[3,4]"\n`, {
+      const values = `42,"foo","[1,2]"\n43,"bar","[3,4]"\n`
+      stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -129,41 +122,37 @@ describe('insert stream (raw formats)', () => {
         values: stream,
         format: 'CSV',
       })
-      await assertInsertedValues()
+      await assertInsertedValues('CSV', values)
     })
 
     it('should insert a CSV with names', async () => {
-      stream = Stream.Readable.from(
-        `id,name,sku\n42,foo,"[1,2]"\n43,bar,"[3,4]"\n`,
-        {
-          objectMode: false,
-        }
-      )
+      const values = `"id","name","sku"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`
+      stream = Stream.Readable.from(values, {
+        objectMode: false,
+      })
       await client.insert({
         table: tableName,
         values: stream,
         format: 'CSVWithNames',
       })
-      await assertInsertedValues()
+      await assertInsertedValues('CSVWithNames', values)
     })
 
     it('should insert a CSV with names and types', async () => {
-      stream = Stream.Readable.from(
-        `id,name,sku\nUInt64,String,Array(UInt8)\n42,foo,"[1,2]"\n43,bar,"[3,4]"\n`,
-        {
-          objectMode: false,
-        }
-      )
+      const values = `"id","name","sku"\n"UInt64","String","Array(UInt8)"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`
+      stream = Stream.Readable.from(values, {
+        objectMode: false,
+      })
       await client.insert({
         table: tableName,
         values: stream,
         format: 'CSVWithNamesAndTypes',
       })
-      await assertInsertedValues()
+      await assertInsertedValues('CSVWithNamesAndTypes', values)
     })
 
     it('should throw in case of invalid CSV format', async () => {
-      stream = Stream.Readable.from(`foobar,42,,\n`, {
+      stream = Stream.Readable.from(`"foobar","42",,\n`, {
         objectMode: false,
       })
       await expect(
@@ -208,7 +197,8 @@ describe('insert stream (raw formats)', () => {
     }
 
     it('should insert a custom separated stream without names or types', async () => {
-      stream = Stream.Readable.from(`42^foo^[1,2]\n43^bar^[3,4]\n`, {
+      const values = `42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`
+      stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -217,43 +207,47 @@ describe('insert stream (raw formats)', () => {
         format: 'CustomSeparated',
         clickhouse_settings,
       })
-      await assertInsertedValues()
+      await assertInsertedValues('CustomSeparated', values, clickhouse_settings)
     })
 
     it('should insert a custom separated stream with names', async () => {
-      stream = Stream.Readable.from(
-        `id^name^sku\n42^foo^[1,2]\n43^bar^[3,4]\n`,
-        {
-          objectMode: false,
-        }
-      )
+      const values = `"id"^"name"^"sku"\n42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`
+      stream = Stream.Readable.from(values, {
+        objectMode: false,
+      })
       await client.insert({
         table: tableName,
         values: stream,
         format: 'CustomSeparatedWithNames',
         clickhouse_settings,
       })
-      await assertInsertedValues()
+      await assertInsertedValues(
+        'CustomSeparatedWithNames',
+        values,
+        clickhouse_settings
+      )
     })
 
     it('should insert a custom separated stream with names and types', async () => {
-      stream = Stream.Readable.from(
-        `id^name^sku\nUInt64^String^Array(UInt8)\n42^foo^[1,2]\n43^bar^[3,4]\n`,
-        {
-          objectMode: false,
-        }
-      )
+      const values = `"id"^"name"^"sku"\n"UInt64"^"String"^"Array(UInt8)"\n42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`
+      stream = Stream.Readable.from(values, {
+        objectMode: false,
+      })
       await client.insert({
         table: tableName,
         values: stream,
         format: 'CustomSeparatedWithNamesAndTypes',
         clickhouse_settings,
       })
-      await assertInsertedValues()
+      await assertInsertedValues(
+        'CustomSeparatedWithNamesAndTypes',
+        values,
+        clickhouse_settings
+      )
     })
 
     it('should throw in case of invalid custom separated format', async () => {
-      stream = Stream.Readable.from(`foobar^42^^\n`, {
+      stream = Stream.Readable.from(`"foobar"^"42"^^\n`, {
         objectMode: false,
       })
       await expect(
@@ -293,14 +287,16 @@ describe('insert stream (raw formats)', () => {
     })
   })
 
-  async function assertInsertedValues() {
+  async function assertInsertedValues<T>(
+    format: RawDataFormat,
+    expected: T,
+    clickhouse_settings?: ClickHouseSettings
+  ) {
     const result = await client.select({
       query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
-      format: 'JSONEachRow',
+      clickhouse_settings,
+      format,
     })
-    expect(await result.json()).toEqual([
-      { id: '42', name: 'foo', sku: [1, 2] },
-      { id: '43', name: 'bar', sku: [3, 4] },
-    ])
+    expect(await result.text()).toEqual(expected)
   }
 })

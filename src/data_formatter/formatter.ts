@@ -2,6 +2,7 @@ const streamableJSONFormats = [
   'JSONEachRow',
   'JSONStringsEachRow',
   'JSONCompactEachRow',
+  'JSONCompactStringsEachRow',
   'JSONCompactEachRowWithNames',
   'JSONCompactEachRowWithNamesAndTypes',
   'JSONCompactStringsEachRowWithNames',
@@ -80,20 +81,16 @@ export function decode(text: string, format: DataFormat): any {
 }
 
 /**
- * Encodes a single row of values into a string in a format acceptable by ClickHouse.
+ * Encodes a single row of values into a string in a JSON format acceptable by ClickHouse.
  * @param value a single value to encode.
- * @param format One of the supported formats: https://clickhouse.com/docs/en/interfaces/formats/
+ * @param format One of the supported JSON formats: https://clickhouse.com/docs/en/interfaces/formats/
  * @returns string
  */
-export function encode(value: any, format: DataFormat): string {
-  // TODO: add
-  //   'JSONStringsEachRow',
-  //   'JSONCompactEachRowWithNames',
-  //   'JSONCompactEachRowWithNamesAndTypes',
-  //   'JSONCompactStringsEachRowWithNames',
-  //   'JSONCompactStringsEachRowWithNamesAndTypes',
-  if (format === 'JSONCompactEachRow' || format === 'JSONEachRow') {
+export function encodeJSON(value: any, format: DataFormat): string {
+  if ((streamableJSONFormats as readonly string[]).includes(format)) {
     return JSON.stringify(value) + '\n'
   }
-  throw new Error(`The client does not support encoding in [${format}] format.`)
+  throw new Error(
+    `The client does not support JSON encoding in [${format}] format.`
+  )
 }
