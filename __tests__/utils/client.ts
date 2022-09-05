@@ -61,6 +61,7 @@ export async function createRandomDatabase(
   }
   await client.command({
     query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
+    format: 'TabSeparated',
     clickhouse_settings: {
       wait_end_of_query: 1,
     },
@@ -77,7 +78,7 @@ export async function createTable(
   const ddl = definition(env)
   await client.command({
     query: ddl,
-    format: false,
+    format: 'TabSeparated',
     clickhouse_settings: {
       wait_end_of_query: 1,
     },
