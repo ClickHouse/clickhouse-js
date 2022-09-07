@@ -8,7 +8,6 @@ import type { RawDataFormat } from '../../src/data_formatter'
 describe('insert stream (raw formats)', () => {
   let client: ClickHouseClient
   let tableName: string
-  let stream: Stream.Readable
 
   beforeEach(async () => {
     tableName = `insert_stream_raw_${guid()}`
@@ -19,10 +18,30 @@ describe('insert stream (raw formats)', () => {
     await client.close()
   })
 
+  it('should throw in case of invalid format of data', async () => {
+    const stream = Stream.Readable.from(
+      `"baz","foo","[1,2]"\n43,"bar","[3,4]"\n`,
+      {
+        objectMode: false,
+      }
+    )
+    await expect(
+      client.insert({
+        table: tableName,
+        values: stream,
+        format: 'CSV',
+      })
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('Cannot parse input'),
+      })
+    )
+  })
+
   describe('TSV', () => {
     it('should insert a TSV without names or types', async () => {
       const values = `42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -35,7 +54,7 @@ describe('insert stream (raw formats)', () => {
 
     it('should insert a TSV with names', async () => {
       const values = `id\tname\tsku\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -48,7 +67,7 @@ describe('insert stream (raw formats)', () => {
 
     it('should insert a TSV with names and types', async () => {
       const values = `id\tname\tsku\nUInt64\tString\tArray(UInt8)\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -61,7 +80,7 @@ describe('insert stream (raw formats)', () => {
 
     it('should insert a TSV (unescaped)', async () => {
       const values = `42\t\\bfoo\t[1,2]\n43\tba\\tr\t[3,4]\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -73,7 +92,7 @@ describe('insert stream (raw formats)', () => {
     })
 
     it('should throw in case of invalid TSV format', async () => {
-      stream = Stream.Readable.from(`foobar\t42\n`, {
+      const stream = Stream.Readable.from(`foobar\t42\n`, {
         objectMode: false,
       })
       await expect(
@@ -114,7 +133,7 @@ describe('insert stream (raw formats)', () => {
   describe('CSV', () => {
     it('should insert a CSV without names or types', async () => {
       const values = `42,"foo","[1,2]"\n43,"bar","[3,4]"\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -127,7 +146,7 @@ describe('insert stream (raw formats)', () => {
 
     it('should insert a CSV with names', async () => {
       const values = `"id","name","sku"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -138,9 +157,31 @@ describe('insert stream (raw formats)', () => {
       await assertInsertedValues('CSVWithNames', values)
     })
 
+    it('should insert a CSV with wrong names', async () => {
+      const values = `"foo","name","sku"
+42,"foo","[1,2]"
+43,"bar","[3,4]"
+`
+      const stream = Stream.Readable.from(values, {
+        objectMode: false,
+      })
+      await client.insert({
+        table: tableName,
+        values: stream,
+        format: 'CSVWithNames',
+      })
+      await assertInsertedValues(
+        'CSVWithNames',
+        `"id","name","sku"
+0,"foo","[1,2]"
+0,"bar","[3,4]"
+`
+      )
+    })
+
     it('should insert a CSV with names and types', async () => {
       const values = `"id","name","sku"\n"UInt64","String","Array(UInt8)"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -151,8 +192,30 @@ describe('insert stream (raw formats)', () => {
       await assertInsertedValues('CSVWithNamesAndTypes', values)
     })
 
+    it('should throw in case of a wrong type in CSV format', async () => {
+      const stream = Stream.Readable.from(
+        `"id","name","sku"\n"UInt64","UInt64","Array(UInt8)"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`,
+        {
+          objectMode: false,
+        }
+      )
+      await expect(
+        client.insert({
+          table: tableName,
+          values: stream,
+          format: 'CSVWithNamesAndTypes',
+        })
+      ).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringContaining(
+            `Type of 'name' must be String, not UInt64`
+          ),
+        })
+      )
+    })
+
     it('should throw in case of invalid CSV format', async () => {
-      stream = Stream.Readable.from(`"foobar","42",,\n`, {
+      const stream = Stream.Readable.from(`"foobar","42",,\n`, {
         objectMode: false,
       })
       await expect(
@@ -198,7 +261,7 @@ describe('insert stream (raw formats)', () => {
 
     it('should insert a custom separated stream without names or types', async () => {
       const values = `42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -212,7 +275,7 @@ describe('insert stream (raw formats)', () => {
 
     it('should insert a custom separated stream with names', async () => {
       const values = `"id"^"name"^"sku"\n42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -230,7 +293,7 @@ describe('insert stream (raw formats)', () => {
 
     it('should insert a custom separated stream with names and types', async () => {
       const values = `"id"^"name"^"sku"\n"UInt64"^"String"^"Array(UInt8)"\n42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`
-      stream = Stream.Readable.from(values, {
+      const stream = Stream.Readable.from(values, {
         objectMode: false,
       })
       await client.insert({
@@ -247,7 +310,7 @@ describe('insert stream (raw formats)', () => {
     })
 
     it('should throw in case of invalid custom separated format', async () => {
-      stream = Stream.Readable.from(`"foobar"^"42"^^\n`, {
+      const stream = Stream.Readable.from(`"foobar"^"42"^^\n`, {
         objectMode: false,
       })
       await expect(

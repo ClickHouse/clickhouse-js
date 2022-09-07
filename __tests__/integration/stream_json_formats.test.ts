@@ -136,6 +136,53 @@ describe('insert stream (JSON formats)', () => {
       ])
     })
 
+    it('should insert data with a wrong name in JSONCompactEachRowWithNamesAndTypes', async () => {
+      const stream = makeObjectStream()
+      stream.push(['foo', 'name', 'sku'])
+      stream.push(['UInt64', 'String', 'Array(UInt8)'])
+      stream.push(['42', 'foo', [0, 1]])
+      stream.push(['43', 'bar', [2, 3]])
+      setTimeout(() => stream.push(null), 100)
+
+      await client.insert({
+        table: tableName,
+        values: stream,
+        format: 'JSONCompactEachRowWithNamesAndTypes',
+      })
+      const result = await client.select({
+        query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+        format: 'JSONCompactEachRowWithNamesAndTypes',
+      })
+      expect(await result.json()).toEqual([
+        ['id', 'name', 'sku'],
+        ['UInt64', 'String', 'Array(UInt8)'],
+        ['0', 'foo', [0, 1]],
+        ['0', 'bar', [2, 3]],
+      ])
+    })
+
+    it('should throw an exception when insert data with a wrong type in JSONCompactEachRowWithNamesAndTypes', async () => {
+      const stream = makeObjectStream()
+      stream.push(['id', 'name', 'sku'])
+      stream.push(['UInt64', 'UInt64', 'Array(UInt8)'])
+      stream.push(['42', 'foo', [0, 1]])
+      stream.push(['43', 'bar', [2, 3]])
+      setTimeout(() => stream.push(null), 100)
+
+      const insertPromise = client.insert({
+        table: tableName,
+        values: stream,
+        format: 'JSONCompactEachRowWithNamesAndTypes',
+      })
+      await expect(insertPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching(
+            `Type of 'name' must be String, not UInt64`
+          ),
+        })
+      )
+    })
+
     it('should work with JSONCompactStringsEachRowWithNames', async () => {
       const stream = makeObjectStream()
       stream.push(['id', 'name', 'sku'])
@@ -238,5 +285,22 @@ describe('insert stream (JSON formats)', () => {
     }, 100)
     await insertStreamPromises
     await assertJsonValues(client, tableName)
+  })
+
+  it('should throw in case of an invalid format of data', async () => {
+    const stream = makeObjectStream()
+    stream.push({ id: 'baz', name: 'foo', sku: '[0,1]' })
+    stream.push(null)
+    await expect(
+      client.insert({
+        table: tableName,
+        values: stream,
+        format: 'JSONEachRow',
+      })
+    ).rejects.toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('Cannot parse input'),
+      })
+    )
   })
 })
