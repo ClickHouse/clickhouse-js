@@ -1,7 +1,6 @@
-# Contributing notes
+## Getting started
 ClickHouse js client is an open-source project, and we welcome any contributions from the community. Please share your ideas, contribute to the codebase, and help us maintain up-to-date documentation.
 
-## Getting started
 ### Set up environment
 You have installed:
 - a compatible LTS version of nodejs: `v14.x` or `v16.x`
