@@ -1,10 +1,11 @@
 # Contributing notes
+ClickHouse js client is an open-source project, and we welcome any contributions from the community. Please share your ideas, contribute to the codebase, and help us maintain up-to-date documentation.
 
 ## Getting started
 ### Set up environment
-Install a compatible version of nodejs:
-- `v14.x`
-- `v16.x`
+You have installed:
+- a compatible LTS version of nodejs: `v14.x` or `v16.x`
+- NPM >= `6.x`
 
 ### Create a fork of the repository and clone it
 ```bash
@@ -18,6 +19,9 @@ npm i
 ```
 
 ## Testing
+Whenever you add a new feature to the package or fix a bug, we strongly encourage you to add appropriate tests to ensure everyone in the community can safely benefit from your contribution.
+
+### Tooling
 We use [jest](https://jestjs.io/) as a test runner.
 All the testing scripts are run with `jest-silent-reporter`.
 
@@ -102,3 +106,6 @@ Build + Unit tests
 ├─ Integration tests (a cluster of local two nodes in Docker)
 └─ Integration tests (Cloud)
 ```
+
+## Style Guide
+We use an automatic code formatting with `prettier` and `eslint`.
