@@ -28,7 +28,10 @@ describe('read only user', () => {
       password,
       database,
       clickhouse_settings: {
+        // readonly user cannot adjust settings. reset the default ones set by fixtures.
+        // might be fixed by https://github.com/ClickHouse/ClickHouse/issues/40244
         insert_quorum: undefined,
+        database_replicated_enforce_synchronous_settings: undefined,
       },
       compression: {
         response: false, // cannot enable HTTP compression for a read only user
