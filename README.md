@@ -353,8 +353,8 @@ const result = await rows.text()
 
 - Browser usage is not supported.
 - There are no data mappers for the result sets, so only language primitives are used.
-- There are some Decimal* and Date* / DateTime\* data types caveats.
-- Nested data type is currently not officially supported.
+- There are some [Decimal* and Date* / DateTime\* data types caveats](#date--datetime-types-caveats).
+- Nested data type is currently not officially supported. 
 
 ## Tips for performance optimizations
 
