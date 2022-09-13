@@ -55,7 +55,10 @@ export class Table<S extends Shape> {
   // TODO: better types
   async create(options: CreateTableOptions<S>): Promise<Stream.Readable> {
     const query = QueryFormatter.createTable(this.options, options)
-    return await this.client.exec({ query })
+    return this.client.exec({
+      query,
+      clickhouse_settings: options.clickhouse_settings,
+    })
   }
 
   insert({
