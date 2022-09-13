@@ -45,7 +45,12 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
       break
   }
   for (const query of [createUser, grant]) {
-    await client.exec({ query })
+    await client.exec({
+      query,
+      clickhouse_settings: {
+        wait_end_of_query: 1,
+      },
+    })
   }
   console.log(
     `Created user ${username} with default database ${database} ` +

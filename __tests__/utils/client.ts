@@ -62,6 +62,9 @@ export async function createRandomDatabase(
   }
   await client.exec({
     query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
+    clickhouse_settings: {
+      wait_end_of_query: 1,
+    },
   })
   console.log(`Created database ${databaseName}`)
   return databaseName
@@ -75,6 +78,12 @@ export async function createTable(
   const ddl = definition(env)
   await client.exec({
     query: ddl,
+    clickhouse_settings: {
+      // Force response buffering, so we get the response only when
+      // the table is actually created on every node
+      // See https://clickhouse.com/docs/en/interfaces/http/#response-buffering
+      wait_end_of_query: 1,
+    },
   })
   console.log(`Created a table using DDL:\n${ddl}`)
 }
