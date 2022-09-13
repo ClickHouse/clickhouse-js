@@ -21,11 +21,8 @@ export function createTestClient(
     }`
   )
   const clickHouseSettings: ClickHouseSettings = {}
-  if (env === TestEnv.LocalCluster) {
+  if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {
     clickHouseSettings.insert_quorum = '2'
-  }
-  if (env === TestEnv.Cloud) {
-    clickHouseSettings.insert_quorum = 'auto' // since 22.9
     clickHouseSettings.database_replicated_enforce_synchronous_settings = 1
   }
   // Allow to override `insert_quorum` if necessary
@@ -75,7 +72,8 @@ export async function createRandomDatabase(
 
 export async function createTable(
   client: ClickHouseClient,
-  definition: (environment: TestEnv) => string
+  definition: (environment: TestEnv) => string,
+  clickhouse_settings?: ClickHouseSettings
 ) {
   const env = getClickHouseTestEnvironment()
   const ddl = definition(env)
@@ -86,6 +84,7 @@ export async function createTable(
       // the table is actually created on every node
       // See https://clickhouse.com/docs/en/interfaces/http/#response-buffering
       wait_end_of_query: 1,
+      ...(clickhouse_settings || {}),
     },
   })
   console.log(`Created a table using DDL:\n${ddl}`)
