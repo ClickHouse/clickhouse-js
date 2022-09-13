@@ -13,7 +13,7 @@ export async function assertJsonValues(
   tableName: string
 ) {
   const result = await client
-    .select({
+    .query({
       query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
       format: 'JSONEachRow',
     })

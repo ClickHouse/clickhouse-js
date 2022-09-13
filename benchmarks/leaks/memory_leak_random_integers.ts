@@ -14,11 +14,11 @@ const program = async () => {
   const client = createClient({})
   const tableName = `memory_leak_random_integers_${uuid_v4().replace(/-/g, '')}`
 
-  await client.command({
+  await client.exec({
     query: `
-      CREATE TABLE ${tableName} 
-      (id UInt32, flag String) 
-      ENGINE MergeTree() 
+      CREATE TABLE ${tableName}
+      (id UInt32, flag String)
+      ENGINE MergeTree()
       ORDER BY (id)
     `,
     clickhouse_settings: {

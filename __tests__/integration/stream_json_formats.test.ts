@@ -39,7 +39,7 @@ describe('insert stream (JSON formats)', () => {
       values: stream,
       format: 'JSONStringsEachRow',
     })
-    const result = await client.select({
+    const result = await client.query({
       query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
       format: 'JSONStringsEachRow',
     })
@@ -60,7 +60,7 @@ describe('insert stream (JSON formats)', () => {
         values: stream,
         format: 'JSONCompactEachRow',
       })
-      const result = await client.select({
+      const result = await client.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONCompactEachRow',
       })
@@ -80,7 +80,7 @@ describe('insert stream (JSON formats)', () => {
         values: stream,
         format: 'JSONCompactStringsEachRow',
       })
-      const result = await client.select({
+      const result = await client.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONCompactStringsEachRow',
       })
@@ -101,7 +101,7 @@ describe('insert stream (JSON formats)', () => {
         values: stream,
         format: 'JSONCompactEachRowWithNames',
       })
-      const result = await client.select({
+      const result = await client.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONCompactEachRowWithNames',
       })
@@ -124,7 +124,7 @@ describe('insert stream (JSON formats)', () => {
         values: stream,
         format: 'JSONCompactEachRowWithNamesAndTypes',
       })
-      const result = await client.select({
+      const result = await client.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONCompactEachRowWithNamesAndTypes',
       })
@@ -149,7 +149,7 @@ describe('insert stream (JSON formats)', () => {
         values: stream,
         format: 'JSONCompactEachRowWithNamesAndTypes',
       })
-      const result = await client.select({
+      const result = await client.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONCompactEachRowWithNamesAndTypes',
       })
@@ -194,7 +194,7 @@ describe('insert stream (JSON formats)', () => {
         values: stream,
         format: 'JSONCompactStringsEachRowWithNames',
       })
-      const result = await client.select({
+      const result = await client.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONCompactStringsEachRowWithNames',
       })
@@ -217,7 +217,7 @@ describe('insert stream (JSON formats)', () => {
         values: stream,
         format: 'JSONCompactStringsEachRowWithNamesAndTypes',
       })
-      const result = await client.select({
+      const result = await client.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONCompactStringsEachRowWithNamesAndTypes',
       })

@@ -38,7 +38,7 @@ describe('insert', () => {
       format: 'JSONEachRow',
     })
 
-    const Rows = await client.select({
+    const Rows = await client.query({
       query: `SELECT * FROM ${tableName}`,
       format: 'JSONEachRow',
     })

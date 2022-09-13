@@ -44,7 +44,7 @@ describe('read only user', () => {
 
   it('should select some data without issues', async () => {
     const result = await client
-      .select({
+      .query({
         query: `SELECT * FROM ${tableName}`,
       })
       .then((r) => r.json<{ data: unknown[] }>())
@@ -77,9 +77,7 @@ describe('read only user', () => {
   // TODO: find a way to restrict all the system tables access
   it('should fail to query system tables', async () => {
     const query = `SELECT * FROM system.users LIMIT 5`
-    await expect(
-      client.command({ query }).then((r) => r.text())
-    ).rejects.toEqual(
+    await expect(client.query({ query })).rejects.toEqual(
       expect.objectContaining({
         message: expect.stringContaining('Not enough privileges'),
       })

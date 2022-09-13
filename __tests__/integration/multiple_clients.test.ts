@@ -26,7 +26,7 @@ describe('multiple clients', () => {
     await Promise.all(
       clients.map((client, i) =>
         client
-          .select({
+          .query({
             query: `SELECT toInt32(sum(*)) AS sum FROM numbers(0, ${i + 2});`,
             format: 'JSONEachRow',
           })
@@ -44,9 +44,9 @@ describe('multiple clients', () => {
       clients.map((client, i) => createSimpleTable(client, tableName(i)))
     )
     for (let i = 0; i < CLIENTS_COUNT; i++) {
-      const result = await clients[i].command({
+      const result = await clients[i].query({
         query: `EXISTS ${tableName(i)}`,
-        format: false,
+        format: 'TabSeparated',
       })
       expect(await result.text()).toEqual('1\n')
     }
@@ -84,7 +84,7 @@ describe('multiple clients', () => {
           })
         )
       )
-      const result = await clients[0].select({
+      const result = await clients[0].query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONEachRow',
       })
@@ -104,7 +104,7 @@ describe('multiple clients', () => {
           })
         )
       )
-      const result = await clients[0].select({
+      const result = await clients[0].query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONEachRow',
       })

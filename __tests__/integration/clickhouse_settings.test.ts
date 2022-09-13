@@ -15,7 +15,7 @@ describe('ClickHouse settings', () => {
 
   it('should work with additional_table_filters map', async () => {
     const result = await client
-      .select({
+      .query({
         query: 'SELECT * FROM system.numbers LIMIT 5',
         format: 'CSV',
         clickhouse_settings: {
@@ -68,7 +68,7 @@ describe('ClickHouse settings', () => {
     // is deduplicated due to the same token
     expect(
       await client
-        .select({
+        .query({
           query: `SELECT * FROM ${tableName}`,
           format: 'JSONEachRow',
         })

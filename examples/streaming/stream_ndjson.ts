@@ -5,7 +5,7 @@ import { createClient } from '../../src'
 
 void (async () => {
   const client = createClient()
-  await client.command({
+  await client.exec({
     query:
       'CREATE TABLE example_ndjson (id UInt64) ENGINE MergeTree() ORDER BY (id)',
   })
@@ -21,7 +21,7 @@ void (async () => {
     ),
   })
 
-  const response = await client.select({
+  const response = await client.query({
     query: 'SELECT * from example_ndjson',
     format: 'JSON',
   })
@@ -30,7 +30,7 @@ void (async () => {
     console.log(row.text())
   }
 
-  await client.command({
+  await client.exec({
     query: 'DROP TABLE example_ndjson',
   })
 })()

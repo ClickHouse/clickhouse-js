@@ -1,4 +1,4 @@
-import type { CommandParams, ResponseJSON } from '../../src'
+import type { ExecParams, ResponseJSON } from '../../src'
 import { type ClickHouseClient } from '../../src'
 import {
   createTestClient,
@@ -7,8 +7,10 @@ import {
   guid,
   TestEnv,
 } from '../utils'
+import { getAsText } from '../../src/utils'
+import type Stream from 'stream'
 
-describe('command', () => {
+describe('exec', () => {
   let client: ClickHouseClient
   beforeEach(() => {
     client = createTestClient()
@@ -22,10 +24,9 @@ describe('command', () => {
 
     await runCommand(client, {
       query: ddl,
-      format: 'JSONCompactEachRow',
     })
 
-    const selectResult = await client.select({
+    const selectResult = await client.query({
       query: `SELECT * from system.tables where name = '${tableName}'`,
       format: 'JSON',
     })
@@ -47,7 +48,6 @@ describe('command', () => {
       const command = () =>
         runCommand(client, {
           query: ddl,
-          format: 'JSONCompactEachRow',
         })
       await command()
       await command()
@@ -63,56 +63,36 @@ describe('command', () => {
   })
 
   it('should send a parametrized query', async () => {
-    const rows = await client.command({
+    const result = await client.exec({
       query: 'SELECT plus({val1: Int32}, {val2: Int32})',
-      format: 'CSV',
       query_params: {
         val1: 10,
         val2: 20,
       },
     })
-    expect(await rows.text()).toBe('30\n')
+    expect(await getAsText(result)).toEqual('30\n')
   })
 
   describe('trailing semi', () => {
-    it('should allow queries with trailing semi', async () => {
-      const numbers = await client.command({
-        query: 'SELECT * FROM system.numbers LIMIT 3;',
-        format: 'CSV',
-      })
-      expect(await numbers.text()).toEqual('0\n1\n2\n')
-    })
-
-    it('should allow queries with multiple trailing semis', async () => {
-      const numbers = await client.command({
-        query: 'SELECT * FROM system.numbers LIMIT 3;;;;;;;;;;;;;;;;;',
-        format: 'CSV',
-      })
-      expect(await numbers.text()).toEqual('0\n1\n2\n')
-    })
-
     it('should cut off the statements after the first semi', async () => {
-      const numbers = await client.command({
-        query: 'SELECT * FROM system.numbers LIMIT 3;asdf foobar',
-        format: 'CSV',
+      const result = await client.exec({
+        query: 'EXISTS system.databases;asdf foobar',
       })
-      expect(await numbers.text()).toEqual('0\n1\n2\n')
+      expect(await getAsText(result)).toEqual('1\n')
     })
 
-    it('should allow commands without format but with trailing semi', async () => {
-      const result = await client.command({
+    it('should allow commands with trailing semi', async () => {
+      const result = await client.exec({
         query: 'EXISTS system.databases;',
-        format: false,
       })
-      expect(await result.text()).toEqual('1\n')
+      expect(await getAsText(result)).toEqual('1\n')
     })
 
-    it('should allow commands without format but with multiple trailing semi', async () => {
-      const result = await client.command({
+    it('should allow commands with multiple trailing semi', async () => {
+      const result = await client.exec({
         query: 'EXISTS system.foobar;;;;;;',
-        format: false,
       })
-      expect(await result.text()).toEqual('0\n')
+      expect(await getAsText(result)).toEqual('0\n')
     })
   })
 
@@ -125,7 +105,7 @@ describe('command', () => {
     })
 
     // FIXME: use different DDL based on the TestEnv
-    const result = await client.select({
+    const result = await client.query({
       query: `SELECT * from system.tables where name = 'example'`,
       format: 'JSON',
     })
@@ -182,16 +162,14 @@ function getDDL(): {
 
 async function runCommand(
   client: ClickHouseClient,
-  params: CommandParams
-): Promise<string> {
+  params: ExecParams
+): Promise<Stream.Readable> {
   console.log(`Running command:\n${params.query}`)
-  return (
-    await client.command({
-      ...params,
-      clickhouse_settings: {
-        // ClickHouse responds to a command when it's completely finished
-        wait_end_of_query: 1,
-      },
-    })
-  ).text()
+  return client.exec({
+    ...params,
+    clickhouse_settings: {
+      // ClickHouse responds to a command when it's completely finished
+      wait_end_of_query: 1,
+    },
+  })
 }

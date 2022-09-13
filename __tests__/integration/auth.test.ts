@@ -14,7 +14,7 @@ describe('authentication', () => {
     })
 
     await expect(
-      client.select({
+      client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
       })
     ).rejects.toEqual(

@@ -15,15 +15,15 @@ const program = async () => {
   const client = createClient({})
   const tableName = `memory_leak_arrays_${uuid_v4().replace(/-/g, '')}`
 
-  await client.command({
+  await client.exec({
     query: `
-      CREATE TABLE ${tableName} 
+      CREATE TABLE ${tableName}
       (
-          id UInt32, 
-          data Array(String), 
+          id UInt32,
+          data Array(String),
           data2 Map(String, Array(String))
-      ) 
-      ENGINE MergeTree() 
+      )
+      ENGINE MergeTree()
       ORDER BY (id)
     `,
     clickhouse_settings: {

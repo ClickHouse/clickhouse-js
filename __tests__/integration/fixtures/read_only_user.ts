@@ -17,20 +17,20 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
     case TestEnv.Cloud: // we do not need 'ON CLUSTER' in the cloud
     case TestEnv.LocalSingleNode:
       createUser = `
-          CREATE USER ${username} 
+          CREATE USER ${username}
           IDENTIFIED WITH sha256_password BY '${password}'
           DEFAULT DATABASE ${database}
           SETTINGS readonly = 1
         `
       grant = `
-          GRANT SHOW TABLES, SELECT 
-          ON ${database}.* 
+          GRANT SHOW TABLES, SELECT
+          ON ${database}.*
           TO ${username}
         `
       break
     case TestEnv.LocalCluster:
       createUser = `
-          CREATE USER ${username} 
+          CREATE USER ${username}
           ON CLUSTER '{cluster}'
           IDENTIFIED WITH sha256_password BY '${password}'
           DEFAULT DATABASE ${database}
@@ -38,14 +38,19 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
         `
       grant = `
           GRANT ON CLUSTER '{cluster}'
-          SHOW TABLES, SELECT 
-          ON ${database}.* 
+          SHOW TABLES, SELECT
+          ON ${database}.*
           TO ${username}
         `
       break
   }
   for (const query of [createUser, grant]) {
-    await client.command({ query, format: false }).then((r) => r.text())
+    await client.exec({
+      query,
+      clickhouse_settings: {
+        wait_end_of_query: 1,
+      },
+    })
   }
   console.log(
     `Created user ${username} with default database ${database} ` +

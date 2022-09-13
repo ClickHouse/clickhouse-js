@@ -6,7 +6,7 @@ import { Readable } from 'stream'
 
 describe('schema select result', () => {
   const client: ClickHouseClient = {
-    command: () => {
+    query: () => {
       // stub
     },
   } as any
@@ -24,7 +24,7 @@ describe('schema select result', () => {
       .spyOn(QueryFormatter, 'select')
       .mockReturnValueOnce('SELECT * FROM data_table')
     jest
-      .spyOn(client, 'command')
+      .spyOn(client, 'query')
       .mockResolvedValueOnce(
         new Rows(
           Readable.from(['{"valid":"json"}\n', 'invalid_json}\n']),

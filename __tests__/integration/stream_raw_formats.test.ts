@@ -355,7 +355,7 @@ describe('insert stream (raw formats)', () => {
     expected: T,
     clickhouse_settings?: ClickHouseSettings
   ) {
-    const result = await client.select({
+    const result = await client.query({
       query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
       clickhouse_settings,
       format,

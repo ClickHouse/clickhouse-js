@@ -125,7 +125,7 @@ describe('data types', () => {
       format: 'TabSeparated',
     })
     const result = await client
-      .select({
+      .query({
         query: `SELECT * FROM ${table} ORDER BY id ASC`,
         format: 'TabSeparated',
       })
@@ -356,7 +356,7 @@ describe('data types', () => {
     })
     expect(
       await client
-        .select({
+        .query({
           query: `SELECT sum(distance) FROM ${table}`,
           format: 'TabSeparated',
         })
@@ -364,7 +364,7 @@ describe('data types', () => {
     ).toEqual('125.53\n')
     expect(
       await client
-        .select({
+        .query({
           query: `SELECT max(distance) FROM ${table}`,
           format: 'TabSeparated',
         })
@@ -372,7 +372,7 @@ describe('data types', () => {
     ).toEqual('100.52\n')
     expect(
       await client
-        .select({
+        .query({
           query: `SELECT uniqExact(distance) FROM ${table}`,
           format: 'TabSeparated',
         })
@@ -425,7 +425,7 @@ describe('data types', () => {
       format: 'JSONEachRow',
     })
     const result = await client
-      .select({
+      .query({
         query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
         format: 'JSONEachRow',
       })
@@ -454,7 +454,7 @@ describe('data types', () => {
       format: 'JSONEachRow',
     })
     const result = await client
-      .select({
+      .query({
         query: `SELECT * EXCEPT (id) FROM ${table} ORDER BY id ASC`,
         format: 'JSONEachRow',
       })
