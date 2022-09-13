@@ -7,6 +7,7 @@ import type { Row } from '../rows'
 import type { WhereExpr } from './where'
 import type { InsertStream, SelectResult } from './stream'
 import type { ClickHouseSettings, MergeTreeSettings } from '../settings'
+import type Stream from 'stream'
 
 // TODO: non-empty schema constraint
 // TODO support more formats (especially JSONCompactEachRow)
@@ -52,9 +53,9 @@ export class Table<S extends Shape> {
   ) {}
 
   // TODO: better types
-  async create(options: CreateTableOptions<S>): Promise<unknown> {
+  async create(options: CreateTableOptions<S>): Promise<Stream.Readable> {
     const query = QueryFormatter.createTable(this.options, options)
-    return (await this.client.command({ query })).text()
+    return await this.client.exec({ query })
   }
 
   insert({
@@ -79,7 +80,7 @@ export class Table<S extends Shape> {
     where,
   }: SelectOptions<S> = {}): Promise<SelectResult<Infer<S>>> {
     const query = QueryFormatter.select(this.options, where, columns, order_by)
-    const rows = await this.client.command({
+    const rows = await this.client.query({
       query,
       clickhouse_settings,
       abort_signal,

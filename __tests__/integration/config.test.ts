@@ -19,7 +19,7 @@ describe('config', () => {
     })
 
     await expect(
-      client.select({
+      client.query({
         query: 'SELECT sleep(3)',
       })
     ).rejects.toEqual(
@@ -55,7 +55,7 @@ describe('config', () => {
     client = createTestClient({
       database: 'system',
     })
-    const result = await client.select({
+    const result = await client.query({
       query: 'SELECT * FROM numbers LIMIT 2',
       format: 'TabSeparated',
     })

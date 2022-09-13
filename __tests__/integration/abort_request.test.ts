@@ -19,7 +19,7 @@ describe('abort request', () => {
   describe('select', () => {
     it('cancels a select query before it is sent', async () => {
       const controller = new AbortController()
-      const selectPromise = client.select({
+      const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
         abort_signal: controller.signal as AbortSignal,
@@ -35,7 +35,7 @@ describe('abort request', () => {
 
     it('cancels a select query after it is sent', async () => {
       const controller = new AbortController()
-      const selectPromise = client.select({
+      const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
         abort_signal: controller.signal as AbortSignal,
@@ -55,7 +55,7 @@ describe('abort request', () => {
     it('cancels a select query while reading response', async () => {
       const controller = new AbortController()
       const selectPromise = client
-        .select({
+        .query({
           query: 'SELECT * from system.numbers',
           format: 'JSONCompactEachRow',
           abort_signal: controller.signal as AbortSignal,
@@ -79,7 +79,7 @@ describe('abort request', () => {
 
     it('cancels a select query while reading response by closing response stream', async () => {
       const selectPromise = client
-        .select({
+        .query({
           query: 'SELECT * from system.numbers',
           format: 'JSONCompactEachRow',
         })
@@ -103,7 +103,7 @@ describe('abort request', () => {
 
       const longRunningQuery = `SELECT sleep(3), '${guid()}'`
       console.log(`Long running query: ${longRunningQuery}`)
-      void client.select({
+      void client.query({
         query: longRunningQuery,
         abort_signal: controller.signal as AbortSignal,
         format: 'JSONCompactEachRow',
@@ -131,7 +131,7 @@ describe('abort request', () => {
         [...Array(5)].map((_, i) => {
           const shouldAbort = i === 3
           const requestPromise = client
-            .select({
+            .query({
               query: `SELECT sleep(0.5), ${i} AS foo`,
               format: 'JSONEachRow',
               abort_signal:
@@ -256,7 +256,7 @@ describe('abort request', () => {
       await insertStreamPromises
 
       const result = await client
-        .select({
+        .query({
           query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
           format: 'JSONEachRow',
         })
@@ -278,7 +278,7 @@ async function assertActiveQueries(
 ) {
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const rows = await client.select({
+    const rows = await client.query({
       query: 'SELECT query FROM system.processes',
       format: 'JSON',
     })

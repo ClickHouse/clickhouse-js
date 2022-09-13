@@ -24,7 +24,7 @@ describe('DateTime', () => {
 
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
@@ -46,7 +46,7 @@ describe('DateTime', () => {
 
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
@@ -69,7 +69,7 @@ describe('DateTime', () => {
 
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT d FROM ${table}`,
             format: 'JSONEachRow',
           })
@@ -83,7 +83,7 @@ describe('DateTime', () => {
       // should add 2 hours to each of the inserted dates
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT toDateTime(d, 'Europe/Amsterdam') AS d FROM ${table}`,
             format: 'JSONEachRow',
           })
@@ -107,7 +107,7 @@ describe('DateTime', () => {
 
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
@@ -121,7 +121,7 @@ describe('DateTime', () => {
       // should subtract 1 hour from each of the inserted dates
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT toDateTime(d, 'Europe/Amsterdam') AS d FROM ${table}`,
             format: 'JSONEachRow',
           })
@@ -144,7 +144,7 @@ describe('DateTime', () => {
 
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
@@ -158,7 +158,7 @@ describe('DateTime', () => {
       // should add 2 hours to each of the inserted dates
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT toDateTime64(d, 3, 'Europe/Amsterdam') AS d FROM ${table}`,
             format: 'JSONEachRow',
           })
@@ -185,7 +185,7 @@ describe('DateTime', () => {
 
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
@@ -199,7 +199,7 @@ describe('DateTime', () => {
       // should subtract 1 hour from each of the inserted dates
       expect(
         await client
-          .select({
+          .query({
             query: `SELECT toDateTime64(d, 3, 'Europe/Amsterdam') AS d FROM ${table}`,
             format: 'JSONEachRow',
           })

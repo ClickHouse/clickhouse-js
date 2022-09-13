@@ -12,7 +12,7 @@ describe('error', () => {
 
   it('returns "unknown identifier" error', async () => {
     await expect(
-      client.select({
+      client.query({
         query: 'SELECT number FR',
       })
     ).rejects.toEqual(
@@ -26,7 +26,7 @@ describe('error', () => {
 
   it('returns "unknown table" error', async () => {
     await expect(
-      client.select({
+      client.query({
         query: 'SELECT * FROM unknown_table',
       })
     ).rejects.toEqual(
@@ -40,7 +40,7 @@ describe('error', () => {
 
   it('returns "syntax error" error', async () => {
     await expect(
-      client.select({
+      client.query({
         query: 'SELECT * FRON unknown_table',
       })
     ).rejects.toEqual(
@@ -54,7 +54,7 @@ describe('error', () => {
 
   it('returns "syntax error" error in a multiline query', async () => {
     await expect(
-      client.select({
+      client.query({
         query: `
         SELECT *
         /* This is:
@@ -78,7 +78,7 @@ describe('error', () => {
       host: 'http://localhost:1111',
     })
     await expect(
-      client.select({
+      client.query({
         query: 'SELECT * FROM system.numbers LIMIT 3',
       })
     ).rejects.toEqual(

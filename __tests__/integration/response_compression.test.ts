@@ -14,7 +14,7 @@ describe('response compression', () => {
       },
     })
 
-    const rows = await client.select({
+    const rows = await client.query({
       query: `
         SELECT number
         FROM system.numbers

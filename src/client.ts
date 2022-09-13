@@ -40,18 +40,13 @@ export interface BaseParams {
   abort_signal?: AbortSignal
 }
 
-export interface SelectParams extends BaseParams {
+export interface QueryParams extends BaseParams {
   query: string
   format?: DataFormat
 }
 
-export interface CommandParams extends BaseParams {
+export interface ExecParams extends BaseParams {
   query: string
-  /**
-   * Use 'false' if your command does not support FORMAT statement,
-   * and it needs to be omitted from the query
-   */
-  format?: DataFormat | false
 }
 
 export interface InsertParams extends BaseParams {
@@ -133,29 +128,22 @@ export class ClickHouseClient {
     }
   }
 
-  async select(params: SelectParams): Promise<Rows> {
-    validateSelectQuery(params.query)
+  async query(params: QueryParams): Promise<Rows> {
     const format = params.format ?? 'JSON'
-    const query = formatSelectQuery(params.query, format)
-
+    const query = formatQuery(params.query, format)
     const stream = await this.connection.select({
       query,
       ...this.getBaseParams(params),
     })
-
     return new Rows(stream, format)
   }
 
-  async command(params: CommandParams): Promise<Rows> {
-    const format = params.format === undefined ? 'JSON' : params.format
-    const query = formatCommandQuery(params.query, format)
-
-    const stream = await this.connection.command({
+  exec(params: ExecParams): Promise<Stream.Readable> {
+    const query = removeSemi(params.query.trim())
+    return this.connection.command({
       query,
       ...this.getBaseParams(params),
     })
-
-    return new Rows(stream, format as any)
   }
 
   async insert(params: InsertParams): Promise<void> {
@@ -180,28 +168,10 @@ export class ClickHouseClient {
   }
 }
 
-const formatRe = /\bformat\b\s([a-z]*)$/i
-export function validateSelectQuery(query: string): void {
-  if (formatRe.test(query)) {
-    throw new Error(
-      'Specifying format is not supported, use "format" parameter instead.'
-    )
-  }
-}
-
-function formatSelectQuery(query: string, format: DataFormat): string {
+function formatQuery(query: string, format: DataFormat): string {
   query = query.trim()
   query = removeSemi(query)
   return query + ' \nFORMAT ' + format
-}
-
-function formatCommandQuery(query: string, format: DataFormat | false): string {
-  query = query.trim()
-  if (format !== false) {
-    query = removeSemi(query)
-    return query + ' \nFORMAT ' + format
-  }
-  return query
 }
 
 function removeSemi(query: string) {

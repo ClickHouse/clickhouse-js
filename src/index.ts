@@ -9,8 +9,8 @@ export {
   type ClickHouseClientConfigOptions,
   type ClickHouseClient,
   type BaseParams,
-  type SelectParams,
-  type CommandParams,
+  type QueryParams,
+  type ExecParams,
   type InsertParams,
 } from './client'
 

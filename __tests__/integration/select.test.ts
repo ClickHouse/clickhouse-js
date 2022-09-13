@@ -30,7 +30,7 @@ describe('select', () => {
   it('can process an empty response', async () => {
     expect(
       await client
-        .select({
+        .query({
           query: 'SELECT * FROM system.numbers LIMIT 0',
           format: 'JSONEachRow',
         })
@@ -38,7 +38,7 @@ describe('select', () => {
     ).toEqual([])
     expect(
       await client
-        .select({
+        .query({
           query: 'SELECT * FROM system.numbers LIMIT 0',
           format: 'TabSeparated',
         })
@@ -62,7 +62,7 @@ describe('select', () => {
       )
     }
     it('should consume a JSON response only once', async () => {
-      const rows = await client.select({
+      const rows = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
         format: 'JSONEachRow',
       })
@@ -74,7 +74,7 @@ describe('select', () => {
     })
 
     it('should consume a text response only once', async () => {
-      const rows = await client.select({
+      const rows = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
         format: 'TabSeparated',
       })
@@ -86,7 +86,7 @@ describe('select', () => {
     })
 
     it('should consume a stream response only once', async () => {
-      const rows = await client.select({
+      const rows = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
         format: 'TabSeparated',
       })
@@ -103,7 +103,7 @@ describe('select', () => {
   })
 
   it('can send a multiline query', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: `
         SELECT number
         FROM system.numbers
@@ -117,7 +117,7 @@ describe('select', () => {
   })
 
   it('can send a query with an inline comment', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: `
         SELECT number
         -- a comment
@@ -132,7 +132,7 @@ describe('select', () => {
   })
 
   it('can send a query with a multiline comment', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: `
         SELECT number
         /* This is:
@@ -149,7 +149,7 @@ describe('select', () => {
   })
 
   it('can send a query with a trailing comment', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: `
         SELECT number
         FROM system.numbers
@@ -163,7 +163,7 @@ describe('select', () => {
   })
 
   it('can specify settings in select', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: 'SELECT number FROM system.numbers LIMIT 5',
       format: 'CSV',
       clickhouse_settings: {
@@ -176,7 +176,7 @@ describe('select', () => {
   })
 
   it('does not swallow a client error', async () => {
-    await expect(client.select({ query: 'SELECT number FR' })).rejects.toEqual(
+    await expect(client.query({ query: 'SELECT number FR' })).rejects.toEqual(
       expect.objectContaining({
         type: 'UNKNOWN_IDENTIFIER',
       })
@@ -184,7 +184,7 @@ describe('select', () => {
   })
 
   it('returns an error details provided by ClickHouse', async () => {
-    await expect(client.select({ query: 'foobar' })).rejects.toEqual(
+    await expect(client.query({ query: 'foobar' })).rejects.toEqual(
       expect.objectContaining({
         message: expect.stringContaining('Syntax error'),
         code: '62',
@@ -195,7 +195,7 @@ describe('select', () => {
 
   it('should provide error details when sending a request with an unknown clickhouse settings', async () => {
     await expect(
-      client.select({
+      client.query({
         query: 'SELECT * FROM system.numbers',
         clickhouse_settings: { foobar: 1 } as any,
       })
@@ -214,7 +214,7 @@ describe('select', () => {
     await Promise.all(
       [...Array(5)].map((_, i) =>
         client
-          .select({
+          .query({
             query: `SELECT toInt32(sum(*)) AS sum FROM numbers(0, ${i + 2});`,
             format: 'JSONEachRow',
           })
@@ -228,7 +228,7 @@ describe('select', () => {
   describe('select result', () => {
     describe('text()', function () {
       it('returns values from SELECT query in specified format', async () => {
-        const Rows = await client.select({
+        const Rows = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 3',
           format: 'CSV',
         })
@@ -236,7 +236,7 @@ describe('select', () => {
         expect(await Rows.text()).toBe('0\n1\n2\n')
       })
       it('returns values from SELECT query in specified format', async () => {
-        const Rows = await client.select({
+        const Rows = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 3',
           format: 'JSONEachRow',
         })
@@ -249,7 +249,7 @@ describe('select', () => {
 
     describe('json()', () => {
       it('returns an array of values in data property', async () => {
-        const rows = await client.select({
+        const rows = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
@@ -264,7 +264,7 @@ describe('select', () => {
       })
 
       it('returns columns data in response', async () => {
-        const rows = await client.select({
+        const rows = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
@@ -280,7 +280,7 @@ describe('select', () => {
       })
 
       it('returns number of rows in response', async () => {
-        const rows = await client.select({
+        const rows = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
@@ -291,7 +291,7 @@ describe('select', () => {
       })
 
       it('returns statistics in response', async () => {
-        const rows = await client.select({
+        const rows = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
@@ -309,7 +309,7 @@ describe('select', () => {
       })
 
       it.skip('returns queryId in response', async () => {
-        const rows = await client.select({
+        const rows = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
@@ -323,7 +323,7 @@ describe('select', () => {
 
   describe('select result asStream()', () => {
     it('throws an exception if format is not stream-able', async () => {
-      const result = await client.select({
+      const result = await client.query({
         query: 'SELECT number FROM system.numbers LIMIT 5',
         format: 'JSON',
       })
@@ -337,7 +337,7 @@ describe('select', () => {
     })
 
     it('can pause response stream', async () => {
-      const result = await client.select({
+      const result = await client.query({
         query: 'SELECT number FROM system.numbers LIMIT 10000',
         format: 'CSV',
       })
@@ -359,7 +359,7 @@ describe('select', () => {
 
     describe('text()', () => {
       it('returns stream of rows in CSV format', async () => {
-        const result = await client.select({
+        const result = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'CSV',
         })
@@ -370,7 +370,7 @@ describe('select', () => {
       })
 
       it('returns stream of rows in TabSeparated format', async () => {
-        const result = await client.select({
+        const result = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'TabSeparated',
         })
@@ -383,7 +383,7 @@ describe('select', () => {
 
     describe('json()', () => {
       it('returns stream of objects in JSONEachRow format', async () => {
-        const result = await client.select({
+        const result = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONEachRow',
         })
@@ -400,7 +400,7 @@ describe('select', () => {
       })
 
       it('returns stream of objects in JSONStringsEachRow format', async () => {
-        const result = await client.select({
+        const result = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONStringsEachRow',
         })
@@ -417,7 +417,7 @@ describe('select', () => {
       })
 
       it('returns stream of objects in JSONCompactEachRow format', async () => {
-        const result = await client.select({
+        const result = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactEachRow',
         })
@@ -428,7 +428,7 @@ describe('select', () => {
       })
 
       it('returns stream of objects in JSONCompactEachRowWithNames format', async () => {
-        const result = await client.select({
+        const result = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactEachRowWithNames',
         })
@@ -439,7 +439,7 @@ describe('select', () => {
       })
 
       it('returns stream of objects in JSONCompactEachRowWithNamesAndTypes format', async () => {
-        const result = await client.select({
+        const result = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactEachRowWithNamesAndTypes',
         })
@@ -458,7 +458,7 @@ describe('select', () => {
       })
 
       it('returns stream of objects in JSONCompactStringsEachRowWithNames format', async () => {
-        const result = await client.select({
+        const result = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactStringsEachRowWithNames',
         })
@@ -469,7 +469,7 @@ describe('select', () => {
       })
 
       it('returns stream of objects in JSONCompactStringsEachRowWithNamesAndTypes format', async () => {
-        const result = await client.select({
+        const result = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSONCompactStringsEachRowWithNamesAndTypes',
         })
@@ -491,7 +491,7 @@ describe('select', () => {
 
   describe('trailing semi', () => {
     it('should allow queries with trailing semicolon', async () => {
-      const numbers = await client.select({
+      const numbers = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 3;',
         format: 'CSV',
       })
@@ -499,7 +499,7 @@ describe('select', () => {
     })
 
     it('should allow queries with multiple trailing semicolons', async () => {
-      const numbers = await client.select({
+      const numbers = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 3;;;;;;;;;;;;;;;;;',
         format: 'CSV',
       })
@@ -507,7 +507,7 @@ describe('select', () => {
     })
 
     it('should cut off the statements after the first semi', async () => {
-      const numbers = await client.select({
+      const numbers = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 3;asdf foobar',
         format: 'CSV',
       })

@@ -42,7 +42,7 @@ describe('streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    const response = await client.select({
+    const response = await client.query({
       query: `SELECT * from ${tableName}`,
       format: 'JSONCompactEachRow',
     })
@@ -61,7 +61,7 @@ describe('streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    const response = await client.select({
+    const response = await client.query({
       query: `SELECT * from ${tableName}`,
       format: 'JSONCompactEachRow',
     })

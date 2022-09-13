@@ -11,7 +11,7 @@ describe('select with query binding', () => {
   })
 
   it('can specify a parameterized query', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query:
         'SELECT number FROM system.numbers WHERE number > {min_limit: UInt64} LIMIT 3',
       format: 'CSV',
@@ -25,7 +25,7 @@ describe('select with query binding', () => {
   })
 
   it('handles boolean in a parameterized query', async () => {
-    const rows1 = await client.select({
+    const rows1 = await client.query({
       query: 'SELECT and({val1: Boolean}, {val2: Boolean})',
       format: 'CSV',
       query_params: {
@@ -36,7 +36,7 @@ describe('select with query binding', () => {
 
     expect(await rows1.text()).toBe('true\n')
 
-    const rows2 = await client.select({
+    const rows2 = await client.query({
       query: 'SELECT and({val1: Boolean}, {val2: Boolean})',
       format: 'CSV',
       query_params: {
@@ -49,7 +49,7 @@ describe('select with query binding', () => {
   })
 
   it('handles numbers in a parameterized query', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: 'SELECT plus({val1: Int32}, {val2: Int32})',
       format: 'CSV',
       query_params: {
@@ -63,7 +63,7 @@ describe('select with query binding', () => {
 
   describe('Date(Time)', () => {
     it('handles Date in a parameterized query', async () => {
-      const rows = await client.select({
+      const rows = await client.query({
         query: 'SELECT toDate({min_time: DateTime})',
         format: 'CSV',
         query_params: {
@@ -76,7 +76,7 @@ describe('select with query binding', () => {
     })
 
     it('handles DateTime in a parameterized query', async () => {
-      const rows = await client.select({
+      const rows = await client.query({
         query: 'SELECT toDateTime({min_time: DateTime})',
         format: 'CSV',
         query_params: {
@@ -89,7 +89,7 @@ describe('select with query binding', () => {
     })
 
     it('handles DateTime64(3) in a parameterized query', async () => {
-      const rows = await client.select({
+      const rows = await client.query({
         query: 'SELECT toDateTime64({min_time: DateTime64(3)}, 3)',
         format: 'CSV',
         query_params: {
@@ -102,7 +102,7 @@ describe('select with query binding', () => {
     })
 
     it('handles DateTime64(6) with timestamp as a string', async () => {
-      const rows = await client.select({
+      const rows = await client.query({
         query: `SELECT toDateTime64(toDecimal64({ts: String}, 6), 6, 'Europe/Amsterdam')`,
         format: 'CSV',
         query_params: {
@@ -115,7 +115,7 @@ describe('select with query binding', () => {
     })
 
     it('handles DateTime64(9) with timestamp as a string', async () => {
-      const rows = await client.select({
+      const rows = await client.query({
         query: `SELECT toDateTime64(toDecimal128({ts: String}, 9), 9, 'Europe/Amsterdam')`,
         format: 'CSV',
         query_params: {
@@ -129,7 +129,7 @@ describe('select with query binding', () => {
   })
 
   it('handles an array of strings in a parameterized query', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: 'SELECT arrayConcat({arr1: Array(String)}, {arr2: Array(String)})',
       format: 'CSV',
       query_params: {
@@ -143,7 +143,7 @@ describe('select with query binding', () => {
   })
 
   it('handles an array of numbers in a parameterized query', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: 'SELECT arrayConcat({arr1: Array(Int32)}, {arr2: Array(Int32)})',
       format: 'CSV',
       query_params: {
@@ -157,7 +157,7 @@ describe('select with query binding', () => {
   })
 
   it('escapes strings in a parameterized query', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: 'SELECT concat({str1: String},{str2: String})',
       format: 'CSV',
       query_params: {
@@ -171,7 +171,7 @@ describe('select with query binding', () => {
   })
 
   it('handles an object a parameterized query', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: 'SELECT mapKeys({obj: Map(String, UInt32)})',
       format: 'CSV',
       query_params: {
@@ -184,7 +184,7 @@ describe('select with query binding', () => {
   })
 
   it('should accept non-ASCII symbols in a parameterized query', async () => {
-    const rows = await client.select({
+    const rows = await client.query({
       query: 'SELECT concat({str1: String},{str2: String})',
       format: 'CSV',
       query_params: {
@@ -204,7 +204,7 @@ describe('select with query binding', () => {
         bar = 1,
         qaz = 2,
       }
-      const rows = await client.select({
+      const rows = await client.query({
         query:
           'SELECT * FROM system.numbers WHERE number = {filter: Int64} LIMIT 1',
         format: 'TabSeparated',
@@ -222,7 +222,7 @@ describe('select with query binding', () => {
         foo = 'foo',
         bar = 'bar',
       }
-      const rows = await client.select({
+      const rows = await client.query({
         query: 'SELECT concat({str1: String},{str2: String})',
         format: 'TabSeparated',
         query_params: {
@@ -237,7 +237,7 @@ describe('select with query binding', () => {
 
     // this one is taken from https://clickhouse.com/docs/en/sql-reference/data-types/enum/#usage-examples
     it('should accept the entire enum definition in a parametrized query', async () => {
-      const rows = await client.select({
+      const rows = await client.query({
         query: `SELECT toTypeName(CAST('a', {e: String}))`,
         format: 'TabSeparated',
         query_params: {
@@ -251,9 +251,9 @@ describe('select with query binding', () => {
 
     it('should provide error details when sending a request with an unknown parameter', async () => {
       await expect(
-        client.select({
+        client.query({
           query: `
-            SELECT * FROM system.numbers 
+            SELECT * FROM system.numbers
             WHERE number > {min_limit: UInt64} LIMIT 3
           `,
         })
