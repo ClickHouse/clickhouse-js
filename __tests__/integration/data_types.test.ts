@@ -95,9 +95,6 @@ describe('data types', () => {
     )
   })
 
-  // FIXME (?) does not work with JSON* insert formats, only raw streaming
-  //   as decimals are required to be passed as numbers
-  //   when using JSONEachRow (why?)
   it('should work with decimals', async () => {
     const stream = new Stream.Readable({
       objectMode: false,
