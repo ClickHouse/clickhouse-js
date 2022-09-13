@@ -380,6 +380,79 @@ describe('data types', () => {
     ).toEqual('3\n')
   })
 
+  it('should work with geo', async () => {
+    const values = [
+      {
+        p: [42, 144],
+        r: [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+          [0, 10],
+        ],
+        pg: [
+          [
+            [20, 20],
+            [50, 20],
+            [50, 50],
+            [20, 50],
+          ],
+          [
+            [30, 30],
+            [50, 50],
+            [50, 30],
+          ],
+        ],
+        mpg: [
+          [
+            [
+              [0, 0],
+              [10, 0],
+              [10, 10],
+              [0, 10],
+            ],
+          ],
+          [
+            [
+              [20, 20],
+              [50, 20],
+              [50, 50],
+              [20, 50],
+            ],
+            [
+              [30, 30],
+              [50, 50],
+              [50, 30],
+            ],
+          ],
+        ],
+      },
+    ]
+    const table = await createTableWithFields(
+      client,
+      'p Point, r Ring, pg Polygon, mpg MultiPolygon',
+      {
+        allow_experimental_geo_types: 1,
+      }
+    )
+    await insertAndAssert(table, values)
+  })
+
+  it('should work with JSON', async () => {
+    const values = [
+      {
+        o: { a: 1, b: { c: 2, d: [1, 2, 3] } },
+      },
+      {
+        o: { a: 2, b: { c: 3, d: [4, 5, 6] } },
+      },
+    ]
+    const table = await createTableWithFields(client, 'o JSON', {
+      allow_experimental_object_type: 1,
+    })
+    await insertAndAssert(table, values)
+  })
+
   // FIXME empty arrays in the result
   //    Object {
   //  -     "n.createdAt": "2001-04-23",
