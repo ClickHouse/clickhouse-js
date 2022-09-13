@@ -1,4 +1,5 @@
-<p>
+<p align="center">
+<img src=".static/logo.png" width="200px" align="center">
 <h1 align="center">ClickHouse Node.JS client</h1>
 </p>
 <br/>
@@ -306,7 +307,7 @@ const result = await rows.json<ResponseJSON<{ number: string }>>()
         "bytes_read": 16
     }
 }
-    
+
 */
 ```
 
@@ -354,7 +355,7 @@ const result = await rows.text()
 - Browser usage is not supported.
 - There are no data mappers for the result sets, so only language primitives are used.
 - There are some [Decimal* and Date* / DateTime\* data types caveats](#date--datetime-types-caveats).
-- Nested data type is currently not officially supported. 
+- Nested data type is currently not officially supported.
 
 ## Tips for performance optimizations
 
