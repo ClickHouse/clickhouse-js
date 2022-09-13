@@ -122,51 +122,51 @@ See also:
 
 | Format                                     | Input (array) | Input (stream) | Output (JSON) | Output (text) |
 | ------------------------------------------ | ------------- | -------------- | ------------- | ------------- |
-| JSON                                       | ❌            | ❌             | ✅            | ✅            |
-| JSONEachRow                                | ✅            | ✅             | ✅            | ✅            |
-| JSONStringsEachRow                         | ✅            | ✅             | ✅            | ✅            |
-| JSONCompactEachRow                         | ✅            | ✅             | ✅            | ✅            |
-| JSONCompactStringsEachRow                  | ✅            | ✅             | ✅            | ✅            |
-| JSONCompactEachRowWithNames                | ✅            | ✅             | ✅            | ✅            |
-| JSONCompactEachRowWithNamesAndTypes        | ✅            | ✅             | ✅            | ✅            |
-| JSONCompactStringsEachRowWithNames         | ✅            | ✅             | ✅            | ✅            |
-| JSONCompactStringsEachRowWithNamesAndTypes | ✅            | ✅             | ✅            | ✅            |
-| CSV                                        | ❌            | ✅             | ❌            | ✅            |
-| CSVWithNames                               | ❌            | ✅             | ❌            | ✅            |
-| CSVWithNamesAndTypes                       | ❌            | ✅             | ❌            | ✅            |
-| TabSeparated                               | ❌            | ✅             | ❌            | ✅            |
-| TabSeparatedRaw                            | ❌            | ✅             | ❌            | ✅            |
-| TabSeparatedWithNames                      | ❌            | ✅             | ❌            | ✅            |
-| TabSeparatedWithNamesAndTypes              | ❌            | ✅             | ❌            | ✅            |
-| CustomSeparated                            | ❌            | ✅             | ❌            | ✅            |
-| CustomSeparatedWithNames                   | ❌            | ✅             | ❌            | ✅            |
-| CustomSeparatedWithNamesAndTypes           | ❌            | ✅             | ❌            | ✅            |
+| JSON                                       | ❌            | ❌             | ✔️            | ✔️            |
+| JSONEachRow                                | ✔️            | ✔️             | ✔️            | ✔️            |
+| JSONStringsEachRow                         | ✔️            | ✔️             | ✔️            | ✔️            |
+| JSONCompactEachRow                         | ✔️            | ✔️             | ✔️            | ✔️            |
+| JSONCompactStringsEachRow                  | ✔️            | ✔️             | ✔️            | ✔️            |
+| JSONCompactEachRowWithNames                | ✔️            | ✔️             | ✔️            | ✔️            |
+| JSONCompactEachRowWithNamesAndTypes        | ✔️            | ✔️             | ✔️            | ✔️            |
+| JSONCompactStringsEachRowWithNames         | ✔️            | ✔️             | ✔️            | ✔️            |
+| JSONCompactStringsEachRowWithNamesAndTypes | ✔️            | ✔️             | ✔️            | ✔️            |
+| CSV                                        | ❌            | ✔️             | ❌            | ✔️            |
+| CSVWithNames                               | ❌            | ✔️             | ❌            | ✔️            |
+| CSVWithNamesAndTypes                       | ❌            | ✔️             | ❌            | ✔️            |
+| TabSeparated                               | ❌            | ✔️             | ❌            | ✔️            |
+| TabSeparatedRaw                            | ❌            | ✔️             | ❌            | ✔️            |
+| TabSeparatedWithNames                      | ❌            | ✔️             | ❌            | ✔️            |
+| TabSeparatedWithNamesAndTypes              | ❌            | ✔️             | ❌            | ✔️            |
+| CustomSeparated                            | ❌            | ✔️             | ❌            | ✔️            |
+| CustomSeparatedWithNames                   | ❌            | ✔️             | ❌            | ✔️            |
+| CustomSeparatedWithNamesAndTypes           | ❌            | ✔️             | ❌            | ✔️            |
 
 ## Supported ClickHouse data types
 
 | Type           | Status          |
 | -------------- | --------------- |
-| UInt\*         | ✅              |
-| Int\*          | ✅              |
-| Float\*        | ✅              |
-| Decimal\*      | ✅❗- see below |
-| Boolean        | ✅              |
-| String         | ✅              |
-| FixedString    | ✅              |
-| UUID           | ✅              |
-| Date\*         | ✅❗- see below |
-| DateTime\*     | ✅❗- see below |
-| Enum           | ✅              |
-| LowCardinality | ✅              |
-| Array          | ✅              |
-| JSON           | ✅              |
+| UInt\*         | ✔️              |
+| Int\*          | ✔️              |
+| Float\*        | ✔️              |
+| Decimal\*      | ✔️❗- see below |
+| Boolean        | ✔️              |
+| String         | ✔️              |
+| FixedString    | ✔️              |
+| UUID           | ✔️              |
+| Date\*         | ✔️❗- see below |
+| DateTime\*     | ✔️❗- see below |
+| Enum           | ✔️              |
+| LowCardinality | ✔️              |
+| Array          | ✔️              |
+| JSON           | ✔️              |
 | Nested         | ❌              |
-| Tuple          | ✅              |
-| Nullable       | ✅              |
-| IPv4           | ✅              |
-| IPv6           | ✅              |
-| Geo            | ✅              |
-| Map            | ✅              |
+| Tuple          | ✔️              |
+| Nullable       | ✔️              |
+| IPv4           | ✔️              |
+| IPv6           | ✔️              |
+| Geo            | ✔️              |
+| Map            | ✔️              |
 
 ### Date* / DateTime* types caveats:
 
