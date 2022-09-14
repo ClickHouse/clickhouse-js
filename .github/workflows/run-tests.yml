@@ -59,7 +59,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [14, 16]
+        node: [14, 16, 18]
         clickhouse: [head, latest]
 
     steps:
@@ -92,7 +92,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [14, 16]
+        node: [14, 16, 18]
         clickhouse: [head, latest]
 
     steps:
