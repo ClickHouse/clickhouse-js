@@ -8,12 +8,12 @@ export interface ConnectionParams {
 
   connect_timeout: number
   request_timeout: number
+  max_open_connections: number
 
   compression: {
     decompress_response: boolean
     compress_request: boolean
   }
-  // max_open_connections: number;
 
   username: string
   password: string

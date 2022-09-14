@@ -1,6 +1,7 @@
-import type { ClickHouseClientConfigOptions, Logger } from '../../src'
-import { type ClickHouseClient, createClient } from '../../src'
-import { createTestClient } from '../utils'
+import type { Logger } from '../../src'
+import { type ClickHouseClient } from '../../src'
+import { createTestClient, retryOnFailure } from '../utils'
+import type { RetryOnFailureOptions } from '../utils/retry'
 
 describe('config', () => {
   let client: ClickHouseClient
@@ -27,28 +28,6 @@ describe('config', () => {
         message: expect.stringMatching('Timeout error'),
       })
     )
-  })
-
-  it('should not mutate provided configuration', async () => {
-    const config: ClickHouseClientConfigOptions = {
-      host: 'http://localhost',
-    }
-    client = createClient(config)
-    // none of the initial configuration settings are overridden
-    // by the defaults we assign when we normalize the specified config object
-    expect(config).toEqual({
-      host: 'http://localhost',
-      request_timeout: undefined,
-      max_open_connections: undefined,
-      tls: undefined,
-      compression: undefined,
-      username: undefined,
-      password: undefined,
-      application: undefined,
-      database: undefined,
-      clickhouse_settings: undefined,
-      log: undefined,
-    })
   })
 
   it('should specify the default database name on creation', async () => {
@@ -82,6 +61,61 @@ describe('config', () => {
     })
     await client.ping()
     expect(messages).toHaveLength(0)
+  })
+
+  describe('max_open_connections', () => {
+    let results: number[] = []
+    afterEach(() => {
+      results = []
+    })
+
+    const retryOpts: RetryOnFailureOptions = {
+      maxAttempts: 20,
+    }
+
+    function select(query: string) {
+      return client
+        .query({
+          query,
+          format: 'JSONEachRow',
+        })
+        .then((r) => r.json<[{ x: number }]>())
+        .then(([{ x }]) => results.push(x))
+    }
+
+    it('should use only one connection', async () => {
+      client = createTestClient({
+        max_open_connections: 1,
+      })
+      void select('SELECT 1 AS x, sleep(0.2)')
+      void select('SELECT 2 AS x, sleep(0.2)')
+      await retryOnFailure(async () => {
+        expect(results).toEqual([1])
+      }, retryOpts)
+      await retryOnFailure(async () => {
+        expect(results).toEqual([1, 2])
+      }, retryOpts)
+    })
+
+    it('should use several connections', async () => {
+      client = createTestClient({
+        max_open_connections: 2,
+      })
+      void select('SELECT 1 AS x, sleep(0.2)')
+      void select('SELECT 2 AS x, sleep(0.2)')
+      void select('SELECT 3 AS x, sleep(0.2)')
+      void select('SELECT 4 AS x, sleep(0.2)')
+      await retryOnFailure(async () => {
+        expect(results).toContain(1)
+        expect(results).toContain(2)
+        expect(results.length).toEqual(2)
+      }, retryOpts)
+      await retryOnFailure(async () => {
+        expect(results).toContain(3)
+        expect(results).toContain(4)
+        expect(results.length).toEqual(4)
+      }, retryOpts)
+    })
   })
 
   class TestLogger implements Logger {
