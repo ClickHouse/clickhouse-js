@@ -1,5 +1,5 @@
-import type { ClickHouseClientConfigOptions, Logger } from '../../src'
-import { type ClickHouseClient, createClient } from '../../src'
+import type { Logger } from '../../src'
+import { type ClickHouseClient } from '../../src'
 import { createTestClient, retryOnFailure } from '../utils'
 import type { RetryOnFailureOptions } from '../utils/retry'
 
@@ -28,28 +28,6 @@ describe('config', () => {
         message: expect.stringMatching('Timeout error'),
       })
     )
-  })
-
-  it('should not mutate provided configuration', async () => {
-    const config: ClickHouseClientConfigOptions = {
-      host: 'http://localhost',
-    }
-    client = createClient(config)
-    // none of the initial configuration settings are overridden
-    // by the defaults we assign when we normalize the specified config object
-    expect(config).toEqual({
-      host: 'http://localhost',
-      request_timeout: undefined,
-      max_open_connections: undefined,
-      tls: undefined,
-      compression: undefined,
-      username: undefined,
-      password: undefined,
-      application: undefined,
-      database: undefined,
-      clickhouse_settings: undefined,
-      log: undefined,
-    })
   })
 
   it('should specify the default database name on creation', async () => {
@@ -106,7 +84,7 @@ describe('config', () => {
     }
 
     it('should use only one connection', async () => {
-      client = createClient({
+      client = createTestClient({
         max_open_connections: 1,
       })
       void select('SELECT 1 AS x, sleep(0.2)')
@@ -120,7 +98,7 @@ describe('config', () => {
     })
 
     it('should use several connections', async () => {
-      client = createClient({
+      client = createTestClient({
         max_open_connections: 2,
       })
       void select('SELECT 1 AS x, sleep(0.2)')
