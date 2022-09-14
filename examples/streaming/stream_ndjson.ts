@@ -26,7 +26,7 @@ void (async () => {
     format: 'JSON',
   })
 
-  for await (const row of response.asStream()) {
+  for await (const row of response.stream()) {
     console.log(row.text())
   }
 

@@ -163,7 +163,7 @@ describe('data types', () => {
     await insertAndAssert(table, values)
   })
 
-  it('should work with enums', async () => {
+  it('should work with string enums', async () => {
     const values = [
       { e1: 'Foo', e2: 'Qaz' },
       { e1: 'Bar', e2: 'Qux' },
@@ -173,6 +173,25 @@ describe('data types', () => {
       `e1 Enum('Foo', 'Bar'), e2 Enum('Qaz', 'Qux')`
     )
     await insertAndAssert(table, values)
+  })
+
+  it('should work with numeric enums', async () => {
+    const values = [
+      { e1: 42, e2: 100 },
+      { e1: 43, e2: 127 },
+    ]
+    const table = await createTableWithFields(
+      client,
+      `e1 Enum('Foo' = 42, 'Bar' = 43), e2 Enum('Qaz' = 100, 'Qux' = 127)`
+    )
+    await insertData(table, values)
+    const result = await client
+      .query({
+        query: `SELECT CAST(e1, 'Int8') AS e1, CAST(e2, 'Int8') AS e2 FROM ${table} ORDER BY id ASC`,
+        format: 'JSONEachRow',
+      })
+      .then((r) => r.json())
+    expect(result).toEqual(values)
   })
 
   it('should work with low cardinality', async () => {
@@ -450,19 +469,6 @@ describe('data types', () => {
     await insertAndAssert(table, values)
   })
 
-  // FIXME empty arrays in the result
-  //    Object {
-  //  -     "n.createdAt": "2001-04-23",
-  //  -     "n.id": 42,
-  //  -     "n.name": "foo",
-  //  -     "n.roles": Array [
-  //  -       "User",
-  //  -     ],
-  //  +     "n.createdAt": Array [],
-  //  +     "n.id": Array [],
-  //  +     "n.name": Array [],
-  //  +     "n.roles": Array [],
-  //    },
   it.skip('should work with nested', async () => {
     const values = [
       {
@@ -516,13 +522,16 @@ describe('data types', () => {
     ])
   })
 
-  async function insertAndAssert<T>(table: string, data: T[]) {
+  async function insertData<T>(table: string, data: T[]) {
     const values = data.map((v, i) => ({ ...v, id: i + 1 }))
     await client.insert({
       table,
       values,
       format: 'JSONEachRow',
     })
+  }
+
+  async function assertData<T>(table: string, data: T[]) {
     const result = await client
       .query({
         query: `SELECT * EXCEPT (id) FROM ${table} ORDER BY id ASC`,
@@ -530,5 +539,10 @@ describe('data types', () => {
       })
       .then((r) => r.json())
     expect(result).toEqual(data)
+  }
+
+  async function insertAndAssert<T>(table: string, data: T[]) {
+    await insertData(table, data)
+    await assertData(table, data)
   }
 })

@@ -48,7 +48,7 @@ describe('streaming e2e', () => {
     })
 
     const actual: string[] = []
-    for await (const row of response.asStream()) {
+    for await (const row of response.stream()) {
       actual.push(row.json())
     }
     expect(actual).toEqual(expected)
@@ -67,7 +67,7 @@ describe('streaming e2e', () => {
     })
 
     const actual: string[] = []
-    for await (const row of response.asStream()) {
+    for await (const row of response.stream()) {
       actual.push(row.json())
     }
     expect(actual).toEqual(expected)

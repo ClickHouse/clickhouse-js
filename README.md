@@ -11,15 +11,26 @@
 
 ## Introduction
 
-Official Node.js (14.x or 16.x) client for [ClickHouse](https://clickhouse.com/), written purely in TypeScript, thoroughly tested with ClickHouse 22.8 and upcoming 22.9.
+Official Node.js client for [ClickHouse](https://clickhouse.com/), written purely in TypeScript, thoroughly tested with actual ClickHouse versions.
 
-It is focused on data streaming for both inserts and selects using standard [Node.js Streaming API](https://nodejs.org/api/stream.html).
+It is focused on data streaming for both inserts and selects using standard [Node.js Streaming API](https://nodejs.org/docs/latest-v14.x/api/stream.html).
 
-As of now, HTTP(s) protocol is used under the hood, with [planned](https://github.com/ClickHouse/clickhouse-js/issues/25) Native protocol support.
+## Compatibility
+
+The client is tested with the following ClickHouse and Node.js versions:
+
+| Node.js | ClickHouse | Status |
+| ------- | ---------- | ------ |
+| 14.x    | 22.8       | ✔      |
+| 16.x    | 22.8       | ✔      |
+| 14.x    | 22.9       | ✔      |
+| 16.x    | 22.9       | ✔      |
 
 ## Connection
 
-A very basic connection to a local ClickHouse instance with default settings (for example, if it is running as a Docker container):
+Currently, only HTTP(s) protocol is supported.
+
+A very basic connection to a single local ClickHouse instance with default settings (for example, if it is running as a Docker container as described in the [contribution guide](./CONTRIBUTING.md)):
 
 ```ts
 const client = createClient()
@@ -74,15 +85,16 @@ export interface ClickHouseClientConfigOptions {
   // milliseconds, default 300_000
   request_timeout?: number
 
-  // by default, Node.js HTTP(s) Agent has infinite max open sockets
+  // For HTTP protocol, the connection pool has infinite size by default
   // it can be overriden with this setting
   max_open_connections?: number
 
-  // HTTP compression settings
+  // HTTP compression settings. Uses GZIP.
+  // For more details, see https://clickhouse.com/docs/en/interfaces/http/#compression
   compression?: {
-    // enabled by default
+    // enabled by default - the server will compress the data it sends to you in the response
     response?: boolean
-    // disabled by default
+    // disabled by default - the server will decompress the data which you pass in the request
     request?: boolean
   }
 
@@ -105,7 +117,7 @@ export interface ClickHouseClientConfigOptions {
 
   // logger settings
   log?: {
-    // enabled by default, can be disabled
+    // disabled by default, can be enabled using this setting
     enable?: boolean
     // use it to override default clickhouse-js logger with your own implementation
     LoggerClass?: new (enabled: boolean) => Logger
@@ -122,8 +134,8 @@ See also:
 ## Supported formats
 
 | Format                                     | Input (array) | Input (stream) | Output (JSON) | Output (text) |
-| ------------------------------------------ | ------------- | -------------- | ------------- | ------------- |
-| JSON                                       | ❌            | ❌             | ✔️            | ✔️            |
+|--------------------------------------------|---------------|----------------|---------------|---------------|
+| JSON                                       | ❌             | ❌              | ✔️            | ✔️            |
 | JSONEachRow                                | ✔️            | ✔️             | ✔️            | ✔️            |
 | JSONStringsEachRow                         | ✔️            | ✔️             | ✔️            | ✔️            |
 | JSONCompactEachRow                         | ✔️            | ✔️             | ✔️            | ✔️            |
@@ -132,42 +144,51 @@ See also:
 | JSONCompactEachRowWithNamesAndTypes        | ✔️            | ✔️             | ✔️            | ✔️            |
 | JSONCompactStringsEachRowWithNames         | ✔️            | ✔️             | ✔️            | ✔️            |
 | JSONCompactStringsEachRowWithNamesAndTypes | ✔️            | ✔️             | ✔️            | ✔️            |
-| CSV                                        | ❌            | ✔️             | ❌            | ✔️            |
-| CSVWithNames                               | ❌            | ✔️             | ❌            | ✔️            |
-| CSVWithNamesAndTypes                       | ❌            | ✔️             | ❌            | ✔️            |
-| TabSeparated                               | ❌            | ✔️             | ❌            | ✔️            |
-| TabSeparatedRaw                            | ❌            | ✔️             | ❌            | ✔️            |
-| TabSeparatedWithNames                      | ❌            | ✔️             | ❌            | ✔️            |
-| TabSeparatedWithNamesAndTypes              | ❌            | ✔️             | ❌            | ✔️            |
-| CustomSeparated                            | ❌            | ✔️             | ❌            | ✔️            |
-| CustomSeparatedWithNames                   | ❌            | ✔️             | ❌            | ✔️            |
-| CustomSeparatedWithNamesAndTypes           | ❌            | ✔️             | ❌            | ✔️            |
+| CSV                                        | ❌             | ✔️             | ❌             | ✔️            |
+| CSVWithNames                               | ❌             | ✔️             | ❌             | ✔️            |
+| CSVWithNamesAndTypes                       | ❌             | ✔️             | ❌             | ✔️            |
+| TabSeparated                               | ❌             | ✔️             | ❌             | ✔️            |
+| TabSeparatedRaw                            | ❌             | ✔️             | ❌             | ✔️            |
+| TabSeparatedWithNames                      | ❌             | ✔️             | ❌             | ✔️            |
+| TabSeparatedWithNamesAndTypes              | ❌             | ✔️             | ❌             | ✔️            |
+| CustomSeparated                            | ❌             | ✔️             | ❌             | ✔️            |
+| CustomSeparatedWithNames                   | ❌             | ✔️             | ❌             | ✔️            |
+| CustomSeparatedWithNamesAndTypes           | ❌             | ✔️             | ❌             | ✔️            |
+
+The entire list of ClickHouse input and output formats is available [here](https://clickhouse.com/docs/en/interfaces/formats).
 
 ## Supported ClickHouse data types
 
-| Type           | Status          |
-| -------------- | --------------- |
-| UInt\*         | ✔️              |
-| Int\*          | ✔️              |
-| Float\*        | ✔️              |
-| Decimal\*      | ✔️❗- see below |
-| Boolean        | ✔️              |
-| String         | ✔️              |
-| FixedString    | ✔️              |
-| UUID           | ✔️              |
-| Date\*         | ✔️❗- see below |
-| DateTime\*     | ✔️❗- see below |
-| Enum           | ✔️              |
-| LowCardinality | ✔️              |
-| Array          | ✔️              |
-| JSON           | ✔️              |
-| Nested         | ❌              |
-| Tuple          | ✔️              |
-| Nullable       | ✔️              |
-| IPv4           | ✔️              |
-| IPv6           | ✔️              |
-| Geo            | ✔️              |
-| Map            | ✔️              |
+| Type           | Status         | JS type                               |
+|----------------|----------------|---------------------------------------|
+| UInt8/16/32    | ✔️             | number                                |
+| UInt64/128/256 | ✔️❗- see below | string                                |
+| Int8/16/32     | ✔️             | number                                |
+| Int64/128/256  | ✔️❗- see below | string                                |
+| Float32/64     | ✔️             | number                                |
+| Decimal        | ✔️❗- see below | number                                |
+| Boolean        | ✔️             | boolean                               |
+| String         | ✔️             | string                                |
+| FixedString    | ✔️             | string                                |
+| UUID           | ✔️             | string                                |
+| Date32/64      | ✔️❗- see below | string                                |
+| DateTime32/64  | ✔️❗- see below | string                                |
+| Enum           | ✔️             | string                                |
+| LowCardinality | ✔️             | string                                |
+| Array(T)       | ✔️             | Array\<JS type for T>                 |
+| JSON           | ✔️             | object                                |
+| Nested         | ❌              | -                                     |
+| Tuple          | ✔️             | Tuple                                 |
+| Nullable(T)    | ✔️             | JS type for T or null                 |
+| IPv4           | ✔️             | string                                |
+| IPv6           | ✔️             | string                                |
+| Point          | ✔️             | [ number, number ]                    |
+| Ring           | ✔️             | Array\<Point>                         |
+| Polygon        | ✔️             | Array\<Ring>                          |
+| MultiPolygon   | ✔️             | Array\<Polygon>                       |
+| Map(K, V)      | ✔️             | Record\<JS type for K, JS type for V> |
+
+The entire list of supported ClickHouse formats is available [here](https://clickhouse.com/docs/en/sql-reference/data-types/).
 
 ### Date* / DateTime* types caveats:
 
@@ -177,7 +198,225 @@ Since we use data streaming for inserts without the `VALUES` clause (which does 
 
 Since we do not use `VALUES` clause and there is no additional type conversion, it is not possible to insert Decimal* type columns as strings, only as numbers. This is a suboptimal approach as it might end in float precision loss. Thus, it is recommended to avoid JSON* formats when using Decimals as of now. Consider TabSeparated* / CSV* / CustomSeparated\* formats families for that kind of workflows. Please refer to the [data types tests](https://github.com/ClickHouse/clickhouse-js/blob/c1b70c82f525c39edb3ca1ee05cb5e6b43dba5b3/__tests__/integration/data_types.test.ts#L98-L131) for more concrete examples on how to avoid precision loss.
 
+### NB: Int64, Int128, Int256, UInt64, UInt128, UInt256
+
+Though the server can accept it as a number, it is by default returned as a string in JSON\* family output formats to avoid integer overflow as max values for these types are bigger than `Number.MAX_SAFE_INTEGER`.
+
+This behavior, however, can be modified with [`output_format_json_quote_64bit_integers` setting](https://clickhouse.com/docs/en/operations/settings/settings/#output_format_json_quote_64bit_integers).
+
+## ClickHouse client API overview
+
+### Query
+
+Used for most statements that can have a response, such as `SELECT`, or for sending DDLs such as `CREATE TABLE`. For data insertion, please consider using the dedicated method `insert` which is described next.
+
+```ts
+interface QueryParams {
+  // Query to execute that might return some data
+  // IMPORTANT: do not specify the FORMAT clause here
+  // use `format` param instead.
+  query: string
+  // Desired OUTPUT data format to be appended the query as ` FORMAT $format`
+  // It is extracted to the separate param
+  // as we may need to apply some additional request logic
+  // based on the desired format
+  format?: DataFormat
+  // ClickHouse settings that can be applied on query level, such as `date_time_input_format`
+  clickhouse_settings?: ClickHouseSettings
+  // See https://clickhouse.com/docs/en/interfaces/http/#cli-queries-with-parameters for more details
+  // IMPORTANT: that you should not prefix it with `param_` here, client will do that for you
+  query_params?: Record<string, unknown>
+  // A query can be aborted using this standard AbortSignal instance
+  // Please refer to the usage examples for more details
+  abort_signal?: AbortSignal
+}
+
+class ClickHouseClient {
+  query(params: QueryParams): Promise<Rows> {}
+  // ...
+}
+```
+
+#### Rows response abstraction
+
+Provides several convenience methods for data processing in your application.
+
+```ts
+class Rows {
+  // Consume the entire stream and get the contents as a string
+  // Can be used with any DataFormat
+  // Should be called only once
+  text(): Promise<string> {}
+  // Consume the entire stream and get the contents as a JS object
+  // Can be used only with JSON formats
+  // Should be called only once
+  json<T = { data: unknown[] }>(): Promise<T> {}
+  // Returns a readable stream of Row instances for responses that can be streamed (i.e. all except JSON)
+  // Should be called only once
+  // NB: if called for the second time, the second stream will be just empty
+  stream(): Stream.Readable {}
+}
+
+class Row {
+  // Get the content of the row as plain string
+  text(): string {}
+  // Get the content of the row as a JS object
+  json<T>(): T {}
+}
+```
+
+### Insert
+
+Primary method for data insertion. It can work with both `Stream.Readable` (all formats except `JSON`) and plain `Array<T>` (`JSON*` family formats only). It is recommended to avoid arrays in case of large inserts to reduce application memory consumption, and consider streaming for most of the use cases.
+
+Should be awaited, but it does not return anything.
+
+```ts
+interface InsertParams<T> {
+  // Table name to insert the data into
+  table: string
+  // Stream.Readable will work for all formats except JSON
+  // Array will work only for JSON* formats
+  values: ReadonlyArray<T> | Stream.Readable
+  // Desired INPUT data format to be appended the statement as ` FORMAT $format`
+  // It is extracted to the separate param
+  // as we may need to apply some additional request logic
+  // based on the desired format
+  format?: DataFormat
+  // ClickHouse settings that can be applied on statement level, such as `insert_quorum`
+  clickhouse_settings?: ClickHouseSettings
+  // See https://clickhouse.com/docs/en/interfaces/http/#cli-queries-with-parameters for more details
+  // IMPORTANT: that you should not prefix it with `param_` here, client will do that for you
+  query_params?: Record<string, unknown>
+  // A query can be aborted using this standard AbortSignal instance
+  // Please refer to the usage examples for more details
+  abort_signal?: AbortSignal
+}
+
+class ClickHouseClient {
+  insert(params: InsertParams): Promise<void> {}
+  // ...
+}
+```
+
+### Exec
+
+Can be used for statements that do not have any output, when format clause is not applicable, or when you are not interested in the response at all. An example of such statement can be `CREATE TABLE` or `ALTER TABLE`.
+
+Should be awaited.
+
+Optionally, it returns a readable stream that can be consumed on the application side if you need it for some reason. But in that case you might consider using `query` instead.
+
+```ts
+interface ExecParams {
+  // Statement to execute
+  query: string
+  // ClickHouse settings that can be applied on query level, such as `date_time_input_format`
+  clickhouse_settings?: ClickHouseSettings
+  // See https://clickhouse.com/docs/en/interfaces/http/#cli-queries-with-parameters for more details
+  // IMPORTANT: that you should not prefix it with `param_` here, client will do that for you
+  query_params?: Record<string, unknown>
+  // A query can be aborted using this standard AbortSignal instance
+  // Please refer to the usage examples for more details
+  abort_signal?: AbortSignal
+}
+
+class ClickHouseClient {
+  exec(params: ExecParams): Promise<Stream.Readable> {}
+  // ...
+}
+```
+
+### Ping
+
+Might be useful to check the connectivity to the ClickHouse server. Returns `true` if server can be reached. Can throw a standard Node.js Error such as `ECONNREFUSED`.
+
+```ts
+class ClickHouseClient {
+  ping(): Promise<boolean> {}
+  // ...
+}
+```
+
+### Close
+
+Use it in your application graceful shutdown handler, as it properly closes all the open connections.
+
+```ts
+class ClickHouseClient {
+  close(): Promise<void> {}
+  // ...
+}
+```
+
 ## Usage examples
+
+### Create a table (single node)
+
+```ts
+await client.exec({
+  query: `
+    CREATE TABLE foobar
+    (id UInt64, name String)
+    ENGINE MergeTree()
+    ORDER BY (id)
+  `,
+  // Can be omitted with the single node deployments
+  // Recommended for cluster usage to avoid situations
+  // where a query processing error occurred after the response code
+  // and HTTP headers were sent to the client.
+  // See https://clickhouse.com/docs/en/interfaces/http/#response-buffering
+  clickhouse_settings: {
+    wait_end_of_query: 1,
+  },
+})
+```
+
+### Create a table (local cluster)
+
+```ts
+await client.exec({
+  query: `
+    CREATE TABLE foobar ON CLUSTER '{cluster}'
+    (id UInt64, name String)
+    ENGINE ReplicatedMergeTree(
+      '/clickhouse/{cluster}/tables/{database}/{table}/{shard}',
+      '{replica}'
+    )
+    ORDER BY (id)
+  `,
+  // Recommended for cluster usage to avoid situations
+  // where a query processing error occurred after the response code
+  // and HTTP headers were sent to the client.
+  // See https://clickhouse.com/docs/en/interfaces/http/#response-buffering
+  clickhouse_settings: {
+    wait_end_of_query: 1,
+  },
+})
+```
+
+### Create a table (ClickHouse cloud)
+
+Note that `ENGINE` and `ON CLUSTER` clauses can be omitted entirely here.
+
+ClickHouse cloud will automatically use `ReplicatedMergeTree` with appropriate settings in this case.
+
+```ts
+await client.exec({
+  query: `
+    CREATE TABLE foobar
+    (id UInt64, name String)
+    ORDER BY (id)
+  `,
+  // Recommended for cluster usage to avoid situations
+  // where a query processing error occurred after the response code
+  // and HTTP headers were sent to the client.
+  // See https://clickhouse.com/docs/en/interfaces/http/#response-buffering
+  clickhouse_settings: {
+    wait_end_of_query: 1,
+  },
+})
+```
 
 ### Insert with array input (JSON\* family formats only)
 
@@ -329,7 +568,7 @@ const rows = await client.query({
   query: `SELECT * from ${tableName}`,
   format: 'JSONCompactEachRow',
 })
-for await (const row of rows.asStream()) {
+for await (const row of rows.stream()) {
   const data = row.json()
   // ... your code processing the data here
 }
@@ -348,6 +587,35 @@ const rows = await client.query({
 })
 const result = await rows.text()
 // result is '30\n'
+```
+
+### Query with custom ClickHouse settings
+
+```ts
+await client.insert({
+  table: tableName,
+  values: [
+    { id: 42, name: 'foo' },
+    { id: 42, name: 'bar' },
+  ],
+  format: 'JSONEachRow',
+  clickhouse_settings: { insert_quorum: '2' },
+})
+```
+
+### Abort query
+
+```ts
+import { AbortController } from 'node-abort-controller'
+
+const controller = new AbortController()
+const selectPromise = client.query({
+  query: 'SELECT sleep(3)',
+  format: 'CSV',
+  abort_signal: controller.signal as AbortSignal,
+})
+controller.abort()
+// selectPromise is now rejected with "The request was aborted" message
 ```
 
 ## Known limitations

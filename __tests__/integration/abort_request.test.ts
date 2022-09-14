@@ -61,7 +61,7 @@ describe('abort request', () => {
           abort_signal: controller.signal as AbortSignal,
         })
         .then(async (rows) => {
-          const stream = rows.asStream()
+          const stream = rows.stream()
           for await (const chunk of stream) {
             const [[number]] = chunk.json()
             // abort when reach number 3
@@ -84,7 +84,7 @@ describe('abort request', () => {
           format: 'JSONCompactEachRow',
         })
         .then(async function (rows) {
-          const stream = rows.asStream()
+          const stream = rows.stream()
           for await (const chunk of stream) {
             const [[number]] = chunk.json()
             // abort when reach number 3

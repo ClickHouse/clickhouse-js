@@ -6,7 +6,7 @@ import { type DataFormat, decode, validateStreamFormat } from './data_formatter'
 
 export class Rows {
   constructor(
-    private stream: Stream.Readable,
+    private _stream: Stream.Readable,
     private readonly format: DataFormat
   ) {}
 
@@ -17,11 +17,11 @@ export class Rows {
    * The method will throw if the underlying stream was already consumed
    * by calling the other methods
    */
-  async text() {
-    if (this.stream.readableEnded) {
+  async text(): Promise<string> {
+    if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
-    return (await getAsText(this.stream)).toString()
+    return (await getAsText(this._stream)).toString()
   }
 
   /**
@@ -32,7 +32,7 @@ export class Rows {
    * by calling the other methods
    */
   async json<T = { data: unknown[] }>(): Promise<T> {
-    if (this.stream.readableEnded) {
+    if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
     return decode(await this.text(), this.format)
@@ -46,18 +46,18 @@ export class Rows {
    * and if the underlying stream was already consumed
    * by calling the other methods
    */
-  asStream(): Stream.Readable {
+  stream(): Stream.Readable {
     // If the underlying stream has already ended by calling `text` or `json`,
     // Stream.pipeline will create a new empty stream
     // but without "readableEnded" flag set to true
-    if (this.stream.readableEnded) {
+    if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
 
     validateStreamFormat(this.format)
 
     return Stream.pipeline(
-      this.stream,
+      this._stream,
       // only JSON-based format are supported at the moment
       split((row: string) => new Row(row, 'JSON')),
       function pipelineCb(err) {
@@ -69,7 +69,7 @@ export class Rows {
   }
 
   close() {
-    this.stream.destroy()
+    this._stream.destroy()
   }
 }
 
@@ -82,7 +82,7 @@ export class Row {
   /**
    * Returns a string representation of a row.
    */
-  text() {
+  text(): string {
     return this.chunk
   }
 

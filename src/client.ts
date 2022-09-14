@@ -49,9 +49,9 @@ export interface ExecParams extends BaseParams {
   query: string
 }
 
-export interface InsertParams extends BaseParams {
+export interface InsertParams<T = unknown> extends BaseParams {
   table: string
-  values: ReadonlyArray<any> | Stream.Readable
+  values: ReadonlyArray<T> | Stream.Readable
   format?: DataFormat
 }
 
@@ -146,7 +146,7 @@ export class ClickHouseClient {
     })
   }
 
-  async insert(params: InsertParams): Promise<void> {
+  async insert<T>(params: InsertParams<T>): Promise<void> {
     const format = params.format || 'JSONCompactEachRow'
 
     validateInsertValues(params.values, format)
