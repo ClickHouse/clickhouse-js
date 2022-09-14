@@ -361,14 +361,6 @@ await client.exec({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-  // Can be omitted with the single node deployments
-  // Recommended for cluster usage to avoid situations
-  // where a query processing error occurred after the response code
-  // and HTTP headers were sent to the client.
-  // See https://clickhouse.com/docs/en/interfaces/http/#response-buffering
-  clickhouse_settings: {
-    wait_end_of_query: 1,
-  },
 })
 ```
 
