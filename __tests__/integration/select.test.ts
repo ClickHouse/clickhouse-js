@@ -70,7 +70,7 @@ describe('select', () => {
       // wrap in a func to avoid changing inner "this"
       await assertAlreadyConsumed$(() => rows.json())
       await assertAlreadyConsumed$(() => rows.text())
-      await assertAlreadyConsumed(() => rows.asStream())
+      await assertAlreadyConsumed(() => rows.stream())
     })
 
     it('should consume a text response only once', async () => {
@@ -82,7 +82,7 @@ describe('select', () => {
       // wrap in a func to avoid changing inner "this"
       await assertAlreadyConsumed$(() => rows.json())
       await assertAlreadyConsumed$(() => rows.text())
-      await assertAlreadyConsumed(() => rows.asStream())
+      await assertAlreadyConsumed(() => rows.stream())
     })
 
     it('should consume a stream response only once', async () => {
@@ -91,14 +91,14 @@ describe('select', () => {
         format: 'TabSeparated',
       })
       let result = ''
-      for await (const r of rows.asStream()) {
+      for await (const r of rows.stream()) {
         result += r.text()
       }
       expect(result).toEqual('0')
       // wrap in a func to avoid changing inner "this"
       await assertAlreadyConsumed$(() => rows.json())
       await assertAlreadyConsumed$(() => rows.text())
-      await assertAlreadyConsumed(() => rows.asStream())
+      await assertAlreadyConsumed(() => rows.stream())
     })
   })
 
@@ -328,7 +328,7 @@ describe('select', () => {
         format: 'JSON',
       })
       try {
-        expect(() => result.asStream()).toThrowError(
+        expect(() => result.stream()).toThrowError(
           'JSON format is not streamable'
         )
       } finally {
@@ -342,7 +342,7 @@ describe('select', () => {
         format: 'CSV',
       })
 
-      const stream = result.asStream()
+      const stream = result.stream()
 
       let last = null
       let i = 0
@@ -364,7 +364,7 @@ describe('select', () => {
           format: 'CSV',
         })
 
-        const rows = await rowsText(result.asStream())
+        const rows = await rowsText(result.stream())
 
         expect(rows).toEqual(['0', '1', '2', '3', '4'])
       })
@@ -375,7 +375,7 @@ describe('select', () => {
           format: 'TabSeparated',
         })
 
-        const rows = await rowsText(result.asStream())
+        const rows = await rowsText(result.stream())
 
         expect(rows).toEqual(['0', '1', '2', '3', '4'])
       })
@@ -388,7 +388,7 @@ describe('select', () => {
           format: 'JSONEachRow',
         })
 
-        const rows = await rowsValues(result.asStream())
+        const rows = await rowsValues(result.stream())
 
         expect(rows).toEqual([
           { number: '0' },
@@ -405,7 +405,7 @@ describe('select', () => {
           format: 'JSONStringsEachRow',
         })
 
-        const rows = await rowsValues(result.asStream())
+        const rows = await rowsValues(result.stream())
 
         expect(rows).toEqual([
           { number: '0' },
@@ -422,7 +422,7 @@ describe('select', () => {
           format: 'JSONCompactEachRow',
         })
 
-        const rows = await rowsValues(result.asStream())
+        const rows = await rowsValues(result.stream())
 
         expect(rows).toEqual([['0'], ['1'], ['2'], ['3'], ['4']])
       })
@@ -433,7 +433,7 @@ describe('select', () => {
           format: 'JSONCompactEachRowWithNames',
         })
 
-        const rows = await rowsValues(result.asStream())
+        const rows = await rowsValues(result.stream())
 
         expect(rows).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
       })
@@ -444,7 +444,7 @@ describe('select', () => {
           format: 'JSONCompactEachRowWithNamesAndTypes',
         })
 
-        const rows = await rowsValues(result.asStream())
+        const rows = await rowsValues(result.stream())
 
         expect(rows).toEqual([
           ['number'],
@@ -463,7 +463,7 @@ describe('select', () => {
           format: 'JSONCompactStringsEachRowWithNames',
         })
 
-        const rows = await rowsValues(result.asStream())
+        const rows = await rowsValues(result.stream())
 
         expect(rows).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
       })
@@ -474,7 +474,7 @@ describe('select', () => {
           format: 'JSONCompactStringsEachRowWithNamesAndTypes',
         })
 
-        const rows = await rowsValues(result.asStream())
+        const rows = await rowsValues(result.stream())
 
         expect(rows).toEqual([
           ['number'],

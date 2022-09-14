@@ -90,7 +90,7 @@ export class Table<S extends Shape> {
       format: 'JSONEachRow',
     })
 
-    const stream = rows.asStream()
+    const stream = rows.stream()
     async function* asyncGenerator() {
       for await (const row of stream) {
         const value = (row as Row).json() as unknown[]

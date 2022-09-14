@@ -25,7 +25,7 @@ describe('rows', () => {
 
   it('should consume the response as a stream of Row instances', async () => {
     const rows = makeRows()
-    const stream = rows.asStream()
+    const stream = rows.stream()
 
     expect(stream.readableEnded).toBeFalsy()
 
@@ -37,7 +37,7 @@ describe('rows', () => {
     expect(result).toEqual(expectedJson)
     expect(stream.readableEnded).toBeTruthy()
 
-    expect(() => rows.asStream()).toThrowError(err)
+    expect(() => rows.stream()).toThrowError(err)
     await expect(rows.json()).rejects.toThrowError(err)
     await expect(rows.text()).rejects.toThrowError(err)
   })

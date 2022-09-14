@@ -16,10 +16,6 @@ describe('retryOnFailure', () => {
     let result = 0
     setTimeout(() => {
       result = 42
-      // FIXME: setTimeout has typings of window.setTimeout & globals.setTimeout
-      //  remove when DOM lib is excluded from typings.
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
     }, 1000).unref()
     await expect(
       retryOnFailure(
