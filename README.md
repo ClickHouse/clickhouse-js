@@ -258,7 +258,7 @@ class Rows {
   // Consume the entire stream and get the contents as a JS object
   // Can be used only with JSON formats
   // Should be called only once
-  json<T = { data: unknown[] }>(): Promise<T> {}
+  json<T>(): Promise<T> {}
   // Returns a readable stream of Row instances for responses that can be streamed (i.e. all except JSON)
   // Should be called only once
   // NB: if called for the second time, the second stream will be just empty
