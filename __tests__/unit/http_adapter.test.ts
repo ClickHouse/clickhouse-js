@@ -270,7 +270,7 @@ describe('HttpAdapter', () => {
             decompress_response: true,
             compress_request: false,
           },
-          // max_open_connections: number;
+          max_open_connections: Infinity,
 
           username: '',
           password: '',
