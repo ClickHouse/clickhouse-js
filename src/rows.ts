@@ -31,7 +31,7 @@ export class Rows {
    * The method will throw if the underlying stream was already consumed
    * by calling the other methods
    */
-  async json<T = { data: unknown[] }>(): Promise<T> {
+  async json<T>(): Promise<T> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }

@@ -262,7 +262,7 @@ describe('HttpAdapter', () => {
     return new HttpAdapter(
       {
         ...{
-          host: new URL('http://localhost:8132'),
+          url: new URL('http://localhost:8132'),
 
           connect_timeout: 10_000,
           request_timeout: 30_000,
@@ -270,7 +270,7 @@ describe('HttpAdapter', () => {
             decompress_response: true,
             compress_request: false,
           },
-          // max_open_connections: number;
+          max_open_connections: Infinity,
 
           username: '',
           password: '',

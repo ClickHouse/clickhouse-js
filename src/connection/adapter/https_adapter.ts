@@ -10,6 +10,7 @@ export class HttpsAdapter extends BaseHttpAdapter implements Connection {
     const agent = new Https.Agent({
       keepAlive: true,
       timeout: config.request_timeout,
+      maxSockets: config.max_open_connections,
     })
     super(config, logger, agent)
   }
