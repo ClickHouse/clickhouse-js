@@ -55,11 +55,10 @@ export interface InsertParams extends BaseParams {
   format?: DataFormat
 }
 
-function validateConfig(config: NormalizedConfig): void {
-  const host = config.host
-  if (host.protocol !== 'http:' && host.protocol !== 'https:') {
+function validateConfig({ url }: NormalizedConfig): void {
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(
-      `Only http(s) protocol is supported, but given: [${host.protocol}]`
+      `Only http(s) protocol is supported, but given: [${url.protocol}]`
     )
   }
   // TODO add SSL validation
@@ -78,7 +77,7 @@ function normalizeConfig(
   loggingEnabled: boolean
 ) {
   return {
-    host: createUrl(config.host ?? 'http://localhost:8123'),
+    url: createUrl(config.host ?? 'http://localhost:8123'),
     connect_timeout: config.connect_timeout ?? 10_000,
     request_timeout: config.request_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? Infinity,

@@ -4,7 +4,7 @@ import { HttpAdapter, HttpsAdapter } from './adapter'
 import type { ClickHouseSettings } from '../settings'
 
 export interface ConnectionParams {
-  host: URL
+  url: URL
 
   connect_timeout: number
   request_timeout: number
@@ -40,16 +40,15 @@ export interface Connection {
 }
 
 export function createConnection(
-  config: ConnectionParams,
+  params: ConnectionParams,
   logger: Logger
 ): Connection {
   // TODO throw ClickHouseClient error
-  const url = new URL(config.host)
-  switch (url.protocol) {
+  switch (params.url.protocol) {
     case 'http:':
-      return new HttpAdapter(config, logger)
+      return new HttpAdapter(params, logger)
     case 'https:':
-      return new HttpsAdapter(config, logger)
+      return new HttpsAdapter(params, logger)
     default:
       throw new Error('Only HTTP(s) adapters are supported')
   }

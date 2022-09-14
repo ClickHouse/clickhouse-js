@@ -262,7 +262,7 @@ describe('HttpAdapter', () => {
     return new HttpAdapter(
       {
         ...{
-          host: new URL('http://localhost:8132'),
+          url: new URL('http://localhost:8132'),
 
           connect_timeout: 10_000,
           request_timeout: 30_000,

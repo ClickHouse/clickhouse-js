@@ -229,7 +229,7 @@ export abstract class BaseHttpAdapter implements Connection {
     // TODO add status code check
     const response = await this.request({
       method: 'GET',
-      url: transformUrl({ url: this.config.host, pathname: '/ping' }),
+      url: transformUrl({ url: this.config.url, pathname: '/ping' }),
     })
     response.destroy()
     return true
@@ -248,7 +248,7 @@ export abstract class BaseHttpAdapter implements Connection {
 
     return await this.request({
       method: 'POST',
-      url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
+      url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
       decompress_response: clickhouse_settings.enable_http_compression === 1,
@@ -264,7 +264,7 @@ export abstract class BaseHttpAdapter implements Connection {
 
     return await this.request({
       method: 'POST',
-      url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
+      url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
     })
@@ -280,7 +280,7 @@ export abstract class BaseHttpAdapter implements Connection {
 
     await this.request({
       method: 'POST',
-      url: transformUrl({ url: this.config.host, pathname: '/', searchParams }),
+      url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.values,
       abort_signal: params.abort_signal,
       compress_request: this.config.compression.compress_request,
