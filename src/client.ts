@@ -14,7 +14,7 @@ export interface ClickHouseClientConfigOptions {
   host?: string
   connect_timeout?: number
   request_timeout?: number
-  // max_open_connections?: number;
+  max_open_connections?: number
 
   compression?: {
     response?: boolean
@@ -81,7 +81,7 @@ function normalizeConfig(
     host: createUrl(config.host ?? 'http://localhost:8123'),
     connect_timeout: config.connect_timeout ?? 10_000,
     request_timeout: config.request_timeout ?? 300_000,
-    // max_open_connections: options.max_open_connections ?? 256,
+    max_open_connections: config.max_open_connections ?? Infinity,
     // tls: _config.tls,
     compression: {
       decompress_response: config.compression?.response ?? true,
