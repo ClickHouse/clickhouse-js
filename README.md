@@ -35,12 +35,16 @@ Currently, only HTTP(s) protocol is supported.
 A very basic connection to a single local ClickHouse instance with default settings (for example, if it is running as a Docker container as described in the [contribution guide](./CONTRIBUTING.md)):
 
 ```ts
+import { createClient } from '@clickhouse/client'
+
 const client = createClient()
 ```
 
 Basic HTTPS connection:
 
 ```ts
+import { createClient } from '@clickhouse/client'
+
 const client = createClient({
   host: `https://<YOUR_CLICKHOUSE_HOST>:8443`,
   password: '<YOUR_CLICKHOUSE_PASSWORD>',
@@ -51,6 +55,8 @@ const client = createClient({
 Using custom ClickHouse settings and forced HTTP compression (GZIP) for both request and response:
 
 ```ts
+import { createClient } from '@clickhouse/client'
+
 const client = createClient({
   host: `https://<YOUR_CLICKHOUSE_HOST>:8443`,
   password: '<YOUR_CLICKHOUSE_PASSWORD>',

@@ -3,7 +3,7 @@
     "target": "es2019",
     "module": "commonjs",
     "moduleResolution": "node",
-    "declaration": false,
+    "declaration": true,
     "pretty": true,
     "noEmitOnError": true,
     "strict": true,
@@ -17,7 +17,7 @@
     "skipLibCheck": false,
     "esModuleInterop": true,
     "importHelpers": true,
-    "outDir": "lib",
+    "outDir": "dist",
     "lib": ["esnext", "dom"],
     "types": ["node", "jest"]
   },

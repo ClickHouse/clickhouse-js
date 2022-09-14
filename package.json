@@ -1,11 +1,19 @@
 {
-  "name": "clickhouse-js",
+  "name": "@clickhouse/client",
   "version": "0.0.1",
-  "description": "The official js client for the ClickHouse DB",
-  "main": "index.js",
+  "description": "Official JS client for ClickHouse DB",
+  "license": "Apache-2.0",
+  "keywords": [
+    "clickhouse",
+    "sql",
+    "client"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
   "scripts": {
-    "build": "rm -rf dist; webpack --mode=development",
-    "build:all": "tsc --project tsconfig.dev.json",
+    "build": "rm -rf dist; tsc",
+    "build:all": "rm -rf dist; tsc --project tsconfig.dev.json",
     "typecheck": "tsc --project tsconfig.dev.json --noEmit",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint --fix . --ext .ts",
@@ -16,15 +24,11 @@
     "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud jest --reporters jest-silent-reporter --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
     "prepare": "husky install"
   },
-  "license": "Apache-2.0",
-  "keywords": [
-    "clickhouse",
-    "sql",
-    "client"
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
   ],
-  "engines": {
-    "node": ">=14"
-  },
   "dependencies": {
     "node-abort-controller": "^3.0.1",
     "split2": "^4.1.0"
