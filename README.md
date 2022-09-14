@@ -20,11 +20,13 @@ It is focused on data streaming for both inserts and selects using standard [Nod
 The client is tested with the following ClickHouse and Node.js versions:
 
 | Node.js | ClickHouse | Status |
-| ------- | ---------- | ------ |
+|---------|------------|--------|
 | 14.x    | 22.8       | ✔      |
 | 16.x    | 22.8       | ✔      |
+| 18.x    | 22.8       | ✔      |
 | 14.x    | 22.9       | ✔      |
 | 16.x    | 22.9       | ✔      |
+| 18.x    | 22.9       | ✔      |
 
 ## Connection
 
