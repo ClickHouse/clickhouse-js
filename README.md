@@ -530,7 +530,7 @@ const result = await rows.json<ResponseJSON<{ number: string }>>()
 /* result will look like
 
 {
-	"meta": [ { "name": "number", "type": "UInt64" } ],
+    "meta": [ { "name": "number", "type": "UInt64" } ],
     "data": [ { "number": "0"}, { "number": "1" } ],
     "rows": 2,
     "rows_before_limit_at_least": 2,
