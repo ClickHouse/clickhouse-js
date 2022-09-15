@@ -28,6 +28,12 @@ The client is tested with the following ClickHouse and Node.js versions:
 | 16.x    | 22.9       | ✔      |
 | 18.x    | 22.9       | ✔      |
 
+## Installation
+
+```bash
+npm i @clickhouse/client
+```
+
 ## Connection
 
 Currently, only HTTP(s) protocol is supported.
@@ -569,7 +575,7 @@ const rows = await client.query({
   format: 'JSONCompactEachRow',
 })
 for await (const row of rows.stream()) {
-  const data = row.json()
+  const data = (row as Row).json()
   // ... your code processing the data here
 }
 ```

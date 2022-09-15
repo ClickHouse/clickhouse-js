@@ -16,7 +16,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": false,
     "esModuleInterop": true,
-    "importHelpers": true,
+    "importHelpers": false,
     "outDir": "dist",
     "lib": ["esnext", "dom"],
     "types": ["node", "jest"]
