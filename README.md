@@ -28,6 +28,12 @@ The client is tested with the following ClickHouse and Node.js versions:
 | 16.x    | 22.9       | ✔      |
 | 18.x    | 22.9       | ✔      |
 
+## Installation
+
+```bash
+npm i @clickhouse/client
+```
+
 ## Connection
 
 Currently, only HTTP(s) protocol is supported.
@@ -35,12 +41,16 @@ Currently, only HTTP(s) protocol is supported.
 A very basic connection to a single local ClickHouse instance with default settings (for example, if it is running as a Docker container as described in the [contribution guide](./CONTRIBUTING.md)):
 
 ```ts
+import { createClient } from '@clickhouse/client'
+
 const client = createClient()
 ```
 
 Basic HTTPS connection:
 
 ```ts
+import { createClient } from '@clickhouse/client'
+
 const client = createClient({
   host: `https://<YOUR_CLICKHOUSE_HOST>:8443`,
   password: '<YOUR_CLICKHOUSE_PASSWORD>',
@@ -51,6 +61,8 @@ const client = createClient({
 Using custom ClickHouse settings and forced HTTP compression (GZIP) for both request and response:
 
 ```ts
+import { createClient } from '@clickhouse/client'
+
 const client = createClient({
   host: `https://<YOUR_CLICKHOUSE_HOST>:8443`,
   password: '<YOUR_CLICKHOUSE_PASSWORD>',
@@ -252,7 +264,7 @@ class Rows {
   // Consume the entire stream and get the contents as a JS object
   // Can be used only with JSON formats
   // Should be called only once
-  json<T = { data: unknown[] }>(): Promise<T> {}
+  json<T>(): Promise<T> {}
   // Returns a readable stream of Row instances for responses that can be streamed (i.e. all except JSON)
   // Should be called only once
   // NB: if called for the second time, the second stream will be just empty
@@ -563,7 +575,7 @@ const rows = await client.query({
   format: 'JSONCompactEachRow',
 })
 for await (const row of rows.stream()) {
-  const data = row.json()
+  const data = (row as Row).json()
   // ... your code processing the data here
 }
 ```

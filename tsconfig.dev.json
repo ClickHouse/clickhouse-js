@@ -9,6 +9,6 @@
   "compilerOptions": {
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "outDir": "build"
+    "outDir": "dist"
   }
 }

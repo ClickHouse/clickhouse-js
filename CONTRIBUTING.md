@@ -3,7 +3,7 @@ ClickHouse js client is an open-source project, and we welcome any contributions
 
 ### Set up environment
 You have installed:
-- a compatible LTS version of nodejs: `v14.x` or `v16.x`
+- a compatible LTS version of nodejs: `v14.x`, `v16.x` or `v18.x`
 - NPM >= `6.x`
 
 ### Create a fork of the repository and clone it
@@ -23,6 +23,14 @@ Whenever you add a new feature to the package or fix a bug, we strongly encourag
 ### Tooling
 We use [jest](https://jestjs.io/) as a test runner.
 All the testing scripts are run with `jest-silent-reporter`.
+
+### Type check and linting
+
+```bash
+npm run typecheck
+npm run lint:fix
+```
+We use [Husky](https://typicode.github.io/husky) for pre-commit hooks, so it will be executed before every commit.
 
 ### Running unit tests
 
