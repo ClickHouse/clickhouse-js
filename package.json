@@ -1,6 +1,6 @@
 {
   "name": "@clickhouse/client",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Official JS client for ClickHouse DB",
   "license": "Apache-2.0",
   "keywords": [
@@ -16,6 +16,7 @@
     "type": "git",
     "url": "https://github.com/ClickHouse/clickhouse-js.git"
   },
+  "homepage": "https://clickhouse.com",
   "scripts": {
     "build": "rm -rf dist; tsc",
     "build:all": "rm -rf dist; tsc --project tsconfig.dev.json",
