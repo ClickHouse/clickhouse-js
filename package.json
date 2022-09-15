@@ -36,7 +36,6 @@
     "dist"
   ],
   "dependencies": {
-    "@clickhouse/client": "^0.0.1",
     "node-abort-controller": "^3.0.1",
     "split2": "^4.1.0"
   },
