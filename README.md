@@ -20,7 +20,7 @@ It is focused on data streaming for both inserts and selects using standard [Nod
 The client is tested with the following ClickHouse and Node.js versions:
 
 | Node.js | ClickHouse | Status |
-|---------|------------|--------|
+| ------- | ---------- | ------ |
 | 14.x    | 22.8       | ✔      |
 | 16.x    | 22.8       | ✔      |
 | 18.x    | 22.8       | ✔      |
@@ -148,8 +148,8 @@ See also:
 ## Supported formats
 
 | Format                                     | Input (array) | Input (stream) | Output (JSON) | Output (text) |
-|--------------------------------------------|---------------|----------------|---------------|---------------|
-| JSON                                       | ❌             | ❌              | ✔️            | ✔️            |
+| ------------------------------------------ | ------------- | -------------- | ------------- | ------------- |
+| JSON                                       | ❌            | ❌             | ✔️            | ✔️            |
 | JSONEachRow                                | ✔️            | ✔️             | ✔️            | ✔️            |
 | JSONStringsEachRow                         | ✔️            | ✔️             | ✔️            | ✔️            |
 | JSONCompactEachRow                         | ✔️            | ✔️             | ✔️            | ✔️            |
@@ -158,49 +158,49 @@ See also:
 | JSONCompactEachRowWithNamesAndTypes        | ✔️            | ✔️             | ✔️            | ✔️            |
 | JSONCompactStringsEachRowWithNames         | ✔️            | ✔️             | ✔️            | ✔️            |
 | JSONCompactStringsEachRowWithNamesAndTypes | ✔️            | ✔️             | ✔️            | ✔️            |
-| CSV                                        | ❌             | ✔️             | ❌             | ✔️            |
-| CSVWithNames                               | ❌             | ✔️             | ❌             | ✔️            |
-| CSVWithNamesAndTypes                       | ❌             | ✔️             | ❌             | ✔️            |
-| TabSeparated                               | ❌             | ✔️             | ❌             | ✔️            |
-| TabSeparatedRaw                            | ❌             | ✔️             | ❌             | ✔️            |
-| TabSeparatedWithNames                      | ❌             | ✔️             | ❌             | ✔️            |
-| TabSeparatedWithNamesAndTypes              | ❌             | ✔️             | ❌             | ✔️            |
-| CustomSeparated                            | ❌             | ✔️             | ❌             | ✔️            |
-| CustomSeparatedWithNames                   | ❌             | ✔️             | ❌             | ✔️            |
-| CustomSeparatedWithNamesAndTypes           | ❌             | ✔️             | ❌             | ✔️            |
+| CSV                                        | ❌            | ✔️             | ❌            | ✔️            |
+| CSVWithNames                               | ❌            | ✔️             | ❌            | ✔️            |
+| CSVWithNamesAndTypes                       | ❌            | ✔️             | ❌            | ✔️            |
+| TabSeparated                               | ❌            | ✔️             | ❌            | ✔️            |
+| TabSeparatedRaw                            | ❌            | ✔️             | ❌            | ✔️            |
+| TabSeparatedWithNames                      | ❌            | ✔️             | ❌            | ✔️            |
+| TabSeparatedWithNamesAndTypes              | ❌            | ✔️             | ❌            | ✔️            |
+| CustomSeparated                            | ❌            | ✔️             | ❌            | ✔️            |
+| CustomSeparatedWithNames                   | ❌            | ✔️             | ❌            | ✔️            |
+| CustomSeparatedWithNamesAndTypes           | ❌            | ✔️             | ❌            | ✔️            |
 
 The entire list of ClickHouse input and output formats is available [here](https://clickhouse.com/docs/en/interfaces/formats).
 
 ## Supported ClickHouse data types
 
-| Type           | Status         | JS type                               |
-|----------------|----------------|---------------------------------------|
-| UInt8/16/32    | ✔️             | number                                |
+| Type           | Status          | JS type                               |
+| -------------- | --------------- | ------------------------------------- |
+| UInt8/16/32    | ✔️              | number                                |
 | UInt64/128/256 | ✔️❗- see below | string                                |
-| Int8/16/32     | ✔️             | number                                |
+| Int8/16/32     | ✔️              | number                                |
 | Int64/128/256  | ✔️❗- see below | string                                |
-| Float32/64     | ✔️             | number                                |
+| Float32/64     | ✔️              | number                                |
 | Decimal        | ✔️❗- see below | number                                |
-| Boolean        | ✔️             | boolean                               |
-| String         | ✔️             | string                                |
-| FixedString    | ✔️             | string                                |
-| UUID           | ✔️             | string                                |
+| Boolean        | ✔️              | boolean                               |
+| String         | ✔️              | string                                |
+| FixedString    | ✔️              | string                                |
+| UUID           | ✔️              | string                                |
 | Date32/64      | ✔️❗- see below | string                                |
 | DateTime32/64  | ✔️❗- see below | string                                |
-| Enum           | ✔️             | string                                |
-| LowCardinality | ✔️             | string                                |
-| Array(T)       | ✔️             | Array\<JS type for T>                 |
-| JSON           | ✔️             | object                                |
+| Enum           | ✔️              | string                                |
+| LowCardinality | ✔️              | string                                |
+| Array(T)       | ✔️              | Array\<JS type for T>                 |
+| JSON           | ✔️              | object                                |
 | Nested         | ❌              | -                                     |
-| Tuple          | ✔️             | Tuple                                 |
-| Nullable(T)    | ✔️             | JS type for T or null                 |
-| IPv4           | ✔️             | string                                |
-| IPv6           | ✔️             | string                                |
-| Point          | ✔️             | [ number, number ]                    |
-| Ring           | ✔️             | Array\<Point>                         |
-| Polygon        | ✔️             | Array\<Ring>                          |
-| MultiPolygon   | ✔️             | Array\<Polygon>                       |
-| Map(K, V)      | ✔️             | Record\<JS type for K, JS type for V> |
+| Tuple          | ✔️              | Tuple                                 |
+| Nullable(T)    | ✔️              | JS type for T or null                 |
+| IPv4           | ✔️              | string                                |
+| IPv6           | ✔️              | string                                |
+| Point          | ✔️              | [ number, number ]                    |
+| Ring           | ✔️              | Array\<Point>                         |
+| Polygon        | ✔️              | Array\<Ring>                          |
+| MultiPolygon   | ✔️              | Array\<Polygon>                       |
+| Map(K, V)      | ✔️              | Record\<JS type for K, JS type for V> |
 
 The entire list of supported ClickHouse formats is available [here](https://clickhouse.com/docs/en/sql-reference/data-types/).
 
@@ -454,21 +454,47 @@ await client.insert({
 
 ### Insert with stream input (any format except JSON, flowing stream)
 
+An example program that uses a single insert stream to periodically push the data:
+
 ```ts
-const stream = new Stream.Readable({
-  objectMode: true, // required for JSON* family formats
-  read() {
-    /* stub */
-  },
-})
-// ... your (async) code pushing the values into the stream...
-await client.insert({
-  table: tableName,
-  values: stream,
-  format: 'JSONEachRow', // or any other desired JSON* format
-})
-// close the stream when finished by pushing a null value there
-stream.push(null)
+;(async () => {
+  const stream = new Stream.Readable({
+    objectMode: true, // required for JSON* family formats
+    read() {
+      //
+    },
+  })
+  // note that we do not await the promise yet
+  const insertPromise = client.insert({
+    table: 'mytable',
+    values: stream,
+    format: 'JSONEachRow',
+  }).then(() => console.info('Data ingestion is finished'))
+
+  // interval just for example purposes
+  const timer = setInterval(fetchAndStore(stream), 5000)
+
+  async function cleanup() {
+    clearInterval(timer)
+    // close the stream
+    stream.push(null)
+    // when the stream is closed, the insert stream can be awaited
+    await insertPromise
+    await client.close()
+    process.exit(0)
+  }
+  process.on('SIGINT', cleanup)
+  process.on('SIGTERM', cleanup)
+})()
+
+function fetchAndStore(stream: Stream.Readable) {
+  return async () => {
+    await fetch('https://my-example-api.com/api/v1/some-data')
+      .then((resp) => resp.json())
+      .then((data) => stream.push(data))
+      .catch((e) => console.error(e))
+  }
+}
 ```
 
 ### Insert with stream input ("raw" formats like CSV* / TabSeparated* / CustomSeparated\*, stream is created out of an array)
@@ -486,21 +512,48 @@ await client.insert({
 
 ### Insert with stream input ("raw" formats like CSV* / TabSeparated* / CustomSeparated\*, flowing stream)
 
+Raw format flowing stream insertion should be similar to JSON* one,
+with an exception that the Readable should have `objectMode` set to `false`.
+
 ```ts
-const stream = new Stream.Readable({
-  objectMode: false, // required for "raw" family formats
-  read() {
-    /* stub */
-  },
-})
-// ... your (async) code pushing the values into the stream...
-await client.insert({
-  table: tableName,
-  values: stream,
-  format: 'TabSeparated', // or any other desired "raw" format
-})
-// close the stream when finished by pushing a null value there
-stream.push(null)
+;(async () => {
+  const stream = new Stream.Readable({
+    objectMode: false, // required for "raw" family formats
+    read() {
+      //
+    },
+  })
+  // note that we do not await the promise yet
+  const insertPromise = client.insert({
+    table: 'mytable',
+    values: stream,
+    format: 'CSV',
+  }).then(() => console.info('Data ingestion is finished'))
+
+  // interval just for example purposes
+  const timer = setInterval(fetchAndStore(stream), 5000)
+
+  async function cleanup() {
+    clearInterval(timer)
+    // close the stream
+    stream.push(null)
+    // when the stream is closed, the insert stream can be awaited
+    await insertPromise
+    await client.close()
+    process.exit(0)
+  }
+  process.on('SIGINT', cleanup)
+  process.on('SIGTERM', cleanup)
+})()
+
+function fetchAndStore(stream: Stream.Readable) {
+  return async () => {
+    await fetch('https://my-example-api.com/api/v1/some-data-in-csv')
+      .then((resp) => resp.text()) // assume we get some CSV lines here
+      .then((data) => stream.push(data))
+      .catch((e) => console.error(e))
+  }
+}
 ```
 
 ### Inserting a file (for example, CSV)
