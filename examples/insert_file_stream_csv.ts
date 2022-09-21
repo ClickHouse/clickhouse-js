@@ -1,7 +1,6 @@
 import { createClient } from '@clickhouse/client'
 import Path from 'path'
 import Fs from 'fs'
-import split from 'split2'
 
 void (async () => {
   const client = createClient()
