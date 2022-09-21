@@ -4,9 +4,7 @@ import { createClient } from '@clickhouse/client'
 void (async () => {
   const client = createClient({
     host: process.env['CLICKHOUSE_HOST'],
-    username: process.env['CLICKHOUSE_USERNAME'],
     password: process.env['CLICKHOUSE_PASSWORD'],
-    database: process.env['CLICKHOUSE_DATABASE'],
   })
   // Note that ENGINE and ON CLUSTER clauses can be omitted entirely here.
   // ClickHouse cloud will automatically use ReplicatedMergeTree

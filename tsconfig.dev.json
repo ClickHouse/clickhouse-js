@@ -14,5 +14,8 @@
     "paths": {
       "@clickhouse/client": ["./src/index.ts"]
     }
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
   }
 }

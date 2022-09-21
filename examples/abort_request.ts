@@ -9,7 +9,12 @@ void (async () => {
       format: 'CSV',
       abort_signal: controller.signal as AbortSignal,
     })
-    .catch((e) => console.error('Select was aborted', e))
+    .catch((e) => {
+      console.info('Select was aborted')
+      console.info('This is the underlying error message')
+      console.info('------------------------------------')
+      console.error(e)
+    })
   controller.abort()
   await selectPromise
   await client.close()
