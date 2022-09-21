@@ -9,6 +9,10 @@
   "compilerOptions": {
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@clickhouse/client": ["./src/index.ts"]
+    }
   }
 }
