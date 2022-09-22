@@ -365,7 +365,7 @@ class ClickHouseClient {
 
 ## Usage examples
 
-You can find sample code in [examples](./examples) folder.
+You can find code samples in the [examples](./examples) folder.
 
 See also:
 
