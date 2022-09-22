@@ -1,10 +1,9 @@
 import { createClient } from '@clickhouse/client'
 
-// ClickHouse cloud - a specific CREATE TABLE syntax is allowed
 void (async () => {
   const client = createClient({
-    host: process.env['CLICKHOUSE_HOST'],
-    password: process.env['CLICKHOUSE_PASSWORD'],
+    host: getFromEnv('CLICKHOUSE_HOST'),
+    password: getFromEnv('CLICKHOUSE_PASSWORD'),
   })
   // Note that ENGINE and ON CLUSTER clauses can be omitted entirely here.
   // ClickHouse cloud will automatically use ReplicatedMergeTree
@@ -25,3 +24,11 @@ void (async () => {
   })
   await client.close()
 })()
+
+function getFromEnv(key: string) {
+  if (process.env[key]) {
+    return process.env[key]
+  }
+  console.error(`${key} environment variable should be set`)
+  process.exit(1)
+}
