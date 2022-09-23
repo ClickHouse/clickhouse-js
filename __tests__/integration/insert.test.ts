@@ -18,11 +18,42 @@ describe('insert', () => {
     await client.close()
   })
 
-  it('inserts values as an array in a table', async () => {
+  it('inserts values using JSON format', async () => {
     await client.insert({
       table: tableName,
-      values: jsonValues,
-      format: 'JSONEachRow',
+      values: {
+        meta: [
+          {
+            name: 'id',
+            type: 'UInt64',
+          },
+          {
+            name: 'name',
+            type: 'String',
+          },
+          {
+            name: 'sku',
+            type: 'Array(UInt8)',
+          },
+        ],
+        data: jsonValues,
+      },
+      format: 'JSON',
+    })
+    await assertJsonValues(client, tableName)
+  })
+
+  it('inserts values using JSONObjectEachRow format', async () => {
+    await client.insert({
+      table: tableName,
+      values: {
+        a: { id: '42', name: 'hello', sku: [0, 1] },
+        b: { id: '43', name: 'world', sku: [2, 3] },
+        c: { id: '44', name: 'foo', sku: [3, 4] },
+        d: { id: '45', name: 'bar', sku: [4, 5] },
+        e: { id: '46', name: 'baz', sku: [6, 7] },
+      },
+      format: 'JSONObjectEachRow',
     })
     await assertJsonValues(client, tableName)
   })
