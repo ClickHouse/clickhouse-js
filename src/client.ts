@@ -9,7 +9,6 @@ import {
 } from './data_formatter'
 import { Rows } from './rows'
 import type { ClickHouseSettings } from './settings'
-import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 
 export interface ClickHouseClientConfigOptions {
   host?: string
@@ -50,15 +49,9 @@ export interface ExecParams extends BaseParams {
   query: string
 }
 
-type InsertValues<T> =
-  | ReadonlyArray<T>
-  | Stream.Readable
-  | InputJSON<T>
-  | InputJSONObjectEachRow<T>
-
 export interface InsertParams<T = unknown> extends BaseParams {
   table: string
-  values: InsertValues<T>
+  values: ReadonlyArray<T> | Stream.Readable
   format?: DataFormat
 }
 
@@ -188,18 +181,13 @@ function removeSemi(query: string) {
   return query
 }
 
-export function validateInsertValues<T>(
-  values: InsertValues<T>,
+export function validateInsertValues(
+  values: ReadonlyArray<any> | Stream.Readable,
   format: DataFormat
 ): void {
-  if (
-    !Array.isArray(values) &&
-    !isStream(values) &&
-    typeof values !== 'object'
-  ) {
+  if (Array.isArray(values) === false && isStream(values) === false) {
     throw new Error(
-      'Insert expected "values" to be an array, a stream of values or a JSON object, ' +
-        `got: ${typeof values}`
+      'Insert expected "values" to be an array or a stream of values.'
     )
   }
 
@@ -227,8 +215,8 @@ export function validateInsertValues<T>(
  * @param values a set of values to send to ClickHouse.
  * @param format a format to encode value to.
  */
-function encodeValues<T>(
-  values: InsertValues<T>,
+function encodeValues(
+  values: ReadonlyArray<any> | Stream.Readable,
   format: DataFormat
 ): string | Stream.Readable {
   if (isStream(values)) {
@@ -244,16 +232,7 @@ function encodeValues<T>(
     )
   }
   // JSON* arrays
-  if (Array.isArray(values)) {
-    return values.map((value) => encodeJSON(value, format)).join('')
-  }
-  // JSON & JSONObjectEachRow format input
-  if (typeof values === 'object') {
-    return encodeJSON(values, format)
-  }
-  throw new Error(
-    `Cannot encode values of type ${typeof values} with ${format} format`
-  )
+  return values.map((value) => encodeJSON(value, format)).join('')
 }
 
 export function createClient(

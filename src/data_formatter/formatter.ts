@@ -8,11 +8,7 @@ const streamableJSONFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
 ] as const
-const supportedJSONFormats = [
-  'JSON',
-  'JSONObjectEachRow',
-  ...streamableJSONFormats,
-] as const
+const supportedJSONFormats = ['JSON', ...streamableJSONFormats] as const
 const supportedRawFormats = [
   'CSV',
   'CSVWithNames',
@@ -79,7 +75,7 @@ export function decode(text: string, format: DataFormat): any {
       .map((l) => decode(l, 'JSON'))
   }
   if (isSupportedRawFormat(format)) {
-    throw new Error(`Cannot decode ${format} to JSON`)
+    throw new Error(`cannot decode ${format} to JSON`)
   }
   throw new Error(`The client does not support [${format}] format decoding.`)
 }
@@ -91,7 +87,7 @@ export function decode(text: string, format: DataFormat): any {
  * @returns string
  */
 export function encodeJSON(value: any, format: DataFormat): string {
-  if ((supportedJSONFormats as readonly string[]).includes(format)) {
+  if ((streamableJSONFormats as readonly string[]).includes(format)) {
     return JSON.stringify(value) + '\n'
   }
   throw new Error(
