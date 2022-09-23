@@ -82,9 +82,20 @@ jobs:
         run: |
           npm install
 
+      # Will also run unit tests, but that's almost free.
+      # Otherwise, we need to set up a separate job,
+      # which will also run the integration tests for the second time,
+      # and that's more time-consuming.
       - name: Run integration tests
         run: |
-          npm run test:integration
+          npm t -- --coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage
+          path: coverage
+          retention-days: 1
 
   integration-tests-local-cluster:
     needs: build
@@ -145,3 +156,17 @@ jobs:
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
         run: |
           npm run test:integration:cloud
+
+  upload-coverage:
+    needs:
+      - integration-tests-local-single-node
+      - integration-tests-local-cluster
+      - integration-tests-cloud
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
