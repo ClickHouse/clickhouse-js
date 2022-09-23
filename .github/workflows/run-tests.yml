@@ -158,7 +158,7 @@ jobs:
           npm run test:integration:cloud
 
   upload-coverage-and-badge:
-    if: github.ref == 'refs/heads/main'
+#    if: github.ref == 'refs/heads/main'
     needs:
       - integration-tests-local-single-node
       - integration-tests-local-cluster
@@ -184,7 +184,7 @@ jobs:
         run: npx make-coverage-badge
       - name: Make "Coverage" lowercase for style points
         run: sed -i 's/Coverage/coverage/g' coverage/badge.svg
-      - uses: EndBug/add-and-commit@v9
+      - uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          add: 'coverage'
-          message: '[skip ci] Update coverage report'
+          file_pattern: 'coverage'
+          commit_message: '[skip ci] Update coverage report'
