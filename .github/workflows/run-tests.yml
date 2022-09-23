@@ -158,7 +158,7 @@ jobs:
           npm run test:integration:cloud
 
   upload-coverage-and-badge:
-#    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     needs:
       - integration-tests-local-single-node
       - integration-tests-local-cluster
