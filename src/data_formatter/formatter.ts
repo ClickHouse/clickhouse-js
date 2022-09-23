@@ -95,6 +95,6 @@ export function encodeJSON(value: any, format: DataFormat): string {
     return JSON.stringify(value) + '\n'
   }
   throw new Error(
-    `The client does not support streaming JSON encoding in [${format}] format.`
+    `The client does not support JSON encoding in [${format}] format.`
   )
 }
