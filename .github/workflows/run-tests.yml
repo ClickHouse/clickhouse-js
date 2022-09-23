@@ -181,6 +181,8 @@ jobs:
         run: npm i -G make-coverage-badge
       - name: Generate badge
         run: npx make-coverage-badge
+      - name: Make "Coverage" lowercase for style points
+        run: sed -i 's/Coverage/coverage/g' coverage/badge.svg
       - uses: EndBug/add-and-commit@v9
         if: github.ref == 'refs/heads/main'
         with:
