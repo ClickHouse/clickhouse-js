@@ -157,19 +157,31 @@ jobs:
 #        run: |
 #          npm run test:integration:cloud
 
-  upload-coverage:
+  upload-coverage-and-badge:
     needs:
       - integration-tests-local-single-node
 #      - integration-tests-local-cluster
 #      - integration-tests-cloud
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
       - name: Download coverage report
         uses: actions/download-artifact@v3
         with:
           name: coverage
           path: coverage
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Install packages
+        run: npm i -G make-coverage-badge
+      - name: Generate badge
+        run: npx make-coverage-badge
+      - uses: EndBug/add-and-commit@v9
         with:
-          directory: coverage
+          add: 'coverage'
+          message: '[skip ci] Update coverage report'
