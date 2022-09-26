@@ -36,6 +36,7 @@
     "dist"
   ],
   "dependencies": {
+    "make-coverage-badge": "^1.2.0",
     "node-abort-controller": "^3.0.1",
     "split2": "^4.1.0"
   },
