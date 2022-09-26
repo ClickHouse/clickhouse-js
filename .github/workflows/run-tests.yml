@@ -86,7 +86,7 @@ jobs:
       # Otherwise, we need to set up a separate job,
       # which will also run the integration tests for the second time,
       # and that's more time-consuming.
-      - name: Run integration tests
+      - name: Run tests
         run: |
           npm t -- --coverage
 
