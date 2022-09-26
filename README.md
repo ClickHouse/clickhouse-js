@@ -4,8 +4,8 @@
 </p>
 <br/>
 <p align="center">
-<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/run-tests.yml">
-<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/run-tests.yml/badge.svg?branch=main">
+<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml">
+<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml/badge.svg?branch=main">
 </a>
 <a href="http://htmlpreview.github.io/?https://github.com/ClickHouse/clickhouse-js/blob/main/coverage/lcov-report/index.html">
 <img src="./coverage/badge.svg">
