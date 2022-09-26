@@ -2,6 +2,15 @@ name: 'tests'
 
 on:
   workflow_dispatch:
+    inputs:
+      push-coverage-report:
+        type: choice
+        required: true
+        description: Push coverage
+        options:
+          - yes
+          - no
+        default: no
   push:
     branches:
       - main
@@ -28,7 +37,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [14, 16, 18]
+        node: [ 14, 16, 18 ]
     steps:
       - uses: actions/checkout@main
 
@@ -59,8 +68,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [14, 16, 18]
-        clickhouse: [head, latest]
+        node: [ 14, 16, 18 ]
+        clickhouse: [ head, latest ]
 
     steps:
       - uses: actions/checkout@main
@@ -103,8 +112,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [14, 16, 18]
-        clickhouse: [head, latest]
+        node: [ 14, 16, 18 ]
+        clickhouse: [ head, latest ]
 
     steps:
       - uses: actions/checkout@main
@@ -136,7 +145,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [14, 16, 18]
+        node: [ 14, 16, 18 ]
 
     steps:
       - uses: actions/checkout@main
@@ -158,7 +167,7 @@ jobs:
           npm run test:integration:cloud
 
   upload-coverage-and-badge:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event.inputs.push-coverage-report != 'no'
     needs:
       - integration-tests-local-single-node
       - integration-tests-local-cluster
