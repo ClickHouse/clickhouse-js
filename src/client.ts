@@ -49,7 +49,7 @@ export interface BaseParams {
   clickhouse_settings?: ClickHouseSettings
   /** Parameters for query binding. https://clickhouse.com/docs/en/interfaces/http/#cli-queries-with-parameters */
   query_params?: Record<string, unknown>
-  /** AbortSignal instance to cancel a request in progress. */
+  /** AbortSignal instance (using `node-abort-controller` package) to cancel a request in progress. */
   abort_signal?: AbortSignal
 }
 
