@@ -27,7 +27,7 @@
     "test:unit": "jest --reporters jest-silent-reporter --testMatch='**/__tests__/{unit,utils}/*.test.ts'",
     "test:integration": "jest --reporters jest-silent-reporter --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
     "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster jest --reporters jest-silent-reporter --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
-    "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud jest --reporters jest-silent-reporter --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
+    "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
     "prepare": "husky install"
   },
   "main": "dist/index.js",

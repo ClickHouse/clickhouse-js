@@ -301,9 +301,13 @@ export abstract class BaseHttpAdapter implements Connection {
     const duration = Date.now() - startTimestamp
 
     this.logger.debug(
-      `[http adapter] response: ${params.method} ${params.url.pathname}${
+      `[http adapter] request: ${params.method} ${params.url.pathname}${
         params.url.search ? ` ${params.url.search}` : ''
-      } ${response.statusCode} ${duration}ms`
+      } with ${
+        typeof params.body === 'string'
+          ? `\`${params.body}\` body`
+          : 'stream body'
+      }; response: status ${response.statusCode}, elapsed ${duration} ms`
     )
   }
 
