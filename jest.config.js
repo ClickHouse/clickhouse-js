@@ -7,4 +7,5 @@ module.exports = {
   testMatch: ['<rootDir>/__tests__/**/*.test.{js,mjs,ts,tsx}'],
   testTimeout: 30000,
   coverageReporters: ['json-summary'],
+  reporters: ['<rootDir>/jest.reporter.js'],
 }

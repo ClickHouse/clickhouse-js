@@ -215,6 +215,7 @@ describe('HttpAdapter', () => {
           /** stub */
         },
       }) as ClientRequest
+      request.getHeaders = () => ({})
       httpRequestStub.mockReturnValueOnce(request)
       return request
     }

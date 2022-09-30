@@ -5,12 +5,16 @@ import type { RetryOnFailureOptions } from '../utils/retry'
 
 describe('config', () => {
   let client: ClickHouseClient
-  let messages: string[] = []
+  let logs: {
+    message: string
+    err?: Error
+    args?: Record<string, unknown>
+  }[] = []
 
   afterEach(async () => {
     await client.close()
-    if (messages.length) {
-      messages = []
+    if (logs.length) {
+      logs = []
     }
   })
 
@@ -49,7 +53,13 @@ describe('config', () => {
       },
     })
     await client.ping()
-    expect(messages).toContainEqual(expect.stringContaining('GET /ping'))
+    expect(logs[0]).toEqual({
+      message: '[HTTP Adapter] Got a response from ClickHouse',
+      args: expect.objectContaining({
+        request_path: '/ping',
+        request_method: 'GET',
+      }),
+    })
   })
 
   it('should provide a custom logger implementation (but logs are disabled)', async () => {
@@ -60,7 +70,7 @@ describe('config', () => {
       },
     })
     await client.ping()
-    expect(messages).toHaveLength(0)
+    expect(logs).toHaveLength(0)
   })
 
   describe('max_open_connections', () => {
@@ -120,24 +130,24 @@ describe('config', () => {
 
   class TestLogger implements Logger {
     constructor(readonly enabled: boolean) {}
-    debug(message: string) {
+    debug(message: string, args?: Record<string, unknown>) {
       if (this.enabled) {
-        messages.push(message)
+        logs.push({ message, args })
       }
     }
-    info(message: string) {
+    info(message: string, args?: Record<string, unknown>) {
       if (this.enabled) {
-        messages.push(message)
+        logs.push({ message, args })
       }
     }
-    warning(message: string) {
+    warning(message: string, args?: Record<string, unknown>) {
       if (this.enabled) {
-        messages.push(message)
+        logs.push({ message, args })
       }
     }
-    error(message: string) {
+    error(message: string, err: Error, args?: Record<string, unknown>) {
       if (this.enabled) {
-        messages.push(message)
+        logs.push({ message, err, args })
       }
     }
   }

@@ -119,7 +119,7 @@ export abstract class BaseHttpAdapter implements Connection {
       const onResponse = async (
         _response: Http.IncomingMessage
       ): Promise<void> => {
-        this.logResponse(params, _response, start)
+        this.logResponse(request, params, _response, start)
 
         const decompressionResult = decompressResponse(_response)
 
@@ -294,21 +294,30 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   private logResponse(
+    request: Http.ClientRequest,
     params: RequestParams,
     response: Http.IncomingMessage,
     startTimestamp: number
   ) {
+    const getRequestHeaders = () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { authorization, ...headers } = request.getHeaders()
+      return headers
+    }
+    const getRequestBody = () => {
+      return typeof params.body === 'string' ? params.body : 'Stream'
+    }
     const duration = Date.now() - startTimestamp
-
-    this.logger.debug(
-      `[http adapter] request: ${params.method} ${params.url.pathname}${
-        params.url.search ? ` ${params.url.search}` : ''
-      } with ${
-        typeof params.body === 'string'
-          ? `\`${params.body}\` body`
-          : 'stream body'
-      }; response: status ${response.statusCode}, elapsed ${duration} ms`
-    )
+    this.logger.debug('[HTTP Adapter] Got a response from ClickHouse', {
+      request_method: params.method,
+      request_path: params.url.pathname,
+      request_params: params.url.search,
+      request_headers: getRequestHeaders(),
+      request_body: getRequestBody(),
+      response_status: response.statusCode,
+      response_headers: response.headers,
+      response_time_ms: duration,
+    })
   }
 
   protected getHeaders(params: RequestParams) {

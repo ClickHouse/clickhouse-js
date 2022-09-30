@@ -23,10 +23,10 @@
     "typecheck": "tsc --project tsconfig.dev.json --noEmit",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint --fix . --ext .ts",
-    "test": "jest --reporters jest-silent-reporter --testPathPattern=__tests__ --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
-    "test:unit": "jest --reporters jest-silent-reporter --testMatch='**/__tests__/{unit,utils}/*.test.ts'",
-    "test:integration": "jest --reporters jest-silent-reporter --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
-    "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster jest --reporters jest-silent-reporter --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
+    "test": "jest --testPathPattern=__tests__ --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
+    "test:unit": "jest --testMatch='**/__tests__/{unit,utils}/*.test.ts'",
+    "test:integration": "jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
+    "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
     "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
     "prepare": "husky install"
   },
@@ -40,6 +40,7 @@
     "split2": "^4.1.0"
   },
   "devDependencies": {
+    "@jest/reporters": "^29.1.2",
     "@types/jest": "^29.0.2",
     "@types/node": "^18.7.18",
     "@types/split2": "^3.2.1",
@@ -51,7 +52,6 @@
     "eslint-plugin-prettier": "^4.2.1",
     "husky": "^8.0.1",
     "jest": "^29.0.3",
-    "jest-silent-reporter": "^0.5.0",
     "lint-staged": "^13.0.3",
     "prettier": "2.7.1",
     "ts-jest": "^29.0.1",
