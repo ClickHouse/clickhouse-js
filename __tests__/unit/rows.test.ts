@@ -1,4 +1,6 @@
+import type { Row } from '../../src'
 import { Rows } from '../../src'
+import * as Stream from 'stream'
 import { Readable } from 'stream'
 
 describe('rows', () => {
@@ -23,34 +25,43 @@ describe('rows', () => {
     await expect(rows.text()).rejects.toThrowError(err)
   })
 
-  // it('should consume the response as a stream of Row instances', async () => {
-  //   const rows = makeRows()
-  //   const stream = rows.stream()
-  //
-  //   expect(stream.readableEnded).toBeFalsy()
-  //
-  //   const result = []
-  //   for await (const row of stream) {
-  //     result.push((row as Row).json())
-  //   }
-  //
-  //   expect(result).toEqual(expectedJson)
-  //   expect(stream.readableEnded).toBeTruthy()
-  //
-  //   expect(() => rows.stream()).toThrowError(err)
-  //   await expect(rows.json()).rejects.toThrowError(err)
-  //   await expect(rows.text()).rejects.toThrowError(err)
-  // })
-  //
-  // it('should be able to call Row.text and Row.json multiple times', async () => {
-  //   const chunk = '{"foo":"bar"}'
-  //   const obj = { foo: 'bar' }
-  //   const row = new Row(chunk, 'JSON')
-  //   expect(row.text()).toEqual(chunk)
-  //   expect(row.text()).toEqual(chunk)
-  //   expect(row.json()).toEqual(obj)
-  //   expect(row.json()).toEqual(obj)
-  // })
+  it('should consume the response as a stream of Row instances', async () => {
+    const rows = makeRows()
+    const stream = rows.stream()
+
+    const result = []
+    for await (const row of stream) {
+      result.push(row.json())
+    }
+
+    expect(result).toEqual(expectedJson)
+    expect((await stream.next()).done).toBeTruthy()
+
+    await expect(async () => {
+      for await (const r of rows.stream()) {
+        r.text()
+      }
+    }).rejects.toThrowError(err)
+    await expect(rows.json()).rejects.toThrowError(err)
+    await expect(rows.text()).rejects.toThrowError(err)
+  })
+
+  it('should be able to call Row.text and Row.json multiple times', async () => {
+    const rows = new Rows(
+      Stream.Readable.from([Buffer.from('{"foo":"bar"}\n')]),
+      'JSONEachRow'
+    )
+    const singleRows: Row[] = []
+    for await (const r of rows.stream()) {
+      singleRows.push(r)
+    }
+    expect(singleRows).toHaveLength(1)
+    const [row] = singleRows
+    expect(row.text()).toEqual('{"foo":"bar"}')
+    expect(row.text()).toEqual('{"foo":"bar"}')
+    expect(row.json()).toEqual({ foo: 'bar' })
+    expect(row.json()).toEqual({ foo: 'bar' })
+  })
 
   function makeRows() {
     return new Rows(

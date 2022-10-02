@@ -27,7 +27,10 @@ describe('schema select result', () => {
       .spyOn(client, 'query')
       .mockResolvedValueOnce(
         new Rows(
-          Readable.from(['{"valid":"json"}\n', 'invalid_json}\n']),
+          Readable.from([
+            Buffer.from('{"valid":"json"}\n'),
+            Buffer.from('invalid_json}\n'),
+          ]),
           'JSONEachRow'
         )
       )

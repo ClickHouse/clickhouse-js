@@ -50,20 +50,14 @@ describe('select', () => {
   })
 
   describe('consume the response only once', () => {
-    async function assertAlreadyConsumed$<T>(fn: () => Promise<T>) {
+    async function assertAlreadyConsumed<T>(fn: () => Promise<T>) {
       await expect(fn()).rejects.toMatchObject(
         expect.objectContaining({
           message: 'Stream has been already consumed',
         })
       )
     }
-    function assertAlreadyConsumed<T>(fn: () => T) {
-      expect(fn).toThrow(
-        expect.objectContaining({
-          message: 'Stream has been already consumed',
-        })
-      )
-    }
+
     it('should consume a JSON response only once', async () => {
       const rows = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
@@ -71,9 +65,13 @@ describe('select', () => {
       })
       expect(await rows.json()).toEqual([{ number: '0' }])
       // wrap in a func to avoid changing inner "this"
-      await assertAlreadyConsumed$(() => rows.json())
-      await assertAlreadyConsumed$(() => rows.text())
-      await assertAlreadyConsumed(() => rows.stream())
+      await assertAlreadyConsumed(() => rows.json())
+      await assertAlreadyConsumed(() => rows.text())
+      await assertAlreadyConsumed(async () => {
+        for await (const r of rows.stream()) {
+          r.text()
+        }
+      })
     })
 
     it('should consume a text response only once', async () => {
@@ -83,9 +81,13 @@ describe('select', () => {
       })
       expect(await rows.text()).toEqual('0\n')
       // wrap in a func to avoid changing inner "this"
-      await assertAlreadyConsumed$(() => rows.json())
-      await assertAlreadyConsumed$(() => rows.text())
-      await assertAlreadyConsumed(() => rows.stream())
+      await assertAlreadyConsumed(() => rows.json())
+      await assertAlreadyConsumed(() => rows.text())
+      await assertAlreadyConsumed(async () => {
+        for await (const r of rows.stream()) {
+          r.text()
+        }
+      })
     })
 
     it('should consume a stream response only once', async () => {
@@ -99,9 +101,13 @@ describe('select', () => {
       }
       expect(result).toEqual('0')
       // wrap in a func to avoid changing inner "this"
-      await assertAlreadyConsumed$(() => rows.json())
-      await assertAlreadyConsumed$(() => rows.text())
-      await assertAlreadyConsumed(() => rows.stream())
+      await assertAlreadyConsumed(() => rows.json())
+      await assertAlreadyConsumed(() => rows.text())
+      await assertAlreadyConsumed(async () => {
+        for await (const r of rows.stream()) {
+          r.text()
+        }
+      })
     })
   })
 
@@ -331,34 +337,13 @@ describe('select', () => {
         format: 'JSON',
       })
       try {
-        expect(() => result.stream()).toThrowError(
+        await expect(async () => result.stream().next()).rejects.toThrowError(
           'JSON format is not streamable'
         )
       } finally {
         result.close()
       }
     })
-
-    // it('can pause response stream', async () => {
-    //   const result = await client.query({
-    //     query: 'SELECT number FROM system.numbers LIMIT 10000',
-    //     format: 'CSV',
-    //   })
-    //
-    //   const stream = result.stream()
-    //
-    //   let last = null
-    //   let i = 0
-    //   for await (const chunk of stream) {
-    //     last = chunk.text()
-    //     i++
-    //     if (i % 1000 === 0) {
-    //       stream.pause()
-    //       setTimeout(() => stream.resume(), 100)
-    //     }
-    //   }
-    //   expect(last).toBe('9999')
-    // })
 
     describe('text()', () => {
       it('returns stream of rows in CSV format', async () => {

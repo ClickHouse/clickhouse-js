@@ -89,9 +89,7 @@ describe('abort request', () => {
             const [[number]] = chunk.json<[[string]]>()
             // abort when reach number 3
             if (number === '3') {
-              await stream.throw(new Error('boo')).then(() => {
-                //
-              })
+              await stream.return()
             }
           }
         })
