@@ -1,8 +1,9 @@
-import type Stream from 'stream'
 import { type ClickHouseClient, type ResponseJSON, type Row } from '../../src'
 import { createTestClient } from '../utils'
 
-async function rowsValues(stream: Stream.Readable): Promise<any[]> {
+async function rowsValues(
+  stream: AsyncGenerator<Row, unknown>
+): Promise<any[]> {
   const result: any[] = []
   for await (const chunk of stream) {
     result.push((chunk as Row).json())
@@ -10,7 +11,9 @@ async function rowsValues(stream: Stream.Readable): Promise<any[]> {
   return result
 }
 
-async function rowsText(stream: Stream.Readable): Promise<string[]> {
+async function rowsText(
+  stream: AsyncGenerator<Row, unknown>
+): Promise<string[]> {
   const result: string[] = []
   for await (const chunk of stream) {
     result.push((chunk as Row).text())
@@ -336,26 +339,26 @@ describe('select', () => {
       }
     })
 
-    it('can pause response stream', async () => {
-      const result = await client.query({
-        query: 'SELECT number FROM system.numbers LIMIT 10000',
-        format: 'CSV',
-      })
-
-      const stream = result.stream()
-
-      let last = null
-      let i = 0
-      for await (const chunk of stream) {
-        last = chunk.text()
-        i++
-        if (i % 1000 === 0) {
-          stream.pause()
-          setTimeout(() => stream.resume(), 100)
-        }
-      }
-      expect(last).toBe('9999')
-    })
+    // it('can pause response stream', async () => {
+    //   const result = await client.query({
+    //     query: 'SELECT number FROM system.numbers LIMIT 10000',
+    //     format: 'CSV',
+    //   })
+    //
+    //   const stream = result.stream()
+    //
+    //   let last = null
+    //   let i = 0
+    //   for await (const chunk of stream) {
+    //     last = chunk.text()
+    //     i++
+    //     if (i % 1000 === 0) {
+    //       stream.pause()
+    //       setTimeout(() => stream.resume(), 100)
+    //     }
+    //   }
+    //   expect(last).toBe('9999')
+    // })
 
     describe('text()', () => {
       it('returns stream of rows in CSV format', async () => {

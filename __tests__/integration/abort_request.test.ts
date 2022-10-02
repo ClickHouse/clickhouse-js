@@ -63,7 +63,7 @@ describe('abort request', () => {
         .then(async (rows) => {
           const stream = rows.stream()
           for await (const chunk of stream) {
-            const [[number]] = chunk.json()
+            const [[number]] = chunk.json<[[string]]>()
             // abort when reach number 3
             if (number === '3') {
               controller.abort()
@@ -86,10 +86,12 @@ describe('abort request', () => {
         .then(async function (rows) {
           const stream = rows.stream()
           for await (const chunk of stream) {
-            const [[number]] = chunk.json()
+            const [[number]] = chunk.json<[[string]]>()
             // abort when reach number 3
             if (number === '3') {
-              stream.destroy()
+              await stream.throw(new Error('boo')).then(() => {
+                //
+              })
             }
           }
         })

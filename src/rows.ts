@@ -1,5 +1,4 @@
-import Stream from 'stream'
-import split from 'split2'
+import type Stream from 'stream'
 
 import { getAsText } from './utils'
 import { type DataFormat, decode, validateStreamFormat } from './data_formatter'
@@ -46,26 +45,45 @@ export class Rows {
    * and if the underlying stream was already consumed
    * by calling the other methods
    */
-  stream(): Stream.Readable {
-    // If the underlying stream has already ended by calling `text` or `json`,
-    // Stream.pipeline will create a new empty stream
-    // but without "readableEnded" flag set to true
+  async *stream(): AsyncGenerator<Row, void> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
-
     validateStreamFormat(this.format)
+    const textDecoder = new TextDecoder()
+    let decodedChunk = ''
+    for await (const chunk of this._stream) {
+      decodedChunk += textDecoder.decode(chunk, { stream: true })
+      let idx = 0
+      while (true) {
+        idx = decodedChunk.indexOf('\n')
+        if (idx !== -1) {
+          const line = decodedChunk.slice(0, idx)
+          decodedChunk = decodedChunk.slice(idx + 1)
+          yield {
+            /**
+             * Returns a string representation of a row.
+             */
+            text(): string {
+              return line
+            },
 
-    return Stream.pipeline(
-      this._stream,
-      // only JSON-based format are supported at the moment
-      split((row: string) => new Row(row, 'JSON')),
-      function pipelineCb(err) {
-        if (err) {
-          console.error(err)
+            /**
+             * Returns a JSON representation of a row.
+             * The method will throw if called on a response in JSON incompatible format.
+             *
+             * It is safe to call this method multiple times.
+             */
+            json<T>(): T {
+              return decode(line, 'JSON')
+            },
+          }
+        } else {
+          break
         }
       }
-    )
+    }
+    textDecoder.decode() // flush
   }
 
   close() {
@@ -73,28 +91,9 @@ export class Rows {
   }
 }
 
-export class Row {
-  constructor(
-    private readonly chunk: string,
-    private readonly format: DataFormat
-  ) {}
-
-  /**
-   * Returns a string representation of a row.
-   */
-  text(): string {
-    return this.chunk
-  }
-
-  /**
-   * Returns a JSON representation of a row.
-   * The method will throw if called on a response in JSON incompatible format.
-   *
-   * It is safe to call this method multiple times.
-   */
-  json<T>(): T {
-    return decode(this.text(), this.format)
-  }
+export interface Row {
+  text(): string
+  json<T>(): T
 }
 
 const streamAlreadyConsumedMessage = 'Stream has been already consumed'
