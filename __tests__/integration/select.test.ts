@@ -4,16 +4,20 @@ import { createTestClient } from '../utils'
 
 async function rowsValues(stream: Stream.Readable): Promise<any[]> {
   const result: any[] = []
-  for await (const chunk of stream) {
-    result.push((chunk as Row).json())
+  for await (const rows of stream) {
+    rows.forEach((row: Row) => {
+      result.push(row.json())
+    })
   }
   return result
 }
 
 async function rowsText(stream: Stream.Readable): Promise<string[]> {
   const result: string[] = []
-  for await (const chunk of stream) {
-    result.push((chunk as Row).text())
+  for await (const rows of stream) {
+    rows.forEach((row: Row) => {
+      result.push(row.text)
+    })
   }
   return result
 }
@@ -62,48 +66,50 @@ describe('select', () => {
       )
     }
     it('should consume a JSON response only once', async () => {
-      const rows = await client.query({
+      const rs = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
         format: 'JSONEachRow',
       })
-      expect(await rows.json()).toEqual([{ number: '0' }])
+      expect(await rs.json()).toEqual([{ number: '0' }])
       // wrap in a func to avoid changing inner "this"
-      await assertAlreadyConsumed$(() => rows.json())
-      await assertAlreadyConsumed$(() => rows.text())
-      await assertAlreadyConsumed(() => rows.stream())
+      await assertAlreadyConsumed$(() => rs.json())
+      await assertAlreadyConsumed$(() => rs.text())
+      await assertAlreadyConsumed(() => rs.stream())
     })
 
     it('should consume a text response only once', async () => {
-      const rows = await client.query({
+      const rs = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
         format: 'TabSeparated',
       })
-      expect(await rows.text()).toEqual('0\n')
+      expect(await rs.text()).toEqual('0\n')
       // wrap in a func to avoid changing inner "this"
-      await assertAlreadyConsumed$(() => rows.json())
-      await assertAlreadyConsumed$(() => rows.text())
-      await assertAlreadyConsumed(() => rows.stream())
+      await assertAlreadyConsumed$(() => rs.json())
+      await assertAlreadyConsumed$(() => rs.text())
+      await assertAlreadyConsumed(() => rs.stream())
     })
 
     it('should consume a stream response only once', async () => {
-      const rows = await client.query({
+      const rs = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
         format: 'TabSeparated',
       })
       let result = ''
-      for await (const r of rows.stream()) {
-        result += r.text()
+      for await (const rows of rs.stream()) {
+        rows.forEach((row: Row) => {
+          result += row.text
+        })
       }
       expect(result).toEqual('0')
       // wrap in a func to avoid changing inner "this"
-      await assertAlreadyConsumed$(() => rows.json())
-      await assertAlreadyConsumed$(() => rows.text())
-      await assertAlreadyConsumed(() => rows.stream())
+      await assertAlreadyConsumed$(() => rs.json())
+      await assertAlreadyConsumed$(() => rs.text())
+      await assertAlreadyConsumed(() => rs.stream())
     })
   })
 
   it('can send a multiline query', async () => {
-    const rows = await client.query({
+    const rs = await client.query({
       query: `
         SELECT number
         FROM system.numbers
@@ -112,12 +118,12 @@ describe('select', () => {
       format: 'CSV',
     })
 
-    const response = await rows.text()
+    const response = await rs.text()
     expect(response).toBe('0\n1\n')
   })
 
   it('can send a query with an inline comment', async () => {
-    const rows = await client.query({
+    const rs = await client.query({
       query: `
         SELECT number
         -- a comment
@@ -127,12 +133,12 @@ describe('select', () => {
       format: 'CSV',
     })
 
-    const response = await rows.text()
+    const response = await rs.text()
     expect(response).toBe('0\n1\n')
   })
 
   it('can send a query with a multiline comment', async () => {
-    const rows = await client.query({
+    const rs = await client.query({
       query: `
         SELECT number
         /* This is:
@@ -144,12 +150,12 @@ describe('select', () => {
       format: 'CSV',
     })
 
-    const response = await rows.text()
+    const response = await rs.text()
     expect(response).toBe('0\n1\n')
   })
 
   it('can send a query with a trailing comment', async () => {
-    const rows = await client.query({
+    const rs = await client.query({
       query: `
         SELECT number
         FROM system.numbers
@@ -158,12 +164,12 @@ describe('select', () => {
       format: 'JSON',
     })
 
-    const response = await rows.json<ResponseJSON<{ number: string }>>()
+    const response = await rs.json<ResponseJSON<{ number: string }>>()
     expect(response.data).toEqual([{ number: '0' }, { number: '1' }])
   })
 
   it('can specify settings in select', async () => {
-    const rows = await client.query({
+    const rs = await client.query({
       query: 'SELECT number FROM system.numbers LIMIT 5',
       format: 'CSV',
       clickhouse_settings: {
@@ -171,7 +177,7 @@ describe('select', () => {
       },
     })
 
-    const response = await rows.text()
+    const response = await rs.text()
     expect(response).toBe('0\n1\n')
   })
 
@@ -228,20 +234,20 @@ describe('select', () => {
   describe('select result', () => {
     describe('text()', function () {
       it('returns values from SELECT query in specified format', async () => {
-        const Rows = await client.query({
+        const rs = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 3',
           format: 'CSV',
         })
 
-        expect(await Rows.text()).toBe('0\n1\n2\n')
+        expect(await rs.text()).toBe('0\n1\n2\n')
       })
       it('returns values from SELECT query in specified format', async () => {
-        const Rows = await client.query({
+        const rs = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 3',
           format: 'JSONEachRow',
         })
 
-        expect(await Rows.text()).toBe(
+        expect(await rs.text()).toBe(
           '{"number":"0"}\n{"number":"1"}\n{"number":"2"}\n'
         )
       })
@@ -249,14 +255,12 @@ describe('select', () => {
 
     describe('json()', () => {
       it('returns an array of values in data property', async () => {
-        const rows = await client.query({
+        const rs = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
 
-        const { data: nums } = await rows.json<
-          ResponseJSON<{ number: string }>
-        >()
+        const { data: nums } = await rs.json<ResponseJSON<{ number: string }>>()
         expect(Array.isArray(nums)).toBe(true)
         expect(nums).toHaveLength(5)
         const values = nums.map((i) => i.number)
@@ -264,12 +268,12 @@ describe('select', () => {
       })
 
       it('returns columns data in response', async () => {
-        const rows = await client.query({
+        const rs = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
 
-        const { meta } = await rows.json<ResponseJSON<{ number: string }>>()
+        const { meta } = await rs.json<ResponseJSON<{ number: string }>>()
 
         expect(meta?.length).toBe(1)
         const column = meta ? meta[0] : undefined
@@ -280,23 +284,23 @@ describe('select', () => {
       })
 
       it('returns number of rows in response', async () => {
-        const rows = await client.query({
+        const rs = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
 
-        const response = await rows.json<ResponseJSON<{ number: string }>>()
+        const response = await rs.json<ResponseJSON<{ number: string }>>()
 
         expect(response.rows).toBe(5)
       })
 
       it('returns statistics in response', async () => {
-        const rows = await client.query({
+        const rs = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
 
-        const response = await rows.json<ResponseJSON<{ number: string }>>()
+        const response = await rs.json<ResponseJSON<{ number: string }>>()
         expect(response).toEqual(
           expect.objectContaining({
             statistics: {
@@ -309,12 +313,12 @@ describe('select', () => {
       })
 
       it.skip('returns queryId in response', async () => {
-        const rows = await client.query({
+        const rs = await client.query({
           query: 'SELECT number FROM system.numbers LIMIT 5',
           format: 'JSON',
         })
 
-        const response = await rows.json<ResponseJSON<{ number: string }>>()
+        const response = await rs.json<ResponseJSON<{ number: string }>>()
 
         expect(response.query_id).toBeInstanceOf(Number)
       })
@@ -346,13 +350,15 @@ describe('select', () => {
 
       let last = null
       let i = 0
-      for await (const chunk of stream) {
-        last = chunk.text()
-        i++
-        if (i % 1000 === 0) {
-          stream.pause()
-          setTimeout(() => stream.resume(), 100)
-        }
+      for await (const rows of stream) {
+        rows.forEach((row: Row) => {
+          last = row.text
+          i++
+          if (i % 1000 === 0) {
+            stream.pause()
+            setTimeout(() => stream.resume(), 100)
+          }
+        })
       }
       expect(last).toBe('9999')
     })
@@ -364,9 +370,8 @@ describe('select', () => {
           format: 'CSV',
         })
 
-        const rows = await rowsText(result.stream())
-
-        expect(rows).toEqual(['0', '1', '2', '3', '4'])
+        const rs = await rowsText(result.stream())
+        expect(rs).toEqual(['0', '1', '2', '3', '4'])
       })
 
       it('returns stream of rows in TabSeparated format', async () => {
@@ -375,9 +380,8 @@ describe('select', () => {
           format: 'TabSeparated',
         })
 
-        const rows = await rowsText(result.stream())
-
-        expect(rows).toEqual(['0', '1', '2', '3', '4'])
+        const rs = await rowsText(result.stream())
+        expect(rs).toEqual(['0', '1', '2', '3', '4'])
       })
     })
 
@@ -388,9 +392,8 @@ describe('select', () => {
           format: 'JSONEachRow',
         })
 
-        const rows = await rowsValues(result.stream())
-
-        expect(rows).toEqual([
+        const rs = await rowsValues(result.stream())
+        expect(rs).toEqual([
           { number: '0' },
           { number: '1' },
           { number: '2' },
@@ -405,9 +408,8 @@ describe('select', () => {
           format: 'JSONStringsEachRow',
         })
 
-        const rows = await rowsValues(result.stream())
-
-        expect(rows).toEqual([
+        const rs = await rowsValues(result.stream())
+        expect(rs).toEqual([
           { number: '0' },
           { number: '1' },
           { number: '2' },
@@ -422,9 +424,8 @@ describe('select', () => {
           format: 'JSONCompactEachRow',
         })
 
-        const rows = await rowsValues(result.stream())
-
-        expect(rows).toEqual([['0'], ['1'], ['2'], ['3'], ['4']])
+        const rs = await rowsValues(result.stream())
+        expect(rs).toEqual([['0'], ['1'], ['2'], ['3'], ['4']])
       })
 
       it('returns stream of objects in JSONCompactEachRowWithNames format', async () => {
@@ -433,9 +434,8 @@ describe('select', () => {
           format: 'JSONCompactEachRowWithNames',
         })
 
-        const rows = await rowsValues(result.stream())
-
-        expect(rows).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
+        const rs = await rowsValues(result.stream())
+        expect(rs).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
       })
 
       it('returns stream of objects in JSONCompactEachRowWithNamesAndTypes format', async () => {
@@ -444,9 +444,8 @@ describe('select', () => {
           format: 'JSONCompactEachRowWithNamesAndTypes',
         })
 
-        const rows = await rowsValues(result.stream())
-
-        expect(rows).toEqual([
+        const rs = await rowsValues(result.stream())
+        expect(rs).toEqual([
           ['number'],
           ['UInt64'],
           ['0'],
@@ -463,9 +462,8 @@ describe('select', () => {
           format: 'JSONCompactStringsEachRowWithNames',
         })
 
-        const rows = await rowsValues(result.stream())
-
-        expect(rows).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
+        const rs = await rowsValues(result.stream())
+        expect(rs).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
       })
 
       it('returns stream of objects in JSONCompactStringsEachRowWithNamesAndTypes format', async () => {
@@ -474,9 +472,8 @@ describe('select', () => {
           format: 'JSONCompactStringsEachRowWithNamesAndTypes',
         })
 
-        const rows = await rowsValues(result.stream())
-
-        expect(rows).toEqual([
+        const rs = await rowsValues(result.stream())
+        expect(rs).toEqual([
           ['number'],
           ['UInt64'],
           ['0'],

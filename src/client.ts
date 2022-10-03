@@ -7,7 +7,7 @@ import {
   encodeJSON,
   isSupportedRawFormat,
 } from './data_formatter'
-import { Rows } from './rows'
+import { ResultSet } from './result'
 import type { ClickHouseSettings } from './settings'
 
 export interface ClickHouseClientConfigOptions {
@@ -146,19 +146,19 @@ export class ClickHouseClient {
     }
   }
 
-  async query(params: QueryParams): Promise<Rows> {
+  async query(params: QueryParams): Promise<ResultSet> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
-    const stream = await this.connection.select({
+    const stream = await this.connection.query({
       query,
       ...this.getBaseParams(params),
     })
-    return new Rows(stream, format)
+    return new ResultSet(stream, format)
   }
 
   exec(params: ExecParams): Promise<Stream.Readable> {
     const query = removeSemi(params.query.trim())
-    return this.connection.command({
+    return this.connection.exec({
       query,
       ...this.getBaseParams(params),
     })

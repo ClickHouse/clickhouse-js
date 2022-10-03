@@ -1,10 +1,10 @@
-import Stream from 'stream'
-import split from 'split2'
+import type Stream, { TransformCallback } from 'stream'
+import { Transform } from 'stream'
 
 import { getAsText } from './utils'
 import { type DataFormat, decode, validateStreamFormat } from './data_formatter'
 
-export class Rows {
+export class ResultSet {
   constructor(
     private _stream: Stream.Readable,
     private readonly format: DataFormat
@@ -15,7 +15,7 @@ export class Rows {
    * and returns the result as a string.
    *
    * The method will throw if the underlying stream was already consumed
-   * by calling the other methods
+   * by calling the other methods.
    */
   async text(): Promise<string> {
     if (this._stream.readableEnded) {
@@ -29,7 +29,7 @@ export class Rows {
    * When the response is received in full, it will be decoded to return JSON.
    *
    * The method will throw if the underlying stream was already consumed
-   * by calling the other methods
+   * by calling the other methods.
    */
   async json<T>(): Promise<T> {
     if (this._stream.readableEnded) {
@@ -39,12 +39,17 @@ export class Rows {
   }
 
   /**
-   * Returns a readable stream of {@link Row}s for responses
-   * in {@link StreamableDataFormat} format.
+   * Returns a readable stream for responses that can be streamed
+   * (i.e. all except JSON).
+   *
+   * Every iteration provides an array of {@link Row} instances
+   * for {@link StreamableDataFormat} format.
+   *
+   * Should be called only once.
    *
    * The method will throw if called on a response in non-streamable format,
    * and if the underlying stream was already consumed
-   * by calling the other methods
+   * by calling the other methods.
    */
   stream(): Stream.Readable {
     // If the underlying stream has already ended by calling `text` or `json`,
@@ -56,16 +61,38 @@ export class Rows {
 
     validateStreamFormat(this.format)
 
-    return Stream.pipeline(
-      this._stream,
-      // only JSON-based format are supported at the moment
-      split((row: string) => new Row(row, 'JSON')),
-      function pipelineCb(err) {
-        if (err) {
-          console.error(err)
+    let decodedChunk = ''
+    const toRows = new Transform({
+      transform(
+        chunk: Buffer,
+        encoding: BufferEncoding,
+        callback: TransformCallback
+      ) {
+        decodedChunk += chunk.toString()
+        const rows: Row[] = []
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const idx = decodedChunk.indexOf('\n')
+          if (idx !== -1) {
+            const text = decodedChunk.slice(0, idx)
+            decodedChunk = decodedChunk.slice(idx + 1)
+            rows.push({
+              text,
+              json<T>(): T {
+                return decode(text, 'JSON')
+              },
+            })
+          } else {
+            this.push(rows)
+            break
+          }
         }
-      }
-    )
+        callback()
+      },
+      objectMode: true,
+    })
+
+    return this._stream.pipe(toRows, { end: true })
   }
 
   close() {
@@ -73,28 +100,18 @@ export class Rows {
   }
 }
 
-export class Row {
-  constructor(
-    private readonly chunk: string,
-    private readonly format: DataFormat
-  ) {}
-
+export interface Row {
   /**
-   * Returns a string representation of a row.
+   * A string representation of a row.
    */
-  text(): string {
-    return this.chunk
-  }
+  text: string
 
   /**
    * Returns a JSON representation of a row.
    * The method will throw if called on a response in JSON incompatible format.
-   *
    * It is safe to call this method multiple times.
    */
-  json<T>(): T {
-    return decode(this.text(), this.format)
-  }
+  json<T>(): T
 }
 
 const streamAlreadyConsumedMessage = 'Stream has been already consumed'
