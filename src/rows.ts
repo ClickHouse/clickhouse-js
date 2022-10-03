@@ -38,12 +38,12 @@ export class Rows {
   }
 
   /**
-   * Returns a readable stream of {@link Row}s for responses
+   * Returns an async iterator of {@link Row}s for responses
    * in {@link StreamableDataFormat} format.
    *
-   * The method will throw if called on a response in non-streamable format,
-   * and if the underlying stream was already consumed
-   * by calling the other methods
+   * If selected format is non-streamable,
+   * or the underlying stream was already consumed,
+   * it will throw when accessing the next element
    */
   async *stream(): AsyncGenerator<Row, void> {
     if (this._stream.readableEnded) {

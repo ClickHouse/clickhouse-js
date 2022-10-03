@@ -1,7 +1,4 @@
-import Fs from 'fs'
-import Path from 'path'
 import Stream from 'stream'
-import split from 'split2'
 import { type ClickHouseClient } from '../../src'
 import { createTestClient, guid } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
@@ -26,33 +23,32 @@ describe('streaming e2e', () => {
     await client.close()
   })
 
-  it('should stream a file', async () => {
-    // contains id as numbers in JSONCompactEachRow format ["0"]\n["1"]\n...
-    const filename = Path.resolve(
-      __dirname,
-      './fixtures/streaming_e2e_data.ndjson'
-    )
-
-    await client.insert({
-      table: tableName,
-      values: Fs.createReadStream(filename).pipe(
-        // should be removed when "insert" accepts a stream of strings/bytes
-        split((row: string) => JSON.parse(row))
-      ),
-      format: 'JSONCompactEachRow',
-    })
-
-    const response = await client.query({
-      query: `SELECT * from ${tableName}`,
-      format: 'JSONCompactEachRow',
-    })
-
-    const actual: string[] = []
-    for await (const row of response.stream()) {
-      actual.push(row.json())
-    }
-    expect(actual).toEqual(expected)
-  })
+  // it('should stream a file', async () => {
+  //   // contains id as numbers in JSONCompactEachRow format ["0"]\n["1"]\n...
+  //   const filename = Path.resolve(
+  //     __dirname,
+  //     './fixtures/streaming_e2e_data.ndjson'
+  //   )
+  //   await client.insert({
+  //     table: tableName,
+  //     values: Fs.createReadStream(filename).pipe(
+  //       // should be removed when "insert" accepts a stream of strings/bytes
+  //       split((row: string) => JSON.parse(row))
+  //     ),
+  //     format: 'JSONCompactEachRow',
+  //   })
+  //
+  //   const response = await client.query({
+  //     query: `SELECT * from ${tableName}`,
+  //     format: 'JSONCompactEachRow',
+  //   })
+  //
+  //   const actual: string[] = []
+  //   for await (const row of response.stream()) {
+  //     actual.push(row.json())
+  //   }
+  //   expect(actual).toEqual(expected)
+  // })
 
   it('should stream a stream created in-place', async () => {
     await client.insert({

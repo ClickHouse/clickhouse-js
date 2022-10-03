@@ -41,7 +41,6 @@
   "devDependencies": {
     "@types/jest": "^29.0.2",
     "@types/node": "^18.7.18",
-    "@types/split2": "^3.2.1",
     "@types/uuid": "^8.3.4",
     "@typescript-eslint/eslint-plugin": "^5.37.0",
     "@typescript-eslint/parser": "^5.37.0",
