@@ -93,14 +93,7 @@ describe('abort request', () => {
             }
           }
         })
-      // There was a breaking change in Node.js 18.x behavior
-      if (process.version.startsWith('v18')) {
-        await expect(selectPromise).rejects.toMatchObject({
-          message: 'Premature close',
-        })
-      } else {
-        expect(await selectPromise).toEqual(undefined)
-      }
+      expect(await selectPromise).toEqual(undefined)
     })
 
     // FIXME: it does not work with ClickHouse Cloud.
