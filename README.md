@@ -276,7 +276,7 @@ class ResultSet {
 }
 
 interface Row {
-  // Get the content of an individual row as plain string
+  // Get the content of an individual row as a plain string
   text(): string
   // Get the content of an individual row as a JS object
   json<T>(): T
