@@ -1,5 +1,5 @@
 # See https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
-name: Publish Package to npmjs
+name: release
 on:
   workflow_dispatch:
   release:
