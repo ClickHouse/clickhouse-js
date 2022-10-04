@@ -1,6 +1,7 @@
 # See https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
 name: Publish Package to npmjs
 on:
+  workflow_dispatch:
   release:
     types: [created]
 jobs:
@@ -13,6 +14,7 @@ jobs:
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
+      - run: npm ci --ignore-scripts
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
