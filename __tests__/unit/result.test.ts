@@ -31,14 +31,14 @@ describe('rows', () => {
     expect(stream.readableEnded).toBeFalsy()
 
     const result: unknown[] = []
-    for await (const rows of rs.stream()) {
+    for await (const rows of stream) {
       rows.forEach((row: Row) => {
         result.push(row.json())
       })
     }
 
     expect(result).toEqual(expectedJson)
-    // expect(stream.readableEnded).toBeTruthy()
+    expect(stream.readableEnded).toBeTruthy()
 
     expect(() => rs.stream()).toThrowError(err)
     await expect(rs.json()).rejects.toThrowError(err)

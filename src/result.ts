@@ -1,5 +1,5 @@
 import type { Readable, TransformCallback } from 'stream'
-import { Transform } from 'stream'
+import { pipeline, Transform } from 'stream'
 
 import { getAsText } from './utils'
 import { type DataFormat, decode, validateStreamFormat } from './data_formatter'
@@ -80,16 +80,23 @@ export class ResultSet {
               },
             })
           } else {
-            this.push(rows)
+            if (rows.length) {
+              this.push(rows)
+            }
             break
           }
         }
         callback()
       },
+      autoDestroy: true,
       objectMode: true,
     })
 
-    return this._stream.pipe(toRows, { end: true })
+    return pipeline(this._stream, toRows, function pipelineCb(err) {
+      if (err) {
+        console.error(err)
+      }
+    })
   }
 
   close() {
