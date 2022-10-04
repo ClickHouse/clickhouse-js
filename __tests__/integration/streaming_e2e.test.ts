@@ -2,6 +2,7 @@ import Fs from 'fs'
 import Path from 'path'
 import Stream from 'stream'
 import split from 'split2'
+import type { Row } from '../../src'
 import { type ClickHouseClient } from '../../src'
 import { createTestClient, guid } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
@@ -42,14 +43,16 @@ describe('streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    const response = await client.query({
+    const rs = await client.query({
       query: `SELECT * from ${tableName}`,
       format: 'JSONCompactEachRow',
     })
 
     const actual: string[] = []
-    for await (const row of response.stream()) {
-      actual.push(row.json())
+    for await (const rows of rs.stream()) {
+      rows.forEach((row: Row) => {
+        actual.push(row.json())
+      })
     }
     expect(actual).toEqual(expected)
   })
@@ -61,14 +64,16 @@ describe('streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    const response = await client.query({
+    const rs = await client.query({
       query: `SELECT * from ${tableName}`,
       format: 'JSONCompactEachRow',
     })
 
     const actual: string[] = []
-    for await (const row of response.stream()) {
-      actual.push(row.json())
+    for await (const rows of rs.stream()) {
+      rows.forEach((row: Row) => {
+        actual.push(row.json())
+      })
     }
     expect(actual).toEqual(expected)
   })

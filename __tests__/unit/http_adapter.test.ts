@@ -24,7 +24,7 @@ describe('HttpAdapter', () => {
 
         const request = stubRequest()
 
-        const selectPromise = adapter.select({
+        const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
         })
 
@@ -44,7 +44,7 @@ describe('HttpAdapter', () => {
         })
         const request = stubRequest()
 
-        const selectPromise = adapter.select({
+        const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
         })
 
@@ -69,7 +69,7 @@ describe('HttpAdapter', () => {
         })
         const request = stubRequest()
 
-        const selectPromise = adapter.select({
+        const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
           clickhouse_settings: {
             enable_http_compression: 1,
@@ -92,7 +92,7 @@ describe('HttpAdapter', () => {
         })
         const request = stubRequest()
 
-        const selectPromise = adapter.select({
+        const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
         })
 
@@ -111,7 +111,7 @@ describe('HttpAdapter', () => {
         })
         const request = stubRequest()
 
-        const selectPromise = adapter.select({
+        const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
         })
 
@@ -131,7 +131,7 @@ describe('HttpAdapter', () => {
         })
         const request = stubRequest()
 
-        const selectPromise = adapter.select({
+        const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
         })
 

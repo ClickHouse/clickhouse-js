@@ -29,12 +29,12 @@ describe('insert compression', () => {
       values: dataToInsert,
     })
 
-    const Rows = await client.query({
+    const rs = await client.query({
       query: `SELECT * FROM ${tableName}`,
       format: 'JSON',
     })
 
-    const result = await Rows.json<ResponseJSON>()
+    const result = await rs.json<ResponseJSON>()
     expect(result.data.length).toBe(1_000)
   })
 })
