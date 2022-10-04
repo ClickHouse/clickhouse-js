@@ -1,11 +1,14 @@
-import type { Readable, TransformCallback } from 'stream'
-import { pipeline, Transform } from 'stream'
+import type { TransformCallback } from 'stream'
+import Stream, { Transform } from 'stream'
 
 import { getAsText } from './utils'
 import { type DataFormat, decode, validateStreamFormat } from './data_formatter'
 
 export class ResultSet {
-  constructor(private _stream: Readable, private readonly format: DataFormat) {}
+  constructor(
+    private _stream: Stream.Readable,
+    private readonly format: DataFormat
+  ) {}
 
   /**
    * The method waits for all the rows to be fully loaded
@@ -48,7 +51,7 @@ export class ResultSet {
    * and if the underlying stream was already consumed
    * by calling the other methods.
    */
-  stream(): Readable {
+  stream(): Stream.Readable {
     // If the underlying stream has already ended by calling `text` or `json`,
     // Stream.pipeline will create a new empty stream
     // but without "readableEnded" flag set to true
@@ -92,7 +95,7 @@ export class ResultSet {
       objectMode: true,
     })
 
-    return pipeline(this._stream, toRows, function pipelineCb(err) {
+    return Stream.pipeline(this._stream, toRows, function pipelineCb(err) {
       if (err) {
         console.error(err)
       }
