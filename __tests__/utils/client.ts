@@ -57,7 +57,7 @@ export function createTestClient(
 export async function createRandomDatabase(
   client: ClickHouseClient
 ): Promise<string> {
-  const databaseName = `clickhousejs__${guid()}`
+  const databaseName = `clickhousejs__${guid()}__${+new Date()}`
   let maybeOnCluster = ''
   if (getClickHouseTestEnvironment() === TestEnv.LocalCluster) {
     maybeOnCluster = `ON CLUSTER '{cluster}'`
