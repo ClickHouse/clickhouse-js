@@ -21,8 +21,10 @@ export function createTestClient(
     }`
   )
   const clickHouseSettings: ClickHouseSettings = {}
-  if (env === TestEnv.LocalCluster || env === TestEnv.Cloud) {
+  if (env === TestEnv.LocalCluster) {
     clickHouseSettings.insert_quorum = '2'
+  } else if (env === TestEnv.Cloud) {
+    clickHouseSettings.insert_quorum = '3'
     clickHouseSettings.database_replicated_enforce_synchronous_settings = 1
   }
   // Allow to override `insert_quorum` if necessary
