@@ -116,3 +116,20 @@ Build + Unit tests
 
 ## Style Guide
 We use an automatic code formatting with `prettier` and `eslint`.
+
+## Test Coverage
+We try to aim for at least 90% tests coverage.
+
+Coverage is collected and pushed to the repo automatically
+in the end of each main branch CI run.
+
+See [tests.yml](./.github/workflows/tests.yml)
+`upload-coverage-and-badge` job for more details.
+
+You can collect and check the coverage locally by running:
+
+```bash
+npm t -- --coverage
+```
+
+Please don't commit the coverage reports manually.

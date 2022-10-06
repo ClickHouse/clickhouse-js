@@ -4,8 +4,11 @@
 </p>
 <br/>
 <p align="center">
-<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/run-tests.yml">
-<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/run-tests.yml/badge.svg?branch=main">
+<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml">
+<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml/badge.svg?branch=main">
+</a>
+<a href="http://htmlpreview.github.io/?https://github.com/ClickHouse/clickhouse-js/blob/main/coverage/lcov-report/index.html">
+<img src="./coverage/badge.svg">
 </a>
 </p>
 
@@ -252,12 +255,12 @@ class ClickHouseClient {
 }
 ```
 
-#### Rows response abstraction
+#### ResultSet response abstraction
 
-Provides several convenience methods for data processing in your application.
+Provides several convenience methods for data processing of select results in your application.
 
 ```ts
-class Rows {
+class ResultSet {
   // Consume the entire stream and get the contents as a string
   // Can be used with any DataFormat
   // Should be called only once
@@ -266,17 +269,18 @@ class Rows {
   // Can be used only with JSON formats
   // Should be called only once
   json<T>(): Promise<T> {}
-  // Returns a readable stream of Row instances for responses that can be streamed (i.e. all except JSON)
+  // Returns a readable stream for responses that can be streamed (i.e. all except JSON)
+  // Every iteration provides an array of `Row` instances
   // Should be called only once
   // NB: if called for the second time, the second stream will be just empty
   stream(): Stream.Readable {}
 }
 
-class Row {
-  // Get the content of the row as plain string
-  text(): string {}
-  // Get the content of the row as a JS object
-  json<T>(): T {}
+interface Row {
+  // Get the content of an individual row as a plain string
+  text(): string
+  // Get the content of an individual row as a JS object
+  json<T>(): T
 }
 ```
 
@@ -366,7 +370,7 @@ class ClickHouseClient {
 
 ## Usage examples
 
-You can find code samples in the [examples](./examples) folder.
+You can find code samples in the [examples](./examples) folder (with [README](./examples/README.md)).
 
 See also:
 

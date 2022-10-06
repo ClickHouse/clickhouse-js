@@ -6,4 +6,5 @@ module.exports = {
   collectCoverageFrom: ['<rootDir>/src/**/*.ts'],
   testMatch: ['<rootDir>/__tests__/**/*.test.{js,mjs,ts,tsx}'],
   testTimeout: 30000,
+  coverageReporters: ['json-summary'],
 }

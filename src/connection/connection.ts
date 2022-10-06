@@ -34,8 +34,8 @@ export interface InsertParams extends BaseParams {
 export interface Connection {
   ping(): Promise<boolean>
   close(): Promise<void>
-  select(params: BaseParams): Promise<Stream.Readable>
-  command(params: BaseParams): Promise<Stream.Readable>
+  query(params: BaseParams): Promise<Stream.Readable>
+  exec(params: BaseParams): Promise<Stream.Readable>
   insert(params: InsertParams): Promise<void>
 }
 
