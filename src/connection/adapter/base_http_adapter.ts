@@ -14,7 +14,6 @@ import type {
 import { toSearchParams } from './http_search_params'
 import { transformUrl } from './transform_url'
 import { getAsText, isStream } from '../../utils'
-import type { ClickHouseSettings } from '../../settings'
 
 export interface RequestParams {
   method: 'GET' | 'POST'
@@ -31,20 +30,6 @@ function isSuccessfulResponse(statusCode?: number): boolean {
 
 function isEventTarget(signal: any): signal is EventTarget {
   return 'removeEventListener' in signal
-}
-
-function withHttpSettings(
-  clickhouse_settings?: ClickHouseSettings,
-  compression?: boolean
-): ClickHouseSettings {
-  return {
-    ...(compression
-      ? {
-          enable_http_compression: 1,
-        }
-      : {}),
-    ...clickhouse_settings,
-  }
 }
 
 function buildDefaultHeaders(
@@ -236,13 +221,9 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   async query(params: BaseParams): Promise<Stream.Readable> {
-    const clickhouse_settings = withHttpSettings(
-      params.clickhouse_settings,
-      this.config.compression.decompress_response
-    )
     const searchParams = toSearchParams({
       database: this.config.database,
-      clickhouse_settings,
+      clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
     })
 
@@ -251,7 +232,7 @@ export abstract class BaseHttpAdapter implements Connection {
       url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
-      decompress_response: clickhouse_settings.enable_http_compression === 1,
+      decompress_response: this.config.compression.decompress_response,
     })
   }
 

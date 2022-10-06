@@ -60,29 +60,6 @@ describe('HttpAdapter', () => {
         assertStub(undefined)
       })
 
-      it('uses request-specific settings over config settings', async () => {
-        const adapter = buildHttpAdapter({
-          compression: {
-            decompress_response: false,
-            compress_request: false,
-          },
-        })
-        const request = stubRequest()
-
-        const selectPromise = adapter.query({
-          query: 'SELECT * FROM system.numbers LIMIT 5',
-          clickhouse_settings: {
-            enable_http_compression: 1,
-          },
-        })
-
-        const responseBody = 'foobar'
-        await emitCompressedBody(request, responseBody)
-
-        expect(await getAsText(await selectPromise)).toBe(responseBody)
-        assertStub('gzip')
-      })
-
       it('decompresses a gzip response', async () => {
         const adapter = buildHttpAdapter({
           compression: {

@@ -13,7 +13,7 @@ import type { ClickHouseSettings } from './settings'
 export interface ClickHouseClientConfigOptions {
   /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
   host?: string
-  /** The timeout to setup a connection in milliseconds. Default value: `10_000`. */
+  /** The timeout to set up a connection in milliseconds. Default value: `10_000`. */
   connect_timeout?: number
   /** The request timeout in milliseconds. Default value: `30_000`. */
   request_timeout?: number
@@ -21,9 +21,17 @@ export interface ClickHouseClientConfigOptions {
   max_open_connections?: number
 
   compression?: {
-    /** `response: true` instructs ClickHouse server to respond with compressed response body. Default: true. */
+    /**
+     * `response: true` instructs ClickHouse server
+     * to respond with compressed response body.
+     * Default: true.
+     */
     response?: boolean
-    /** `request: true` enabled compression on the client request body. Default: false. */
+    /**
+     * `request: true` enables compression on the client request body
+     * and instructs ClickHouse server to decode it.
+     * Default: false.
+     */
     request?: boolean
   }
   /** The name of the user on whose behalf requests are made. Default: 'default'. */

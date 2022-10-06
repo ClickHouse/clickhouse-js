@@ -109,7 +109,8 @@ export interface ClickHouseClientConfigOptions {
   // HTTP compression settings. Uses GZIP.
   // For more details, see https://clickhouse.com/docs/en/interfaces/http/#compression
   compression?: {
-    // enabled by default - the server will compress the data it sends to you in the response
+    // enabled by default on the client
+    // instructs ClickHouse server to respond with compressed response body
     response?: boolean
     // disabled by default - the server will decompress the data which you pass in the request
     request?: boolean
@@ -366,6 +367,27 @@ class ClickHouseClient {
   // ...
 }
 ```
+
+## Compression
+
+When `ClickHouseClientConfigOptions.compression.response` is set to `true`,
+the client essentially just sets the `Accept-Encoding: gzip` header.
+The compression will be actually enabled when on of the following conditions is met:
+
+- User's profile has `<enable_http_compression>1</enable_http_compression>` entry;
+- Additional ClickHouse setting is supplied on the query level, i.e.
+
+```ts
+client.query({
+  query: 'SELECT * FROM ...',
+  format: 'JSONEachRow',
+  clickhouse_settings: {
+    enable_http_compression: 1,
+  },
+})
+```
+
+NB: `enable_http_compression: 1` can be set per query only if current user is _not read-only_.
 
 ## Usage examples
 

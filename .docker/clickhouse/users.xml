@@ -4,6 +4,7 @@
     <profiles>
         <default>
             <load_balancing>random</load_balancing>
+            <enable_http_compression>1</enable_http_compression>
         </default>
     </profiles>
 
