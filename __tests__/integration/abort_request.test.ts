@@ -1,4 +1,5 @@
 import { AbortController } from 'node-abort-controller'
+import type { Row } from '../../src'
 import { type ClickHouseClient, type ResponseJSON } from '../../src'
 import { createTestClient, guid, makeObjectStream } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
@@ -85,12 +86,14 @@ describe('abort request', () => {
         })
         .then(async function (rows) {
           const stream = rows.stream()
-          for await (const chunk of stream) {
-            const [[number]] = chunk.json()
-            // abort when reach number 3
-            if (number === '3') {
-              stream.destroy()
-            }
+          for await (const rows of stream) {
+            rows.forEach((row: Row) => {
+              const [[number]] = row.json<[[string]]>()
+              // abort when reach number 3
+              if (number === '3') {
+                stream.destroy()
+              }
+            })
           }
         })
       // There was a breaking change in Node.js 18.x behavior
@@ -285,12 +288,12 @@ async function assertActiveQueries(
 ) {
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const rows = await client.query({
+    const rs = await client.query({
       query: 'SELECT query FROM system.processes',
       format: 'JSON',
     })
 
-    const queries = await rows.json<ResponseJSON<{ query: string }>>()
+    const queries = await rs.json<ResponseJSON<{ query: string }>>()
 
     if (assertQueries(queries.data)) {
       break

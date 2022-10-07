@@ -235,7 +235,7 @@ export abstract class BaseHttpAdapter implements Connection {
     return true
   }
 
-  async select(params: BaseParams): Promise<Stream.Readable> {
+  async query(params: BaseParams): Promise<Stream.Readable> {
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
       this.config.compression.decompress_response
@@ -255,7 +255,7 @@ export abstract class BaseHttpAdapter implements Connection {
     })
   }
 
-  async command(params: BaseParams): Promise<Stream.Readable> {
+  async exec(params: BaseParams): Promise<Stream.Readable> {
     const searchParams = toSearchParams({
       database: this.config.database,
       clickhouse_settings: params.clickhouse_settings,

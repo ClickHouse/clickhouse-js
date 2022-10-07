@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '../../src'
-import { Rows } from '../../src'
+import { ResultSet } from '../../src'
 import * as ch from '../../src/schema'
 import { QueryFormatter } from '../../src/schema/query_formatter'
 import { Readable } from 'stream'
@@ -26,7 +26,7 @@ describe('schema select result', () => {
     jest
       .spyOn(client, 'query')
       .mockResolvedValueOnce(
-        new Rows(
+        new ResultSet(
           Readable.from(['{"valid":"json"}\n', 'invalid_json}\n']),
           'JSONEachRow'
         )

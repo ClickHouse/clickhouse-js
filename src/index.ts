@@ -14,12 +14,16 @@ export {
   type InsertParams,
 } from './client'
 
-export { Row, Rows } from './rows'
+export { Row, ResultSet } from './result'
 export type { Connection } from './connection'
 export type { DataFormat } from './data_formatter'
 export type { ClickHouseError } from './error'
 export type { Logger } from './logger'
 
-export type { ResponseJSON, DataType } from './clickhouse_types'
+export type {
+  ResponseJSON,
+  InputJSON,
+  InputJSONObjectEachRow,
+} from './clickhouse_types'
 export type { ClickHouseSettings } from './settings'
 export { SettingsMap } from './settings'

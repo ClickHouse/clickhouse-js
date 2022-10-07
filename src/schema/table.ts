@@ -3,7 +3,6 @@ import type { Schema } from './schema'
 import type { Infer, NonEmptyArray, Shape } from './common'
 import { getTableName, QueryFormatter } from './query_formatter'
 import type { ClickHouseClient } from '../client'
-import type { Row } from '../rows'
 import type { WhereExpr } from './where'
 import type { InsertStream, SelectResult } from './stream'
 import type { ClickHouseSettings, MergeTreeSettings } from '../settings'
@@ -83,18 +82,20 @@ export class Table<S extends Shape> {
     where,
   }: SelectOptions<S> = {}): Promise<SelectResult<Infer<S>>> {
     const query = QueryFormatter.select(this.options, where, columns, order_by)
-    const rows = await this.client.query({
+    const rs = await this.client.query({
       query,
       clickhouse_settings,
       abort_signal,
       format: 'JSONEachRow',
     })
 
-    const stream = rows.stream()
+    const stream = rs.stream()
     async function* asyncGenerator() {
-      for await (const row of stream) {
-        const value = (row as Row).json() as unknown[]
-        yield value as Infer<S>
+      for await (const rows of stream) {
+        for (const row of rows) {
+          const value = row.json() as unknown[]
+          yield value as Infer<S>
+        }
       }
     }
 
