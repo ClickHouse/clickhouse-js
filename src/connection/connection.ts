@@ -1,5 +1,5 @@
 import type Stream from 'stream'
-import type { Logger } from '../logger'
+import type { LogWriter } from '../logger'
 import { HttpAdapter, HttpsAdapter } from './adapter'
 import type { ClickHouseSettings } from '../settings'
 
@@ -41,7 +41,7 @@ export interface Connection {
 
 export function createConnection(
   params: ConnectionParams,
-  logger: Logger
+  logger: LogWriter
 ): Connection {
   // TODO throw ClickHouseClient error
   switch (params.url.protocol) {

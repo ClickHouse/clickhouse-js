@@ -2,6 +2,7 @@ import type { Logger } from '../../src'
 import { type ClickHouseClient } from '../../src'
 import { createTestClient, retryOnFailure } from '../utils'
 import type { RetryOnFailureOptions } from '../utils/retry'
+import type { ErrorLogParams, LogParams } from '../../src/logger'
 
 describe('config', () => {
   let client: ClickHouseClient
@@ -13,9 +14,7 @@ describe('config', () => {
 
   afterEach(async () => {
     await client.close()
-    if (logs.length) {
-      logs = []
-    }
+    logs = []
   })
 
   it('should set request timeout with "request_timeout" setting', async () => {
@@ -45,32 +44,48 @@ describe('config', () => {
     expect(await result.text()).toEqual('0\n1\n')
   })
 
-  it('should provide a custom logger implementation', async () => {
-    client = createTestClient({
-      log: {
-        enable: true,
-        LoggerClass: TestLogger,
-      },
+  describe('Logger support', () => {
+    const logLevelKey = 'CLICKHOUSE_LOG_LEVEL'
+    let defaultLogLevel: string | undefined
+    beforeEach(() => {
+      defaultLogLevel = process.env[logLevelKey]
     })
-    await client.ping()
-    expect(logs[0]).toEqual({
-      message: '[HTTP Adapter] Got a response from ClickHouse',
-      args: expect.objectContaining({
-        request_path: '/ping',
-        request_method: 'GET',
-      }),
+    afterEach(() => {
+      process.env[logLevelKey] = defaultLogLevel
     })
-  })
 
-  it('should provide a custom logger implementation (but logs are disabled)', async () => {
-    client = createTestClient({
-      log: {
-        enable: false,
-        LoggerClass: TestLogger,
-      },
+    it('should provide a custom logger implementation', async () => {
+      process.env[logLevelKey] = 'DEBUG'
+      client = createTestClient({
+        log: {
+          // enable: true,
+          LoggerClass: TestLogger,
+        },
+      })
+      await client.ping()
+      console.log(logs)
+      // logs[0] are about current log level
+      expect(logs[1]).toEqual({
+        module: 'HTTP Adapter',
+        message: 'Got a response from ClickHouse',
+        args: expect.objectContaining({
+          request_path: '/ping',
+          request_method: 'GET',
+        }),
+      })
     })
-    await client.ping()
-    expect(logs).toHaveLength(0)
+
+    it('should provide a custom logger implementation (but logs are disabled)', async () => {
+      process.env[logLevelKey] = 'OFF'
+      client = createTestClient({
+        log: {
+          // enable: false,
+          LoggerClass: TestLogger,
+        },
+      })
+      await client.ping()
+      expect(logs).toHaveLength(0)
+    })
   })
 
   describe('max_open_connections', () => {
@@ -129,26 +144,17 @@ describe('config', () => {
   })
 
   class TestLogger implements Logger {
-    constructor(readonly enabled: boolean) {}
-    debug(message: string, args?: Record<string, unknown>) {
-      if (this.enabled) {
-        logs.push({ message, args })
-      }
+    debug(params: LogParams) {
+      logs.push(params)
     }
-    info(message: string, args?: Record<string, unknown>) {
-      if (this.enabled) {
-        logs.push({ message, args })
-      }
+    info(params: LogParams) {
+      logs.push(params)
     }
-    warning(message: string, args?: Record<string, unknown>) {
-      if (this.enabled) {
-        logs.push({ message, args })
-      }
+    warn(params: LogParams) {
+      logs.push(params)
     }
-    error(message: string, err: Error, args?: Record<string, unknown>) {
-      if (this.enabled) {
-        logs.push({ message, err, args })
-      }
+    error(params: ErrorLogParams) {
+      logs.push(params)
     }
   }
 })

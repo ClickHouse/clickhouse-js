@@ -1,23 +1,29 @@
 import type { Logger } from '../../src'
+import type { ErrorLogParams, LogParams } from '../../src/logger'
 
 export class TestLogger implements Logger {
-  constructor(readonly enabled: boolean = true) {}
-  debug(message: string, args?: Record<string, unknown>) {
-    if (!this.enabled) return
-    console.debug(`[${getTestName()}]\n${message}`, args)
+  debug({ module, message, args }: LogParams) {
+    console.debug(formatMessage({ module, message }), args)
   }
-  info(message: string, args?: Record<string, unknown>) {
-    if (!this.enabled) return
-    console.info(`[${getTestName()}]\n${message}`, args)
+  info({ module, message, args }: LogParams) {
+    console.info(formatMessage({ module, message }), args)
   }
-  warning(message: string, args?: Record<string, unknown>) {
-    if (!this.enabled) return
-    console.warn(`[${getTestName()}]\n${message}`, args)
+  warn({ module, message, args }: LogParams) {
+    console.warn(formatMessage({ module, message }), args)
   }
-  error(message: string, err: Error, args?: Record<string, unknown>) {
-    if (!this.enabled) return
-    console.error(`[${getTestName()}]\n${message}`, args, err)
+  error({ module, message, args, err }: ErrorLogParams) {
+    console.error(formatMessage({ module, message }), args, err)
   }
+}
+
+function formatMessage({
+  module,
+  message,
+}: {
+  module: string
+  message: string
+}): string {
+  return `[${module}][${getTestName()}]\n${message}`
 }
 
 function getTestName() {

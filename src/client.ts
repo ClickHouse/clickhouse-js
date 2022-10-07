@@ -1,6 +1,7 @@
 import Stream from 'stream'
 import { type Connection, createConnection } from './connection'
-import { Logger } from './logger'
+import type { Logger } from './logger'
+import { DefaultLogger, LogWriter } from './logger'
 import { isStream, mapStream } from './utils'
 import {
   type DataFormat,
@@ -41,7 +42,7 @@ export interface ClickHouseClientConfigOptions {
     /** Enable logging. Default value: false.  */
     enable?: boolean
     /** A class to instantiate a custom logger implementation. */
-    LoggerClass?: new (enabled: boolean) => Logger
+    LoggerClass?: new () => Logger
   }
 }
 
@@ -119,7 +120,7 @@ function normalizeConfig(
     clickhouse_settings: config.clickhouse_settings ?? {},
     log: {
       enable: loggingEnabled,
-      LoggerClass: config.log?.LoggerClass ?? Logger,
+      LoggerClass: config.log?.LoggerClass ?? DefaultLogger,
     },
   }
 }
@@ -129,7 +130,7 @@ type NormalizedConfig = ReturnType<typeof normalizeConfig>
 export class ClickHouseClient {
   private readonly config: NormalizedConfig
   private readonly connection: Connection
-  readonly logger: Logger
+  private readonly logger: LogWriter
 
   constructor(config: ClickHouseClientConfigOptions = {}) {
     const loggingEnabled = Boolean(
@@ -138,7 +139,7 @@ export class ClickHouseClient {
     this.config = normalizeConfig(config, loggingEnabled)
     validateConfig(this.config)
 
-    this.logger = new this.config.log.LoggerClass(this.config.log.enable)
+    this.logger = new LogWriter(new this.config.log.LoggerClass())
     this.connection = createConnection(this.config, this.logger)
   }
 

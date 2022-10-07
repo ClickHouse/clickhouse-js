@@ -1,12 +1,12 @@
 import type { RequestParams } from './base_http_adapter'
 import { BaseHttpAdapter } from './base_http_adapter'
 import type { Connection, ConnectionParams } from '../connection'
-import type { Logger } from '../../logger'
+import type { LogWriter } from '../../logger'
 import Https from 'https'
 import type Http from 'http'
 
 export class HttpsAdapter extends BaseHttpAdapter implements Connection {
-  constructor(config: ConnectionParams, logger: Logger) {
+  constructor(config: ConnectionParams, logger: LogWriter) {
     const agent = new Https.Agent({
       keepAlive: true,
       timeout: config.request_timeout,

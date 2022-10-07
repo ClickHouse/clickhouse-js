@@ -7,6 +7,7 @@ import type { ConnectionParams } from '../../src/connection'
 import { HttpAdapter } from '../../src/connection/adapter'
 import { retryOnFailure, TestLogger } from '../utils'
 import { getAsText } from '../../src/utils'
+import { LogWriter } from '../../src/logger'
 
 describe('HttpAdapter', () => {
   const gzip = Util.promisify(Zlib.gzip)
@@ -279,7 +280,7 @@ describe('HttpAdapter', () => {
         },
         ...config,
       },
-      new TestLogger(true)
+      new LogWriter(new TestLogger())
     )
   }
 })

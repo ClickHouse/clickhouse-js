@@ -308,15 +308,19 @@ export abstract class BaseHttpAdapter implements Connection {
       return typeof params.body === 'string' ? params.body : 'Stream'
     }
     const duration = Date.now() - startTimestamp
-    this.logger.debug('[HTTP Adapter] Got a response from ClickHouse', {
-      request_method: params.method,
-      request_path: params.url.pathname,
-      request_params: params.url.search,
-      request_headers: getRequestHeaders(),
-      request_body: getRequestBody(),
-      response_status: response.statusCode,
-      response_headers: response.headers,
-      response_time_ms: duration,
+    this.logger.debug({
+      module: 'HTTP Adapter',
+      message: 'Got a response from ClickHouse',
+      args: {
+        request_method: params.method,
+        request_path: params.url.pathname,
+        request_params: params.url.search,
+        request_headers: getRequestHeaders(),
+        request_body: getRequestBody(),
+        response_status: response.statusCode,
+        response_headers: response.headers,
+        response_time_ms: duration,
+      },
     })
   }
 
