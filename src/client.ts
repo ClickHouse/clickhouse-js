@@ -14,7 +14,7 @@ import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 export interface ClickHouseClientConfigOptions {
   /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
   host?: string
-  /** The timeout to setup a connection in milliseconds. Default value: `10_000`. */
+  /** The timeout to set up a connection in milliseconds. Default value: `10_000`. */
   connect_timeout?: number
   /** The request timeout in milliseconds. Default value: `30_000`. */
   request_timeout?: number
@@ -246,7 +246,7 @@ export function validateInsertValues<T>(
  * @param values a set of values to send to ClickHouse.
  * @param format a format to encode value to.
  */
-function encodeValues<T>(
+export function encodeValues<T>(
   values: InsertValues<T>,
   format: DataFormat
 ): string | Stream.Readable {
