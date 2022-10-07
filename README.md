@@ -150,27 +150,28 @@ See also:
 
 ## Supported formats
 
-| Format                                     | Input (array) | Input (stream) | Output (JSON) | Output (text) |
-| ------------------------------------------ | ------------- | -------------- | ------------- | ------------- |
-| JSON                                       | ❌            | ❌             | ✔️            | ✔️            |
-| JSONEachRow                                | ✔️            | ✔️             | ✔️            | ✔️            |
-| JSONStringsEachRow                         | ✔️            | ✔️             | ✔️            | ✔️            |
-| JSONCompactEachRow                         | ✔️            | ✔️             | ✔️            | ✔️            |
-| JSONCompactStringsEachRow                  | ✔️            | ✔️             | ✔️            | ✔️            |
-| JSONCompactEachRowWithNames                | ✔️            | ✔️             | ✔️            | ✔️            |
-| JSONCompactEachRowWithNamesAndTypes        | ✔️            | ✔️             | ✔️            | ✔️            |
-| JSONCompactStringsEachRowWithNames         | ✔️            | ✔️             | ✔️            | ✔️            |
-| JSONCompactStringsEachRowWithNamesAndTypes | ✔️            | ✔️             | ✔️            | ✔️            |
-| CSV                                        | ❌            | ✔️             | ❌            | ✔️            |
-| CSVWithNames                               | ❌            | ✔️             | ❌            | ✔️            |
-| CSVWithNamesAndTypes                       | ❌            | ✔️             | ❌            | ✔️            |
-| TabSeparated                               | ❌            | ✔️             | ❌            | ✔️            |
-| TabSeparatedRaw                            | ❌            | ✔️             | ❌            | ✔️            |
-| TabSeparatedWithNames                      | ❌            | ✔️             | ❌            | ✔️            |
-| TabSeparatedWithNamesAndTypes              | ❌            | ✔️             | ❌            | ✔️            |
-| CustomSeparated                            | ❌            | ✔️             | ❌            | ✔️            |
-| CustomSeparatedWithNames                   | ❌            | ✔️             | ❌            | ✔️            |
-| CustomSeparatedWithNamesAndTypes           | ❌            | ✔️             | ❌            | ✔️            |
+| Format                                     | Input (array) | Input (stream) | Input (object) | Output (JSON) | Output (text) |
+| ------------------------------------------ | ------------- | -------------- | -------------- | ------------- | ------------- |
+| JSON                                       | ❌            | ❌             | ✔️             | ✔️            | ✔️            |
+| JSONObjectEachRow                          | ❌            | ❌             | ✔️             | ✔️            | ✔️            |
+| JSONEachRow                                | ✔️            | ✔️             | ❌️            | ✔️            | ✔️            |
+| JSONStringsEachRow                         | ✔️            | ✔️             | ❌️            | ✔️            | ✔️            |
+| JSONCompactEachRow                         | ✔️            | ✔️             | ❌️            | ✔️            | ✔️            |
+| JSONCompactStringsEachRow                  | ✔️            | ✔️             | ❌️            | ✔️            | ✔️            |
+| JSONCompactEachRowWithNames                | ✔️            | ✔️             | ❌️            | ✔️            | ✔️            |
+| JSONCompactEachRowWithNamesAndTypes        | ✔️            | ✔️             | ❌️            | ✔️            | ✔️            |
+| JSONCompactStringsEachRowWithNames         | ✔️            | ✔️             | ❌️            | ✔️            | ✔️            |
+| JSONCompactStringsEachRowWithNamesAndTypes | ✔️            | ✔️             | ❌️            | ✔️            | ✔️            |
+| CSV                                        | ❌            | ✔️             | ❌             | ❌            | ✔️            |
+| CSVWithNames                               | ❌            | ✔️             | ❌             | ❌            | ✔️            |
+| CSVWithNamesAndTypes                       | ❌            | ✔️             | ❌             | ❌            | ✔️            |
+| TabSeparated                               | ❌            | ✔️             | ❌             | ❌            | ✔️            |
+| TabSeparatedRaw                            | ❌            | ✔️             | ❌             | ❌            | ✔️            |
+| TabSeparatedWithNames                      | ❌            | ✔️             | ❌             | ❌            | ✔️            |
+| TabSeparatedWithNamesAndTypes              | ❌            | ✔️             | ❌             | ❌            | ✔️            |
+| CustomSeparated                            | ❌            | ✔️             | ❌             | ❌            | ✔️            |
+| CustomSeparatedWithNames                   | ❌            | ✔️             | ❌             | ❌            | ✔️            |
+| CustomSeparatedWithNamesAndTypes           | ❌            | ✔️             | ❌             | ❌            | ✔️            |
 
 The entire list of ClickHouse input and output formats is available [here](https://clickhouse.com/docs/en/interfaces/formats).
 

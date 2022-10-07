@@ -9,11 +9,12 @@ import {
 } from './data_formatter'
 import { ResultSet } from './result'
 import type { ClickHouseSettings } from './settings'
+import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 
 export interface ClickHouseClientConfigOptions {
   /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
   host?: string
-  /** The timeout to setup a connection in milliseconds. Default value: `10_000`. */
+  /** The timeout to set up a connection in milliseconds. Default value: `10_000`. */
   connect_timeout?: number
   /** The request timeout in milliseconds. Default value: `30_000`. */
   request_timeout?: number
@@ -65,11 +66,17 @@ export interface ExecParams extends BaseParams {
   query: string
 }
 
+type InsertValues<T> =
+  | ReadonlyArray<T>
+  | Stream.Readable
+  | InputJSON<T>
+  | InputJSONObjectEachRow<T>
+
 export interface InsertParams<T = unknown> extends BaseParams {
   /** Name of a table to insert into. */
   table: string
   /** A dataset to insert. */
-  values: ReadonlyArray<T> | Stream.Readable
+  values: InsertValues<T>
   /** Format of the dataset to insert. */
   format?: DataFormat
 }
@@ -200,13 +207,18 @@ function removeSemi(query: string) {
   return query
 }
 
-export function validateInsertValues(
-  values: ReadonlyArray<any> | Stream.Readable,
+export function validateInsertValues<T>(
+  values: InsertValues<T>,
   format: DataFormat
 ): void {
-  if (Array.isArray(values) === false && isStream(values) === false) {
+  if (
+    !Array.isArray(values) &&
+    !isStream(values) &&
+    typeof values !== 'object'
+  ) {
     throw new Error(
-      'Insert expected "values" to be an array or a stream of values.'
+      'Insert expected "values" to be an array, a stream of values or a JSON object, ' +
+        `got: ${typeof values}`
     )
   }
 
@@ -234,8 +246,8 @@ export function validateInsertValues(
  * @param values a set of values to send to ClickHouse.
  * @param format a format to encode value to.
  */
-function encodeValues(
-  values: ReadonlyArray<any> | Stream.Readable,
+export function encodeValues<T>(
+  values: InsertValues<T>,
   format: DataFormat
 ): string | Stream.Readable {
   if (isStream(values)) {
@@ -251,7 +263,16 @@ function encodeValues(
     )
   }
   // JSON* arrays
-  return values.map((value) => encodeJSON(value, format)).join('')
+  if (Array.isArray(values)) {
+    return values.map((value) => encodeJSON(value, format)).join('')
+  }
+  // JSON & JSONObjectEachRow format input
+  if (typeof values === 'object') {
+    return encodeJSON(values, format)
+  }
+  throw new Error(
+    `Cannot encode values of type ${typeof values} with ${format} format`
+  )
 }
 
 export function createClient(
