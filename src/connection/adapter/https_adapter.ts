@@ -11,8 +11,21 @@ export class HttpsAdapter extends BaseHttpAdapter implements Connection {
       keepAlive: true,
       timeout: config.request_timeout,
       maxSockets: config.max_open_connections,
+      ca: config.tls?.ca_cert,
+      key: config.tls?.key,
+      cert: config.tls?.cert,
     })
     super(config, logger, agent)
+  }
+
+  protected override buildDefaultHeaders(
+    username: string,
+    password: string
+  ): Http.OutgoingHttpHeaders {
+    return {
+      'X-ClickHouse-User': username,
+      'X-ClickHouse-SSL-Certificate-Auth': 'on',
+    }
   }
 
   protected createClientRequest(

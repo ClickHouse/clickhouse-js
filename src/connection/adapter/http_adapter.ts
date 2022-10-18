@@ -15,6 +15,17 @@ export class HttpAdapter extends BaseHttpAdapter implements Connection {
     super(config, logger, agent)
   }
 
+  protected buildDefaultHeaders(
+    username: string,
+    password: string
+  ): Http.OutgoingHttpHeaders {
+    return {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
+        'base64'
+      )}`,
+    }
+  }
+
   protected createClientRequest(
     url: URL,
     params: RequestParams

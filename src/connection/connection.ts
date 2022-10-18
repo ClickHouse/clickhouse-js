@@ -15,6 +15,12 @@ export interface ConnectionParams {
     compress_request: boolean
   }
 
+  tls?: {
+    ca_cert?: Buffer
+    cert: Buffer
+    key: Buffer
+  }
+
   username: string
   password: string
   database: string

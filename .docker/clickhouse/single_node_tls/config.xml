@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <clickhouse>
 
-  <http_port>8123</http_port>
-  <tcp_port>9000</tcp_port>
+  <https_port>8443</https_port>
+  <tcp_port_secure>9440</tcp_port_secure>
+  <listen_host>0.0.0.0</listen_host>
 
   <users_config>users.xml</users_config>
   <default_profile>default</default_profile>
@@ -24,4 +25,15 @@
     <console>1</console>
   </logger>
 
+  <openSSL>
+    <server>
+      <certificateFile>/etc/clickhouse-server/certs/server.crt</certificateFile>
+      <privateKeyFile>/etc/clickhouse-server/certs/server.key</privateKeyFile>
+      <verificationMode>strict</verificationMode>
+      <caConfig>/etc/clickhouse-server/certs/ca.crt</caConfig>
+      <cacheSessions>true</cacheSessions>
+      <disableProtocols>sslv2,sslv3,tlsv1</disableProtocols>
+      <preferServerCiphers>true</preferServerCiphers>
+    </server>
+  </openSSL>
 </clickhouse>

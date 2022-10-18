@@ -35,13 +35,23 @@ export interface ClickHouseClientConfigOptions {
   application?: string
   /** Database name to use. Default value: `default`. */
   database?: string
-  /** ClickHouse settings to apply to all requests. Default value: {}  */
+  /** ClickHouse settings to apply to all requests. Default value: {} */
   clickhouse_settings?: ClickHouseSettings
   log?: {
-    /** Enable logging. Default value: false.  */
+    /** Enable logging. Default value: false. */
     enable?: boolean
     /** A class to instantiate a custom logger implementation. */
     LoggerClass?: new (enabled: boolean) => Logger
+  }
+  tls?: {
+    /** Enable TLS. Default value: false. */
+    enable?: boolean
+    /** Server `.ca` file contents */
+    ca_cert?: Buffer
+    /** Client `.crt` file contents */
+    cert: Buffer
+    /** Client `.key` file contents */
+    key: Buffer
   }
 }
 
@@ -107,7 +117,7 @@ function normalizeConfig(
     connect_timeout: config.connect_timeout ?? 10_000,
     request_timeout: config.request_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? Infinity,
-    // tls: _config.tls,
+    tls: config.tls?.enable ? config.tls : undefined,
     compression: {
       decompress_response: config.compression?.response ?? true,
       compress_request: config.compression?.request ?? false,
