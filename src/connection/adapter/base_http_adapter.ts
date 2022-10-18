@@ -82,17 +82,23 @@ function isDecompressionError(result: any): result is { error: Error } {
 export abstract class BaseHttpAdapter implements Connection {
   protected readonly headers: Http.OutgoingHttpHeaders
   protected constructor(
-    private readonly config: ConnectionParams,
+    protected readonly config: ConnectionParams,
     private readonly logger: Logger,
     protected readonly agent: Http.Agent
   ) {
     this.headers = this.buildDefaultHeaders(config.username, config.password)
   }
 
-  protected abstract buildDefaultHeaders(
+  protected buildDefaultHeaders(
     username: string,
     password: string
-  ): Http.OutgoingHttpHeaders
+  ): Http.OutgoingHttpHeaders {
+    return {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
+        'base64'
+      )}`,
+    }
+  }
 
   protected abstract createClientRequest(
     url: URL,

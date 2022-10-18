@@ -22,9 +22,13 @@ export class HttpsAdapter extends BaseHttpAdapter implements Connection {
     username: string,
     password: string
   ): Http.OutgoingHttpHeaders {
-    return {
-      'X-ClickHouse-User': username,
-      'X-ClickHouse-SSL-Certificate-Auth': 'on',
+    if (this.config.tls) {
+      return {
+        'X-ClickHouse-User': username,
+        'X-ClickHouse-SSL-Certificate-Auth': 'on',
+      }
+    } else {
+      return super.buildDefaultHeaders(username, password)
     }
   }
 

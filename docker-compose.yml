@@ -16,6 +16,7 @@ services:
 
   clickhouse_tls:
     build:
+      context: ./
       dockerfile: .docker/clickhouse/single_node_tls/Dockerfile
     container_name: 'clickhouse-js-clickhouse-server-tls'
     ports:
