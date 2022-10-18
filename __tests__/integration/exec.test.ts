@@ -74,11 +74,11 @@ describe('exec', () => {
   })
 
   describe('trailing semi', () => {
-    it('should cut off the statements after the first semi', async () => {
+    it('should allow commands with semi in select clause', async () => {
       const result = await client.exec({
-        query: 'EXISTS system.databases;asdf foobar',
+        query: `SELECT ';' FORMAT CSV`,
       })
-      expect(await getAsText(result)).toEqual('1\n')
+      expect(await getAsText(result)).toEqual('";"\n')
     })
 
     it('should allow commands with trailing semi', async () => {

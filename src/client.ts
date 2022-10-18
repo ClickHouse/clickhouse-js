@@ -164,7 +164,7 @@ export class ClickHouseClient {
   }
 
   exec(params: ExecParams): Promise<Stream.Readable> {
-    const query = removeSemi(params.query.trim())
+    const query = removeTrailingSemi(params.query.trim())
     return this.connection.exec({
       query,
       ...this.getBaseParams(params),
@@ -195,14 +195,20 @@ export class ClickHouseClient {
 
 function formatQuery(query: string, format: DataFormat): string {
   query = query.trim()
-  query = removeSemi(query)
+  query = removeTrailingSemi(query)
   return query + ' \nFORMAT ' + format
 }
 
-function removeSemi(query: string) {
-  const idx = query.indexOf(';')
-  if (idx !== -1) {
-    return query.slice(0, idx)
+function removeTrailingSemi(query: string) {
+  let lastNonSemiIdx = query.length
+  for (let i = lastNonSemiIdx; i > 0; i--) {
+    if (query[i - 1] !== ';') {
+      lastNonSemiIdx = i
+      break
+    }
+  }
+  if (lastNonSemiIdx !== query.length) {
+    return query.slice(0, lastNonSemiIdx)
   }
   return query
 }
