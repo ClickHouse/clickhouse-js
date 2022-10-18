@@ -91,6 +91,10 @@ jobs:
         run: |
           npm install
 
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
       # Will also run unit tests, but that's almost free.
       # Otherwise, we need to set up a separate job,
       # which will also run the integration tests for the second time,
