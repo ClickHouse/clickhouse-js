@@ -47,17 +47,6 @@ function withHttpSettings(
   }
 }
 
-function buildDefaultHeaders(
-  username: string,
-  password: string
-): Http.OutgoingHttpHeaders {
-  return {
-    Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
-      'base64'
-    )}`,
-  }
-}
-
 function decompressResponse(response: Http.IncomingMessage):
   | {
       response: Stream.Readable
@@ -93,11 +82,22 @@ function isDecompressionError(result: any): result is { error: Error } {
 export abstract class BaseHttpAdapter implements Connection {
   protected readonly headers: Http.OutgoingHttpHeaders
   protected constructor(
-    private readonly config: ConnectionParams,
+    protected readonly config: ConnectionParams,
     private readonly logger: Logger,
     protected readonly agent: Http.Agent
   ) {
-    this.headers = buildDefaultHeaders(config.username, config.password)
+    this.headers = this.buildDefaultHeaders(config.username, config.password)
+  }
+
+  protected buildDefaultHeaders(
+    username: string,
+    password: string
+  ): Http.OutgoingHttpHeaders {
+    return {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
+        'base64'
+      )}`,
+    }
   }
 
   protected abstract createClientRequest(

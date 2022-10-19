@@ -17,6 +17,12 @@
       <quota>default</quota>
       <access_management>1</access_management>
     </default>
+    <cert_user>
+      <ssl_certificates>
+        <common_name>client.clickhouseconnect.test</common_name>
+      </ssl_certificates>
+      <profile>default</profile>
+    </cert_user>
   </users>
 
   <quotas>
