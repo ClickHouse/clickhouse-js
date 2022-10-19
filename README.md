@@ -139,6 +139,19 @@ export interface ClickHouseClientConfigOptions {
     // use it to override default clickhouse-js logger with your own implementation
     LoggerClass?: new (enabled: boolean) => Logger
   }
+
+  // TLS settings
+  tls?:
+    | {
+        // Basic TLS without client certificates
+        ca_cert: Buffer
+      }
+    | {
+        // Mutual TLS with client certificates
+        ca_cert: Buffer
+        cert: Buffer
+        key: Buffer
+      }
 }
 ```
 

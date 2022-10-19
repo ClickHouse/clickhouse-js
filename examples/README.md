@@ -32,7 +32,7 @@ docker-compose -f docker-compose.cluster.yml up -d
 then run the example:
 
 ```
-ts-node --transpile-only examples/create_table_local_cluster.ts
+ts-node --transpile-only --project tsconfig.dev.json examples/create_table_local_cluster.ts
 ```
 
 - for `create_table_cloud.ts`, Docker containers are not required,
@@ -49,5 +49,5 @@ to your Cloud instance, so it is `default` for both.
 Run the example:
 
 ```
-ts-node --transpile-only examples/create_table_cloud.ts
+ts-node --transpile-only --project tsconfig.dev.json examples/create_table_cloud.ts
 ```
