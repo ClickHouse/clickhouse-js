@@ -18,7 +18,20 @@ then you can run some sample program:
 ts-node --transpile-only --project tsconfig.dev.json examples/array_json_each_row.ts
 ```
 
+### TLS examples
 
+You need to add `server.clickhouseconnect.test` to your `/etc/hosts` to make it work.
+
+```bash
+sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
+```
+
+After that, you should be able to run the examples:
+
+```bash
+ts-node --transpile-only --project tsconfig.dev.json examples/basic_tls.ts
+ts-node --transpile-only --project tsconfig.dev.json examples/mutual_tls.ts
+```
 
 ### Create table examples
 
