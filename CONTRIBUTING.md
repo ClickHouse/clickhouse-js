@@ -71,8 +71,6 @@ Any `insert*.test.ts` can be a good example of that.
 Additionally, there is a slightly different test client creation when using Cloud,
 as we need credentials.
 
-```bash```
-
 #### Local single node integration tests
 
 Used when `CLICKHOUSE_TEST_ENVIRONMENT` is omitted or set to `local_single_node`.
