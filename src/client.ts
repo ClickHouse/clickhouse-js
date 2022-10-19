@@ -1,4 +1,5 @@
 import Stream from 'stream'
+import type { TLSParams } from './connection'
 import { type Connection, createConnection } from './connection'
 import { Logger } from './logger'
 import { isStream, mapStream } from './utils'
@@ -43,16 +44,17 @@ export interface ClickHouseClientConfigOptions {
     /** A class to instantiate a custom logger implementation. */
     LoggerClass?: new (enabled: boolean) => Logger
   }
-  tls?: {
-    /** Enable TLS. Default value: false. */
-    enable?: boolean
-    /** Server `.ca` file contents */
-    ca_cert?: Buffer
-    /** Client `.crt` file contents */
-    cert: Buffer
-    /** Client `.key` file contents */
-    key: Buffer
-  }
+  tls?: BasicTLSOptions | MutualTLSOptions
+}
+
+interface BasicTLSOptions {
+  ca_cert: Buffer
+}
+
+interface MutualTLSOptions {
+  ca_cert: Buffer
+  cert: Buffer
+  key: Buffer
 }
 
 export interface BaseParams {
@@ -112,12 +114,26 @@ function normalizeConfig(
   config: ClickHouseClientConfigOptions,
   loggingEnabled: boolean
 ) {
+  let tls: TLSParams | undefined = undefined
+  if (config.tls) {
+    if ('cert' in config.tls && 'key' in config.tls) {
+      tls = {
+        type: 'Mutual',
+        ...config.tls,
+      }
+    } else {
+      tls = {
+        type: 'Basic',
+        ...config.tls,
+      }
+    }
+  }
   return {
     url: createUrl(config.host ?? 'http://localhost:8123'),
     connect_timeout: config.connect_timeout ?? 10_000,
     request_timeout: config.request_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? Infinity,
-    tls: config.tls?.enable ? config.tls : undefined,
+    tls,
     compression: {
       decompress_response: config.compression?.response ?? true,
       compress_request: config.compression?.request ?? false,

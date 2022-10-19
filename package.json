@@ -1,6 +1,6 @@
 {
   "name": "@clickhouse/client",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Official JS client for ClickHouse DB",
   "license": "Apache-2.0",
   "keywords": [

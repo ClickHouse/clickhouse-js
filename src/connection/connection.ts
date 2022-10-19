@@ -15,16 +15,24 @@ export interface ConnectionParams {
     compress_request: boolean
   }
 
-  tls?: {
-    ca_cert?: Buffer
-    cert: Buffer
-    key: Buffer
-  }
+  tls?: TLSParams
 
   username: string
   password: string
   database: string
 }
+
+export type TLSParams =
+  | {
+      ca_cert: Buffer
+      type: 'Basic'
+    }
+  | {
+      ca_cert: Buffer
+      cert: Buffer
+      key: Buffer
+      type: 'Mutual'
+    }
 
 export interface BaseParams {
   query: string
