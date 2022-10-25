@@ -1,13 +1,10 @@
 import Stream from 'stream'
-import type { TLSParams } from './connection'
-import { type Connection, createConnection } from './connection'
+import type { Connection, TLSParams } from './connection'
+import { createConnection } from './connection'
 import { Logger } from './logger'
 import { isStream, mapStream } from './utils'
-import {
-  type DataFormat,
-  encodeJSON,
-  isSupportedRawFormat,
-} from './data_formatter'
+import type { DataFormat } from './data_formatter'
+import { encodeJSON, isSupportedRawFormat } from './data_formatter'
 import { ResultSet } from './result'
 import type { ClickHouseSettings } from './settings'
 import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'

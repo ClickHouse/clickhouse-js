@@ -5,13 +5,13 @@ export default {
   createClient,
 }
 
-export {
-  type ClickHouseClientConfigOptions,
-  type ClickHouseClient,
-  type BaseParams,
-  type QueryParams,
-  type ExecParams,
-  type InsertParams,
+export type {
+  ClickHouseClientConfigOptions,
+  ClickHouseClient,
+  BaseParams,
+  QueryParams,
+  ExecParams,
+  InsertParams,
 } from './client'
 
 export { Row, ResultSet } from './result'
