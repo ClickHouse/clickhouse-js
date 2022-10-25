@@ -96,6 +96,25 @@ describe('exec', () => {
     })
   })
 
+  describe('sessions', () => {
+    let sessionClient: ClickHouseClient
+    beforeEach(() => {
+      sessionClient = createTestClient({
+        session_id: `test-session-${guid()}`,
+      })
+    })
+    afterEach(async () => {
+      await sessionClient.close()
+    })
+
+    it('should allow the use of a session', async () => {
+      // Temporary tables cannot be used without a session
+      await sessionClient.exec({
+        query: 'CREATE TEMPORARY TABLE test_temp (val Int32)',
+      })
+    })
+  })
+
   it.skip('can specify a parameterized query', async () => {
     await runCommand(client, {
       query: '',

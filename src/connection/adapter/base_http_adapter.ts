@@ -244,6 +244,7 @@ export abstract class BaseHttpAdapter implements Connection {
       database: this.config.database,
       clickhouse_settings,
       query_params: params.query_params,
+      session_id: params.session_id,
     })
 
     return await this.request({
@@ -260,6 +261,7 @@ export abstract class BaseHttpAdapter implements Connection {
       database: this.config.database,
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
+      session_id: params.session_id,
     })
 
     return await this.request({
@@ -276,6 +278,7 @@ export abstract class BaseHttpAdapter implements Connection {
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
       query: params.query,
+      session_id: params.session_id,
     })
 
     await this.request({

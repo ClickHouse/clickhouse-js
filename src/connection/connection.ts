@@ -39,6 +39,7 @@ export interface BaseParams {
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
   abort_signal?: AbortSignal
+  session_id?: string
 }
 
 export interface InsertParams extends BaseParams {
