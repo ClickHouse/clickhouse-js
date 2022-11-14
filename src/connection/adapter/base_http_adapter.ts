@@ -153,7 +153,7 @@ export abstract class BaseHttpAdapter implements Connection {
 
       function onAbort(): void {
         // Prefer 'abort' event since it always triggered unlike 'error' and 'close'
-        // * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
+        // see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
         removeRequestListeners()
         request.once('error', function () {
           /**
@@ -167,9 +167,8 @@ export abstract class BaseHttpAdapter implements Connection {
       function onClose(): void {
         // Adapter uses 'close' event to clean up listeners after the successful response.
         // It's necessary in order to handle 'abort' and 'timeout' events while response is streamed.
-        // setImmediate is a workaround. If a request cancelled before sent, the 'abort' happens after 'close'.
-        // Which contradicts the docs https://nodejs.org/docs/latest-v14.x/api/http.html#http_http_request_url_options_callback
-        setImmediate(removeRequestListeners)
+        // It's always the last event, according to https://nodejs.org/docs/latest-v14.x/api/http.html#http_http_request_url_options_callback
+        removeRequestListeners()
       }
 
       function removeRequestListeners(): void {
