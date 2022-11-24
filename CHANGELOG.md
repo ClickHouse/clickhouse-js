@@ -1,25 +1,25 @@
-## 0.0.10 2022-11-14
+## 0.0.10, 2022-11-14
 ### New features
 - Remove request listeners synchronously. [#123](https://github.com/ClickHouse/clickhouse-js/issues/123)
 
-## 0.0.9 2022-10-25
+## 0.0.9, 2022-10-25
 ### New features
 - Added ClickHouse session_id support. [#121](https://github.com/ClickHouse/clickhouse-js/pull/121)
 
-## 0.0.8 2022-10-18
+## 0.0.8, 2022-10-18
 ### New features
 - Added SSL/TLS support (basic and mutual). [#52](https://github.com/ClickHouse/clickhouse-js/issues/52)
 
 
-## 0.0.7 2022-10-18
+## 0.0.7, 2022-10-18
 ### Bug fixes
 - Allow semicolons in select clause. [#116](https://github.com/ClickHouse/clickhouse-js/issues/116)
 
-## 0.0.6 2022-10-07
+## 0.0.6, 2022-10-07
 ### New features
 - Add JSONObjectEachRow input/output and JSON input formats. [#113](https://github.com/ClickHouse/clickhouse-js/pull/113)
 
-## 0.0.5 2022-10-04
+## 0.0.5, 2022-10-04
 ### Breaking changes
   - Rows abstraction was renamed to ResultSet.
   - now, every iteration over ResultSet.stream() yields Row[] instead of a single Row. Please check out an example and this PR for more details. These changes allowed us to significantly reduce overhead on select result set streaming.
