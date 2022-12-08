@@ -302,7 +302,7 @@ export abstract class BaseHttpAdapter implements Connection {
     startTimestamp: number
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { authorization, ...headers } = request.getHeaders()
+    const { authorization, host, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
     this.logger.debug({
       module: 'HTTP Adapter',

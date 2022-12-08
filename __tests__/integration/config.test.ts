@@ -68,7 +68,7 @@ describe('config', () => {
         1,
         expect.stringContaining('Got a response from ClickHouse'),
         expect.objectContaining({
-          request_headers: { host: 'localhost:8123' },
+          request_headers: {},
           request_method: 'GET',
           request_params: '',
           request_path: '/ping',
