@@ -1,3 +1,11 @@
+## 0.0.11, 2022-12-08
+### Breaking changes
+* `log.enabled` flag was removed from the client configuration.
+* Use `CLICKHOUSE_LOG_LEVEL` environment variable instead. Possible values: `OFF`, `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`.
+Currently, there are only debug messages, but we will log more in the future.
+
+For more details, see PR [#110](https://github.com/ClickHouse/clickhouse-js/pull/110)
+
 ## 0.0.10, 2022-11-14
 ### New features
 - Remove request listeners synchronously.
