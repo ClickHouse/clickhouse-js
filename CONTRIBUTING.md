@@ -1,5 +1,8 @@
 ## Getting started
-ClickHouse js client is an open-source project, and we welcome any contributions from the community. Please share your ideas, contribute to the codebase, and help us maintain up-to-date documentation.
+ClickHouse js client is an open-source project,
+and we welcome any contributions from the community.
+Please share your ideas, contribute to the codebase,
+and help us maintain up-to-date documentation.
 
 ### Set up environment
 You have installed:
@@ -17,8 +20,18 @@ cd clickhouse-js
 npm i
 ```
 
+### Add /etc/hosts entry
+
+Required for TLS tests.
+
+```bash
+sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
+```
+
 ## Testing
-Whenever you add a new feature to the package or fix a bug, we strongly encourage you to add appropriate tests to ensure everyone in the community can safely benefit from your contribution.
+Whenever you add a new feature to the package or fix a bug,
+we strongly encourage you to add appropriate tests to ensure
+everyone in the community can safely benefit from your contribution.
 
 ### Tooling
 We use [jest](https://jestjs.io/) as a test runner.
@@ -30,7 +43,8 @@ All the testing scripts are run with `jest-silent-reporter`.
 npm run typecheck
 npm run lint:fix
 ```
-We use [Husky](https://typicode.github.io/husky) for pre-commit hooks, so it will be executed before every commit.
+We use [Husky](https://typicode.github.io/husky) for pre-commit hooks,
+so it will be executed before every commit.
 
 ### Running unit tests
 
@@ -51,8 +65,11 @@ There are three possible options:
 - `local_cluster`
 - `cloud`
 
-The main difference will be in table definitions, as having different engines in different setups is required.
-Any `insert*.test.ts` can be a good example of that. Additionally, there is a slightly different test client creation when using Cloud, as we need credentials.
+The main difference will be in table definitions,
+as having different engines in different setups is required.
+Any `insert*.test.ts` can be a good example of that.
+Additionally, there is a slightly different test client creation when using Cloud,
+as we need credentials.
 
 #### Local single node integration tests
 
@@ -68,6 +85,22 @@ and then run the tests:
 
 ```bash
 npm run test:integration
+```
+
+#### Running TLS integration tests
+
+Basic and mutual TLS certificates tests, using `clickhouse_tls` server container.
+
+Start the containers first:
+
+```bash
+docker-compose up -d
+```
+
+and then run the tests:
+
+```bash
+npm run test:tls
 ```
 
 #### Local two nodes cluster integration tests
@@ -105,7 +138,8 @@ npm run test:integration:cloud
 ```
 
 ## CI
-GitHub Actions should execute integration test jobs in parallel after we complete the TypeScript type check, lint check, and unit tests.
+GitHub Actions should execute integration test jobs in parallel
+after we complete the TypeScript type check, lint check, and unit tests.
 
 ```
 Build + Unit tests
@@ -126,9 +160,11 @@ in the end of each main branch CI run.
 See [tests.yml](./.github/workflows/tests.yml)
 `upload-coverage-and-badge` job for more details.
 
-You can collect and check the coverage locally by running:
+You can collect and check the coverage locally by running all tests
+(unit, integration, TLS):
 
 ```bash
+docker-compose up -d
 npm t -- --coverage
 ```
 

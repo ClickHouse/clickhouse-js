@@ -47,17 +47,6 @@ function withHttpSettings(
   }
 }
 
-function buildDefaultHeaders(
-  username: string,
-  password: string
-): Http.OutgoingHttpHeaders {
-  return {
-    Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
-      'base64'
-    )}`,
-  }
-}
-
 function decompressResponse(response: Http.IncomingMessage):
   | {
       response: Stream.Readable
@@ -93,11 +82,22 @@ function isDecompressionError(result: any): result is { error: Error } {
 export abstract class BaseHttpAdapter implements Connection {
   protected readonly headers: Http.OutgoingHttpHeaders
   protected constructor(
-    private readonly config: ConnectionParams,
+    protected readonly config: ConnectionParams,
     private readonly logger: Logger,
     protected readonly agent: Http.Agent
   ) {
-    this.headers = buildDefaultHeaders(config.username, config.password)
+    this.headers = this.buildDefaultHeaders(config.username, config.password)
+  }
+
+  protected buildDefaultHeaders(
+    username: string,
+    password: string
+  ): Http.OutgoingHttpHeaders {
+    return {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
+        'base64'
+      )}`,
+    }
   }
 
   protected abstract createClientRequest(
@@ -153,7 +153,7 @@ export abstract class BaseHttpAdapter implements Connection {
 
       function onAbort(): void {
         // Prefer 'abort' event since it always triggered unlike 'error' and 'close'
-        // * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
+        // see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
         removeRequestListeners()
         request.once('error', function () {
           /**
@@ -167,9 +167,8 @@ export abstract class BaseHttpAdapter implements Connection {
       function onClose(): void {
         // Adapter uses 'close' event to clean up listeners after the successful response.
         // It's necessary in order to handle 'abort' and 'timeout' events while response is streamed.
-        // setImmediate is a workaround. If a request cancelled before sent, the 'abort' happens after 'close'.
-        // Which contradicts the docs https://nodejs.org/docs/latest-v14.x/api/http.html#http_http_request_url_options_callback
-        setImmediate(removeRequestListeners)
+        // It's always the last event, according to https://nodejs.org/docs/latest-v14.x/api/http.html#http_http_request_url_options_callback
+        removeRequestListeners()
       }
 
       function removeRequestListeners(): void {
@@ -244,6 +243,7 @@ export abstract class BaseHttpAdapter implements Connection {
       database: this.config.database,
       clickhouse_settings,
       query_params: params.query_params,
+      session_id: params.session_id,
     })
 
     return await this.request({
@@ -260,6 +260,7 @@ export abstract class BaseHttpAdapter implements Connection {
       database: this.config.database,
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
+      session_id: params.session_id,
     })
 
     return await this.request({
@@ -276,6 +277,7 @@ export abstract class BaseHttpAdapter implements Connection {
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
       query: params.query,
+      session_id: params.session_id,
     })
 
     await this.request({

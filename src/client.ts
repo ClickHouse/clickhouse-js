@@ -1,4 +1,5 @@
 import Stream from 'stream'
+import type { TLSParams } from './connection'
 import { type Connection, createConnection } from './connection'
 import type { Logger } from './logger'
 import { DefaultLogger, LogWriter } from './logger'
@@ -36,12 +37,24 @@ export interface ClickHouseClientConfigOptions {
   application?: string
   /** Database name to use. Default value: `default`. */
   database?: string
-  /** ClickHouse settings to apply to all requests. Default value: {}  */
+  /** ClickHouse settings to apply to all requests. Default value: {} */
   clickhouse_settings?: ClickHouseSettings
   log?: {
     /** A class to instantiate a custom logger implementation. */
     LoggerClass?: new () => Logger
   }
+  tls?: BasicTLSOptions | MutualTLSOptions
+  session_id?: string
+}
+
+interface BasicTLSOptions {
+  ca_cert: Buffer
+}
+
+interface MutualTLSOptions {
+  ca_cert: Buffer
+  cert: Buffer
+  key: Buffer
 }
 
 export interface BaseParams {
@@ -98,12 +111,26 @@ function createUrl(host: string): URL {
 }
 
 function normalizeConfig(config: ClickHouseClientConfigOptions) {
+  let tls: TLSParams | undefined = undefined
+  if (config.tls) {
+    if ('cert' in config.tls && 'key' in config.tls) {
+      tls = {
+        type: 'Mutual',
+        ...config.tls,
+      }
+    } else {
+      tls = {
+        type: 'Basic',
+        ...config.tls,
+      }
+    }
+  }
   return {
     url: createUrl(config.host ?? 'http://localhost:8123'),
     connect_timeout: config.connect_timeout ?? 10_000,
     request_timeout: config.request_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? Infinity,
-    // tls: _config.tls,
+    tls,
     compression: {
       decompress_response: config.compression?.response ?? true,
       compress_request: config.compression?.request ?? false,
@@ -116,6 +143,7 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
     log: {
       LoggerClass: config.log?.LoggerClass ?? DefaultLogger,
     },
+    session_id: config.session_id,
   }
 }
 
@@ -142,6 +170,7 @@ export class ClickHouseClient {
       },
       query_params: params.query_params,
       abort_signal: params.abort_signal,
+      session_id: this.config.session_id,
     }
   }
 
@@ -156,7 +185,7 @@ export class ClickHouseClient {
   }
 
   exec(params: ExecParams): Promise<Stream.Readable> {
-    const query = removeSemi(params.query.trim())
+    const query = removeTrailingSemi(params.query.trim())
     return this.connection.exec({
       query,
       ...this.getBaseParams(params),
@@ -187,14 +216,20 @@ export class ClickHouseClient {
 
 function formatQuery(query: string, format: DataFormat): string {
   query = query.trim()
-  query = removeSemi(query)
+  query = removeTrailingSemi(query)
   return query + ' \nFORMAT ' + format
 }
 
-function removeSemi(query: string) {
-  const idx = query.indexOf(';')
-  if (idx !== -1) {
-    return query.slice(0, idx)
+function removeTrailingSemi(query: string) {
+  let lastNonSemiIdx = query.length
+  for (let i = lastNonSemiIdx; i > 0; i--) {
+    if (query[i - 1] !== ';') {
+      lastNonSemiIdx = i
+      break
+    }
+  }
+  if (lastNonSemiIdx !== query.length) {
+    return query.slice(0, lastNonSemiIdx)
   }
   return query
 }

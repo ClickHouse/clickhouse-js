@@ -1,6 +1,6 @@
 {
   "name": "@clickhouse/client",
-  "version": "0.0.6",
+  "version": "0.0.11",
   "description": "Official JS client for ClickHouse DB",
   "license": "Apache-2.0",
   "keywords": [
@@ -24,6 +24,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint --fix . --ext .ts",
     "test": "jest --testPathPattern=__tests__ --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
+    "test:tls": "jest --testMatch='**/__tests__/tls/*.test.ts'",
     "test:unit": "jest --testMatch='**/__tests__/{unit,utils}/*.test.ts'",
     "test:integration": "jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
     "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",

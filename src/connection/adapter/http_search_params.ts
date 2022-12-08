@@ -6,6 +6,7 @@ type ToSearchParamsOptions = {
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
   query?: string
+  session_id?: string
 }
 
 // TODO validate max length of the resulting query
@@ -15,6 +16,7 @@ export function toSearchParams({
   query,
   query_params,
   clickhouse_settings,
+  session_id,
 }: ToSearchParamsOptions): URLSearchParams | undefined {
   if (
     clickhouse_settings === undefined &&
@@ -47,6 +49,10 @@ export function toSearchParams({
 
   if (query) {
     params.set('query', query)
+  }
+
+  if (session_id) {
+    params.set('session_id', session_id)
   }
 
   return params

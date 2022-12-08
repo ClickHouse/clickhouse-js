@@ -15,16 +15,31 @@ export interface ConnectionParams {
     compress_request: boolean
   }
 
+  tls?: TLSParams
+
   username: string
   password: string
   database: string
 }
+
+export type TLSParams =
+  | {
+      ca_cert: Buffer
+      type: 'Basic'
+    }
+  | {
+      ca_cert: Buffer
+      cert: Buffer
+      key: Buffer
+      type: 'Mutual'
+    }
 
 export interface BaseParams {
   query: string
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
   abort_signal?: AbortSignal
+  session_id?: string
 }
 
 export interface InsertParams extends BaseParams {

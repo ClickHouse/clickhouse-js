@@ -13,3 +13,19 @@ services:
     volumes:
       - './.docker/clickhouse/single_node/config.xml:/etc/clickhouse-server/config.xml'
       - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+
+  clickhouse_tls:
+    build:
+      context: ./
+      dockerfile: .docker/clickhouse/single_node_tls/Dockerfile
+    container_name: 'clickhouse-js-clickhouse-server-tls'
+    ports:
+      - '8443:8443'
+      - '9440:9440'
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - './.docker/clickhouse/single_node_tls/config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/single_node_tls/users.xml:/etc/clickhouse-server/users.xml'

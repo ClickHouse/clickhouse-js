@@ -18,7 +18,20 @@ then you can run some sample program:
 ts-node --transpile-only --project tsconfig.dev.json examples/array_json_each_row.ts
 ```
 
+### TLS examples
 
+You need to add `server.clickhouseconnect.test` to your `/etc/hosts` to make it work.
+
+```bash
+sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
+```
+
+After that, you should be able to run the examples:
+
+```bash
+ts-node --transpile-only --project tsconfig.dev.json examples/basic_tls.ts
+ts-node --transpile-only --project tsconfig.dev.json examples/mutual_tls.ts
+```
 
 ### Create table examples
 
@@ -32,7 +45,7 @@ docker-compose -f docker-compose.cluster.yml up -d
 then run the example:
 
 ```
-ts-node --transpile-only examples/create_table_local_cluster.ts
+ts-node --transpile-only --project tsconfig.dev.json examples/create_table_local_cluster.ts
 ```
 
 - for `create_table_cloud.ts`, Docker containers are not required,
@@ -49,5 +62,5 @@ to your Cloud instance, so it is `default` for both.
 Run the example:
 
 ```
-ts-node --transpile-only examples/create_table_cloud.ts
+ts-node --transpile-only --project tsconfig.dev.json examples/create_table_cloud.ts
 ```

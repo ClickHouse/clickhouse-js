@@ -503,12 +503,12 @@ describe('select', () => {
       expect(await numbers.text()).toEqual('0\n1\n2\n')
     })
 
-    it('should cut off the statements after the first semi', async () => {
-      const numbers = await client.query({
-        query: 'SELECT * FROM system.numbers LIMIT 3;asdf foobar',
+    it('should allow semi in select clause', async () => {
+      const resultSet = await client.query({
+        query: `SELECT ';'`,
         format: 'CSV',
       })
-      expect(await numbers.text()).toEqual('0\n1\n2\n')
+      expect(await resultSet.text()).toEqual('";"\n')
     })
   })
 })
