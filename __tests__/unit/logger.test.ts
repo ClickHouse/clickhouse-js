@@ -24,11 +24,10 @@ describe('Logger', () => {
     logs = []
   })
 
-  it('should use INFO by default', async () => {
+  it('should use OFF by default', async () => {
     const logWriter = new LogWriter(new TestLogger())
-    checkLogLevelSet('INFO')
     logEveryLogLevel(logWriter)
-    checkInfoLogs()
+    expect(logs.length).toEqual(0)
   })
 
   it('should explicitly use DEBUG', async () => {

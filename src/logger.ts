@@ -65,7 +65,7 @@ export class LogWriter {
   private getClickHouseLogLevel(): ClickHouseLogLevel {
     const logLevelFromEnv = process.env['CLICKHOUSE_LOG_LEVEL']
     if (!logLevelFromEnv) {
-      return ClickHouseLogLevel.INFO
+      return ClickHouseLogLevel.OFF
     }
     const logLevel = logLevelFromEnv.toLocaleLowerCase()
     if (logLevel === 'info') {
@@ -87,9 +87,9 @@ export class LogWriter {
       return ClickHouseLogLevel.OFF
     }
     console.error(
-      `Unknown CLICKHOUSE_LOG_LEVEL value: ${logLevelFromEnv}, defaulting to INFO`
+      `Unknown CLICKHOUSE_LOG_LEVEL value: ${logLevelFromEnv}, logs are disabled`
     )
-    return ClickHouseLogLevel.INFO
+    return ClickHouseLogLevel.OFF
   }
 }
 
