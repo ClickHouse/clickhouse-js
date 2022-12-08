@@ -73,7 +73,7 @@ describe('config', () => {
           request_params: '',
           request_path: '/ping',
           response_headers: expect.objectContaining({
-            connection: 'Keep-Alive',
+            connection: expect.stringMatching(/Keep-Alive/i),
             'content-type': 'text/html; charset=UTF-8',
             'transfer-encoding': 'chunked',
           }),
