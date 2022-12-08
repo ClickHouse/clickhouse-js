@@ -51,7 +51,37 @@ describe('config', () => {
       defaultLogLevel = process.env[logLevelKey]
     })
     afterEach(() => {
-      process.env[logLevelKey] = defaultLogLevel
+      if (defaultLogLevel === undefined) {
+        delete process.env[logLevelKey]
+      } else {
+        process.env[logLevelKey] = defaultLogLevel
+      }
+    })
+
+    it('should use the default logger implementation', async () => {
+      process.env[logLevelKey] = 'DEBUG'
+      client = createTestClient()
+      const consoleSpy = jest.spyOn(console, 'debug')
+      await client.ping()
+      // logs[0] are about current log level
+      expect(consoleSpy).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('Got a response from ClickHouse'),
+        expect.objectContaining({
+          request_headers: { host: 'localhost:8123' },
+          request_method: 'GET',
+          request_params: '',
+          request_path: '/ping',
+          response_headers: expect.objectContaining({
+            connection: 'Keep-Alive',
+            'content-type': 'text/html; charset=UTF-8',
+            'keep-alive': 'timeout=10',
+            'transfer-encoding': 'chunked',
+          }),
+          response_status: 200,
+        })
+      )
+      expect(consoleSpy).toHaveBeenCalledTimes(1)
     })
 
     it('should provide a custom logger implementation', async () => {
@@ -63,7 +93,6 @@ describe('config', () => {
         },
       })
       await client.ping()
-      console.log(logs)
       // logs[0] are about current log level
       expect(logs[1]).toEqual({
         module: 'HTTP Adapter',

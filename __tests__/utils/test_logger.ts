@@ -3,16 +3,16 @@ import type { ErrorLogParams, LogParams } from '../../src/logger'
 
 export class TestLogger implements Logger {
   debug({ module, message, args }: LogParams) {
-    console.debug(formatMessage({ module, message }), args)
+    console.debug(formatMessage({ module, message }), args || '')
   }
   info({ module, message, args }: LogParams) {
-    console.info(formatMessage({ module, message }), args)
+    console.info(formatMessage({ module, message }), args || '')
   }
   warn({ module, message, args }: LogParams) {
-    console.warn(formatMessage({ module, message }), args)
+    console.warn(formatMessage({ module, message }), args || '')
   }
   error({ module, message, args, err }: ErrorLogParams) {
-    console.error(formatMessage({ module, message }), args, err)
+    console.error(formatMessage({ module, message }), args || '', err)
   }
 }
 
