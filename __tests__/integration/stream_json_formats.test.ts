@@ -4,7 +4,7 @@ import { createTestClient, guid, makeObjectStream } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 import { assertJsonValues, jsonValues } from './fixtures/test_data'
 
-describe('insert stream (JSON formats)', () => {
+describe('stream JSON formats', () => {
   let client: ClickHouseClient
   let tableName: string
 

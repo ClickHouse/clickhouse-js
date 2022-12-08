@@ -5,7 +5,7 @@ import Stream from 'stream'
 import { assertJsonValues, jsonValues } from './fixtures/test_data'
 import type { RawDataFormat } from '../../src/data_formatter'
 
-describe('insert stream (raw formats)', () => {
+describe('stream raw formats', () => {
   let client: ClickHouseClient
   let tableName: string
 

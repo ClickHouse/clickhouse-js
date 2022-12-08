@@ -2,16 +2,19 @@ import type { Logger } from '../../src'
 import { type ClickHouseClient } from '../../src'
 import { createTestClient, retryOnFailure } from '../utils'
 import type { RetryOnFailureOptions } from '../utils/retry'
+import type { ErrorLogParams, LogParams } from '../../src/logger'
 
 describe('config', () => {
   let client: ClickHouseClient
-  let messages: string[] = []
+  let logs: {
+    message: string
+    err?: Error
+    args?: Record<string, unknown>
+  }[] = []
 
   afterEach(async () => {
     await client.close()
-    if (messages.length) {
-      messages = []
-    }
+    logs = []
   })
 
   it('should set request timeout with "request_timeout" setting', async () => {
@@ -41,26 +44,76 @@ describe('config', () => {
     expect(await result.text()).toEqual('0\n1\n')
   })
 
-  it('should provide a custom logger implementation', async () => {
-    client = createTestClient({
-      log: {
-        enable: true,
-        LoggerClass: TestLogger,
-      },
+  describe('Logger support', () => {
+    const logLevelKey = 'CLICKHOUSE_LOG_LEVEL'
+    let defaultLogLevel: string | undefined
+    beforeEach(() => {
+      defaultLogLevel = process.env[logLevelKey]
     })
-    await client.ping()
-    expect(messages).toContainEqual(expect.stringContaining('GET /ping'))
-  })
+    afterEach(() => {
+      if (defaultLogLevel === undefined) {
+        delete process.env[logLevelKey]
+      } else {
+        process.env[logLevelKey] = defaultLogLevel
+      }
+    })
 
-  it('should provide a custom logger implementation (but logs are disabled)', async () => {
-    client = createTestClient({
-      log: {
-        enable: false,
-        LoggerClass: TestLogger,
-      },
+    it('should use the default logger implementation', async () => {
+      process.env[logLevelKey] = 'DEBUG'
+      client = createTestClient()
+      const consoleSpy = jest.spyOn(console, 'debug')
+      await client.ping()
+      // logs[0] are about current log level
+      expect(consoleSpy).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('Got a response from ClickHouse'),
+        expect.objectContaining({
+          request_headers: {},
+          request_method: 'GET',
+          request_params: '',
+          request_path: '/ping',
+          response_headers: expect.objectContaining({
+            connection: expect.stringMatching(/Keep-Alive/i),
+            'content-type': 'text/html; charset=UTF-8',
+            'transfer-encoding': 'chunked',
+          }),
+          response_status: 200,
+        })
+      )
+      expect(consoleSpy).toHaveBeenCalledTimes(1)
     })
-    await client.ping()
-    expect(messages).toHaveLength(0)
+
+    it('should provide a custom logger implementation', async () => {
+      process.env[logLevelKey] = 'DEBUG'
+      client = createTestClient({
+        log: {
+          // enable: true,
+          LoggerClass: TestLogger,
+        },
+      })
+      await client.ping()
+      // logs[0] are about current log level
+      expect(logs[1]).toEqual({
+        module: 'HTTP Adapter',
+        message: 'Got a response from ClickHouse',
+        args: expect.objectContaining({
+          request_path: '/ping',
+          request_method: 'GET',
+        }),
+      })
+    })
+
+    it('should provide a custom logger implementation (but logs are disabled)', async () => {
+      process.env[logLevelKey] = 'OFF'
+      client = createTestClient({
+        log: {
+          // enable: false,
+          LoggerClass: TestLogger,
+        },
+      })
+      await client.ping()
+      expect(logs).toHaveLength(0)
+    })
   })
 
   describe('max_open_connections', () => {
@@ -119,26 +172,17 @@ describe('config', () => {
   })
 
   class TestLogger implements Logger {
-    constructor(readonly enabled: boolean) {}
-    debug(message: string) {
-      if (this.enabled) {
-        messages.push(message)
-      }
+    debug(params: LogParams) {
+      logs.push(params)
     }
-    info(message: string) {
-      if (this.enabled) {
-        messages.push(message)
-      }
+    info(params: LogParams) {
+      logs.push(params)
     }
-    warning(message: string) {
-      if (this.enabled) {
-        messages.push(message)
-      }
+    warn(params: LogParams) {
+      logs.push(params)
     }
-    error(message: string) {
-      if (this.enabled) {
-        messages.push(message)
-      }
+    error(params: ErrorLogParams) {
+      logs.push(params)
     }
   }
 })
