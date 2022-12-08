@@ -75,7 +75,6 @@ describe('config', () => {
           response_headers: expect.objectContaining({
             connection: 'Keep-Alive',
             'content-type': 'text/html; charset=UTF-8',
-            'keep-alive': 'timeout=10',
             'transfer-encoding': 'chunked',
           }),
           response_status: 200,
