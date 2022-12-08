@@ -39,8 +39,6 @@ export interface ClickHouseClientConfigOptions {
   /** ClickHouse settings to apply to all requests. Default value: {}  */
   clickhouse_settings?: ClickHouseSettings
   log?: {
-    /** Enable logging. Default value: false.  */
-    enable?: boolean
     /** A class to instantiate a custom logger implementation. */
     LoggerClass?: new () => Logger
   }
@@ -99,10 +97,7 @@ function createUrl(host: string): URL {
   }
 }
 
-function normalizeConfig(
-  config: ClickHouseClientConfigOptions,
-  loggingEnabled: boolean
-) {
+function normalizeConfig(config: ClickHouseClientConfigOptions) {
   return {
     url: createUrl(config.host ?? 'http://localhost:8123'),
     connect_timeout: config.connect_timeout ?? 10_000,
@@ -119,7 +114,6 @@ function normalizeConfig(
     database: config.database ?? 'default',
     clickhouse_settings: config.clickhouse_settings ?? {},
     log: {
-      enable: loggingEnabled,
       LoggerClass: config.log?.LoggerClass ?? DefaultLogger,
     },
   }
@@ -133,10 +127,7 @@ export class ClickHouseClient {
   private readonly logger: LogWriter
 
   constructor(config: ClickHouseClientConfigOptions = {}) {
-    const loggingEnabled = Boolean(
-      config.log?.enable || process.env.CLICKHOUSE_LOG_ENABLE
-    )
-    this.config = normalizeConfig(config, loggingEnabled)
+    this.config = normalizeConfig(config)
     validateConfig(this.config)
 
     this.logger = new LogWriter(new this.config.log.LoggerClass())

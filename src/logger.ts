@@ -39,55 +39,55 @@ export class LogWriter {
   }
 
   debug(params: LogParams): void {
-    if (this.logLevel < (ClickHouseLogLevel.INFO as number)) {
+    if (this.logLevel <= (ClickHouseLogLevel.DEBUG as number)) {
       this.logger.debug(params)
     }
   }
 
   info(params: LogParams): void {
-    if (this.logLevel < (ClickHouseLogLevel.WARN as number)) {
+    if (this.logLevel <= (ClickHouseLogLevel.INFO as number)) {
       this.logger.info(params)
     }
   }
 
   warn(params: LogParams): void {
-    if (this.logLevel < (ClickHouseLogLevel.ERROR as number)) {
-      this.logger.info(params)
+    if (this.logLevel <= (ClickHouseLogLevel.WARN as number)) {
+      this.logger.warn(params)
     }
   }
 
   error(params: ErrorLogParams): void {
-    if (this.logLevel < (ClickHouseLogLevel.OFF as number)) {
-      this.logger.info(params)
+    if (this.logLevel <= (ClickHouseLogLevel.ERROR as number)) {
+      this.logger.error(params)
     }
   }
 
   private getClickHouseLogLevel(): ClickHouseLogLevel {
-    const fromEnv = process.env['CLICKHOUSE_LOG_LEVEL']
-    if (!fromEnv) {
+    const logLevelFromEnv = process.env['CLICKHOUSE_LOG_LEVEL']
+    if (!logLevelFromEnv) {
       return ClickHouseLogLevel.INFO
     }
-    const lower = fromEnv.toLocaleLowerCase()
-    if (lower === 'info') {
+    const logLevel = logLevelFromEnv.toLocaleLowerCase()
+    if (logLevel === 'info') {
       return ClickHouseLogLevel.INFO
     }
-    if (lower === 'warn') {
+    if (logLevel === 'warn') {
       return ClickHouseLogLevel.WARN
     }
-    if (lower === 'error') {
+    if (logLevel === 'error') {
       return ClickHouseLogLevel.ERROR
     }
-    if (lower === 'debug') {
+    if (logLevel === 'debug') {
       return ClickHouseLogLevel.DEBUG
     }
-    if (lower === 'trace') {
+    if (logLevel === 'trace') {
       return ClickHouseLogLevel.TRACE
     }
-    if (lower === 'off') {
+    if (logLevel === 'off') {
       return ClickHouseLogLevel.OFF
     }
     console.error(
-      `Unknown CLICKHOUSE_LOG_LEVEL value: ${fromEnv}, defaulting to INFO`
+      `Unknown CLICKHOUSE_LOG_LEVEL value: ${logLevelFromEnv}, defaulting to INFO`
     )
     return ClickHouseLogLevel.INFO
   }

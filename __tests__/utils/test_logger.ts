@@ -23,7 +23,7 @@ function formatMessage({
   module: string
   message: string
 }): string {
-  return `[${module}][${getTestName()}]\n${message}`
+  return `[${module}][${getTestName()}] ${message}`
 }
 
 function getTestName() {

@@ -299,14 +299,8 @@ export abstract class BaseHttpAdapter implements Connection {
     response: Http.IncomingMessage,
     startTimestamp: number
   ) {
-    const getRequestHeaders = () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { authorization, ...headers } = request.getHeaders()
-      return headers
-    }
-    const getRequestBody = () => {
-      return typeof params.body === 'string' ? params.body : 'Stream'
-    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { authorization, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
     this.logger.debug({
       module: 'HTTP Adapter',
@@ -315,8 +309,7 @@ export abstract class BaseHttpAdapter implements Connection {
         request_method: params.method,
         request_path: params.url.pathname,
         request_params: params.url.search,
-        request_headers: getRequestHeaders(),
-        request_body: getRequestBody(),
+        request_headers: headers,
         response_status: response.statusCode,
         response_headers: response.headers,
         response_time_ms: duration,
