@@ -140,13 +140,13 @@ describe('config', () => {
       client = createTestClient({
         max_open_connections: 1,
       })
-      void select('SELECT 1 AS x, sleep(0.2)')
-      void select('SELECT 2 AS x, sleep(0.2)')
+      void select('SELECT 1 AS x, sleep(0.3)')
+      void select('SELECT 2 AS x, sleep(0.3)')
       await retryOnFailure(async () => {
         expect(results).toEqual([1])
       }, retryOpts)
       await retryOnFailure(async () => {
-        expect(results).toEqual([1, 2])
+        expect(results.sort()).toEqual([1, 2])
       }, retryOpts)
     })
 
@@ -154,19 +154,19 @@ describe('config', () => {
       client = createTestClient({
         max_open_connections: 2,
       })
-      void select('SELECT 1 AS x, sleep(0.2)')
-      void select('SELECT 2 AS x, sleep(0.2)')
-      void select('SELECT 3 AS x, sleep(0.2)')
-      void select('SELECT 4 AS x, sleep(0.2)')
+      void select('SELECT 1 AS x, sleep(0.3)')
+      void select('SELECT 2 AS x, sleep(0.3)')
+      void select('SELECT 3 AS x, sleep(0.3)')
+      void select('SELECT 4 AS x, sleep(0.3)')
       await retryOnFailure(async () => {
         expect(results).toContain(1)
         expect(results).toContain(2)
-        expect(results.length).toEqual(2)
+        expect(results.sort()).toEqual([1, 2])
       }, retryOpts)
       await retryOnFailure(async () => {
         expect(results).toContain(3)
         expect(results).toContain(4)
-        expect(results.length).toEqual(4)
+        expect(results.sort()).toEqual([1, 2, 3, 4])
       }, retryOpts)
     })
   })
