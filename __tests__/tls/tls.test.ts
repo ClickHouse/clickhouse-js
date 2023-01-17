@@ -76,11 +76,14 @@ describe('TLS connection', () => {
         key: fs.readFileSync(`${certsPath}/server.key`),
       },
     })
+    const errorMessage = process.version.startsWith('v19')
+      ? 'unsupported certificate'
+      : 'socket hang up'
     await expect(
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
         format: 'CSV',
       })
-    ).rejects.toThrowError('socket hang up')
+    ).rejects.toThrowError(errorMessage)
   })
 })
