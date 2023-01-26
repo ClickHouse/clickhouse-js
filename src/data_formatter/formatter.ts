@@ -26,18 +26,18 @@ const supportedRawFormats = [
   'CustomSeparatedWithNamesAndTypes',
 ] as const
 
-export type JSONDataFormat = typeof supportedJSONFormats[number]
-export type RawDataFormat = typeof supportedRawFormats[number]
+export type JSONDataFormat = (typeof supportedJSONFormats)[number]
+export type RawDataFormat = (typeof supportedRawFormats)[number]
 export type DataFormat = JSONDataFormat | RawDataFormat
 
-type StreamableJsonDataFormat = typeof streamableJSONFormats[number]
+type StreamableJsonDataFormat = (typeof streamableJSONFormats)[number]
 
 // TODO add others formats
 const streamableFormat = [
   ...streamableJSONFormats,
   ...supportedRawFormats,
 ] as const
-type StreamableDataFormat = typeof streamableFormat[number]
+type StreamableDataFormat = (typeof streamableFormat)[number]
 
 function isStreamableJSONFamily(
   format: DataFormat
