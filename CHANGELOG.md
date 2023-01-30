@@ -1,3 +1,12 @@
+## 0.0.12
+
+### New features
+* `ResultSet.query_id` contains a unique query identifier that might be useful for retrieving query metrics from `system.query_log`
+
+### Breaking changes
+* `client.insert` now returns `string` (query_id) instead of `void`
+* `client.exec` now returns `{ stream: Stream.Readable, query_id: string }` instead of just `Stream.Readable`
+
 ## 0.0.11, 2022-12-08
 ### Breaking changes
 * `log.enabled` flag was removed from the client configuration.
