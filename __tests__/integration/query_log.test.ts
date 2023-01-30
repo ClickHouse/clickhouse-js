@@ -1,16 +1,20 @@
 import { type ClickHouseClient } from '../../src'
 import { createTestClient, retryOnFailure } from '../utils'
+import { itSkipCloud } from '../utils/it'
 
 describe('query_log', () => {
   let client: ClickHouseClient
   afterEach(async () => {
-    await client.close()
-  })
-  beforeEach(async () => {
-    client = createTestClient()
+    if (client) {
+      await client.close()
+    }
   })
 
-  it('can use query_id to fetch query_log table', async () => {
+  // this test is very flaky in the Cloud environment
+  // likely due flushing the query_log not too often
+  // it's better to execute only with the local single node or cluster
+  itSkipCloud('can use query_id to fetch query_log table', async () => {
+    client = createTestClient()
     const query = 'SELECT * FROM system.numbers LIMIT 144'
     const { query_id } = await client.query({
       query,
@@ -23,9 +27,9 @@ describe('query_log', () => {
       async () => {
         const logResultSet = await client.query({
           query: `
-          SELECT * FROM system.query_log
-          WHERE query_id = {query_id: String}
-        `,
+            SELECT * FROM system.query_log
+            WHERE query_id = {query_id: String}
+          `,
           query_params: {
             query_id,
           },
