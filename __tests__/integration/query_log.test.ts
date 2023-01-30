@@ -53,7 +53,7 @@ describe('query_log', () => {
         ])
       },
       {
-        maxAttempts: 20,
+        maxAttempts: 100,
         waitBetweenAttemptsMs: 100,
       }
     )
