@@ -1,5 +1,5 @@
 import Stream from 'stream'
-import type { TLSParams } from './connection'
+import type { QueryId, QueryResult, TLSParams } from './connection'
 import { type Connection, createConnection } from './connection'
 import type { Logger } from './logger'
 import { DefaultLogger, LogWriter } from './logger'
@@ -177,28 +177,28 @@ export class ClickHouseClient {
   async query(params: QueryParams): Promise<ResultSet> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
-    const stream = await this.connection.query({
+    const { stream, query_id } = await this.connection.query({
       query,
       ...this.getBaseParams(params),
     })
-    return new ResultSet(stream, format)
+    return new ResultSet(stream, format, query_id)
   }
 
-  exec(params: ExecParams): Promise<Stream.Readable> {
+  async exec(params: ExecParams): Promise<QueryResult> {
     const query = removeTrailingSemi(params.query.trim())
-    return this.connection.exec({
+    return await this.connection.exec({
       query,
       ...this.getBaseParams(params),
     })
   }
 
-  async insert<T>(params: InsertParams<T>): Promise<void> {
+  async insert<T>(params: InsertParams<T>): Promise<QueryId> {
     const format = params.format || 'JSONCompactEachRow'
 
     validateInsertValues(params.values, format)
     const query = `INSERT into ${params.table.trim()} FORMAT ${format}`
 
-    await this.connection.insert({
+    return await this.connection.insert({
       query,
       values: encodeValues(params.values, format),
       ...this.getBaseParams(params),

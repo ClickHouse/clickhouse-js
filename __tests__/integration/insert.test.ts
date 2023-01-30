@@ -4,6 +4,7 @@ import { createTestClient, guid } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 import { assertJsonValues, jsonValues } from './fixtures/test_data'
 import Stream from 'stream'
+import * as uuid from 'uuid'
 
 describe('insert', () => {
   let client: ClickHouseClient
@@ -19,7 +20,7 @@ describe('insert', () => {
   })
 
   it('inserts values using JSON format', async () => {
-    await client.insert({
+    const queryId = await client.insert({
       table: tableName,
       values: {
         meta: [
@@ -41,6 +42,7 @@ describe('insert', () => {
       format: 'JSON',
     })
     await assertJsonValues(client, tableName)
+    expect(uuid.validate(queryId)).toBeTruthy()
   })
 
   it('inserts values using JSONObjectEachRow format', async () => {

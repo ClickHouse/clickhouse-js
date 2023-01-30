@@ -1,6 +1,7 @@
 import type Stream from 'stream'
 import { type ClickHouseClient, type ResponseJSON, type Row } from '../../src'
 import { createTestClient } from '../utils'
+import * as uuid from 'uuid'
 
 async function rowsValues(stream: Stream.Readable): Promise<any[]> {
   const result: any[] = []
@@ -29,6 +30,15 @@ describe('select', () => {
   })
   beforeEach(async () => {
     client = createTestClient()
+  })
+
+  it('gets query_id back', async () => {
+    const resultSet = await client.query({
+      query: 'SELECT * FROM system.numbers LIMIT 1',
+      format: 'JSONEachRow',
+    })
+    expect(await resultSet.json()).toEqual([{ number: '0' }])
+    expect(uuid.validate(resultSet.query_id)).toBeTruthy()
   })
 
   it('can process an empty response', async () => {

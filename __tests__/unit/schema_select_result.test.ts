@@ -3,6 +3,7 @@ import { ResultSet } from '../../src'
 import * as ch from '../../src/schema'
 import { QueryFormatter } from '../../src/schema/query_formatter'
 import { Readable } from 'stream'
+import { guid } from '../utils'
 
 describe('schema select result', () => {
   const client: ClickHouseClient = {
@@ -28,7 +29,8 @@ describe('schema select result', () => {
       .mockResolvedValueOnce(
         new ResultSet(
           Readable.from(['{"valid":"json"}\n', 'invalid_json}\n']),
-          'JSONEachRow'
+          'JSONEachRow',
+          guid()
         )
       )
   })
