@@ -4,7 +4,8 @@
     "./src/**/*.ts",
     "__tests__/**/*.ts",
     "examples/**/*.ts",
-    "benchmarks/**/*.ts"
+    "benchmarks/**/*.ts",
+    ".build/**/*.ts"
   ],
   "compilerOptions": {
     "noUnusedLocals": false,

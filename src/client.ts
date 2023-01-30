@@ -33,7 +33,7 @@ export interface ClickHouseClientConfigOptions {
   username?: string
   /** The user password. Default: ''. */
   password?: string
-  /** The name of the application using the nodejs client. Default: 'clickhouse-js'. */
+  /** The name of the application using the nodejs client. Default: empty. */
   application?: string
   /** Database name to use. Default value: `default`. */
   database?: string
@@ -126,6 +126,7 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
     }
   }
   return {
+    application_id: config.application,
     url: createUrl(config.host ?? 'http://localhost:8123'),
     connect_timeout: config.connect_timeout ?? 10_000,
     request_timeout: config.request_timeout ?? 300_000,
