@@ -169,3 +169,8 @@ npm t -- --coverage
 ```
 
 Please don't commit the coverage reports manually.
+
+## Update package version
+Don't forget to change the package version in `src/version.ts` before the release.
+
+`release` GitHub action will pick it up and replace `package.json` version automatically.
