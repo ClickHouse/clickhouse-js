@@ -1,5 +1,5 @@
 import Stream from 'stream'
-import type { QueryId, QueryResult, TLSParams } from './connection'
+import type { InsertResult, QueryResult, TLSParams } from './connection'
 import { type Connection, createConnection } from './connection'
 import type { Logger } from './logger'
 import { DefaultLogger, LogWriter } from './logger'
@@ -193,11 +193,11 @@ export class ClickHouseClient {
     })
   }
 
-  async insert<T>(params: InsertParams<T>): Promise<QueryId> {
+  async insert<T>(params: InsertParams<T>): Promise<InsertResult> {
     const format = params.format || 'JSONCompactEachRow'
 
     validateInsertValues(params.values, format)
-    const query = `INSERT into ${params.table.trim()} FORMAT ${format}`
+    const query = `INSERT INTO ${params.table.trim()} FORMAT ${format}`
 
     return await this.connection.insert({
       query,

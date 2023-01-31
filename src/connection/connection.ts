@@ -48,10 +48,13 @@ export interface InsertParams extends BaseParams {
   values: string | Stream.Readable
 }
 
-export type QueryId = string
 export interface QueryResult {
   stream: Stream.Readable
-  query_id: QueryId
+  query_id: string
+}
+
+export interface InsertResult {
+  query_id: string
 }
 
 export interface Connection {
@@ -59,7 +62,7 @@ export interface Connection {
   close(): Promise<void>
   query(params: BaseParams): Promise<QueryResult>
   exec(params: BaseParams): Promise<QueryResult>
-  insert(params: InsertParams): Promise<QueryId>
+  insert(params: InsertParams): Promise<InsertResult>
 }
 
 export function createConnection(

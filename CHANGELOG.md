@@ -2,9 +2,12 @@
 
 ### New features
 * `ResultSet.query_id` contains a unique query identifier that might be useful for retrieving query metrics from `system.query_log`
+* `User-Agent` HTTP header is set according to the [language client spec](https://docs.google.com/document/d/1924Dvy79KXIhfqKpi1EBVY3133pIdoMwgCQtZ-uhEKs/edit#heading=h.ah33hoz5xei2).
+For example, for client version 0.0.12 and Node.js runtime v19.0.4 on Linux platform, it will be `clickhouse-js/0.0.12 (lv:nodejs/19.0.4; os:linux)`.
+If `ClickHouseClientConfigOptions.application` is set, it will be prepended to the generated `User-Agent`.
 
 ### Breaking changes
-* `client.insert` now returns `string` (query_id) instead of `void`
+* `client.insert` now returns `{ query_id: string }` instead of `void`
 * `client.exec` now returns `{ stream: Stream.Readable, query_id: string }` instead of just `Stream.Readable`
 
 ## 0.0.11, 2022-12-08

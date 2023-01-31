@@ -203,7 +203,11 @@ describe('abort request', () => {
           table: tableName,
           values: stream,
         })
-      ).toEqual(expect.any(String))
+      ).toEqual(
+        expect.objectContaining({
+          query_id: expect.any(String),
+        })
+      )
     })
 
     it('cancels an insert query after it is sent', async () => {

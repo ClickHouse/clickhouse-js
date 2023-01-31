@@ -10,15 +10,15 @@ import type {
   Connection,
   ConnectionParams,
   InsertParams,
-  QueryId,
+  InsertResult,
   QueryResult,
 } from '../connection'
 import { toSearchParams } from './http_search_params'
 import { transformUrl } from './transform_url'
 import { getAsText, isStream } from '../../utils'
 import type { ClickHouseSettings } from '../../settings'
-import { v4 as uuid_v4 } from 'uuid'
 import { getUserAgent } from '../../utils/user_agent'
+import * as uuid from 'uuid'
 
 export interface RequestParams {
   method: 'GET' | 'POST'
@@ -231,20 +231,20 @@ export abstract class BaseHttpAdapter implements Connection {
 
   async ping(): Promise<boolean> {
     // TODO add status code check
-    const response = await this.request({
+    const stream = await this.request({
       method: 'GET',
       url: transformUrl({ url: this.config.url, pathname: '/ping' }),
     })
-    response.destroy()
+    stream.destroy()
     return true
   }
 
   async query(params: BaseParams): Promise<QueryResult> {
+    const query_id = this.generateQueryId()
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
       this.config.compression.decompress_response
     )
-    const query_id = this.generateQueryId()
     const searchParams = toSearchParams({
       database: this.config.database,
       clickhouse_settings,
@@ -290,7 +290,7 @@ export abstract class BaseHttpAdapter implements Connection {
     }
   }
 
-  async insert(params: InsertParams): Promise<QueryId> {
+  async insert(params: InsertParams): Promise<InsertResult> {
     const query_id = this.generateQueryId()
     const searchParams = toSearchParams({
       database: this.config.database,
@@ -298,6 +298,7 @@ export abstract class BaseHttpAdapter implements Connection {
       query_params: params.query_params,
       query: params.query,
       session_id: params.session_id,
+      query_id,
     })
 
     await this.request({
@@ -308,7 +309,7 @@ export abstract class BaseHttpAdapter implements Connection {
       compress_request: this.config.compression.compress_request,
     })
 
-    return query_id
+    return { query_id }
   }
 
   async close(): Promise<void> {
@@ -317,8 +318,10 @@ export abstract class BaseHttpAdapter implements Connection {
     }
   }
 
+  // needed for insert queries as the query_id is not generated automatically
+  // we will use it for `exec` and `insert` methods, but not `select`
   private generateQueryId(): string {
-    return uuid_v4()
+    return uuid.v4()
   }
 
   private logResponse(

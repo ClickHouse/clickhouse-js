@@ -20,7 +20,7 @@ describe('insert', () => {
   })
 
   it('inserts values using JSON format', async () => {
-    const queryId = await client.insert({
+    const { query_id } = await client.insert({
       table: tableName,
       values: {
         meta: [
@@ -42,7 +42,7 @@ describe('insert', () => {
       format: 'JSON',
     })
     await assertJsonValues(client, tableName)
-    expect(uuid.validate(queryId)).toBeTruthy()
+    expect(uuid.validate(query_id)).toBeTruthy()
   })
 
   it('inserts values using JSONObjectEachRow format', async () => {
