@@ -241,26 +241,9 @@ describe('HttpAdapter', () => {
   })
 
   describe('User-Agent', () => {
-    class MyTestHttpAdapter extends BaseHttpAdapter {
-      constructor(application_id?: string) {
-        super(
-          { application_id } as ConnectionParams,
-          new TestLogger(),
-          {} as Http.Agent
-        )
-      }
-      protected createClientRequest(): Http.ClientRequest {
-        return {} as any
-      }
-      public getDefaultHeaders() {
-        return this.headers
-      }
-    }
-
     it('should have proper user agent without app id', async () => {
       const myHttpAdapter = new MyTestHttpAdapter()
       const headers = myHttpAdapter.getDefaultHeaders()
-      expect(headers['Authorization']).toMatch(/^Basic [A-Za-z0-9/+=]+$/)
       expect(headers['User-Agent']).toMatch(
         /^clickhouse-js\/[0-9\\.]+? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
       )
@@ -269,11 +252,16 @@ describe('HttpAdapter', () => {
     it('should have proper user agent with app id', async () => {
       const myHttpAdapter = new MyTestHttpAdapter('MyFancyApp')
       const headers = myHttpAdapter.getDefaultHeaders()
-      expect(headers['Authorization']).toMatch(/^Basic [A-Za-z0-9/+=]+$/)
       expect(headers['User-Agent']).toMatch(
         /^MyFancyApp clickhouse-js\/[0-9\\.]+? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
       )
     })
+  })
+
+  it('should have proper auth header', async () => {
+    const myHttpAdapter = new MyTestHttpAdapter()
+    const headers = myHttpAdapter.getDefaultHeaders()
+    expect(headers['Authorization']).toMatch(/^Basic [A-Za-z0-9/+=]+$/)
   })
 
   function buildIncomingMessage({
@@ -321,3 +309,19 @@ describe('HttpAdapter', () => {
     )
   }
 })
+
+class MyTestHttpAdapter extends BaseHttpAdapter {
+  constructor(application_id?: string) {
+    super(
+      { application_id } as ConnectionParams,
+      new TestLogger(),
+      {} as Http.Agent
+    )
+  }
+  protected createClientRequest(): Http.ClientRequest {
+    return {} as any
+  }
+  public getDefaultHeaders() {
+    return this.headers
+  }
+}
