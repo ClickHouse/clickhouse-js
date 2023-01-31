@@ -15,6 +15,7 @@ import { toSearchParams } from './http_search_params'
 import { transformUrl } from './transform_url'
 import { getAsText, isStream } from '../../utils'
 import type { ClickHouseSettings } from '../../settings'
+import { getUserAgent } from '../../utils/user_agent'
 
 export interface RequestParams {
   method: 'GET' | 'POST'
@@ -97,6 +98,7 @@ export abstract class BaseHttpAdapter implements Connection {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
         'base64'
       )}`,
+      'User-Agent': getUserAgent(this.config.application_id),
     }
   }
 

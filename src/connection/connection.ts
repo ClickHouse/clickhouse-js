@@ -6,6 +6,8 @@ import type { ClickHouseSettings } from '../settings'
 export interface ConnectionParams {
   url: URL
 
+  application_id?: string
+
   connect_timeout: number
   request_timeout: number
   max_open_connections: number
