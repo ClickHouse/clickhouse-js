@@ -9,6 +9,7 @@ import {
 } from '../utils'
 import { getAsText } from '../../src/utils'
 import type Stream from 'stream'
+import * as uuid from 'uuid'
 
 describe('exec', () => {
   let client: ClickHouseClient
@@ -40,6 +41,8 @@ describe('exec', () => {
     expect(table.name).toBe(tableName)
     expect(table.engine).toBe(engine)
     expect(typeof table.create_table_query).toBe('string')
+
+    expect(uuid.validate(selectResult.query_id)).toBeTruthy()
   })
 
   it('does not swallow ClickHouse error', async () => {
@@ -70,7 +73,7 @@ describe('exec', () => {
         val2: 20,
       },
     })
-    expect(await getAsText(result)).toEqual('30\n')
+    expect(await getAsText(result.stream)).toEqual('30\n')
   })
 
   describe('trailing semi', () => {
@@ -78,21 +81,21 @@ describe('exec', () => {
       const result = await client.exec({
         query: `SELECT ';' FORMAT CSV`,
       })
-      expect(await getAsText(result)).toEqual('";"\n')
+      expect(await getAsText(result.stream)).toEqual('";"\n')
     })
 
     it('should allow commands with trailing semi', async () => {
       const result = await client.exec({
         query: 'EXISTS system.databases;',
       })
-      expect(await getAsText(result)).toEqual('1\n')
+      expect(await getAsText(result.stream)).toEqual('1\n')
     })
 
     it('should allow commands with multiple trailing semi', async () => {
       const result = await client.exec({
         query: 'EXISTS system.foobar;;;;;;',
       })
-      expect(await getAsText(result)).toEqual('0\n')
+      expect(await getAsText(result.stream)).toEqual('0\n')
     })
   })
 
@@ -184,11 +187,12 @@ async function runCommand(
   params: ExecParams
 ): Promise<Stream.Readable> {
   console.log(`Running command:\n${params.query}`)
-  return client.exec({
+  const { stream } = await client.exec({
     ...params,
     clickhouse_settings: {
       // ClickHouse responds to a command when it's completely finished
       wait_end_of_query: 1,
     },
   })
+  return stream
 }

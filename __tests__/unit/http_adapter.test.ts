@@ -3,11 +3,13 @@ import Http from 'http'
 import Stream from 'stream'
 import Util from 'util'
 import Zlib from 'zlib'
-import type { ConnectionParams } from '../../src/connection'
+import type { ConnectionParams, QueryResult } from '../../src/connection'
 import { HttpAdapter } from '../../src/connection/adapter'
 import { retryOnFailure, TestLogger } from '../utils'
 import { getAsText } from '../../src/utils'
 import { LogWriter } from '../../src/logger'
+import * as uuid from 'uuid'
+import { v4 as uuid_v4 } from 'uuid'
 import { BaseHttpAdapter } from '../../src/connection/adapter/base_http_adapter'
 
 describe('HttpAdapter', () => {
@@ -58,7 +60,8 @@ describe('HttpAdapter', () => {
           })
         )
 
-        expect(await getAsText(await selectPromise)).toBe(responseBody)
+        const queryResult = await selectPromise
+        await assertQueryResult(queryResult, responseBody)
         assertStub(undefined)
       })
 
@@ -81,7 +84,8 @@ describe('HttpAdapter', () => {
         const responseBody = 'foobar'
         await emitCompressedBody(request, responseBody)
 
-        expect(await getAsText(await selectPromise)).toBe(responseBody)
+        const queryResult = await selectPromise
+        await assertQueryResult(queryResult, responseBody)
         assertStub('gzip')
       })
 
@@ -101,7 +105,8 @@ describe('HttpAdapter', () => {
         const responseBody = 'abc'.repeat(1_000)
         await emitCompressedBody(request, responseBody)
 
-        expect(await getAsText(await selectPromise)).toBe(responseBody)
+        const queryResult = await selectPromise
+        await assertQueryResult(queryResult, responseBody)
       })
 
       it('throws on an unexpected encoding', async () => {
@@ -149,8 +154,8 @@ describe('HttpAdapter', () => {
         )
 
         await expect(async () => {
-          const response = await selectPromise
-          for await (const chunk of response) {
+          const { stream } = await selectPromise
+          for await (const chunk of stream) {
             void chunk // stub
           }
         }).rejects.toMatchObject({
@@ -211,17 +216,6 @@ describe('HttpAdapter', () => {
       }
     })
 
-    function stubRequest() {
-      const request = new Stream.Writable({
-        write() {
-          /** stub */
-        },
-      }) as ClientRequest
-      request.getHeaders = () => ({})
-      httpRequestStub.mockReturnValueOnce(request)
-      return request
-    }
-
     async function emitCompressedBody(
       request: ClientRequest,
       body: string,
@@ -264,6 +258,127 @@ describe('HttpAdapter', () => {
     expect(headers['Authorization']).toMatch(/^Basic [A-Za-z0-9/+=]+$/)
   })
 
+  describe('query_id', () => {
+    it('obtains query_id for query', async () => {
+      const adapter = buildHttpAdapter({
+        compression: {
+          decompress_response: false,
+          compress_request: false,
+        },
+      })
+      const request1 = stubRequest()
+
+      const selectPromise1 = adapter.query({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+      })
+      const responseBody1 = 'foobar'
+      request1.emit(
+        'response',
+        buildIncomingMessage({
+          body: responseBody1,
+        })
+      )
+      const queryResult1 = await selectPromise1
+
+      const request2 = stubRequest()
+      const selectPromise2 = adapter.query({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+      })
+      const responseBody2 = 'qaz'
+      request2.emit(
+        'response',
+        buildIncomingMessage({
+          body: responseBody2,
+        })
+      )
+      const queryResult2 = await selectPromise2
+
+      await assertQueryResult(queryResult1, responseBody1)
+      await assertQueryResult(queryResult2, responseBody2)
+      expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
+    })
+
+    it('obtains query_id for exec', async () => {
+      const adapter = buildHttpAdapter({
+        compression: {
+          decompress_response: false,
+          compress_request: false,
+        },
+      })
+      const request1 = stubRequest()
+
+      const execPromise1 = adapter.exec({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+      })
+      const responseBody1 = 'foobar'
+      request1.emit(
+        'response',
+        buildIncomingMessage({
+          body: responseBody1,
+        })
+      )
+      const queryResult1 = await execPromise1
+
+      const request2 = stubRequest()
+      const execPromise2 = adapter.exec({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+      })
+      const responseBody2 = 'qaz'
+      request2.emit(
+        'response',
+        buildIncomingMessage({
+          body: responseBody2,
+        })
+      )
+      const queryResult2 = await execPromise2
+
+      await assertQueryResult(queryResult1, responseBody1)
+      await assertQueryResult(queryResult2, responseBody2)
+      expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
+    })
+
+    it('obtains query_id for insert', async () => {
+      const adapter = buildHttpAdapter({
+        compression: {
+          decompress_response: false,
+          compress_request: false,
+        },
+      })
+      const request1 = stubRequest()
+
+      const insertPromise1 = adapter.insert({
+        query: 'INSERT INTO default.foo VALUES (42)',
+        values: 'foobar',
+      })
+      const responseBody1 = 'foobar'
+      request1.emit(
+        'response',
+        buildIncomingMessage({
+          body: responseBody1,
+        })
+      )
+      const { query_id: queryId1 } = await insertPromise1
+
+      const request2 = stubRequest()
+      const insertPromise2 = adapter.insert({
+        query: 'INSERT INTO default.foo VALUES (42)',
+        values: 'foobar',
+      })
+      const responseBody2 = 'qaz'
+      request2.emit(
+        'response',
+        buildIncomingMessage({
+          body: responseBody2,
+        })
+      )
+      const { query_id: queryId2 } = await insertPromise2
+
+      assertQueryId(queryId1)
+      assertQueryId(queryId2)
+      expect(queryId1).not.toEqual(queryId2)
+    })
+  })
+
   function buildIncomingMessage({
     body = '',
     statusCode = 200,
@@ -281,8 +396,22 @@ describe('HttpAdapter', () => {
     }) as Http.IncomingMessage
 
     response.statusCode = statusCode
-    response.headers = headers
+    response.headers = {
+      'x-clickhouse-query-id': uuid_v4(),
+      ...headers,
+    }
     return response
+  }
+
+  function stubRequest() {
+    const request = new Stream.Writable({
+      write() {
+        /** stub */
+      },
+    }) as ClientRequest
+    request.getHeaders = () => ({})
+    httpRequestStub.mockReturnValueOnce(request)
+    return request
   }
 
   function buildHttpAdapter(config: Partial<ConnectionParams>) {
@@ -307,6 +436,19 @@ describe('HttpAdapter', () => {
       },
       new LogWriter(new TestLogger())
     )
+  }
+
+  async function assertQueryResult(
+    { stream, query_id }: QueryResult,
+    expectedResponseBody: any
+  ) {
+    expect(await getAsText(stream)).toBe(expectedResponseBody)
+    assertQueryId(query_id)
+  }
+
+  function assertQueryId(query_id: string) {
+    expect(typeof query_id).toBe('string')
+    expect(uuid.validate(query_id)).toBeTruthy()
   }
 })
 

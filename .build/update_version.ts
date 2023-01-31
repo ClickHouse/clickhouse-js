@@ -1,7 +1,6 @@
 import version from '../src/version'
 import packageJson from '../package.json'
 import fs from 'fs'
-
 ;(async () => {
   console.log(`Current package version is: ${version}`)
   packageJson.version = version

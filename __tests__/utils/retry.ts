@@ -1,6 +1,6 @@
 export type RetryOnFailureOptions = {
   maxAttempts?: number
-  waitBetweenAttempts?: number
+  waitBetweenAttemptsMs?: number
   logRetries?: boolean
 }
 
@@ -9,7 +9,7 @@ export async function retryOnFailure<T>(
   options?: RetryOnFailureOptions
 ): Promise<T> {
   const maxAttempts = validate(options?.maxAttempts) ?? 200
-  const waitBetweenAttempts = validate(options?.waitBetweenAttempts) ?? 50
+  const waitBetweenAttempts = validate(options?.waitBetweenAttemptsMs) ?? 50
   const logRetries = options?.logRetries ?? false
 
   let attempts = 0

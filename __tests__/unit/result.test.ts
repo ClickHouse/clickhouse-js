@@ -1,6 +1,7 @@
 import type { Row } from '../../src'
 import { ResultSet } from '../../src'
 import Stream, { Readable } from 'stream'
+import { guid } from '../utils'
 
 describe('rows', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`
@@ -48,7 +49,8 @@ describe('rows', () => {
   it('should be able to call Row.text and Row.json multiple times', async () => {
     const rs = new ResultSet(
       Stream.Readable.from([Buffer.from('{"foo":"bar"}\n')]),
-      'JSONEachRow'
+      'JSONEachRow',
+      guid()
     )
     const allRows: Row[] = []
     for await (const rows of rs.stream()) {
@@ -68,7 +70,8 @@ describe('rows', () => {
         Buffer.from('{"foo":"bar"}\n'),
         Buffer.from('{"qaz":"qux"}\n'),
       ]),
-      'JSONEachRow'
+      'JSONEachRow',
+      guid()
     )
   }
 })

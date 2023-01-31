@@ -7,7 +7,8 @@ import { type DataFormat, decode, validateStreamFormat } from './data_formatter'
 export class ResultSet {
   constructor(
     private _stream: Stream.Readable,
-    private readonly format: DataFormat
+    private readonly format: DataFormat,
+    public readonly query_id: string
   ) {}
 
   /**

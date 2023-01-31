@@ -65,6 +65,8 @@ describe('toSearchParams', () => {
       query_params: {
         qaz: 'qux',
       },
+      session_id: 'my-session-id',
+      query_id: 'my-query-id',
       query,
     })!
     const result = toSortedArray(params)
@@ -74,6 +76,8 @@ describe('toSearchParams', () => {
       ['extremes', '1'],
       ['param_qaz', 'qux'],
       ['query', 'SELECT * FROM system.query_log'],
+      ['query_id', 'my-query-id'],
+      ['session_id', 'my-session-id'],
       ['wait_end_of_query', '1'],
     ])
   })

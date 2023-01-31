@@ -10,12 +10,15 @@ import type {
   Connection,
   ConnectionParams,
   InsertParams,
+  InsertResult,
+  QueryResult,
 } from '../connection'
 import { toSearchParams } from './http_search_params'
 import { transformUrl } from './transform_url'
 import { getAsText, isStream } from '../../utils'
 import type { ClickHouseSettings } from '../../settings'
 import { getUserAgent } from '../../utils/user_agent'
+import * as uuid from 'uuid'
 
 export interface RequestParams {
   method: 'GET' | 'POST'
@@ -228,15 +231,16 @@ export abstract class BaseHttpAdapter implements Connection {
 
   async ping(): Promise<boolean> {
     // TODO add status code check
-    const response = await this.request({
+    const stream = await this.request({
       method: 'GET',
       url: transformUrl({ url: this.config.url, pathname: '/ping' }),
     })
-    response.destroy()
+    stream.destroy()
     return true
   }
 
-  async query(params: BaseParams): Promise<Stream.Readable> {
+  async query(params: BaseParams): Promise<QueryResult> {
+    const query_id = this.generateQueryId()
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
       this.config.compression.decompress_response
@@ -246,40 +250,55 @@ export abstract class BaseHttpAdapter implements Connection {
       clickhouse_settings,
       query_params: params.query_params,
       session_id: params.session_id,
+      query_id,
     })
 
-    return await this.request({
+    const stream = await this.request({
       method: 'POST',
       url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
       decompress_response: clickhouse_settings.enable_http_compression === 1,
     })
+
+    return {
+      stream,
+      query_id,
+    }
   }
 
-  async exec(params: BaseParams): Promise<Stream.Readable> {
+  async exec(params: BaseParams): Promise<QueryResult> {
+    const query_id = this.generateQueryId()
     const searchParams = toSearchParams({
       database: this.config.database,
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
       session_id: params.session_id,
+      query_id,
     })
 
-    return await this.request({
+    const stream = await this.request({
       method: 'POST',
       url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
     })
+
+    return {
+      stream,
+      query_id,
+    }
   }
 
-  async insert(params: InsertParams): Promise<void> {
+  async insert(params: InsertParams): Promise<InsertResult> {
+    const query_id = this.generateQueryId()
     const searchParams = toSearchParams({
       database: this.config.database,
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
       query: params.query,
       session_id: params.session_id,
+      query_id,
     })
 
     await this.request({
@@ -289,12 +308,20 @@ export abstract class BaseHttpAdapter implements Connection {
       abort_signal: params.abort_signal,
       compress_request: this.config.compression.compress_request,
     })
+
+    return { query_id }
   }
 
   async close(): Promise<void> {
     if (this.agent !== undefined && this.agent.destroy !== undefined) {
       this.agent.destroy()
     }
+  }
+
+  // needed for insert queries as the query_id is not generated automatically
+  // we will use it for `exec` and `insert` methods, but not `select`
+  private generateQueryId(): string {
+    return uuid.v4()
   }
 
   private logResponse(

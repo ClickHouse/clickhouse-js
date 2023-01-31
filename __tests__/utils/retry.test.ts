@@ -24,7 +24,7 @@ describe('retryOnFailure', () => {
         },
         {
           maxAttempts: 2,
-          waitBetweenAttempts: 1,
+          waitBetweenAttemptsMs: 1,
         }
       )
     ).rejects.toThrowError()
@@ -47,7 +47,7 @@ describe('retryOnFailure', () => {
     ]) {
       await assertThrows({
         maxAttempts,
-        waitBetweenAttempts,
+        waitBetweenAttemptsMs: waitBetweenAttempts,
       })
     }
   })
