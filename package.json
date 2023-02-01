@@ -37,12 +37,15 @@
     "dist"
   ],
   "dependencies": {
+    "lz4": "^0.6.5",
+    "lz4-napi": "^2.2.0",
     "node-abort-controller": "^3.0.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@jest/reporters": "^29.4.0",
     "@types/jest": "^29.4.0",
+    "@types/lz4": "^0.6.0",
     "@types/node": "^18.11.18",
     "@types/split2": "^3.2.1",
     "@types/uuid": "^9.0.0",

@@ -22,7 +22,7 @@ export class HttpAdapter extends BaseHttpAdapter implements Connection {
     return Http.request(params.url, {
       method: params.method,
       agent: this.agent,
-      headers: this.getHeaders(params),
+      headers: this.getHeaders(params, this.config.compression.encoding),
     })
   }
 }

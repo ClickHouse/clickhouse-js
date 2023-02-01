@@ -1,5 +1,10 @@
 import Stream from 'stream'
-import type { InsertResult, QueryResult, TLSParams } from './connection'
+import type {
+  CompressionEncoding,
+  InsertResult,
+  QueryResult,
+  TLSParams,
+} from './connection'
 import { type Connection, createConnection } from './connection'
 import type { Logger } from './logger'
 import { DefaultLogger, LogWriter } from './logger'
@@ -28,6 +33,8 @@ export interface ClickHouseClientConfigOptions {
     response?: boolean
     /** `request: true` enabled compression on the client request body. Default: false. */
     request?: boolean
+    /** Encoding algorithm. Default: lz4. */
+    encoding?: CompressionEncoding
   }
   /** The name of the user on whose behalf requests are made. Default: 'default'. */
   username?: string
@@ -135,6 +142,7 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
     compression: {
       decompress_response: config.compression?.response ?? true,
       compress_request: config.compression?.request ?? false,
+      encoding: config.compression?.encoding ?? 'lz4',
     },
     username: config.username ?? 'default',
     password: config.password ?? '',

@@ -3,6 +3,7 @@ import type { LogWriter } from '../logger'
 import { HttpAdapter, HttpsAdapter } from './adapter'
 import type { ClickHouseSettings } from '../settings'
 
+export type CompressionEncoding = 'gzip' | 'lz4'
 export interface ConnectionParams {
   url: URL
 
@@ -15,6 +16,7 @@ export interface ConnectionParams {
   compression: {
     decompress_response: boolean
     compress_request: boolean
+    encoding: CompressionEncoding
   }
 
   tls?: TLSParams

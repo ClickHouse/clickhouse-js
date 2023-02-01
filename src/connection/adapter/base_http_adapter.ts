@@ -1,12 +1,11 @@
 import Stream from 'stream'
 import type Http from 'http'
-import Zlib from 'zlib'
 import { parseError } from '../../error'
-
-import type { Logger } from '../../logger'
+import type { LogWriter } from '../../logger'
 
 import type {
   BaseParams,
+  CompressionEncoding,
   Connection,
   ConnectionParams,
   InsertParams,
@@ -19,6 +18,8 @@ import { getAsText, isStream } from '../../utils'
 import type { ClickHouseSettings } from '../../settings'
 import { getUserAgent } from '../../utils/user_agent'
 import * as uuid from 'uuid'
+import { lz4DecodedStream, lz4EncodedStream } from './encoding/lz4'
+import { gzipDecodedStream, gzipEncodedStream } from './encoding/gzip'
 
 export interface RequestParams {
   method: 'GET' | 'POST'
@@ -51,34 +52,6 @@ function withHttpSettings(
   }
 }
 
-function decompressResponse(response: Http.IncomingMessage):
-  | {
-      response: Stream.Readable
-    }
-  | { error: Error } {
-  const encoding = response.headers['content-encoding']
-
-  if (encoding === 'gzip') {
-    return {
-      response: Stream.pipeline(
-        response,
-        Zlib.createGunzip(),
-        function pipelineCb(err) {
-          if (err) {
-            console.error(err)
-          }
-        }
-      ),
-    }
-  } else if (encoding !== undefined) {
-    return {
-      error: new Error(`Unexpected encoding: ${encoding}`),
-    }
-  }
-
-  return { response }
-}
-
 function isDecompressionError(result: any): result is { error: Error } {
   return result.error !== undefined
 }
@@ -87,7 +60,7 @@ export abstract class BaseHttpAdapter implements Connection {
   protected readonly headers: Http.OutgoingHttpHeaders
   protected constructor(
     protected readonly config: ConnectionParams,
-    private readonly logger: Logger,
+    private readonly logger: LogWriter,
     protected readonly agent: Http.Agent
   ) {
     this.headers = this.buildDefaultHeaders(config.username, config.password)
@@ -125,8 +98,7 @@ export abstract class BaseHttpAdapter implements Connection {
         _response: Http.IncomingMessage
       ): Promise<void> => {
         this.logResponse(request, params, _response, start)
-
-        const decompressionResult = decompressResponse(_response)
+        const decompressionResult = this.decompressResponse(_response)
 
         if (isDecompressionError(decompressionResult)) {
           return reject(decompressionResult.error)
@@ -222,7 +194,11 @@ export abstract class BaseHttpAdapter implements Connection {
       }
 
       if (params.compress_request) {
-        Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback)
+        if (this.config.compression.encoding === 'gzip') {
+          return gzipEncodedStream(bodyStream, request, callback)
+        } else if (this.config.compression.encoding === 'lz4') {
+          return lz4EncodedStream(bodyStream, request, callback)
+        }
       } else {
         Stream.pipeline(bodyStream, request, callback)
       }
@@ -348,11 +324,38 @@ export abstract class BaseHttpAdapter implements Connection {
     })
   }
 
-  protected getHeaders(params: RequestParams) {
+  private decompressResponse(response: Http.IncomingMessage):
+    | {
+        response: Stream.Readable
+      }
+    | { error: Error } {
+    const encoding = response.headers['content-encoding']
+
+    if (encoding === 'gzip' && this.config.compression.encoding === 'gzip') {
+      return {
+        response: gzipDecodedStream(response, this.logger),
+      }
+    } else if (
+      encoding === 'lz4' &&
+      this.config.compression.encoding === 'lz4'
+    ) {
+      return {
+        response: lz4DecodedStream(response, this.logger),
+      }
+    } else if (encoding !== undefined) {
+      return {
+        error: new Error(`Unexpected encoding: ${encoding}`),
+      }
+    }
+
+    return { response }
+  }
+
+  protected getHeaders(params: RequestParams, encoding: CompressionEncoding) {
     return {
       ...this.headers,
-      ...(params.decompress_response ? { 'Accept-Encoding': 'gzip' } : {}),
-      ...(params.compress_request ? { 'Content-Encoding': 'gzip' } : {}),
+      ...(params.decompress_response ? { 'Accept-Encoding': encoding } : {}),
+      ...(params.compress_request ? { 'Content-Encoding': encoding } : {}),
     }
   }
 }
