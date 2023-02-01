@@ -14,9 +14,9 @@ jobs:
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
+      - run: npm i --ignore-scripts
       - name: Update package version
         run: ts-node --transpile-only --project tsconfig.dev.json .build/update_version.ts
-      - run: npm i --ignore-scripts
       - run: npm run build
       - run: npm publish
         env:
