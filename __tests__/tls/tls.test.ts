@@ -76,9 +76,10 @@ describe('TLS connection', () => {
         key: fs.readFileSync(`${certsPath}/server.key`),
       },
     })
-    const errorMessage = process.version.startsWith('v19')
-      ? 'unsupported certificate'
-      : 'socket hang up'
+    const errorMessage =
+      process.version.startsWith('v18') || process.version.startsWith('v19')
+        ? 'unsupported certificate'
+        : 'socket hang up'
     await expect(
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
