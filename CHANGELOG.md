@@ -1,3 +1,8 @@
+## 0.0.13
+
+### New features
+* `query_id` can be now overridden for all main client's methods: `query`, `exec`, `insert`.
+
 ## 0.0.12
 
 ### New features
