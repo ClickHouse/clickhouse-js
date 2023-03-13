@@ -1,6 +1,6 @@
 import type Stream from 'stream'
 import { type ClickHouseClient, type ResponseJSON, type Row } from '../../src'
-import { createTestClient } from '../utils'
+import { createTestClient, guid } from '../utils'
 import * as uuid from 'uuid'
 
 async function rowsValues(stream: Stream.Readable): Promise<any[]> {
@@ -39,6 +39,17 @@ describe('select', () => {
     })
     expect(await resultSet.json()).toEqual([{ number: '0' }])
     expect(uuid.validate(resultSet.query_id)).toBeTruthy()
+  })
+
+  it('can override query_id', async () => {
+    const query_id = guid()
+    const resultSet = await client.query({
+      query: 'SELECT * FROM system.numbers LIMIT 1',
+      format: 'JSONEachRow',
+      query_id,
+    })
+    expect(await resultSet.json()).toEqual([{ number: '0' }])
+    expect(resultSet.query_id).toEqual(query_id)
   })
 
   it('can process an empty response', async () => {
@@ -320,17 +331,6 @@ describe('select', () => {
             },
           })
         )
-      })
-
-      it.skip('returns queryId in response', async () => {
-        const rs = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON',
-        })
-
-        const response = await rs.json<ResponseJSON<{ number: string }>>()
-
-        expect(response.query_id).toBeInstanceOf(Number)
       })
     })
   })

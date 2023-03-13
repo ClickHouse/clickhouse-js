@@ -45,6 +45,34 @@ describe('insert', () => {
     expect(uuid.validate(query_id)).toBeTruthy()
   })
 
+  it('should use provide query_id', async () => {
+    const query_id = guid()
+    const { query_id: q_id } = await client.insert({
+      table: tableName,
+      query_id,
+      values: {
+        meta: [
+          {
+            name: 'id',
+            type: 'UInt64',
+          },
+          {
+            name: 'name',
+            type: 'String',
+          },
+          {
+            name: 'sku',
+            type: 'Array(UInt8)',
+          },
+        ],
+        data: jsonValues,
+      },
+      format: 'JSON',
+    })
+    await assertJsonValues(client, tableName)
+    expect(query_id).toEqual(q_id)
+  })
+
   it('inserts values using JSONObjectEachRow format', async () => {
     await client.insert({
       table: tableName,

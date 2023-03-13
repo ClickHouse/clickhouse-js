@@ -240,7 +240,7 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   async query(params: BaseParams): Promise<QueryResult> {
-    const query_id = this.generateQueryId()
+    const query_id = this.getQueryId(params)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
       this.config.compression.decompress_response
@@ -268,7 +268,7 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   async exec(params: BaseParams): Promise<QueryResult> {
-    const query_id = this.generateQueryId()
+    const query_id = this.getQueryId(params)
     const searchParams = toSearchParams({
       database: this.config.database,
       clickhouse_settings: params.clickhouse_settings,
@@ -291,7 +291,7 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   async insert(params: InsertParams): Promise<InsertResult> {
-    const query_id = this.generateQueryId()
+    const query_id = this.getQueryId(params)
     const searchParams = toSearchParams({
       database: this.config.database,
       clickhouse_settings: params.clickhouse_settings,
@@ -318,10 +318,8 @@ export abstract class BaseHttpAdapter implements Connection {
     }
   }
 
-  // needed for insert queries as the query_id is not generated automatically
-  // we will use it for `exec` and `insert` methods, but not `select`
-  private generateQueryId(): string {
-    return uuid.v4()
+  private getQueryId(params: BaseParams): string {
+    return params.query_id || uuid.v4()
   }
 
   private logResponse(
