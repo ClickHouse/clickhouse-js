@@ -8,8 +8,8 @@ import {
   TestEnv,
 } from '../utils'
 import { getAsText } from '../../src/utils'
-import type Stream from 'stream'
 import * as uuid from 'uuid'
+import type { QueryResult } from '../../src/connection'
 
 describe('exec', () => {
   let client: ClickHouseClient
@@ -23,33 +23,41 @@ describe('exec', () => {
   it('sends a command to execute', async () => {
     const { ddl, tableName, engine } = getDDL()
 
-    await runCommand(client, {
+    const { query_id } = await runCommand({
       query: ddl,
     })
 
-    const selectResult = await client.query({
-      query: `SELECT * from system.tables where name = '${tableName}'`,
-      format: 'JSON',
+    // generated automatically
+    expect(uuid.validate(query_id)).toBeTruthy()
+
+    await checkCreatedTable({
+      tableName,
+      engine,
     })
+  })
 
-    const { data, rows } = await selectResult.json<
-      ResponseJSON<{ name: string; engine: string; create_table_query: string }>
-    >()
+  it('should use query_id override', async () => {
+    const { ddl, tableName, engine } = getDDL()
 
-    expect(rows).toBe(1)
-    const table = data[0]
-    expect(table.name).toBe(tableName)
-    expect(table.engine).toBe(engine)
-    expect(typeof table.create_table_query).toBe('string')
+    const query_id = guid()
 
-    expect(uuid.validate(selectResult.query_id)).toBeTruthy()
+    const { query_id: q_id } = await runCommand({
+      query: ddl,
+      query_id,
+    })
+    expect(query_id).toEqual(q_id)
+
+    await checkCreatedTable({
+      tableName,
+      engine,
+    })
   })
 
   it('does not swallow ClickHouse error', async () => {
     const { ddl, tableName } = getDDL()
     await expect(async () => {
       const command = () =>
-        runCommand(client, {
+        runCommand({
           query: ddl,
         })
       await command()
@@ -119,7 +127,7 @@ describe('exec', () => {
   })
 
   it.skip('can specify a parameterized query', async () => {
-    await runCommand(client, {
+    await runCommand({
       query: '',
       query_params: {
         table_name: 'example',
@@ -140,6 +148,42 @@ describe('exec', () => {
     const table = data[0]
     expect(table.name).toBe('example')
   })
+
+  async function checkCreatedTable({
+    tableName,
+    engine,
+  }: {
+    tableName: string
+    engine: string
+  }) {
+    const selectResult = await client.query({
+      query: `SELECT * from system.tables where name = '${tableName}'`,
+      format: 'JSON',
+    })
+
+    const { data, rows } = await selectResult.json<
+      ResponseJSON<{ name: string; engine: string; create_table_query: string }>
+    >()
+
+    expect(rows).toBe(1)
+    const table = data[0]
+    expect(table.name).toBe(tableName)
+    expect(table.engine).toBe(engine)
+    expect(typeof table.create_table_query).toBe('string')
+  }
+
+  async function runCommand(params: ExecParams): Promise<QueryResult> {
+    console.log(
+      `Running command with query_id ${params.query_id}:\n${params.query}`
+    )
+    return client.exec({
+      ...params,
+      clickhouse_settings: {
+        // ClickHouse responds to a command when it's completely finished
+        wait_end_of_query: 1,
+      },
+    })
+  }
 })
 
 function getDDL(): {
@@ -180,19 +224,4 @@ function getDDL(): {
       return { ddl, tableName, engine: 'ReplicatedMergeTree' }
     }
   }
-}
-
-async function runCommand(
-  client: ClickHouseClient,
-  params: ExecParams
-): Promise<Stream.Readable> {
-  console.log(`Running command:\n${params.query}`)
-  const { stream } = await client.exec({
-    ...params,
-    clickhouse_settings: {
-      // ClickHouse responds to a command when it's completely finished
-      wait_end_of_query: 1,
-    },
-  })
-  return stream
 }

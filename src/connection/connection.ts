@@ -42,6 +42,7 @@ export interface BaseParams {
   query_params?: Record<string, unknown>
   abort_signal?: AbortSignal
   session_id?: string
+  query_id?: string
 }
 
 export interface InsertParams extends BaseParams {

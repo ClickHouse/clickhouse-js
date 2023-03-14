@@ -5,7 +5,7 @@ import Util from 'util'
 import Zlib from 'zlib'
 import type { ConnectionParams, QueryResult } from '../../src/connection'
 import { HttpAdapter } from '../../src/connection/adapter'
-import { retryOnFailure, TestLogger } from '../utils'
+import { guid, retryOnFailure, TestLogger } from '../utils'
 import { getAsText } from '../../src/utils'
 import { LogWriter } from '../../src/logger'
 import * as uuid from 'uuid'
@@ -259,7 +259,7 @@ describe('HttpAdapter', () => {
   })
 
   describe('query_id', () => {
-    it('obtains query_id for query', async () => {
+    it('should generate random query_id for each query', async () => {
       const adapter = buildHttpAdapter({
         compression: {
           decompress_response: false,
@@ -296,9 +296,44 @@ describe('HttpAdapter', () => {
       await assertQueryResult(queryResult1, responseBody1)
       await assertQueryResult(queryResult2, responseBody2)
       expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
+
+      const url1 = httpRequestStub.mock.calls[0][0]
+      expect(url1.search).toContain(`&query_id=${queryResult1.query_id}`)
+
+      const url2 = httpRequestStub.mock.calls[1][0]
+      expect(url2.search).toContain(`&query_id=${queryResult2.query_id}`)
     })
 
-    it('obtains query_id for exec', async () => {
+    it('should use provided query_id for query', async () => {
+      const adapter = buildHttpAdapter({
+        compression: {
+          decompress_response: false,
+          compress_request: false,
+        },
+      })
+      const request = stubRequest()
+
+      const query_id = guid()
+      const selectPromise = adapter.query({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+        query_id,
+      })
+      const responseBody = 'foobar'
+      request.emit(
+        'response',
+        buildIncomingMessage({
+          body: responseBody,
+        })
+      )
+      const { stream } = await selectPromise
+      expect(await getAsText(stream)).toBe(responseBody)
+
+      expect(httpRequestStub).toBeCalledTimes(1)
+      const [url] = httpRequestStub.mock.calls[0]
+      expect(url.search).toContain(`&query_id=${query_id}`)
+    })
+
+    it('should generate random query_id for every exec request', async () => {
       const adapter = buildHttpAdapter({
         compression: {
           decompress_response: false,
@@ -335,9 +370,44 @@ describe('HttpAdapter', () => {
       await assertQueryResult(queryResult1, responseBody1)
       await assertQueryResult(queryResult2, responseBody2)
       expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
+
+      const url1 = httpRequestStub.mock.calls[0][0]
+      expect(url1.search).toContain(`&query_id=${queryResult1.query_id}`)
+
+      const url2 = httpRequestStub.mock.calls[1][0]
+      expect(url2.search).toContain(`&query_id=${queryResult2.query_id}`)
     })
 
-    it('obtains query_id for insert', async () => {
+    it('should use provided query_id for exec', async () => {
+      const adapter = buildHttpAdapter({
+        compression: {
+          decompress_response: false,
+          compress_request: false,
+        },
+      })
+      const request = stubRequest()
+
+      const query_id = guid()
+      const execPromise = adapter.exec({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+        query_id,
+      })
+      const responseBody = 'foobar'
+      request.emit(
+        'response',
+        buildIncomingMessage({
+          body: responseBody,
+        })
+      )
+      const { stream } = await execPromise
+      expect(await getAsText(stream)).toBe(responseBody)
+
+      expect(httpRequestStub).toBeCalledTimes(1)
+      const [url] = httpRequestStub.mock.calls[0]
+      expect(url.search).toContain(`&query_id=${query_id}`)
+    })
+
+    it('should generate random query_id for every insert request', async () => {
       const adapter = buildHttpAdapter({
         compression: {
           decompress_response: false,
@@ -376,6 +446,40 @@ describe('HttpAdapter', () => {
       assertQueryId(queryId1)
       assertQueryId(queryId2)
       expect(queryId1).not.toEqual(queryId2)
+
+      const url1 = httpRequestStub.mock.calls[0][0]
+      expect(url1.search).toContain(`&query_id=${queryId1}`)
+
+      const url2 = httpRequestStub.mock.calls[1][0]
+      expect(url2.search).toContain(`&query_id=${queryId2}`)
+    })
+
+    it('should use provided query_id for insert', async () => {
+      const adapter = buildHttpAdapter({
+        compression: {
+          decompress_response: false,
+          compress_request: false,
+        },
+      })
+      const request1 = stubRequest()
+
+      const query_id = guid()
+      const insertPromise1 = adapter.insert({
+        query: 'INSERT INTO default.foo VALUES (42)',
+        values: 'foobar',
+        query_id,
+      })
+      const responseBody1 = 'foobar'
+      request1.emit(
+        'response',
+        buildIncomingMessage({
+          body: responseBody1,
+        })
+      )
+      await insertPromise1
+
+      const [url] = httpRequestStub.mock.calls[0]
+      expect(url.search).toContain(`&query_id=${query_id}`)
     })
   })
 

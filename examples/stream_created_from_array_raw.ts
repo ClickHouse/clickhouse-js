@@ -1,5 +1,6 @@
 import { createClient } from '@clickhouse/client'
 import Stream from 'stream'
+
 void (async () => {
   const tableName = 'insert_stream_created_from_array_raw'
   const client = createClient()

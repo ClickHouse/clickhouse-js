@@ -64,6 +64,9 @@ export interface BaseParams {
   query_params?: Record<string, unknown>
   /** AbortSignal instance (using `node-abort-controller` package) to cancel a request in progress. */
   abort_signal?: AbortSignal
+  /** A specific `query_id` that will be sent with this request.
+   * If it is not set, a random identifier will be generated automatically by the client. */
+  query_id?: string
 }
 
 export interface QueryParams extends BaseParams {
@@ -172,6 +175,7 @@ export class ClickHouseClient {
       query_params: params.query_params,
       abort_signal: params.abort_signal,
       session_id: this.config.session_id,
+      query_id: params.query_id,
     }
   }
 
