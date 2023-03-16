@@ -8,7 +8,7 @@ import type { ClickHouseClient } from '../../../src'
 
 export async function createReadOnlyUser(client: ClickHouseClient) {
   const username = `clickhousejs__read_only_user_${guid()}`
-  const password = guid()
+  const password = `CHJS_${guid()};`
   const database = getTestDatabaseName()
   const env = getClickHouseTestEnvironment()
   let createUser: string
