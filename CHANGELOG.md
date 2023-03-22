@@ -1,3 +1,8 @@
+## 0.0.14
+
+### New features
+* Added support for `JSONStrings`, `JSONCompact`, `JSONCompactStrings`, `JSONColumnsWithMetadata` formats (@andrewzolotukhin).
+
 ## 0.0.13
 
 ### New features
