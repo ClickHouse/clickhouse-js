@@ -3,7 +3,7 @@ import { encodeValues } from '../../src/client'
 import type { DataFormat, InputJSON, InputJSONObjectEachRow } from '../../src'
 
 describe('encodeValues', () => {
-  const rawStreamFormats = [
+  const rawFormats = [
     'CSV',
     'CSVWithNames',
     'CSVWithNamesAndTypes',
@@ -15,7 +15,7 @@ describe('encodeValues', () => {
     'CustomSeparatedWithNames',
     'CustomSeparatedWithNamesAndTypes',
   ]
-  const jsonStreamFormats = [
+  const jsonFormats = [
     'JSON',
     'JSONStrings',
     'JSONCompact',
@@ -35,14 +35,14 @@ describe('encodeValues', () => {
     const values = Stream.Readable.from('foo,bar\n', {
       objectMode: false,
     })
-    rawStreamFormats.forEach((format) => {
+    rawFormats.forEach((format) => {
       // should be exactly the same object (no duplicate instances)
       expect(encodeValues(values, format as DataFormat)).toEqual(values)
     })
   })
 
   it('should encode JSON streams per line', async () => {
-    for (const format of jsonStreamFormats) {
+    for (const format of jsonFormats) {
       const values = Stream.Readable.from(['foo', 'bar'], {
         objectMode: true,
       })
@@ -56,7 +56,7 @@ describe('encodeValues', () => {
   })
 
   it('should encode JSON arrays', async () => {
-    for (const format of jsonStreamFormats) {
+    for (const format of jsonFormats) {
       const values = ['foo', 'bar']
       const result = encodeValues(values, format as DataFormat)
       let encoded = ''
