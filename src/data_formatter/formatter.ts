@@ -8,9 +8,16 @@ const streamableJSONFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
 ] as const
-const supportedJSONFormats = [
+const singleDocumentJSONFormats = [
   'JSON',
+  'JSONStrings',
+  'JSONCompact',
+  'JSONCompactStrings',
+  'JSONColumnsWithMetadata',
   'JSONObjectEachRow',
+] as const
+const supportedJSONFormats = [
+  ...singleDocumentJSONFormats,
   ...streamableJSONFormats,
 ] as const
 const supportedRawFormats = [
@@ -30,6 +37,8 @@ export type JSONDataFormat = (typeof supportedJSONFormats)[number]
 export type RawDataFormat = (typeof supportedRawFormats)[number]
 export type DataFormat = JSONDataFormat | RawDataFormat
 
+type SingleDocumentStreamableJsonDataFormat =
+  (typeof singleDocumentJSONFormats)[number]
 type StreamableJsonDataFormat = (typeof streamableJSONFormats)[number]
 
 // TODO add others formats
@@ -38,6 +47,13 @@ const streamableFormat = [
   ...supportedRawFormats,
 ] as const
 type StreamableDataFormat = (typeof streamableFormat)[number]
+
+function isNotStreamableJSONFamily(
+  format: DataFormat
+): format is SingleDocumentStreamableJsonDataFormat {
+  // @ts-expect-error JSON is not assignable to notStreamableJSONFormats
+  return singleDocumentJSONFormats.includes(format)
+}
 
 function isStreamableJSONFamily(
   format: DataFormat
@@ -69,7 +85,7 @@ export function validateStreamFormat(
  * @param format One of the supported formats: https://clickhouse.com/docs/en/interfaces/formats/
  */
 export function decode(text: string, format: DataFormat): any {
-  if (format === 'JSON') {
+  if (isNotStreamableJSONFamily(format)) {
     return JSON.parse(text)
   }
   if (isStreamableJSONFamily(format)) {
