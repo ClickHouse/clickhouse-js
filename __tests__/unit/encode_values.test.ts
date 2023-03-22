@@ -16,6 +16,12 @@ describe('encodeValues', () => {
     'CustomSeparatedWithNamesAndTypes',
   ]
   const jsonStreamFormats = [
+    'JSON',
+    'JSONStrings',
+    'JSONCompact',
+    'JSONCompactStrings',
+    'JSONColumnsWithMetadata',
+    'JSONObjectEachRow',
     'JSONEachRow',
     'JSONStringsEachRow',
     'JSONCompactEachRow',

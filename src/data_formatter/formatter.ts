@@ -8,7 +8,7 @@ const streamableJSONFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
 ] as const
-const notStreamableJSONFormats = [
+const singleDocumentJSONFormats = [
   'JSON',
   'JSONStrings',
   'JSONCompact',
@@ -17,7 +17,7 @@ const notStreamableJSONFormats = [
   'JSONObjectEachRow',
 ] as const
 const supportedJSONFormats = [
-  ...notStreamableJSONFormats,
+  ...singleDocumentJSONFormats,
   ...streamableJSONFormats,
 ] as const
 const supportedRawFormats = [
@@ -37,7 +37,8 @@ export type JSONDataFormat = (typeof supportedJSONFormats)[number]
 export type RawDataFormat = (typeof supportedRawFormats)[number]
 export type DataFormat = JSONDataFormat | RawDataFormat
 
-type NotStreamableJsonDataFormat = (typeof notStreamableJSONFormats)[number]
+type SingleDocumentStreamableJsonDataFormat =
+  (typeof singleDocumentJSONFormats)[number]
 type StreamableJsonDataFormat = (typeof streamableJSONFormats)[number]
 
 // TODO add others formats
@@ -49,9 +50,9 @@ type StreamableDataFormat = (typeof streamableFormat)[number]
 
 function isNotStreamableJSONFamily(
   format: DataFormat
-): format is NotStreamableJsonDataFormat {
+): format is SingleDocumentStreamableJsonDataFormat {
   // @ts-expect-error JSON is not assignable to notStreamableJSONFormats
-  return notStreamableJSONFormats.includes(format)
+  return singleDocumentJSONFormats.includes(format)
 }
 
 function isStreamableJSONFamily(
