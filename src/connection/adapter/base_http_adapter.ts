@@ -115,7 +115,9 @@ export abstract class BaseHttpAdapter implements Connection {
       const start = Date.now()
 
       const request = this.createClientRequest(params.url, params)
-
+      request.once('socket', (socket) => {
+        socket.setTimeout(this.config.request_timeout)
+      })
       function onError(err: Error): void {
         removeRequestListeners()
         reject(err)
