@@ -1,3 +1,8 @@
+## 0.0.15
+
+### Bug fixes
+* Fix Node.JS 19.x/20.x timeout error (@olexiyb)
+
 ## 0.0.14
 
 ### New features
