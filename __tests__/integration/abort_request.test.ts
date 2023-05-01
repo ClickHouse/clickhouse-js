@@ -99,7 +99,7 @@ describe('abort request', () => {
       // There was a breaking change in Node.js 18.x+ behavior
       if (
         process.version.startsWith('v18') ||
-        process.version.startsWith('v19')
+        process.version.startsWith('v20')
       ) {
         await expect(selectPromise).rejects.toMatchObject({
           message: 'Premature close',
