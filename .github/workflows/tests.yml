@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [ 14, 16, 18, 19 ]
+        node: [ 16, 18, 20 ]
     steps:
       - uses: actions/checkout@main
 
@@ -68,7 +68,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [ 14, 16, 18, 19 ]
+        node: [ 16, 18, 20 ]
         clickhouse: [ head, latest ]
 
     steps:
@@ -117,7 +117,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [ 14, 16, 18, 19 ]
+        node: [ 16, 18, 20 ]
         clickhouse: [ head, latest ]
 
     steps:
@@ -150,7 +150,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [ 14, 16, 18, 19 ]
+        node: [ 16, 18, 20 ]
 
     steps:
       - uses: actions/checkout@main

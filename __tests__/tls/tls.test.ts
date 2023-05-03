@@ -77,7 +77,7 @@ describe('TLS connection', () => {
       },
     })
     const errorMessage =
-      process.version.startsWith('v18') || process.version.startsWith('v19')
+      process.version.startsWith('v18') || process.version.startsWith('v20')
         ? 'unsupported certificate'
         : 'socket hang up'
     await expect(
