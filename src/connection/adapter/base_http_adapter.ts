@@ -1,29 +1,28 @@
-import Stream from 'stream'
-import type Http from 'http'
-import Zlib from 'zlib'
-import { parseError } from '../../error'
+import type { Readable } from "stream";
+import Stream from "stream";
 
-import type { Logger } from '../../logger'
+import type { Logger } from "../../logger";
 
-import type {
-  BaseParams,
-  Connection,
-  ConnectionParams,
-  InsertParams,
-  InsertResult,
-  QueryResult,
-} from '../connection'
-import { toSearchParams } from './http_search_params'
-import { transformUrl } from './transform_url'
-import { getAsText, isStream } from '../../utils'
-import type { ClickHouseSettings } from '../../settings'
-import { getUserAgent } from '../../utils/user_agent'
-import * as uuid from 'uuid'
+import type { BaseParams, Connection, ConnectionParams, InsertParams, InsertResult, QueryResult } from "../connection";
+import { toSearchParams } from "./http_search_params";
+import { transformUrl } from "./transform_url";
+import { getAsText, isStream } from "../../utils";
+import type { ClickHouseSettings } from "../../settings";
+import { getUserAgent } from "../../utils/user_agent";
+import * as uuid from "uuid";
+import type { Response as FetchResponse } from "node-fetch";
+import { parseError } from "../../error";
+import type * as http from "http";
+
+// @ts-ignore
+const fetch = (...args) =>
+  // @ts-ignore
+  import('node-fetch').then(({ default: fetch }) => fetch(...args))
 
 export interface RequestParams {
   method: 'GET' | 'POST'
   url: URL
-  body?: string | Stream.Readable
+  body?: string | NodeJS.ReadableStream
   abort_signal?: AbortSignal
   decompress_response?: boolean
   compress_request?: boolean
@@ -33,9 +32,9 @@ function isSuccessfulResponse(statusCode?: number): boolean {
   return Boolean(statusCode && 200 <= statusCode && statusCode < 300)
 }
 
-function isEventTarget(signal: any): signal is EventTarget {
-  return 'removeEventListener' in signal
-}
+// function isEventTarget(signal: any): signal is EventTarget {
+//   return 'removeEventListener' in signal
+// }
 
 function withHttpSettings(
   clickhouse_settings?: ClickHouseSettings,
@@ -51,44 +50,13 @@ function withHttpSettings(
   }
 }
 
-function decompressResponse(response: Http.IncomingMessage):
-  | {
-      response: Stream.Readable
-    }
-  | { error: Error } {
-  const encoding = response.headers['content-encoding']
-
-  if (encoding === 'gzip') {
-    return {
-      response: Stream.pipeline(
-        response,
-        Zlib.createGunzip(),
-        function pipelineCb(err) {
-          if (err) {
-            console.error(err)
-          }
-        }
-      ),
-    }
-  } else if (encoding !== undefined) {
-    return {
-      error: new Error(`Unexpected encoding: ${encoding}`),
-    }
-  }
-
-  return { response }
-}
-
-function isDecompressionError(result: any): result is { error: Error } {
-  return result.error !== undefined
-}
-
 export abstract class BaseHttpAdapter implements Connection {
-  protected readonly headers: Http.OutgoingHttpHeaders
+  protected readonly headers: Record<string, string>
+
   protected constructor(
     protected readonly config: ConnectionParams,
     private readonly logger: Logger,
-    protected readonly agent: Http.Agent
+    protected readonly agent: http.Agent
   ) {
     this.headers = this.buildDefaultHeaders(config.username, config.password)
   }
@@ -96,7 +64,7 @@ export abstract class BaseHttpAdapter implements Connection {
   protected buildDefaultHeaders(
     username: string,
     password: string
-  ): Http.OutgoingHttpHeaders {
+  ): Record<string, string> {
     return {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
         'base64'
@@ -105,130 +73,82 @@ export abstract class BaseHttpAdapter implements Connection {
     }
   }
 
-  protected abstract createClientRequest(
-    url: URL,
-    params: RequestParams
-  ): Http.ClientRequest
+  protected clientRequest(
+    params: RequestParams,
+    requestStream: Readable | undefined,
+    headers: Record<string, string>
+  ): Promise<FetchResponse> {
+    return fetch(params.url, {
+      method: params.method,
+      agent: this.agent,
+      signal: params.abort_signal,
+      body: requestStream,
+      headers,
+    })
+  }
 
   protected async request(params: RequestParams): Promise<Stream.Readable> {
-    return new Promise((resolve, reject) => {
-      const start = Date.now()
+    const requestStream =
+      params.body !== undefined
+        ? isStream(params.body)
+          ? params.body
+          : Stream.Readable.from([params.body])
+        : undefined
+    const requestHeaders = this.getHeaders(params)
+    const startTimestamp = Date.now()
+    const response = await this.clientRequest(
+      params,
+      requestStream,
+      requestHeaders
+    )
+    this.logResponse(requestHeaders, params, response, startTimestamp)
+    if (isSuccessfulResponse(response.status)) {
+      const stream = new Stream.Readable()
+      return response.body === null ? stream : stream.wrap(response.body)
+    } else {
+      throw parseError(await getAsText(response.body))
+    }
 
-      const request = this.createClientRequest(params.url, params)
-      request.once('socket', (socket) => {
-        socket.setTimeout(this.config.request_timeout)
-      })
-      function onError(err: Error): void {
-        removeRequestListeners()
-        reject(err)
-      }
+    //   function onTimeout(): void {
+    //     removeRequestListeners()
+    //     request.once('error', function () {
+    //       /**
+    //        * catch "Error: ECONNRESET" error which shouldn't be reported to users.
+    //        * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
+    //        * */
+    //     })
+    //     request.destroy()
+    //     reject(new Error('Timeout error'))
+    //   }
 
-      const onResponse = async (
-        _response: Http.IncomingMessage
-      ): Promise<void> => {
-        this.logResponse(request, params, _response, start)
-
-        const decompressionResult = decompressResponse(_response)
-
-        if (isDecompressionError(decompressionResult)) {
-          return reject(decompressionResult.error)
-        }
-
-        if (isSuccessfulResponse(_response.statusCode)) {
-          return resolve(decompressionResult.response)
-        } else {
-          reject(parseError(await getAsText(decompressionResult.response)))
-        }
-      }
-
-      function onTimeout(): void {
-        removeRequestListeners()
-        request.once('error', function () {
-          /**
-           * catch "Error: ECONNRESET" error which shouldn't be reported to users.
-           * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
-           * */
-        })
-        request.destroy()
-        reject(new Error('Timeout error'))
-      }
-
-      function onAbortSignal(): void {
-        // instead of deprecated request.abort()
-        request.destroy(new Error('The request was aborted.'))
-      }
-
-      function onAbort(): void {
-        // Prefer 'abort' event since it always triggered unlike 'error' and 'close'
-        // see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
-        removeRequestListeners()
-        request.once('error', function () {
-          /**
-           * catch "Error: ECONNRESET" error which shouldn't be reported to users.
-           * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
-           * */
-        })
-        reject(new Error('The request was aborted.'))
-      }
-
-      function onClose(): void {
-        // Adapter uses 'close' event to clean up listeners after the successful response.
-        // It's necessary in order to handle 'abort' and 'timeout' events while response is streamed.
-        // It's always the last event, according to https://nodejs.org/docs/latest-v14.x/api/http.html#http_http_request_url_options_callback
-        removeRequestListeners()
-      }
-
-      function removeRequestListeners(): void {
-        request.removeListener('response', onResponse)
-        request.removeListener('error', onError)
-        request.removeListener('timeout', onTimeout)
-        request.removeListener('abort', onAbort)
-        request.removeListener('close', onClose)
-        if (params.abort_signal !== undefined) {
-          if (isEventTarget(params.abort_signal)) {
-            params.abort_signal.removeEventListener('abort', onAbortSignal)
-          } else {
-            // @ts-expect-error if it's EventEmitter
-            params.abort_signal.removeListener('abort', onAbortSignal)
-          }
-        }
-      }
-
-      if (params.abort_signal) {
-        // We should use signal API when nodejs v14 is not supported anymore.
-        // However, it seems that Http.request doesn't abort after 'response' event.
-        // Requires an additional investigation
-        // https://nodejs.org/api/globals.html#class-abortsignal
-        params.abort_signal.addEventListener('abort', onAbortSignal, {
-          once: true,
-        })
-      }
-
-      request.on('response', onResponse)
-      request.on('timeout', onTimeout)
-      request.on('error', onError)
-      request.on('abort', onAbort)
-      request.on('close', onClose)
-
-      if (!params.body) return request.end()
-
-      const bodyStream = isStream(params.body)
-        ? params.body
-        : Stream.Readable.from([params.body])
-
-      const callback = (err: NodeJS.ErrnoException | null): void => {
-        if (err) {
-          removeRequestListeners()
-          reject(err)
-        }
-      }
-
-      if (params.compress_request) {
-        Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback)
-      } else {
-        Stream.pipeline(bodyStream, request, callback)
-      }
-    })
+    //   function onClose(): void {
+    //     // Adapter uses 'close' event to clean up listeners after the successful response.
+    //     // It's necessary in order to handle 'abort' and 'timeout' events while response is streamed.
+    //     // It's always the last event, according to https://nodejs.org/docs/latest-v14.x/api/http.html#http_http_request_url_options_callback
+    //     removeRequestListeners()
+    //   }
+    //
+    //   function removeRequestListeners(): void {
+    //     request.removeListener('response', onResponse)
+    //     request.removeListener('error', onError)
+    //     request.removeListener('timeout', onTimeout)
+    //     request.removeListener('abort', onAbort)
+    //     request.removeListener('close', onClose)
+    //     if (params.abort_signal !== undefined) {
+    //       if (isEventTarget(params.abort_signal)) {
+    //         params.abort_signal.removeEventListener('abort', onAbortSignal)
+    //       } else {
+    //         // @ts-expect-error if it's EventEmitter
+    //         params.abort_signal.removeListener('abort', onAbortSignal)
+    //       }
+    //     }
+    //   }
+    //
+    //   request.on('response', onResponse)
+    //   request.on('timeout', onTimeout)
+    //   request.on('error', onError)
+    //   request.on('abort', onAbort)
+    //   request.on('close', onClose)
   }
 
   async ping(): Promise<boolean> {
@@ -325,13 +245,16 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   private logResponse(
-    request: Http.ClientRequest,
+    requestHeaders: Record<string, string>,
     params: RequestParams,
-    response: Http.IncomingMessage,
+    response: FetchResponse,
     startTimestamp: number
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { authorization, host, ...headers } = request.getHeaders()
+    // Exclude `authentication` and `host` headers from logs
+    const headers = Object.entries(requestHeaders).filter(([k]) => {
+      const lower = k.toLowerCase()
+      return lower !== 'authorization' && lower !== 'host'
+    })
     const duration = Date.now() - startTimestamp
     this.logger.debug({
       module: 'HTTP Adapter',
@@ -341,7 +264,7 @@ export abstract class BaseHttpAdapter implements Connection {
         request_path: params.url.pathname,
         request_params: params.url.search,
         request_headers: headers,
-        response_status: response.statusCode,
+        response_status: response.status,
         response_headers: response.headers,
         response_time_ms: duration,
       },

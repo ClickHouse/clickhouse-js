@@ -9,7 +9,7 @@
     "client"
   ],
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "private": false,
   "repository": {
@@ -37,17 +37,18 @@
     "dist"
   ],
   "dependencies": {
-    "node-abort-controller": "^3.0.1",
+    "node-fetch": "^3.3.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@jest/reporters": "^29.4.0",
     "@types/jest": "^29.4.0",
-    "@types/node": "^18.11.18",
+    "@types/node": "^18.16.3",
     "@types/split2": "^3.2.1",
     "@types/uuid": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
     "@typescript-eslint/parser": "^5.49.0",
+    "babel-jest": "^29.5.0",
     "eslint": "^8.32.0",
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-prettier": "^4.2.1",

@@ -3,12 +3,21 @@
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "sourceType": "module",
-    "project": ["./tsconfig.dev.json"]
+    "project": [
+      "./tsconfig.dev.json"
+    ]
   },
+  "ignorePatterns": [
+    "jest.config.ts",
+    "jest.reporter.ts"
+  ],
   "env": {
     "node": true
   },
-  "plugins": ["@typescript-eslint", "prettier"],
+  "plugins": [
+    "@typescript-eslint",
+    "prettier"
+  ],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
@@ -21,11 +30,22 @@
     "eqeqeq": "error",
     // Disable some inherited recommended checks until they all are fixed in targeted PRs.
     "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/consistent-type-imports": "warn"
+    "@typescript-eslint/consistent-type-imports": "warn",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ]
   },
   "overrides": [
     {
-      "files": ["./__tests__/**/*.ts"],
+      "files": [
+        "./__tests__/**/*.ts"
+      ],
       "rules": {
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-non-null-assertion": "off"

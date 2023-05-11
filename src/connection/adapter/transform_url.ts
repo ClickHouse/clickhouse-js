@@ -7,7 +7,7 @@ export function transformUrl({
   pathname?: string
   searchParams?: URLSearchParams
 }): URL {
-  const newUrl = new URL(url)
+  const newUrl = new URL(url.toString())
 
   if (pathname) {
     newUrl.pathname = pathname

@@ -9,10 +9,10 @@ class Reporter extends DefaultReporter {
   // Print console logs only for __failed__ test __files__
   // Unfortunately, it does not seem possible to extract logs
   // from a particular test __case__ in a clean way without too much hacks
-  printTestFileHeader(_testPath, config, result) {
+  printTestFileHeader(_testPath, _config, result) {
     const console = result.console
     if (result.numFailingTests === 0 && !result.testExecError) {
-      result.console = null
+      result.console = undefined
     }
     super.printTestFileHeader(...arguments)
     result.console = console
