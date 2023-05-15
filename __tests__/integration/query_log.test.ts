@@ -1,11 +1,18 @@
 import { type ClickHouseClient } from '../../src'
-import { createTestClient, guid, retryOnFailure } from '../utils'
-import { itSkipCloud } from '../utils/it'
+import {
+  createTestClient,
+  guid,
+  retryOnFailure,
+  TestEnv,
+  whenOnEnv,
+} from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 
 // these tests are very flaky in the Cloud environment
 // likely due flushing the query_log not too often
 // it's better to execute only with the local single node or cluster
+const testEnvs = [TestEnv.LocalSingleNode, TestEnv.LocalCluster]
+
 describe('query_log', () => {
   let client: ClickHouseClient
   afterEach(async () => {
@@ -14,7 +21,7 @@ describe('query_log', () => {
     }
   })
 
-  itSkipCloud(
+  whenOnEnv(...testEnvs).it(
     'can use query_id to fetch query_log table with select',
     async () => {
       client = createTestClient()
@@ -29,7 +36,7 @@ describe('query_log', () => {
     }
   )
 
-  itSkipCloud(
+  whenOnEnv(...testEnvs).it(
     'can use query_id to fetch query_log table with exec',
     async () => {
       client = createTestClient()
@@ -42,7 +49,7 @@ describe('query_log', () => {
     }
   )
 
-  itSkipCloud(
+  whenOnEnv(...testEnvs).it(
     'can use query_id to fetch query_log table with insert',
     async () => {
       client = createTestClient()
