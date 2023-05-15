@@ -25,7 +25,7 @@ describe('watch stream', () => {
     viewName = `watch_stream_test_${guid()}`
     await createTable(
       client,
-      (env) => `CREATE LIVE VIEW ${viewName} WITH REFRESH 1 AS SELECT now()`
+      () => `CREATE LIVE VIEW ${viewName} WITH REFRESH 1 AS SELECT now()`
     )
   })
 
