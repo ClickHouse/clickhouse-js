@@ -22,6 +22,10 @@ describe('formatQueryParams', () => {
     expect(formatQueryParams(null)).toBe('\\N')
   })
 
+  it('formats undefined', () => {
+    expect(formatQueryParams(undefined)).toBe('\\N')
+  })
+
   it('formats boolean', () => {
     expect(formatQueryParams(true)).toBe('1')
     expect(formatQueryParams(false)).toBe('0')
