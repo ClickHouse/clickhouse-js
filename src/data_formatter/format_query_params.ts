@@ -23,7 +23,7 @@ export function formatQueryParams(
   value: any,
   wrapStringInQuotes = false
 ): string {
-  if (value === null) return 'NULL'
+  if (value === null || value === undefined) return '\\N'
   if (Number.isNaN(value)) return 'nan'
   if (value === Number.POSITIVE_INFINITY) return '+inf'
   if (value === Number.NEGATIVE_INFINITY) return '-inf'
