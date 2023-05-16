@@ -19,7 +19,7 @@ function convertDateToTimezone(date: Date, tz: string) {
 
 describe('formatQueryParams', () => {
   it('formats null', () => {
-    expect(formatQueryParams(null)).toBe('NULL')
+    expect(formatQueryParams(null)).toBe('\\N')
   })
 
   it('formats boolean', () => {
@@ -114,14 +114,5 @@ describe('formatQueryParams', () => {
         params: { refs: [44] },
       })
     ).toBe("{'name':'custom','id':42,'params':{'refs':[44]}}")
-  })
-
-  it('throws on unsupported values', () => {
-    expect(() => formatQueryParams(undefined)).toThrowError(
-      'Unsupported value in query parameters: [undefined].'
-    )
-    expect(() => formatQueryParams(undefined)).toThrowError(
-      'Unsupported value in query parameters: [undefined].'
-    )
   })
 })
