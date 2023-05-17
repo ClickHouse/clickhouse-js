@@ -1,3 +1,8 @@
+## 0.0.16
+* Fix NULL parameter binding.
+As HTTP interface expects `\N` instead of `'NULL'` string, it is now correctly handled for both `null`
+and _explicitly_ `undefined` parameters. See the [test scenarios](https://github.com/ClickHouse/clickhouse-js/blob/f1500e188600d85ddd5ee7d2a80846071c8cf23e/__tests__/integration/select_query_binding.test.ts#L273-L303) for more details.
+
 ## 0.0.15
 
 ### Bug fixes

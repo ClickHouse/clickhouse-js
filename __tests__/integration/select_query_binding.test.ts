@@ -1,3 +1,4 @@
+import type { QueryParams } from '../../src'
 import { type ClickHouseClient } from '../../src'
 import { createTestClient } from '../utils'
 
@@ -249,7 +250,7 @@ describe('select with query binding', () => {
       expect(response).toBe(`Enum8(\\'a\\' = 1, \\'b\\' = 2)\n`)
     })
 
-    it('should provide error details when sending a request with an unknown parameter', async () => {
+    it('should provide error details when sending a request with missing parameter', async () => {
       await expect(
         client.query({
           query: `
@@ -266,6 +267,37 @@ describe('select with query binding', () => {
           type: 'UNKNOWN_QUERY_PARAMETER',
         })
       )
+    })
+  })
+
+  describe('NULL parameter binding', () => {
+    const baseQuery: Pick<QueryParams, 'query' | 'format'> = {
+      query: 'SELECT number FROM numbers(3) WHERE {n:Nullable(String)} IS NULL',
+      format: 'CSV',
+    }
+
+    it('should work with nulls', async () => {
+      const rs = await client.query({
+        ...baseQuery,
+        query_params: {
+          n: null,
+        },
+      })
+
+      const response = await rs.text()
+      expect(response).toBe('0\n1\n2\n')
+    })
+
+    it('should with an explicit undefined', async () => {
+      const rs = await client.query({
+        ...baseQuery,
+        query_params: {
+          n: undefined,
+        },
+      })
+
+      const response = await rs.text()
+      expect(response).toBe('0\n1\n2\n')
     })
   })
 })
