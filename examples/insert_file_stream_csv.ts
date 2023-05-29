@@ -1,4 +1,4 @@
-import { createClient } from '@clickhouse/client'
+import { createClient } from '@clickhouse/client-node'
 import Path from 'path'
 import Fs from 'fs'
 

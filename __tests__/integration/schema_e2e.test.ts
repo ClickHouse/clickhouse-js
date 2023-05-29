@@ -1,7 +1,7 @@
-import type { ClickHouseClient } from '../../src'
+import type { ClickHouseClient } from 'client/src'
 import { createTableWithSchema, createTestClient, guid } from '../utils'
-import * as ch from '../../src/schema'
-import { And, Eq, Or } from '../../src/schema'
+import * as ch from 'client/src/schema'
+import { And, Eq, Or } from 'client/src/schema'
 
 describe('schema e2e test', () => {
   let client: ClickHouseClient

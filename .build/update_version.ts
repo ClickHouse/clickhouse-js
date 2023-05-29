@@ -1,4 +1,4 @@
-import version from '../src/version'
+import version from '../packages/common/src/version'
 import packageJson from '../package.json'
 import fs from 'fs'
 ;(async () => {

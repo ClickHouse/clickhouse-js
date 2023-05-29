@@ -1,8 +1,12 @@
 import type { TransformCallback } from 'stream'
 import Stream, { Transform } from 'stream'
 
-import { getAsText } from './utils'
-import { type DataFormat, decode, validateStreamFormat } from './data_formatter'
+import { getAsText } from 'client-common/src/utils'
+import {
+  type DataFormat,
+  decode,
+  validateStreamFormat,
+} from 'client-common/src/data_formatter'
 
 export class ResultSet {
   constructor(

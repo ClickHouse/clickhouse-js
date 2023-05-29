@@ -1,4 +1,4 @@
-import { createClient } from '@clickhouse/client'
+import { createClient } from '@clickhouse/client-node'
 import fs from 'fs'
 
 void (async () => {

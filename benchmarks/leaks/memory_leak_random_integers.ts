@@ -1,13 +1,13 @@
 import Stream from 'stream'
-import { createClient } from '../../src'
+import { createClient } from 'client-node/src'
 import { v4 as uuid_v4 } from 'uuid'
 import { randomInt } from 'crypto'
 import {
   attachExceptionHandlers,
   getMemoryUsageInMegabytes,
   logFinalMemoryUsage,
-  logMemoryUsageOnIteration,
   logMemoryUsage,
+  logMemoryUsageOnIteration,
 } from './shared'
 
 const program = async () => {

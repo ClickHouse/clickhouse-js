@@ -1,7 +1,7 @@
-import type { ClickHouseClient } from '../../src'
-import { ResultSet } from '../../src'
-import * as ch from '../../src/schema'
-import { QueryFormatter } from '../../src/schema/query_formatter'
+import type { ClickHouseClient } from 'client/src'
+import { ResultSet } from 'client/src'
+import * as ch from 'client/src/schema'
+import { QueryFormatter } from 'client/src/schema/query_formatter'
 import { Readable } from 'stream'
 import { guid } from '../utils'
 

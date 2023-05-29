@@ -1,5 +1,5 @@
-import type { Row } from '../../src'
-import { ResultSet } from '../../src'
+import type { Row } from 'client/src'
+import { ResultSet } from 'client/src'
 import Stream, { Readable } from 'stream'
 import { guid } from '../utils'
 

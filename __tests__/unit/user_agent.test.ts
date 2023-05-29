@@ -1,10 +1,10 @@
-import * as p from '../../src/utils/process'
-import { getProcessVersion } from '../../src/utils/process'
+import * as p from 'client-common/src/utils/process'
+import { getProcessVersion } from 'client-common/src/utils/process'
 import * as os from 'os'
-import { getUserAgent } from '../../src/utils/user_agent'
+import { getUserAgent } from 'client-common/src/utils/user_agent'
 
 jest.mock('os')
-jest.mock('../../src/version', () => {
+jest.mock('client-common/src/version', () => {
   return '0.0.42'
 })
 describe('user_agent', () => {

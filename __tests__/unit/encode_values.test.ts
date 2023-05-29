@@ -1,6 +1,6 @@
 import Stream from 'stream'
-import { encodeValues } from '../../src/client'
-import type { DataFormat, InputJSON, InputJSONObjectEachRow } from '../../src'
+import { encodeValues } from 'client/src/client'
+import type { DataFormat, InputJSON, InputJSONObjectEachRow } from 'client/src'
 
 describe('encodeValues', () => {
   const rawFormats = [

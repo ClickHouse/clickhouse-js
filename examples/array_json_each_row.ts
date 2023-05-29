@@ -1,4 +1,5 @@
-import { createClient } from '@clickhouse/client'
+import { createClient } from '@clickhouse/client-node'
+
 void (async () => {
   const tableName = 'array_json_each_row'
   const client = createClient()

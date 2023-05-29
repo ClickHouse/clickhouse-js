@@ -5,8 +5,11 @@ import { getTableName, QueryFormatter } from './query_formatter'
 import type { ClickHouseClient } from '../client'
 import type { WhereExpr } from './where'
 import type { InsertStream, SelectResult } from './stream'
-import type { ClickHouseSettings, MergeTreeSettings } from '../settings'
 import type Stream from 'stream'
+import type {
+  ClickHouseSettings,
+  MergeTreeSettings,
+} from 'client-common/src/settings'
 
 // TODO: non-empty schema constraint
 // TODO support more formats (especially JSONCompactEachRow)

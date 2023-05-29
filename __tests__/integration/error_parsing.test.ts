@@ -1,5 +1,6 @@
-import { type ClickHouseClient, createClient } from '../../src'
 import { createTestClient, getTestDatabaseName } from '../utils'
+import type { ClickHouseClient } from 'client/src'
+import { createClient } from 'client-node/src'
 
 describe('error', () => {
   let client: ClickHouseClient

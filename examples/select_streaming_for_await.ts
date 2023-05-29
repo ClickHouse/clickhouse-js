@@ -1,5 +1,5 @@
-import { createClient } from '@clickhouse/client'
-import type { Row } from '../src'
+import { createClient } from '@clickhouse/client-node'
+import type { Row } from '@clickhouse/client'
 
 /**
  * NB: `for await const` has quite significant overhead

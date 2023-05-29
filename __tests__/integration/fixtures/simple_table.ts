@@ -1,6 +1,6 @@
 import { createTable, TestEnv } from '../../utils'
-import type { ClickHouseClient } from '../../../src'
-import type { MergeTreeSettings } from '../../../src/settings'
+import type { ClickHouseClient } from 'client/src'
+import type { MergeTreeSettings } from 'client-common/src/settings'
 
 export function createSimpleTable(
   client: ClickHouseClient,
@@ -39,7 +39,7 @@ export function createSimpleTable(
           CREATE TABLE ${tableName} ON CLUSTER '{cluster}'
           (id UInt64, name String, sku Array(UInt8))
           ENGINE ReplicatedMergeTree(
-            '/clickhouse/{cluster}/tables/{database}/{table}/{shard}', 
+            '/clickhouse/{cluster}/tables/{database}/{table}/{shard}',
             '{replica}'
           )
           ORDER BY (id) ${_settings}

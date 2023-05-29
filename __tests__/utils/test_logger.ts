@@ -1,5 +1,5 @@
-import type { Logger } from '../../src'
-import type { ErrorLogParams, LogParams } from '../../src/logger'
+import type { Logger } from 'client/src'
+import type { ErrorLogParams, LogParams } from 'client-common/src/logger'
 
 export class TestLogger implements Logger {
   debug({ module, message, args }: LogParams) {

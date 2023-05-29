@@ -1,5 +1,27 @@
-import { formatQueryParams, formatQuerySettings } from '../../data_formatter/'
-import type { ClickHouseSettings } from '../../settings'
+import type { ClickHouseSettings } from '../settings'
+import { formatQueryParams, formatQuerySettings } from '../data_formatter'
+
+export function transformUrl({
+  url,
+  pathname,
+  searchParams,
+}: {
+  url: URL
+  pathname?: string
+  searchParams?: URLSearchParams
+}): URL {
+  const newUrl = new URL(url)
+
+  if (pathname) {
+    newUrl.pathname = pathname
+  }
+
+  if (searchParams) {
+    newUrl.search = searchParams?.toString()
+  }
+
+  return newUrl
+}
 
 type ToSearchParamsOptions = {
   database: string

@@ -1,27 +1,24 @@
+import type { ClickHouseSettings } from 'client-common/src/settings'
 import type Stream from 'stream'
-import type { LogWriter } from '../logger'
-import { HttpAdapter, HttpsAdapter } from './adapter'
-import type { ClickHouseSettings } from '../settings'
+import type { LogWriter } from './logger'
 
 export interface ConnectionParams {
   url: URL
-
-  application_id?: string
-
   connect_timeout: number
   request_timeout: number
   max_open_connections: number
-
   compression: {
     decompress_response: boolean
     compress_request: boolean
   }
-
-  tls?: TLSParams
-
   username: string
   password: string
   database: string
+  clickhouse_settings: ClickHouseSettings
+  logWriter: LogWriter
+  session_id?: string
+  application_id?: string
+  tls?: TLSParams
 }
 
 export type TLSParams =
@@ -36,7 +33,7 @@ export type TLSParams =
       type: 'Mutual'
     }
 
-export interface BaseParams {
+export interface BaseQueryParams {
   query: string
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
@@ -45,7 +42,7 @@ export interface BaseParams {
   query_id?: string
 }
 
-export interface InsertParams extends BaseParams {
+export interface InsertParams extends BaseQueryParams {
   values: string | Stream.Readable
 }
 
@@ -61,22 +58,7 @@ export interface InsertResult {
 export interface Connection {
   ping(): Promise<boolean>
   close(): Promise<void>
-  query(params: BaseParams): Promise<QueryResult>
-  exec(params: BaseParams): Promise<QueryResult>
+  query(params: BaseQueryParams): Promise<QueryResult>
+  exec(params: BaseQueryParams): Promise<QueryResult>
   insert(params: InsertParams): Promise<InsertResult>
-}
-
-export function createConnection(
-  params: ConnectionParams,
-  logger: LogWriter
-): Connection {
-  // TODO throw ClickHouseClient error
-  switch (params.url.protocol) {
-    case 'http:':
-      return new HttpAdapter(params, logger)
-    case 'https:':
-      return new HttpsAdapter(params, logger)
-    default:
-      throw new Error('Only HTTP(s) adapters are supported')
-  }
 }

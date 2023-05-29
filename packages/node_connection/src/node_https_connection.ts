@@ -1,12 +1,14 @@
-import type { RequestParams } from './base_http_adapter'
-import { BaseHttpAdapter } from './base_http_adapter'
-import type { Connection, ConnectionParams } from '../connection'
-import type { LogWriter } from '../../logger'
+import type { RequestParams } from './node_base_connection'
+import { NodeBaseConnection } from './node_base_connection'
 import Https from 'https'
 import type Http from 'http'
+import type { Connection, ConnectionParams } from 'client-common/src/connection'
 
-export class HttpsAdapter extends BaseHttpAdapter implements Connection {
-  constructor(config: ConnectionParams, logger: LogWriter) {
+export class NodeHttpsConnection
+  extends NodeBaseConnection
+  implements Connection
+{
+  constructor(config: ConnectionParams) {
     const agent = new Https.Agent({
       keepAlive: true,
       timeout: config.request_timeout,
@@ -15,7 +17,7 @@ export class HttpsAdapter extends BaseHttpAdapter implements Connection {
       key: config.tls?.type === 'Mutual' ? config.tls.key : undefined,
       cert: config.tls?.type === 'Mutual' ? config.tls.cert : undefined,
     })
-    super(config, logger, agent)
+    super(config, agent)
   }
 
   protected override buildDefaultHeaders(

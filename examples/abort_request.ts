@@ -1,5 +1,5 @@
-import { createClient } from '@clickhouse/client'
-import { AbortController } from 'node-abort-controller'
+import { createClient } from '@clickhouse/client-node'
+
 void (async () => {
   const client = createClient()
   const controller = new AbortController()

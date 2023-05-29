@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "include": [
-    "./src/**/*.ts",
+    "./packages/**/*.ts",
     "__tests__/**/*.ts",
     "examples/**/*.ts",
     "benchmarks/**/*.ts",
@@ -11,9 +11,10 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "outDir": "dist",
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
-      "@clickhouse/client": ["./src/index.ts"]
+      "@clickhouse/client": ["packages/client/src/index.ts"],
+      "@clickhouse/client-node": ["packages/node_connection/src/index.ts"]
     }
   },
   "ts-node": {

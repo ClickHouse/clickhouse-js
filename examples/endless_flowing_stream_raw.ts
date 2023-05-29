@@ -1,5 +1,5 @@
 import Stream from 'stream'
-import { createClient } from '@clickhouse/client'
+import { createClient } from '@clickhouse/client-node'
 import { randomInt } from 'crypto'
 
 // Open a single connection for streaming data insertion

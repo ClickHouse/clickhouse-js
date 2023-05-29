@@ -1,7 +1,7 @@
-import type { ClickHouseClient } from '../../src'
-import { createClient } from '../../src'
+import type { ClickHouseClient } from 'client/src'
 import { createTestClient } from '../utils'
 import * as fs from 'fs'
+import { createClient } from 'client-node/src'
 
 describe('TLS connection', () => {
   let client: ClickHouseClient

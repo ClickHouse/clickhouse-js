@@ -1,5 +1,5 @@
-import type { ExecParams, ResponseJSON } from '../../src'
-import { type ClickHouseClient } from '../../src'
+import type { ExecParams, ResponseJSON } from 'client/src'
+import { type ClickHouseClient } from 'client/src'
 import {
   createTestClient,
   getClickHouseTestEnvironment,
@@ -7,9 +7,9 @@ import {
   guid,
   TestEnv,
 } from '../utils'
-import { getAsText } from '../../src/utils'
 import * as uuid from 'uuid'
-import type { QueryResult } from '../../src/connection'
+import { getAsText } from 'client-common/src/utils'
+import type { QueryResult } from 'client-common/src/connection'
 
 describe('exec', () => {
   let client: ClickHouseClient

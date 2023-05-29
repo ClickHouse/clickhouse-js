@@ -1,9 +1,9 @@
 import { createTestClient, guid, makeRawStream } from '../utils'
-import type { ClickHouseClient, ClickHouseSettings } from '../../src'
+import type { ClickHouseClient, ClickHouseSettings } from 'client/src'
 import { createSimpleTable } from './fixtures/simple_table'
 import Stream from 'stream'
 import { assertJsonValues, jsonValues } from './fixtures/test_data'
-import type { RawDataFormat } from '../../src/data_formatter'
+import type { RawDataFormat } from 'client-common/src/data_formatter'
 
 describe('stream raw formats', () => {
   let client: ClickHouseClient

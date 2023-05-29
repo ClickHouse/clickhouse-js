@@ -1,4 +1,4 @@
-import type { ClickHouseClient } from '../../../src'
+import type { ClickHouseClient } from 'client/src'
 
 export const jsonValues = [
   { id: '42', name: 'hello', sku: [0, 1] },

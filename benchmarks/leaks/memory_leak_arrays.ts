@@ -1,4 +1,4 @@
-import { createClient } from '../../src'
+import { createClient } from 'client-node/src'
 import { v4 as uuid_v4 } from 'uuid'
 import { randomInt } from 'crypto'
 import {

@@ -1,4 +1,4 @@
-import type { ClickHouseClient } from '../../src'
+import type { ClickHouseClient } from 'client/src'
 import { createTestClient } from '../utils'
 import { v4 } from 'uuid'
 import { randomInt } from 'crypto'

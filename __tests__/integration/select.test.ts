@@ -1,5 +1,5 @@
 import type Stream from 'stream'
-import { type ClickHouseClient, type ResponseJSON, type Row } from '../../src'
+import { type ClickHouseClient, type ResponseJSON, type Row } from 'client/src'
 import { createTestClient, guid } from '../utils'
 import * as uuid from 'uuid'
 

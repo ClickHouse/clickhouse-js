@@ -2,16 +2,16 @@ import type {
   ClickHouseClient,
   ClickHouseClientConfigOptions,
   ClickHouseSettings,
-} from '../../src'
-import { createClient } from '../../src'
+} from 'client/src'
 import { guid } from './guid'
 import { TestLogger } from './test_logger'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
 import { getFromEnv } from './env'
 import { TestDatabaseEnvKey } from '../global.integration'
+import { createClient } from 'client-node/src/index'
 
 export function createTestClient(
-  config: ClickHouseClientConfigOptions = {}
+  config: Omit<ClickHouseClientConfigOptions, 'connection'> = {}
 ): ClickHouseClient {
   const env = getClickHouseTestEnvironment()
   const database = process.env[TestDatabaseEnvKey]

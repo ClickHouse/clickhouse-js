@@ -1,19 +1,25 @@
 import Stream from 'stream'
-import type { InsertResult, QueryResult, TLSParams } from './connection'
-import { type Connection, createConnection } from './connection'
-import type { Logger } from './logger'
-import { DefaultLogger, LogWriter } from './logger'
-import { isStream, mapStream } from './utils'
+import type { Logger } from 'client-common/src/logger'
+import { DefaultLogger, LogWriter } from 'client-common/src/logger'
+import { isStream, mapStream } from 'client-common/src/utils'
 import {
   type DataFormat,
   encodeJSON,
   isSupportedRawFormat,
-} from './data_formatter'
+} from 'client-common/src/data_formatter'
 import { ResultSet } from './result'
-import type { ClickHouseSettings } from './settings'
 import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
+import type { ClickHouseSettings } from 'client-common/src/settings'
+import type {
+  Connection,
+  ConnectionParams,
+  InsertResult,
+  QueryResult,
+  TLSParams,
+} from 'client-common/src/connection'
 
 export interface ClickHouseClientConfigOptions {
+  connection: (config: ConnectionParams) => Connection
   /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
   host?: string
   /** The timeout to set up a connection in milliseconds. Default value: `10_000`. */
@@ -37,7 +43,7 @@ export interface ClickHouseClientConfigOptions {
   application?: string
   /** Database name to use. Default value: `default`. */
   database?: string
-  /** ClickHouse settings to apply to all requests. Default value: {} */
+  /** ClickHouse's settings to apply to all requests. Default value: {} */
   clickhouse_settings?: ClickHouseSettings
   log?: {
     /** A class to instantiate a custom logger implementation. */
@@ -57,8 +63,8 @@ interface MutualTLSOptions {
   key: Buffer
 }
 
-export interface BaseParams {
-  /** ClickHouse settings that can be applied on query level. */
+export interface BaseQueryParams {
+  /** ClickHouse's settings that can be applied on query level. */
   clickhouse_settings?: ClickHouseSettings
   /** Parameters for query binding. https://clickhouse.com/docs/en/interfaces/http/#cli-queries-with-parameters */
   query_params?: Record<string, unknown>
@@ -69,14 +75,14 @@ export interface BaseParams {
   query_id?: string
 }
 
-export interface QueryParams extends BaseParams {
+export interface QueryParams extends BaseQueryParams {
   /** Statement to execute. */
   query: string
   /** Format of the resulting dataset. */
   format?: DataFormat
 }
 
-export interface ExecParams extends BaseParams {
+export interface ExecParams extends BaseQueryParams {
   /** Statement to execute. */
   query: string
 }
@@ -87,7 +93,7 @@ type InsertValues<T> =
   | InputJSON<T>
   | InputJSONObjectEachRow<T>
 
-export interface InsertParams<T = unknown> extends BaseParams {
+export interface InsertParams<T = unknown> extends BaseQueryParams {
   /** Name of a table to insert into. */
   table: string
   /** A dataset to insert. */
@@ -96,13 +102,12 @@ export interface InsertParams<T = unknown> extends BaseParams {
   format?: DataFormat
 }
 
-function validateConfig({ url }: NormalizedConfig): void {
+function validateConnectionParams({ url }: ConnectionParams): void {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(
       `Only http(s) protocol is supported, but given: [${url.protocol}]`
     )
   }
-  // TODO add SSL validation
 }
 
 function createUrl(host: string): URL {
@@ -113,7 +118,9 @@ function createUrl(host: string): URL {
   }
 }
 
-function normalizeConfig(config: ClickHouseClientConfigOptions) {
+function getConnectionParams(
+  config: ClickHouseClientConfigOptions
+): ConnectionParams {
   let tls: TLSParams | undefined = undefined
   if (config.tls) {
     if ('cert' in config.tls && 'key' in config.tls) {
@@ -141,40 +148,36 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
     },
     username: config.username ?? 'default',
     password: config.password ?? '',
-    application: config.application ?? 'clickhouse-js',
     database: config.database ?? 'default',
     clickhouse_settings: config.clickhouse_settings ?? {},
-    log: {
-      LoggerClass: config.log?.LoggerClass ?? DefaultLogger,
-    },
+    logWriter: new LogWriter(
+      config?.log?.LoggerClass
+        ? new config.log.LoggerClass()
+        : new DefaultLogger()
+    ),
     session_id: config.session_id,
   }
 }
 
-type NormalizedConfig = ReturnType<typeof normalizeConfig>
-
 export class ClickHouseClient {
-  private readonly config: NormalizedConfig
+  private readonly connectionParams: ConnectionParams
   private readonly connection: Connection
-  private readonly logger: LogWriter
 
-  constructor(config: ClickHouseClientConfigOptions = {}) {
-    this.config = normalizeConfig(config)
-    validateConfig(this.config)
-
-    this.logger = new LogWriter(new this.config.log.LoggerClass())
-    this.connection = createConnection(this.config, this.logger)
+  constructor(config: ClickHouseClientConfigOptions) {
+    this.connectionParams = getConnectionParams(config)
+    validateConnectionParams(this.connectionParams)
+    this.connection = config.connection(this.connectionParams)
   }
 
-  private getBaseParams(params: BaseParams) {
+  private getQueryParams(params: BaseQueryParams) {
     return {
       clickhouse_settings: {
-        ...this.config.clickhouse_settings,
+        ...this.connectionParams.clickhouse_settings,
         ...params.clickhouse_settings,
       },
       query_params: params.query_params,
       abort_signal: params.abort_signal,
-      session_id: this.config.session_id,
+      session_id: this.connectionParams.session_id,
       query_id: params.query_id,
     }
   }
@@ -184,7 +187,7 @@ export class ClickHouseClient {
     const query = formatQuery(params.query, format)
     const { stream, query_id } = await this.connection.query({
       query,
-      ...this.getBaseParams(params),
+      ...this.getQueryParams(params),
     })
     return new ResultSet(stream, format, query_id)
   }
@@ -193,7 +196,7 @@ export class ClickHouseClient {
     const query = removeTrailingSemi(params.query.trim())
     return await this.connection.exec({
       query,
-      ...this.getBaseParams(params),
+      ...this.getQueryParams(params),
     })
   }
 
@@ -206,7 +209,7 @@ export class ClickHouseClient {
     return await this.connection.insert({
       query,
       values: encodeValues(params.values, format),
-      ...this.getBaseParams(params),
+      ...this.getQueryParams(params),
     })
   }
 
@@ -305,12 +308,6 @@ export function encodeValues<T>(
   throw new Error(
     `Cannot encode values of type ${typeof values} with ${format} format`
   )
-}
-
-export function createClient(
-  config?: ClickHouseClientConfigOptions
-): ClickHouseClient {
-  return new ClickHouseClient(config)
 }
 
 function pipelineCb(err: NodeJS.ErrnoException | null) {

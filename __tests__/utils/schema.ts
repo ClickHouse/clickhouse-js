@@ -1,7 +1,7 @@
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
-import * as ch from '../../src/schema'
-import type { ClickHouseClient } from '../../src'
-import type { NonEmptyArray } from '../../src/schema'
+import type { NonEmptyArray } from 'client/src/schema'
+import * as ch from 'client/src/schema'
+import type { ClickHouseClient } from 'client/src'
 
 export async function createTableWithSchema<S extends ch.Shape>(
   client: ClickHouseClient,

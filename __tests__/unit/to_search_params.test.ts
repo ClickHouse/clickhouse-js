@@ -1,5 +1,5 @@
-import { toSearchParams } from '../../src/connection/adapter/http_search_params'
 import type { URLSearchParams } from 'url'
+import { toSearchParams } from 'client-common/src/utils/url'
 
 describe('toSearchParams', () => {
   it('should return undefined with default settings', async () => {

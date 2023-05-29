@@ -1,5 +1,5 @@
-import type { ClickHouseClientConfigOptions } from '../../src'
-import { createClient } from '../../src'
+import type { ClickHouseClientConfigOptions } from 'client/src'
+import { createClient } from 'client-node/src'
 
 describe('createClient', () => {
   it('throws on incorrect "host" config value', () => {
@@ -9,7 +9,7 @@ describe('createClient', () => {
   })
 
   it('should not mutate provided configuration', async () => {
-    const config: ClickHouseClientConfigOptions = {
+    const config: Omit<ClickHouseClientConfigOptions, 'connection'> = {
       host: 'http://localhost',
     }
     createClient(config)

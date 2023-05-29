@@ -1,6 +1,6 @@
 import Stream from 'stream'
-import type { DataFormat } from '../../src'
-import { validateInsertValues } from '../../src/client'
+import type { DataFormat } from 'client/src'
+import { validateInsertValues } from 'client/src/client'
 
 describe('validateInsertValues', () => {
   it('should allow object mode stream for JSON* and raw for Tab* or CSV*', async () => {

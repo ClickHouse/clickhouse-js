@@ -1,5 +1,5 @@
-import * as ch from '../../src/schema'
-import { QueryFormatter } from '../../src/schema/query_formatter'
+import * as ch from 'client/src/schema'
+import { QueryFormatter } from 'client/src/schema/query_formatter'
 
 describe('QueryFormatter', () => {
   it('should render a simple CREATE TABLE statement', async () => {

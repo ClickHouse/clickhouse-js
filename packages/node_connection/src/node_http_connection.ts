@@ -1,18 +1,19 @@
 import Http from 'http'
-import type { LogWriter } from '../../logger'
+import type { RequestParams } from './node_base_connection'
+import { NodeBaseConnection } from './node_base_connection'
+import type { Connection, ConnectionParams } from 'client-common/src/connection'
 
-import type { Connection, ConnectionParams } from '../connection'
-import type { RequestParams } from './base_http_adapter'
-import { BaseHttpAdapter } from './base_http_adapter'
-
-export class HttpAdapter extends BaseHttpAdapter implements Connection {
-  constructor(config: ConnectionParams, logger: LogWriter) {
+export class NodeHttpConnection
+  extends NodeBaseConnection
+  implements Connection
+{
+  constructor(config: ConnectionParams) {
     const agent = new Http.Agent({
       keepAlive: true,
       timeout: config.request_timeout,
       maxSockets: config.max_open_connections,
     })
-    super(config, logger, agent)
+    super(config, agent)
   }
 
   protected createClientRequest(

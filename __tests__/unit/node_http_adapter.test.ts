@@ -3,14 +3,17 @@ import Http from 'http'
 import Stream from 'stream'
 import Util from 'util'
 import Zlib from 'zlib'
-import type { ConnectionParams, QueryResult } from '../../src/connection'
-import { HttpAdapter } from '../../src/connection/adapter'
 import { guid, retryOnFailure, TestLogger } from '../utils'
-import { getAsText } from '../../src/utils'
-import { LogWriter } from '../../src/logger'
 import * as uuid from 'uuid'
 import { v4 as uuid_v4 } from 'uuid'
-import { BaseHttpAdapter } from '../../src/connection/adapter/base_http_adapter'
+import { getAsText } from 'client-common/src/utils'
+import { LogWriter } from 'client-common/src/logger'
+import { NodeHttpConnection } from '../../packages/node_connection/src/node_http_connection'
+import type {
+  ConnectionParams,
+  QueryResult,
+} from 'client-common/src/connection'
+import { NodeBaseConnection } from '../../packages/node_connection/src/node_base_connection'
 
 describe('HttpAdapter', () => {
   const gzip = Util.promisify(Zlib.gzip)
@@ -239,7 +242,7 @@ describe('HttpAdapter', () => {
       const myHttpAdapter = new MyTestHttpAdapter()
       const headers = myHttpAdapter.getDefaultHeaders()
       expect(headers['User-Agent']).toMatch(
-        /^clickhouse-js\/[0-9\\.]+? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
+        /^clickhouse-js\/[0-9\\.]+-(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
       )
     })
 
@@ -247,7 +250,7 @@ describe('HttpAdapter', () => {
       const myHttpAdapter = new MyTestHttpAdapter('MyFancyApp')
       const headers = myHttpAdapter.getDefaultHeaders()
       expect(headers['User-Agent']).toMatch(
-        /^MyFancyApp clickhouse-js\/[0-9\\.]+? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
+        /^MyFancyApp clickhouse-js\/[0-9\\.]+-(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
       )
     })
   })
@@ -519,27 +522,27 @@ describe('HttpAdapter', () => {
   }
 
   function buildHttpAdapter(config: Partial<ConnectionParams>) {
-    return new HttpAdapter(
-      {
-        ...{
-          url: new URL('http://localhost:8132'),
+    return new NodeHttpConnection({
+      ...{
+        url: new URL('http://localhost:8132'),
 
-          connect_timeout: 10_000,
-          request_timeout: 30_000,
-          compression: {
-            decompress_response: true,
-            compress_request: false,
-          },
-          max_open_connections: Infinity,
-
-          username: '',
-          password: '',
-          database: '',
+        connect_timeout: 10_000,
+        request_timeout: 30_000,
+        compression: {
+          decompress_response: true,
+          compress_request: false,
         },
-        ...config,
+        max_open_connections: Infinity,
+
+        username: '',
+        password: '',
+        database: '',
+        clickhouse_settings: {},
+
+        logWriter: new LogWriter(new TestLogger()),
       },
-      new LogWriter(new TestLogger())
-    )
+      ...config,
+    })
   }
 
   async function assertQueryResult(
@@ -556,11 +559,13 @@ describe('HttpAdapter', () => {
   }
 })
 
-class MyTestHttpAdapter extends BaseHttpAdapter {
+class MyTestHttpAdapter extends NodeBaseConnection {
   constructor(application_id?: string) {
     super(
-      { application_id } as ConnectionParams,
-      new TestLogger(),
+      {
+        application_id,
+        logWriter: new LogWriter(new TestLogger()),
+      } as ConnectionParams,
       {} as Http.Agent
     )
   }

@@ -1,5 +1,5 @@
 import { createTable, guid, TestEnv } from '../../utils'
-import type { ClickHouseClient, ClickHouseSettings } from '../../../src'
+import type { ClickHouseClient, ClickHouseSettings } from 'client/src'
 
 export async function createTableWithFields(
   client: ClickHouseClient,
@@ -31,7 +31,7 @@ export async function createTableWithFields(
             CREATE TABLE ${tableName} ON CLUSTER '{cluster}'
             (id UInt32, ${fields})
             ENGINE ReplicatedMergeTree(
-              '/clickhouse/{cluster}/tables/{database}/{table}/{shard}', 
+              '/clickhouse/{cluster}/tables/{database}/{table}/{shard}',
               '{replica}'
             )
             ORDER BY (id)

@@ -1,4 +1,4 @@
-import { formatQueryParams } from '../../src/data_formatter'
+import { formatQueryParams } from 'client-common/src/data_formatter'
 
 // JS always creates Date object in local timezone,
 // so we might need to convert the date to another timezone

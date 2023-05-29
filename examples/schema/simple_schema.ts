@@ -1,7 +1,7 @@
-import * as ch from '../../src/schema'
-import type { Infer } from '../../src/schema'
-import { InsertStream } from '../../src/schema'
-import { createClient } from '../../src'
+import type { Infer } from 'client/src/schema'
+import * as ch from 'client/src/schema'
+import { InsertStream } from 'client/src/schema'
+import { createClient } from '@clickhouse/client-node'
 // If you found this example,
 // consider it as a highly experimental WIP development :)
 void (async () => {

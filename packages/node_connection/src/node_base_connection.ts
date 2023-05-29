@@ -1,24 +1,21 @@
 import Stream from 'stream'
 import type Http from 'http'
 import Zlib from 'zlib'
-import { parseError } from '../../error'
-
-import type { Logger } from '../../logger'
+import { parseError } from 'client-common/src/error'
 
 import type {
-  BaseParams,
+  BaseQueryParams,
   Connection,
   ConnectionParams,
   InsertParams,
   InsertResult,
   QueryResult,
-} from '../connection'
-import { toSearchParams } from './http_search_params'
-import { transformUrl } from './transform_url'
-import { getAsText, isStream } from '../../utils'
-import type { ClickHouseSettings } from '../../settings'
-import { getUserAgent } from '../../utils/user_agent'
+} from 'client-common/src/connection'
 import * as uuid from 'uuid'
+import type { ClickHouseSettings } from 'client-common/src/settings'
+import { getUserAgent } from 'client-common/src/utils/user_agent'
+import { getAsText, isStream } from 'client-common/src/utils'
+import { toSearchParams, transformUrl } from 'client-common/src/utils/url'
 
 export interface RequestParams {
   method: 'GET' | 'POST'
@@ -83,11 +80,10 @@ function isDecompressionError(result: any): result is { error: Error } {
   return result.error !== undefined
 }
 
-export abstract class BaseHttpAdapter implements Connection {
+export abstract class NodeBaseConnection implements Connection {
   protected readonly headers: Http.OutgoingHttpHeaders
   protected constructor(
     protected readonly config: ConnectionParams,
-    private readonly logger: Logger,
     protected readonly agent: Http.Agent
   ) {
     this.headers = this.buildDefaultHeaders(config.username, config.password)
@@ -241,7 +237,7 @@ export abstract class BaseHttpAdapter implements Connection {
     return true
   }
 
-  async query(params: BaseParams): Promise<QueryResult> {
+  async query(params: BaseQueryParams): Promise<QueryResult> {
     const query_id = this.getQueryId(params)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -269,7 +265,7 @@ export abstract class BaseHttpAdapter implements Connection {
     }
   }
 
-  async exec(params: BaseParams): Promise<QueryResult> {
+  async exec(params: BaseQueryParams): Promise<QueryResult> {
     const query_id = this.getQueryId(params)
     const searchParams = toSearchParams({
       database: this.config.database,
@@ -320,7 +316,7 @@ export abstract class BaseHttpAdapter implements Connection {
     }
   }
 
-  private getQueryId(params: BaseParams): string {
+  private getQueryId(params: BaseQueryParams): string {
     return params.query_id || uuid.v4()
   }
 
@@ -333,7 +329,7 @@ export abstract class BaseHttpAdapter implements Connection {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { authorization, host, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
-    this.logger.debug({
+    this.config.logWriter.debug({
       module: 'HTTP Adapter',
       message: 'Got a response from ClickHouse',
       args: {

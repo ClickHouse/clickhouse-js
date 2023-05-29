@@ -1,6 +1,5 @@
-import { AbortController } from 'node-abort-controller'
-import type { Row } from '../../src'
-import { type ClickHouseClient, type ResponseJSON } from '../../src'
+import type { Row } from 'client/src'
+import { type ClickHouseClient, type ResponseJSON } from 'client/src'
 import { createTestClient, guid, makeObjectStream } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 import type Stream from 'stream'

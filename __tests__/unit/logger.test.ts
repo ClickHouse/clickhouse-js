@@ -1,5 +1,9 @@
-import type { ErrorLogParams, Logger, LogParams } from '../../src/logger'
-import { LogWriter } from '../../src/logger'
+import type {
+  ErrorLogParams,
+  Logger,
+  LogParams,
+} from 'client-common/src/logger'
+import { LogWriter } from 'client-common/src/logger'
 
 describe('Logger', () => {
   type LogLevel = 'debug' | 'info' | 'warn' | 'error'
