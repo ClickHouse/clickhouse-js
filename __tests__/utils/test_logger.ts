@@ -1,5 +1,8 @@
-import type { Logger } from 'client-common/src'
-import type { ErrorLogParams, LogParams } from 'client-common/src/logger'
+import type { Logger } from '@clickhouse/client-common'
+import type {
+  ErrorLogParams,
+  LogParams,
+} from '@clickhouse/client-common/logger'
 
 export class TestLogger implements Logger {
   debug({ module, message, args }: LogParams) {

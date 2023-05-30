@@ -6,11 +6,11 @@ import Zlib from 'zlib'
 import { guid, retryOnFailure, TestLogger } from '../utils'
 import * as uuid from 'uuid'
 import { v4 as uuid_v4 } from 'uuid'
-import { LogWriter } from 'client-common/src/logger'
+import { LogWriter } from '@clickhouse/client-common/logger'
 import type {
   ConnectionParams,
   QueryResult,
-} from 'client-common/src/connection'
+} from '@clickhouse/client-common/connection'
 import { getAsText } from '@clickhouse/client/stream'
 import { NodeBaseConnection } from '@clickhouse/client/node_base_connection'
 import { NodeHttpConnection } from '@clickhouse/client/node_http_connection'

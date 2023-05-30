@@ -2,8 +2,8 @@ import type {
   ErrorLogParams,
   Logger,
   LogParams,
-} from 'client-common/src/logger'
-import { LogWriter } from 'client-common/src/logger'
+} from '@clickhouse/client-common/logger'
+import { LogWriter } from '@clickhouse/client-common/logger'
 
 describe('Logger', () => {
   type LogLevel = 'debug' | 'info' | 'warn' | 'error'

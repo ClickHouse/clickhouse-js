@@ -1,5 +1,5 @@
 import type { URLSearchParams } from 'url'
-import { toSearchParams } from 'client-common/src/utils/url'
+import { toSearchParams } from '@clickhouse/client-common/utils/url'
 
 describe('toSearchParams', () => {
   it('should return undefined with default settings', async () => {

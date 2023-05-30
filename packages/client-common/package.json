@@ -1,5 +1,5 @@
 {
-  "name": "client-common",
+  "name": "@clickhouse/client-common",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

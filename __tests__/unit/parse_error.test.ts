@@ -1,4 +1,4 @@
-import { ClickHouseError, parseError } from 'client-common/src/error'
+import { ClickHouseError, parseError } from '@clickhouse/client-common/error'
 
 describe('parseError', () => {
   it('parses a single line error', () => {

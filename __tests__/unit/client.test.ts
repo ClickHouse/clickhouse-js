@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client'
-import type { BaseClickHouseClientConfigOptions } from 'client-common/src/client'
+import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common/client'
 
 describe('createClient', () => {
   it('throws on incorrect "host" config value', () => {

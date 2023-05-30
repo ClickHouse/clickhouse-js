@@ -3,7 +3,7 @@ import type {
   DataFormat,
   InputJSON,
   InputJSONObjectEachRow,
-} from 'client-common/src'
+} from '@clickhouse/client-common'
 import { NodeValuesEncoder } from '@clickhouse/client/encode'
 
 describe('NodeValuesEncoder', () => {
