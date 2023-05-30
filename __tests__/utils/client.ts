@@ -1,18 +1,15 @@
-import type {
-  ClickHouseClient,
-  ClickHouseClientConfigOptions,
-  ClickHouseSettings,
-} from 'client/src'
+import type { ClickHouseClient, ClickHouseSettings } from 'client-common/src'
 import { guid } from './guid'
 import { TestLogger } from './test_logger'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
 import { getFromEnv } from './env'
 import { TestDatabaseEnvKey } from '../global.integration'
 import { createClient } from 'client-node/src/index'
+import type { BaseClickHouseClientConfigOptions } from 'client-common/src/client'
 
-export function createTestClient(
-  config: Omit<ClickHouseClientConfigOptions, 'connection'> = {}
-): ClickHouseClient {
+export function createTestClient<Stream = unknown>(
+  config: BaseClickHouseClientConfigOptions<Stream> = {}
+): ClickHouseClient<Stream> {
   const env = getClickHouseTestEnvironment()
   const database = process.env[TestDatabaseEnvKey]
   console.log(
@@ -36,6 +33,7 @@ export function createTestClient(
     },
   }
   if (env === TestEnv.Cloud) {
+    // @ts-ignore
     return createClient({
       host: `https://${getFromEnv('CLICKHOUSE_CLOUD_HOST')}:8443`,
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
@@ -45,6 +43,7 @@ export function createTestClient(
       clickhouse_settings: clickHouseSettings,
     })
   } else {
+    // @ts-ignore
     return createClient({
       database,
       ...logging,
@@ -72,8 +71,8 @@ export async function createRandomDatabase(
   return databaseName
 }
 
-export async function createTable(
-  client: ClickHouseClient,
+export async function createTable<Stream = unknown>(
+  client: ClickHouseClient<Stream>,
   definition: (environment: TestEnv) => string,
   clickhouse_settings?: ClickHouseSettings
 ) {

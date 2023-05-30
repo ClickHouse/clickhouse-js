@@ -1,0 +1,12 @@
+{
+  "name": "client-browser",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "client-common": "*",
+    "uuid": "^9.0.0"
+  }
+}

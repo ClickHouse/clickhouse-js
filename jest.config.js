@@ -3,7 +3,7 @@ module.exports = {
   testEnvironment: 'node',
   preset: 'ts-jest',
   clearMocks: true,
-  collectCoverageFrom: ['<rootDir>/packages/client/src/**/*.ts'],
+  collectCoverageFrom: ['<rootDir>/packages/client-common/src/**/*.ts'],
   testMatch: ['<rootDir>/__tests__/**/*.test.{js,mjs,ts,tsx}'],
   testTimeout: 30000,
   coverageReporters: ['json-summary'],

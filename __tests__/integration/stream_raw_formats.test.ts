@@ -1,5 +1,5 @@
 import { createTestClient, guid, makeRawStream } from '../utils'
-import type { ClickHouseClient, ClickHouseSettings } from 'client/src'
+import type { ClickHouseClient, ClickHouseSettings } from 'client-common/src'
 import { createSimpleTable } from './fixtures/simple_table'
 import Stream from 'stream'
 import { assertJsonValues, jsonValues } from './fixtures/test_data'

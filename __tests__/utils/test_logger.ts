@@ -1,4 +1,4 @@
-import type { Logger } from 'client/src'
+import type { Logger } from 'client-common/src'
 import type { ErrorLogParams, LogParams } from 'client-common/src/logger'
 
 export class TestLogger implements Logger {

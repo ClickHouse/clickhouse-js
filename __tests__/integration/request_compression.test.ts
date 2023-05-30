@@ -1,4 +1,4 @@
-import { type ClickHouseClient, type ResponseJSON } from 'client/src'
+import { type ClickHouseClient, type ResponseJSON } from 'client-common/src'
 import { createTestClient, guid } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 

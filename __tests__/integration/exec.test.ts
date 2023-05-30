@@ -1,5 +1,5 @@
-import type { ExecParams, ResponseJSON } from 'client/src'
-import { type ClickHouseClient } from 'client/src'
+import type { ExecParams, ResponseJSON } from 'client-common/src'
+import { type ClickHouseClient } from 'client-common/src'
 import {
   createTestClient,
   getClickHouseTestEnvironment,
@@ -8,7 +8,6 @@ import {
   TestEnv,
 } from '../utils'
 import * as uuid from 'uuid'
-import { getAsText } from 'client-common/src/utils'
 import type { QueryResult } from 'client-common/src/connection'
 
 describe('exec', () => {
@@ -71,40 +70,6 @@ describe('exec', () => {
         ),
       })
     )
-  })
-
-  it('should send a parametrized query', async () => {
-    const result = await client.exec({
-      query: 'SELECT plus({val1: Int32}, {val2: Int32})',
-      query_params: {
-        val1: 10,
-        val2: 20,
-      },
-    })
-    expect(await getAsText(result.stream)).toEqual('30\n')
-  })
-
-  describe('trailing semi', () => {
-    it('should allow commands with semi in select clause', async () => {
-      const result = await client.exec({
-        query: `SELECT ';' FORMAT CSV`,
-      })
-      expect(await getAsText(result.stream)).toEqual('";"\n')
-    })
-
-    it('should allow commands with trailing semi', async () => {
-      const result = await client.exec({
-        query: 'EXISTS system.databases;',
-      })
-      expect(await getAsText(result.stream)).toEqual('1\n')
-    })
-
-    it('should allow commands with multiple trailing semi', async () => {
-      const result = await client.exec({
-        query: 'EXISTS system.foobar;;;;;;',
-      })
-      expect(await getAsText(result.stream)).toEqual('0\n')
-    })
   })
 
   describe('sessions', () => {
@@ -172,7 +137,7 @@ describe('exec', () => {
     expect(typeof table.create_table_query).toBe('string')
   }
 
-  async function runCommand(params: ExecParams): Promise<QueryResult> {
+  async function runCommand(params: ExecParams): Promise<QueryResult<unknown>> {
     console.log(
       `Running command with query_id ${params.query_id}:\n${params.query}`
     )

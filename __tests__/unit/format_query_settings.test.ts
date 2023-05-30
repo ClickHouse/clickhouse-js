@@ -1,5 +1,5 @@
 import { formatQuerySettings } from 'client-common/src/data_formatter'
-import { SettingsMap } from 'client/src'
+import { SettingsMap } from 'client-common/src'
 
 describe('formatQuerySettings', () => {
   it('formats boolean', () => {

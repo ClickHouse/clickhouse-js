@@ -1,5 +1,5 @@
 import { createTestClient, getTestDatabaseName } from '../utils'
-import type { ClickHouseClient } from 'client/src'
+import type { ClickHouseClient } from 'client-common/src'
 import { createClient } from 'client-node/src'
 
 describe('error', () => {
@@ -75,6 +75,7 @@ describe('error', () => {
 
   it('should return an error when URL is unreachable', async () => {
     await client.close()
+    // @ts-ignore
     client = createClient({
       host: 'http://localhost:1111',
     })

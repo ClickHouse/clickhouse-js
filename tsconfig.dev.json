@@ -13,8 +13,9 @@
     "outDir": "dist",
     "baseUrl": "./",
     "paths": {
-      "@clickhouse/client": ["packages/client/src/index.ts"],
-      "@clickhouse/client-node": ["packages/node_connection/src/index.ts"]
+      "@clickhouse/client": ["packages/client-common/src/index.ts"],
+      "@clickhouse/client-node": ["packages/client-node/src/index.ts"],
+      "@clickhouse/client-browser": ["packages/client-browser/src/index.ts"]
     }
   },
   "ts-node": {

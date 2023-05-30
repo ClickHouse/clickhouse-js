@@ -1,5 +1,5 @@
-import type { QueryParams } from 'client/src'
-import { type ClickHouseClient } from 'client/src'
+import type { QueryParams } from 'client-common/src'
+import { type ClickHouseClient } from 'client-common/src'
 import { createTestClient } from '../utils'
 
 describe('select with query binding', () => {

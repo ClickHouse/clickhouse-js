@@ -1,10 +1,11 @@
-import type { ClickHouseClient } from 'client/src'
+import type { ClickHouseClient } from 'client-common/src'
 import { createTestClient } from '../utils'
 import * as fs from 'fs'
 import { createClient } from 'client-node/src'
+import type Stream from 'stream'
 
 describe('TLS connection', () => {
-  let client: ClickHouseClient
+  let client: ClickHouseClient<Stream.Readable>
   beforeEach(() => {
     client = createTestClient()
   })

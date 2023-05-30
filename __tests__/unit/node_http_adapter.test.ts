@@ -6,14 +6,14 @@ import Zlib from 'zlib'
 import { guid, retryOnFailure, TestLogger } from '../utils'
 import * as uuid from 'uuid'
 import { v4 as uuid_v4 } from 'uuid'
-import { getAsText } from 'client-common/src/utils'
 import { LogWriter } from 'client-common/src/logger'
-import { NodeHttpConnection } from '../../packages/node_connection/src/node_http_connection'
 import type {
   ConnectionParams,
   QueryResult,
 } from 'client-common/src/connection'
-import { NodeBaseConnection } from '../../packages/node_connection/src/node_base_connection'
+import { getAsText } from 'client-node/src/stream'
+import { NodeBaseConnection } from 'client-node/src/node_base_connection'
+import { NodeHttpConnection } from 'client-node/src/node_http_connection'
 
 describe('HttpAdapter', () => {
   const gzip = Util.promisify(Zlib.gzip)
@@ -546,7 +546,7 @@ describe('HttpAdapter', () => {
   }
 
   async function assertQueryResult(
-    { stream, query_id }: QueryResult,
+    { stream, query_id }: QueryResult<Stream.Readable>,
     expectedResponseBody: any
   ) {
     expect(await getAsText(stream)).toBe(expectedResponseBody)
