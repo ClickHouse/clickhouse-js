@@ -1,12 +1,15 @@
-import type { DataFormat } from 'client-common/src'
-import { ClickHouseClient } from 'client-common/src'
+import type { DataFormat } from '@clickhouse/client-common'
+import { ClickHouseClient } from '@clickhouse/client-common'
 import { NodeHttpConnection } from './node_http_connection'
 import { NodeHttpsConnection } from './node_https_connection'
-import type { Connection, ConnectionParams } from 'client-common/src/connection'
+import type {
+  Connection,
+  ConnectionParams,
+} from '@clickhouse/client-common/connection'
 import type Stream from 'stream'
 import { ResultSet } from './result_set'
 import { NodeValuesEncoder } from './encode'
-import type { BaseClickHouseClientConfigOptions } from 'client-common/src/client'
+import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common/client'
 import type { TLSParams } from './node_base_connection'
 
 export function createConnection(

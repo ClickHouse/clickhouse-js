@@ -1,7 +1,7 @@
 import type { Row } from 'client-common/src'
 import Stream, { Readable } from 'stream'
 import { guid } from '../utils'
-import { ResultSet } from 'client-node/src/result_set'
+import { ResultSet } from '@clickhouse/client/result_set'
 
 describe('rows', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`

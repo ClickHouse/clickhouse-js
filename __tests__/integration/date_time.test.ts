@@ -1,5 +1,5 @@
 import { createTableWithFields } from './fixtures/table_with_fields'
-import type { ClickHouseClient } from 'client-common/src'
+import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '../utils'
 
 describe('DateTime', () => {

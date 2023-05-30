@@ -1,4 +1,4 @@
-import { type ClickHouseClient } from 'client-common/src'
+import { type ClickHouseClient } from '@clickhouse/client-common'
 import Stream from 'stream'
 import { createTestClient, guid, makeObjectStream } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'

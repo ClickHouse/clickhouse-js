@@ -1,14 +1,14 @@
-import type { Logger } from 'client-common/src/logger'
-import { DefaultLogger, LogWriter } from 'client-common/src/logger'
-import { type DataFormat } from 'client-common/src/data_formatter'
+import type { Logger } from '@clickhouse/client-common/logger'
+import { DefaultLogger, LogWriter } from '@clickhouse/client-common/logger'
+import { type DataFormat } from '@clickhouse/client-common/data_formatter'
 import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
-import type { ClickHouseSettings } from 'client-common/src/settings'
+import type { ClickHouseSettings } from '@clickhouse/client-common/settings'
 import type {
   Connection,
   ConnectionParams,
   InsertResult,
   QueryResult,
-} from 'client-common/src/connection'
+} from '@clickhouse/client-common/connection'
 import type { IResultSet } from './result'
 
 export type MakeConnection<Stream> = (

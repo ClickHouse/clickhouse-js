@@ -1,5 +1,5 @@
 import * as os from 'os'
-import packageVersion from 'client-common/src/version'
+import packageVersion from '@clickhouse/client-common/version'
 import { getProcessVersion } from './process'
 
 /**

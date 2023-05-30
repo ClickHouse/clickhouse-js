@@ -1,7 +1,7 @@
 import type { ClickHouseClient } from 'client-common/src'
 import { createTestClient } from '../utils'
 import * as fs from 'fs'
-import { createClient } from 'client-node/src'
+import { createClient } from '@clickhouse/client'
 import type Stream from 'stream'
 
 describe('TLS connection', () => {

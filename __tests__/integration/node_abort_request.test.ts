@@ -1,4 +1,4 @@
-import type { ClickHouseClient, Row } from 'client-common/src'
+import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createTestClient, guid, makeObjectStream } from '../utils'
 import type Stream from 'stream'
 import { jsonValues } from './fixtures/test_data'

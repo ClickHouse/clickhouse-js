@@ -1,10 +1,10 @@
 import Stream from 'stream'
-import type { DataFormat } from 'client-common/src/data_formatter'
+import type { DataFormat } from '@clickhouse/client-common/data_formatter'
 import {
   encodeJSON,
   isSupportedRawFormat,
-} from 'client-common/src/data_formatter'
-import type { InsertValues, ValuesEncoder } from 'client-common/src'
+} from '@clickhouse/client-common/data_formatter'
+import type { InsertValues, ValuesEncoder } from '@clickhouse/client-common'
 import { isStream, mapStream } from './stream'
 
 export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {

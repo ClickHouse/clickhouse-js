@@ -4,7 +4,7 @@ import {
   guid,
   TestEnv,
 } from '../../utils'
-import type { ClickHouseClient } from 'client-common/src'
+import type { ClickHouseClient } from '@clickhouse/client-common'
 
 export async function createReadOnlyUser(client: ClickHouseClient) {
   const username = `clickhousejs__read_only_user_${guid()}`

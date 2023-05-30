@@ -1,4 +1,3 @@
-import { createClient } from 'client-node/src'
 import { v4 as uuid_v4 } from 'uuid'
 import { randomInt } from 'crypto'
 import {
@@ -10,6 +9,7 @@ import {
   randomArray,
   randomStr,
 } from './shared'
+import { createClient } from '@clickhouse/client'
 
 const program = async () => {
   const client = createClient({})

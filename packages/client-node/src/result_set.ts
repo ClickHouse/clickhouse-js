@@ -1,8 +1,11 @@
 import type { TransformCallback } from 'stream'
 import Stream, { Transform } from 'stream'
-import type { DataFormat } from 'client-common/src/data_formatter'
-import { decode, validateStreamFormat } from 'client-common/src/data_formatter'
-import type { IResultSet, Row } from 'client-common/src'
+import type { DataFormat } from '@clickhouse/client-common/data_formatter'
+import {
+  decode,
+  validateStreamFormat,
+} from '@clickhouse/client-common/data_formatter'
+import type { IResultSet, Row } from '@clickhouse/client-common'
 import { getAsText } from './stream'
 
 export class ResultSet implements IResultSet<Stream.Readable> {

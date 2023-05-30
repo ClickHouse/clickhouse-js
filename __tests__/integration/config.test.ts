@@ -1,8 +1,11 @@
-import type { Logger } from 'client-common/src'
-import { type ClickHouseClient } from 'client-common/src'
+import type { Logger } from '@clickhouse/client-common'
+import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, retryOnFailure } from '../utils'
 import type { RetryOnFailureOptions } from '../utils/retry'
-import type { ErrorLogParams, LogParams } from 'client-common/src/logger'
+import type {
+  ErrorLogParams,
+  LogParams,
+} from '@clickhouse/client-common/logger'
 
 describe('config', () => {
   let client: ClickHouseClient

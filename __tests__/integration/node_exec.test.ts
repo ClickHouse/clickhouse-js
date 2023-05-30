@@ -1,6 +1,6 @@
-import type { ClickHouseClient } from 'client-common/src'
+import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '../utils'
-import { getAsText } from 'client-node/src/stream'
+import { getAsText } from '@clickhouse/client/stream'
 import type Stream from 'stream'
 
 describe('Node.js exec streaming', () => {

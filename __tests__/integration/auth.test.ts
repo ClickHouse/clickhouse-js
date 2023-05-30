@@ -1,4 +1,4 @@
-import { type ClickHouseClient } from 'client-common/src'
+import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '../utils'
 
 describe('authentication', () => {

@@ -1,5 +1,5 @@
-import type { Row } from 'client-common/src'
-import { type ClickHouseClient } from 'client-common/src'
+import type { Row } from '@clickhouse/client-common'
+import { type ClickHouseClient } from '@clickhouse/client-common'
 import {
   createTable,
   createTestClient,

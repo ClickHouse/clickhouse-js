@@ -11,9 +11,9 @@ import type {
   ConnectionParams,
   QueryResult,
 } from 'client-common/src/connection'
-import { getAsText } from 'client-node/src/stream'
-import { NodeBaseConnection } from 'client-node/src/node_base_connection'
-import { NodeHttpConnection } from 'client-node/src/node_http_connection'
+import { getAsText } from '@clickhouse/client/stream'
+import { NodeBaseConnection } from '@clickhouse/client/node_base_connection'
+import { NodeHttpConnection } from '@clickhouse/client/node_http_connection'
 
 describe('HttpAdapter', () => {
   const gzip = Util.promisify(Zlib.gzip)

@@ -19,7 +19,12 @@
     "importHelpers": false,
     "outDir": "dist",
     "lib": ["esnext", "dom"],
-    "types": ["node", "jest"]
+    "types": ["node", "jest"],
+    "baseUrl": "./",
+    "paths": {
+      "@clickhouse/client-common": ["packages/client-common/src/index.ts"],
+      "@clickhouse/client-common/*": ["packages/client-common/src/*"]
+    }
   },
   "exclude": ["node_modules"],
   "include": ["./packages/**/*.ts"]

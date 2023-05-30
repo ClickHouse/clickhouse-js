@@ -1,5 +1,5 @@
 import Stream from 'stream'
-import { createClient } from 'client-node/src'
+import { createClient } from '@clickhouse/client'
 import { v4 as uuid_v4 } from 'uuid'
 import { randomInt } from 'crypto'
 import {

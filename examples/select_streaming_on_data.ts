@@ -1,5 +1,5 @@
-import { createClient } from '@clickhouse/client-node'
-import type { Row } from '@clickhouse/client'
+import { createClient } from '@clickhouse/client'
+import type { Row } from '@clickhouse/client-common'
 
 /**
  * Can be used for consuming large datasets for reducing memory overhead,

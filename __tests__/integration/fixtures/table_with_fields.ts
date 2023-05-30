@@ -1,5 +1,8 @@
 import { createTable, guid, TestEnv } from '../../utils'
-import type { ClickHouseClient, ClickHouseSettings } from 'client-common/src'
+import type {
+  ClickHouseClient,
+  ClickHouseSettings,
+} from '@clickhouse/client-common'
 
 export async function createTableWithFields(
   client: ClickHouseClient,

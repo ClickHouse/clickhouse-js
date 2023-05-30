@@ -1,11 +1,14 @@
-import type { ClickHouseClient, ClickHouseSettings } from 'client-common/src'
 import { guid } from './guid'
 import { TestLogger } from './test_logger'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
 import { getFromEnv } from './env'
 import { TestDatabaseEnvKey } from '../global.integration'
-import { createClient } from 'client-node/src/index'
-import type { BaseClickHouseClientConfigOptions } from 'client-common/src/client'
+import { createClient } from '@clickhouse/client'
+import type {
+  BaseClickHouseClientConfigOptions,
+  ClickHouseClient,
+} from '@clickhouse/client-common/client'
+import type { ClickHouseSettings } from '@clickhouse/client-common'
 
 export function createTestClient<Stream = unknown>(
   config: BaseClickHouseClientConfigOptions<Stream> = {}

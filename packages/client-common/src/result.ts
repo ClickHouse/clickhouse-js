@@ -15,7 +15,7 @@ export interface IResultSet<Stream> {
   text(): Promise<string>
   /** Parse the entire result set as a JSON object. */
   json<T>(): Promise<T>
-  /** Get a stream of Row objects. */
+  /** Get a stream of {@link Row} objects. */
   stream(): Stream
   /** Close the underlying stream. */
   close(): void

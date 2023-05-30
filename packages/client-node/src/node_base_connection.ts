@@ -1,7 +1,7 @@
 import Stream from 'stream'
 import type Http from 'http'
 import Zlib from 'zlib'
-import { parseError } from 'client-common/src/error'
+import { parseError } from '@clickhouse/client-common/error'
 
 import type {
   BaseQueryParams,
@@ -10,10 +10,13 @@ import type {
   InsertParams,
   InsertResult,
   QueryResult,
-} from 'client-common/src/connection'
+} from '@clickhouse/client-common/connection'
 import * as uuid from 'uuid'
-import type { ClickHouseSettings } from 'client-common/src/settings'
-import { toSearchParams, transformUrl } from 'client-common/src/utils/url'
+import type { ClickHouseSettings } from '@clickhouse/client-common/settings'
+import {
+  toSearchParams,
+  transformUrl,
+} from '@clickhouse/client-common/utils/url'
 import { getAsText, isStream } from './stream'
 import { getUserAgent } from './user_agent'
 

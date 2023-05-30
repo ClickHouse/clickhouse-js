@@ -1,5 +1,5 @@
-import type { ResponseJSON } from 'client-common/src'
-import { type ClickHouseClient } from 'client-common/src'
+import type { ResponseJSON } from '@clickhouse/client-common'
+import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, guid } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 import { assertJsonValues, jsonValues } from './fixtures/test_data'

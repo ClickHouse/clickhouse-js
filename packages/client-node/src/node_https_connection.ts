@@ -5,7 +5,7 @@ import type {
 import { NodeBaseConnection } from './node_base_connection'
 import Https from 'https'
 import type Http from 'http'
-import type { Connection } from 'client-common/src/connection'
+import type { Connection } from '@clickhouse/client-common/connection'
 import type Stream from 'stream'
 
 export class NodeHttpsConnection
