@@ -3,7 +3,7 @@ import Http from 'http'
 import Stream from 'stream'
 import Util from 'util'
 import Zlib from 'zlib'
-import { guid, retryOnFailure, TestLogger } from '../utils'
+import { guid, retryOnFailure, TestLogger } from '../../utils'
 import * as uuid from 'uuid'
 import { v4 as uuid_v4 } from 'uuid'
 import { LogWriter } from '@clickhouse/client-common/logger'
@@ -11,9 +11,11 @@ import type {
   ConnectionParams,
   QueryResult,
 } from '@clickhouse/client-common/connection'
-import { getAsText } from '@clickhouse/client/stream'
-import { NodeBaseConnection } from '@clickhouse/client/node_base_connection'
-import { NodeHttpConnection } from '@clickhouse/client/node_http_connection'
+import { getAsText } from '@clickhouse/client/utils'
+import {
+  NodeBaseConnection,
+  NodeHttpConnection,
+} from '@clickhouse/client/connection'
 
 describe('HttpAdapter', () => {
   const gzip = Util.promisify(Zlib.gzip)

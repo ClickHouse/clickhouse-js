@@ -4,8 +4,8 @@ import Stream from 'stream'
 import split from 'split2'
 import type { Row } from '@clickhouse/client-common'
 import { type ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient, guid } from '../utils'
-import { createSimpleTable } from './fixtures/simple_table'
+import { createTestClient, guid } from '../../utils'
+import { createSimpleTable } from '../fixtures/simple_table'
 
 const expected = [
   ['0', 'a', [1, 2]],

@@ -7,7 +7,7 @@ import {
   retryOnFailure,
   TestEnv,
   whenOnEnv,
-} from '../utils'
+} from '../../utils'
 import type Stream from 'stream'
 
 describe('Node.js WATCH stream', () => {

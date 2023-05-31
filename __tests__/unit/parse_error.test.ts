@@ -77,9 +77,9 @@ describe('parseError', () => {
     })
   })
 
-  describe('Cluster mode errors', () => {
+  xdescribe('Cluster mode errors', () => {
     // FIXME: https://github.com/ClickHouse/clickhouse-js/issues/39
-    it.skip('should work with TABLE_ALREADY_EXISTS', async () => {
+    it('should work with TABLE_ALREADY_EXISTS', async () => {
       const message = `Code: 57. DB::Exception: There was an error on [clickhouse2:9000]: Code: 57. DB::Exception: Table default.command_test_2a751694160745f5aebe586c90b27515 already exists. (TABLE_ALREADY_EXISTS) (version 22.6.5.22 (official build)). (TABLE_ALREADY_EXISTS) (version 22.6.5.22 (official build))`
       const error = parseError(message) as ClickHouseError
 

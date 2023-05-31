@@ -127,17 +127,19 @@ describe('select', () => {
   })
 
   it('does not swallow a client error', async () => {
-    await expect(client.query({ query: 'SELECT number FR' })).rejects.toEqual(
-      expect.objectContaining({
+    await expectAsync(
+      client.query({ query: 'SELECT number FR' })
+    ).toBeRejectedWith(
+      jasmine.objectContaining({
         type: 'UNKNOWN_IDENTIFIER',
       })
     )
   })
 
   it('returns an error details provided by ClickHouse', async () => {
-    await expect(client.query({ query: 'foobar' })).rejects.toEqual(
-      expect.objectContaining({
-        message: expect.stringContaining('Syntax error'),
+    await expectAsync(client.query({ query: 'foobar' })).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringContaining('Syntax error'),
         code: '62',
         type: 'SYNTAX_ERROR',
       })
@@ -145,14 +147,14 @@ describe('select', () => {
   })
 
   it('should provide error details when sending a request with an unknown clickhouse settings', async () => {
-    await expect(
+    await expectAsync(
       client.query({
         query: 'SELECT * FROM system.numbers',
         clickhouse_settings: { foobar: 1 } as any,
       })
-    ).rejects.toEqual(
-      expect.objectContaining({
-        message: expect.stringContaining('Unknown setting foobar'),
+    ).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringContaining('Unknown setting foobar'),
         code: '115',
         type: 'UNKNOWN_SETTING',
       })
@@ -174,89 +176,6 @@ describe('select', () => {
       )
     )
     expect(results.sort((a, b) => a - b)).toEqual([1, 3, 6, 10, 15])
-  })
-
-  describe('select result', () => {
-    describe('text()', function () {
-      it('returns values from SELECT query in specified format', async () => {
-        const rs = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 3',
-          format: 'CSV',
-        })
-
-        expect(await rs.text()).toBe('0\n1\n2\n')
-      })
-      it('returns values from SELECT query in specified format', async () => {
-        const rs = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 3',
-          format: 'JSONEachRow',
-        })
-
-        expect(await rs.text()).toBe(
-          '{"number":"0"}\n{"number":"1"}\n{"number":"2"}\n'
-        )
-      })
-    })
-
-    describe('json()', () => {
-      it('returns an array of values in data property', async () => {
-        const rs = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON',
-        })
-
-        const { data: nums } = await rs.json<ResponseJSON<{ number: string }>>()
-        expect(Array.isArray(nums)).toBe(true)
-        expect(nums).toHaveLength(5)
-        const values = nums.map((i) => i.number)
-        expect(values).toEqual(['0', '1', '2', '3', '4'])
-      })
-
-      it('returns columns data in response', async () => {
-        const rs = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON',
-        })
-
-        const { meta } = await rs.json<ResponseJSON<{ number: string }>>()
-
-        expect(meta?.length).toBe(1)
-        const column = meta ? meta[0] : undefined
-        expect(column).toEqual({
-          name: 'number',
-          type: 'UInt64',
-        })
-      })
-
-      it('returns number of rows in response', async () => {
-        const rs = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON',
-        })
-
-        const response = await rs.json<ResponseJSON<{ number: string }>>()
-
-        expect(response.rows).toBe(5)
-      })
-
-      it('returns statistics in response', async () => {
-        const rs = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSON',
-        })
-
-        const response = await rs.json<ResponseJSON<{ number: string }>>()
-        expect(response).toEqual(
-          expect.objectContaining({
-            statistics: {
-              elapsed: expect.any(Number),
-              rows_read: expect.any(Number),
-              bytes_read: expect.any(Number),
-            },
-          })
-        )
-      })
-    })
   })
 
   describe('trailing semi', () => {

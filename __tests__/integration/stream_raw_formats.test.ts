@@ -1,4 +1,5 @@
-import { createTestClient, guid, makeRawStream } from '../utils'
+import { createTestClient, guid } from '../utils'
+import { makeRawStream } from '../utils/node/stream'
 import type {
   ClickHouseClient,
   ClickHouseSettings,

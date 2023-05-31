@@ -1,6 +1,6 @@
 import type { Row } from '@clickhouse/client-common'
 import Stream, { Readable } from 'stream'
-import { guid } from '../utils'
+import { guid } from '../../utils'
 import { ResultSet } from '@clickhouse/client/result_set'
 
 describe('rows', () => {

@@ -1,7 +1,7 @@
-import * as p from '@clickhouse/client/process'
-import { getProcessVersion } from '@clickhouse/client/process'
+import * as p from '@clickhouse/client/utils/process'
+import { getProcessVersion } from '@clickhouse/client/utils/process'
 import * as os from 'os'
-import { getUserAgent } from '@clickhouse/client/user_agent'
+import { getUserAgent } from '@clickhouse/client/utils/user_agent'
 
 jest.mock('os')
 jest.mock('@clickhouse/client-common/version', () => {

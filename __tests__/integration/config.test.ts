@@ -13,6 +13,7 @@ describe('config', () => {
     message: string
     err?: Error
     args?: Record<string, unknown>
+    module?: string
   }[] = []
 
   afterEach(async () => {
@@ -25,13 +26,13 @@ describe('config', () => {
       request_timeout: 100,
     })
 
-    await expect(
+    await expectAsync(
       client.query({
         query: 'SELECT sleep(3)',
       })
-    ).rejects.toEqual(
-      expect.objectContaining({
-        message: expect.stringMatching('Timeout error'),
+    ).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringMatching('Timeout error'),
       })
     )
   })
@@ -64,21 +65,20 @@ describe('config', () => {
     it('should use the default logger implementation', async () => {
       process.env[logLevelKey] = 'DEBUG'
       client = createTestClient()
-      const consoleSpy = jest.spyOn(console, 'debug')
+      const consoleSpy = spyOn(console, 'debug')
       await client.ping()
       // logs[0] are about current log level
-      expect(consoleSpy).toHaveBeenNthCalledWith(
-        1,
-        expect.stringContaining('Got a response from ClickHouse'),
-        expect.objectContaining({
+      expect(consoleSpy).toHaveBeenCalledOnceWith(
+        jasmine.stringContaining('Got a response from ClickHouse'),
+        jasmine.objectContaining({
           request_headers: {
-            'user-agent': expect.any(String),
+            'user-agent': jasmine.any(String),
           },
           request_method: 'GET',
           request_params: '',
           request_path: '/ping',
-          response_headers: expect.objectContaining({
-            connection: expect.stringMatching(/Keep-Alive/i),
+          response_headers: jasmine.objectContaining({
+            connection: jasmine.stringMatching(/Keep-Alive/i),
             'content-type': 'text/html; charset=UTF-8',
             'transfer-encoding': 'chunked',
           }),
@@ -101,7 +101,7 @@ describe('config', () => {
       expect(logs[1]).toEqual({
         module: 'HTTP Adapter',
         message: 'Got a response from ClickHouse',
-        args: expect.objectContaining({
+        args: jasmine.objectContaining({
           request_path: '/ping',
           request_method: 'GET',
         }),
@@ -117,7 +117,7 @@ describe('config', () => {
         },
       })
       await client.ping()
-      expect(logs).toHaveLength(0)
+      expect(logs.length).toEqual(0)
     })
   })
 

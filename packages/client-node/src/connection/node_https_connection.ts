@@ -7,35 +7,36 @@ import Https from 'https'
 import type Http from 'http'
 import type { Connection } from '@clickhouse/client-common/connection'
 import type Stream from 'stream'
+import { withCompressionHeaders } from '@clickhouse/client-common/utils'
 
 export class NodeHttpsConnection
   extends NodeBaseConnection
   implements Connection<Stream.Readable>
 {
-  constructor(config: NodeConnectionParams) {
+  constructor(params: NodeConnectionParams) {
     const agent = new Https.Agent({
       keepAlive: true,
-      timeout: config.request_timeout,
-      maxSockets: config.max_open_connections,
-      ca: config.tls?.ca_cert,
-      key: config.tls?.type === 'Mutual' ? config.tls.key : undefined,
-      cert: config.tls?.type === 'Mutual' ? config.tls.cert : undefined,
+      timeout: params.request_timeout,
+      maxSockets: params.max_open_connections,
+      ca: params.tls?.ca_cert,
+      key: params.tls?.type === 'Mutual' ? params.tls.key : undefined,
+      cert: params.tls?.type === 'Mutual' ? params.tls.cert : undefined,
     })
-    super(config, agent)
+    super(params, agent)
   }
 
   protected override buildDefaultHeaders(
     username: string,
     password: string
   ): Http.OutgoingHttpHeaders {
-    if (this.config.tls?.type === 'Mutual') {
+    if (this.params.tls?.type === 'Mutual') {
       return {
         'X-ClickHouse-User': username,
         'X-ClickHouse-Key': password,
         'X-ClickHouse-SSL-Certificate-Auth': 'on',
       }
     }
-    if (this.config.tls?.type === 'Basic') {
+    if (this.params.tls?.type === 'Basic') {
       return {
         'X-ClickHouse-User': username,
         'X-ClickHouse-Key': password,
@@ -51,7 +52,11 @@ export class NodeHttpsConnection
     return Https.request(params.url, {
       method: params.method,
       agent: this.agent,
-      headers: this.getHeaders(params),
+      headers: withCompressionHeaders({
+        headers: this.headers,
+        compress_request: params.compress_request,
+        decompress_response: params.decompress_response,
+      }),
     })
   }
 }

@@ -13,15 +13,15 @@ describe('authentication', () => {
       password: 'gibberish',
     })
 
-    await expect(
+    await expectAsync(
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
       })
-    ).rejects.toEqual(
-      expect.objectContaining({
+    ).toBeRejectedWith(
+      jasmine.objectContaining({
         code: '516',
         type: 'AUTHENTICATION_FAILED',
-        message: expect.stringMatching('Authentication failed'),
+        message: jasmine.stringMatching('Authentication failed'),
       })
     )
   })

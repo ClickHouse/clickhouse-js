@@ -1,6 +1,6 @@
-import * as os from 'os'
-import packageVersion from '@clickhouse/client-common/version'
-import { getProcessVersion } from './process'
+import * as os from "os";
+import packageVersion from "@clickhouse/client-common/version";
+import { getProcessVersion } from "./process";
 
 /**
  * Generate a user agent string like

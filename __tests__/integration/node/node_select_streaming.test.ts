@@ -1,6 +1,6 @@
 import type Stream from 'stream'
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
-import { createTestClient } from '../utils'
+import { createTestClient } from '../../utils'
 
 async function rowsValues(stream: Stream.Readable): Promise<any[]> {
   const result: any[] = []

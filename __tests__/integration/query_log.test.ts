@@ -1,12 +1,6 @@
-import { type ClickHouseClient } from '@clickhouse/client-common'
-import {
-  createTestClient,
-  guid,
-  retryOnFailure,
-  TestEnv,
-  whenOnEnv,
-} from '../utils'
-import { createSimpleTable } from './fixtures/simple_table'
+import { createTestClient, guid, retryOnFailure, TestEnv, whenOnEnv } from "../utils";
+import { createSimpleTable } from "./fixtures/simple_table";
+import type { ClickHouseClient } from "@clickhouse/client-common";
 
 // these tests are very flaky in the Cloud environment
 // likely due flushing the query_log not too often
@@ -80,9 +74,9 @@ describe('query_log', () => {
       async () => {
         const logResultSet = await client.query({
           query: `
-        SELECT * FROM system.query_log
-        WHERE query_id = {query_id: String}
-      `,
+            SELECT * FROM system.query_log
+            WHERE query_id = {query_id: String}
+          `,
           query_params: {
             query_id,
           },

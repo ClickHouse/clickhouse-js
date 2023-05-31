@@ -6,7 +6,7 @@ import {
   validateStreamFormat,
 } from '@clickhouse/client-common/data_formatter'
 import type { IResultSet, Row } from '@clickhouse/client-common'
-import { getAsText } from './stream'
+import { getAsText } from './utils'
 
 export class ResultSet implements IResultSet<Stream.Readable> {
   constructor(
@@ -15,13 +15,6 @@ export class ResultSet implements IResultSet<Stream.Readable> {
     public readonly query_id: string
   ) {}
 
-  /**
-   * The method waits for all the rows to be fully loaded
-   * and returns the result as a string.
-   *
-   * The method will throw if the underlying stream was already consumed
-   * by calling the other methods.
-   */
   async text(): Promise<string> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
@@ -29,13 +22,6 @@ export class ResultSet implements IResultSet<Stream.Readable> {
     return (await getAsText(this._stream)).toString()
   }
 
-  /**
-   * The method waits for the all the rows to be fully loaded.
-   * When the response is received in full, it will be decoded to return JSON.
-   *
-   * The method will throw if the underlying stream was already consumed
-   * by calling the other methods.
-   */
   async json<T>(): Promise<T> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
@@ -43,19 +29,6 @@ export class ResultSet implements IResultSet<Stream.Readable> {
     return decode(await this.text(), this.format)
   }
 
-  /**
-   * Returns a readable stream for responses that can be streamed
-   * (i.e. all except JSON).
-   *
-   * Every iteration provides an array of {@link Row} instances
-   * for {@link StreamableDataFormat} format.
-   *
-   * Should be called only once.
-   *
-   * The method will throw if called on a response in non-streamable format,
-   * and if the underlying stream was already consumed
-   * by calling the other methods.
-   */
   stream(): Stream.Readable {
     // If the underlying stream has already ended by calling `text` or `json`,
     // Stream.pipeline will create a new empty stream

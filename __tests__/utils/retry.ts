@@ -41,7 +41,7 @@ export async function retryOnFailure<T>(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
-    setTimeout(resolve, ms).unref()
+    setTimeout(resolve, ms)
   })
 }
 

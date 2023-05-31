@@ -12,7 +12,7 @@ import type {
 import type { IResultSet } from './result'
 
 export type MakeConnection<Stream> = (
-  config: ConnectionParams
+  params: ConnectionParams
 ) => Connection<Stream>
 
 export type MakeResultSet<Stream> = (

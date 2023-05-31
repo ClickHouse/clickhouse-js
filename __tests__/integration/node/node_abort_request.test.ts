@@ -1,8 +1,9 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
-import { createTestClient, guid, makeObjectStream } from '../utils'
+import { createTestClient, guid } from '../../utils'
+import { makeObjectStream } from '../../utils/node/stream'
 import type Stream from 'stream'
-import { jsonValues } from './fixtures/test_data'
-import { createSimpleTable } from './fixtures/simple_table'
+import { jsonValues } from '../fixtures/test_data'
+import { createSimpleTable } from '../fixtures/simple_table'
 
 describe('Node.js abort request streaming', () => {
   let client: ClickHouseClient<Stream.Readable>

@@ -2,7 +2,8 @@ import {
   type ClickHouseClient,
   type ResponseJSON,
 } from '@clickhouse/client-common'
-import { createTestClient, guid, makeObjectStream } from '../utils'
+import { createTestClient, guid } from '../utils'
+import { makeObjectStream } from '../utils/node/stream'
 import { createSimpleTable } from './fixtures/simple_table'
 
 describe('abort request', () => {

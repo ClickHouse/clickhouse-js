@@ -20,12 +20,14 @@ export class ClickHouseError extends Error {
   }
 }
 
-export function parseError(input: string): ClickHouseError | Error {
-  const match = input.match(errorRe)
+export function parseError(input: string | Error): ClickHouseError | Error {
+  const inputIsError = input instanceof Error
+  const message = inputIsError ? input.message : input
+  const match = message.match(errorRe)
   const groups = match?.groups as ParsedClickHouseError | undefined
   if (groups) {
     return new ClickHouseError(groups)
   } else {
-    return new Error(input)
+    return inputIsError ? input : new Error(input)
   }
 }

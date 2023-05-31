@@ -4,7 +4,7 @@ import type {
   InputJSON,
   InputJSONObjectEachRow,
 } from '@clickhouse/client-common'
-import { NodeValuesEncoder } from '@clickhouse/client/encode'
+import { NodeValuesEncoder } from '@clickhouse/client/utils'
 
 describe('NodeValuesEncoder', () => {
   const rawFormats = [

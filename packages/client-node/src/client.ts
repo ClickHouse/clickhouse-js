@@ -1,16 +1,15 @@
 import type { DataFormat } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
-import { NodeHttpConnection } from './node_http_connection'
-import { NodeHttpsConnection } from './node_https_connection'
+import type { TLSParams } from './connection'
+import { NodeHttpConnection, NodeHttpsConnection } from './connection'
 import type {
   Connection,
   ConnectionParams,
 } from '@clickhouse/client-common/connection'
 import type Stream from 'stream'
 import { ResultSet } from './result_set'
-import { NodeValuesEncoder } from './encode'
+import { NodeValuesEncoder } from './utils/encoder'
 import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common/client'
-import type { TLSParams } from './node_base_connection'
 
 export function createConnection(
   params: ConnectionParams
@@ -46,12 +45,12 @@ export function createClient(
     }
   }
   return new ClickHouseClient({
-    makeConnection: (config) => {
-      switch (config.url.protocol) {
+    makeConnection: (params: ConnectionParams) => {
+      switch (params.url.protocol) {
         case 'http:':
-          return new NodeHttpConnection(config)
+          return new NodeHttpConnection(params)
         case 'https:':
-          return new NodeHttpsConnection({ ...config, tls })
+          return new NodeHttpsConnection({ ...params, tls })
         default:
           throw new Error('Only HTTP(s) adapters are supported')
       }

@@ -5,3 +5,4 @@ node_modules
 benchmarks/leaks/input
 *.tgz
 .npmrc
+webpack

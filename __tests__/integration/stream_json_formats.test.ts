@@ -1,6 +1,7 @@
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import Stream from 'stream'
-import { createTestClient, guid, makeObjectStream } from '../utils'
+import { createTestClient, guid } from '../utils'
+import { makeObjectStream } from '../utils/node/stream'
 import { createSimpleTable } from './fixtures/simple_table'
 import { assertJsonValues, jsonValues } from './fixtures/test_data'
 

@@ -1,6 +1,8 @@
 import { createConnection } from '@clickhouse/client'
-import { NodeHttpConnection } from '@clickhouse/client/node_http_connection'
-import { NodeHttpsConnection } from '@clickhouse/client/node_https_connection'
+import {
+  NodeHttpConnection,
+  NodeHttpsConnection,
+} from '@clickhouse/client/connection'
 
 describe('Node.js connection', () => {
   it('should create HTTP adapter', async () => {

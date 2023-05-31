@@ -26,16 +26,17 @@ function formatMessage({
   module: string
   message: string
 }): string {
-  return `[${module}][${getTestName()}] ${message}`
+  // return `[${module}][${getTestName()}] ${message}`
+  return `[${module}] ${message}`
 }
 
-function getTestName() {
-  try {
-    return expect.getState().currentTestName || 'Unknown'
-  } catch (e) {
-    // ReferenceError can happen here cause `expect`
-    // is not yet available during globalSetup phase,
-    // and we are not allowed to import it explicitly
-    return 'Global Setup'
-  }
-}
+// function getTestName() {
+//   try {
+//     return expect.getState().currentTestName || 'Unknown'
+//   } catch (e) {
+//     // ReferenceError can happen here cause `expect`
+//     // is not yet available during globalSetup phase,
+//     // and we are not allowed to import it explicitly
+//     return 'Global Setup'
+//   }
+// }

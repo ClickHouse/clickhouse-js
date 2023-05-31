@@ -11,14 +11,42 @@ export interface Row {
 }
 
 export interface IResultSet<Stream> {
-  /** Consume the entire result set as a string. */
+  /**
+   * The method waits for all the rows to be fully loaded
+   * and returns the result as a string.
+   *
+   * The method should throw if the underlying stream was already consumed
+   * by calling the other methods.
+   */
   text(): Promise<string>
-  /** Parse the entire result set as a JSON object. */
+
+  /**
+   * The method waits for the all the rows to be fully loaded.
+   * When the response is received in full, it will be decoded to return JSON.
+   *
+   * The method should throw if the underlying stream was already consumed
+   * by calling the other methods.
+   */
   json<T>(): Promise<T>
-  /** Get a stream of {@link Row} objects. */
+
+  /**
+   * Returns a readable stream for responses that can be streamed
+   * (i.e. all except JSON).
+   *
+   * Every iteration provides an array of {@link Row} instances
+   * for {@link StreamableDataFormat} format.
+   *
+   * Should be called only once.
+   *
+   * The method should throw if called on a response in non-streamable format,
+   * and if the underlying stream was already consumed
+   * by calling the other methods.
+   */
   stream(): Stream
+
   /** Close the underlying stream. */
   close(): void
+
   /** ClickHouse server QueryID. */
   query_id: string
 }

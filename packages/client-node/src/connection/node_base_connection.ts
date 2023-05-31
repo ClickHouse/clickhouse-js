@@ -11,14 +11,14 @@ import type {
   InsertResult,
   QueryResult,
 } from '@clickhouse/client-common/connection'
-import * as uuid from 'uuid'
-import type { ClickHouseSettings } from '@clickhouse/client-common/settings'
 import {
+  getQueryId,
+  isSuccessfulResponse,
   toSearchParams,
   transformUrl,
-} from '@clickhouse/client-common/utils/url'
-import { getAsText, isStream } from './stream'
-import { getUserAgent } from './user_agent'
+  withHttpSettings,
+} from '@clickhouse/client-common/utils'
+import { getAsText, getUserAgent, isStream } from '../utils'
 
 export type NodeConnectionParams = ConnectionParams & { tls?: TLSParams }
 export type TLSParams =
@@ -42,69 +42,15 @@ export interface RequestParams {
   compress_request?: boolean
 }
 
-function isSuccessfulResponse(statusCode?: number): boolean {
-  return Boolean(statusCode && 200 <= statusCode && statusCode < 300)
-}
-
-function isEventTarget(signal: any): signal is EventTarget {
-  return 'removeEventListener' in signal
-}
-
-function withHttpSettings(
-  clickhouse_settings?: ClickHouseSettings,
-  compression?: boolean
-): ClickHouseSettings {
-  return {
-    ...(compression
-      ? {
-          enable_http_compression: 1,
-        }
-      : {}),
-    ...clickhouse_settings,
-  }
-}
-
-function decompressResponse(response: Http.IncomingMessage):
-  | {
-      response: Stream.Readable
-    }
-  | { error: Error } {
-  const encoding = response.headers['content-encoding']
-
-  if (encoding === 'gzip') {
-    return {
-      response: Stream.pipeline(
-        response,
-        Zlib.createGunzip(),
-        function pipelineCb(err) {
-          if (err) {
-            console.error(err)
-          }
-        }
-      ),
-    }
-  } else if (encoding !== undefined) {
-    return {
-      error: new Error(`Unexpected encoding: ${encoding}`),
-    }
-  }
-
-  return { response }
-}
-
-function isDecompressionError(result: any): result is { error: Error } {
-  return result.error !== undefined
-}
-
 export abstract class NodeBaseConnection
   implements Connection<Stream.Readable>
 {
   protected readonly headers: Http.OutgoingHttpHeaders
   protected constructor(
-    protected readonly config: NodeConnectionParams,
+    protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent
   ) {
-    this.headers = this.buildDefaultHeaders(config.username, config.password)
+    this.headers = this.buildDefaultHeaders(params.username, params.password)
   }
 
   protected buildDefaultHeaders(
@@ -115,7 +61,7 @@ export abstract class NodeBaseConnection
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
         'base64'
       )}`,
-      'User-Agent': getUserAgent(this.config.application_id),
+      'User-Agent': getUserAgent(this.params.application_id),
     }
   }
 
@@ -130,7 +76,7 @@ export abstract class NodeBaseConnection
 
       const request = this.createClientRequest(params.url, params)
       request.once('socket', (socket) => {
-        socket.setTimeout(this.config.request_timeout)
+        socket.setTimeout(this.params.request_timeout)
       })
       function onError(err: Error): void {
         removeRequestListeners()
@@ -249,20 +195,20 @@ export abstract class NodeBaseConnection
     // TODO add status code check
     const stream = await this.request({
       method: 'GET',
-      url: transformUrl({ url: this.config.url, pathname: '/ping' }),
+      url: transformUrl({ url: this.params.url, pathname: '/ping' }),
     })
     stream.destroy()
     return true
   }
 
   async query(params: BaseQueryParams): Promise<QueryResult<Stream.Readable>> {
-    const query_id = this.getQueryId(params)
+    const query_id = getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
-      this.config.compression.decompress_response
+      this.params.compression.decompress_response
     )
     const searchParams = toSearchParams({
-      database: this.config.database,
+      database: this.params.database,
       clickhouse_settings,
       query_params: params.query_params,
       session_id: params.session_id,
@@ -271,7 +217,7 @@ export abstract class NodeBaseConnection
 
     const stream = await this.request({
       method: 'POST',
-      url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
+      url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
       decompress_response: clickhouse_settings.enable_http_compression === 1,
@@ -284,9 +230,9 @@ export abstract class NodeBaseConnection
   }
 
   async exec(params: BaseQueryParams): Promise<QueryResult<Stream.Readable>> {
-    const query_id = this.getQueryId(params)
+    const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
-      database: this.config.database,
+      database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
       session_id: params.session_id,
@@ -295,7 +241,7 @@ export abstract class NodeBaseConnection
 
     const stream = await this.request({
       method: 'POST',
-      url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
+      url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
     })
@@ -307,9 +253,9 @@ export abstract class NodeBaseConnection
   }
 
   async insert(params: InsertParams<Stream.Readable>): Promise<InsertResult> {
-    const query_id = this.getQueryId(params)
+    const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
-      database: this.config.database,
+      database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
       query: params.query,
@@ -319,10 +265,10 @@ export abstract class NodeBaseConnection
 
     await this.request({
       method: 'POST',
-      url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
+      url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.values,
       abort_signal: params.abort_signal,
-      compress_request: this.config.compression.compress_request,
+      compress_request: this.params.compression.compress_request,
     })
 
     return { query_id }
@@ -334,10 +280,6 @@ export abstract class NodeBaseConnection
     }
   }
 
-  private getQueryId(params: BaseQueryParams): string {
-    return params.query_id || uuid.v4()
-  }
-
   private logResponse(
     request: Http.ClientRequest,
     params: RequestParams,
@@ -347,7 +289,7 @@ export abstract class NodeBaseConnection
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { authorization, host, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
-    this.config.logWriter.debug({
+    this.params.logWriter.debug({
       module: 'HTTP Adapter',
       message: 'Got a response from ClickHouse',
       args: {
@@ -361,12 +303,40 @@ export abstract class NodeBaseConnection
       },
     })
   }
+}
 
-  protected getHeaders(params: RequestParams) {
+function isEventTarget(signal: any): signal is EventTarget {
+  return 'removeEventListener' in signal
+}
+
+function decompressResponse(response: Http.IncomingMessage):
+  | {
+      response: Stream.Readable
+    }
+  | { error: Error } {
+  const encoding = response.headers['content-encoding']
+
+  if (encoding === 'gzip') {
     return {
-      ...this.headers,
-      ...(params.decompress_response ? { 'Accept-Encoding': 'gzip' } : {}),
-      ...(params.compress_request ? { 'Content-Encoding': 'gzip' } : {}),
+      response: Stream.pipeline(
+        response,
+        Zlib.createGunzip(),
+        function pipelineCb(err) {
+          if (err) {
+            console.error(err)
+          }
+        }
+      ),
+    }
+  } else if (encoding !== undefined) {
+    return {
+      error: new Error(`Unexpected encoding: ${encoding}`),
     }
   }
+
+  return { response }
+}
+
+function isDecompressionError(result: any): result is { error: Error } {
+  return result.error !== undefined
 }
