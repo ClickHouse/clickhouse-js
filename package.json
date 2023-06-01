@@ -23,14 +23,13 @@
     "typecheck": "tsc --project tsconfig.dev.json --noEmit",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint --fix . --ext .ts",
-    "test": "jest --testPathPattern=__tests__ --setupFilesAfterEnv='<rootDir>/__tests__/setup.integration.ts'",
+    "test": "ts-node -r tsconfig-paths/register --project=tsconfig.dev.json node_modules/jasmine/bin/jasmine --config=jasmine.all.json",
     "test:tls": "jest --testMatch='**/__tests__/tls/*.test.ts'",
-    "test:unit": "jest --testMatch='**/__tests__/{unit,utils}/*.test.ts'",
+    "test:unit": "ts-node -r tsconfig-paths/register --project=tsconfig.dev.json node_modules/jasmine/bin/jasmine --config=jasmine.unit.json",
     "test:integration": "jest --runInBand --testPathPattern=__tests__/integration --setupFilesAfterEnv='<rootDir>/__tests__/setup.integration.ts'",
     "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster jest --runInBand --testPathPattern=__tests__/integration --setupFilesAfterEnv='<rootDir>/__tests__/setup.integration.ts'",
     "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud jest --runInBand --testPathPattern=__tests__/integration --setupFilesAfterEnv='<rootDir>/__tests__/setup.integration.ts'",
-    "prepare": "husky install",
-    "jtest": "ts-node -r tsconfig-paths/register --project=tsconfig.dev.json node_modules/jasmine/bin/jasmine --config=jasmine.json"
+    "prepare": "husky install"
   },
   "lint-staged": {
     "*.ts": [
@@ -42,7 +41,6 @@
     "./packages/*"
   ],
   "devDependencies": {
-    "@jest/reporters": "^29.4.0",
     "@types/jasmine": "^4.3.2",
     "@types/node": "^18.11.18",
     "@types/split2": "^3.2.1",
@@ -59,6 +57,7 @@
     "karma": "^6.4.2",
     "karma-chrome-launcher": "^3.2.0",
     "karma-jasmine": "^5.1.0",
+    "karma-sourcemap-loader": "^0.4.0",
     "karma-typescript": "^5.5.4",
     "karma-webpack": "^5.0.0",
     "lint-staged": "^13.1.0",

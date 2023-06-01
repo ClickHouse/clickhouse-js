@@ -8,24 +8,18 @@ module.exports = function (config) {
     // list of files / patterns to load in the browser
     files: [
       'karma.setup.cjs',
-      '__tests__/unit/*.test.ts',
-      '__tests__/integration/auth.test.ts',
-      '__tests__/integration/select.test.ts',
-      '__tests__/integration/select_result.test.ts',
-      // '__tests__/integration/config.test.ts',
+      '__tests__/integration/*.test.ts',
       '__tests__/utils/*.ts',
+      '__tests__/unit/*.test.ts',
     ],
     exclude: [],
     webpack: webpackConfig,
     preprocessors: {
-      'packages/client-common/**/*.ts': ['webpack'],
-      'packages/client-browser/**/*.ts': ['webpack'],
-      '__tests__/unit/*.test.ts': ['webpack'],
-      '__tests__/integration/auth.test.ts': ['webpack'],
-      '__tests__/integration/select.test.ts': ['webpack'],
-      '__tests__/integration/select_result.test.ts': ['webpack'],
-      // '__tests__/integration/config.test.ts': ['webpack'],
-      '__tests__/utils/*.ts': ['webpack'],
+      'packages/client-common/**/*.ts': ['webpack', 'sourcemap'],
+      'packages/client-browser/**/*.ts': ['webpack', 'sourcemap'],
+      '__tests__/unit/*.test.ts': ['webpack', 'sourcemap'],
+      '__tests__/integration/*.ts': ['webpack', 'sourcemap'],
+      '__tests__/utils/*.ts': ['webpack', 'sourcemap'],
     },
     reporters: ['progress'],
     port: 9876,
@@ -43,5 +37,13 @@ module.exports = function (config) {
     },
     // if true, Karma captures browsers, runs the tests and exits
     singleRun: true,
+    client: {
+      jasmine: {
+        random: false,
+        stopOnSpecFailure: false,
+        stopSpecOnExpectationFailure: true,
+        timeoutInterval: 5000,
+      }
+    }
   })
 }

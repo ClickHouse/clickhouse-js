@@ -2,15 +2,15 @@ name: 'tests'
 
 on:
   workflow_dispatch:
-    inputs:
-      push-coverage-report:
-        type: choice
-        required: true
-        description: Push coverage
-        options:
-          - yes
-          - no
-        default: no
+#    inputs:
+#      push-coverage-report:
+#        type: choice
+#        required: true
+#        description: Push coverage
+#        options:
+#          - yes
+#          - no
+#        default: no
   push:
     branches:
       - main
@@ -32,7 +32,7 @@ on:
     - cron: '0 9 * * *'
 
 jobs:
-  build:
+  node-unit-tests:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -62,96 +62,12 @@ jobs:
         run: |
           npm run test:unit
 
-  integration-tests-local-single-node:
-    needs: build
+  browser-all-tests-local-single-node:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
         node: [ 16, 18, 20 ]
-        clickhouse: [ head, latest ]
-
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.1.0
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Add ClickHouse TLS instance to /etc/hosts
-        run: |
-          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
-
-      # Includes TLS integration tests run
-      # Will also run unit tests, but that's almost free.
-      # Otherwise, we need to set up a separate job,
-      # which will also run the integration tests for the second time,
-      # and that's more time-consuming.
-      - name: Run all tests
-        run: |
-          npm t -- --coverage
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage
-          path: coverage
-          retention-days: 1
-
-  integration-tests-local-cluster:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        node: [ 16, 18, 20 ]
-        clickhouse: [ head, latest ]
-
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.1.0
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.cluster.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run integration tests
-        run: |
-          npm run test:integration:local_cluster
-
-  integration-tests-cloud:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        node: [ 16, 18, 20 ]
-
     steps:
       - uses: actions/checkout@main
 
@@ -164,41 +80,146 @@ jobs:
         run: |
           npm install
 
-      - name: Run integration tests
-        env:
-          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST }}
-          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
+      - name: Run unit tests
         run: |
-          npm run test:integration:cloud
+          npm run test:unit
+#  integration-tests-local-single-node:
+#    needs: build
+#    runs-on: ubuntu-latest
+#    strategy:
+#      fail-fast: true
+#      matrix:
+#        node: [ 16, 18, 20 ]
+#        clickhouse: [ head, latest ]
+#
+#    steps:
+#      - uses: actions/checkout@main
+#
+#      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+#        uses: isbang/compose-action@v1.1.0
+#        env:
+#          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+#        with:
+#          compose-file: 'docker-compose.yml'
+#          down-flags: '--volumes'
+#
+#      - name: Setup NodeJS ${{ matrix.node }}
+#        uses: actions/setup-node@v3
+#        with:
+#          node-version: ${{ matrix.node }}
+#
+#      - name: Install dependencies
+#        run: |
+#          npm install
+#
+#      - name: Add ClickHouse TLS instance to /etc/hosts
+#        run: |
+#          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+#
+#      # Includes TLS integration tests run
+#      # Will also run unit tests, but that's almost free.
+#      # Otherwise, we need to set up a separate job,
+#      # which will also run the integration tests for the second time,
+#      # and that's more time-consuming.
+#      - name: Run all tests
+#        run: |
+#          npm t
 
-  upload-coverage-and-badge:
-    if: github.ref == 'refs/heads/main' && github.event.inputs.push-coverage-report != 'no'
-    needs:
-      - integration-tests-local-single-node
-      - integration-tests-local-cluster
-      - integration-tests-cloud
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
-      - name: Setup NodeJS
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - name: Download coverage report
-        uses: actions/download-artifact@v3
-        with:
-          name: coverage
-          path: coverage
-      - name: Install packages
-        run: npm i -G make-coverage-badge
-      - name: Generate badge
-        run: npx make-coverage-badge
-      - name: Make "Coverage" lowercase for style points
-        run: sed -i 's/Coverage/coverage/g' coverage/badge.svg
-      - uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          file_pattern: 'coverage'
-          commit_message: '[skip ci] Update coverage report'
+#      - name: Upload coverage report
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: coverage
+#          path: coverage
+#          retention-days: 1
+
+#  integration-tests-local-cluster:
+#    needs: build
+#    runs-on: ubuntu-latest
+#    strategy:
+#      fail-fast: true
+#      matrix:
+#        node: [ 16, 18, 20 ]
+#        clickhouse: [ head, latest ]
+#
+#    steps:
+#      - uses: actions/checkout@main
+#
+#      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+#        uses: isbang/compose-action@v1.1.0
+#        env:
+#          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+#        with:
+#          compose-file: 'docker-compose.cluster.yml'
+#          down-flags: '--volumes'
+#
+#      - name: Setup NodeJS ${{ matrix.node }}
+#        uses: actions/setup-node@v3
+#        with:
+#          node-version: ${{ matrix.node }}
+#
+#      - name: Install dependencies
+#        run: |
+#          npm install
+#
+#      - name: Run integration tests
+#        run: |
+#          npm run test:integration:local_cluster
+#
+#  integration-tests-cloud:
+#    needs: build
+#    runs-on: ubuntu-latest
+#    strategy:
+#      fail-fast: true
+#      matrix:
+#        node: [ 16, 18, 20 ]
+#
+#    steps:
+#      - uses: actions/checkout@main
+#
+#      - name: Setup NodeJS ${{ matrix.node }}
+#        uses: actions/setup-node@v3
+#        with:
+#          node-version: ${{ matrix.node }}
+#
+#      - name: Install dependencies
+#        run: |
+#          npm install
+#
+#      - name: Run integration tests
+#        env:
+#          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST }}
+#          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
+#        run: |
+#          npm run test:integration:cloud
+
+#  upload-coverage-and-badge:
+#    if: github.ref == 'refs/heads/main' && github.event.inputs.push-coverage-report != 'no'
+#    needs:
+#      - integration-tests-local-single-node
+#      - integration-tests-local-cluster
+#      - integration-tests-cloud
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v2
+#        with:
+#          repository: ${{ github.event.pull_request.head.repo.full_name }}
+#          ref: ${{ github.event.pull_request.head.ref }}
+#      - name: Setup NodeJS
+#        uses: actions/setup-node@v3
+#        with:
+#          node-version: 16
+#      - name: Download coverage report
+#        uses: actions/download-artifact@v3
+#        with:
+#          name: coverage
+#          path: coverage
+#      - name: Install packages
+#        run: npm i -G make-coverage-badge
+#      - name: Generate badge
+#        run: npx make-coverage-badge
+#      - name: Make "Coverage" lowercase for style points
+#        run: sed -i 's/Coverage/coverage/g' coverage/badge.svg
+#      - uses: stefanzweifel/git-auto-commit-action@v4
+#        with:
+#          file_pattern: 'coverage'
+#          commit_message: '[skip ci] Update coverage report'

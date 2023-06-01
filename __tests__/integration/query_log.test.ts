@@ -1,9 +1,16 @@
-import { createTestClient, guid, retryOnFailure, TestEnv, whenOnEnv } from "../utils";
-import { createSimpleTable } from "./fixtures/simple_table";
-import type { ClickHouseClient } from "@clickhouse/client-common";
+import {
+  createTestClient,
+  guid,
+  retryOnFailure,
+  TestEnv,
+  whenOnEnv,
+} from '../utils'
+import { createSimpleTable } from './fixtures/simple_table'
+import type { ClickHouseClient } from '@clickhouse/client-common'
+import { sleep } from '../utils/retry'
 
 // these tests are very flaky in the Cloud environment
-// likely due flushing the query_log not too often
+// likely due to the fact that flushing the query_log there happens not too often
 // it's better to execute only with the local single node or cluster
 const testEnvs = [TestEnv.LocalSingleNode, TestEnv.LocalCluster]
 
@@ -70,6 +77,8 @@ describe('query_log', () => {
   }) {
     // query_log is flushed every ~1000 milliseconds
     // so this might fail a couple of times
+    // FIXME: jasmine does not throw. RetryOnFailure does not work
+    await sleep(1000)
     await retryOnFailure(
       async () => {
         const logResultSet = await client.query({
@@ -83,21 +92,21 @@ describe('query_log', () => {
           format: 'JSONEachRow',
         })
         expect(await logResultSet.json()).toEqual([
-          expect.objectContaining({
+          jasmine.objectContaining({
             type: 'QueryStart',
             query: formattedQuery,
             initial_query_id: query_id,
-            query_duration_ms: expect.any(String),
-            read_rows: expect.any(String),
-            read_bytes: expect.any(String),
+            query_duration_ms: jasmine.any(String),
+            read_rows: jasmine.any(String),
+            read_bytes: jasmine.any(String),
           }),
-          expect.objectContaining({
+          jasmine.objectContaining({
             type: 'QueryFinish',
             query: formattedQuery,
             initial_query_id: query_id,
-            query_duration_ms: expect.any(String),
-            read_rows: expect.any(String),
-            read_bytes: expect.any(String),
+            query_duration_ms: jasmine.any(String),
+            read_rows: jasmine.any(String),
+            read_bytes: jasmine.any(String),
           }),
         ])
       },

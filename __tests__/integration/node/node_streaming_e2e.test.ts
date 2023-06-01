@@ -7,12 +7,6 @@ import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, guid } from '../../utils'
 import { createSimpleTable } from '../fixtures/simple_table'
 
-const expected = [
-  ['0', 'a', [1, 2]],
-  ['1', 'b', [3, 4]],
-  ['2', 'c', [5, 6]],
-]
-
 describe('Node.js streaming e2e', () => {
   let tableName: string
   let client: ClickHouseClient<Stream.Readable>
@@ -27,11 +21,17 @@ describe('Node.js streaming e2e', () => {
     await client.close()
   })
 
+  const expected: Array<Array<string | number[]>> = [
+    ['0', 'a', [1, 2]],
+    ['1', 'b', [3, 4]],
+    ['2', 'c', [5, 6]],
+  ]
+
   it('should stream a file', async () => {
     // contains id as numbers in JSONCompactEachRow format ["0"]\n["1"]\n...
     const filename = Path.resolve(
       __dirname,
-      './fixtures/streaming_e2e_data.ndjson'
+      '../fixtures/streaming_e2e_data.ndjson'
     )
 
     await client.insert({
@@ -48,7 +48,7 @@ describe('Node.js streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    const actual: string[] = []
+    const actual: unknown[] = []
     for await (const rows of rs.stream()) {
       rows.forEach((row: Row) => {
         actual.push(row.json())
@@ -69,7 +69,7 @@ describe('Node.js streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    const actual: string[] = []
+    const actual: unknown[] = []
     for await (const rows of rs.stream()) {
       rows.forEach((row: Row) => {
         actual.push(row.json())

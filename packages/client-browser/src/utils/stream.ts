@@ -21,7 +21,3 @@ export async function getAsText(stream: ReadableStream): Promise<string> {
   result += textDecoder.decode()
   return result
 }
-
-export function mapStream(mapper: (input: any) => any): ReadableStream {
-  throw new Error('not implemented')
-}

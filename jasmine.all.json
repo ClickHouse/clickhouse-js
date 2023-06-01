@@ -1,0 +1,17 @@
+{
+  "spec_dir": "__tests__",
+  "spec_files": [
+    "utils/*.test.ts",
+    "unit/*.test.ts",
+    "unit/node/*.test.ts",
+    "integration/*.test.ts",
+    "integration/node/*.test.ts",
+    "tls/*.test.ts"
+  ],
+  "env": {
+    "failSpecWithNoExpectations": true,
+    "stopSpecOnExpectationFailure": true,
+    "stopOnSpecFailure": false,
+    "random": false
+  }
+}

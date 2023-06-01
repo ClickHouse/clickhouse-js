@@ -5,6 +5,7 @@ module.exports = {
   entry: './packages/client-browser/src/index.ts',
   target: 'web',
   stats: 'errors-only',
+  devtool: 'eval-source-map',
   node: {
     global: true,
     __filename: true,
@@ -13,9 +14,9 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.tsx?$/,
+        test: /\.ts$/,
         use: 'ts-loader',
-        exclude: /node_modules/,
+        exclude: [/node_modules/, /\*\*\/client-node/],
       },
     ],
   },
@@ -35,15 +36,24 @@ module.exports = {
     ],
     plugins: [
       new TsconfigPathsPlugin({
-        configFile: 'tsconfig.dev.json'
+        configFile: 'tsconfig.dev.json',
+        logLevel: 'ERROR',
       }),
     ],
+    fallback: {
+      'buffer': false,
+      'stream': false,
+      'https': false,
+      'http': false,
+      'zlib': false,
+      'fs': false,
+      'os': false,
+    },
   },
   plugins: [
     new webpack.DefinePlugin({
       'process.env': JSON.stringify({
         browser: true,
-        CLICKHOUSE_TEST_CONNECTION_TYPE: 'browser'
       }),
     }),
   ],

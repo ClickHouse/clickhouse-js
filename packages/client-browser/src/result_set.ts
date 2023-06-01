@@ -23,7 +23,7 @@ export class ResultSet implements IResultSet<ReadableStream> {
 
   stream(): ReadableStream {
     this.isAlreadyConsumed = true
-    throw new Error('not implemented')
+    throw new Error('ResultSet.stream not implemented')
   }
 
   text(): Promise<string> {

@@ -5,7 +5,7 @@ import type {
 } from '@clickhouse/client-common/logger'
 import { LogWriter } from '@clickhouse/client-common/logger'
 
-describe('Logger', () => {
+describe('Node.js Logger', () => {
   type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
   const logLevelKey = 'CLICKHOUSE_LOG_LEVEL'
@@ -13,7 +13,7 @@ describe('Logger', () => {
   const message = 'very informative'
   const err = new Error('boo')
 
-  let logs: Array<LogParams & { level: LogLevel }> = []
+  let logs: Array<LogParams & { level: LogLevel; err?: Error }> = []
   let defaultLogLevel: string | undefined
 
   beforeEach(() => {

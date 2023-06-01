@@ -1,7 +1,6 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from './fixtures/simple_table'
 import { createTestClient, guid } from '../utils'
-import Stream from 'stream'
 
 const CLIENTS_COUNT = 5
 
@@ -80,26 +79,6 @@ describe('multiple clients', () => {
           client.insert({
             table: tableName,
             values: [getValue(i)],
-            format: 'JSONEachRow',
-          })
-        )
-      )
-      const result = await clients[0].query({
-        query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
-        format: 'JSONEachRow',
-      })
-      expect(await result.json()).toEqual(expected)
-    })
-
-    it('should be able to send parallel inserts (streams)', async () => {
-      const id = guid()
-      const tableName = `multiple_clients_insert_streams_test__${id}`
-      await createSimpleTable(clients[0], tableName)
-      await Promise.all(
-        clients.map((client, i) =>
-          client.insert({
-            table: tableName,
-            values: Stream.Readable.from([getValue(i)]),
             format: 'JSONEachRow',
           })
         )

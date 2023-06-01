@@ -37,7 +37,7 @@ export interface RequestParams {
   method: 'GET' | 'POST'
   url: URL
   body?: string | Stream.Readable
-  abort_signal?: AbortSignal
+  abort_controller?: AbortController
   decompress_response?: boolean
   compress_request?: boolean
 }
@@ -110,12 +110,12 @@ export abstract class NodeBaseConnection
            * */
         })
         request.destroy()
-        reject(new Error('Timeout error'))
+        reject(new Error('Request timed out'))
       }
 
       function onAbortSignal(): void {
         // instead of deprecated request.abort()
-        request.destroy(new Error('The request was aborted.'))
+        request.destroy(new Error('The user aborted a request.'))
       }
 
       function onAbort(): void {
@@ -128,7 +128,7 @@ export abstract class NodeBaseConnection
            * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
            * */
         })
-        reject(new Error('The request was aborted.'))
+        reject(new Error('The user aborted a request.'))
       }
 
       function onClose(): void {
@@ -144,24 +144,30 @@ export abstract class NodeBaseConnection
         request.removeListener('timeout', onTimeout)
         request.removeListener('abort', onAbort)
         request.removeListener('close', onClose)
-        if (params.abort_signal !== undefined) {
-          if (isEventTarget(params.abort_signal)) {
-            params.abort_signal.removeEventListener('abort', onAbortSignal)
+        if (params.abort_controller !== undefined) {
+          if (isEventTarget(params.abort_controller)) {
+            params.abort_controller.removeEventListener('abort', onAbortSignal)
           } else {
-            // @ts-expect-error if it's EventEmitter
-            params.abort_signal.removeListener('abort', onAbortSignal)
+            params.abort_controller.signal.removeEventListener(
+              'abort',
+              onAbortSignal
+            )
           }
         }
       }
 
-      if (params.abort_signal) {
+      if (params.abort_controller) {
         // We should use signal API when nodejs v14 is not supported anymore.
         // However, it seems that Http.request doesn't abort after 'response' event.
         // Requires an additional investigation
         // https://nodejs.org/api/globals.html#class-abortsignal
-        params.abort_signal.addEventListener('abort', onAbortSignal, {
-          once: true,
-        })
+        params.abort_controller.signal.addEventListener(
+          'abort',
+          onAbortSignal,
+          {
+            once: true,
+          }
+        )
       }
 
       request.on('response', onResponse)
@@ -219,7 +225,7 @@ export abstract class NodeBaseConnection
       method: 'POST',
       url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.query,
-      abort_signal: params.abort_signal,
+      abort_controller: params.abort_controller,
       decompress_response: clickhouse_settings.enable_http_compression === 1,
     })
 
@@ -243,7 +249,7 @@ export abstract class NodeBaseConnection
       method: 'POST',
       url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.query,
-      abort_signal: params.abort_signal,
+      abort_controller: params.abort_controller,
     })
 
     return {
@@ -267,7 +273,7 @@ export abstract class NodeBaseConnection
       method: 'POST',
       url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.values,
-      abort_signal: params.abort_signal,
+      abort_controller: params.abort_controller,
       compress_request: this.params.compression.compress_request,
     })
 

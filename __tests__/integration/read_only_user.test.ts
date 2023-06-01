@@ -52,24 +52,24 @@ describe('read only user', () => {
   })
 
   it('should fail to create a table', async () => {
-    await expect(
+    await expectAsync(
       createSimpleTable(client, `should_not_be_created_${guid()}`)
-    ).rejects.toEqual(
-      expect.objectContaining({
-        message: expect.stringContaining('Not enough privileges'),
+    ).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringContaining('Not enough privileges'),
       })
     )
   })
 
   it('should fail to insert', async () => {
-    await expect(
+    await expectAsync(
       client.insert({
         table: tableName,
         values: [[43, 'foobar', [5, 25]]],
       })
-    ).rejects.toEqual(
-      expect.objectContaining({
-        message: expect.stringContaining('Not enough privileges'),
+    ).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringContaining('Not enough privileges'),
       })
     )
   })
@@ -77,9 +77,9 @@ describe('read only user', () => {
   // TODO: find a way to restrict all the system tables access
   it('should fail to query system tables', async () => {
     const query = `SELECT * FROM system.users LIMIT 5`
-    await expect(client.query({ query })).rejects.toEqual(
-      expect.objectContaining({
-        message: expect.stringContaining('Not enough privileges'),
+    await expectAsync(client.query({ query })).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringContaining('Not enough privileges'),
       })
     )
   })

@@ -1,9 +1,9 @@
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import Stream from 'stream'
-import { createTestClient, guid } from '../utils'
-import { makeObjectStream } from '../utils/node/stream'
-import { createSimpleTable } from './fixtures/simple_table'
-import { assertJsonValues, jsonValues } from './fixtures/test_data'
+import { createTestClient, guid } from '../../utils'
+import { makeObjectStream } from '../../utils/node/stream'
+import { createSimpleTable } from '../fixtures/simple_table'
+import { assertJsonValues, jsonValues } from '../fixtures/test_data'
 
 describe('stream JSON formats', () => {
   let client: ClickHouseClient
@@ -175,9 +175,9 @@ describe('stream JSON formats', () => {
         values: stream,
         format: 'JSONCompactEachRowWithNamesAndTypes',
       })
-      await expect(insertPromise).rejects.toEqual(
-        expect.objectContaining({
-          message: expect.stringMatching(
+      await expectAsync(insertPromise).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringMatching(
             `Type of 'name' must be String, not UInt64`
           ),
         })
@@ -239,10 +239,12 @@ describe('stream JSON formats', () => {
       },
     })
 
-    await client.insert({
-      table: tableName,
-      values: stream,
-    })
+    await expectAsync(
+      client.insert({
+        table: tableName,
+        values: stream,
+      })
+    ).toBeResolved()
   })
 
   it('waits for stream of values to be closed', async () => {
@@ -292,15 +294,15 @@ describe('stream JSON formats', () => {
     const stream = makeObjectStream()
     stream.push({ id: 'baz', name: 'foo', sku: '[0,1]' })
     stream.push(null)
-    await expect(
+    await expectAsync(
       client.insert({
         table: tableName,
         values: stream,
         format: 'JSONEachRow',
       })
-    ).rejects.toEqual(
-      expect.objectContaining({
-        message: expect.stringContaining('Cannot parse input'),
+    ).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringContaining('Cannot parse input'),
       })
     )
   })

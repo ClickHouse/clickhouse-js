@@ -1,12 +1,12 @@
-import { createTestClient, guid } from '../utils'
-import { makeRawStream } from '../utils/node/stream'
+import { createTestClient, guid } from '../../utils'
+import { makeRawStream } from '../../utils/node/stream'
 import type {
   ClickHouseClient,
   ClickHouseSettings,
 } from '@clickhouse/client-common'
-import { createSimpleTable } from './fixtures/simple_table'
+import { createSimpleTable } from '../fixtures/simple_table'
 import Stream from 'stream'
-import { assertJsonValues, jsonValues } from './fixtures/test_data'
+import { assertJsonValues, jsonValues } from '../fixtures/test_data'
 import type { RawDataFormat } from '@clickhouse/client-common/data_formatter'
 
 describe('stream raw formats', () => {
@@ -29,15 +29,15 @@ describe('stream raw formats', () => {
         objectMode: false,
       }
     )
-    await expect(
+    await expectAsync(
       client.insert({
         table: tableName,
         values: stream,
         format: 'CSV',
       })
-    ).rejects.toEqual(
-      expect.objectContaining({
-        message: expect.stringContaining('Cannot parse input'),
+    ).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringContaining('Cannot parse input'),
       })
     )
   })
@@ -99,15 +99,15 @@ describe('stream raw formats', () => {
       const stream = Stream.Readable.from(`foobar\t42\n`, {
         objectMode: false,
       })
-      await expect(
+      await expectAsync(
         client.insert({
           table: tableName,
           values: stream,
           format: 'TabSeparated',
         })
-      ).rejects.toEqual(
-        expect.objectContaining({
-          message: expect.stringContaining('Cannot parse input'),
+      ).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Cannot parse input'),
         })
       )
     })
@@ -203,15 +203,15 @@ describe('stream raw formats', () => {
           objectMode: false,
         }
       )
-      await expect(
+      await expectAsync(
         client.insert({
           table: tableName,
           values: stream,
           format: 'CSVWithNamesAndTypes',
         })
-      ).rejects.toEqual(
-        expect.objectContaining({
-          message: expect.stringContaining(
+      ).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining(
             `Type of 'name' must be String, not UInt64`
           ),
         })
@@ -222,15 +222,15 @@ describe('stream raw formats', () => {
       const stream = Stream.Readable.from(`"foobar","42",,\n`, {
         objectMode: false,
       })
-      await expect(
+      await expectAsync(
         client.insert({
           table: tableName,
           values: stream,
           format: 'CSV',
         })
-      ).rejects.toEqual(
-        expect.objectContaining({
-          message: expect.stringContaining('Cannot parse input'),
+      ).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Cannot parse input'),
         })
       )
     })
@@ -317,16 +317,16 @@ describe('stream raw formats', () => {
       const stream = Stream.Readable.from(`"foobar"^"42"^^\n`, {
         objectMode: false,
       })
-      await expect(
+      await expectAsync(
         client.insert({
           table: tableName,
           values: stream,
           format: 'CustomSeparated',
           clickhouse_settings,
         })
-      ).rejects.toEqual(
-        expect.objectContaining({
-          message: expect.stringContaining('Cannot parse input'),
+      ).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Cannot parse input'),
         })
       )
     })
@@ -354,9 +354,9 @@ describe('stream raw formats', () => {
     })
   })
 
-  async function assertInsertedValues<T>(
+  async function assertInsertedValues(
     format: RawDataFormat,
-    expected: T,
+    expected: string,
     clickhouse_settings?: ClickHouseSettings
   ) {
     const result = await client.query({

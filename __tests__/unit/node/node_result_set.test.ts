@@ -3,26 +3,29 @@ import Stream, { Readable } from 'stream'
 import { guid } from '../../utils'
 import { ResultSet } from '@clickhouse/client/result_set'
 
-describe('rows', () => {
+describe('Node.js ResultSet', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`
   const expectedJson = [{ foo: 'bar' }, { qaz: 'qux' }]
 
-  const err = 'Stream has been already consumed'
+  const errMsg = 'Stream has been already consumed'
+  const err = jasmine.objectContaining({
+    message: jasmine.stringContaining(errMsg),
+  })
 
   it('should consume the response as text only once', async () => {
     const rs = makeResultSet()
 
     expect(await rs.text()).toEqual(expectedText)
-    await expect(rs.text()).rejects.toThrowError(err)
-    await expect(rs.json()).rejects.toThrowError(err)
+    await expectAsync(rs.text()).toBeRejectedWith(err)
+    await expectAsync(rs.json()).toBeRejectedWith(err)
   })
 
   it('should consume the response as JSON only once', async () => {
     const rs = makeResultSet()
 
     expect(await rs.json()).toEqual(expectedJson)
-    await expect(rs.json()).rejects.toThrowError(err)
-    await expect(rs.text()).rejects.toThrowError(err)
+    await expectAsync(rs.json()).toBeRejectedWith(err)
+    await expectAsync(rs.text()).toBeRejectedWith(err)
   })
 
   it('should consume the response as a stream of Row instances', async () => {
@@ -41,9 +44,9 @@ describe('rows', () => {
     expect(result).toEqual(expectedJson)
     expect(stream.readableEnded).toBeTruthy()
 
-    expect(() => rs.stream()).toThrowError(err)
-    await expect(rs.json()).rejects.toThrowError(err)
-    await expect(rs.text()).rejects.toThrowError(err)
+    expect(() => rs.stream()).toThrow(new Error(errMsg))
+    await expectAsync(rs.json()).toBeRejectedWith(err)
+    await expectAsync(rs.text()).toBeRejectedWith(err)
   })
 
   it('should be able to call Row.text and Row.json multiple times', async () => {
@@ -56,7 +59,7 @@ describe('rows', () => {
     for await (const rows of rs.stream()) {
       allRows.push(...rows)
     }
-    expect(allRows).toHaveLength(1)
+    expect(allRows.length).toEqual(1)
     const [row] = allRows
     expect(row.text).toEqual('{"foo":"bar"}')
     expect(row.text).toEqual('{"foo":"bar"}')

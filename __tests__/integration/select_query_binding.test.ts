@@ -251,16 +251,16 @@ describe('select with query binding', () => {
     })
 
     it('should provide error details when sending a request with missing parameter', async () => {
-      await expect(
+      await expectAsync(
         client.query({
           query: `
             SELECT * FROM system.numbers
             WHERE number > {min_limit: UInt64} LIMIT 3
           `,
         })
-      ).rejects.toEqual(
-        expect.objectContaining({
-          message: expect.stringContaining(
+      ).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining(
             'Query parameter `min_limit` was not set'
           ),
           code: '456',

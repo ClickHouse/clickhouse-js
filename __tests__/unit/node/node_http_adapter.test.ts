@@ -3,7 +3,7 @@ import Http from 'http'
 import Stream from 'stream'
 import Util from 'util'
 import Zlib from 'zlib'
-import { guid, retryOnFailure, TestLogger } from '../../utils'
+import { guid, TestLogger } from '../../utils'
 import * as uuid from 'uuid'
 import { v4 as uuid_v4 } from 'uuid'
 import { LogWriter } from '@clickhouse/client-common/logger'
@@ -16,22 +16,23 @@ import {
   NodeBaseConnection,
   NodeHttpConnection,
 } from '@clickhouse/client/connection'
+import { sleep } from '../../utils/retry'
 
 describe('HttpAdapter', () => {
   const gzip = Util.promisify(Zlib.gzip)
-  const httpRequestStub = jest.spyOn(Http, 'request')
 
   describe('compression', () => {
     describe('response decompression', () => {
       it('hints ClickHouse server to send a gzip compressed response if compress_request: true', async () => {
+        const request = stubClientRequest()
+        const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
+
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: true,
             compress_request: false,
           },
         })
-
-        const request = stubRequest()
 
         const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -41,17 +42,21 @@ describe('HttpAdapter', () => {
         await emitCompressedBody(request, responseBody)
 
         await selectPromise
-        assertStub('gzip')
+
+        expect(httpRequestStub).toHaveBeenCalledTimes(1)
+        const calledWith = httpRequestStub.calls.mostRecent().args[1]
+        expect(calledWith.headers!['Accept-Encoding']).toBe('gzip')
       })
 
       it('does not send a compression algorithm hint if compress_request: false', async () => {
+        const request = stubClientRequest()
+        const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: false,
             compress_request: false,
           },
         })
-        const request = stubRequest()
 
         const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -67,17 +72,21 @@ describe('HttpAdapter', () => {
 
         const queryResult = await selectPromise
         await assertQueryResult(queryResult, responseBody)
-        assertStub(undefined)
+
+        expect(httpRequestStub).toHaveBeenCalledTimes(1)
+        const calledWith = httpRequestStub.calls.mostRecent().args[1]
+        expect(calledWith.headers!['Accept-Encoding']).toBeUndefined()
       })
 
       it('uses request-specific settings over config settings', async () => {
+        const request = stubClientRequest()
+        const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: false,
             compress_request: false,
           },
         })
-        const request = stubRequest()
 
         const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -91,17 +100,21 @@ describe('HttpAdapter', () => {
 
         const queryResult = await selectPromise
         await assertQueryResult(queryResult, responseBody)
-        assertStub('gzip')
+
+        expect(httpRequestStub).toHaveBeenCalledTimes(1)
+        const calledWith = httpRequestStub.calls.mostRecent().args[1]
+        expect(calledWith.headers!['Accept-Encoding']).toBe('gzip')
       })
 
       it('decompresses a gzip response', async () => {
+        const request = stubClientRequest()
+        spyOn(Http, 'request').and.returnValue(request)
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: true,
             compress_request: false,
           },
         })
-        const request = stubRequest()
 
         const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -115,13 +128,14 @@ describe('HttpAdapter', () => {
       })
 
       it('throws on an unexpected encoding', async () => {
+        const request = stubClientRequest()
+        spyOn(Http, 'request').and.returnValue(request)
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: true,
             compress_request: false,
           },
         })
-        const request = stubRequest()
 
         const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -129,19 +143,22 @@ describe('HttpAdapter', () => {
 
         await emitCompressedBody(request, 'abc', 'br')
 
-        await expect(selectPromise).rejects.toMatchObject({
-          message: 'Unexpected encoding: br',
-        })
+        await expectAsync(selectPromise).toBeRejectedWith(
+          jasmine.objectContaining({
+            message: 'Unexpected encoding: br',
+          })
+        )
       })
 
       it('provides decompression error to a stream consumer', async () => {
+        const request = stubClientRequest()
+        spyOn(Http, 'request').and.returnValue(request)
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: true,
             compress_request: false,
           },
         })
-        const request = stubRequest()
 
         const selectPromise = adapter.query({
           query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -158,22 +175,20 @@ describe('HttpAdapter', () => {
           })
         )
 
-        await expect(async () => {
+        const readStream = async () => {
           const { stream } = await selectPromise
           for await (const chunk of stream) {
             void chunk // stub
           }
-        }).rejects.toMatchObject({
-          message: 'incorrect header check',
-          code: 'Z_DATA_ERROR',
-        })
-      })
+        }
 
-      function assertStub(encoding: string | undefined) {
-        expect(httpRequestStub).toBeCalledTimes(1)
-        const calledWith = httpRequestStub.mock.calls[0][1]
-        expect(calledWith.headers!['Accept-Encoding']).toBe(encoding)
-      }
+        await expectAsync(readStream()).toBeRejectedWith(
+          jasmine.objectContaining({
+            message: 'incorrect header check',
+            code: 'Z_DATA_ERROR',
+          })
+        )
+      })
     })
 
     describe('request compression', () => {
@@ -201,24 +216,19 @@ describe('HttpAdapter', () => {
           },
         }) as ClientRequest
 
-        httpRequestStub.mockReturnValueOnce(request)
+        const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
 
         void adapter.insert({
           query: 'INSERT INTO insert_compression_table',
           values,
         })
 
-        await retryOnFailure(async () => {
-          expect(finalResult!.toString('utf8')).toEqual(values)
-        })
-        assertStub('gzip')
+        await sleep(100)
+        expect(finalResult!.toString('utf8')).toEqual(values)
+        expect(httpRequestStub).toHaveBeenCalledTimes(1)
+        const calledWith = httpRequestStub.calls.mostRecent().args[1]
+        expect(calledWith.headers!['Content-Encoding']).toBe('gzip')
       })
-
-      function assertStub(encoding: string | undefined) {
-        expect(httpRequestStub).toBeCalledTimes(1)
-        const calledWith = httpRequestStub.mock.calls[0][1]
-        expect(calledWith.headers!['Content-Encoding']).toBe(encoding)
-      }
     })
 
     async function emitCompressedBody(
@@ -271,7 +281,11 @@ describe('HttpAdapter', () => {
           compress_request: false,
         },
       })
-      const request1 = stubRequest()
+
+      const httpRequestStub = spyOn(Http, 'request')
+
+      const request1 = stubClientRequest()
+      httpRequestStub.and.returnValue(request1)
 
       const selectPromise1 = adapter.query({
         query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -285,7 +299,9 @@ describe('HttpAdapter', () => {
       )
       const queryResult1 = await selectPromise1
 
-      const request2 = stubRequest()
+      const request2 = stubClientRequest()
+      httpRequestStub.and.returnValue(request2)
+
       const selectPromise2 = adapter.query({
         query: 'SELECT * FROM system.numbers LIMIT 5',
       })
@@ -302,10 +318,10 @@ describe('HttpAdapter', () => {
       await assertQueryResult(queryResult2, responseBody2)
       expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
 
-      const url1 = httpRequestStub.mock.calls[0][0]
+      const url1 = httpRequestStub.calls.all()[0].args[0]
       expect(url1.search).toContain(`&query_id=${queryResult1.query_id}`)
 
-      const url2 = httpRequestStub.mock.calls[1][0]
+      const url2 = httpRequestStub.calls.all()[1].args[0]
       expect(url2.search).toContain(`&query_id=${queryResult2.query_id}`)
     })
 
@@ -316,7 +332,9 @@ describe('HttpAdapter', () => {
           compress_request: false,
         },
       })
-      const request = stubRequest()
+
+      const request = stubClientRequest()
+      const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
 
       const query_id = guid()
       const selectPromise = adapter.query({
@@ -333,8 +351,8 @@ describe('HttpAdapter', () => {
       const { stream } = await selectPromise
       expect(await getAsText(stream)).toBe(responseBody)
 
-      expect(httpRequestStub).toBeCalledTimes(1)
-      const [url] = httpRequestStub.mock.calls[0]
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [url] = httpRequestStub.calls.mostRecent().args
       expect(url.search).toContain(`&query_id=${query_id}`)
     })
 
@@ -345,7 +363,11 @@ describe('HttpAdapter', () => {
           compress_request: false,
         },
       })
-      const request1 = stubRequest()
+
+      const httpRequestStub = spyOn(Http, 'request')
+
+      const request1 = stubClientRequest()
+      httpRequestStub.and.returnValue(request1)
 
       const execPromise1 = adapter.exec({
         query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -359,7 +381,9 @@ describe('HttpAdapter', () => {
       )
       const queryResult1 = await execPromise1
 
-      const request2 = stubRequest()
+      const request2 = stubClientRequest()
+      httpRequestStub.and.returnValue(request2)
+
       const execPromise2 = adapter.exec({
         query: 'SELECT * FROM system.numbers LIMIT 5',
       })
@@ -376,10 +400,10 @@ describe('HttpAdapter', () => {
       await assertQueryResult(queryResult2, responseBody2)
       expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
 
-      const url1 = httpRequestStub.mock.calls[0][0]
+      const [url1] = httpRequestStub.calls.all()[0].args
       expect(url1.search).toContain(`&query_id=${queryResult1.query_id}`)
 
-      const url2 = httpRequestStub.mock.calls[1][0]
+      const [url2] = httpRequestStub.calls.all()[1].args
       expect(url2.search).toContain(`&query_id=${queryResult2.query_id}`)
     })
 
@@ -390,7 +414,10 @@ describe('HttpAdapter', () => {
           compress_request: false,
         },
       })
-      const request = stubRequest()
+
+      const httpRequestStub = spyOn(Http, 'request')
+      const request = stubClientRequest()
+      httpRequestStub.and.returnValue(request)
 
       const query_id = guid()
       const execPromise = adapter.exec({
@@ -407,8 +434,8 @@ describe('HttpAdapter', () => {
       const { stream } = await execPromise
       expect(await getAsText(stream)).toBe(responseBody)
 
-      expect(httpRequestStub).toBeCalledTimes(1)
-      const [url] = httpRequestStub.mock.calls[0]
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [url] = httpRequestStub.calls.mostRecent().args
       expect(url.search).toContain(`&query_id=${query_id}`)
     })
 
@@ -419,7 +446,11 @@ describe('HttpAdapter', () => {
           compress_request: false,
         },
       })
-      const request1 = stubRequest()
+
+      const httpRequestStub = spyOn(Http, 'request')
+
+      const request1 = stubClientRequest()
+      httpRequestStub.and.returnValue(request1)
 
       const insertPromise1 = adapter.insert({
         query: 'INSERT INTO default.foo VALUES (42)',
@@ -434,7 +465,9 @@ describe('HttpAdapter', () => {
       )
       const { query_id: queryId1 } = await insertPromise1
 
-      const request2 = stubRequest()
+      const request2 = stubClientRequest()
+      httpRequestStub.and.returnValue(request2)
+
       const insertPromise2 = adapter.insert({
         query: 'INSERT INTO default.foo VALUES (42)',
         values: 'foobar',
@@ -452,10 +485,10 @@ describe('HttpAdapter', () => {
       assertQueryId(queryId2)
       expect(queryId1).not.toEqual(queryId2)
 
-      const url1 = httpRequestStub.mock.calls[0][0]
+      const [url1] = httpRequestStub.calls.all()[0].args
       expect(url1.search).toContain(`&query_id=${queryId1}`)
 
-      const url2 = httpRequestStub.mock.calls[1][0]
+      const [url2] = httpRequestStub.calls.all()[1].args
       expect(url2.search).toContain(`&query_id=${queryId2}`)
     })
 
@@ -466,7 +499,9 @@ describe('HttpAdapter', () => {
           compress_request: false,
         },
       })
-      const request1 = stubRequest()
+
+      const request = stubClientRequest()
+      const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
 
       const query_id = guid()
       const insertPromise1 = adapter.insert({
@@ -475,7 +510,7 @@ describe('HttpAdapter', () => {
         query_id,
       })
       const responseBody1 = 'foobar'
-      request1.emit(
+      request.emit(
         'response',
         buildIncomingMessage({
           body: responseBody1,
@@ -483,7 +518,7 @@ describe('HttpAdapter', () => {
       )
       await insertPromise1
 
-      const [url] = httpRequestStub.mock.calls[0]
+      const [url] = httpRequestStub.calls.mostRecent().args
       expect(url.search).toContain(`&query_id=${query_id}`)
     })
   })
@@ -512,14 +547,13 @@ describe('HttpAdapter', () => {
     return response
   }
 
-  function stubRequest() {
+  function stubClientRequest() {
     const request = new Stream.Writable({
       write() {
         /** stub */
       },
     }) as ClientRequest
     request.getHeaders = () => ({})
-    httpRequestStub.mockReturnValueOnce(request)
     return request
   }
 

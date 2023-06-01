@@ -63,12 +63,20 @@ describe('NodeValuesEncoder', () => {
         ).not.toThrow()
         expect(() =>
           encoder.validateInsertValues(rawStream, format as DataFormat)
-        ).toThrow('with enabled object mode')
+        ).toThrow(
+          jasmine.objectContaining({
+            message: jasmine.stringContaining('with enabled object mode'),
+          })
+        )
       })
       rawFormats.forEach((format) => {
         expect(() =>
           encoder.validateInsertValues(objectModeStream, format as DataFormat)
-        ).toThrow('disabled object mode')
+        ).toThrow(
+          jasmine.objectContaining({
+            message: jasmine.stringContaining('with disabled object mode'),
+          })
+        )
         expect(() =>
           encoder.validateInsertValues(rawStream, format as DataFormat)
         ).not.toThrow()
@@ -146,7 +154,7 @@ describe('NodeValuesEncoder', () => {
     })
 
     it('should fail when we try to encode an unknown type of input', async () => {
-      expect(() => encoder.encodeValues(1 as any, 'JSON')).toThrow(
+      expect(() => encoder.encodeValues(1 as any, 'JSON')).toThrowError(
         'Cannot encode values of type number with JSON format'
       )
     })

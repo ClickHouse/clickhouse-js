@@ -24,8 +24,8 @@ export class BrowserValuesEncoder implements ValuesEncoder<ReadableStream> {
   }
 
   validateInsertValues<T = unknown>(
-    values: InsertValues<ReadableStream, T>,
-    format: DataFormat
+    values: InsertValues<ReadableStream, T>
+    // _format: DataFormat
   ): void {
     if (!Array.isArray(values) && typeof values !== 'object') {
       throw new Error(

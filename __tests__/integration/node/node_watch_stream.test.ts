@@ -4,11 +4,11 @@ import {
   createTable,
   createTestClient,
   guid,
-  retryOnFailure,
   TestEnv,
   whenOnEnv,
 } from '../../utils'
 import type Stream from 'stream'
+import { sleep } from '../../utils/retry'
 
 describe('Node.js WATCH stream', () => {
   let client: ClickHouseClient<Stream.Readable>
@@ -56,15 +56,8 @@ describe('Node.js WATCH stream', () => {
           data.push(row.json())
         })
       })
-      await retryOnFailure(
-        async () => {
-          expect(data).toEqual([{ version: '1' }, { version: '2' }])
-        },
-        {
-          maxAttempts: 5,
-          waitBetweenAttemptsMs: 1000,
-        }
-      )
+      await sleep(1500)
+      expect(data).toEqual([{ version: '1' }, { version: '2' }])
       stream.destroy()
     }
   )

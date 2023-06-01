@@ -1,7 +1,7 @@
 import { createClient } from '@clickhouse/client'
 import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common/client'
 
-describe('createClient', () => {
+describe('Node.js createClient', () => {
   it('throws on incorrect "host" config value', () => {
     expect(() => createClient({ host: 'foo' })).toThrowError(
       'Configuration parameter "host" contains malformed url.'
@@ -13,20 +13,10 @@ describe('createClient', () => {
       host: 'http://localhost',
     }
     createClient(config)
-    // none of the initial configuration settings are overridden
-    // by the defaults we assign when we normalize the specified config object
+    // initial configuration is not overridden by the defaults we assign
+    // when we transform the specified config object to the connection params
     expect(config).toEqual({
       host: 'http://localhost',
-      request_timeout: undefined,
-      max_open_connections: undefined,
-      tls: undefined,
-      compression: undefined,
-      username: undefined,
-      password: undefined,
-      application: undefined,
-      database: undefined,
-      clickhouse_settings: undefined,
-      log: undefined,
     })
   })
 })

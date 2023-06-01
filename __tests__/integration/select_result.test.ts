@@ -1,4 +1,4 @@
-import { ClickHouseClient, ResponseJSON } from '@clickhouse/client-common'
+import type { ClickHouseClient, ResponseJSON } from '@clickhouse/client-common'
 import { createTestClient } from '../utils'
 
 describe('Select ResultSet', () => {

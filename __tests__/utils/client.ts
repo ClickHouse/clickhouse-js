@@ -1,3 +1,4 @@
+/* eslint @typescript-eslint/no-var-requires: 0 */
 import { guid } from './guid'
 import { TestLogger } from './test_logger'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
@@ -8,16 +9,11 @@ import type {
   ClickHouseClient,
 } from '@clickhouse/client-common/client'
 import type { ClickHouseSettings } from '@clickhouse/client-common'
-import {
-  getTestConnectionType,
-  TestConnectionType,
-} from './test_connection_type'
 
 export function createTestClient<Stream = unknown>(
   config: BaseClickHouseClientConfigOptions<Stream> = {}
 ): ClickHouseClient<Stream> {
   const env = getClickHouseTestEnvironment()
-  const connectionType = getTestConnectionType()
   const database = process.env[TestDatabaseEnvKey]
   console.log(
     `Using ${env} test environment to create a Client instance for database ${
@@ -48,14 +44,14 @@ export function createTestClient<Stream = unknown>(
       ...config,
       clickhouse_settings: clickHouseSettings,
     }
-    if (connectionType === TestConnectionType.Node) {
+    if (process.env.browser) {
+      // @ts-ignore
+      return require('@clickhouse/client-browser').createClient(cloudConfig)
+    } else {
       // @ts-ignore
       return require('@clickhouse/client').createClient(
         cloudConfig
-      ) as ClickHouseClient // eslint-disable-line @typescript-eslint/no-var-requires
-    } else {
-      // @ts-ignore
-      return require('@clickhouse/client-browser').createClient(cloudConfig) // eslint-disable-line @typescript-eslint/no-var-requires
+      ) as ClickHouseClient
     }
   } else {
     const localConfig: BaseClickHouseClientConfigOptions<Stream> = {
@@ -64,14 +60,14 @@ export function createTestClient<Stream = unknown>(
       ...config,
       clickhouse_settings: clickHouseSettings,
     }
-    if (connectionType === TestConnectionType.Node) {
+    if (process.env.browser) {
+      // @ts-ignore
+      return require('@clickhouse/client-browser').createClient(localConfig) // eslint-disable-line @typescript-eslint/no-var-requires
+    } else {
       // @ts-ignore
       return require('@clickhouse/client').createClient(
         localConfig
-      ) as ClickHouseClient // eslint-disable-line @typescript-eslint/no-var-requires
-    } else {
-      // @ts-ignore
-      return require('@clickhouse/client-browser').createClient(localConfig) // eslint-disable-line @typescript-eslint/no-var-requires
+      ) as ClickHouseClient
     }
   }
 }

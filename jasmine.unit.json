@@ -1,7 +1,6 @@
 {
   "spec_dir": "__tests__",
-  "spec_files": ["unit/*.test.ts"],
-  "helpers": ["helpers/**/*.ts"],
+  "spec_files": ["unit/*.test.ts", "utils/*.test.ts"],
   "env": {
     "failSpecWithNoExpectations": true,
     "stopSpecOnExpectationFailure": true,

@@ -59,12 +59,18 @@ describe('TLS connection', () => {
         key,
       },
     })
-    await expect(
+    await expectAsync(
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
         format: 'CSV',
       })
-    ).rejects.toThrowError('Hostname/IP does not match certificate')
+    ).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringContaining(
+          'Hostname/IP does not match certificate'
+        ),
+      })
+    )
   })
 
   it('should fail with invalid certificates', async () => {
@@ -81,11 +87,11 @@ describe('TLS connection', () => {
       process.version.startsWith('v18') || process.version.startsWith('v20')
         ? 'unsupported certificate'
         : 'socket hang up'
-    await expect(
+    await expectAsync(
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
         format: 'CSV',
       })
-    ).rejects.toThrowError(errorMessage)
+    ).toBeRejectedWithError(errorMessage)
   })
 })

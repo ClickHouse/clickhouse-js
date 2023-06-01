@@ -54,18 +54,19 @@ describe('exec', () => {
 
   it('does not swallow ClickHouse error', async () => {
     const { ddl, tableName } = getDDL()
-    await expect(async () => {
+    const commands = async () => {
       const command = () =>
         runCommand({
           query: ddl,
         })
       await command()
       await command()
-    }).rejects.toEqual(
-      expect.objectContaining({
+    }
+    await expectAsync(commands()).toBeRejectedWith(
+      jasmine.objectContaining({
         code: '57',
         type: 'TABLE_ALREADY_EXISTS',
-        message: expect.stringContaining(
+        message: jasmine.stringContaining(
           `Table ${getTestDatabaseName()}.${tableName} already exists. `
         ),
       })
@@ -85,13 +86,15 @@ describe('exec', () => {
 
     it('should allow the use of a session', async () => {
       // Temporary tables cannot be used without a session
-      await sessionClient.exec({
-        query: 'CREATE TEMPORARY TABLE test_temp (val Int32)',
-      })
+      await expectAsync(
+        sessionClient.exec({
+          query: 'CREATE TEMPORARY TABLE test_temp (val Int32)',
+        })
+      ).toBeResolved()
     })
   })
 
-  it.skip('can specify a parameterized query', async () => {
+  xit('can specify a parameterized query', async () => {
     await runCommand({
       query: '',
       query_params: {

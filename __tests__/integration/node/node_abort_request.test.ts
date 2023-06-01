@@ -22,7 +22,7 @@ describe('Node.js abort request streaming', () => {
       .query({
         query: 'SELECT * from system.numbers',
         format: 'JSONCompactEachRow',
-        abort_signal: controller.signal as AbortSignal,
+        abort_controller: controller,
       })
       .then(async (rows) => {
         const stream = rows.stream()
@@ -38,7 +38,7 @@ describe('Node.js abort request streaming', () => {
     // There is no assertion against an error message.
     // A race condition on events might lead to
     // Request Aborted or ERR_STREAM_PREMATURE_CLOSE errors.
-    await expect(selectPromise).rejects.toThrowError()
+    await expectAsync(selectPromise).toBeRejectedWithError()
   })
 
   it('cancels a select query while reading response by closing response stream', async () => {
@@ -64,7 +64,7 @@ describe('Node.js abort request streaming', () => {
       process.version.startsWith('v18') ||
       process.version.startsWith('v20')
     ) {
-      await expect(selectPromise).rejects.toMatchObject({
+      await expectAsync(selectPromise).toBeRejectedWith({
         message: 'Premature close',
       })
     } else {
@@ -97,9 +97,7 @@ describe('Node.js abort request streaming', () => {
             values: stream,
             format: 'JSONEachRow',
             table: tableName,
-            abort_signal: shouldAbort(i)
-              ? (controller.signal as AbortSignal)
-              : undefined,
+            abort_controller: shouldAbort(i) ? controller : undefined,
           })
           if (shouldAbort(i)) {
             return insertPromise.catch(() => {
@@ -134,6 +132,59 @@ describe('Node.js abort request streaming', () => {
         jsonValues[2],
         jsonValues[4],
       ])
+    })
+
+    it('cancels an insert query before it is sent', async () => {
+      const controller = new AbortController()
+      const stream = makeObjectStream()
+      const insertPromise = client.insert({
+        table: tableName,
+        values: stream,
+        abort_controller: controller,
+      })
+      controller.abort()
+
+      await expectAsync(insertPromise).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringMatching('The user aborted a request'),
+        })
+      )
+    })
+
+    it('cancels an insert query before it is sent by closing a stream', async () => {
+      const stream = makeObjectStream()
+      stream.push(null)
+
+      expect(
+        await client.insert({
+          table: tableName,
+          values: stream,
+        })
+      ).toEqual(
+        jasmine.objectContaining({
+          query_id: jasmine.any(String),
+        })
+      )
+    })
+
+    it('cancels an insert query after it is sent', async () => {
+      const controller = new AbortController()
+      const stream = makeObjectStream()
+      const insertPromise = client.insert({
+        table: tableName,
+        values: stream,
+        abort_controller: controller,
+      })
+
+      setTimeout(() => {
+        controller.abort()
+      }, 50)
+
+      await expectAsync(insertPromise).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringMatching('The user aborted a request'),
+        })
+      )
     })
   })
 })
