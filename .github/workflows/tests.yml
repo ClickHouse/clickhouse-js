@@ -64,12 +64,54 @@ jobs:
 
   browser-all-tests-local-single-node:
     runs-on: ubuntu-latest
+    needs: node-unit-tests
+    strategy:
+      fail-fast: true
+      matrix:
+        clickhouse: [ head, latest ]
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@v1.1.0
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: 'docker-compose.yml'
+          down-flags: '--volumes'
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run all browser tests
+        run: |
+          karma start karma.config.cjs
+
+  node-integration-tests-local-single-node:
+    needs: node-unit-tests
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
         node: [ 16, 18, 20 ]
+        clickhouse: [ head, latest ]
+
     steps:
       - uses: actions/checkout@main
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@v1.1.0
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: 'docker-compose.yml'
+          down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@v3
@@ -80,60 +122,21 @@ jobs:
         run: |
           npm install
 
-      - name: Run unit tests
+      - name: Add ClickHouse TLS instance to /etc/hosts
         run: |
-          npm run test:unit
-#  integration-tests-local-single-node:
-#    needs: build
-#    runs-on: ubuntu-latest
-#    strategy:
-#      fail-fast: true
-#      matrix:
-#        node: [ 16, 18, 20 ]
-#        clickhouse: [ head, latest ]
-#
-#    steps:
-#      - uses: actions/checkout@main
-#
-#      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-#        uses: isbang/compose-action@v1.1.0
-#        env:
-#          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-#        with:
-#          compose-file: 'docker-compose.yml'
-#          down-flags: '--volumes'
-#
-#      - name: Setup NodeJS ${{ matrix.node }}
-#        uses: actions/setup-node@v3
-#        with:
-#          node-version: ${{ matrix.node }}
-#
-#      - name: Install dependencies
-#        run: |
-#          npm install
-#
-#      - name: Add ClickHouse TLS instance to /etc/hosts
-#        run: |
-#          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
-#
-#      # Includes TLS integration tests run
-#      # Will also run unit tests, but that's almost free.
-#      # Otherwise, we need to set up a separate job,
-#      # which will also run the integration tests for the second time,
-#      # and that's more time-consuming.
-#      - name: Run all tests
-#        run: |
-#          npm t
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
-#      - name: Upload coverage report
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: coverage
-#          path: coverage
-#          retention-days: 1
+      # Includes TLS integration tests run
+      # Will also run unit tests, but that's almost free.
+      # Otherwise, we need to set up a separate job,
+      # which will also run the integration tests for the second time,
+      # and that's more time-consuming.
+      - name: Run all tests
+        run: |
+          npm t
 
-#  integration-tests-local-cluster:
-#    needs: build
+#  node-integration-tests-local-cluster:
+#    needs: node-unit-tests
 #    runs-on: ubuntu-latest
 #    strategy:
 #      fail-fast: true
@@ -164,7 +167,7 @@ jobs:
 #      - name: Run integration tests
 #        run: |
 #          npm run test:integration:local_cluster
-#
+
 #  integration-tests-cloud:
 #    needs: build
 #    runs-on: ubuntu-latest
