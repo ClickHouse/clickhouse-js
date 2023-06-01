@@ -1,4 +1,4 @@
-import packageVersion from "@clickhouse/client-common/version";
+import packageVersion from '@clickhouse/client-common/version'
 
 // FIXME
 export function getUserAgent(application_id?: string): string {
