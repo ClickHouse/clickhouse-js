@@ -91,7 +91,7 @@ jobs:
 
       - name: Run all browser tests
         run: |
-          karma start karma.config.cjs
+          npm run test:browser
 
   node-integration-tests-local-single-node:
     needs: node-unit-tests
