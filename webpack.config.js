@@ -2,7 +2,7 @@ const webpack = require('webpack')
 const path = require('path')
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin')
 module.exports = {
-  entry: './packages/client-browser/src/index.ts',
+  // entry: './packages/client-browser/src/index.ts',
   target: 'web',
   stats: 'errors-only',
   devtool: 'eval-source-map',
@@ -22,7 +22,7 @@ module.exports = {
   },
   output: {
     path: path.resolve(__dirname, './webpack'),
-    filename: 'browser.js',
+    // filename: 'browser.js',
     libraryTarget: 'umd',
     globalObject: 'this',
     libraryExport: 'default',

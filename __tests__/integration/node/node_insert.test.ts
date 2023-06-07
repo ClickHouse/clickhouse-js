@@ -3,7 +3,7 @@ import { createTestClient, guid } from '../../utils'
 import { createSimpleTable } from '../fixtures/simple_table'
 import Stream from 'stream'
 
-describe('insert', () => {
+describe('Node.js insert', () => {
   let client: ClickHouseClient
   let tableName: string
 

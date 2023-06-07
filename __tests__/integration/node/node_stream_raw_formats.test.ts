@@ -9,7 +9,7 @@ import Stream from 'stream'
 import { assertJsonValues, jsonValues } from '../fixtures/test_data'
 import type { RawDataFormat } from '@clickhouse/client-common/data_formatter'
 
-describe('stream raw formats', () => {
+describe('Node.js stream raw formats', () => {
   let client: ClickHouseClient
   let tableName: string
 

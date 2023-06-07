@@ -6,7 +6,7 @@ import type {
   InsertResult,
   QueryResult,
 } from '@clickhouse/client-common/connection'
-import { getAsText, getUserAgent } from '../utils'
+import { getAsText, getUserAgent, isStream } from '../utils'
 import {
   getQueryId,
   isSuccessfulResponse,
@@ -96,7 +96,17 @@ export class BrowserConnection implements Connection<ReadableStream> {
   }
 
   async ping(): Promise<boolean> {
-    return Promise.resolve(true)
+    // TODO: catch an error and just log it, returning false?
+    const response = await this.request({
+      method: 'GET',
+      body: null,
+      pathname: '/ping',
+      searchParams: undefined,
+    })
+    if (response.body !== null) {
+      await response.body.cancel()
+    }
+    return true
   }
 
   async close(): Promise<void> {
@@ -107,37 +117,40 @@ export class BrowserConnection implements Connection<ReadableStream> {
     body,
     params,
     searchParams,
+    pathname,
+    method,
   }: {
-    body: string | ReadableStream
-    params: BaseQueryParams
+    body: string | ReadableStream | null
+    params?: BaseQueryParams
     searchParams: URLSearchParams | undefined
+    pathname?: string
+    method?: 'GET' | 'POST'
   }): Promise<Response> {
-    // console.log(`signal: ${params.abort_controller?.signal?.aborted}`)
-    // if (params.abort_controller?.signal?.aborted) {
-    //   return Promise.reject(new Error('The request was aborted'))
-    // }
     const url = transformUrl({
       url: this.params.url,
-      pathname: '/',
+      pathname: pathname ?? '/',
       searchParams,
     }).toString()
-    const abortController = params.abort_controller || new AbortController()
+    const abortController = params?.abort_controller || new AbortController()
     let isTimedOut = false
     const timeout = setTimeout(() => {
       isTimedOut = true
       abortController.abort('Request timed out')
     }, this.params.request_timeout)
+    const bodyIsStream = isStream(body)
     try {
       const response = await fetch(url, {
         body,
-        method: 'POST',
+        keepalive: !bodyIsStream,
+        method: method ?? 'POST',
         signal: abortController.signal,
-        keepalive: true,
         headers: withCompressionHeaders({
           headers: this.defaultHeaders,
           compress_request: false,
           decompress_response: this.params.compression.decompress_response,
         }),
+        // @ts-expect-error 'duplex' does not exist in type 'RequestInit'
+        duplex: bodyIsStream ? 'half' : undefined, // https://developer.chrome.com/articles/fetch-streaming-requests/
       })
       clearTimeout(timeout)
       if (isSuccessfulResponse(response.status)) {

@@ -1,6 +1,9 @@
-import type { DataFormat, IResultSet } from '@clickhouse/client-common'
+import type { DataFormat, IResultSet, Row } from '@clickhouse/client-common'
 import { getAsText } from './utils'
-import { decode } from '@clickhouse/client-common/data_formatter'
+import {
+  decode,
+  validateStreamFormat,
+} from '@clickhouse/client-common/data_formatter'
 
 export class ResultSet implements IResultSet<ReadableStream> {
   private isAlreadyConsumed = false
@@ -10,27 +13,74 @@ export class ResultSet implements IResultSet<ReadableStream> {
     public readonly query_id: string
   ) {}
 
-  close(): void {
-    return
+  async text(): Promise<string> {
+    this.markAsConsumed()
+    return getAsText(this._stream)
   }
 
   async json<T>(): Promise<T> {
-    if (this.isAlreadyConsumed) {
-      throw new Error(streamAlreadyConsumedMessage)
-    }
-    return decode(await this.text(), this.format)
+    const text = await this.text()
+    return decode(text, this.format)
   }
 
   stream(): ReadableStream {
-    this.isAlreadyConsumed = true
-    throw new Error('ResultSet.stream not implemented')
+    this.markAsConsumed()
+    validateStreamFormat(this.format)
+
+    let decodedChunk = ''
+    const decoder = new TextDecoder('utf-8')
+    const transform = new TransformStream({
+      start() {
+        //
+      },
+      transform: (chunk, controller) => {
+        if (chunk === null) {
+          controller.terminate()
+        }
+        decodedChunk += decoder.decode(chunk)
+        const rows: Row[] = []
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const idx = decodedChunk.indexOf('\n')
+          if (idx !== -1) {
+            const text = decodedChunk.slice(0, idx)
+            decodedChunk = decodedChunk.slice(idx + 1)
+            rows.push({
+              text,
+              json<T>(): T {
+                return decode(text, 'JSON')
+              },
+            })
+          } else {
+            if (rows.length) {
+              controller.enqueue(rows)
+            }
+            break
+          }
+        }
+      },
+      flush() {
+        decodedChunk = ''
+      },
+    })
+
+    return this._stream.pipeThrough(transform, {
+      preventClose: false,
+      preventAbort: false,
+      preventCancel: false,
+    })
   }
 
-  text(): Promise<string> {
+  async close(): Promise<void> {
+    this.markAsConsumed()
+    await this._stream.cancel()
+  }
+
+  private markAsConsumed() {
     if (this.isAlreadyConsumed) {
       throw new Error(streamAlreadyConsumedMessage)
     }
-    return getAsText(this._stream)
+    this.isAlreadyConsumed = true
   }
 }
 

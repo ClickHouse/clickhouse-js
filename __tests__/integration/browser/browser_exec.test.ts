@@ -1,10 +1,9 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '../../utils'
-import { getAsText } from '@clickhouse/client/utils'
-import type Stream from 'stream'
+import { getAsText } from '../../../packages/client-browser/src/utils' // FIXME: Karma does not like "proper" typescript path here
 
-describe('Node.js exec result streaming', () => {
-  let client: ClickHouseClient<Stream.Readable>
+describe('Browser exec result streaming', () => {
+  let client: ClickHouseClient<ReadableStream>
   beforeEach(() => {
     client = createTestClient()
   })

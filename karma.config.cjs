@@ -9,6 +9,7 @@ module.exports = function (config) {
     files: [
       'karma.setup.cjs',
       '__tests__/integration/*.test.ts',
+      '__tests__/integration/browser/*.test.ts',
       '__tests__/utils/*.ts',
       '__tests__/unit/*.test.ts',
     ],
@@ -19,6 +20,7 @@ module.exports = function (config) {
       'packages/client-browser/**/*.ts': ['webpack', 'sourcemap'],
       '__tests__/unit/*.test.ts': ['webpack', 'sourcemap'],
       '__tests__/integration/*.ts': ['webpack', 'sourcemap'],
+      '__tests__/integration/browser/*.ts': ['webpack', 'sourcemap'],
       '__tests__/utils/*.ts': ['webpack', 'sourcemap'],
     },
     reporters: ['progress'],

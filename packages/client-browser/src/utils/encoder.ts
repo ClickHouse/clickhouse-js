@@ -3,13 +3,39 @@ import type {
   InsertValues,
   ValuesEncoder,
 } from '@clickhouse/client-common'
-import { encodeJSON } from '@clickhouse/client-common/data_formatter'
+import {
+  encodeJSON,
+  isSupportedRawFormat,
+} from '@clickhouse/client-common/data_formatter'
+import { isStream } from '../utils'
 
 export class BrowserValuesEncoder implements ValuesEncoder<ReadableStream> {
   encodeValues<T = unknown>(
     values: InsertValues<ReadableStream, T>,
     format: DataFormat
   ): string | ReadableStream {
+    if (isStream(values)) {
+      // TSV/CSV/CustomSeparated formats don't require additional serialization
+      if (isSupportedRawFormat(format)) {
+        return values
+      }
+      // JSON* formats streams
+      return values.pipeThrough(
+        new TransformStream({
+          start() {
+            //
+          },
+          transform(value, controller) {
+            controller.enqueue(encodeJSON(value, format))
+          },
+        }),
+        {
+          preventClose: false,
+          preventAbort: false,
+          preventCancel: false,
+        }
+      )
+    }
     // JSON* arrays
     if (Array.isArray(values)) {
       return values.map((value) => encodeJSON(value, format)).join('')

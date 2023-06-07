@@ -5,7 +5,7 @@ import { makeObjectStream } from '../../utils/node/stream'
 import { createSimpleTable } from '../fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '../fixtures/test_data'
 
-describe('stream JSON formats', () => {
+describe('Node.js stream JSON formats', () => {
   let client: ClickHouseClient
   let tableName: string
 
