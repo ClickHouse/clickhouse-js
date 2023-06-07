@@ -69,9 +69,6 @@ export class ResultSet implements IResultSet<Stream.Readable> {
         }
         callback()
       },
-      final() {
-        decodedChunk = '' // don't need to keep it in memory when finished
-      },
       autoDestroy: true,
       objectMode: true,
     })

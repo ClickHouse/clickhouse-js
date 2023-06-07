@@ -5,7 +5,7 @@ import {
   validateStreamFormat,
 } from '@clickhouse/client-common/data_formatter'
 
-export class ResultSet implements IResultSet<ReadableStream> {
+export class ResultSet implements IResultSet<ReadableStream<Row[]>> {
   private isAlreadyConsumed = false
   constructor(
     private _stream: ReadableStream,
@@ -23,7 +23,7 @@ export class ResultSet implements IResultSet<ReadableStream> {
     return decode(text, this.format)
   }
 
-  stream(): ReadableStream {
+  stream(): ReadableStream<Row[]> {
     this.markAsConsumed()
     validateStreamFormat(this.format)
 

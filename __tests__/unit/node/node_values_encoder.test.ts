@@ -48,7 +48,7 @@ describe('NodeValuesEncoder', () => {
 
   const encoder = new NodeValuesEncoder()
 
-  describe('validateInsertValues', () => {
+  describe('Node.js validateInsertValues', () => {
     it('should allow object mode stream for JSON* and raw for Tab* or CSV*', async () => {
       const objectModeStream = Stream.Readable.from('foo,bar\n', {
         objectMode: true,

@@ -18,7 +18,7 @@ import {
 } from '@clickhouse/client/connection'
 import { sleep } from '../../utils/retry'
 
-describe('HttpAdapter', () => {
+describe('Node.js HttpAdapter', () => {
   const gzip = Util.promisify(Zlib.gzip)
 
   describe('compression', () => {
