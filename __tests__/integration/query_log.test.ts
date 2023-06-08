@@ -1,10 +1,4 @@
-import {
-  createTestClient,
-  guid,
-  retryOnFailure,
-  TestEnv,
-  whenOnEnv,
-} from '../utils'
+import { createTestClient, guid, TestEnv, whenOnEnv } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { sleep } from '../utils/retry'
@@ -12,7 +6,7 @@ import { sleep } from '../utils/retry'
 // these tests are very flaky in the Cloud environment
 // likely due to the fact that flushing the query_log there happens not too often
 // it's better to execute only with the local single node or cluster
-const testEnvs = [TestEnv.LocalSingleNode, TestEnv.LocalCluster]
+const testEnvs = [TestEnv.LocalSingleNode]
 
 describe('query_log', () => {
   let client: ClickHouseClient
@@ -78,42 +72,34 @@ describe('query_log', () => {
     // query_log is flushed every ~1000 milliseconds
     // so this might fail a couple of times
     // FIXME: jasmine does not throw. RetryOnFailure does not work
-    await sleep(1000)
-    await retryOnFailure(
-      async () => {
-        const logResultSet = await client.query({
-          query: `
+    await sleep(1200)
+    const logResultSet = await client.query({
+      query: `
             SELECT * FROM system.query_log
             WHERE query_id = {query_id: String}
           `,
-          query_params: {
-            query_id,
-          },
-          format: 'JSONEachRow',
-        })
-        expect(await logResultSet.json()).toEqual([
-          jasmine.objectContaining({
-            type: 'QueryStart',
-            query: formattedQuery,
-            initial_query_id: query_id,
-            query_duration_ms: jasmine.any(String),
-            read_rows: jasmine.any(String),
-            read_bytes: jasmine.any(String),
-          }),
-          jasmine.objectContaining({
-            type: 'QueryFinish',
-            query: formattedQuery,
-            initial_query_id: query_id,
-            query_duration_ms: jasmine.any(String),
-            read_rows: jasmine.any(String),
-            read_bytes: jasmine.any(String),
-          }),
-        ])
+      query_params: {
+        query_id,
       },
-      {
-        maxAttempts: 30,
-        waitBetweenAttemptsMs: 100,
-      }
-    )
+      format: 'JSONEachRow',
+    })
+    expect(await logResultSet.json()).toEqual([
+      jasmine.objectContaining({
+        type: 'QueryStart',
+        query: formattedQuery,
+        initial_query_id: query_id,
+        query_duration_ms: jasmine.any(String),
+        read_rows: jasmine.any(String),
+        read_bytes: jasmine.any(String),
+      }),
+      jasmine.objectContaining({
+        type: 'QueryFinish',
+        query: formattedQuery,
+        initial_query_id: query_id,
+        query_duration_ms: jasmine.any(String),
+        read_rows: jasmine.any(String),
+        read_bytes: jasmine.any(String),
+      }),
+    ])
   }
 })

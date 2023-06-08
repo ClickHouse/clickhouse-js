@@ -135,38 +135,69 @@ jobs:
         run: |
           npm t
 
-#  node-integration-tests-local-cluster:
-#    needs: node-unit-tests
-#    runs-on: ubuntu-latest
-#    strategy:
-#      fail-fast: true
-#      matrix:
-#        node: [ 16, 18, 20 ]
-#        clickhouse: [ head, latest ]
-#
-#    steps:
-#      - uses: actions/checkout@main
-#
-#      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-#        uses: isbang/compose-action@v1.1.0
-#        env:
-#          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-#        with:
-#          compose-file: 'docker-compose.cluster.yml'
-#          down-flags: '--volumes'
-#
-#      - name: Setup NodeJS ${{ matrix.node }}
-#        uses: actions/setup-node@v3
-#        with:
-#          node-version: ${{ matrix.node }}
-#
-#      - name: Install dependencies
-#        run: |
-#          npm install
-#
-#      - name: Run integration tests
-#        run: |
-#          npm run test:integration:local_cluster
+  node-integration-tests-local-cluster:
+    needs: node-unit-tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        node: [ 16, 18, 20 ]
+        clickhouse: [ head, latest ]
+
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@v1.1.0
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: 'docker-compose.cluster.yml'
+          down-flags: '--volumes'
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run integration tests
+        run: |
+          npm run test:integration:local_cluster
+
+  browser-integration-tests-local-cluster:
+    runs-on: ubuntu-latest
+    needs: node-unit-tests
+    strategy:
+      fail-fast: true
+      matrix:
+        clickhouse: [ head, latest ]
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@v1.1.0
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: 'docker-compose.cluster.yml'
+          down-flags: '--volumes'
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run all browser tests
+        run: |
+          npm run test:browser:integration:local_cluster
 
 #  integration-tests-cloud:
 #    needs: build

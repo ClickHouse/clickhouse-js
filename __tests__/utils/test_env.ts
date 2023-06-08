@@ -6,7 +6,8 @@ export enum TestEnv {
 
 export function getClickHouseTestEnvironment(): TestEnv {
   let env
-  switch (process.env['CLICKHOUSE_TEST_ENVIRONMENT']) {
+  const value = process.env['CLICKHOUSE_TEST_ENVIRONMENT']
+  switch (value) {
     case 'cloud':
       env = TestEnv.Cloud
       break
@@ -14,12 +15,13 @@ export function getClickHouseTestEnvironment(): TestEnv {
       env = TestEnv.LocalCluster
       break
     case 'local_single_node':
+    case 'undefined':
     case undefined:
       env = TestEnv.LocalSingleNode
       break
     default:
       throw new Error(
-        'Unexpected CLICKHOUSE_TEST_ENVIRONMENT value. ' +
+        `Unexpected CLICKHOUSE_TEST_ENVIRONMENT value: ${value}. ` +
           'Possible options: `local_single_node`, `local_cluster`, `cloud` ' +
           'or keep it unset to fall back to `local_single_node`'
       )

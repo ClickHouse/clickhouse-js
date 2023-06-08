@@ -6,7 +6,7 @@ import type {
   InsertResult,
   QueryResult,
 } from '@clickhouse/client-common/connection'
-import { getAsText, getUserAgent, isStream } from '../utils'
+import { getAsText, isStream } from '../utils'
 import {
   getQueryId,
   isSuccessfulResponse,
@@ -23,7 +23,6 @@ export class BrowserConnection implements Connection<ReadableStream> {
   constructor(private readonly params: ConnectionParams) {
     this.defaultHeaders = {
       Authorization: `Basic ${btoa(`${params.username}:${params.password}`)}`,
-      'User-Agent': getUserAgent(params.application_id),
     }
   }
 
