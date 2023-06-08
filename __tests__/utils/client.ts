@@ -3,21 +3,31 @@ import { guid } from './guid'
 import { TestLogger } from './test_logger'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
 import { getFromEnv } from './env'
-import { TestDatabaseEnvKey } from '../global.integration'
 import type {
   BaseClickHouseClientConfigOptions,
   ClickHouseClient,
 } from '@clickhouse/client-common/client'
 import type { ClickHouseSettings } from '@clickhouse/client-common'
 
+let databaseName: string
+beforeAll(async () => {
+  if (
+    getClickHouseTestEnvironment() === TestEnv.Cloud &&
+    databaseName === undefined
+  ) {
+    const client = createTestClient()
+    databaseName = await createRandomDatabase(client)
+    await client.close()
+  }
+})
+
 export function createTestClient<Stream = unknown>(
   config: BaseClickHouseClientConfigOptions<Stream> = {}
 ): ClickHouseClient<Stream> {
   const env = getClickHouseTestEnvironment()
-  const database = process.env[TestDatabaseEnvKey]
   console.log(
     `Using ${env} test environment to create a Client instance for database ${
-      database || 'default'
+      databaseName || 'default'
     }`
   )
   const clickHouseSettings: ClickHouseSettings = {}
@@ -39,7 +49,7 @@ export function createTestClient<Stream = unknown>(
     const cloudConfig: BaseClickHouseClientConfigOptions<Stream> = {
       host: `https://${getFromEnv('CLICKHOUSE_CLOUD_HOST')}:8443`,
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
-      database,
+      database: databaseName,
       ...logging,
       ...config,
       clickhouse_settings: clickHouseSettings,
@@ -55,7 +65,7 @@ export function createTestClient<Stream = unknown>(
     }
   } else {
     const localConfig: BaseClickHouseClientConfigOptions<Stream> = {
-      database,
+      database: databaseName,
       ...logging,
       ...config,
       clickhouse_settings: clickHouseSettings,
@@ -111,5 +121,5 @@ export async function createTable<Stream = unknown>(
 }
 
 export function getTestDatabaseName(): string {
-  return process.env[TestDatabaseEnvKey] || 'default'
+  return databaseName || 'default'
 }

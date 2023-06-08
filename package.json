@@ -30,6 +30,7 @@
     "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:integration",
     "test:browser": "karma start karma.config.cjs",
     "test:browser:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:browser",
+    "test:browser:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:browser",
     "prepare": "husky install"
   },
   "lint-staged": {
