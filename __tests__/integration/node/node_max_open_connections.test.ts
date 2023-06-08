@@ -27,9 +27,13 @@ describe('Node.js max_open_connections config', () => {
     })
     void select('SELECT 1 AS x, sleep(0.3)')
     void select('SELECT 2 AS x, sleep(0.3)')
-    await sleep(500)
+    while (results.length !== 1) {
+      await sleep(100)
+    }
     expect(results).toEqual([1])
-    await sleep(500)
+    while (results.length === 1) {
+      await sleep(100)
+    }
     expect(results.sort()).toEqual([1, 2])
   })
 
@@ -41,13 +45,13 @@ describe('Node.js max_open_connections config', () => {
     void select('SELECT 2 AS x, sleep(0.3)')
     void select('SELECT 3 AS x, sleep(0.3)')
     void select('SELECT 4 AS x, sleep(0.3)')
-    await sleep(500)
-    expect(results).toContain(1)
-    expect(results).toContain(2)
+    while (results.length < 2) {
+      await sleep(100)
+    }
     expect(results.sort()).toEqual([1, 2])
-    await sleep(500)
-    expect(results).toContain(3)
-    expect(results).toContain(4)
+    while (results.length < 4) {
+      await sleep(100)
+    }
     expect(results.sort()).toEqual([1, 2, 3, 4])
   })
 })
