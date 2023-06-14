@@ -80,6 +80,7 @@ describe('exec', () => {
         val1: 10,
         val2: 20,
       },
+      returnResponseStream: true,
     })
     expect(await getAsText(result.stream)).toEqual('30\n')
   })
@@ -88,6 +89,7 @@ describe('exec', () => {
     it('should allow commands with semi in select clause', async () => {
       const result = await client.exec({
         query: `SELECT ';' FORMAT CSV`,
+        returnResponseStream: true,
       })
       expect(await getAsText(result.stream)).toEqual('";"\n')
     })
@@ -95,6 +97,7 @@ describe('exec', () => {
     it('should allow commands with trailing semi', async () => {
       const result = await client.exec({
         query: 'EXISTS system.databases;',
+        returnResponseStream: true,
       })
       expect(await getAsText(result.stream)).toEqual('1\n')
     })
@@ -102,6 +105,7 @@ describe('exec', () => {
     it('should allow commands with multiple trailing semi', async () => {
       const result = await client.exec({
         query: 'EXISTS system.foobar;;;;;;',
+        returnResponseStream: true,
       })
       expect(await getAsText(result.stream)).toEqual('0\n')
     })
@@ -182,6 +186,7 @@ describe('exec', () => {
         // ClickHouse responds to a command when it's completely finished
         wait_end_of_query: 1,
       },
+      returnResponseStream: true,
     })
   }
 })

@@ -1,3 +1,34 @@
+## 0.1.0
+
+## Breaking changes
+
+* Use `abort_controller` instead of `abort_signal` in `query` / `exec` / `insert` methods.
+* `exec` method does not return the response stream by default. However, if needed, the response stream can be requested by `returnResponseStream` parameter.
+```ts
+// returns { query_id }
+await client.exec({
+  query: `SELECT 1 FORMAT CSV`,
+})
+
+// returns { query_id }
+await client.exec({
+  query: `SELECT 1 FORMAT CSV`,
+  returnResponseStream: false,
+})
+
+// returns { query_id, stream } - pre-0.1.0 behavior
+// Important: if the response stream is requested, the user is expected to consume the stream
+// otherwise, the request will be eventually timed out
+await client.exec({
+  query: `SELECT 1 FORMAT CSV`,
+  returnResponseStream: true,
+})
+```
+
+### Bug fixes
+
+* Fixed delays on subsequent requests after calling `insert` / `exec` that happened due to unclosed stream instance when using low number of `max_open_connections`. See [#161](https://github.com/ClickHouse/clickhouse-js/issues/161) for more details.
+
 ## 0.0.16
 * Fix NULL parameter binding.
 As HTTP interface expects `\N` instead of `'NULL'` string, it is now correctly handled for both `null`

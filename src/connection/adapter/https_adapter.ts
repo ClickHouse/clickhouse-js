@@ -9,7 +9,6 @@ export class HttpsAdapter extends BaseHttpAdapter implements Connection {
   constructor(config: ConnectionParams, logger: LogWriter) {
     const agent = new Https.Agent({
       keepAlive: true,
-      timeout: config.request_timeout,
       maxSockets: config.max_open_connections,
       ca: config.tls?.ca_cert,
       key: config.tls?.type === 'Mutual' ? config.tls.key : undefined,
@@ -40,12 +39,13 @@ export class HttpsAdapter extends BaseHttpAdapter implements Connection {
 
   protected createClientRequest(
     url: URL,
-    params: RequestParams
+    params: RequestParams & { abort_controller: AbortController }
   ): Http.ClientRequest {
     return Https.request(params.url, {
       method: params.method,
       agent: this.agent,
       headers: this.getHeaders(params),
+      signal: params.abort_controller.signal,
     })
   }
 }

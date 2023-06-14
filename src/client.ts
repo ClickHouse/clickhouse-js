@@ -1,5 +1,10 @@
 import Stream from 'stream'
-import type { InsertResult, QueryResult, TLSParams } from './connection'
+import type {
+  ExecResult,
+  InsertResult,
+  QueryResult,
+  TLSParams,
+} from './connection'
 import { type Connection, createConnection } from './connection'
 import type { Logger } from './logger'
 import { DefaultLogger, LogWriter } from './logger'
@@ -16,8 +21,6 @@ import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 export interface ClickHouseClientConfigOptions {
   /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
   host?: string
-  /** The timeout to set up a connection in milliseconds. Default value: `10_000`. */
-  connect_timeout?: number
   /** The request timeout in milliseconds. Default value: `30_000`. */
   request_timeout?: number
   /** Maximum number of sockets to allow per host. Default value: `Infinity`. */
@@ -62,8 +65,8 @@ export interface BaseParams {
   clickhouse_settings?: ClickHouseSettings
   /** Parameters for query binding. https://clickhouse.com/docs/en/interfaces/http/#cli-queries-with-parameters */
   query_params?: Record<string, unknown>
-  /** AbortSignal instance (using `node-abort-controller` package) to cancel a request in progress. */
-  abort_signal?: AbortSignal
+  /** AbortController instance to cancel a request in progress. */
+  abort_controller?: AbortController
   /** A specific `query_id` that will be sent with this request.
    * If it is not set, a random identifier will be generated automatically by the client. */
   query_id?: string
@@ -79,6 +82,12 @@ export interface QueryParams extends BaseParams {
 export interface ExecParams extends BaseParams {
   /** Statement to execute. */
   query: string
+  /** If set to true, the response stream instance will be included
+   * in the return type, and the user will be expected to consume it.
+   * If set to false, the response stream is not included
+   * in the return type and destroyed immediately.
+   * Default: false */
+  returnResponseStream?: boolean
 }
 
 type InsertValues<T> =
@@ -131,7 +140,6 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
   return {
     application_id: config.application,
     url: createUrl(config.host ?? 'http://localhost:8123'),
-    connect_timeout: config.connect_timeout ?? 10_000,
     request_timeout: config.request_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? Infinity,
     tls,
@@ -173,7 +181,7 @@ export class ClickHouseClient {
         ...params.clickhouse_settings,
       },
       query_params: params.query_params,
-      abort_signal: params.abort_signal,
+      abort_controller: params.abort_controller,
       session_id: this.config.session_id,
       query_id: params.query_id,
     }
@@ -189,10 +197,20 @@ export class ClickHouseClient {
     return new ResultSet(stream, format, query_id)
   }
 
-  async exec(params: ExecParams): Promise<QueryResult> {
+  async exec(
+    params: Omit<ExecParams, 'returnResponseStream'>
+  ): Promise<ExecResult>
+  async exec(
+    params: ExecParams & { returnResponseStream: true }
+  ): Promise<QueryResult>
+  async exec(
+    params: ExecParams & { returnResponseStream: false }
+  ): Promise<ExecResult>
+  async exec(params: ExecParams): Promise<QueryResult | ExecResult> {
     const query = removeTrailingSemi(params.query.trim())
     return await this.connection.exec({
       query,
+      returnResponseStream: params.returnResponseStream,
       ...this.getBaseParams(params),
     })
   }

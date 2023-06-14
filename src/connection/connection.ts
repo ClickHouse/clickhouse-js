@@ -8,7 +8,6 @@ export interface ConnectionParams {
 
   application_id?: string
 
-  connect_timeout: number
   request_timeout: number
   max_open_connections: number
 
@@ -40,9 +39,13 @@ export interface BaseParams {
   query: string
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
-  abort_signal?: AbortSignal
+  abort_controller?: AbortController
   session_id?: string
   query_id?: string
+}
+
+export interface ExecParams extends BaseParams {
+  returnResponseStream?: boolean
 }
 
 export interface InsertParams extends BaseParams {
@@ -58,11 +61,22 @@ export interface InsertResult {
   query_id: string
 }
 
+export interface ExecResult {
+  query_id: string
+}
+
 export interface Connection {
   ping(): Promise<boolean>
   close(): Promise<void>
   query(params: BaseParams): Promise<QueryResult>
-  exec(params: BaseParams): Promise<QueryResult>
+  exec(params: Omit<ExecParams, 'returnResponseStream'>): Promise<ExecResult>
+  exec(
+    params: ExecParams & { returnResponseStream: true }
+  ): Promise<QueryResult>
+  exec(
+    params: ExecParams & { returnResponseStream: false }
+  ): Promise<ExecResult>
+  exec(params: ExecParams): Promise<QueryResult | ExecResult>
   insert(params: InsertParams): Promise<InsertResult>
 }
 

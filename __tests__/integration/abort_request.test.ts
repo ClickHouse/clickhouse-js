@@ -1,4 +1,3 @@
-import { AbortController } from 'node-abort-controller'
 import type { Row } from '../../src'
 import { type ClickHouseClient, type ResponseJSON } from '../../src'
 import { createTestClient, guid, makeObjectStream } from '../utils'
@@ -23,7 +22,7 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_signal: controller.signal as AbortSignal,
+        abort_controller: controller,
       })
       controller.abort()
 
@@ -39,7 +38,7 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_signal: controller.signal as AbortSignal,
+        abort_controller: controller,
       })
 
       setTimeout(() => {
@@ -59,7 +58,7 @@ describe('abort request', () => {
         .query({
           query: 'SELECT * from system.numbers',
           format: 'JSONCompactEachRow',
-          abort_signal: controller.signal as AbortSignal,
+          abort_controller: controller,
         })
         .then(async (rows) => {
           const stream = rows.stream()
@@ -118,7 +117,7 @@ describe('abort request', () => {
       console.log(`Long running query: ${longRunningQuery}`)
       void client.query({
         query: longRunningQuery,
-        abort_signal: controller.signal as AbortSignal,
+        abort_controller: controller,
         format: 'JSONCompactEachRow',
       })
 
@@ -147,9 +146,9 @@ describe('abort request', () => {
             .query({
               query: `SELECT sleep(0.5), ${i} AS foo`,
               format: 'JSONEachRow',
-              abort_signal:
+              abort_controller:
                 // we will cancel the request that should've yielded '3'
-                shouldAbort ? (controller.signal as AbortSignal) : undefined,
+                shouldAbort ? controller : undefined,
             })
             .then((r) => r.json<Res>())
             .then((r) => results.push(r[0].foo))
@@ -183,7 +182,7 @@ describe('abort request', () => {
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
-        abort_signal: controller.signal as AbortSignal,
+        abort_controller: controller,
       })
       controller.abort()
 
@@ -216,7 +215,7 @@ describe('abort request', () => {
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
-        abort_signal: controller.signal as AbortSignal,
+        abort_controller: controller,
       })
 
       setTimeout(() => {
@@ -248,9 +247,7 @@ describe('abort request', () => {
             values: stream,
             format: 'JSONEachRow',
             table: tableName,
-            abort_signal: shouldAbort(i)
-              ? (controller.signal as AbortSignal)
-              : undefined,
+            abort_controller: shouldAbort(i) ? controller : undefined,
           })
           if (shouldAbort(i)) {
             return insertPromise.catch(() => {
