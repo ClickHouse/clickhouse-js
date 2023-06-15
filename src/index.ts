@@ -12,10 +12,12 @@ export {
   type QueryParams,
   type ExecParams,
   type InsertParams,
+  type CommandParams,
+  type CommandResult,
 } from './client'
 
 export { Row, ResultSet } from './result'
-export type { Connection } from './connection'
+export type { Connection, ExecResult, InsertResult } from './connection'
 export type { DataFormat } from './data_formatter'
 export type { ClickHouseError } from './error'
 export type { Logger } from './logger'
