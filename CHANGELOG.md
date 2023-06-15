@@ -3,31 +3,32 @@
 ## Breaking changes
 
 * Use `abort_controller` instead of `abort_signal` in `query` / `exec` / `insert` methods.
-* `exec` method does not return the response stream by default. However, if needed, the response stream can be requested by `returnResponseStream` parameter.
+* `connect_timeout` client setting is removed, as it was unused in the code.
+
+## New features
+
+* `command` method is introduced as an alternative to `exec`.
+`command` does not expect user to consume the response stream, and it is destroyed immediately.
+Essentially, this is a shortcut to `exec` that destroys the stream under the hood.
+Consider using `command` instead of `exec` for DDLs and other custom commands which do not provide any valuable output.
+
+Example:
+
 ```ts
-// returns { query_id }
-await client.exec({
-  query: `SELECT 1 FORMAT CSV`,
-})
+// incorrect: stream is not consumed and not destroyed, request will be timed out eventually
+await client.exec('CREATE TABLE foo (id String) ENGINE Memory')
 
-// returns { query_id }
-await client.exec({
-  query: `SELECT 1 FORMAT CSV`,
-  returnResponseStream: false,
-})
+// correct: stream does not contain any information and just destroyed
+const { stream } = await client.exec('CREATE TABLE foo (id String) ENGINE Memory')
+stream.destroy()
 
-// returns { query_id, stream } - pre-0.1.0 behavior
-// Important: if the response stream is requested, the user is expected to consume the stream
-// otherwise, the request will be eventually timed out
-await client.exec({
-  query: `SELECT 1 FORMAT CSV`,
-  returnResponseStream: true,
-})
+// correct: same as exec + stream.destroy()
+await client.command('CREATE TABLE foo (id String) ENGINE Memory')
 ```
 
 ### Bug fixes
 
-* Fixed delays on subsequent requests after calling `insert` / `exec` that happened due to unclosed stream instance when using low number of `max_open_connections`. See [#161](https://github.com/ClickHouse/clickhouse-js/issues/161) for more details.
+* Fixed delays on subsequent requests after calling `insert` that happened due to unclosed stream instance when using low number of `max_open_connections`. See [#161](https://github.com/ClickHouse/clickhouse-js/issues/161) for more details.
 
 ## 0.0.16
 * Fix NULL parameter binding.

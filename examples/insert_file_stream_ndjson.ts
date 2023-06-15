@@ -6,10 +6,10 @@ import split from 'split2'
 void (async () => {
   const client = createClient()
   const tableName = 'insert_file_stream_ndjson'
-  await client.exec({
+  await client.command({
     query: `DROP TABLE IF EXISTS ${tableName}`,
   })
-  await client.exec({
+  await client.command({
     query: `
       CREATE TABLE ${tableName} (id UInt64)
       ENGINE MergeTree()

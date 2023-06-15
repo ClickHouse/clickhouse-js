@@ -9,7 +9,6 @@ import {
 } from '../utils'
 import { getAsText } from '../../src/utils'
 import * as uuid from 'uuid'
-import type { QueryResult } from '../../src/connection'
 
 describe('exec', () => {
   let client: ClickHouseClient
@@ -23,7 +22,7 @@ describe('exec', () => {
   it('sends a command to execute', async () => {
     const { ddl, tableName, engine } = getDDL()
 
-    const { query_id } = await runCommand({
+    const { query_id } = await runExec({
       query: ddl,
     })
 
@@ -41,7 +40,7 @@ describe('exec', () => {
 
     const query_id = guid()
 
-    const { query_id: q_id } = await runCommand({
+    const { query_id: q_id } = await runExec({
       query: ddl,
       query_id,
     })
@@ -56,12 +55,12 @@ describe('exec', () => {
   it('does not swallow ClickHouse error', async () => {
     const { ddl, tableName } = getDDL()
     await expect(async () => {
-      const command = () =>
-        runCommand({
+      const exec = () =>
+        runExec({
           query: ddl,
         })
-      await command()
-      await command()
+      await exec()
+      await exec()
     }).rejects.toEqual(
       expect.objectContaining({
         code: '57',
@@ -80,7 +79,6 @@ describe('exec', () => {
         val1: 10,
         val2: 20,
       },
-      returnResponseStream: true,
     })
     expect(await getAsText(result.stream)).toEqual('30\n')
   })
@@ -89,7 +87,6 @@ describe('exec', () => {
     it('should allow commands with semi in select clause', async () => {
       const result = await client.exec({
         query: `SELECT ';' FORMAT CSV`,
-        returnResponseStream: true,
       })
       expect(await getAsText(result.stream)).toEqual('";"\n')
     })
@@ -97,7 +94,6 @@ describe('exec', () => {
     it('should allow commands with trailing semi', async () => {
       const result = await client.exec({
         query: 'EXISTS system.databases;',
-        returnResponseStream: true,
       })
       expect(await getAsText(result.stream)).toEqual('1\n')
     })
@@ -105,7 +101,6 @@ describe('exec', () => {
     it('should allow commands with multiple trailing semi', async () => {
       const result = await client.exec({
         query: 'EXISTS system.foobar;;;;;;',
-        returnResponseStream: true,
       })
       expect(await getAsText(result.stream)).toEqual('0\n')
     })
@@ -124,14 +119,15 @@ describe('exec', () => {
 
     it('should allow the use of a session', async () => {
       // Temporary tables cannot be used without a session
-      await sessionClient.exec({
+      const { stream } = await sessionClient.exec({
         query: 'CREATE TEMPORARY TABLE test_temp (val Int32)',
       })
+      stream.destroy()
     })
   })
 
   it.skip('can specify a parameterized query', async () => {
-    await runCommand({
+    await runExec({
       query: '',
       query_params: {
         table_name: 'example',
@@ -176,18 +172,19 @@ describe('exec', () => {
     expect(typeof table.create_table_query).toBe('string')
   }
 
-  async function runCommand(params: ExecParams): Promise<QueryResult> {
+  async function runExec(params: ExecParams): Promise<{ query_id: string }> {
     console.log(
       `Running command with query_id ${params.query_id}:\n${params.query}`
     )
-    return client.exec({
+    const { stream, query_id } = await client.exec({
       ...params,
       clickhouse_settings: {
         // ClickHouse responds to a command when it's completely finished
         wait_end_of_query: 1,
       },
-      returnResponseStream: true,
     })
+    stream.destroy()
+    return { query_id }
   }
 })
 

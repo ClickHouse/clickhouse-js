@@ -13,6 +13,7 @@ import type {
   ExecResult,
   InsertParams,
   InsertResult,
+  QueryParams,
   QueryResult,
 } from '../connection'
 import { toSearchParams } from './http_search_params'
@@ -237,7 +238,7 @@ export abstract class BaseHttpAdapter implements Connection {
     return true
   }
 
-  async query(params: BaseParams): Promise<QueryResult> {
+  async query(params: QueryParams): Promise<QueryResult> {
     const query_id = this.getQueryId(params)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -265,16 +266,7 @@ export abstract class BaseHttpAdapter implements Connection {
     }
   }
 
-  async exec(
-    params: Omit<ExecParams, 'returnResponseStream'>
-  ): Promise<ExecResult>
-  async exec(
-    params: ExecParams & { returnResponseStream: true }
-  ): Promise<QueryResult>
-  async exec(
-    params: ExecParams & { returnResponseStream: false }
-  ): Promise<ExecResult>
-  async exec(params: ExecParams): Promise<QueryResult | ExecResult> {
+  async exec(params: ExecParams): Promise<ExecResult> {
     const query_id = this.getQueryId(params)
     const searchParams = toSearchParams({
       database: this.config.database,
@@ -291,15 +283,8 @@ export abstract class BaseHttpAdapter implements Connection {
       abort_controller: params.abort_controller,
     })
 
-    if (params.returnResponseStream) {
-      return {
-        stream,
-        query_id,
-      }
-    }
-
-    stream.destroy()
     return {
+      stream,
       query_id,
     }
   }
@@ -323,7 +308,7 @@ export abstract class BaseHttpAdapter implements Connection {
       compress_request: this.config.compression.compress_request,
     })
 
-    stream.destroy() // there is nothing inside anyway
+    stream.destroy()
     return { query_id }
   }
 

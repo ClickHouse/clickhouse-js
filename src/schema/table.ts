@@ -57,7 +57,6 @@ export class Table<S extends Shape> {
     const { stream } = await this.client.exec({
       query,
       clickhouse_settings: options.clickhouse_settings,
-      returnResponseStream: true,
     })
     return stream
   }

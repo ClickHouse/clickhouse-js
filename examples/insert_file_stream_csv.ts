@@ -5,10 +5,10 @@ import Fs from 'fs'
 void (async () => {
   const client = createClient()
   const tableName = 'insert_file_stream_csv'
-  await client.exec({
+  await client.command({
     query: `DROP TABLE IF EXISTS ${tableName}`,
   })
-  await client.exec({
+  await client.command({
     query: `
       CREATE TABLE ${tableName}
       (id UInt64, name String, flags Array(UInt8))

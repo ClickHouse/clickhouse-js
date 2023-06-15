@@ -344,7 +344,6 @@ describe('HttpAdapter', () => {
 
       const execPromise1 = adapter.exec({
         query: 'SELECT * FROM system.numbers LIMIT 5',
-        returnResponseStream: true,
       })
       const responseBody1 = 'foobar'
       request1.emit(
@@ -358,7 +357,6 @@ describe('HttpAdapter', () => {
       const request2 = stubRequest()
       const execPromise2 = adapter.exec({
         query: 'SELECT * FROM system.numbers LIMIT 5',
-        returnResponseStream: true,
       })
       const responseBody2 = 'qaz'
       request2.emit(
@@ -393,7 +391,6 @@ describe('HttpAdapter', () => {
       const execPromise = adapter.exec({
         query: 'SELECT * FROM system.numbers LIMIT 5',
         query_id,
-        returnResponseStream: true,
       })
       const responseBody = 'foobar'
       request.emit(
