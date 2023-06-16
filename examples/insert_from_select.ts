@@ -17,7 +17,7 @@ void (async () => {
       ORDER BY (id)
     `,
   })
-  await client.exec({
+  await client.command({
     query: `
       INSERT INTO ${tableName}
       SELECT '42', quantilesBFloat16State(0.5)(arrayJoin([toFloat32(10), toFloat32(20)]))`,

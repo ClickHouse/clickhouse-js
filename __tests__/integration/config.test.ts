@@ -167,15 +167,15 @@ describe('config', () => {
 
       const value1 = { id: '42', name: 'hello', sku: [0, 1] }
       const value2 = { id: '43', name: 'hello', sku: [0, 1] }
-      function insert() {
+      function insert(value: object) {
         return client.insert({
           table: tableName,
-          values: [value1, value2],
+          values: [value],
           format: 'JSONEachRow',
         })
       }
-      await insert()
-      await insert() // if previous call holds the socket, the test will time out
+      await insert(value1)
+      await insert(value2) // if previous call holds the socket, the test will time out
       clearTimeout(timeout)
 
       const result = await client.query({
