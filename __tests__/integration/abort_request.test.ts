@@ -52,6 +52,52 @@ describe('abort request', () => {
       )
     })
 
+    it('should not throw an error when aborted the second time', async () => {
+      const controller = new AbortController()
+      const selectPromise = client.query({
+        query: 'SELECT sleep(3)',
+        format: 'CSV',
+        abort_controller: controller,
+      })
+
+      setTimeout(() => {
+        controller.abort()
+      }, 50)
+
+      await expect(selectPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('The request was aborted'),
+        })
+      )
+
+      controller.abort('foo bar') // no-op, does not throw here
+    })
+
+    it('should abort when request timeout', async () => {
+      await client.close()
+      client = createTestClient({
+        request_timeout: 50,
+      })
+      const controller = new AbortController()
+      const selectPromise = client.query({
+        query: 'SELECT sleep(3)',
+        format: 'CSV',
+        abort_controller: controller,
+      })
+
+      setTimeout(() => {
+        controller.abort('foo bar') // no-op, does not throw here
+      }, 100) // more than request timeout
+
+      await expect(selectPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('Timeout error'),
+        })
+      )
+
+      controller.abort('bar qaz') // no-op, does not throw here
+    })
+
     it('cancels a select query while reading response', async () => {
       const controller = new AbortController()
       const selectPromise = client

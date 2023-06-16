@@ -165,11 +165,12 @@ describe('config', () => {
         throw new Error('Timeout was triggered')
       }, 3000).unref()
 
-      const value = { id: '42', name: 'hello', sku: [0, 1] }
+      const value1 = { id: '42', name: 'hello', sku: [0, 1] }
+      const value2 = { id: '43', name: 'hello', sku: [0, 1] }
       function insert() {
         return client.insert({
           table: tableName,
-          values: [value],
+          values: [value1, value2],
           format: 'JSONEachRow',
         })
       }
@@ -181,7 +182,7 @@ describe('config', () => {
         query: `SELECT * FROM ${tableName}`,
         format: 'JSONEachRow',
       })
-      expect(await result.json()).toEqual([value, value])
+      expect(await result.json()).toEqual([value1, value2])
     })
 
     it('should use several connections', async () => {
