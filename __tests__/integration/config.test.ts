@@ -182,7 +182,11 @@ describe('config', () => {
         query: `SELECT * FROM ${tableName}`,
         format: 'JSONEachRow',
       })
-      expect(await result.json()).toEqual([value1, value2])
+
+      const json = await result.json<object[]>()
+      expect(json).toContainEqual(value1)
+      expect(json).toContainEqual(value2)
+      expect(json.length).toEqual(2)
     })
 
     it('should use several connections', async () => {
