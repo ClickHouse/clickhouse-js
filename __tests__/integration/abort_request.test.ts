@@ -22,7 +22,7 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
       controller.abort()
 
@@ -38,7 +38,7 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
 
       setTimeout(() => {
@@ -57,7 +57,7 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
 
       setTimeout(() => {
@@ -82,7 +82,7 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
 
       setTimeout(() => {
@@ -104,7 +104,7 @@ describe('abort request', () => {
         .query({
           query: 'SELECT * from system.numbers',
           format: 'JSONCompactEachRow',
-          abort_controller: controller,
+          abort_signal: controller.signal,
         })
         .then(async (rows) => {
           const stream = rows.stream()
@@ -163,7 +163,7 @@ describe('abort request', () => {
       console.log(`Long running query: ${longRunningQuery}`)
       void client.query({
         query: longRunningQuery,
-        abort_controller: controller,
+        abort_signal: controller.signal,
         format: 'JSONCompactEachRow',
       })
 
@@ -192,9 +192,9 @@ describe('abort request', () => {
             .query({
               query: `SELECT sleep(0.5), ${i} AS foo`,
               format: 'JSONEachRow',
-              abort_controller:
+              abort_signal:
                 // we will cancel the request that should've yielded '3'
-                shouldAbort ? controller : undefined,
+                shouldAbort ? controller.signal : undefined,
             })
             .then((r) => r.json<Res>())
             .then((r) => results.push(r[0].foo))
@@ -228,7 +228,7 @@ describe('abort request', () => {
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
       controller.abort()
 
@@ -261,7 +261,7 @@ describe('abort request', () => {
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
 
       setTimeout(() => {
@@ -293,7 +293,7 @@ describe('abort request', () => {
             values: stream,
             format: 'JSONEachRow',
             table: tableName,
-            abort_controller: shouldAbort(i) ? controller : undefined,
+            abort_signal: shouldAbort(i) ? controller.signal : undefined,
           })
           if (shouldAbort(i)) {
             return insertPromise.catch(() => {

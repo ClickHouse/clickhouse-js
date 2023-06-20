@@ -38,14 +38,14 @@ export class HttpsAdapter extends BaseHttpAdapter implements Connection {
   }
 
   protected createClientRequest(
-    url: URL,
-    params: RequestParams & { abort_controller: AbortController }
+    params: RequestParams,
+    abort_signal: AbortSignal
   ): Http.ClientRequest {
     return Https.request(params.url, {
       method: params.method,
       agent: this.agent,
       headers: this.getHeaders(params),
-      signal: params.abort_controller.signal,
+      signal: abort_signal,
     })
   }
 }

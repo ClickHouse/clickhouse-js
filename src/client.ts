@@ -60,8 +60,8 @@ export interface BaseParams {
   clickhouse_settings?: ClickHouseSettings
   /** Parameters for query binding. https://clickhouse.com/docs/en/interfaces/http/#cli-queries-with-parameters */
   query_params?: Record<string, unknown>
-  /** AbortController instance to cancel a request in progress. */
-  abort_controller?: AbortController
+  /** AbortSignal instance to cancel a request in progress. */
+  abort_signal?: AbortSignal
   /** A specific `query_id` that will be sent with this request.
    * If it is not set, a random identifier will be generated automatically by the client. */
   query_id?: string
@@ -175,7 +175,7 @@ export class ClickHouseClient {
         ...params.clickhouse_settings,
       },
       query_params: params.query_params,
-      abort_controller: params.abort_controller,
+      abort_signal: params.abort_signal,
       session_id: this.config.session_id,
       query_id: params.query_id,
     }

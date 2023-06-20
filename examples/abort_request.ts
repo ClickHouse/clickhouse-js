@@ -7,7 +7,7 @@ void (async () => {
     .query({
       query: 'SELECT sleep(3)',
       format: 'CSV',
-      abort_controller: controller,
+      abort_signal: controller.signal,
     })
     .catch((e) => {
       console.info('Select was aborted')

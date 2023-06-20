@@ -68,7 +68,7 @@ export class Table<S extends Shape> {
   }: InsertOptions<S>): Promise<void> {
     await this.client.insert({
       clickhouse_settings,
-      abort_controller,
+      abort_signal: abort_controller?.signal,
       table: getTableName(this.options),
       format: 'JSONEachRow',
       values,
@@ -86,7 +86,7 @@ export class Table<S extends Shape> {
     const rs = await this.client.query({
       query,
       clickhouse_settings,
-      abort_controller,
+      abort_signal: abort_controller?.signal,
       format: 'JSONEachRow',
     })
 

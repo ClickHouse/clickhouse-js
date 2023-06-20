@@ -2,7 +2,6 @@
 
 ## Breaking changes
 
-* Use `abort_controller` instead of `abort_signal` in `query` / `exec` / `insert` methods.
 * `connect_timeout` client setting is removed, as it was unused in the code.
 
 ## New features

@@ -39,7 +39,7 @@ export interface BaseParams {
   query: string
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
-  abort_controller?: AbortController
+  abort_signal?: AbortSignal
   session_id?: string
   query_id?: string
 }

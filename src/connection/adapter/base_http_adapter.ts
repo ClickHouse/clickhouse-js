@@ -27,7 +27,7 @@ export interface RequestParams {
   method: 'GET' | 'POST'
   url: URL
   body?: string | Stream.Readable
-  abort_controller?: AbortController
+  abort_signal?: AbortSignal
   decompress_response?: boolean
   compress_request?: boolean
 }
@@ -105,25 +105,22 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   protected abstract createClientRequest(
-    url: URL,
-    params: RequestParams & { abort_controller: AbortController }
+    params: RequestParams,
+    abort_signal: AbortSignal
   ): Http.ClientRequest
 
   protected async request(params: RequestParams): Promise<Stream.Readable> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
 
-      const abortController = params?.abort_controller || new AbortController()
+      const abortController = new AbortController()
       let isTimedOut = false
       const timeout = setTimeout(() => {
         isTimedOut = true
         abortController.abort('Request timed out')
       }, this.config.request_timeout).unref()
 
-      const request = this.createClientRequest(params.url, {
-        ...params,
-        abort_controller: abortController,
-      })
+      const request = this.createClientRequest(params, abortController.signal)
 
       function onError(err: Error): void {
         removeRequestListeners()
@@ -184,16 +181,35 @@ export abstract class BaseHttpAdapter implements Connection {
         removeRequestListeners()
       }
 
+      function onAbortSignal(): void {
+        abortController.abort('The request was aborted.')
+      }
+
       function removeRequestListeners(): void {
         clearTimeout(timeout)
         request.removeListener('response', onResponse)
         request.removeListener('error', onError)
         request.removeListener('close', onClose)
+        if (params.abort_signal !== undefined) {
+          params.abort_signal.removeEventListener('abort', onAbortSignal)
+        }
       }
 
       request.on('response', onResponse)
       request.on('error', onError)
       request.on('close', onClose)
+
+      if (params.abort_signal !== undefined) {
+        params.abort_signal.addEventListener(
+          'abort',
+          () => {
+            abortController.abort('The request was aborted.')
+          },
+          {
+            once: true,
+          }
+        )
+      }
 
       abortController.signal.addEventListener(
         'abort',
@@ -256,7 +272,7 @@ export abstract class BaseHttpAdapter implements Connection {
       method: 'POST',
       url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.query,
-      abort_controller: params.abort_controller,
+      abort_signal: params.abort_signal,
       decompress_response: clickhouse_settings.enable_http_compression === 1,
     })
 
@@ -280,7 +296,7 @@ export abstract class BaseHttpAdapter implements Connection {
       method: 'POST',
       url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.query,
-      abort_controller: params.abort_controller,
+      abort_signal: params.abort_signal,
     })
 
     return {
@@ -304,7 +320,7 @@ export abstract class BaseHttpAdapter implements Connection {
       method: 'POST',
       url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.values,
-      abort_controller: params.abort_controller,
+      abort_signal: params.abort_signal,
       compress_request: this.config.compression.compress_request,
     })
 
