@@ -1,8 +1,9 @@
 import type { Logger } from '../../src'
 import { type ClickHouseClient } from '../../src'
-import { createTestClient, retryOnFailure } from '../utils'
+import { createTestClient, guid, retryOnFailure } from '../utils'
 import type { RetryOnFailureOptions } from '../utils/retry'
 import type { ErrorLogParams, LogParams } from '../../src/logger'
+import { createSimpleTable } from './fixtures/simple_table'
 
 describe('config', () => {
   let client: ClickHouseClient
@@ -150,6 +151,42 @@ describe('config', () => {
       await retryOnFailure(async () => {
         expect(results.sort()).toEqual([1, 2])
       }, retryOpts)
+    })
+
+    it('should use only one connection for insert', async () => {
+      const tableName = `config_single_connection_insert_${guid()}`
+      client = createTestClient({
+        max_open_connections: 1,
+        request_timeout: 3000,
+      })
+      await createSimpleTable(client, tableName)
+
+      const timeout = setTimeout(() => {
+        throw new Error('Timeout was triggered')
+      }, 3000).unref()
+
+      const value1 = { id: '42', name: 'hello', sku: [0, 1] }
+      const value2 = { id: '43', name: 'hello', sku: [0, 1] }
+      function insert(value: object) {
+        return client.insert({
+          table: tableName,
+          values: [value],
+          format: 'JSONEachRow',
+        })
+      }
+      await insert(value1)
+      await insert(value2) // if previous call holds the socket, the test will time out
+      clearTimeout(timeout)
+
+      const result = await client.query({
+        query: `SELECT * FROM ${tableName}`,
+        format: 'JSONEachRow',
+      })
+
+      const json = await result.json<object[]>()
+      expect(json).toContainEqual(value1)
+      expect(json).toContainEqual(value2)
+      expect(json.length).toEqual(2)
     })
 
     it('should use several connections', async () => {

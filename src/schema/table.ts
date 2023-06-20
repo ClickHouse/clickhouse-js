@@ -36,13 +36,13 @@ export interface SelectOptions<S extends Shape> {
   where?: WhereExpr<S>
   order_by?: NonEmptyArray<[keyof S, 'ASC' | 'DESC']>
   clickhouse_settings?: ClickHouseSettings
-  abort_signal?: AbortSignal
+  abort_controller?: AbortController
 }
 
 export interface InsertOptions<S extends Shape> {
   values: Infer<S>[] | InsertStream<Infer<S>>
   clickhouse_settings?: ClickHouseSettings
-  abort_signal?: AbortSignal
+  abort_controller?: AbortController
 }
 
 export class Table<S extends Shape> {
@@ -62,13 +62,13 @@ export class Table<S extends Shape> {
   }
 
   async insert({
-    abort_signal,
+    abort_controller,
     clickhouse_settings,
     values,
   }: InsertOptions<S>): Promise<void> {
     await this.client.insert({
       clickhouse_settings,
-      abort_signal,
+      abort_signal: abort_controller?.signal,
       table: getTableName(this.options),
       format: 'JSONEachRow',
       values,
@@ -76,7 +76,7 @@ export class Table<S extends Shape> {
   }
 
   async select({
-    abort_signal,
+    abort_controller,
     clickhouse_settings,
     columns,
     order_by,
@@ -86,7 +86,7 @@ export class Table<S extends Shape> {
     const rs = await this.client.query({
       query,
       clickhouse_settings,
-      abort_signal,
+      abort_signal: abort_controller?.signal,
       format: 'JSONEachRow',
     })
 

@@ -1,7 +1,10 @@
 import { createClient } from '@clickhouse/client'
 
+/**
+ * Taken from https://github.com/ClickHouse/clickhouse-js/issues/166
+ */
 void (async () => {
-  const tableName = 'array_json_each_row'
+  const tableName = 'insert_from_select'
   const client = createClient()
   await client.command({
     query: `DROP TABLE IF EXISTS ${tableName}`,
@@ -9,22 +12,18 @@ void (async () => {
   await client.command({
     query: `
       CREATE TABLE ${tableName}
-      (id UInt64, name String)
+      (id String, data AggregateFunction(quantilesBFloat16(0.5), Float32))
       ENGINE MergeTree()
       ORDER BY (id)
     `,
   })
-  await client.insert({
-    table: tableName,
-    // structure should match the desired format, JSONEachRow in this example
-    values: [
-      { id: 42, name: 'foo' },
-      { id: 42, name: 'bar' },
-    ],
-    format: 'JSONEachRow',
+  await client.command({
+    query: `
+      INSERT INTO ${tableName}
+      SELECT '42', quantilesBFloat16State(0.5)(arrayJoin([toFloat32(10), toFloat32(20)]))`,
   })
   const rows = await client.query({
-    query: `SELECT * FROM ${tableName}`,
+    query: `SELECT finalizeAggregation(data) AS result FROM ${tableName}`,
     format: 'JSONEachRow',
   })
   console.info(await rows.json())

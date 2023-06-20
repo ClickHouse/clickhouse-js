@@ -8,7 +8,6 @@ export interface ConnectionParams {
 
   application_id?: string
 
-  connect_timeout: number
   request_timeout: number
   max_open_connections: number
 
@@ -49,20 +48,26 @@ export interface InsertParams extends BaseParams {
   values: string | Stream.Readable
 }
 
-export interface QueryResult {
+export type QueryParams = BaseParams
+export type ExecParams = BaseParams
+
+export interface BaseResult {
+  query_id: string
+}
+
+export interface QueryResult extends BaseResult {
   stream: Stream.Readable
   query_id: string
 }
 
-export interface InsertResult {
-  query_id: string
-}
+export type InsertResult = BaseResult
+export type ExecResult = QueryResult
 
 export interface Connection {
   ping(): Promise<boolean>
   close(): Promise<void>
-  query(params: BaseParams): Promise<QueryResult>
-  exec(params: BaseParams): Promise<QueryResult>
+  query(params: QueryParams): Promise<QueryResult>
+  exec(params: ExecParams): Promise<ExecResult>
   insert(params: InsertParams): Promise<InsertResult>
 }
 

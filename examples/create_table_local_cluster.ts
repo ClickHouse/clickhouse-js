@@ -3,7 +3,7 @@ import { createClient } from '@clickhouse/client'
 // ClickHouse cluster - for example, as in our `docker-compose.cluster.yml`
 void (async () => {
   const client = createClient()
-  await client.exec({
+  await client.command({
     // See macro definitions in `.docker/clickhouse/cluster/serverN_config.xml`
     query: `
       CREATE TABLE IF NOT EXISTS clickhouse_js_examples_local_cluster_table

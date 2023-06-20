@@ -21,10 +21,10 @@ import { randomInt } from 'crypto'
 void (async () => {
   const client = createClient()
   const tableName = 'endless_flowing_stream_json'
-  await client.exec({
+  await client.command({
     query: `DROP TABLE IF EXISTS ${tableName}`,
   })
-  await client.exec({
+  await client.command({
     query: `
       CREATE TABLE ${tableName}
       (id UInt64, name String)

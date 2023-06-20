@@ -62,7 +62,7 @@ export async function createRandomDatabase(
   if (getClickHouseTestEnvironment() === TestEnv.LocalCluster) {
     maybeOnCluster = `ON CLUSTER '{cluster}'`
   }
-  await client.exec({
+  await client.command({
     query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
     clickhouse_settings: {
       wait_end_of_query: 1,
@@ -79,7 +79,7 @@ export async function createTable(
 ) {
   const env = getClickHouseTestEnvironment()
   const ddl = definition(env)
-  await client.exec({
+  await client.command({
     query: ddl,
     clickhouse_settings: {
       // Force response buffering, so we get the response only when

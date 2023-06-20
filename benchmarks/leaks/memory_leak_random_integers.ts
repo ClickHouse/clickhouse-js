@@ -6,15 +6,15 @@ import {
   attachExceptionHandlers,
   getMemoryUsageInMegabytes,
   logFinalMemoryUsage,
-  logMemoryUsageOnIteration,
   logMemoryUsage,
+  logMemoryUsageOnIteration,
 } from './shared'
 
 const program = async () => {
   const client = createClient({})
   const tableName = `memory_leak_random_integers_${uuid_v4().replace(/-/g, '')}`
 
-  await client.exec({
+  await client.command({
     query: `
       CREATE TABLE ${tableName}
       (id UInt32, flag String)

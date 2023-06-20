@@ -9,8 +9,11 @@ import type {
   BaseParams,
   Connection,
   ConnectionParams,
+  ExecParams,
+  ExecResult,
   InsertParams,
   InsertResult,
+  QueryParams,
   QueryResult,
 } from '../connection'
 import { toSearchParams } from './http_search_params'
@@ -31,10 +34,6 @@ export interface RequestParams {
 
 function isSuccessfulResponse(statusCode?: number): boolean {
   return Boolean(statusCode && 200 <= statusCode && statusCode < 300)
-}
-
-function isEventTarget(signal: any): signal is EventTarget {
-  return 'removeEventListener' in signal
 }
 
 function withHttpSettings(
@@ -106,21 +105,30 @@ export abstract class BaseHttpAdapter implements Connection {
   }
 
   protected abstract createClientRequest(
-    url: URL,
-    params: RequestParams
+    params: RequestParams,
+    abort_signal: AbortSignal
   ): Http.ClientRequest
 
   protected async request(params: RequestParams): Promise<Stream.Readable> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
 
-      const request = this.createClientRequest(params.url, params)
-      request.once('socket', (socket) => {
-        socket.setTimeout(this.config.request_timeout)
-      })
+      const abortController = new AbortController()
+      let isTimedOut = false
+      const timeout = setTimeout(() => {
+        isTimedOut = true
+        abortController.abort()
+      }, this.config.request_timeout).unref()
+
+      const request = this.createClientRequest(params, abortController.signal)
+
       function onError(err: Error): void {
         removeRequestListeners()
-        reject(err)
+        if (isTimedOut) {
+          reject(new Error('Request timed out'))
+        } else {
+          reject(err)
+        }
       }
 
       const onResponse = async (
@@ -141,23 +149,6 @@ export abstract class BaseHttpAdapter implements Connection {
         }
       }
 
-      function onTimeout(): void {
-        removeRequestListeners()
-        request.once('error', function () {
-          /**
-           * catch "Error: ECONNRESET" error which shouldn't be reported to users.
-           * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
-           * */
-        })
-        request.destroy()
-        reject(new Error('Timeout error'))
-      }
-
-      function onAbortSignal(): void {
-        // instead of deprecated request.abort()
-        request.destroy(new Error('The request was aborted.'))
-      }
-
       function onAbort(): void {
         // Prefer 'abort' event since it always triggered unlike 'error' and 'close'
         // see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
@@ -168,7 +159,11 @@ export abstract class BaseHttpAdapter implements Connection {
            * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
            * */
         })
-        reject(new Error('The request was aborted.'))
+        if (isTimedOut) {
+          reject(new Error('Timeout error'))
+        } else {
+          reject(new Error('The request was aborted.'))
+        }
       }
 
       function onClose(): void {
@@ -178,37 +173,34 @@ export abstract class BaseHttpAdapter implements Connection {
         removeRequestListeners()
       }
 
-      function removeRequestListeners(): void {
-        request.removeListener('response', onResponse)
-        request.removeListener('error', onError)
-        request.removeListener('timeout', onTimeout)
-        request.removeListener('abort', onAbort)
-        request.removeListener('close', onClose)
-        if (params.abort_signal !== undefined) {
-          if (isEventTarget(params.abort_signal)) {
-            params.abort_signal.removeEventListener('abort', onAbortSignal)
-          } else {
-            // @ts-expect-error if it's EventEmitter
-            params.abort_signal.removeListener('abort', onAbortSignal)
-          }
-        }
+      function onUserAbortSignal(): void {
+        abortController.abort()
       }
 
-      if (params.abort_signal) {
-        // We should use signal API when nodejs v14 is not supported anymore.
-        // However, it seems that Http.request doesn't abort after 'response' event.
-        // Requires an additional investigation
-        // https://nodejs.org/api/globals.html#class-abortsignal
-        params.abort_signal.addEventListener('abort', onAbortSignal, {
+      function removeRequestListeners(): void {
+        clearTimeout(timeout)
+        request.removeListener('response', onResponse)
+        request.removeListener('error', onError)
+        request.removeListener('close', onClose)
+        if (params.abort_signal !== undefined) {
+          params.abort_signal.removeEventListener('abort', onUserAbortSignal)
+        }
+        abortController.signal.removeEventListener('abort', onAbort)
+      }
+
+      request.on('response', onResponse)
+      request.on('error', onError)
+      request.on('close', onClose)
+
+      if (params.abort_signal !== undefined) {
+        params.abort_signal.addEventListener('abort', onUserAbortSignal, {
           once: true,
         })
       }
 
-      request.on('response', onResponse)
-      request.on('timeout', onTimeout)
-      request.on('error', onError)
-      request.on('abort', onAbort)
-      request.on('close', onClose)
+      abortController.signal.addEventListener('abort', onAbort, {
+        once: true,
+      })
 
       if (!params.body) return request.end()
 
@@ -241,7 +233,7 @@ export abstract class BaseHttpAdapter implements Connection {
     return true
   }
 
-  async query(params: BaseParams): Promise<QueryResult> {
+  async query(params: QueryParams): Promise<QueryResult> {
     const query_id = this.getQueryId(params)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -269,7 +261,7 @@ export abstract class BaseHttpAdapter implements Connection {
     }
   }
 
-  async exec(params: BaseParams): Promise<QueryResult> {
+  async exec(params: ExecParams): Promise<ExecResult> {
     const query_id = this.getQueryId(params)
     const searchParams = toSearchParams({
       database: this.config.database,
@@ -303,7 +295,7 @@ export abstract class BaseHttpAdapter implements Connection {
       query_id,
     })
 
-    await this.request({
+    const stream = await this.request({
       method: 'POST',
       url: transformUrl({ url: this.config.url, pathname: '/', searchParams }),
       body: params.values,
@@ -311,6 +303,7 @@ export abstract class BaseHttpAdapter implements Connection {
       compress_request: this.config.compression.compress_request,
     })
 
+    stream.destroy()
     return { query_id }
   }
 

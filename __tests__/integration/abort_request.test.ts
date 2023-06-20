@@ -1,4 +1,3 @@
-import { AbortController } from 'node-abort-controller'
 import type { Row } from '../../src'
 import { type ClickHouseClient, type ResponseJSON } from '../../src'
 import { createTestClient, guid, makeObjectStream } from '../utils'
@@ -23,7 +22,7 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_signal: controller.signal as AbortSignal,
+        abort_signal: controller.signal,
       })
       controller.abort()
 
@@ -39,7 +38,7 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_signal: controller.signal as AbortSignal,
+        abort_signal: controller.signal,
       })
 
       setTimeout(() => {
@@ -53,13 +52,59 @@ describe('abort request', () => {
       )
     })
 
+    it('should not throw an error when aborted the second time', async () => {
+      const controller = new AbortController()
+      const selectPromise = client.query({
+        query: 'SELECT sleep(3)',
+        format: 'CSV',
+        abort_signal: controller.signal,
+      })
+
+      setTimeout(() => {
+        controller.abort()
+      }, 50)
+
+      await expect(selectPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('The request was aborted'),
+        })
+      )
+
+      controller.abort('foo bar') // no-op, does not throw here
+    })
+
+    it('should abort when request timeout', async () => {
+      await client.close()
+      client = createTestClient({
+        request_timeout: 50,
+      })
+      const controller = new AbortController()
+      const selectPromise = client.query({
+        query: 'SELECT sleep(3)',
+        format: 'CSV',
+        abort_signal: controller.signal,
+      })
+
+      setTimeout(() => {
+        controller.abort('foo bar') // no-op, does not throw here
+      }, 100) // more than request timeout
+
+      await expect(selectPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('Timeout error'),
+        })
+      )
+
+      controller.abort('bar qaz') // no-op, does not throw here
+    })
+
     it('cancels a select query while reading response', async () => {
       const controller = new AbortController()
       const selectPromise = client
         .query({
           query: 'SELECT * from system.numbers',
           format: 'JSONCompactEachRow',
-          abort_signal: controller.signal as AbortSignal,
+          abort_signal: controller.signal,
         })
         .then(async (rows) => {
           const stream = rows.stream()
@@ -118,7 +163,7 @@ describe('abort request', () => {
       console.log(`Long running query: ${longRunningQuery}`)
       void client.query({
         query: longRunningQuery,
-        abort_signal: controller.signal as AbortSignal,
+        abort_signal: controller.signal,
         format: 'JSONCompactEachRow',
       })
 
@@ -149,7 +194,7 @@ describe('abort request', () => {
               format: 'JSONEachRow',
               abort_signal:
                 // we will cancel the request that should've yielded '3'
-                shouldAbort ? (controller.signal as AbortSignal) : undefined,
+                shouldAbort ? controller.signal : undefined,
             })
             .then((r) => r.json<Res>())
             .then((r) => results.push(r[0].foo))
@@ -183,7 +228,7 @@ describe('abort request', () => {
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
-        abort_signal: controller.signal as AbortSignal,
+        abort_signal: controller.signal,
       })
       controller.abort()
 
@@ -216,7 +261,7 @@ describe('abort request', () => {
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
-        abort_signal: controller.signal as AbortSignal,
+        abort_signal: controller.signal,
       })
 
       setTimeout(() => {
@@ -248,9 +293,7 @@ describe('abort request', () => {
             values: stream,
             format: 'JSONEachRow',
             table: tableName,
-            abort_signal: shouldAbort(i)
-              ? (controller.signal as AbortSignal)
-              : undefined,
+            abort_signal: shouldAbort(i) ? controller.signal : undefined,
           })
           if (shouldAbort(i)) {
             return insertPromise.catch(() => {

@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client'
-import { AbortController } from 'node-abort-controller'
+
 void (async () => {
   const client = createClient()
   const controller = new AbortController()
@@ -7,7 +7,7 @@ void (async () => {
     .query({
       query: 'SELECT sleep(3)',
       format: 'CSV',
-      abort_signal: controller.signal as AbortSignal,
+      abort_signal: controller.signal,
     })
     .catch((e) => {
       console.info('Select was aborted')

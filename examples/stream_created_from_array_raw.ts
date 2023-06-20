@@ -4,10 +4,10 @@ import Stream from 'stream'
 void (async () => {
   const tableName = 'insert_stream_created_from_array_raw'
   const client = createClient()
-  await client.exec({
+  await client.command({
     query: `DROP TABLE IF EXISTS ${tableName}`,
   })
-  await client.exec({
+  await client.command({
     query: `
       CREATE TABLE ${tableName}
       (id UInt64, name String)

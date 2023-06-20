@@ -1,5 +1,5 @@
 import Stream from 'stream'
-import type { InsertResult, QueryResult, TLSParams } from './connection'
+import type { ExecResult, InsertResult, TLSParams } from './connection'
 import { type Connection, createConnection } from './connection'
 import type { Logger } from './logger'
 import { DefaultLogger, LogWriter } from './logger'
@@ -16,8 +16,6 @@ import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 export interface ClickHouseClientConfigOptions {
   /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
   host?: string
-  /** The timeout to set up a connection in milliseconds. Default value: `10_000`. */
-  connect_timeout?: number
   /** The request timeout in milliseconds. Default value: `30_000`. */
   request_timeout?: number
   /** Maximum number of sockets to allow per host. Default value: `Infinity`. */
@@ -62,7 +60,7 @@ export interface BaseParams {
   clickhouse_settings?: ClickHouseSettings
   /** Parameters for query binding. https://clickhouse.com/docs/en/interfaces/http/#cli-queries-with-parameters */
   query_params?: Record<string, unknown>
-  /** AbortSignal instance (using `node-abort-controller` package) to cancel a request in progress. */
+  /** AbortSignal instance to cancel a request in progress. */
   abort_signal?: AbortSignal
   /** A specific `query_id` that will be sent with this request.
    * If it is not set, a random identifier will be generated automatically by the client. */
@@ -79,6 +77,11 @@ export interface QueryParams extends BaseParams {
 export interface ExecParams extends BaseParams {
   /** Statement to execute. */
   query: string
+}
+
+export type CommandParams = ExecParams
+export interface CommandResult {
+  query_id: string
 }
 
 type InsertValues<T> =
@@ -131,7 +134,6 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
   return {
     application_id: config.application,
     url: createUrl(config.host ?? 'http://localhost:8123'),
-    connect_timeout: config.connect_timeout ?? 10_000,
     request_timeout: config.request_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? Infinity,
     tls,
@@ -179,6 +181,12 @@ export class ClickHouseClient {
     }
   }
 
+  /**
+   * Used for most statements that can have a response, such as SELECT.
+   * FORMAT clause should be specified separately via {@link QueryParams.format} (default is JSON)
+   * Consider using {@link ClickHouseClient.insert} for data insertion,
+   * or {@link ClickHouseClient.command} for DDLs.
+   */
   async query(params: QueryParams): Promise<ResultSet> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
@@ -189,7 +197,25 @@ export class ClickHouseClient {
     return new ResultSet(stream, format, query_id)
   }
 
-  async exec(params: ExecParams): Promise<QueryResult> {
+  /**
+   * It should be used for statements that do not have any output,
+   * when the format clause is not applicable, or when you are not interested in the response at all.
+   * Response stream is destroyed immediately as we do not expect useful information there.
+   * Examples of such statements are DDLs or custom inserts.
+   * If you are interested in the response data, consider using {@link ClickHouseClient.exec}
+   */
+  async command(params: CommandParams): Promise<CommandResult> {
+    const { stream, query_id } = await this.exec(params)
+    stream.destroy()
+    return { query_id }
+  }
+
+  /**
+   * Similar to {@link ClickHouseClient.command}, but for the cases where the output is expected,
+   * but format clause is not applicable. The caller of this method is expected to consume the stream,
+   * otherwise, the request will eventually be timed out.
+   */
+  async exec(params: ExecParams): Promise<ExecResult> {
     const query = removeTrailingSemi(params.query.trim())
     return await this.connection.exec({
       query,
@@ -197,6 +223,13 @@ export class ClickHouseClient {
     })
   }
 
+  /**
+   * The primary method for data insertion. It is recommended to avoid arrays in case of large inserts
+   * to reduce application memory consumption and consider streaming for most of such use cases.
+   * As the insert operation does not provide any output, the response stream is immediately destroyed.
+   * In case of a custom insert operation, such as, for example, INSERT FROM SELECT,
+   * consider using {@link ClickHouseClient.command}, passing the entire raw query there (including FORMAT clause).
+   */
   async insert<T>(params: InsertParams<T>): Promise<InsertResult> {
     const format = params.format || 'JSONCompactEachRow'
 
@@ -210,10 +243,18 @@ export class ClickHouseClient {
     })
   }
 
+  /**
+   * Health-check request. Can throw an error if the connection is refused.
+   */
   async ping(): Promise<boolean> {
     return await this.connection.ping()
   }
 
+  /**
+   * Shuts down the underlying connection.
+   * This method should ideally be called only once per application lifecycle,
+   * for example, during the graceful shutdown phase.
+   */
   async close(): Promise<void> {
     return await this.connection.close()
   }

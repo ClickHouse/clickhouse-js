@@ -37,7 +37,6 @@
     "dist"
   ],
   "dependencies": {
-    "node-abort-controller": "^3.0.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

@@ -8,7 +8,7 @@ void (async () => {
   // Note that ENGINE and ON CLUSTER clauses can be omitted entirely here.
   // ClickHouse cloud will automatically use ReplicatedMergeTree
   // with appropriate settings in this case.
-  await client.exec({
+  await client.command({
     query: `
       CREATE TABLE IF NOT EXISTS clickhouse_js_example_cloud_table
       (id UInt64, name String)

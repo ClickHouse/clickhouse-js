@@ -1,3 +1,34 @@
+## 0.1.0
+
+## Breaking changes
+
+* `connect_timeout` client setting is removed, as it was unused in the code.
+
+## New features
+
+* `command` method is introduced as an alternative to `exec`.
+`command` does not expect user to consume the response stream, and it is destroyed immediately.
+Essentially, this is a shortcut to `exec` that destroys the stream under the hood.
+Consider using `command` instead of `exec` for DDLs and other custom commands which do not provide any valuable output.
+
+Example:
+
+```ts
+// incorrect: stream is not consumed and not destroyed, request will be timed out eventually
+await client.exec('CREATE TABLE foo (id String) ENGINE Memory')
+
+// correct: stream does not contain any information and just destroyed
+const { stream } = await client.exec('CREATE TABLE foo (id String) ENGINE Memory')
+stream.destroy()
+
+// correct: same as exec + stream.destroy()
+await client.command('CREATE TABLE foo (id String) ENGINE Memory')
+```
+
+### Bug fixes
+
+* Fixed delays on subsequent requests after calling `insert` that happened due to unclosed stream instance when using low number of `max_open_connections`. See [#161](https://github.com/ClickHouse/clickhouse-js/issues/161) for more details.
+
 ## 0.0.16
 * Fix NULL parameter binding.
 As HTTP interface expects `\N` instead of `'NULL'` string, it is now correctly handled for both `null`
