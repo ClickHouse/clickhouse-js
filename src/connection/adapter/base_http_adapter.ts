@@ -200,15 +200,9 @@ export abstract class BaseHttpAdapter implements Connection {
       request.on('close', onClose)
 
       if (params.abort_signal !== undefined) {
-        params.abort_signal.addEventListener(
-          'abort',
-          () => {
-            abortController.abort('The request was aborted.')
-          },
-          {
-            once: true,
-          }
-        )
+        params.abort_signal.addEventListener('abort', onAbortSignal, {
+          once: true,
+        })
       }
 
       abortController.signal.addEventListener(
