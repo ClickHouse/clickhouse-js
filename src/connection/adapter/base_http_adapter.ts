@@ -117,7 +117,7 @@ export abstract class BaseHttpAdapter implements Connection {
       let isTimedOut = false
       const timeout = setTimeout(() => {
         isTimedOut = true
-        abortController.abort('Request timed out')
+        abortController.abort()
       }, this.config.request_timeout).unref()
 
       const request = this.createClientRequest(params, abortController.signal)
@@ -149,18 +149,6 @@ export abstract class BaseHttpAdapter implements Connection {
         }
       }
 
-      function onTimeout(): void {
-        removeRequestListeners()
-        request.once('error', function () {
-          /**
-           * catch "Error: ECONNRESET" error which shouldn't be reported to users.
-           * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
-           * */
-        })
-        request.destroy()
-        reject(new Error('Timeout error'))
-      }
-
       function onAbort(): void {
         // Prefer 'abort' event since it always triggered unlike 'error' and 'close'
         // see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
@@ -171,7 +159,11 @@ export abstract class BaseHttpAdapter implements Connection {
            * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
            * */
         })
-        reject(new Error('The request was aborted.'))
+        if (isTimedOut) {
+          reject(new Error('Timeout error'))
+        } else {
+          reject(new Error('The request was aborted.'))
+        }
       }
 
       function onClose(): void {
@@ -181,8 +173,8 @@ export abstract class BaseHttpAdapter implements Connection {
         removeRequestListeners()
       }
 
-      function onAbortSignal(): void {
-        abortController.abort('The request was aborted.')
+      function onUserAbortSignal(): void {
+        abortController.abort()
       }
 
       function removeRequestListeners(): void {
@@ -191,8 +183,9 @@ export abstract class BaseHttpAdapter implements Connection {
         request.removeListener('error', onError)
         request.removeListener('close', onClose)
         if (params.abort_signal !== undefined) {
-          params.abort_signal.removeEventListener('abort', onAbortSignal)
+          params.abort_signal.removeEventListener('abort', onUserAbortSignal)
         }
+        abortController.signal.removeEventListener('abort', onAbort)
       }
 
       request.on('response', onResponse)
@@ -200,22 +193,14 @@ export abstract class BaseHttpAdapter implements Connection {
       request.on('close', onClose)
 
       if (params.abort_signal !== undefined) {
-        params.abort_signal.addEventListener('abort', onAbortSignal, {
+        params.abort_signal.addEventListener('abort', onUserAbortSignal, {
           once: true,
         })
       }
 
-      abortController.signal.addEventListener(
-        'abort',
-        () => {
-          if (isTimedOut) {
-            onTimeout()
-          } else {
-            onAbort()
-          }
-        },
-        { once: true }
-      )
+      abortController.signal.addEventListener('abort', onAbort, {
+        once: true,
+      })
 
       if (!params.body) return request.end()
 
