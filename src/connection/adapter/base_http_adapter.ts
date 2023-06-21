@@ -22,6 +22,7 @@ import { getAsText, isStream } from '../../utils'
 import type { ClickHouseSettings } from '../../settings'
 import { getUserAgent } from '../../utils/user_agent'
 import * as uuid from 'uuid'
+import type * as net from 'net'
 
 export interface RequestParams {
   method: 'GET' | 'POST'
@@ -158,6 +159,14 @@ export abstract class BaseHttpAdapter implements Connection {
         removeRequestListeners()
       }
 
+      const config = this.config
+      function onSocket(socket: net.Socket): void {
+        // Force KeepAlive usage (workaround due to Node.js bug)
+        // https://github.com/nodejs/node/issues/47137#issuecomment-1477075229
+        socket.setKeepAlive(true, 1000)
+        socket.setTimeout(config.request_timeout, onTimeout)
+      }
+
       function onTimeout(): void {
         removeRequestListeners()
         request.destroy()
@@ -165,8 +174,12 @@ export abstract class BaseHttpAdapter implements Connection {
       }
 
       function removeRequestListeners(): void {
+        if (request.socket !== null) {
+          request.socket.setTimeout(0) // reset previously set timeout
+          request.socket.removeListener('timeout', onTimeout)
+        }
+        request.removeListener('socket', onSocket)
         request.removeListener('response', onResponse)
-        request.removeListener('timeout', onTimeout)
         request.removeListener('error', onError)
         request.removeListener('close', onClose)
         if (params.abort_signal !== undefined) {
@@ -174,8 +187,8 @@ export abstract class BaseHttpAdapter implements Connection {
         }
       }
 
+      request.on('socket', onSocket)
       request.on('response', onResponse)
-      request.on('timeout', onTimeout)
       request.on('error', onError)
       request.on('close', onClose)
 

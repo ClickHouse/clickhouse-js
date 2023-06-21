@@ -23,7 +23,6 @@ export class HttpAdapter extends BaseHttpAdapter implements Connection {
       agent: this.agent,
       headers: this.getHeaders(params),
       signal: abort_signal,
-      timeout: this.config.request_timeout,
     })
   }
 }
