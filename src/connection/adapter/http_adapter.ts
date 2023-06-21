@@ -16,13 +16,14 @@ export class HttpAdapter extends BaseHttpAdapter implements Connection {
 
   protected createClientRequest(
     params: RequestParams,
-    abort_signal: AbortSignal
+    abort_signal?: AbortSignal
   ): Http.ClientRequest {
     return Http.request(params.url, {
       method: params.method,
       agent: this.agent,
       headers: this.getHeaders(params),
       signal: abort_signal,
+      timeout: this.config.request_timeout,
     })
   }
 }

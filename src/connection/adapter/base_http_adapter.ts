@@ -106,29 +106,18 @@ export abstract class BaseHttpAdapter implements Connection {
 
   protected abstract createClientRequest(
     params: RequestParams,
-    abort_signal: AbortSignal
+    abort_signal?: AbortSignal
   ): Http.ClientRequest
 
   protected async request(params: RequestParams): Promise<Stream.Readable> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
 
-      const abortController = new AbortController()
-      let isTimedOut = false
-      const timeout = setTimeout(() => {
-        isTimedOut = true
-        abortController.abort()
-      }, this.config.request_timeout).unref()
-
-      const request = this.createClientRequest(params, abortController.signal)
+      const request = this.createClientRequest(params, params.abort_signal)
 
       function onError(err: Error): void {
         removeRequestListeners()
-        if (isTimedOut) {
-          reject(new Error('Request timed out'))
-        } else {
-          reject(err)
-        }
+        reject(err)
       }
 
       const onResponse = async (
@@ -159,11 +148,7 @@ export abstract class BaseHttpAdapter implements Connection {
            * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
            * */
         })
-        if (isTimedOut) {
-          reject(new Error('Timeout error'))
-        } else {
-          reject(new Error('The request was aborted.'))
-        }
+        reject(new Error('The request was aborted.'))
       }
 
       function onClose(): void {
@@ -173,34 +158,30 @@ export abstract class BaseHttpAdapter implements Connection {
         removeRequestListeners()
       }
 
-      function onUserAbortSignal(): void {
-        abortController.abort()
+      function onTimeout(): void {
+        removeRequestListeners()
+        request.destroy()
+        reject(new Error('Timeout error'))
       }
 
       function removeRequestListeners(): void {
-        clearTimeout(timeout)
         request.removeListener('response', onResponse)
+        request.removeListener('timeout', onTimeout)
         request.removeListener('error', onError)
         request.removeListener('close', onClose)
         if (params.abort_signal !== undefined) {
-          params.abort_signal.removeEventListener('abort', onUserAbortSignal)
+          request.removeListener('abort', onAbort)
         }
-        abortController.signal.removeEventListener('abort', onAbort)
       }
 
       request.on('response', onResponse)
+      request.on('timeout', onTimeout)
       request.on('error', onError)
       request.on('close', onClose)
 
       if (params.abort_signal !== undefined) {
-        params.abort_signal.addEventListener('abort', onUserAbortSignal, {
-          once: true,
-        })
+        params.abort_signal.addEventListener('abort', onAbort, { once: true })
       }
-
-      abortController.signal.addEventListener('abort', onAbort, {
-        once: true,
-      })
 
       if (!params.body) return request.end()
 
