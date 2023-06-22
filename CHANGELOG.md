@@ -28,6 +28,7 @@ await client.command('CREATE TABLE foo (id String) ENGINE Memory')
 ### Bug fixes
 
 * Fixed delays on subsequent requests after calling `insert` that happened due to unclosed stream instance when using low number of `max_open_connections`. See [#161](https://github.com/ClickHouse/clickhouse-js/issues/161) for more details.
+* Request timeouts internal logic rework (see [#168](https://github.com/ClickHouse/clickhouse-js/pull/168))
 
 ## 0.0.16
 * Fix NULL parameter binding.
