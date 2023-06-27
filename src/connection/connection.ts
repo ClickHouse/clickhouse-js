@@ -2,6 +2,7 @@ import type Stream from 'stream'
 import type { LogWriter } from '../logger'
 import { HttpAdapter, HttpsAdapter } from './adapter'
 import type { ClickHouseSettings } from '../settings'
+import type { RetryStrategy } from './retry_strategy'
 
 export interface ConnectionParams {
   url: URL
@@ -21,6 +22,12 @@ export interface ConnectionParams {
   username: string
   password: string
   database: string
+
+  keep_alive: {
+    enabled: boolean
+    socket_ttl: number
+    expired_socket_retry_strategy: RetryStrategy
+  }
 }
 
 export type TLSParams =

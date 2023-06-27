@@ -1,6 +1,15 @@
 import Stream from 'stream'
-import type { ExecResult, InsertResult, TLSParams } from './connection'
-import { type Connection, createConnection } from './connection'
+import type {
+  ExecResult,
+  InsertResult,
+  RetryStrategy,
+  TLSParams,
+} from './connection'
+import {
+  type Connection,
+  createConnection,
+  NoRetryStrategy,
+} from './connection'
 import type { Logger } from './logger'
 import { DefaultLogger, LogWriter } from './logger'
 import { isStream, mapStream } from './utils'
@@ -43,6 +52,27 @@ export interface ClickHouseClientConfigOptions {
   }
   tls?: BasicTLSOptions | MutualTLSOptions
   session_id?: string
+  /** HTTP Keep-Alive related settings */
+  keep_alive?: {
+    /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
+    enabled?: boolean
+    /** Sockets housekeeping settings */
+    sockets?: {
+      /** How long to keep a particular open socket alive (in milliseconds).
+       * Should be less than the server setting
+       * (see `keep_alive_timeout` in server's `config.xml`).
+       * Default value: 2500
+       * (based on the default ClickHouse server setting, which is 3000) */
+      socket_ttl: number
+      /** If the client detects a potentially expired socket based on the
+       * {@link socket_ttl}, and if a {@link RetryStrategy}
+       * other than {@link NoRetryStrategy} is provided,
+       * this socket will be immediately destroyed before sending the request,
+       * and this request will be retried with a new socket.
+       * Default: {@link NoRetryStrategy} (no retries) */
+      expired_socket_retry_strategy: RetryStrategy
+    }
+  }
 }
 
 interface BasicTLSOptions {
@@ -143,13 +173,19 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
     },
     username: config.username ?? 'default',
     password: config.password ?? '',
-    application: config.application ?? 'clickhouse-js',
     database: config.database ?? 'default',
     clickhouse_settings: config.clickhouse_settings ?? {},
     log: {
       LoggerClass: config.log?.LoggerClass ?? DefaultLogger,
     },
     session_id: config.session_id,
+    keep_alive: {
+      enabled: config.keep_alive?.enabled ?? true,
+      socket_ttl: config.keep_alive?.sockets?.socket_ttl ?? 2500,
+      expired_socket_retry_strategy:
+        config?.keep_alive?.sockets?.expired_socket_retry_strategy ??
+        NoRetryStrategy,
+    },
   }
 }
 

@@ -2,6 +2,9 @@ import type { Logger } from '../../src'
 import type { ErrorLogParams, LogParams } from '../../src/logger'
 
 export class TestLogger implements Logger {
+  trace({ module, message, args }: LogParams) {
+    console.trace(formatMessage({ module, message }), args || '')
+  }
   debug({ module, message, args }: LogParams) {
     console.debug(formatMessage({ module, message }), args || '')
   }

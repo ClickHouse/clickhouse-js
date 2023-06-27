@@ -60,7 +60,7 @@ describe('config', () => {
     })
 
     it('should use the default logger implementation', async () => {
-      process.env[logLevelKey] = 'DEBUG'
+      process.env[logLevelKey] = 'TRACE'
       client = createTestClient()
       const consoleSpy = jest.spyOn(console, 'debug')
       await client.ping()
@@ -211,6 +211,9 @@ describe('config', () => {
   })
 
   class TestLogger implements Logger {
+    trace(params: LogParams) {
+      logs.push(params)
+    }
     debug(params: LogParams) {
       logs.push(params)
     }
