@@ -17,14 +17,7 @@ export {
 } from './client'
 
 export { Row, ResultSet } from './result'
-export type {
-  Connection,
-  ExecResult,
-  InsertResult,
-  RetryStrategy,
-} from './connection'
-
-export { NoRetryStrategy, SimpleRetryStrategy } from './connection'
+export type { Connection, ExecResult, InsertResult } from './connection'
 
 export type { DataFormat } from './data_formatter'
 export type { ClickHouseError } from './error'

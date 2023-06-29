@@ -4,7 +4,6 @@ import Stream from 'stream'
 import Util from 'util'
 import Zlib from 'zlib'
 import type { ConnectionParams, QueryResult } from '../../src/connection'
-import { NoRetryStrategy } from '../../src/connection'
 import { HttpAdapter } from '../../src/connection/adapter'
 import { guid, retryOnFailure, TestLogger } from '../utils'
 import { getAsText } from '../../src/utils'
@@ -540,7 +539,7 @@ describe('HttpAdapter', () => {
           keep_alive: {
             enabled: true,
             socket_ttl: 2500,
-            expired_socket_retry_strategy: NoRetryStrategy,
+            retry_on_expired_socket: false,
           },
         },
         ...config,
@@ -566,7 +565,14 @@ describe('HttpAdapter', () => {
 class MyTestHttpAdapter extends BaseHttpAdapter {
   constructor(application_id?: string) {
     super(
-      { application_id } as ConnectionParams,
+      {
+        application_id,
+        keep_alive: {
+          enabled: true,
+          socket_ttl: 2500,
+          retry_on_expired_socket: true,
+        },
+      } as ConnectionParams,
       new TestLogger(),
       {} as Http.Agent
     )

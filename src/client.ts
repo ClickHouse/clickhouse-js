@@ -1,15 +1,6 @@
 import Stream from 'stream'
-import type {
-  ExecResult,
-  InsertResult,
-  RetryStrategy,
-  TLSParams,
-} from './connection'
-import {
-  type Connection,
-  createConnection,
-  NoRetryStrategy,
-} from './connection'
+import type { ExecResult, InsertResult, TLSParams } from './connection'
+import { type Connection, createConnection } from './connection'
 import type { Logger } from './logger'
 import { DefaultLogger, LogWriter } from './logger'
 import { isStream, mapStream } from './utils'
@@ -23,55 +14,61 @@ import type { ClickHouseSettings } from './settings'
 import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 
 export interface ClickHouseClientConfigOptions {
-  /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
+  /** A ClickHouse instance URL.
+   * <br/> Default value: `http://localhost:8123`. */
   host?: string
-  /** The request timeout in milliseconds. Default value: `30_000`. */
+  /** The request timeout in milliseconds.
+   * <br/> Default value: `30_000`. */
   request_timeout?: number
-  /** Maximum number of sockets to allow per host. Default value: `Infinity`. */
+  /** Maximum number of sockets to allow per host.
+   * <br/> Default value: `Infinity`. */
   max_open_connections?: number
 
   compression?: {
-    /** `response: true` instructs ClickHouse server to respond with compressed response body. Default: true. */
+    /** `response: true` instructs ClickHouse server to respond with
+     * compressed response body. <br/> Default: true. */
     response?: boolean
-    /** `request: true` enabled compression on the client request body. Default: false. */
+    /** `request: true` enabled compression on the client request body.
+     * <br/> Default: false. */
     request?: boolean
   }
-  /** The name of the user on whose behalf requests are made. Default: 'default'. */
+  /** The name of the user on whose behalf requests are made.
+   * <br/> Default: 'default'. */
   username?: string
-  /** The user password. Default: ''. */
+  /** The user password. <br/> Default: ''. */
   password?: string
-  /** The name of the application using the nodejs client. Default: empty. */
+  /** The name of the application using the nodejs client.
+   * <br/> Default: empty. */
   application?: string
-  /** Database name to use. Default value: `default`. */
+  /** Database name to use. <br/> Default value: `default`. */
   database?: string
-  /** ClickHouse settings to apply to all requests. Default value: {} */
+  /** ClickHouse settings to apply to all requests. <br/> Default value: {} */
   clickhouse_settings?: ClickHouseSettings
   log?: {
-    /** A class to instantiate a custom logger implementation. */
+    /** A class to instantiate a custom logger implementation.
+     * <br/> Default: {@link DefaultLogger} */
     LoggerClass?: new () => Logger
   }
   tls?: BasicTLSOptions | MutualTLSOptions
   session_id?: string
   /** HTTP Keep-Alive related settings */
   keep_alive?: {
-    /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
+    /** Enable or disable HTTP Keep-Alive mechanism. <br/> Default: true */
     enabled?: boolean
-    /** Sockets housekeeping settings */
-    sockets?: {
-      /** How long to keep a particular open socket alive (in milliseconds).
-       * Should be less than the server setting
-       * (see `keep_alive_timeout` in server's `config.xml`).
-       * Default value: 2500
-       * (based on the default ClickHouse server setting, which is 3000) */
-      socket_ttl: number
-      /** If the client detects a potentially expired socket based on the
-       * {@link socket_ttl}, and if a {@link RetryStrategy}
-       * other than {@link NoRetryStrategy} is provided,
-       * this socket will be immediately destroyed before sending the request,
-       * and this request will be retried with a new socket.
-       * Default: {@link NoRetryStrategy} (no retries) */
-      expired_socket_retry_strategy: RetryStrategy
-    }
+    /** How long to keep a particular open socket alive
+     * on the client side (in milliseconds).
+     * Should be less than the server setting
+     * (see `keep_alive_timeout` in server's `config.xml`). <br/>
+     * Currently, has no effect if {@link retry_on_expired_socket}
+     * is unset or false. <br/> Default value: 2500
+     * (based on the default ClickHouse server setting, which is 3000) */
+    socket_ttl?: number
+    /** If the client detects a potentially expired socket based on the
+     * {@link socket_ttl}, this socket will be immediately destroyed
+     * before sending the request, and this request will be retried
+     * with a new socket up to 3 times.
+     * <br/> * Default: false (no retries) */
+    retry_on_expired_socket?: boolean
   }
 }
 
@@ -181,10 +178,9 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
     session_id: config.session_id,
     keep_alive: {
       enabled: config.keep_alive?.enabled ?? true,
-      socket_ttl: config.keep_alive?.sockets?.socket_ttl ?? 2500,
-      expired_socket_retry_strategy:
-        config?.keep_alive?.sockets?.expired_socket_retry_strategy ??
-        NoRetryStrategy,
+      socket_ttl: config.keep_alive?.socket_ttl ?? 2500,
+      retry_on_expired_socket:
+        config.keep_alive?.retry_on_expired_socket ?? false,
     },
   }
 }

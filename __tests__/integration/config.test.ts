@@ -60,9 +60,9 @@ describe('config', () => {
     })
 
     it('should use the default logger implementation', async () => {
-      process.env[logLevelKey] = 'TRACE'
+      process.env[logLevelKey] = 'DEBUG'
       client = createTestClient()
-      const consoleSpy = jest.spyOn(console, 'debug')
+      const consoleSpy = jest.spyOn(console, 'log')
       await client.ping()
       // logs[0] are about current log level
       expect(consoleSpy).toHaveBeenNthCalledWith(
@@ -90,14 +90,13 @@ describe('config', () => {
       process.env[logLevelKey] = 'DEBUG'
       client = createTestClient({
         log: {
-          // enable: true,
           LoggerClass: TestLogger,
         },
       })
       await client.ping()
       // logs[0] are about current log level
       expect(logs[1]).toEqual({
-        module: 'HTTP Adapter',
+        module: 'Connection',
         message: 'Got a response from ClickHouse',
         args: expect.objectContaining({
           request_path: '/ping',

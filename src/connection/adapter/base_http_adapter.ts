@@ -23,7 +23,6 @@ import type { ClickHouseSettings } from '../../settings'
 import { getUserAgent } from '../../utils/user_agent'
 import * as uuid from 'uuid'
 import type * as net from 'net'
-import type { RetryStrategy } from '../retry_strategy'
 
 export interface RequestParams {
   method: 'GET' | 'POST'
@@ -88,12 +87,12 @@ const expiredSocketMessage = 'expired socket'
 
 export abstract class BaseHttpAdapter implements Connection {
   protected readonly headers: Http.OutgoingHttpHeaders
-  private readonly retry_strategy?: RetryStrategy
-  private readonly known_sockets = new Map<
-    string,
+  private readonly retry_expired_sockets: boolean
+  private readonly known_sockets = new WeakMap<
+    net.Socket,
     {
+      id: string
       last_used_time: number
-      timeout_id?: NodeJS.Timeout
     }
   >()
   protected constructor(
@@ -102,7 +101,9 @@ export abstract class BaseHttpAdapter implements Connection {
     protected readonly agent: Http.Agent
   ) {
     this.headers = this.buildDefaultHeaders(config.username, config.password)
-    this.retry_strategy = this.config.keep_alive?.expired_socket_retry_strategy
+    this.retry_expired_sockets =
+      this.config.keep_alive.enabled &&
+      this.config.keep_alive.retry_on_expired_socket
   }
 
   protected buildDefaultHeaders(
@@ -129,15 +130,12 @@ export abstract class BaseHttpAdapter implements Connection {
     try {
       return await this._request(params)
     } catch (e) {
-      if (typeof e === 'string' && e === expiredSocketMessage) {
-        if (this.retry_strategy?.shouldRetry(retryCount) ?? false) {
+      if (e instanceof Error && e.message === expiredSocketMessage) {
+        if (this.retry_expired_sockets && retryCount < 3) {
           this.logger.debug({
-            module: 'HTTP Adapter',
+            module: 'Connection',
             message: `Keep-Alive socket is expired, retrying with a new one, retries so far: ${retryCount}`,
           })
-          if (this.retry_strategy?.waitForRetry !== undefined) {
-            await this.retry_strategy.waitForRetry()
-          }
           return await this.request(params, retryCount + 1)
         } else {
           throw new Error(`Socket hang up after ${retryCount} retries`)
@@ -219,61 +217,64 @@ export abstract class BaseHttpAdapter implements Connection {
         }
       }
 
-      // avoid `this` confusion in `onSocket` closure
-      const config = this.config
-      const knownSockets = this.known_sockets
-      const logger = this.logger
-      function onSocket(socket: net.Socket): void {
-        // if socket is reused
-        if ('id' in socket) {
-          logger.trace({
-            module: 'HTTP Adapter',
-            message: `Reused socket ${socket.id}`,
-          })
-          const socketInfo = knownSockets.get(socket.id as string)
-          // if a socket was reused at an unfortunate time,
-          // and is likely about to expire
-          if (socketInfo) {
+      const onSocket = (socket: net.Socket) => {
+        if (this.retry_expired_sockets) {
+          // if socket is reused
+          const socketInfo = this.known_sockets.get(socket)
+          if (socketInfo !== undefined) {
+            this.logger.trace({
+              module: 'Connection',
+              message: `Reused socket ${socketInfo.id}`,
+            })
+            // if a socket was reused at an unfortunate time,
+            // and is likely about to expire
             const isPossiblyExpired =
               Date.now() - socketInfo.last_used_time >
-              config.keep_alive.socket_ttl
+              this.config.keep_alive.socket_ttl
             if (isPossiblyExpired) {
-              logger.trace({
-                module: 'HTTP Adapter',
+              this.logger.trace({
+                module: 'Connection',
                 message: 'Socket should be expired - terminate it',
               })
-              knownSockets.delete(socket.id as string)
+              this.known_sockets.delete(socket)
               socket.destroy() // immediately terminate the connection
               request.destroy()
-              reject(expiredSocketMessage)
+              reject(new Error(expiredSocketMessage))
             } else {
-              logger.trace({
-                module: 'HTTP Adapter',
-                message: `Socket ${socket.id} is safe to be reused`,
+              this.logger.trace({
+                module: 'Connection',
+                message: `Socket ${socketInfo.id} is safe to be reused`,
               })
-              knownSockets.set(socket.id as string, {
+              this.known_sockets.set(socket, {
+                ...socketInfo,
                 last_used_time: Date.now(),
               })
               pipeStream()
             }
+          } else {
+            const socketId = uuid.v4()
+            this.logger.trace({
+              module: 'Connection',
+              message: `Using a new socket ${socketId}`,
+            })
+            Object.assign(socket, { id: socketId })
+            this.known_sockets.set(socket, {
+              id: socketId,
+              last_used_time: Date.now(),
+            })
+            pipeStream()
           }
         } else {
-          const socketId = uuid.v4()
-          logger.trace({
-            module: 'HTTP Adapter',
-            message: `Using a new socket ${socketId}`,
-          })
-          Object.assign(socket, { id: socketId })
-          knownSockets.set(socketId, {
-            last_used_time: Date.now(),
-          })
+          // keep alive is disabled or retry mechanism is not enabled;
+          // no need to track the reused sockets
           pipeStream()
         }
+
         // this is for request timeout only.
         // The socket won't be actually destroyed,
         // and it will be returned to the pool.
         // TODO: investigate if can actually remove the idle sockets properly
-        socket.setTimeout(config.request_timeout, onTimeout)
+        socket.setTimeout(this.config.request_timeout, onTimeout)
       }
 
       function onTimeout(): void {
@@ -413,7 +414,7 @@ export abstract class BaseHttpAdapter implements Connection {
     const { authorization, host, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
     this.logger.debug({
-      module: 'HTTP Adapter',
+      module: 'Connection',
       message: 'Got a response from ClickHouse',
       args: {
         request_method: params.method,
