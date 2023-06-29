@@ -15,6 +15,7 @@
   <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
   <access_control_path>/var/lib/clickhouse/access/</access_control_path>
   <keep_alive_timeout>3</keep_alive_timeout>
+
   <logger>
     <level>debug</level>
     <log>/var/log/clickhouse-server/clickhouse-server.log</log>

@@ -1,3 +1,40 @@
+## 0.1.1
+
+## New features
+
+* Expired socket detection on the client side when using Keep-Alive. If a potentially expired socket is detected,
+and retry is enabled in the configuration, both socket and request will be immediately destroyed (before sending the data),
+and the client will recreate the request. See `ClickHouseClientConfigOptions.keep_alive` for more details. Disabled by default.
+* Allow disabling Keep-Alive feature entirely.
+* `TRACE` log level.
+
+## Examples
+
+#### Disable Keep-Alive feature
+
+```ts
+const client = createClient({
+  keep_alive: {
+    enabled: false,
+  },
+})
+```
+
+#### Retry on expired socket
+
+```ts
+const client = createClient({
+  keep_alive: {
+    enabled: true,
+    // should be slightly less than the `keep_alive_timeout` setting in server's `config.xml`
+    // default is 3s there, so 2500 milliseconds seems to be a safe client value in this scenario
+    // another example: if your configuration has `keep_alive_timeout` set to 60s, you could put 59_000 here
+    socket_ttl: 2500,
+    retry_on_expired_socket: true,
+  },
+})
+```
+
 ## 0.1.0
 
 ## Breaking changes
