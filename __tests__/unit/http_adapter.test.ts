@@ -172,8 +172,7 @@ describe('HttpAdapter', () => {
     })
 
     describe('request compression', () => {
-      // FIXME: this one hangs for an unknown reason
-      it.skip('sends a compressed request if compress_request: true', async () => {
+      it('sends a compressed request if compress_request: true', async () => {
         const adapter = buildHttpAdapter({
           compression: {
             decompress_response: false,
@@ -202,6 +201,13 @@ describe('HttpAdapter', () => {
         void adapter.insert({
           query: 'INSERT INTO insert_compression_table',
           values,
+        })
+
+        // trigger stream pipeline
+        request.emit('socket', {
+          setTimeout: () => {
+            //
+          },
         })
 
         await retryOnFailure(async () => {
