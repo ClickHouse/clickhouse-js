@@ -132,7 +132,7 @@ export abstract class BaseHttpAdapter implements Connection {
     } catch (e) {
       if (e instanceof Error && e.message === expiredSocketMessage) {
         if (this.retry_expired_sockets && retryCount < 3) {
-          this.logger.debug({
+          this.logger.trace({
             module: 'Connection',
             message: `Keep-Alive socket is expired, retrying with a new one, retries so far: ${retryCount}`,
           })
@@ -257,7 +257,6 @@ export abstract class BaseHttpAdapter implements Connection {
               module: 'Connection',
               message: `Using a new socket ${socketId}`,
             })
-            Object.assign(socket, { id: socketId })
             this.known_sockets.set(socket, {
               id: socketId,
               last_used_time: Date.now(),
@@ -265,8 +264,8 @@ export abstract class BaseHttpAdapter implements Connection {
             pipeStream()
           }
         } else {
-          // keep alive is disabled or retry mechanism is not enabled;
-          // no need to track the reused sockets
+          // no need to track the reused sockets;
+          // keep alive is disabled or retry mechanism is not enabled
           pipeStream()
         }
 
