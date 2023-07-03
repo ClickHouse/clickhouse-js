@@ -83,14 +83,27 @@ function isDecompressionError(result: any): result is { error: Error } {
   return result.error !== undefined
 }
 
+const expiredSocketMessage = 'expired socket'
+
 export abstract class BaseHttpAdapter implements Connection {
   protected readonly headers: Http.OutgoingHttpHeaders
+  private readonly retry_expired_sockets: boolean
+  private readonly known_sockets = new WeakMap<
+    net.Socket,
+    {
+      id: string
+      last_used_time: number
+    }
+  >()
   protected constructor(
     protected readonly config: ConnectionParams,
     private readonly logger: Logger,
     protected readonly agent: Http.Agent
   ) {
     this.headers = this.buildDefaultHeaders(config.username, config.password)
+    this.retry_expired_sockets =
+      this.config.keep_alive.enabled &&
+      this.config.keep_alive.retry_on_expired_socket
   }
 
   protected buildDefaultHeaders(
@@ -110,10 +123,31 @@ export abstract class BaseHttpAdapter implements Connection {
     abort_signal?: AbortSignal
   ): Http.ClientRequest
 
-  protected async request(params: RequestParams): Promise<Stream.Readable> {
+  private async request(
+    params: RequestParams,
+    retryCount = 0
+  ): Promise<Stream.Readable> {
+    try {
+      return await this._request(params)
+    } catch (e) {
+      if (e instanceof Error && e.message === expiredSocketMessage) {
+        if (this.retry_expired_sockets && retryCount < 3) {
+          this.logger.trace({
+            module: 'Connection',
+            message: `Keep-Alive socket is expired, retrying with a new one, retries so far: ${retryCount}`,
+          })
+          return await this.request(params, retryCount + 1)
+        } else {
+          throw new Error(`Socket hang up after ${retryCount} retries`)
+        }
+      }
+      throw e
+    }
+  }
+
+  private async _request(params: RequestParams): Promise<Stream.Readable> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
-
       const request = this.createClientRequest(params, params.abort_signal)
 
       function onError(err: Error): void {
@@ -159,12 +193,87 @@ export abstract class BaseHttpAdapter implements Connection {
         removeRequestListeners()
       }
 
-      const config = this.config
-      function onSocket(socket: net.Socket): void {
-        // Force KeepAlive usage (workaround due to Node.js bug)
-        // https://github.com/nodejs/node/issues/47137#issuecomment-1477075229
-        socket.setKeepAlive(true, 1000)
-        socket.setTimeout(config.request_timeout, onTimeout)
+      function pipeStream(): void {
+        // if request.end() was called due to no data to send
+        if (request.writableEnded) {
+          return
+        }
+
+        const bodyStream = isStream(params.body)
+          ? params.body
+          : Stream.Readable.from([params.body])
+
+        const callback = (err: NodeJS.ErrnoException | null): void => {
+          if (err) {
+            removeRequestListeners()
+            reject(err)
+          }
+        }
+
+        if (params.compress_request) {
+          Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback)
+        } else {
+          Stream.pipeline(bodyStream, request, callback)
+        }
+      }
+
+      const onSocket = (socket: net.Socket) => {
+        if (this.retry_expired_sockets) {
+          // if socket is reused
+          const socketInfo = this.known_sockets.get(socket)
+          if (socketInfo !== undefined) {
+            this.logger.trace({
+              module: 'Connection',
+              message: `Reused socket ${socketInfo.id}`,
+            })
+            // if a socket was reused at an unfortunate time,
+            // and is likely about to expire
+            const isPossiblyExpired =
+              Date.now() - socketInfo.last_used_time >
+              this.config.keep_alive.socket_ttl
+            if (isPossiblyExpired) {
+              this.logger.trace({
+                module: 'Connection',
+                message: 'Socket should be expired - terminate it',
+              })
+              this.known_sockets.delete(socket)
+              socket.destroy() // immediately terminate the connection
+              request.destroy()
+              reject(new Error(expiredSocketMessage))
+            } else {
+              this.logger.trace({
+                module: 'Connection',
+                message: `Socket ${socketInfo.id} is safe to be reused`,
+              })
+              this.known_sockets.set(socket, {
+                id: socketInfo.id,
+                last_used_time: Date.now(),
+              })
+              pipeStream()
+            }
+          } else {
+            const socketId = uuid.v4()
+            this.logger.trace({
+              module: 'Connection',
+              message: `Using a new socket ${socketId}`,
+            })
+            this.known_sockets.set(socket, {
+              id: socketId,
+              last_used_time: Date.now(),
+            })
+            pipeStream()
+          }
+        } else {
+          // no need to track the reused sockets;
+          // keep alive is disabled or retry mechanism is not enabled
+          pipeStream()
+        }
+
+        // this is for request timeout only.
+        // The socket won't be actually destroyed,
+        // and it will be returned to the pool.
+        // TODO: investigate if can actually remove the idle sockets properly
+        socket.setTimeout(this.config.request_timeout, onTimeout)
       }
 
       function onTimeout(): void {
@@ -197,23 +306,6 @@ export abstract class BaseHttpAdapter implements Connection {
       }
 
       if (!params.body) return request.end()
-
-      const bodyStream = isStream(params.body)
-        ? params.body
-        : Stream.Readable.from([params.body])
-
-      const callback = (err: NodeJS.ErrnoException | null): void => {
-        if (err) {
-          removeRequestListeners()
-          reject(err)
-        }
-      }
-
-      if (params.compress_request) {
-        Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback)
-      } else {
-        Stream.pipeline(bodyStream, request, callback)
-      }
     })
   }
 
@@ -321,7 +413,7 @@ export abstract class BaseHttpAdapter implements Connection {
     const { authorization, host, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
     this.logger.debug({
-      module: 'HTTP Adapter',
+      module: 'Connection',
       message: 'Got a response from ClickHouse',
       args: {
         request_method: params.method,

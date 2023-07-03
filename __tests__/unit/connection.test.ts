@@ -6,6 +6,9 @@ describe('connection', () => {
     const adapter = createConnection(
       {
         url: new URL('http://localhost'),
+        keep_alive: {
+          enabled: true,
+        },
       } as any,
       {} as any
     )
@@ -16,6 +19,9 @@ describe('connection', () => {
     const adapter = createConnection(
       {
         url: new URL('https://localhost'),
+        keep_alive: {
+          enabled: true,
+        },
       } as any,
       {} as any
     )
@@ -27,6 +33,9 @@ describe('connection', () => {
       createConnection(
         {
           url: new URL('tcp://localhost'),
+          keep_alive: {
+            enabled: true,
+          },
         } as any,
         {} as any
       )

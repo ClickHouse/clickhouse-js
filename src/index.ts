@@ -18,6 +18,7 @@ export {
 
 export { Row, ResultSet } from './result'
 export type { Connection, ExecResult, InsertResult } from './connection'
+
 export type { DataFormat } from './data_formatter'
 export type { ClickHouseError } from './error'
 export type { Logger } from './logger'

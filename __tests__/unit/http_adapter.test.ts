@@ -203,6 +203,13 @@ describe('HttpAdapter', () => {
           values,
         })
 
+        // trigger stream pipeline
+        request.emit('socket', {
+          setTimeout: () => {
+            //
+          },
+        })
+
         await retryOnFailure(async () => {
           expect(finalResult!.toString('utf8')).toEqual(values)
         })
@@ -535,6 +542,11 @@ describe('HttpAdapter', () => {
           username: '',
           password: '',
           database: '',
+          keep_alive: {
+            enabled: true,
+            socket_ttl: 2500,
+            retry_on_expired_socket: false,
+          },
         },
         ...config,
       },
@@ -559,7 +571,14 @@ describe('HttpAdapter', () => {
 class MyTestHttpAdapter extends BaseHttpAdapter {
   constructor(application_id?: string) {
     super(
-      { application_id } as ConnectionParams,
+      {
+        application_id,
+        keep_alive: {
+          enabled: true,
+          socket_ttl: 2500,
+          retry_on_expired_socket: true,
+        },
+      } as ConnectionParams,
       new TestLogger(),
       {} as Http.Agent
     )

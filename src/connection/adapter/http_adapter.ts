@@ -8,7 +8,7 @@ import { BaseHttpAdapter } from './base_http_adapter'
 export class HttpAdapter extends BaseHttpAdapter implements Connection {
   constructor(config: ConnectionParams, logger: LogWriter) {
     const agent = new Http.Agent({
-      keepAlive: true,
+      keepAlive: config.keep_alive.enabled,
       maxSockets: config.max_open_connections,
     })
     super(config, logger, agent)

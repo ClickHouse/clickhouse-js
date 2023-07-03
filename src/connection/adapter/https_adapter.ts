@@ -8,7 +8,7 @@ import type Http from 'http'
 export class HttpsAdapter extends BaseHttpAdapter implements Connection {
   constructor(config: ConnectionParams, logger: LogWriter) {
     const agent = new Https.Agent({
-      keepAlive: true,
+      keepAlive: config.keep_alive.enabled,
       maxSockets: config.max_open_connections,
       ca: config.tls?.ca_cert,
       key: config.tls?.type === 'Mutual' ? config.tls.key : undefined,

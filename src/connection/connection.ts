@@ -21,6 +21,12 @@ export interface ConnectionParams {
   username: string
   password: string
   database: string
+
+  keep_alive: {
+    enabled: boolean
+    socket_ttl: number
+    retry_on_expired_socket: boolean
+  }
 }
 
 export type TLSParams =
