@@ -246,7 +246,7 @@ export abstract class BaseHttpAdapter implements Connection {
                 message: `Socket ${socketInfo.id} is safe to be reused`,
               })
               this.known_sockets.set(socket, {
-                ...socketInfo,
+                id: socketInfo.id,
                 last_used_time: Date.now(),
               })
               pipeStream()
