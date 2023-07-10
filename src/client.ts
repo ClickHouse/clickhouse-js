@@ -14,6 +14,10 @@ import type { ClickHouseSettings } from './settings'
 import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 
 export interface ClickHouseClientConfigOptions {
+  /** ClickHouse connection string url
+   * ```clickhouse://[user_info@][hosts_and_ports][/dbname][?query_parameters]```
+   */
+  url?: string
   /** A ClickHouse instance URL.
    * <br/> Default value: `http://localhost:8123`. */
   host?: string
@@ -135,11 +139,13 @@ function validateConfig({ url }: NormalizedConfig): void {
   // TODO add SSL validation
 }
 
-function createUrl(host: string): URL {
+function createUrl(url: string): URL {
   try {
-    return new URL(host)
+    return new URL(url)
   } catch (err) {
-    throw new Error('Configuration parameter "host" contains malformed url.')
+    throw new Error(
+      'Configuration parameter "host" or "url" contains malformed url.'
+    )
   }
 }
 
@@ -158,9 +164,14 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
       }
     }
   }
+
+  const url = config.url && createUrl(config.url)
+
   return {
     application_id: config.application,
-    url: createUrl(config.host ?? 'http://localhost:8123'),
+    url: createUrl(
+      config.host ?? (url && `http://${url.host}`) ?? 'http://localhost:8123'
+    ),
     request_timeout: config.request_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? Infinity,
     tls,
@@ -168,10 +179,13 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
       decompress_response: config.compression?.response ?? true,
       compress_request: config.compression?.request ?? false,
     },
-    username: config.username ?? 'default',
-    password: config.password ?? '',
-    database: config.database ?? 'default',
-    clickhouse_settings: config.clickhouse_settings ?? {},
+    username: config.username ?? (url && url.username) ?? 'default',
+    password: config.password ?? (url && url.password) ?? '',
+    database: config.database ?? (url && url.pathname) ?? 'default',
+    clickhouse_settings:
+      config.clickhouse_settings ??
+      (url && Object.fromEntries(url.searchParams)) ??
+      {},
     log: {
       LoggerClass: config.log?.LoggerClass ?? DefaultLogger,
     },
