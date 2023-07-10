@@ -139,13 +139,11 @@ function validateConfig({ url }: NormalizedConfig): void {
   // TODO add SSL validation
 }
 
-function createUrl(url: string): URL {
+function createUrl(url: string, type: 'host' | 'url'): URL {
   try {
     return new URL(url)
   } catch (err) {
-    throw new Error(
-      'Configuration parameter "host" or "url" contains malformed url.'
-    )
+    throw new Error(`Configuration parameter "${type}" contains malformed url.`)
   }
 }
 
@@ -165,12 +163,13 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
     }
   }
 
-  const url = config.url && createUrl(config.url)
+  const url = config.url && createUrl(config.url, 'url')
 
   return {
     application_id: config.application,
     url: createUrl(
-      config.host ?? (url && `http://${url.host}`) ?? 'http://localhost:8123'
+      config.host ?? (url && `http://${url.host}`) ?? 'http://localhost:8123',
+      'host'
     ),
     request_timeout: config.request_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? Infinity,

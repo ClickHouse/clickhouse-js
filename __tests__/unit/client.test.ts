@@ -2,9 +2,15 @@ import type { ClickHouseClientConfigOptions } from '../../src'
 import { createClient } from '../../src'
 
 describe('createClient', () => {
-  it('throws on incorrect "host" or "url" config value', () => {
+  it('throws on incorrect "host" config value', () => {
     expect(() => createClient({ host: 'foo' })).toThrowError(
-      'Configuration parameter "host" or "url" contains malformed url.'
+      'Configuration parameter "host" contains malformed url.'
+    )
+  })
+
+  it('throws on incorrect "url" config value', () => {
+    expect(() => createClient({ url: 'bar' })).toThrowError(
+      'Configuration parameter "url" contains malformed url.'
     )
   })
 
