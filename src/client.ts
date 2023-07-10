@@ -180,7 +180,7 @@ function normalizeConfig(config: ClickHouseClientConfigOptions) {
     },
     username: config.username ?? (url && url.username) ?? 'default',
     password: config.password ?? (url && url.password) ?? '',
-    database: config.database ?? (url && url.pathname) ?? 'default',
+    database: config.database ?? (url && url.pathname.slice(1)) ?? 'default',
     clickhouse_settings:
       config.clickhouse_settings ??
       (url && Object.fromEntries(url.searchParams)) ??
