@@ -3,10 +3,10 @@ import { createClient } from '@clickhouse/client'
 void (async () => {
   const tableName = 'array_json_each_row'
   const client = createClient()
-  await client.exec({
+  await client.command({
     query: `DROP TABLE IF EXISTS ${tableName}`,
   })
-  await client.exec({
+  await client.command({
     query: `
       CREATE TABLE ${tableName}
       (id UInt64, name String)

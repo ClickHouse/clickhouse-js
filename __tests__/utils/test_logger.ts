@@ -5,29 +5,37 @@ import type {
 } from '@clickhouse/client-common/logger'
 
 export class TestLogger implements Logger {
+  trace({ module, message, args }: LogParams) {
+    console.log(formatMessage({ level: 'TRACE', module, message }), args || '')
+  }
   debug({ module, message, args }: LogParams) {
-    console.debug(formatMessage({ module, message }), args || '')
+    console.log(formatMessage({ level: 'DEBUG', module, message }), args || '')
   }
   info({ module, message, args }: LogParams) {
-    console.info(formatMessage({ module, message }), args || '')
+    console.log(formatMessage({ level: 'INFO', module, message }), args || '')
   }
   warn({ module, message, args }: LogParams) {
-    console.warn(formatMessage({ module, message }), args || '')
+    console.log(formatMessage({ level: 'WARN', module, message }), args || '')
   }
   error({ module, message, args, err }: ErrorLogParams) {
-    console.error(formatMessage({ module, message }), args || '', err)
+    console.error(
+      formatMessage({ level: 'ERROR', module, message }),
+      args || '',
+      err
+    )
   }
 }
 
 function formatMessage({
+  level,
   module,
   message,
 }: {
+  level: string
   module: string
   message: string
 }): string {
-  // return `[${module}][${getTestName()}] ${message}`
-  return `[${module}] ${message}`
+  return `[${level}][${module}] ${message}`
 }
 
 // function getTestName() {

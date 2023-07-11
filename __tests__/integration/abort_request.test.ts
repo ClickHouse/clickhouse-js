@@ -1,6 +1,9 @@
-import type { ResponseJSON } from '@clickhouse/client-common'
-import { type ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient, guid } from '../utils'
+import type { Row } from '../../src'
+import { type ClickHouseClient, type ResponseJSON } from '../../src'
+import { createTestClient, guid, makeObjectStream } from '../utils'
+import { createSimpleTable } from './fixtures/simple_table'
+import type Stream from 'stream'
+import { jsonValues } from './fixtures/test_data'
 
 describe('abort request', () => {
   let client: ClickHouseClient
@@ -19,7 +22,7 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
       controller.abort()
 
@@ -35,18 +38,101 @@ describe('abort request', () => {
       const selectPromise = client.query({
         query: 'SELECT sleep(3)',
         format: 'CSV',
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
 
-      setTimeout(() => {
-        controller.abort()
-      }, 50)
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          controller.abort()
+          resolve(undefined)
+        }, 50)
+      })
+
+      await expect(selectPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('The request was aborted'),
+        })
+      )
+    })
+
+    it('should not throw an error when aborted the second time', async () => {
+      const controller = new AbortController()
+      const selectPromise = client.query({
+        query: 'SELECT sleep(3)',
+        format: 'CSV',
+        abort_signal: controller.signal,
+      })
+
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          controller.abort()
+          resolve(undefined)
+        }, 50)
+      })
+
+      controller.abort('foo bar') // no-op, does not throw here
 
       await expectAsync(selectPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
         })
       )
+    })
+
+    it('cancels a select query while reading response', async () => {
+      const controller = new AbortController()
+      const selectPromise = client
+        .query({
+          query: 'SELECT * from system.numbers',
+          format: 'JSONCompactEachRow',
+          abort_signal: controller.signal,
+        })
+        .then(async (rows) => {
+          const stream = rows.stream()
+          for await (const chunk of stream) {
+            const [[number]] = chunk.json()
+            // abort when reach number 3
+            if (number === '3') {
+              controller.abort()
+            }
+          }
+        })
+
+      // There is no assertion against an error message.
+      // A race condition on events might lead to
+      // Request Aborted or ERR_STREAM_PREMATURE_CLOSE errors.
+      await expect(selectPromise).rejects.toThrowError()
+    })
+
+    it('cancels a select query while reading response by closing response stream', async () => {
+      const selectPromise = client
+        .query({
+          query: 'SELECT * from system.numbers',
+          format: 'JSONCompactEachRow',
+        })
+        .then(async function (rows) {
+          const stream = rows.stream()
+          for await (const rows of stream) {
+            rows.forEach((row: Row) => {
+              const [[number]] = row.json<[[string]]>()
+              // abort when reach number 3
+              if (number === '3') {
+                stream.destroy()
+              }
+            })
+          }
+        })
+      // There was a breaking change in Node.js 18.x+ behavior
+      if (
+        process.version.startsWith('v18') ||
+        process.version.startsWith('v20')
+      ) {
+        await expect(selectPromise).rejects.toMatchObject({
+          message: 'Premature close',
+        })
+      } else {
+        expect(await selectPromise).toEqual(undefined)
+      }
     })
 
     // FIXME: it does not work with ClickHouse Cloud.
@@ -58,7 +144,7 @@ describe('abort request', () => {
       console.log(`Long running query: ${longRunningQuery}`)
       void client.query({
         query: longRunningQuery,
-        abort_controller: controller,
+        abort_signal: controller.signal,
         format: 'JSONCompactEachRow',
       })
 
@@ -87,9 +173,9 @@ describe('abort request', () => {
             .query({
               query: `SELECT sleep(0.5), ${i} AS foo`,
               format: 'JSONEachRow',
-              abort_controller:
+              abort_signal:
                 // we will cancel the request that should've yielded '3'
-                shouldAbort ? controller : undefined,
+                shouldAbort ? controller.signal : undefined,
             })
             .then((r) => r.json<Res>())
             .then((r) => results.push(r[0].foo))
@@ -107,6 +193,122 @@ describe('abort request', () => {
       await selectPromises
 
       expect(results.sort((a, b) => a - b)).toEqual([0, 1, 2, 4])
+    })
+  })
+
+  describe('insert', () => {
+    let tableName: string
+    beforeEach(async () => {
+      tableName = `abort_request_insert_test_${guid()}`
+      await createSimpleTable(client, tableName)
+    })
+
+    it('cancels an insert query before it is sent', async () => {
+      const controller = new AbortController()
+      const stream = makeObjectStream()
+      const insertPromise = client.insert({
+        table: tableName,
+        values: stream,
+        abort_signal: controller.signal,
+      })
+      controller.abort()
+
+      await expect(insertPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('The request was aborted'),
+        })
+      )
+    })
+
+    it('cancels an insert query before it is sent by closing a stream', async () => {
+      const stream = makeObjectStream()
+      stream.push(null)
+
+      expect(
+        await client.insert({
+          table: tableName,
+          values: stream,
+        })
+      ).toEqual(
+        expect.objectContaining({
+          query_id: expect.any(String),
+        })
+      )
+    })
+
+    it('cancels an insert query after it is sent', async () => {
+      const controller = new AbortController()
+      const stream = makeObjectStream()
+      const insertPromise = client.insert({
+        table: tableName,
+        values: stream,
+        abort_signal: controller.signal,
+      })
+
+      setTimeout(() => {
+        controller.abort()
+      }, 50)
+
+      await expect(insertPromise).rejects.toEqual(
+        expect.objectContaining({
+          message: expect.stringMatching('The request was aborted'),
+        })
+      )
+    })
+
+    it('should cancel one insert while keeping the others', async () => {
+      function shouldAbort(i: number) {
+        // we will cancel the request
+        // that should've inserted a value at index 3
+        return i === 3
+      }
+
+      const controller = new AbortController()
+      const streams: Stream.Readable[] = Array(jsonValues.length)
+      const insertStreamPromises = Promise.all(
+        jsonValues.map((value, i) => {
+          const stream = makeObjectStream()
+          streams[i] = stream
+          stream.push(value)
+          const insertPromise = client.insert({
+            values: stream,
+            format: 'JSONEachRow',
+            table: tableName,
+            abort_signal: shouldAbort(i) ? controller.signal : undefined,
+          })
+          if (shouldAbort(i)) {
+            return insertPromise.catch(() => {
+              // ignored
+            })
+          }
+          return insertPromise
+        })
+      )
+
+      setTimeout(() => {
+        streams.forEach((stream, i) => {
+          if (shouldAbort(i)) {
+            controller.abort()
+          }
+          stream.push(null)
+        })
+      }, 100)
+
+      await insertStreamPromises
+
+      const result = await client
+        .query({
+          query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+          format: 'JSONEachRow',
+        })
+        .then((r) => r.json())
+
+      expect(result).toEqual([
+        jsonValues[0],
+        jsonValues[1],
+        jsonValues[2],
+        jsonValues[4],
+      ])
     })
   })
 })

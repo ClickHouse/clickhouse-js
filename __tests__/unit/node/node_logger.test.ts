@@ -6,7 +6,7 @@ import type {
 import { LogWriter } from '@clickhouse/client-common/logger'
 
 describe('Node.js Logger', () => {
-  type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+  type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error'
 
   const logLevelKey = 'CLICKHOUSE_LOG_LEVEL'
   const module = 'LoggerUnitTest'
@@ -32,6 +32,40 @@ describe('Node.js Logger', () => {
     const logWriter = new LogWriter(new TestLogger())
     logEveryLogLevel(logWriter)
     expect(logs.length).toEqual(0)
+  })
+
+  it('should explicitly use TRACE', async () => {
+    process.env[logLevelKey] = 'TRACE'
+    const logWriter = new LogWriter(new TestLogger())
+    checkLogLevelSet('TRACE')
+    logEveryLogLevel(logWriter)
+    expect(logs[0]).toEqual({
+      level: 'trace',
+      message,
+      module,
+    })
+    expect(logs[1]).toEqual({
+      level: 'debug',
+      message,
+      module,
+    })
+    expect(logs[2]).toEqual({
+      level: 'info',
+      message,
+      module,
+    })
+    expect(logs[3]).toEqual({
+      level: 'warn',
+      message,
+      module,
+    })
+    expect(logs[4]).toEqual({
+      level: 'error',
+      message,
+      module,
+      err,
+    })
+    expect(logs.length).toEqual(5)
   })
 
   it('should explicitly use DEBUG', async () => {
@@ -68,7 +102,23 @@ describe('Node.js Logger', () => {
     const logWriter = new LogWriter(new TestLogger())
     checkLogLevelSet('INFO')
     logEveryLogLevel(logWriter)
-    checkInfoLogs()
+    expect(logs[0]).toEqual({
+      level: 'info',
+      message,
+      module,
+    })
+    expect(logs[1]).toEqual({
+      level: 'warn',
+      message,
+      module,
+    })
+    expect(logs[2]).toEqual({
+      level: 'error',
+      message,
+      module,
+      err,
+    })
+    expect(logs.length).toEqual(3)
   })
 
   it('should explicitly use WARN', async () => {
@@ -114,7 +164,7 @@ describe('Node.js Logger', () => {
   }
 
   function logEveryLogLevel(logWriter: LogWriter) {
-    for (const level of ['debug', 'info', 'warn']) {
+    for (const level of ['trace', 'debug', 'info', 'warn']) {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       logWriter[level]({
@@ -129,27 +179,10 @@ describe('Node.js Logger', () => {
     })
   }
 
-  function checkInfoLogs() {
-    expect(logs[0]).toEqual({
-      level: 'info',
-      message,
-      module,
-    })
-    expect(logs[1]).toEqual({
-      level: 'warn',
-      message,
-      module,
-    })
-    expect(logs[2]).toEqual({
-      level: 'error',
-      message,
-      module,
-      err,
-    })
-    expect(logs.length).toEqual(3)
-  }
-
   class TestLogger implements Logger {
+    trace(params: LogParams) {
+      logs.push({ ...params, level: 'trace' })
+    }
     debug(params: LogParams) {
       logs.push({ ...params, level: 'debug' })
     }

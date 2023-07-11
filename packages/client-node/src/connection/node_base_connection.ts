@@ -7,6 +7,8 @@ import type {
   BaseQueryParams,
   Connection,
   ConnectionParams,
+  ExecParams,
+  ExecResult,
   InsertParams,
   InsertResult,
   QueryResult,
@@ -37,7 +39,7 @@ export interface RequestParams {
   method: 'GET' | 'POST'
   url: URL
   body?: string | Stream.Readable
-  abort_controller?: AbortController
+  abort_signal?: AbortSignal
   decompress_response?: boolean
   compress_request?: boolean
 }
@@ -46,10 +48,21 @@ export abstract class NodeBaseConnection
   implements Connection<Stream.Readable>
 {
   protected readonly headers: Http.OutgoingHttpHeaders
+  private readonly retry_expired_sockets: boolean
+  private readonly known_sockets = new WeakMap<
+    net.Socket,
+    {
+      id: string
+      last_used_time: number
+    }
+  >()
   protected constructor(
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent
   ) {
+    this.retry_expired_sockets =
+      this.params.keep_alive.enabled &&
+      this.params.keep_alive.retry_on_expired_socket
     this.headers = this.buildDefaultHeaders(params.username, params.password)
   }
 
@@ -66,18 +79,37 @@ export abstract class NodeBaseConnection
   }
 
   protected abstract createClientRequest(
-    url: URL,
-    params: RequestParams
+    params: RequestParams,
+    abort_signal?: AbortSignal
   ): Http.ClientRequest
 
-  protected async request(params: RequestParams): Promise<Stream.Readable> {
+  private async request(
+    params: RequestParams,
+    retryCount = 0
+  ): Promise<Stream.Readable> {
+    try {
+      return await this._request(params)
+    } catch (e) {
+      if (e instanceof Error && e.message === expiredSocketMessage) {
+        if (this.retry_expired_sockets && retryCount < 3) {
+          this.logger.trace({
+            module: 'Connection',
+            message: `Keep-Alive socket is expired, retrying with a new one, retries so far: ${retryCount}`,
+          })
+          return await this.request(params, retryCount + 1)
+        } else {
+          throw new Error(`Socket hang up after ${retryCount} retries`)
+        }
+      }
+      throw e
+    }
+  }
+
+  private async _request(params: RequestParams): Promise<Stream.Readable> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
+      const request = this.createClientRequest(params, params.abort_signal)
 
-      const request = this.createClientRequest(params.url, params)
-      request.once('socket', (socket) => {
-        socket.setTimeout(this.params.request_timeout)
-      })
       function onError(err: Error): void {
         removeRequestListeners()
         reject(err)
@@ -101,23 +133,6 @@ export abstract class NodeBaseConnection
         }
       }
 
-      function onTimeout(): void {
-        removeRequestListeners()
-        request.once('error', function () {
-          /**
-           * catch "Error: ECONNRESET" error which shouldn't be reported to users.
-           * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
-           * */
-        })
-        request.destroy()
-        reject(new Error('Request timed out'))
-      }
-
-      function onAbortSignal(): void {
-        // instead of deprecated request.abort()
-        request.destroy(new Error('The user aborted a request.'))
-      }
-
       function onAbort(): void {
         // Prefer 'abort' event since it always triggered unlike 'error' and 'close'
         // see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
@@ -138,62 +153,119 @@ export abstract class NodeBaseConnection
         removeRequestListeners()
       }
 
+      function pipeStream(): void {
+        // if request.end() was called due to no data to send
+        if (request.writableEnded) {
+          return
+        }
+
+        const bodyStream = isStream(params.body)
+          ? params.body
+          : Stream.Readable.from([params.body])
+
+        const callback = (err: NodeJS.ErrnoException | null): void => {
+          if (err) {
+            removeRequestListeners()
+            reject(err)
+          }
+        }
+
+        if (params.compress_request) {
+          Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback)
+        } else {
+          Stream.pipeline(bodyStream, request, callback)
+        }
+      }
+
+      const onSocket = (socket: net.Socket) => {
+        if (this.retry_expired_sockets) {
+          // if socket is reused
+          const socketInfo = this.known_sockets.get(socket)
+          if (socketInfo !== undefined) {
+            this.logger.trace({
+              module: 'Connection',
+              message: `Reused socket ${socketInfo.id}`,
+            })
+            // if a socket was reused at an unfortunate time,
+            // and is likely about to expire
+            const isPossiblyExpired =
+              Date.now() - socketInfo.last_used_time >
+              this.config.keep_alive.socket_ttl
+            if (isPossiblyExpired) {
+              this.logger.trace({
+                module: 'Connection',
+                message: 'Socket should be expired - terminate it',
+              })
+              this.known_sockets.delete(socket)
+              socket.destroy() // immediately terminate the connection
+              request.destroy()
+              reject(new Error(expiredSocketMessage))
+            } else {
+              this.logger.trace({
+                module: 'Connection',
+                message: `Socket ${socketInfo.id} is safe to be reused`,
+              })
+              this.known_sockets.set(socket, {
+                id: socketInfo.id,
+                last_used_time: Date.now(),
+              })
+              pipeStream()
+            }
+          } else {
+            const socketId = uuid.v4()
+            this.logger.trace({
+              module: 'Connection',
+              message: `Using a new socket ${socketId}`,
+            })
+            this.known_sockets.set(socket, {
+              id: socketId,
+              last_used_time: Date.now(),
+            })
+            pipeStream()
+          }
+        } else {
+          // no need to track the reused sockets;
+          // keep alive is disabled or retry mechanism is not enabled
+          pipeStream()
+        }
+
+        // this is for request timeout only.
+        // The socket won't be actually destroyed,
+        // and it will be returned to the pool.
+        // TODO: investigate if can actually remove the idle sockets properly
+        socket.setTimeout(this.config.request_timeout, onTimeout)
+      }
+
+      function onTimeout(): void {
+        removeRequestListeners()
+        request.destroy()
+        reject(new Error('Timeout error'))
+      }
+
       function removeRequestListeners(): void {
+        if (request.socket !== null) {
+          request.socket.setTimeout(0) // reset previously set timeout
+          request.socket.removeListener('timeout', onTimeout)
+        }
+        request.removeListener('socket', onSocket)
         request.removeListener('response', onResponse)
         request.removeListener('error', onError)
-        request.removeListener('timeout', onTimeout)
-        request.removeListener('abort', onAbort)
         request.removeListener('close', onClose)
-        if (params.abort_controller !== undefined) {
-          if (isEventTarget(params.abort_controller)) {
-            params.abort_controller.removeEventListener('abort', onAbortSignal)
-          } else {
-            params.abort_controller.signal.removeEventListener(
-              'abort',
-              onAbortSignal
-            )
-          }
+        if (params.abort_signal !== undefined) {
+          request.removeListener('abort', onAbort)
         }
       }
 
-      if (params.abort_controller) {
-        // We should use signal API when nodejs v14 is not supported anymore.
-        // However, it seems that Http.request doesn't abort after 'response' event.
-        // Requires an additional investigation
-        // https://nodejs.org/api/globals.html#class-abortsignal
-        params.abort_controller.signal.addEventListener(
-          'abort',
-          onAbortSignal,
-          {
-            once: true,
-          }
-        )
-      }
-
+      request.on('socket', onSocket)
       request.on('response', onResponse)
-      request.on('timeout', onTimeout)
       request.on('error', onError)
-      request.on('abort', onAbort)
       request.on('close', onClose)
 
+      if (params.abort_signal !== undefined) {
+        params.abort_signal.addEventListener('abort', onAbort, { once: true })
+      }
+
       if (!params.body) return request.end()
-
-      const bodyStream = isStream(params.body)
-        ? params.body
-        : Stream.Readable.from([params.body])
-
-      const callback = (err: NodeJS.ErrnoException | null): void => {
-        if (err) {
-          removeRequestListeners()
-          reject(err)
-        }
-      }
-
-      if (params.compress_request) {
-        Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback)
-      } else {
-        Stream.pipeline(bodyStream, request, callback)
-      }
     })
   }
 
@@ -225,7 +297,7 @@ export abstract class NodeBaseConnection
       method: 'POST',
       url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.query,
-      abort_controller: params.abort_controller,
+      abort_signal: params.abort_signal,
       decompress_response: clickhouse_settings.enable_http_compression === 1,
     })
 
@@ -235,8 +307,8 @@ export abstract class NodeBaseConnection
     }
   }
 
-  async exec(params: BaseQueryParams): Promise<QueryResult<Stream.Readable>> {
-    const query_id = getQueryId(params.query_id)
+  async exec(params: ExecParams): Promise<ExecResult> {
+    const query_id = this.getQueryId(params)
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
@@ -269,14 +341,15 @@ export abstract class NodeBaseConnection
       query_id,
     })
 
-    await this.request({
+    const stream = await this.request({
       method: 'POST',
       url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.values,
-      abort_controller: params.abort_controller,
+      abort_signal: params.abort_signal,
       compress_request: this.params.compression.compress_request,
     })
 
+    stream.destroy()
     return { query_id }
   }
 

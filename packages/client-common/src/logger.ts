@@ -5,6 +5,7 @@ export interface LogParams {
 }
 export type ErrorLogParams = LogParams & { err: Error }
 export interface Logger {
+  trace(params: LogParams): void
   debug(params: LogParams): void
   info(params: LogParams): void
   warn(params: LogParams): void
@@ -12,6 +13,10 @@ export interface Logger {
 }
 
 export class DefaultLogger implements Logger {
+  trace({ module, message, args }: LogParams): void {
+    console.trace(formatMessage({ module, message }), args)
+  }
+
   debug({ module, message, args }: LogParams): void {
     console.debug(formatMessage({ module, message }), args)
   }
@@ -36,6 +41,12 @@ export class LogWriter {
       module: 'Logger',
       message: `Log level is set to ${ClickHouseLogLevel[this.logLevel]}`,
     })
+  }
+
+  trace(params: LogParams): void {
+    if (this.logLevel <= (ClickHouseLogLevel.TRACE as number)) {
+      this.logger.trace(params)
+    }
   }
 
   debug(params: LogParams): void {

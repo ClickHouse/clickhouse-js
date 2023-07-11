@@ -223,6 +223,17 @@ describe('Node.js HttpAdapter', () => {
           values,
         })
 
+        // trigger stream pipeline
+        request.emit('socket', {
+          setTimeout: () => {
+            //
+          },
+        })
+
+        await retryOnFailure(async () => {
+          expect(finalResult!.toString('utf8')).toEqual(values)
+        })
+        assertStub('gzip')
         await sleep(100)
         expect(finalResult!.toString('utf8')).toEqual(values)
         expect(httpRequestStub).toHaveBeenCalledTimes(1)
@@ -558,27 +569,35 @@ describe('Node.js HttpAdapter', () => {
   }
 
   function buildHttpAdapter(config: Partial<ConnectionParams>) {
-    return new NodeHttpConnection({
-      ...{
-        url: new URL('http://localhost:8132'),
+    return new NodeHttpConnection(
+      {
+        ...{
+          url: new URL('http://localhost:8132'),
 
-        connect_timeout: 10_000,
-        request_timeout: 30_000,
-        compression: {
-          decompress_response: true,
-          compress_request: false,
+          connect_timeout: 10_000,
+          request_timeout: 30_000,
+          compression: {
+            decompress_response: true,
+            compress_request: false,
+          },
+          max_open_connections: Infinity,
+
+          username: '',
+          password: '',
+          database: '',
+          clickhouse_settings: {},
+
+          logWriter: new LogWriter(new TestLogger()),
+          keep_alive: {
+            enabled: true,
+            socket_ttl: 2500,
+            retry_on_expired_socket: false,
+          },
         },
-        max_open_connections: Infinity,
-
-        username: '',
-        password: '',
-        database: '',
-        clickhouse_settings: {},
-
-        logWriter: new LogWriter(new TestLogger()),
+        ...config,
       },
-      ...config,
-    })
+      new LogWriter(new TestLogger())
+    )
   }
 
   async function assertQueryResult(
@@ -601,6 +620,11 @@ class MyTestHttpAdapter extends NodeBaseConnection {
       {
         application_id,
         logWriter: new LogWriter(new TestLogger()),
+        keep_alive: {
+          enabled: true,
+          socket_ttl: 2500,
+          retry_on_expired_socket: true,
+        },
       } as ConnectionParams,
       {} as Http.Agent
     )

@@ -45,7 +45,7 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
       break
   }
   for (const query of [createUser, grant]) {
-    await client.exec({
+    await client.command({
       query,
       clickhouse_settings: {
         wait_end_of_query: 1,

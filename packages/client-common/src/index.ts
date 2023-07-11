@@ -9,8 +9,14 @@ export {
   type MakeResultSet,
   type MakeConnection,
   ClickHouseClient,
+  type CommandParams,
+  type CommandResult,
 } from './client'
 export type { Row, IResultSet } from './result'
+
+export { Row, ResultSet } from './result'
+export type { Connection, ExecResult, InsertResult } from './connection'
+
 export type { DataFormat } from './data_formatter'
 export type { ClickHouseError } from './error'
 export type { Logger } from './logger'

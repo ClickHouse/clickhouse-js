@@ -1,13 +1,10 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
-import { guid } from './guid'
-import { TestLogger } from './test_logger'
-import { getClickHouseTestEnvironment, TestEnv } from './test_env'
-import { getFromEnv } from './env'
-import type {
-  BaseClickHouseClientConfigOptions,
-  ClickHouseClient,
-} from '@clickhouse/client-common/client'
-import type { ClickHouseSettings } from '@clickhouse/client-common'
+import { guid } from "./guid";
+import { TestLogger } from "./test_logger";
+import { getClickHouseTestEnvironment, TestEnv } from "./test_env";
+import { getFromEnv } from "./env";
+import type { BaseClickHouseClientConfigOptions, ClickHouseClient } from "@clickhouse/client-common/client";
+import type { ClickHouseSettings } from "@clickhouse/client-common";
 
 let databaseName: string
 beforeAll(async () => {
@@ -90,7 +87,7 @@ export async function createRandomDatabase(
   if (getClickHouseTestEnvironment() === TestEnv.LocalCluster) {
     maybeOnCluster = `ON CLUSTER '{cluster}'`
   }
-  await client.exec({
+  await client.command({
     query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
     clickhouse_settings: {
       wait_end_of_query: 1,
@@ -107,7 +104,7 @@ export async function createTable<Stream = unknown>(
 ) {
   const env = getClickHouseTestEnvironment()
   const ddl = definition(env)
-  await client.exec({
+  await client.command({
     query: ddl,
     clickhouse_settings: {
       // Force response buffering, so we get the response only when

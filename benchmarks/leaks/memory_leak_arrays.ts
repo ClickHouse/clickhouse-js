@@ -15,7 +15,7 @@ const program = async () => {
   const client = createClient({})
   const tableName = `memory_leak_arrays_${uuid_v4().replace(/-/g, '')}`
 
-  await client.exec({
+  await client.command({
     query: `
       CREATE TABLE ${tableName}
       (

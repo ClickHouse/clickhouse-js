@@ -8,7 +8,6 @@ import {
   TestEnv,
 } from '../utils'
 import * as uuid from 'uuid'
-import type { QueryResult } from '@clickhouse/client-common/connection'
 
 describe('exec', () => {
   let client: ClickHouseClient
@@ -22,7 +21,7 @@ describe('exec', () => {
   it('sends a command to execute', async () => {
     const { ddl, tableName, engine } = getDDL()
 
-    const { query_id } = await runCommand({
+    const { query_id } = await runExec({
       query: ddl,
     })
 
@@ -40,7 +39,7 @@ describe('exec', () => {
 
     const query_id = guid()
 
-    const { query_id: q_id } = await runCommand({
+    const { query_id: q_id } = await runExec({
       query: ddl,
       query_id,
     })
@@ -56,7 +55,7 @@ describe('exec', () => {
     const { ddl, tableName } = getDDL()
     const commands = async () => {
       const command = () =>
-        runCommand({
+        runExec({
           query: ddl,
         })
       await command()
@@ -86,6 +85,10 @@ describe('exec', () => {
 
     it('should allow the use of a session', async () => {
       // Temporary tables cannot be used without a session
+      const { stream } = await sessionClient.exec({
+        query: 'CREATE TEMPORARY TABLE test_temp (val Int32)',
+      })
+      stream.destroy()
       await expectAsync(
         sessionClient.exec({
           query: 'CREATE TEMPORARY TABLE test_temp (val Int32)',
@@ -95,7 +98,7 @@ describe('exec', () => {
   })
 
   xit('can specify a parameterized query', async () => {
-    await runCommand({
+    await runExec({
       query: '',
       query_params: {
         table_name: 'example',
@@ -140,17 +143,19 @@ describe('exec', () => {
     expect(typeof table.create_table_query).toBe('string')
   }
 
-  async function runCommand(params: ExecParams): Promise<QueryResult<unknown>> {
+  async function runExec(params: ExecParams): Promise<{ query_id: string }> {
     console.log(
       `Running command with query_id ${params.query_id}:\n${params.query}`
     )
-    return client.exec({
+    const { stream, query_id } = await client.exec({
       ...params,
       clickhouse_settings: {
         // ClickHouse responds to a command when it's completely finished
         wait_end_of_query: 1,
       },
     })
+    stream.destroy()
+    return { query_id }
   }
 })
 
