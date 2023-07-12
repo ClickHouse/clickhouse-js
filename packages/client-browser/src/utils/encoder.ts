@@ -4,7 +4,7 @@ import type {
   ValuesEncoder,
 } from '@clickhouse/client-common'
 import { encodeJSON } from '@clickhouse/client-common/data_formatter'
-import { isStream } from '@clickhouse/client-browser/utils/stream'
+import { isStream } from './stream'
 
 export class BrowserValuesEncoder implements ValuesEncoder<ReadableStream> {
   encodeValues<T = unknown>(

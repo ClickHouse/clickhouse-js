@@ -202,7 +202,7 @@ export class ClickHouseClient<Stream = unknown> {
         ...params.clickhouse_settings,
       },
       query_params: params.query_params,
-      abort_controller: params.abort_signal,
+      abort_signal: params.abort_signal,
       query_id: params.query_id,
       session_id: this.sessionId,
     }

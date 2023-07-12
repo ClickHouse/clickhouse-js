@@ -136,19 +136,15 @@ export class BrowserConnection implements Connection<ReadableStream> {
     let isTimedOut = false
     const timeout = setTimeout(() => {
       isTimedOut = true
-      abortController.abort('Request timed out')
+      abortController.abort()
     }, this.params.request_timeout)
 
     let isAborted = false
-    function onUserAbortSignal(): void {
-      isAborted = true
-      abortController.abort()
-    }
-
     if (params?.abort_signal !== undefined) {
-      params.abort_signal.addEventListener('abort', onUserAbortSignal, {
-        once: true,
-      })
+      params.abort_signal.onabort = () => {
+        isAborted = true
+        abortController.abort()
+      }
     }
 
     try {
@@ -159,6 +155,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
         signal: abortController.signal,
         headers: withCompressionHeaders({
           headers: this.defaultHeaders,
+          // FIXME: use https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API
           compress_request: false,
           decompress_response: this.params.compression.decompress_response,
         }),
@@ -187,10 +184,6 @@ export class BrowserConnection implements Connection<ReadableStream> {
       }
       // shouldn't happen
       throw err
-    } finally {
-      if (params?.abort_signal !== undefined) {
-        params.abort_signal.removeEventListener('abort', onUserAbortSignal)
-      }
     }
   }
 }
