@@ -1,10 +1,12 @@
-import type { ClickHouseClient } from '../../src/client'
-import { createTestClient, guid } from '../utils'
-import { sleep } from '../utils/retry'
-import { createSimpleTable } from './fixtures/simple_table'
+import { createTestClient, guid } from '../../utils'
+import { sleep } from '../../utils/sleep'
+import { createSimpleTable } from '../fixtures/simple_table'
+import type Stream from 'stream'
+import type { NodeClickHouseClientConfigOptions } from '@clickhouse/client/client'
+import type { ClickHouseClient } from '@clickhouse/client-common'
 
 describe('Node.js Keep Alive', () => {
-  let client: ClickHouseClient
+  let client: ClickHouseClient<Stream.Readable>
   const socketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
   afterEach(async () => {
     await client.close()
@@ -19,7 +21,7 @@ describe('Node.js Keep Alive', () => {
           socket_ttl: socketTTL,
           retry_on_expired_socket: true,
         },
-      })
+      } as NodeClickHouseClientConfigOptions)
       expect(await query(0)).toEqual(1)
       await sleep(socketTTL)
       // this one will fail without retries
@@ -32,7 +34,7 @@ describe('Node.js Keep Alive', () => {
         keep_alive: {
           enabled: false,
         },
-      })
+      } as NodeClickHouseClientConfigOptions)
       expect(await query(0)).toEqual(1)
       await sleep(socketTTL)
       // this one won't fail cause a new socket will be assigned
@@ -46,7 +48,7 @@ describe('Node.js Keep Alive', () => {
           socket_ttl: socketTTL,
           retry_on_expired_socket: true,
         },
-      })
+      } as NodeClickHouseClientConfigOptions)
 
       const results = await Promise.all(
         [...Array(4).keys()].map((n) => query(n))
@@ -81,7 +83,7 @@ describe('Node.js Keep Alive', () => {
           socket_ttl: socketTTL,
           retry_on_expired_socket: true,
         },
-      })
+      } as NodeClickHouseClientConfigOptions)
       tableName = `keep_alive_single_connection_insert_${guid()}`
       await createSimpleTable(client, tableName)
       await insert(0)
@@ -106,7 +108,7 @@ describe('Node.js Keep Alive', () => {
           socket_ttl: socketTTL,
           retry_on_expired_socket: true,
         },
-      })
+      } as NodeClickHouseClientConfigOptions)
       tableName = `keep_alive_multiple_connection_insert_${guid()}`
       await createSimpleTable(client, tableName)
       await Promise.all([...Array(3).keys()].map((n) => insert(n)))

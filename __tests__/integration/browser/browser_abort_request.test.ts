@@ -18,7 +18,7 @@ describe('Browser abort request streaming', () => {
       .query({
         query: 'SELECT * from system.numbers',
         format: 'JSONCompactEachRow',
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
       .then(async (rs) => {
         const reader = rs.stream().getReader()

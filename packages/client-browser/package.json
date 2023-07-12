@@ -6,6 +6,10 @@
     "dist"
   ],
   "dependencies": {
-    "@clickhouse/client-common": "*"
+    "@clickhouse/client-common": "*",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.2"
   }
 }

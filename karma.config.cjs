@@ -7,7 +7,6 @@ module.exports = function (config) {
     frameworks: ['webpack', 'jasmine'],
     // list of files / patterns to load in the browser
     files: [
-      'karma.setup.cjs',
       '__tests__/integration/*.test.ts',
       '__tests__/integration/browser/*.test.ts',
       '__tests__/utils/*.ts',

@@ -14,17 +14,13 @@ export class NodeHttpConnection
 {
   constructor(params: NodeConnectionParams) {
     const agent = new Http.Agent({
-      keepAlive: true,
-      timeout: params.request_timeout,
+      keepAlive: params.keep_alive.enabled,
       maxSockets: params.max_open_connections,
     })
     super(params, agent)
   }
 
-  protected createClientRequest(
-    url: URL,
-    params: RequestParams
-  ): Http.ClientRequest {
+  protected createClientRequest(params: RequestParams): Http.ClientRequest {
     return Http.request(params.url, {
       method: params.method,
       agent: this.agent,
@@ -33,6 +29,7 @@ export class NodeHttpConnection
         compress_request: params.compress_request,
         decompress_response: params.decompress_response,
       }),
+      signal: params.abort_signal,
     })
   }
 }

@@ -8,7 +8,7 @@ import {
   whenOnEnv,
 } from '../../utils'
 import type Stream from 'stream'
-import { sleep } from '../../utils/retry'
+import { sleep } from '../../utils/sleep'
 
 describe('Node.js WATCH stream', () => {
   let client: ClickHouseClient<Stream.Readable>

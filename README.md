@@ -1,18 +1,17 @@
 <p align="center">
 <img src=".static/logo.png" width="200px" align="center">
-<h1 align="center">ClickHouse Node.JS client</h1>
+<h1 align="center">ClickHouse JS client</h1>
 </p>
 <br/>
 <p align="center">
 <a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml">
 <img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml/badge.svg?branch=main">
+</a>
 </p>
 
 ## About
 
-Official Node.js client for [ClickHouse](https://clickhouse.com/), written purely in TypeScript, thoroughly tested with actual ClickHouse versions.
-
-It is focused on data streaming for both inserts and selects using standard [Node.js Streaming API](https://nodejs.org/docs/latest-v14.x/api/stream.html).
+Official JS client for [ClickHouse](https://clickhouse.com/), written purely in TypeScript, thoroughly tested with actual ClickHouse versions.
 
 ## Documentation
 

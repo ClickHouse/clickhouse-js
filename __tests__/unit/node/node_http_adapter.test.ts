@@ -12,11 +12,12 @@ import type {
   QueryResult,
 } from '@clickhouse/client-common/connection'
 import { getAsText } from '@clickhouse/client/utils'
+import type { NodeConnectionParams } from '@clickhouse/client/connection'
 import {
   NodeBaseConnection,
   NodeHttpConnection,
 } from '@clickhouse/client/connection'
-import { sleep } from '../../utils/retry'
+import { sleep } from '../../utils/sleep'
 
 describe('Node.js HttpAdapter', () => {
   const gzip = Util.promisify(Zlib.gzip)
@@ -230,10 +231,6 @@ describe('Node.js HttpAdapter', () => {
           },
         })
 
-        await retryOnFailure(async () => {
-          expect(finalResult!.toString('utf8')).toEqual(values)
-        })
-        assertStub('gzip')
         await sleep(100)
         expect(finalResult!.toString('utf8')).toEqual(values)
         expect(httpRequestStub).toHaveBeenCalledTimes(1)
@@ -569,35 +566,32 @@ describe('Node.js HttpAdapter', () => {
   }
 
   function buildHttpAdapter(config: Partial<ConnectionParams>) {
-    return new NodeHttpConnection(
-      {
-        ...{
-          url: new URL('http://localhost:8132'),
+    return new NodeHttpConnection({
+      ...{
+        url: new URL('http://localhost:8132'),
 
-          connect_timeout: 10_000,
-          request_timeout: 30_000,
-          compression: {
-            decompress_response: true,
-            compress_request: false,
-          },
-          max_open_connections: Infinity,
-
-          username: '',
-          password: '',
-          database: '',
-          clickhouse_settings: {},
-
-          logWriter: new LogWriter(new TestLogger()),
-          keep_alive: {
-            enabled: true,
-            socket_ttl: 2500,
-            retry_on_expired_socket: false,
-          },
+        connect_timeout: 10_000,
+        request_timeout: 30_000,
+        compression: {
+          decompress_response: true,
+          compress_request: false,
         },
-        ...config,
+        max_open_connections: Infinity,
+
+        username: '',
+        password: '',
+        database: '',
+        clickhouse_settings: {},
+
+        logWriter: new LogWriter(new TestLogger()),
+        keep_alive: {
+          enabled: true,
+          socket_ttl: 2500,
+          retry_on_expired_socket: false,
+        },
       },
-      new LogWriter(new TestLogger())
-    )
+      ...config,
+    })
   }
 
   async function assertQueryResult(
@@ -625,7 +619,7 @@ class MyTestHttpAdapter extends NodeBaseConnection {
           socket_ttl: 2500,
           retry_on_expired_socket: true,
         },
-      } as ConnectionParams,
+      } as NodeConnectionParams,
       {} as Http.Agent
     )
   }

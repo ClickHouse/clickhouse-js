@@ -7,7 +7,6 @@ import type {
   BaseQueryParams,
   Connection,
   ConnectionParams,
-  ExecParams,
   ExecResult,
   InsertParams,
   InsertResult,
@@ -21,8 +20,20 @@ import {
   withHttpSettings,
 } from '@clickhouse/client-common/utils'
 import { getAsText, getUserAgent, isStream } from '../utils'
+import type * as net from 'net'
+import type { LogWriter } from '@clickhouse/client-common/logger'
+import * as uuid from 'uuid'
+import type { ExecParams } from '@clickhouse/client-common'
 
-export type NodeConnectionParams = ConnectionParams & { tls?: TLSParams }
+export type NodeConnectionParams = ConnectionParams & {
+  tls?: TLSParams
+  keep_alive: {
+    enabled: boolean
+    socket_ttl: number
+    retry_on_expired_socket: boolean
+  }
+}
+
 export type TLSParams =
   | {
       ca_cert: Buffer
@@ -44,10 +55,13 @@ export interface RequestParams {
   compress_request?: boolean
 }
 
+const expiredSocketMessage = 'expired socket'
+
 export abstract class NodeBaseConnection
   implements Connection<Stream.Readable>
 {
   protected readonly headers: Http.OutgoingHttpHeaders
+  private readonly logger: LogWriter
   private readonly retry_expired_sockets: boolean
   private readonly known_sockets = new WeakMap<
     net.Socket,
@@ -60,9 +74,9 @@ export abstract class NodeBaseConnection
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent
   ) {
+    this.logger = params.logWriter
     this.retry_expired_sockets =
-      this.params.keep_alive.enabled &&
-      this.params.keep_alive.retry_on_expired_socket
+      params.keep_alive.enabled && params.keep_alive.retry_on_expired_socket
     this.headers = this.buildDefaultHeaders(params.username, params.password)
   }
 
@@ -79,8 +93,7 @@ export abstract class NodeBaseConnection
   }
 
   protected abstract createClientRequest(
-    params: RequestParams,
-    abort_signal?: AbortSignal
+    params: RequestParams
   ): Http.ClientRequest
 
   private async request(
@@ -108,7 +121,7 @@ export abstract class NodeBaseConnection
   private async _request(params: RequestParams): Promise<Stream.Readable> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
-      const request = this.createClientRequest(params, params.abort_signal)
+      const request = this.createClientRequest(params)
 
       function onError(err: Error): void {
         removeRequestListeners()
@@ -190,7 +203,7 @@ export abstract class NodeBaseConnection
             // and is likely about to expire
             const isPossiblyExpired =
               Date.now() - socketInfo.last_used_time >
-              this.config.keep_alive.socket_ttl
+              this.params.keep_alive.socket_ttl
             if (isPossiblyExpired) {
               this.logger.trace({
                 module: 'Connection',
@@ -233,13 +246,13 @@ export abstract class NodeBaseConnection
         // The socket won't be actually destroyed,
         // and it will be returned to the pool.
         // TODO: investigate if can actually remove the idle sockets properly
-        socket.setTimeout(this.config.request_timeout, onTimeout)
+        socket.setTimeout(this.params.request_timeout, onTimeout)
       }
 
       function onTimeout(): void {
         removeRequestListeners()
         request.destroy()
-        reject(new Error('Timeout error'))
+        reject(new Error('Timeout error.'))
       }
 
       function removeRequestListeners(): void {
@@ -307,8 +320,8 @@ export abstract class NodeBaseConnection
     }
   }
 
-  async exec(params: ExecParams): Promise<ExecResult> {
-    const query_id = this.getQueryId(params)
+  async exec(params: ExecParams): Promise<ExecResult<Stream.Readable>> {
+    const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
@@ -321,7 +334,7 @@ export abstract class NodeBaseConnection
       method: 'POST',
       url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.query,
-      abort_controller: params.abort_controller,
+      abort_signal: params.abort_signal,
     })
 
     return {
@@ -382,10 +395,6 @@ export abstract class NodeBaseConnection
       },
     })
   }
-}
-
-function isEventTarget(signal: any): signal is EventTarget {
-  return 'removeEventListener' in signal
 }
 
 function decompressResponse(response: Http.IncomingMessage):

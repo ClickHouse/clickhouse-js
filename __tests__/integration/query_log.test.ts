@@ -1,7 +1,7 @@
 import { createTestClient, guid, TestEnv, whenOnEnv } from '../utils'
 import { createSimpleTable } from './fixtures/simple_table'
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { sleep } from '../utils/retry'
+import { sleep } from '../utils/sleep'
 
 // these tests are very flaky in the Cloud environment
 // likely due to the fact that flushing the query_log there happens not too often

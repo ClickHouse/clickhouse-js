@@ -34,8 +34,7 @@ we strongly encourage you to add appropriate tests to ensure
 everyone in the community can safely benefit from your contribution.
 
 ### Tooling
-We use [jest](https://jestjs.io/) as a test runner.
-All the testing scripts are run with `jest-silent-reporter`.
+We use [Jasmine](https://jasmine.github.io/index.html) as a test runner.
 
 ### Type check and linting
 

@@ -93,40 +93,45 @@ describe('data types', () => {
     )
   })
 
-  // it('should work with decimals', async () => {
-  //   const stream = new Stream.Readable({
-  //     objectMode: false,
-  //     read() {
-  //       //
-  //     },
-  //   })
-  //   const row1 =
-  //     '1\t1234567.89\t123456789123456.789\t' +
-  //     '1234567891234567891234567891.1234567891\t' +
-  //     '12345678912345678912345678911234567891234567891234567891.12345678911234567891\n'
-  //   const row2 =
-  //     '2\t12.01\t5000000.405\t1.0000000004\t42.00000000000000013007\n'
-  //   stream.push(row1)
-  //   stream.push(row2)
-  //   stream.push(null)
-  //   const table = await createTableWithFields(
-  //     client,
-  //     'd1 Decimal(9, 2), d2 Decimal(18, 3), ' +
-  //       'd3 Decimal(38, 10), d4 Decimal(76, 20)'
-  //   )
-  //   await client.insert({
-  //     table,
-  //     values: stream,
-  //     format: 'TabSeparated',
-  //   })
-  //   const result = await client
-  //     .query({
-  //       query: `SELECT * FROM ${table} ORDER BY id ASC`,
-  //       format: 'TabSeparated',
-  //     })
-  //     .then((r) => r.text())
-  //   expect(result).toEqual(row1 + row2)
-  // })
+  it('should work with decimals', async () => {
+    const row1 = {
+      id: 1,
+      d1: '1234567.89',
+      d2: '123456789123456.789',
+      d3: '1234567891234567891234567891.1234567891',
+      d4: '12345678912345678912345678911234567891234567891234567891.12345678911234567891',
+    }
+    const row2 = {
+      id: 2,
+      d1: '12.01',
+      d2: '5000000.405',
+      d3: '1.0000000004',
+      d4: '42.00000000000000013007',
+    }
+    const stringRow1 =
+      '1\t1234567.89\t123456789123456.789\t' +
+      '1234567891234567891234567891.1234567891\t' +
+      '12345678912345678912345678911234567891234567891234567891.12345678911234567891\n'
+    const stringRow2 =
+      '2\t12.01\t5000000.405\t1.0000000004\t42.00000000000000013007\n'
+    const table = await createTableWithFields(
+      client,
+      'd1 Decimal(9, 2), d2 Decimal(18, 3), ' +
+        'd3 Decimal(38, 10), d4 Decimal(76, 20)'
+    )
+    await client.insert({
+      table,
+      values: [row1, row2],
+      format: 'JSONEachRow',
+    })
+    const result = await client
+      .query({
+        query: `SELECT * FROM ${table} ORDER BY id ASC`,
+        format: 'TabSeparated',
+      })
+      .then((r) => r.text())
+    expect(result).toEqual(stringRow1 + stringRow2)
+  })
 
   it('should work with UUID', async () => {
     const values = [{ u: v4() }, { u: v4() }]

@@ -6,7 +6,7 @@ import type {
   InsertResult,
   QueryResult,
 } from '@clickhouse/client-common/connection'
-import { getAsText, isStream } from '../utils'
+import { getAsText } from '../utils'
 import {
   getQueryId,
   isSuccessfulResponse,
@@ -130,17 +130,31 @@ export class BrowserConnection implements Connection<ReadableStream> {
       pathname: pathname ?? '/',
       searchParams,
     }).toString()
-    const abortController = params?.abort_controller || new AbortController()
+
+    const abortController = new AbortController()
+
     let isTimedOut = false
     const timeout = setTimeout(() => {
       isTimedOut = true
       abortController.abort('Request timed out')
     }, this.params.request_timeout)
-    const bodyIsStream = isStream(body)
+
+    let isAborted = false
+    function onUserAbortSignal(): void {
+      isAborted = true
+      abortController.abort()
+    }
+
+    if (params?.abort_signal !== undefined) {
+      params.abort_signal.addEventListener('abort', onUserAbortSignal, {
+        once: true,
+      })
+    }
+
     try {
       const response = await fetch(url, {
         body,
-        keepalive: !bodyIsStream,
+        keepalive: false,
         method: method ?? 'POST',
         signal: abortController.signal,
         headers: withCompressionHeaders({
@@ -148,8 +162,6 @@ export class BrowserConnection implements Connection<ReadableStream> {
           compress_request: false,
           decompress_response: this.params.compression.decompress_response,
         }),
-        // @ts-expect-error 'duplex' does not exist in type 'RequestInit'
-        duplex: bodyIsStream ? 'half' : undefined, // https://developer.chrome.com/articles/fetch-streaming-requests/
       })
       clearTimeout(timeout)
       if (isSuccessfulResponse(response.status)) {
@@ -161,18 +173,24 @@ export class BrowserConnection implements Connection<ReadableStream> {
           )
         )
       }
-    } catch (e) {
+    } catch (err) {
       clearTimeout(timeout)
-      if (e instanceof Error) {
+      if (err instanceof Error) {
+        if (isAborted) {
+          return Promise.reject(new Error('The user aborted a request.'))
+        }
         if (isTimedOut) {
-          // to be more in-line with the Node.js implementation
-          return Promise.reject(new Error('Request timed out'))
+          return Promise.reject(new Error('Timeout error.'))
         }
         // maybe it's a ClickHouse error
-        return Promise.reject(parseError(e))
+        return Promise.reject(parseError(err))
       }
       // shouldn't happen
-      throw e
+      throw err
+    } finally {
+      if (params?.abort_signal !== undefined) {
+        params.abort_signal.removeEventListener('abort', onUserAbortSignal)
+      }
     }
   }
 }

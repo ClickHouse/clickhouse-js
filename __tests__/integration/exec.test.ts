@@ -85,13 +85,10 @@ describe('exec', () => {
 
     it('should allow the use of a session', async () => {
       // Temporary tables cannot be used without a session
-      const { stream } = await sessionClient.exec({
-        query: 'CREATE TEMPORARY TABLE test_temp (val Int32)',
-      })
-      stream.destroy()
+      const tableName = `temp_table_${guid()}`
       await expectAsync(
         sessionClient.exec({
-          query: 'CREATE TEMPORARY TABLE test_temp (val Int32)',
+          query: `CREATE TEMPORARY TABLE ${tableName} (val Int32)`,
         })
       ).toBeResolved()
     })
@@ -147,14 +144,13 @@ describe('exec', () => {
     console.log(
       `Running command with query_id ${params.query_id}:\n${params.query}`
     )
-    const { stream, query_id } = await client.exec({
+    const { query_id } = await client.exec({
       ...params,
       clickhouse_settings: {
         // ClickHouse responds to a command when it's completely finished
         wait_end_of_query: 1,
       },
     })
-    stream.destroy()
     return { query_id }
   }
 })

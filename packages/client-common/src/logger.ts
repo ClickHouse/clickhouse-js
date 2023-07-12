@@ -74,10 +74,10 @@ export class LogWriter {
   }
 
   private getClickHouseLogLevel(): ClickHouseLogLevel {
-    const logLevelFromEnv =
-      typeof process !== 'undefined'
-        ? process.env['CLICKHOUSE_LOG_LEVEL']
-        : 'info' // won't print any debug info in the browser
+    const isBrowser = typeof process !== 'undefined'
+    const logLevelFromEnv = isBrowser
+      ? process.env['CLICKHOUSE_LOG_LEVEL']
+      : 'info' // won't print any debug info in the browser
     if (!logLevelFromEnv) {
       return ClickHouseLogLevel.OFF
     }

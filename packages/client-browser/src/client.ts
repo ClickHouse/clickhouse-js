@@ -1,22 +1,47 @@
-import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common/client'
+import type {
+  BaseClickHouseClientConfigOptions,
+  InsertParams,
+} from '@clickhouse/client-common/client'
 import { ClickHouseClient } from '@clickhouse/client-common/client'
 import { BrowserConnection } from './connection'
 import { BrowserValuesEncoder } from './utils'
 import { ResultSet } from './result_set'
-import type { ConnectionParams } from '@clickhouse/client-common/connection'
-import type { DataFormat } from '@clickhouse/client-common'
+import type {
+  ConnectionParams,
+  InsertResult,
+} from '@clickhouse/client-common/connection'
+import type {
+  DataFormat,
+  InputJSON,
+  InputJSONObjectEachRow,
+} from '@clickhouse/client-common'
+
+export type BrowserClickHouseClient = Omit<
+  ClickHouseClient<ReadableStream>,
+  'insert'
+> & {
+  insert<T>( // patch insert to restrict ReadableStream as a possible insert value
+    params: Omit<InsertParams<ReadableStream, T>, 'values'> & {
+      values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
+    }
+  ): Promise<InsertResult>
+}
 
 export function createClient(
   config?: BaseClickHouseClientConfigOptions<ReadableStream>
-): ClickHouseClient<ReadableStream> {
+): BrowserClickHouseClient {
   return new ClickHouseClient<ReadableStream>({
-    makeConnection: (params: ConnectionParams) => new BrowserConnection(params),
-    makeResultSet: (
-      stream: ReadableStream,
-      format: DataFormat,
-      query_id: string
-    ) => new ResultSet(stream, format, query_id),
-    valuesEncoder: new BrowserValuesEncoder(),
+    impl: {
+      make_connection: (params: ConnectionParams) =>
+        new BrowserConnection(params),
+      make_result_set: (
+        stream: ReadableStream,
+        format: DataFormat,
+        query_id: string
+      ) => new ResultSet(stream, format, query_id),
+      values_encoder: new BrowserValuesEncoder(),
+      close_stream: (stream) => stream.cancel(),
+    },
     ...(config || {}),
   })
 }

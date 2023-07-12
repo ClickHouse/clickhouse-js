@@ -22,7 +22,7 @@ describe('Node.js abort request streaming', () => {
       .query({
         query: 'SELECT * from system.numbers',
         format: 'JSONCompactEachRow',
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
       .then(async (rows) => {
         const stream = rows.stream()
@@ -96,7 +96,7 @@ describe('Node.js abort request streaming', () => {
             values: stream,
             format: 'JSONEachRow',
             table: tableName,
-            abort_controller: shouldAbort(i) ? controller : undefined,
+            abort_signal: shouldAbort(i) ? controller.signal : undefined,
           })
           if (shouldAbort(i)) {
             return insertPromise.catch(() => {
@@ -139,7 +139,7 @@ describe('Node.js abort request streaming', () => {
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
       controller.abort()
 
@@ -172,7 +172,7 @@ describe('Node.js abort request streaming', () => {
       const insertPromise = client.insert({
         table: tableName,
         values: stream,
-        abort_controller: controller,
+        abort_signal: controller.signal,
       })
 
       setTimeout(() => {

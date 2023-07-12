@@ -1,6 +1,7 @@
-import { sleep } from '../../utils/retry'
-import { createTestClient } from '../../utils'
+import { sleep } from '../../utils/sleep'
+import { createTestClient, guid } from '../../utils'
 import type { ClickHouseClient } from '@clickhouse/client-common'
+import { createSimpleTable } from '../fixtures/simple_table'
 
 describe('Node.js max_open_connections config', () => {
   let client: ClickHouseClient
@@ -35,6 +36,42 @@ describe('Node.js max_open_connections config', () => {
       await sleep(100)
     }
     expect(results.sort()).toEqual([1, 2])
+  })
+
+  it('should use only one connection for insert', async () => {
+    const tableName = `node_connections_single_connection_insert_${guid()}`
+    client = createTestClient({
+      max_open_connections: 1,
+      request_timeout: 3000,
+    })
+    await createSimpleTable(client, tableName)
+
+    const timeout = setTimeout(() => {
+      throw new Error('Timeout was triggered')
+    }, 3000).unref()
+
+    const value1 = { id: '42', name: 'hello', sku: [0, 1] }
+    const value2 = { id: '43', name: 'hello', sku: [0, 1] }
+    function insert(value: object) {
+      return client.insert({
+        table: tableName,
+        values: [value],
+        format: 'JSONEachRow',
+      })
+    }
+    await insert(value1)
+    await insert(value2) // if previous call holds the socket, the test will time out
+    clearTimeout(timeout)
+
+    const result = await client.query({
+      query: `SELECT * FROM ${tableName}`,
+      format: 'JSONEachRow',
+    })
+
+    const json = await result.json<object[]>()
+    expect(json).toContain(value1)
+    expect(json).toContain(value2)
+    expect(json.length).toEqual(2)
   })
 
   it('should use several connections', async () => {

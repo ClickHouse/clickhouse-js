@@ -15,8 +15,7 @@ export class NodeHttpsConnection
 {
   constructor(params: NodeConnectionParams) {
     const agent = new Https.Agent({
-      keepAlive: true,
-      timeout: params.request_timeout,
+      keepAlive: params.keep_alive.enabled,
       maxSockets: params.max_open_connections,
       ca: params.tls?.ca_cert,
       key: params.tls?.type === 'Mutual' ? params.tls.key : undefined,
@@ -45,10 +44,7 @@ export class NodeHttpsConnection
     return super.buildDefaultHeaders(username, password)
   }
 
-  protected createClientRequest(
-    url: URL,
-    params: RequestParams
-  ): Http.ClientRequest {
+  protected createClientRequest(params: RequestParams): Http.ClientRequest {
     return Https.request(params.url, {
       method: params.method,
       agent: this.agent,
@@ -57,6 +53,7 @@ export class NodeHttpsConnection
         compress_request: params.compress_request,
         decompress_response: params.decompress_response,
       }),
+      signal: params.abort_signal,
     })
   }
 }

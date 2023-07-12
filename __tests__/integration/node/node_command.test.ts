@@ -1,5 +1,5 @@
-import { createTestClient } from "../utils";
-import type { ClickHouseClient } from "../../src/client";
+import { createTestClient } from '../../utils'
+import type { ClickHouseClient } from '@clickhouse/client-common'
 
 /**
  * {@link ClickHouseClient.command} re-introduction is the result of
@@ -8,7 +8,7 @@ import type { ClickHouseClient } from "../../src/client";
  *
  * This test makes sure that the consequent requests are not blocked by command calls
  */
-describe('command', () => {
+describe('Node.js command', () => {
   let client: ClickHouseClient
   beforeEach(() => {
     client = createTestClient({
@@ -32,5 +32,6 @@ describe('command', () => {
     await command()
     await command() // if previous call holds the socket, the test will time out
     clearTimeout(timeout)
+    expect(1).toEqual(1) // Jasmine needs at least 1 assertion
   })
 })

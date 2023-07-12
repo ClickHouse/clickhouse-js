@@ -8,6 +8,6 @@ export {
 export { guid } from './guid'
 export { getClickHouseTestEnvironment } from './test_env'
 export { TestEnv } from './test_env'
-export { retryOnFailure } from './retry'
+export { sleep } from './sleep'
 export { whenOnEnv } from './jasmine'
 export { getRandomInt } from './random'
