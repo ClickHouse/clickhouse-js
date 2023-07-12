@@ -11,7 +11,15 @@
 
 ## About
 
-Official JS client for [ClickHouse](https://clickhouse.com/), written purely in TypeScript, thoroughly tested with actual ClickHouse versions.
+Official JS client for [ClickHouse](https://clickhouse.com/), written purely in TypeScript,
+thoroughly tested with actual ClickHouse versions.
+
+The repository consists of three packages:
+- `@clickhouse/client` - Node.js client, built on top of [HTTP](https://nodejs.org/api/http.html)
+and [Stream](https://nodejs.org/api/stream.html) APIs; supports streaming for both selects and inserts.
+- `@clickhouse/client-browser` - browser client, built on top of [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
+and [Streams](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) APIs; supports streaming for selects.
+- `@clickhouse/common` - shared common types and the base framework for building a custom client implementation.
 
 ## Documentation
 

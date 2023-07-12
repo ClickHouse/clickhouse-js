@@ -42,7 +42,7 @@ export interface ValuesEncoder<Stream> {
   ): string | Stream
 }
 
-export type CloseStream<Stream> = (stream: Stream) => void
+export type CloseStream<Stream> = (stream: Stream) => Promise<void>
 
 export interface ClickHouseClientConfigOptions<Stream> {
   impl: {
@@ -233,7 +233,7 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async command(params: CommandParams): Promise<CommandResult> {
     const { stream, query_id } = await this.exec(params)
-    this.closeStream(stream)
+    await this.closeStream(stream)
     return { query_id }
   }
 
