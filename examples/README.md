@@ -57,6 +57,7 @@ ts-node --transpile-only --project tsconfig.json create_table_local_cluster.ts
 export CLICKHOUSE_HOST=https://<your-clickhouse-cloud-hostname>:8443
 export CLICKHOUSE_PASSWORD=<your-clickhouse-cloud-password>
 ```
+
 You can obtain these credentials in the Cloud console.
 This example assumes that you do not add any users or databases
 to your Cloud instance, so it is `default` for both.
