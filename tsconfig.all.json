@@ -13,7 +13,7 @@
     "outDir": "dist",
     "baseUrl": "./",
     "paths": {
-      "@test": ["packages/client-common/__tests__/*"],
+      "@test/*": ["packages/client-common/__tests__/*"],
       "@clickhouse/client-common": ["packages/client-common/src/index.ts"],
       "@clickhouse/client-common/*": ["packages/client-common/src/*"],
       "@clickhouse/client": ["packages/client-node/src/index.ts"],

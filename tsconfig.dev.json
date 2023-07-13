@@ -1,17 +1,13 @@
 {
   "extends": "./tsconfig.json",
-  "include": [
-    "./packages/**/*.ts",
-    "__tests__/**/*.ts",
-    ".build/**/*.ts"
-  ],
+  "include": ["./packages/**/*.ts", ".build/**/*.ts"],
   "compilerOptions": {
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "outDir": "dist",
     "baseUrl": "./",
     "paths": {
-      "@test": ["packages/client-common/__tests__/*"],
+      "@test/*": ["packages/client-common/__tests__/*"],
       "@clickhouse/client-common": ["packages/client-common/src/index.ts"],
       "@clickhouse/client-common/*": ["packages/client-common/src/*"]
     }

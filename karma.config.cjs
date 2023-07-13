@@ -7,22 +7,34 @@ module.exports = function (config) {
     frameworks: ['webpack', 'jasmine'],
     // list of files / patterns to load in the browser
     files: [
-      '__tests__/integration/*.test.ts',
-      '__tests__/integration/browser/*.test.ts',
-      '__tests__/utils/*.ts',
-      '__tests__/unit/*.test.ts',
-      '__tests__/unit/browser/*.test.ts',
+      'packages/client-common/__tests__/unit/*.test.ts',
+      'packages/client-common/__tests__/utils/*.ts',
+      'packages/client-common/__tests__/integration/*.test.ts',
+      'packages/client-browser/__tests__/integration/*.test.ts',
+      'packages/client-browser/__tests__/unit/*.test.ts',
     ],
     exclude: [],
     webpack: webpackConfig,
     preprocessors: {
       'packages/client-common/**/*.ts': ['webpack', 'sourcemap'],
       'packages/client-browser/**/*.ts': ['webpack', 'sourcemap'],
-      '__tests__/unit/*.test.ts': ['webpack', 'sourcemap'],
-      '__tests__/unit/browser/*.test.ts': ['webpack', 'sourcemap'],
-      '__tests__/integration/*.ts': ['webpack', 'sourcemap'],
-      '__tests__/integration/browser/*.ts': ['webpack', 'sourcemap'],
-      '__tests__/utils/*.ts': ['webpack', 'sourcemap'],
+      'packages/client-common/__tests__/unit/*.test.ts': [
+        'webpack',
+        'sourcemap',
+      ],
+      'packages/client-common/__tests__/integration/*.ts': [
+        'webpack',
+        'sourcemap',
+      ],
+      'packages/client-common/__tests__/utils/*.ts': ['webpack', 'sourcemap'],
+      'packages/client-browser/__tests__/unit/*.test.ts': [
+        'webpack',
+        'sourcemap',
+      ],
+      'packages/client-browser/__tests__/integration/*.ts': [
+        'webpack',
+        'sourcemap',
+      ],
     },
     reporters: ['progress'],
     port: 9876,
@@ -46,7 +58,7 @@ module.exports = function (config) {
         stopOnSpecFailure: false,
         stopSpecOnExpectationFailure: true,
         timeoutInterval: 5000,
-      }
-    }
+      },
+    },
   })
 }

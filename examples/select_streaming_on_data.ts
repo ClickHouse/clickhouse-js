@@ -1,5 +1,4 @@
-import { createClient } from '@clickhouse/client'
-import type { Row } from '@clickhouse/client-common'
+import { createClient, type Row } from '@clickhouse/client'
 
 /**
  * Can be used for consuming large datasets for reducing memory overhead,
@@ -19,7 +18,7 @@ void (async () => {
     format: 'CSV',
   })
   const stream = rows.stream()
-  stream.on('data', (rows) => {
+  stream.on('data', (rows: Row[]) => {
     rows.forEach((row: Row) => {
       console.log(row.text)
     })

@@ -14,7 +14,6 @@ export {
 } from './client'
 export type { Row, IResultSet } from './result'
 export type { Connection, InsertResult } from './connection'
-
 export type { DataFormat } from './data_formatter'
 export type { ClickHouseError } from './error'
 export type { Logger } from './logger'

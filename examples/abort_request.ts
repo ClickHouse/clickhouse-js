@@ -9,7 +9,7 @@ void (async () => {
       format: 'CSV',
       abort_signal: controller.signal,
     })
-    .catch((e) => {
+    .catch((e: unknown) => {
       console.info('Select was aborted')
       console.info('This is the underlying error message')
       console.info('------------------------------------')
