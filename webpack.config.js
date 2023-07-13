@@ -47,15 +47,6 @@ module.exports = {
         logLevel: 'ERROR',
       }),
     ],
-    fallback: {
-      buffer: false,
-      stream: false,
-      https: false,
-      http: false,
-      zlib: false,
-      fs: false,
-      os: false,
-    },
   },
   plugins: [
     new webpack.DefinePlugin({

@@ -59,8 +59,9 @@ export function createTestClient<Stream = unknown>(
         cloudConfig
       )
     } else {
+      // props to https://stackoverflow.com/a/41063795/4575540
       // @ts-expect-error
-      return require('../../../client-node/src/client').createClient(
+      return eval('require')('../../../client-node/src/client').createClient(
         cloudConfig
       ) as ClickHouseClient
     }
@@ -77,7 +78,7 @@ export function createTestClient<Stream = unknown>(
       ) // eslint-disable-line @typescript-eslint/no-var-requires
     } else {
       // @ts-expect-error
-      return require('../../../client-node/src/client').createClient(
+      return eval('require')('../../../client-node/src/client').createClient(
         localConfig
       ) as ClickHouseClient
     }
