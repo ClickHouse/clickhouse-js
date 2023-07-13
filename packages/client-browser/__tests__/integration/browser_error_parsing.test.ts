@@ -1,14 +1,5 @@
 import { createClient } from '../../src'
 
-type PingResult =
-  | {
-      type: 'Success'
-    }
-  | {
-      type: 'Failure'
-      error: Error
-    }
-
 describe('Browser errors parsing', () => {
   it('should return an error when URL is unreachable', async () => {
     const client = createClient({
