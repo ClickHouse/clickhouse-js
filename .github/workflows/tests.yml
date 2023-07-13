@@ -11,8 +11,6 @@ on:
       - 'benchmarks/**'
       - 'examples/**'
   pull_request:
-    branches:
-      - main
     paths-ignore:
       - '**/*.md'
       - 'LICENSE'
