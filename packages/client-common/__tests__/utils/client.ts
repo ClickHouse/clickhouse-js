@@ -55,12 +55,11 @@ export function createTestClient<Stream = unknown>(
       clickhouse_settings: clickHouseSettings,
     }
     if (process.env.browser) {
-      // @ts-ignore
       return require('../../../client-browser/src/client').createClient(
         cloudConfig
       )
     } else {
-      // @ts-ignore
+      // @ts-expect-error
       return require('../../../client-node/src/client').createClient(
         cloudConfig
       ) as ClickHouseClient
@@ -73,12 +72,11 @@ export function createTestClient<Stream = unknown>(
       clickhouse_settings: clickHouseSettings,
     }
     if (process.env.browser) {
-      // @ts-ignore
       return require('../../../client-browser/src/client').createClient(
         localConfig
       ) // eslint-disable-line @typescript-eslint/no-var-requires
     } else {
-      // @ts-ignore
+      // @ts-expect-error
       return require('../../../client-node/src/client').createClient(
         localConfig
       ) as ClickHouseClient
