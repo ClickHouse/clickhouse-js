@@ -1,9 +1,7 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
-// FIXME: abort signal stopped working.
-//  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
-xdescribe('Browser abort request streaming', () => {
+describe('Browser abort request streaming', () => {
   let client: ClickHouseClient<ReadableStream>
 
   beforeEach(() => {
@@ -24,15 +22,13 @@ xdescribe('Browser abort request streaming', () => {
       })
       .then(async (rs) => {
         const reader = rs.stream().getReader()
-        let isDone = false
-        while (!isDone) {
+        while (true) {
           const { done, value: rows } = await reader.read()
           if (done) break
           ;(rows as Row[]).forEach((row: Row) => {
             const [[number]] = row.json<[[string]]>()
             // abort when reach number 3
             if (number === '3') {
-              isDone = true
               controller.abort()
             }
           })
