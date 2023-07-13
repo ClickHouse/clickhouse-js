@@ -1,69 +1,89 @@
 {
-  "name": "@clickhouse/client",
-  "version": "0.0.0",
+  "name": "clickhouse-js",
   "description": "Official JS client for ClickHouse DB",
+  "homepage": "https://clickhouse.com",
+  "version": "0.0.0",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
     "sql",
     "client"
   ],
-  "engines": {
-    "node": ">=16"
-  },
-  "private": false,
   "repository": {
     "type": "git",
     "url": "https://github.com/ClickHouse/clickhouse-js.git"
   },
-  "homepage": "https://clickhouse.com",
+  "private": false,
+  "engines": {
+    "node": ">=16"
+  },
   "scripts": {
     "build": "rm -rf dist; tsc",
-    "build:all": "rm -rf dist; tsc --project tsconfig.dev.json",
-    "typecheck": "tsc --project tsconfig.dev.json --noEmit",
+    "build:all": "rm -rf dist; tsc --project tsconfig.all.json",
+    "typecheck": "tsc --project tsconfig.all.json --noEmit",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint --fix . --ext .ts",
-    "test": "jest --testPathPattern=__tests__ --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
-    "test:tls": "jest --testMatch='**/__tests__/tls/*.test.ts'",
-    "test:unit": "jest --testMatch='**/__tests__/{unit,utils}/*.test.ts'",
-    "test:integration": "jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
-    "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
-    "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud jest --runInBand --testPathPattern=__tests__/integration --globalSetup='<rootDir>/__tests__/setup.integration.ts'",
+    "test": "./jasmine.sh jasmine.all.json",
+    "test:common:unit": "./jasmine.sh jasmine.common.unit.json",
+    "test:common:integration": "./jasmine.sh jasmine.common.integration.json",
+    "test:node:unit": "./jasmine.sh jasmine.node.unit.json",
+    "test:node:tls": "./jasmine.sh jasmine.node.tls.json",
+    "test:node:integration": "./jasmine.sh jasmine.node.integration.json",
+    "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:node:integration",
+    "test:node:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:node:integration",
+    "test:browser": "karma start karma.config.cjs",
+    "test:browser:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:browser",
+    "test:browser:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:browser",
     "prepare": "husky install"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
-  "dependencies": {
-    "uuid": "^9.0.0"
-  },
   "devDependencies": {
-    "@jest/reporters": "^29.4.0",
-    "@types/jest": "^29.4.0",
+    "@types/jasmine": "^4.3.2",
     "@types/node": "^18.11.18",
+    "@types/sinon": "^10.0.15",
     "@types/split2": "^3.2.1",
-    "@types/uuid": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
     "@typescript-eslint/parser": "^5.49.0",
     "eslint": "^8.32.0",
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-prettier": "^4.2.1",
     "husky": "^8.0.2",
-    "jest": "^29.4.0",
+    "jasmine": "^5.0.0",
+    "jasmine-core": "^5.0.0",
+    "jasmine-expect": "^5.0.0",
+    "karma": "^6.4.2",
+    "karma-chrome-launcher": "^3.2.0",
+    "karma-jasmine": "^5.1.0",
+    "karma-sourcemap-loader": "^0.4.0",
+    "karma-typescript": "^5.5.4",
+    "karma-webpack": "^5.0.0",
     "lint-staged": "^13.1.0",
     "prettier": "2.8.3",
+    "sinon": "^15.2.0",
     "split2": "^4.1.0",
-    "ts-jest": "^29.0.5",
+    "ts-jest": "^29.1.0",
+    "ts-loader": "^9.4.3",
     "ts-node": "^10.9.1",
-    "tsconfig-paths": "^4.1.2",
-    "typescript": "^4.9.4"
+    "tsconfig-paths": "^4.2.0",
+    "tsconfig-paths-webpack-plugin": "^4.0.1",
+    "typescript": "^4.9.4",
+    "webpack": "^5.84.1"
   },
+  "workspaces": [
+    "./packages/*"
+  ],
   "lint-staged": {
     "*.ts": [
       "prettier --write",
       "eslint --fix"
+    ],
+    "*.json": [
+      "prettier --write"
+    ],
+    "*.yml": [
+      "prettier --write"
+    ],
+    "*.md": [
+      "prettier --write"
     ]
   }
 }

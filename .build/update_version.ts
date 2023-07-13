@@ -1,7 +1,8 @@
-import version from '../src/version'
-import packageJson from '../package.json'
 import fs from 'fs'
+import packageJson from '../package.json'
+import version from '../packages/client-common/src/version'
 ;(async () => {
+  // FIXME: support all 3 modules
   console.log(`Current package version is: ${version}`)
   packageJson.version = version
   console.log('Updated package json:')

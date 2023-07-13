@@ -1,21 +1,26 @@
 ## Getting started
+
 ClickHouse js client is an open-source project,
 and we welcome any contributions from the community.
 Please share your ideas, contribute to the codebase,
 and help us maintain up-to-date documentation.
 
 ### Set up environment
+
 You have installed:
+
 - a compatible LTS version of nodejs: `v14.x`, `v16.x` or `v18.x`
 - NPM >= `6.x`
 
 ### Create a fork of the repository and clone it
+
 ```bash
 git clone https://github.com/[YOUR_USERNAME]/clickhouse-js
 cd clickhouse-js
 ```
 
 ### Install dependencies
+
 ```bash
 npm i
 ```
@@ -29,13 +34,14 @@ sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 ```
 
 ## Testing
+
 Whenever you add a new feature to the package or fix a bug,
 we strongly encourage you to add appropriate tests to ensure
 everyone in the community can safely benefit from your contribution.
 
 ### Tooling
-We use [jest](https://jestjs.io/) as a test runner.
-All the testing scripts are run with `jest-silent-reporter`.
+
+We use [Jasmine](https://jasmine.github.io/index.html) as a test runner.
 
 ### Type check and linting
 
@@ -43,6 +49,7 @@ All the testing scripts are run with `jest-silent-reporter`.
 npm run typecheck
 npm run lint:fix
 ```
+
 We use [Husky](https://typicode.github.io/husky) for pre-commit hooks,
 so it will be executed before every commit.
 
@@ -61,6 +68,7 @@ Integration tests use a running ClickHouse server in Docker or the Cloud.
 `CLICKHOUSE_TEST_ENVIRONMENT` environment variable is used to switch between testing modes.
 
 There are three possible options:
+
 - `local_single_node` (default)
 - `local_cluster`
 - `cloud`
@@ -138,6 +146,7 @@ npm run test:integration:cloud
 ```
 
 ## CI
+
 GitHub Actions should execute integration test jobs in parallel
 after we complete the TypeScript type check, lint check, and unit tests.
 
@@ -149,9 +158,11 @@ Build + Unit tests
 ```
 
 ## Style Guide
+
 We use an automatic code formatting with `prettier` and `eslint`.
 
 ## Test Coverage
+
 We try to aim for at least 90% tests coverage.
 
 Coverage is collected and pushed to the repo automatically
@@ -171,6 +182,7 @@ npm t -- --coverage
 Please don't commit the coverage reports manually.
 
 ## Update package version
+
 Don't forget to change the package version in `src/version.ts` before the release.
 
 `release` GitHub action will pick it up and replace `package.json` version automatically.
