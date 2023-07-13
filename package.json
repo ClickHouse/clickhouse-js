@@ -27,6 +27,7 @@
     "test:common:unit": "./jasmine.sh jasmine.common.unit.json",
     "test:common:integration": "./jasmine.sh jasmine.common.integration.json",
     "test:node:unit": "./jasmine.sh jasmine.node.unit.json",
+    "test:node:tls": "./jasmine.sh jasmine.node.tls.json",
     "test:node:integration": "./jasmine.sh jasmine.node.integration.json",
     "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:node:integration",
     "test:node:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:node:integration",
