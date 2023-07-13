@@ -1,6 +1,6 @@
-import Stream from "stream";
-import { createClient } from "@clickhouse/client";
-import { randomInt } from "crypto";
+import Stream from 'stream'
+import { createClient } from '@clickhouse/client'
+import { randomInt } from 'crypto'
 
 // Open a single connection for streaming data insertion
 // Periodically push the data into the stream

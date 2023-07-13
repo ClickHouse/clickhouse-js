@@ -1,4 +1,4 @@
-import { createClient } from "@clickhouse/client";
+import { createClient } from '@clickhouse/client'
 
 /**
  * Taken from https://github.com/ClickHouse/clickhouse-js/issues/166

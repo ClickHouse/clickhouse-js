@@ -1,10 +1,13 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
-import { guid } from "./guid";
-import { TestLogger } from "./test_logger";
-import { getClickHouseTestEnvironment, TestEnv } from "./test_env";
-import { getFromEnv } from "./env";
-import type { BaseClickHouseClientConfigOptions, ClickHouseClient } from "@clickhouse/client-common/client";
-import type { ClickHouseSettings } from "@clickhouse/client-common";
+import { guid } from './guid'
+import { TestLogger } from './test_logger'
+import { getClickHouseTestEnvironment, TestEnv } from './test_env'
+import { getFromEnv } from './env'
+import type {
+  BaseClickHouseClientConfigOptions,
+  ClickHouseClient,
+} from '@clickhouse/client-common/client'
+import type { ClickHouseSettings } from '@clickhouse/client-common'
 
 let databaseName: string
 beforeAll(async () => {

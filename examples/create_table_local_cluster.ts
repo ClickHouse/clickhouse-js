@@ -1,4 +1,4 @@
-import { createClient } from "@clickhouse/client";
+import { createClient } from '@clickhouse/client'
 
 // ClickHouse cluster - for example, as in our `docker-compose.cluster.yml`
 void (async () => {
