@@ -94,27 +94,18 @@ describe('exec', () => {
     })
   })
 
-  xit('can specify a parameterized query', async () => {
-    await runExec({
-      query: '',
-      query_params: {
-        table_name: 'example',
-      },
-    })
-
-    // FIXME: use different DDL based on the TestEnv
+  it('can specify a parameterized query', async () => {
     const result = await client.query({
-      query: `SELECT * from system.tables where name = 'example'`,
+      query: `SELECT * from system.tables where name = 'numbers'`,
       format: 'JSON',
     })
 
-    const { data, rows } = await result.json<
-      ResponseJSON<{ name: string; engine: string; create_table_query: string }>
-    >()
-
-    expect(rows).toBe(1)
-    const table = data[0]
-    expect(table.name).toBe('example')
+    const json = await result.json<{
+      rows: number
+      data: Array<{ name: string }>
+    }>()
+    expect(json.rows).toBe(1)
+    expect(json.data[0].name).toBe('numbers')
   })
 
   async function checkCreatedTable({

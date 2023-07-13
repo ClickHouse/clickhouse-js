@@ -474,6 +474,7 @@ describe('data types', () => {
     await insertAndAssert(table, values)
   })
 
+  /** @see https://github.com/ClickHouse/clickhouse-js/issues/89 */
   xit('should work with nested', async () => {
     const values = [
       {

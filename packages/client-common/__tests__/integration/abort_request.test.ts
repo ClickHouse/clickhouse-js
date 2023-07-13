@@ -1,5 +1,5 @@
 import type { ClickHouseClient, ResponseJSON } from '@clickhouse/client-common'
-import { createTestClient, guid } from '../utils'
+import { createTestClient, guid, sleep } from '../utils'
 
 describe('abort request', () => {
   let client: ClickHouseClient
@@ -75,19 +75,25 @@ describe('abort request', () => {
       )
     })
 
-    // FIXME: it does not work with ClickHouse Cloud.
+    // FIXME: It does not work with ClickHouse Cloud.
     //  Active queries never contain the long-running query unlike local setup.
+    //  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
     xit('ClickHouse server must cancel query on abort', async () => {
       const controller = new AbortController()
 
       const longRunningQuery = `SELECT sleep(3), '${guid()}'`
       console.log(`Long running query: ${longRunningQuery}`)
-      void client.query({
-        query: longRunningQuery,
-        abort_signal: controller.signal,
-        format: 'JSONCompactEachRow',
-      })
+      void client
+        .query({
+          query: longRunningQuery,
+          abort_signal: controller.signal,
+          format: 'JSONCompactEachRow',
+        })
+        .catch(() => {
+          // ignore aborted query exception
+        })
 
+      // Long-running query should be there
       await assertActiveQueries(client, (queries) => {
         console.log(`Active queries: ${JSON.stringify(queries, null, 2)}`)
         return queries.some((q) => q.query.includes(longRunningQuery))
@@ -95,8 +101,12 @@ describe('abort request', () => {
 
       controller.abort()
 
+      // Long-running query should be cancelled on the server
       await assertActiveQueries(client, (queries) =>
-        queries.every((q) => !q.query.includes(longRunningQuery))
+        queries.every((q) => {
+          console.log(`${q.query} VS ${longRunningQuery}`)
+          return !q.query.includes(longRunningQuery)
+        })
       )
     })
 
@@ -141,19 +151,17 @@ async function assertActiveQueries(
   client: ClickHouseClient,
   assertQueries: (queries: Array<{ query: string }>) => boolean
 ) {
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+  let isRunning = true
+  while (isRunning) {
     const rs = await client.query({
       query: 'SELECT query FROM system.processes',
       format: 'JSON',
     })
-
     const queries = await rs.json<ResponseJSON<{ query: string }>>()
-
     if (assertQueries(queries.data)) {
-      break
+      isRunning = false
+    } else {
+      await sleep(100)
     }
-
-    await new Promise((res) => setTimeout(res, 100))
   }
 }

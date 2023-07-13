@@ -2,6 +2,7 @@ import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
 // FIXME: abort signal stopped working.
+//  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
 xdescribe('Browser abort request streaming', () => {
   let client: ClickHouseClient<ReadableStream>
 

@@ -70,14 +70,13 @@ describe('Node.js SELECT streaming', () => {
   })
 
   describe('select result asStream()', () => {
-    // FIXME: the error is actually correct, but the assertion does not match
-    xit('throws an exception if format is not stream-able', async () => {
+    it('throws an exception if format is not stream-able', async () => {
       const result = await client.query({
         query: 'SELECT number FROM system.numbers LIMIT 5',
         format: 'JSON',
       })
       try {
-        await expectAsync(result.stream()).toBeRejectedWith(
+        await expectAsync((async () => result.stream())()).toBeRejectedWith(
           jasmine.objectContaining({
             message: jasmine.stringContaining('JSON format is not streamable'),
           })

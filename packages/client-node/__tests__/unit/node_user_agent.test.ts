@@ -1,19 +1,14 @@
-import * as os from 'os'
-import { getProcessVersion, getUserAgent } from '../../src/utils'
-import * as p from '../../src/utils/process'
+import sinon from 'sinon'
+import { getUserAgent } from '../../src/utils'
+import * as version from '../../src/version'
 
-// FIXME: proper mocks
-xdescribe('Node.js User-Agent', () => {
+describe('Node.js User-Agent', () => {
+  const sandbox = sinon.createSandbox()
   beforeEach(() => {
-    spyOnProperty(os, 'platform').and.returnValue(() => 'freebsd')
-    spyOnProperty(p, 'getProcessVersion').and.returnValue(() => 'v16.144')
-  })
-
-  // const versionSpy = spyOn(version, 'default').and.returnValue('0.0.42')
-  describe('process util', () => {
-    it('should get correct process version by default', async () => {
-      expect(getProcessVersion()).toEqual(process.version)
-    })
+    // Jasmine's spyOn won't work here: 'platform' property is not configurable
+    sandbox.stub(process, 'platform').value('freebsd')
+    sandbox.stub(process, 'version').value('v16.144')
+    sandbox.stub(version, 'default').value('0.0.42')
   })
 
   it('should generate a user agent without app id', async () => {
