@@ -4,6 +4,7 @@ import {
 } from '@test/utils/test_connection_type'
 import { getClickHouseTestEnvironment, TestEnv } from '@test/utils/test_env'
 
+/** Ideally, should've been in common, but it does not work with Karma well */
 describe('Test env variables parsing', () => {
   describe('CLICKHOUSE_TEST_ENVIRONMENT', () => {
     const key = 'CLICKHOUSE_TEST_ENVIRONMENT'

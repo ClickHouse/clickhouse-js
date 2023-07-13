@@ -51,36 +51,36 @@ jobs:
         run: |
           npm run test:node:unit
 
-  #  browser-all-tests-local-single-node:
-  #    runs-on: ubuntu-latest
-  #    needs: node-unit-tests
-  #    strategy:
-  #      fail-fast: true
-  #      matrix:
-  #        clickhouse: [ head, latest ]
-  #    steps:
-  #      - uses: actions/checkout@main
-  #
-  #      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-  #        uses: isbang/compose-action@v1.1.0
-  #        env:
-  #          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-  #        with:
-  #          compose-file: 'docker-compose.yml'
-  #          down-flags: '--volumes'
-  #
-  #      - name: Setup NodeJS
-  #        uses: actions/setup-node@v3
-  #        with:
-  #          node-version: 16
-  #
-  #      - name: Install dependencies
-  #        run: |
-  #          npm install
-  #
-  #      - name: Run all browser tests
-  #        run: |
-  #          npm run test:browser
+  browser-all-tests-local-single-node:
+    runs-on: ubuntu-latest
+    needs: node-unit-tests
+    strategy:
+      fail-fast: true
+      matrix:
+        clickhouse: [head, latest]
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@v1.1.0
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: 'docker-compose.yml'
+          down-flags: '--volumes'
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run all browser tests
+        run: |
+          npm run test:browser
 
   node-integration-tests-local-single-node:
     needs: node-unit-tests
@@ -156,36 +156,36 @@ jobs:
         run: |
           npm run test:node:integration:local_cluster
 
-  #  browser-integration-tests-local-cluster:
-  #    runs-on: ubuntu-latest
-  #    needs: node-unit-tests
-  #    strategy:
-  #      fail-fast: true
-  #      matrix:
-  #        clickhouse: [ head, latest ]
-  #    steps:
-  #      - uses: actions/checkout@main
-  #
-  #      - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-  #        uses: isbang/compose-action@v1.1.0
-  #        env:
-  #          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-  #        with:
-  #          compose-file: 'docker-compose.cluster.yml'
-  #          down-flags: '--volumes'
-  #
-  #      - name: Setup NodeJS
-  #        uses: actions/setup-node@v3
-  #        with:
-  #          node-version: 16
-  #
-  #      - name: Install dependencies
-  #        run: |
-  #          npm install
-  #
-  #      - name: Run all browser tests
-  #        run: |
-  #          npm run test:browser:integration:local_cluster
+  browser-integration-tests-local-cluster:
+    runs-on: ubuntu-latest
+    needs: node-unit-tests
+    strategy:
+      fail-fast: true
+      matrix:
+        clickhouse: [head, latest]
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@v1.1.0
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: 'docker-compose.cluster.yml'
+          down-flags: '--volumes'
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run all browser tests
+        run: |
+          npm run test:browser:integration:local_cluster
 
   node-integration-tests-cloud:
     needs: node-unit-tests
@@ -214,25 +214,25 @@ jobs:
         run: |
           npm run test:node:integration:cloud
 
-#  browser-integration-tests-cloud:
-#    needs: node-unit-tests
-#    runs-on: ubuntu-latest
-#    permissions: write-all
-#    steps:
-#      - uses: actions/checkout@main
-#
-#      - name: Setup NodeJS
-#        uses: actions/setup-node@v3
-#        with:
-#          node-version: 16
-#
-#      - name: Install dependencies
-#        run: |
-#          npm install
-#
-#      - name: Run integration tests
-#        env:
-#          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST }}
-#          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
-#        run: |
-#          npm run test:browser:integration:cloud
+  browser-integration-tests-cloud:
+    needs: node-unit-tests
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run integration tests
+        env:
+          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST }}
+          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
+        run: |
+          npm run test:browser:integration:cloud
