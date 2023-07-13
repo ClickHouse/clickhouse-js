@@ -1,9 +1,11 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.dev.json",
   "include": [
     "./packages/**/*.ts",
     "__tests__/**/*.ts",
-    ".build/**/*.ts"
+    ".build/**/*.ts",
+    "examples/**/*.ts",
+    "benchmarks/**/*.ts"
   ],
   "compilerOptions": {
     "noUnusedLocals": false,
@@ -13,7 +15,9 @@
     "paths": {
       "@test": ["packages/client-common/__tests__/*"],
       "@clickhouse/client-common": ["packages/client-common/src/index.ts"],
-      "@clickhouse/client-common/*": ["packages/client-common/src/*"]
+      "@clickhouse/client-common/*": ["packages/client-common/src/*"],
+      "@clickhouse/client": ["packages/client-node/src/index.ts"],
+      "@clickhouse/client/*": ["packages/client-node/src/*"]
     }
   },
   "ts-node": {
