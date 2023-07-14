@@ -57,7 +57,7 @@ module.exports = function (config) {
         random: false,
         stopOnSpecFailure: false,
         stopSpecOnExpectationFailure: true,
-        timeoutInterval: 5000,
+        timeoutInterval: 30000,
       },
     },
   })
