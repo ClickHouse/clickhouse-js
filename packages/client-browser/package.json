@@ -7,9 +7,11 @@
   ],
   "dependencies": {
     "@clickhouse/client-common": "*",
+    "pako": "^2.1.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@types/pako": "^2.0.0",
     "@types/uuid": "^9.0.2"
   }
 }

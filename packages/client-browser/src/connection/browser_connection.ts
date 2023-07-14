@@ -6,7 +6,7 @@ import type {
   InsertResult,
   QueryResult,
 } from '@clickhouse/client-common/connection'
-import { getAsText } from '../utils'
+import { parseError } from '@clickhouse/client-common/error'
 import {
   getQueryId,
   isSuccessfulResponse,
@@ -15,8 +15,16 @@ import {
   withCompressionHeaders,
   withHttpSettings,
 } from '@clickhouse/client-common/utils'
-import { parseError } from '@clickhouse/client-common/error'
+import * as pako from 'pako'
 import type { URLSearchParams } from 'url'
+import { getAsText } from '../utils'
+
+type BrowserInsertParams<T> = Omit<
+  InsertParams<ReadableStream<T>>,
+  'values'
+> & {
+  values: string
+}
 
 export class BrowserConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
@@ -42,7 +50,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
       query_id,
     })
     const response = await this.request({
-      body: params.query,
+      values: params.query,
       params,
       searchParams,
     })
@@ -62,7 +70,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
       query_id,
     })
     const response = await this.request({
-      body: params.query,
+      values: params.query,
       params,
       searchParams,
     })
@@ -73,7 +81,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
   }
 
   async insert<T = unknown>(
-    params: InsertParams<ReadableStream<T>>
+    params: BrowserInsertParams<T>
   ): Promise<InsertResult> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
@@ -85,7 +93,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
       query_id,
     })
     await this.request({
-      body: params.values,
+      values: params.values,
       params,
       searchParams,
     })
@@ -98,7 +106,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
     // TODO: catch an error and just log it, returning false?
     const response = await this.request({
       method: 'GET',
-      body: null,
+      values: null,
       pathname: '/ping',
       searchParams: undefined,
     })
@@ -113,13 +121,13 @@ export class BrowserConnection implements Connection<ReadableStream> {
   }
 
   private async request({
-    body,
+    values,
     params,
     searchParams,
     pathname,
     method,
   }: {
-    body: string | ReadableStream | null
+    values: string | null
     params?: BaseQueryParams
     searchParams: URLSearchParams | undefined
     pathname?: string
@@ -148,17 +156,23 @@ export class BrowserConnection implements Connection<ReadableStream> {
     }
 
     try {
+      // GZIP seems to work out of the box for responses;
+      // for requests, we need to compress the input manually
+      const body =
+        values && this.params.compression.compress_request
+          ? pako.gzip(values)
+          : values
+      const headers = withCompressionHeaders({
+        headers: this.defaultHeaders,
+        compress_request: this.params.compression.compress_request,
+        decompress_response: this.params.compression.decompress_response,
+      })
       const response = await fetch(url, {
         body,
+        headers,
         keepalive: false,
         method: method ?? 'POST',
         signal: abortController.signal,
-        headers: withCompressionHeaders({
-          headers: this.defaultHeaders,
-          // FIXME: use https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API
-          compress_request: false,
-          decompress_response: this.params.compression.decompress_response,
-        }),
       })
       clearTimeout(timeout)
       if (isSuccessfulResponse(response.status)) {
