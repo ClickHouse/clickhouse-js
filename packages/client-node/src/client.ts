@@ -1,10 +1,10 @@
-import type { DataFormat } from '@clickhouse/client-common'
-import { ClickHouseClient } from '@clickhouse/client-common'
-import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common/client'
 import type {
+  BaseClickHouseClientConfigOptions,
   Connection,
   ConnectionParams,
-} from '@clickhouse/client-common/connection'
+  DataFormat,
+} from '@clickhouse/client-common'
+import { ClickHouseClient } from '@clickhouse/client-common'
 import type Stream from 'stream'
 import type { NodeConnectionParams, TLSParams } from './connection'
 import { NodeHttpConnection, NodeHttpsConnection } from './connection'

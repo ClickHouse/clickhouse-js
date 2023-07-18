@@ -1,22 +1,20 @@
-import type { ExecParams } from '@clickhouse/client-common'
-
 import type {
-  BaseQueryParams,
+  ConnBaseQueryParams,
   Connection,
   ConnectionParams,
-  ExecResult,
-  InsertParams,
-  InsertResult,
-  QueryResult,
-} from '@clickhouse/client-common/connection'
-import { parseError } from '@clickhouse/client-common/error'
-import type { LogWriter } from '@clickhouse/client-common/logger'
+  ConnExecResult,
+  ConnInsertParams,
+  ConnInsertResult,
+  ConnQueryResult,
+  LogWriter,
+} from '@clickhouse/client-common'
 import {
   isSuccessfulResponse,
+  parseError,
   toSearchParams,
   transformUrl,
   withHttpSettings,
-} from '@clickhouse/client-common/utils'
+} from '@clickhouse/client-common'
 import crypto from 'crypto'
 import type Http from 'http'
 import type * as net from 'net'
@@ -291,7 +289,9 @@ export abstract class NodeBaseConnection
     return true
   }
 
-  async query(params: BaseQueryParams): Promise<QueryResult<Stream.Readable>> {
+  async query(
+    params: ConnBaseQueryParams
+  ): Promise<ConnQueryResult<Stream.Readable>> {
     const query_id = getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -319,7 +319,9 @@ export abstract class NodeBaseConnection
     }
   }
 
-  async exec(params: ExecParams): Promise<ExecResult<Stream.Readable>> {
+  async exec(
+    params: ConnBaseQueryParams
+  ): Promise<ConnExecResult<Stream.Readable>> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -342,7 +344,9 @@ export abstract class NodeBaseConnection
     }
   }
 
-  async insert(params: InsertParams<Stream.Readable>): Promise<InsertResult> {
+  async insert(
+    params: ConnInsertParams<Stream.Readable>
+  ): Promise<ConnInsertResult> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,

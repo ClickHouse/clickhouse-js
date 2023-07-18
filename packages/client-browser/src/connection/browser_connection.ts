@@ -1,23 +1,23 @@
 import type {
-  BaseQueryParams,
+  ConnBaseQueryParams,
   Connection,
   ConnectionParams,
-  InsertParams,
-  InsertResult,
-  QueryResult,
-} from '@clickhouse/client-common/connection'
-import { parseError } from '@clickhouse/client-common/error'
+  ConnInsertParams,
+  ConnInsertResult,
+  ConnQueryResult,
+} from '@clickhouse/client-common'
 import {
   isSuccessfulResponse,
+  parseError,
   toSearchParams,
   transformUrl,
   withCompressionHeaders,
   withHttpSettings,
-} from '@clickhouse/client-common/utils'
+} from '@clickhouse/client-common'
 import { getAsText } from '../utils'
 
 type BrowserInsertParams<T> = Omit<
-  InsertParams<ReadableStream<T>>,
+  ConnInsertParams<ReadableStream<T>>,
   'values'
 > & {
   values: string
@@ -32,8 +32,8 @@ export class BrowserConnection implements Connection<ReadableStream> {
   }
 
   async query(
-    params: BaseQueryParams
-  ): Promise<QueryResult<ReadableStream<Uint8Array>>> {
+    params: ConnBaseQueryParams
+  ): Promise<ConnQueryResult<ReadableStream<Uint8Array>>> {
     const query_id = getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -57,7 +57,9 @@ export class BrowserConnection implements Connection<ReadableStream> {
     }
   }
 
-  async exec(params: BaseQueryParams): Promise<QueryResult<ReadableStream>> {
+  async exec(
+    params: ConnBaseQueryParams
+  ): Promise<ConnQueryResult<ReadableStream>> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -79,7 +81,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
 
   async insert<T = unknown>(
     params: BrowserInsertParams<T>
-  ): Promise<InsertResult> {
+  ): Promise<ConnInsertResult> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -125,7 +127,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
     method,
   }: {
     values: string | null
-    params?: BaseQueryParams
+    params?: ConnBaseQueryParams
     searchParams: URLSearchParams | undefined
     pathname?: string
     method?: 'GET' | 'POST'

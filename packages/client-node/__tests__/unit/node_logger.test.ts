@@ -2,8 +2,8 @@ import type {
   ErrorLogParams,
   Logger,
   LogParams,
-} from '@clickhouse/client-common/logger'
-import { ClickHouseLogLevel, LogWriter } from '@clickhouse/client-common/logger'
+} from '@clickhouse/client-common'
+import { ClickHouseLogLevel, LogWriter } from '@clickhouse/client-common'
 
 describe('Node.js Logger', () => {
   type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error'

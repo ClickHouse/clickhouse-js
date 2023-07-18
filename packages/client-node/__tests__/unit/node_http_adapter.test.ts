@@ -1,8 +1,8 @@
 import type {
   ConnectionParams,
-  QueryResult,
-} from '@clickhouse/client-common/connection'
-import { LogWriter } from '@clickhouse/client-common/logger'
+  ConnQueryResult,
+} from '@clickhouse/client-common'
+import { LogWriter } from '@clickhouse/client-common'
 import { guid, sleep, TestLogger, validateUUID } from '@test/utils'
 import { randomUUID } from '@test/utils/guid'
 import type { ClientRequest } from 'http'
@@ -590,7 +590,7 @@ describe('Node.js HttpAdapter', () => {
   }
 
   async function assertQueryResult(
-    { stream, query_id }: QueryResult<Stream.Readable>,
+    { stream, query_id }: ConnQueryResult<Stream.Readable>,
     expectedResponseBody: any
   ) {
     expect(await getAsText(stream)).toBe(expectedResponseBody)

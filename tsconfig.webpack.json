@@ -12,8 +12,7 @@
     "types": [],
     "baseUrl": "./",
     "paths": {
-      "@clickhouse/client-common": ["packages/client-common/src/index.ts"],
-      "@clickhouse/client-common/*": ["packages/client-common/src/*"]
+      "@clickhouse/client-common": ["packages/client-common/src/index.ts"]
     }
   },
   "exclude": ["node_modules"],

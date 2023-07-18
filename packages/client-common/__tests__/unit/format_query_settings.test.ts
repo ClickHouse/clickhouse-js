@@ -1,5 +1,4 @@
-import { SettingsMap } from '@clickhouse/client-common'
-import { formatQuerySettings } from '@clickhouse/client-common/data_formatter'
+import { formatQuerySettings, SettingsMap } from '@clickhouse/client-common'
 
 describe('formatQuerySettings', () => {
   it('formats boolean', () => {

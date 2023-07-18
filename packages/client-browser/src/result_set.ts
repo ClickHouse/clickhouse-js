@@ -1,11 +1,8 @@
-import type { DataFormat, IResultSet, Row } from '@clickhouse/client-common'
+import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
+import { decode, validateStreamFormat } from '@clickhouse/client-common'
 import { getAsText } from './utils'
-import {
-  decode,
-  validateStreamFormat,
-} from '@clickhouse/client-common/data_formatter'
 
-export class ResultSet implements IResultSet<ReadableStream<Row[]>> {
+export class ResultSet implements BaseResultSet<ReadableStream<Row[]>> {
   private isAlreadyConsumed = false
   constructor(
     private _stream: ReadableStream,

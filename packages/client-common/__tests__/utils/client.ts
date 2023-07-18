@@ -1,9 +1,9 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
-import type { ClickHouseSettings } from '@clickhouse/client-common'
 import type {
   BaseClickHouseClientConfigOptions,
   ClickHouseClient,
-} from '@clickhouse/client-common/client'
+  ClickHouseSettings,
+} from '@clickhouse/client-common'
 import { getFromEnv } from './env'
 import { guid } from './guid'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'

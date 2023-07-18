@@ -1,4 +1,4 @@
-import { toSearchParams } from '@clickhouse/client-common/utils/url'
+import { toSearchParams } from '@clickhouse/client-common'
 import type { URLSearchParams } from 'url'
 
 describe('toSearchParams', () => {

@@ -1,20 +1,16 @@
 import type {
   BaseClickHouseClientConfigOptions,
-  InsertParams,
-} from '@clickhouse/client-common/client'
-import { ClickHouseClient } from '@clickhouse/client-common/client'
-import { BrowserConnection } from './connection'
-import { BrowserValuesEncoder } from './utils'
-import { ResultSet } from './result_set'
-import type {
   ConnectionParams,
-  InsertResult,
-} from '@clickhouse/client-common/connection'
-import type {
   DataFormat,
   InputJSON,
   InputJSONObjectEachRow,
+  InsertParams,
+  InsertResult,
 } from '@clickhouse/client-common'
+import { ClickHouseClient } from '@clickhouse/client-common'
+import { BrowserConnection } from './connection'
+import { ResultSet } from './result_set'
+import { BrowserValuesEncoder } from './utils'
 
 export type BrowserClickHouseClient = Omit<
   ClickHouseClient<ReadableStream>,

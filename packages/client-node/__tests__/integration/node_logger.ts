@@ -1,8 +1,9 @@
-import type { ClickHouseClient, Logger } from '@clickhouse/client-common'
 import type {
+  ClickHouseClient,
   ErrorLogParams,
+  Logger,
   LogParams,
-} from '@clickhouse/client-common/logger'
+} from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
 describe('config', () => {

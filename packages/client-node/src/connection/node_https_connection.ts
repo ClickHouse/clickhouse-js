@@ -1,13 +1,13 @@
+import type { Connection } from '@clickhouse/client-common'
+import { withCompressionHeaders } from '@clickhouse/client-common'
+import type Http from 'http'
+import Https from 'https'
+import type Stream from 'stream'
 import type {
   NodeConnectionParams,
   RequestParams,
 } from './node_base_connection'
 import { NodeBaseConnection } from './node_base_connection'
-import Https from 'https'
-import type Http from 'http'
-import type { Connection } from '@clickhouse/client-common/connection'
-import type Stream from 'stream'
-import { withCompressionHeaders } from '@clickhouse/client-common/utils'
 
 export class NodeHttpsConnection
   extends NodeBaseConnection

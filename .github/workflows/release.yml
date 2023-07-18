@@ -21,7 +21,7 @@ jobs:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
       - run: npm i --ignore-scripts
-      - name: Update package.json version
+      - name: Build package and prepare package.json
         run: NODE_OPTIONS="-r ts-node/register" node .build/build_and_prepare.ts ${{ github.event.inputs.version }}
       - run: npm publish --dry-run
         env:
