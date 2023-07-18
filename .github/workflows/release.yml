@@ -22,7 +22,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm i --ignore-scripts
       - name: Update package.json version
-        run: NODE_OPTIONS="-r ts-node/register" node .build/build_and_prepare.ts
+        run: NODE_OPTIONS="-r ts-node/register" node .build/build_and_prepare.ts ${{ github.event.inputs.version }}
       - run: npm publish --dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
