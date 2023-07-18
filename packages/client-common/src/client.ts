@@ -1,14 +1,17 @@
-import type { Logger } from '@clickhouse/client-common/logger'
-import { DefaultLogger, LogWriter } from '@clickhouse/client-common/logger'
-import { type DataFormat } from '@clickhouse/client-common/data_formatter'
-import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
-import type { ClickHouseSettings } from '@clickhouse/client-common/settings'
 import type {
   Connection,
   ConnectionParams,
   InsertResult,
   QueryResult,
 } from '@clickhouse/client-common/connection'
+import { type DataFormat } from '@clickhouse/client-common/data_formatter'
+import type {
+  Logger,
+  ClickHouseLogLevel,
+} from '@clickhouse/client-common/logger'
+import { DefaultLogger, LogWriter } from '@clickhouse/client-common/logger'
+import type { ClickHouseSettings } from '@clickhouse/client-common/settings'
+import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 import type { IResultSet } from './result'
 
 export type MakeConnection<Stream> = (
@@ -82,6 +85,8 @@ export interface ClickHouseClientConfigOptions<Stream> {
     /** A class to instantiate a custom logger implementation.
      * Default: {@link DefaultLogger} */
     LoggerClass?: new () => Logger
+    /** Default: OFF */
+    level?: ClickHouseLogLevel
   }
   session_id?: string
 }
@@ -172,7 +177,8 @@ function getConnectionParams<Stream>(
     logWriter: new LogWriter(
       config?.log?.LoggerClass
         ? new config.log.LoggerClass()
-        : new DefaultLogger()
+        : new DefaultLogger(),
+      config.log?.level
     ),
   }
 }

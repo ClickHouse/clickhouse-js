@@ -3,13 +3,12 @@ import type {
   QueryResult,
 } from '@clickhouse/client-common/connection'
 import { LogWriter } from '@clickhouse/client-common/logger'
-import { guid, sleep, TestLogger } from '@test/utils'
+import { guid, sleep, TestLogger, validateUUID } from '@test/utils'
+import { randomUUID } from '@test/utils/guid'
 import type { ClientRequest } from 'http'
 import Http from 'http'
 import Stream from 'stream'
 import Util from 'util'
-import * as uuid from 'uuid'
-import { v4 as uuid_v4 } from 'uuid'
 import Zlib from 'zlib'
 import type { NodeConnectionParams } from '../../src/connection'
 import { NodeBaseConnection, NodeHttpConnection } from '../../src/connection'
@@ -545,7 +544,7 @@ describe('Node.js HttpAdapter', () => {
 
     response.statusCode = statusCode
     response.headers = {
-      'x-clickhouse-query-id': uuid_v4(),
+      'x-clickhouse-query-id': randomUUID(),
       ...headers,
     }
     return response
@@ -600,7 +599,7 @@ describe('Node.js HttpAdapter', () => {
 
   function assertQueryId(query_id: string) {
     expect(typeof query_id).toBe('string')
-    expect(uuid.validate(query_id)).toBeTruthy()
+    expect(validateUUID(query_id)).toBeTruthy()
   }
 })
 

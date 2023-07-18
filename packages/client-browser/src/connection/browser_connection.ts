@@ -8,15 +8,12 @@ import type {
 } from '@clickhouse/client-common/connection'
 import { parseError } from '@clickhouse/client-common/error'
 import {
-  getQueryId,
   isSuccessfulResponse,
   toSearchParams,
   transformUrl,
   withCompressionHeaders,
   withHttpSettings,
 } from '@clickhouse/client-common/utils'
-import * as pako from 'pako'
-import type { URLSearchParams } from 'url'
 import { getAsText } from '../utils'
 
 type BrowserInsertParams<T> = Omit<
@@ -156,19 +153,13 @@ export class BrowserConnection implements Connection<ReadableStream> {
     }
 
     try {
-      // GZIP seems to work out of the box for responses;
-      // for requests, we need to compress the input manually
-      const body =
-        values && this.params.compression.compress_request
-          ? pako.gzip(values)
-          : values
       const headers = withCompressionHeaders({
         headers: this.defaultHeaders,
-        compress_request: this.params.compression.compress_request,
+        compress_request: false,
         decompress_response: this.params.compression.decompress_response,
       })
       const response = await fetch(url, {
-        body,
+        body: values,
         headers,
         keepalive: false,
         method: method ?? 'POST',
@@ -200,4 +191,8 @@ export class BrowserConnection implements Connection<ReadableStream> {
       throw err
     }
   }
+}
+
+function getQueryId(query_id: string | undefined): string {
+  return query_id || crypto.randomUUID()
 }

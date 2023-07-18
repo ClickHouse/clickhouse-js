@@ -17,7 +17,7 @@
     "skipLibCheck": false,
     "esModuleInterop": true,
     "importHelpers": false,
-    "outDir": "dist",
+    "outDir": "out",
     "lib": ["esnext", "dom"],
     "types": ["node", "jest", "jasmine"],
     "baseUrl": "./",
@@ -27,5 +27,5 @@
     }
   },
   "exclude": ["node_modules"],
-  "include": ["./packages/**/*.ts"]
+  "include": ["./packages/**/src/**/*.ts"]
 }

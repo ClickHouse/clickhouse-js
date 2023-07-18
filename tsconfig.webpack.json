@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "module": "es6",
+    "target": "es6",
+    "moduleResolution": "node",
+    "allowJs": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "out",
+    "lib": ["esnext", "dom"],
+    "types": [],
+    "baseUrl": "./",
+    "paths": {
+      "@clickhouse/client-common": ["packages/client-common/src/index.ts"],
+      "@clickhouse/client-common/*": ["packages/client-common/src/*"]
+    }
+  },
+  "exclude": ["node_modules"],
+  "include": [
+    "./packages/client-common/src/**/*.ts",
+    "./packages/client-browser/src/**/*.ts"
+  ]
+}

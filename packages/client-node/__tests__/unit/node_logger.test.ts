@@ -3,28 +3,18 @@ import type {
   Logger,
   LogParams,
 } from '@clickhouse/client-common/logger'
-import { LogWriter } from '@clickhouse/client-common/logger'
+import { ClickHouseLogLevel, LogWriter } from '@clickhouse/client-common/logger'
 
 describe('Node.js Logger', () => {
   type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error'
 
-  const logLevelKey = 'CLICKHOUSE_LOG_LEVEL'
   const module = 'LoggerUnitTest'
   const message = 'very informative'
   const err = new Error('boo')
 
   let logs: Array<LogParams & { level: LogLevel; err?: Error }> = []
-  let defaultLogLevel: string | undefined
 
-  beforeEach(() => {
-    defaultLogLevel = process.env[logLevelKey]
-  })
   afterEach(() => {
-    if (defaultLogLevel === undefined) {
-      delete process.env[logLevelKey]
-    } else {
-      process.env[logLevelKey] = defaultLogLevel
-    }
     logs = []
   })
 
@@ -35,8 +25,7 @@ describe('Node.js Logger', () => {
   })
 
   it('should explicitly use TRACE', async () => {
-    process.env[logLevelKey] = 'TRACE'
-    const logWriter = new LogWriter(new TestLogger())
+    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.TRACE)
     checkLogLevelSet('TRACE')
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
@@ -69,8 +58,7 @@ describe('Node.js Logger', () => {
   })
 
   it('should explicitly use DEBUG', async () => {
-    process.env[logLevelKey] = 'DEBUG'
-    const logWriter = new LogWriter(new TestLogger())
+    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.DEBUG)
     checkLogLevelSet('DEBUG')
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
@@ -98,8 +86,7 @@ describe('Node.js Logger', () => {
   })
 
   it('should explicitly use INFO', async () => {
-    process.env[logLevelKey] = 'INFO'
-    const logWriter = new LogWriter(new TestLogger())
+    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.INFO)
     checkLogLevelSet('INFO')
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
@@ -122,8 +109,7 @@ describe('Node.js Logger', () => {
   })
 
   it('should explicitly use WARN', async () => {
-    process.env[logLevelKey] = 'WARN'
-    const logWriter = new LogWriter(new TestLogger())
+    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.WARN)
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
       level: 'warn',
@@ -140,8 +126,7 @@ describe('Node.js Logger', () => {
   })
 
   it('should explicitly use ERROR', async () => {
-    process.env[logLevelKey] = 'ERROR'
-    const logWriter = new LogWriter(new TestLogger())
+    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.ERROR)
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
       level: 'error',

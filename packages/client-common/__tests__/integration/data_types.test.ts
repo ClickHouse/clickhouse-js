@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { v4 } from 'uuid'
+import { randomUUID } from '@test/utils/guid'
 import { createTableWithFields } from '../fixtures/table_with_fields'
 import { createTestClient, getRandomInt } from '../utils'
 
@@ -134,7 +134,7 @@ describe('data types', () => {
   })
 
   it('should work with UUID', async () => {
-    const values = [{ u: v4() }, { u: v4() }]
+    const values = [{ u: randomUUID() }, { u: randomUUID() }]
     const table = await createTableWithFields(client, 'u UUID')
     await insertAndAssert(table, values)
   })

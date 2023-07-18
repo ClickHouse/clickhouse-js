@@ -10,7 +10,7 @@
   "compilerOptions": {
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "outDir": "dist",
+    "outDir": "out",
     "baseUrl": "./",
     "paths": {
       "@test/*": ["packages/client-common/__tests__/*"],

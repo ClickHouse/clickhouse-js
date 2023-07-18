@@ -1,8 +1,7 @@
 import { type ClickHouseClient } from '@clickhouse/client-common'
-import * as uuid from 'uuid'
 import { createSimpleTable } from '../fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '../fixtures/test_data'
-import { createTestClient, guid } from '../utils'
+import { createTestClient, guid, validateUUID } from '../utils'
 
 describe('insert', () => {
   let client: ClickHouseClient
@@ -40,7 +39,7 @@ describe('insert', () => {
       format: 'JSON',
     })
     await assertJsonValues(client, tableName)
-    expect(uuid.validate(query_id)).toBeTruthy()
+    expect(validateUUID(query_id)).toBeTruthy()
   })
 
   it('should use provide query_id', async () => {

@@ -1,5 +1,4 @@
 import type { ClickHouseSettings } from '../settings'
-import * as uuid from 'uuid'
 
 export type HttpHeader = number | string | string[]
 export type HttpHeaders = Record<string, HttpHeader | undefined>
@@ -36,8 +35,4 @@ export function withHttpSettings(
 
 export function isSuccessfulResponse(statusCode?: number): boolean {
   return Boolean(statusCode && 200 <= statusCode && statusCode < 300)
-}
-
-export function getQueryId(query_id: string | undefined): string {
-  return query_id || uuid.v4()
 }

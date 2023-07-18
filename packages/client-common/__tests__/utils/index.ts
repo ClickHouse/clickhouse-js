@@ -5,7 +5,7 @@ export {
   createTable,
   getTestDatabaseName,
 } from './client'
-export { guid } from './guid'
+export { guid, validateUUID } from './guid'
 export { getClickHouseTestEnvironment } from './test_env'
 export { TestEnv } from './test_env'
 export { sleep } from './sleep'

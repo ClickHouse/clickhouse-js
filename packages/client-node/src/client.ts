@@ -1,22 +1,22 @@
 import type { DataFormat } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
-import type { NodeConnectionParams, TLSParams } from './connection'
-import { NodeHttpConnection, NodeHttpsConnection } from './connection'
+import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common/client'
 import type {
   Connection,
   ConnectionParams,
 } from '@clickhouse/client-common/connection'
 import type Stream from 'stream'
+import type { NodeConnectionParams, TLSParams } from './connection'
+import { NodeHttpConnection, NodeHttpsConnection } from './connection'
 import { ResultSet } from './result_set'
-import { NodeValuesEncoder } from './utils/encoder'
-import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common/client'
+import { NodeValuesEncoder } from './utils'
 
 export type NodeClickHouseClientConfigOptions =
   BaseClickHouseClientConfigOptions<Stream.Readable> & {
     tls?: BasicTLSOptions | MutualTLSOptions
     /** HTTP Keep-Alive related settings */
     keep_alive?: {
-      /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
+      /** Enable or disable HTTP Keep-Alive mechanism. Default: false */
       enabled?: boolean
       /** How long to keep a particular open socket alive
        * on the client side (in milliseconds).
@@ -62,7 +62,7 @@ export function createClient(
     }
   }
   const keep_alive = {
-    enabled: config?.keep_alive?.enabled ?? true,
+    enabled: config?.keep_alive?.enabled ?? false,
     socket_ttl: config?.keep_alive?.socket_ttl ?? 2500,
     retry_on_expired_socket:
       config?.keep_alive?.retry_on_expired_socket ?? false,

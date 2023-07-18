@@ -1,7 +1,4 @@
-import Stream from 'stream'
-import type Http from 'http'
-import Zlib from 'zlib'
-import { parseError } from '@clickhouse/client-common/error'
+import type { ExecParams } from '@clickhouse/client-common'
 
 import type {
   BaseQueryParams,
@@ -12,18 +9,20 @@ import type {
   InsertResult,
   QueryResult,
 } from '@clickhouse/client-common/connection'
+import { parseError } from '@clickhouse/client-common/error'
+import type { LogWriter } from '@clickhouse/client-common/logger'
 import {
-  getQueryId,
   isSuccessfulResponse,
   toSearchParams,
   transformUrl,
   withHttpSettings,
 } from '@clickhouse/client-common/utils'
-import { getAsText, getUserAgent, isStream } from '../utils'
+import crypto from 'crypto'
+import type Http from 'http'
 import type * as net from 'net'
-import type { LogWriter } from '@clickhouse/client-common/logger'
-import * as uuid from 'uuid'
-import type { ExecParams } from '@clickhouse/client-common'
+import Stream from 'stream'
+import Zlib from 'zlib'
+import { getAsText, getUserAgent, isStream } from '../utils'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
@@ -225,7 +224,7 @@ export abstract class NodeBaseConnection
               pipeStream()
             }
           } else {
-            const socketId = uuid.v4()
+            const socketId = crypto.randomUUID()
             this.logger.trace({
               module: 'Connection',
               message: `Using a new socket ${socketId}`,
@@ -427,4 +426,8 @@ function decompressResponse(response: Http.IncomingMessage):
 
 function isDecompressionError(result: any): result is { error: Error } {
   return result.error !== undefined
+}
+
+function getQueryId(query_id: string | undefined): string {
+  return query_id || crypto.randomUUID()
 }

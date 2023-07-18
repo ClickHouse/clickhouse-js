@@ -2,8 +2,7 @@ import {
   type ClickHouseClient,
   type ResponseJSON,
 } from '@clickhouse/client-common'
-import * as uuid from 'uuid'
-import { createTestClient, guid } from '../utils'
+import { createTestClient, guid, validateUUID } from '../utils'
 
 describe('select', () => {
   let client: ClickHouseClient
@@ -20,7 +19,7 @@ describe('select', () => {
       format: 'JSONEachRow',
     })
     expect(await resultSet.json()).toEqual([{ number: '0' }])
-    expect(uuid.validate(resultSet.query_id)).toBeTruthy()
+    expect(validateUUID(resultSet.query_id)).toBeTruthy()
   })
 
   it('can override query_id', async () => {

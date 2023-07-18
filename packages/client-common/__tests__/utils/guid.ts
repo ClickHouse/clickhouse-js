@@ -1,5 +1,13 @@
-import { v4 as uuid_v4 } from 'uuid'
+import * as uuid from 'uuid'
 
-export function guid() {
-  return uuid_v4().replace(/-/g, '')
+export function guid(): string {
+  return uuid.v4().replace(/-/g, '')
+}
+
+export function randomUUID(): string {
+  return uuid.v4()
+}
+
+export function validateUUID(s: string): boolean {
+  return uuid.validate(s)
 }
