@@ -10,17 +10,16 @@ The client was refactored into three packages:
 
 - `@clickhouse/client-common`: all possible platform-independent code, types and interfaces
 - `@clickhouse/client-browser`: new "browser" (or non-Node.js env) connection, uses native fetch.
-  Depends on the `@clickhouse/client-common` package.
-- `@clickhouse/client`: Node.js connection as it was before. Depends on the `@clickhouse/client-common` package.
+- `@clickhouse/client`: Node.js connection as it was before.
 
 ### Node.js client breaking changes
 
 - Log level configuration parameter is now explicit instead of `CLICKHOUSE_LOG_LEVEL` environment variable.
+  Default is `OFF`.
 - `query` return type signature changed to is `BaseResultSet<Stream.Readable>` (no functional changes)
 - `exec` return type signature changed to `ExecResult<Stream.Readable>` (no functional changes)
 - `insert<T>` params argument type changed to `InsertParams<Stream, T>` (no functional changes)
 - Experimental `schema` module is removed
--
 
 ### Browser client known limitations
 
