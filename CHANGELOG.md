@@ -19,6 +19,8 @@ The client was refactored into three packages:
 - `query` return type signature changed to is `BaseResultSet<Stream.Readable>` (no functional changes)
 - `exec` return type signature changed to `ExecResult<Stream.Readable>` (no functional changes)
 - `insert<T>` params argument type changed to `InsertParams<Stream, T>` (no functional changes)
+- Experimental `schema` module is removed
+-
 
 ### Browser client known limitations
 
