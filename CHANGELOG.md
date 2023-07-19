@@ -1,3 +1,32 @@
+## 0.2.0-beta1 (browser support)
+
+Introduces browser client (using native [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
+and [WebStream](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) APIs)
+with no Node.js modules in the common interfaces. No polyfills are required.
+
+It is now possible to implement new custom connections on top of `@clickhouse/client-common`.
+
+The client was refactored into three packages:
+
+- `@clickhouse/client-common`: all possible platform-independent code, types and interfaces
+- `@clickhouse/client-browser`: new "browser" (or non-Node.js env) connection, uses native fetch.
+  Depends on the `@clickhouse/client-common` package.
+- `@clickhouse/client`: Node.js connection as it was before. Depends on the `@clickhouse/client-common` package.
+
+### Node.js client breaking changes
+
+- Log level configuration parameter is now explicit instead of `CLICKHOUSE_LOG_LEVEL` environment variable.
+- `query` return type signature changed to is `BaseResultSet<Stream.Readable>` (no functional changes)
+- `exec` return type signature changed to `ExecResult<Stream.Readable>` (no functional changes)
+- `insert<T>` params argument type changed to `InsertParams<Stream, T>` (no functional changes)
+
+### Browser client known limitations
+
+- Streaming for select queries works, but it is disabled for inserts (on the type level as well).
+- KeepAlive is disabled and not configurable yet.
+- Request compression is disabled and ignored.
+- No logging support yet.
+
 ## 0.1.1
 
 ## New features
