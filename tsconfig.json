@@ -17,10 +17,14 @@
     "skipLibCheck": false,
     "esModuleInterop": true,
     "importHelpers": false,
-    "outDir": "dist",
+    "outDir": "out",
     "lib": ["esnext", "dom"],
-    "types": ["node", "jest"]
+    "types": ["node", "jest", "jasmine"],
+    "baseUrl": "./",
+    "paths": {
+      "@clickhouse/client-common": ["packages/client-common/src/index.ts"]
+    }
   },
   "exclude": ["node_modules"],
-  "include": ["./src/**/*.ts"]
+  "include": ["./packages/**/src/**/*.ts"]
 }

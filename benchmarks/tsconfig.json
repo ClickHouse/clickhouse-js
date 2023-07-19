@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["leaks/**/*.ts"],
+  "compilerOptions": {
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "outDir": "dist",
+    "baseUrl": "./",
+    "paths": {
+      "@clickhouse/client": ["../packages/client-node/src/index.ts"],
+      "@clickhouse/client/*": ["../packages/client-node/src/*"]
+    }
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  }
+}

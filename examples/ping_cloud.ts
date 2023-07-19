@@ -1,4 +1,5 @@
 import { createClient } from '@clickhouse/client'
+
 void (async () => {
   const client = createClient({
     host: getFromEnv('CLICKHOUSE_HOST'),

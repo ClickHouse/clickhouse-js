@@ -1,5 +1,5 @@
-import type { ResponseJSON } from '@clickhouse/client'
-import { createClient } from '@clickhouse/client'
+import { createClient, type ResponseJSON } from '@clickhouse/client'
+
 void (async () => {
   const client = createClient()
   const rows = await client.query({

@@ -1,5 +1,4 @@
-import type { Row } from '@clickhouse/client'
-import { createClient } from '@clickhouse/client'
+import { createClient, type Row } from '@clickhouse/client'
 
 /**
  * Can be used for consuming large datasets for reducing memory overhead,
@@ -12,7 +11,6 @@ import { createClient } from '@clickhouse/client'
  * As `for await const` has quite significant overhead (up to 2 times worse)
  * vs old school `on(data)` approach, this example covers `on(data)` usage
  */
-
 void (async () => {
   const client = createClient()
   const rows = await client.query({
@@ -20,7 +18,7 @@ void (async () => {
     format: 'CSV',
   })
   const stream = rows.stream()
-  stream.on('data', (rows) => {
+  stream.on('data', (rows: Row[]) => {
     rows.forEach((row: Row) => {
       console.log(row.text)
     })

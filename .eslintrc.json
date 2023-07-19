@@ -3,7 +3,7 @@
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "sourceType": "module",
-    "project": ["./tsconfig.dev.json"]
+    "project": ["./tsconfig.all.json"]
   },
   "env": {
     "node": true
@@ -25,10 +25,12 @@
   },
   "overrides": [
     {
-      "files": ["./__tests__/**/*.ts"],
+      "files": ["./**/__tests__/**/*.ts"],
       "rules": {
         "@typescript-eslint/no-explicit-any": "off",
-        "@typescript-eslint/no-non-null-assertion": "off"
+        "@typescript-eslint/no-non-null-assertion": "off",
+        "@typescript-eslint/ban-ts-comment": "off",
+        "no-constant-condition": "off"
       }
     }
   ]

@@ -39,7 +39,7 @@ See [official examples](https://clickhouse.com/docs/en/getting-started/example-d
 #### Run the test
 
 ```sh
-tsc --project tsconfig.dev.json \
+tsc --project tsconfig.json \
 && node --expose-gc --max-old-space-size=256 \
 build/benchmarks/leaks/memory_leak_brown.js
 ```
@@ -61,7 +61,7 @@ Configuration can be done via env variables:
 With default configuration:
 
 ```sh
-tsc --project tsconfig.dev.json \
+tsc --project tsconfig.json \
 && node --expose-gc --max-old-space-size=256 \
 build/benchmarks/leaks/memory_leak_random_integers.js
 ```
@@ -69,7 +69,7 @@ build/benchmarks/leaks/memory_leak_random_integers.js
 With custom configuration via env variables:
 
 ```sh
-tsc --project tsconfig.dev.json \
+tsc --project tsconfig.json \
 && BATCH_SIZE=100000000 ITERATIONS=1000 LOG_INTERVAL=100 \
 node --expose-gc --max-old-space-size=256 \
 build/benchmarks/leaks/memory_leak_random_integers.js
@@ -90,7 +90,7 @@ Configuration is the same as the previous test, but with different default value
 With default configuration:
 
 ```sh
-tsc --project tsconfig.dev.json \
+tsc --project tsconfig.json \
 && node --expose-gc --max-old-space-size=256 \
 build/benchmarks/leaks/memory_leak_arrays.js
 ```
@@ -98,7 +98,7 @@ build/benchmarks/leaks/memory_leak_arrays.js
 With custom configuration via env variables and different max heap size:
 
 ```sh
-tsc --project tsconfig.dev.json \
+tsc --project tsconfig.json \
 && BATCH_SIZE=10000 ITERATIONS=1000 LOG_INTERVAL=100 \
 node --expose-gc --max-old-space-size=1024 \
 build/benchmarks/leaks/memory_leak_arrays.js

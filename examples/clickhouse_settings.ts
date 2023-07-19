@@ -1,4 +1,5 @@
 import { createClient } from '@clickhouse/client'
+
 void (async () => {
   const client = createClient()
   const rows = await client.query({

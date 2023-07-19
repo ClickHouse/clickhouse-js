@@ -2,8 +2,14 @@
 name: release
 on:
   workflow_dispatch:
-  release:
-    types: [created]
+    inputs:
+      version:
+        type: string
+        required: true
+        description: 'Version to release. Released package is based on the version suffix: -browser, -common, -node'
+# TODO: trigger on release, currently it's just manual dispatch
+#  release:
+#    types: [created]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,9 +21,8 @@ jobs:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
       - run: npm i --ignore-scripts
-      - name: Update package.json version
-        run: NODE_OPTIONS="-r ts-node/register" node .build/update_version.ts
-      - run: npm run build
-      - run: npm publish
+      - name: Build package and prepare package.json
+        run: NODE_OPTIONS="-r ts-node/register" node .build/build_and_prepare.ts ${{ github.event.inputs.version }}
+      - run: npm publish --dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

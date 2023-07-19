@@ -1,0 +1,10 @@
+{
+  "spec_dir": "packages/client-common/__tests__",
+  "spec_files": ["utils/*.test.ts", "unit/*.test.ts"],
+  "env": {
+    "failSpecWithNoExpectations": true,
+    "stopSpecOnExpectationFailure": true,
+    "stopOnSpecFailure": false,
+    "random": false
+  }
+}

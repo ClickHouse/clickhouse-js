@@ -1,0 +1,17 @@
+{
+  "spec_dir": ".",
+  "spec_files": [
+    "packages/client-common/__tests__/utils/*.test.ts",
+    "packages/client-common/__tests__/unit/*.test.ts",
+    "packages/client-common/__tests__/integration/*.test.ts",
+    "packages/client-node/__tests__/unit/*.test.ts",
+    "packages/client-node/__tests__/integration/*.test.ts",
+    "packages/client-node/__tests__/tls/*.test.ts"
+  ],
+  "env": {
+    "failSpecWithNoExpectations": true,
+    "stopSpecOnExpectationFailure": true,
+    "stopOnSpecFailure": false,
+    "random": false
+  }
+}
