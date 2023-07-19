@@ -6,6 +6,9 @@ import type {
   InputJSONObjectEachRow,
   InsertParams,
   InsertResult,
+  BaseResultSet,
+  QueryParams,
+  Row,
 } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
 import { BrowserConnection } from './connection'
@@ -14,13 +17,16 @@ import { BrowserValuesEncoder } from './utils'
 
 export type BrowserClickHouseClient = Omit<
   ClickHouseClient<ReadableStream>,
-  'insert'
+  'insert' | 'query'
 > & {
-  insert<T>( // patch insert to restrict ReadableStream as a possible insert value
+  // restrict ReadableStream as a possible insert value
+  insert<T>(
     params: Omit<InsertParams<ReadableStream, T>, 'values'> & {
       values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
     }
   ): Promise<InsertResult>
+  // narrow down the return type here for better type-hinting
+  query(params: QueryParams): Promise<BaseResultSet<ReadableStream<Row[]>>>
 }
 
 export function createClient(

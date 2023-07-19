@@ -16,7 +16,7 @@ export type NodeClickHouseClientConfigOptions =
     tls?: BasicTLSOptions | MutualTLSOptions
     /** HTTP Keep-Alive related settings */
     keep_alive?: {
-      /** Enable or disable HTTP Keep-Alive mechanism. Default: false */
+      /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
       enabled?: boolean
       /** How long to keep a particular open socket alive
        * on the client side (in milliseconds).
@@ -62,7 +62,7 @@ export function createClient(
     }
   }
   const keep_alive = {
-    enabled: config?.keep_alive?.enabled ?? false,
+    enabled: config?.keep_alive?.enabled ?? true,
     socket_ttl: config?.keep_alive?.socket_ttl ?? 2500,
     retry_on_expired_socket:
       config?.keep_alive?.retry_on_expired_socket ?? false,

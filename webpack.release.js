@@ -26,7 +26,7 @@ module.exports = merge(common, {
     plugins: [
       new TsconfigPathsPlugin({
         configFile: 'tsconfig.webpack.json',
-        logLevel: 'ERROR',
+        logLevel: 'WARN',
       }),
     ],
   },
