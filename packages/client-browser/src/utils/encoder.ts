@@ -3,7 +3,7 @@ import type {
   InsertValues,
   ValuesEncoder,
 } from '@clickhouse/client-common'
-import { encodeJSON } from '@clickhouse/client-common/data_formatter'
+import { encodeJSON } from '@clickhouse/client-common'
 import { isStream } from './stream'
 
 export class BrowserValuesEncoder implements ValuesEncoder<ReadableStream> {

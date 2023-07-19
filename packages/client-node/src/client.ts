@@ -1,15 +1,15 @@
-import type { DataFormat } from '@clickhouse/client-common'
-import { ClickHouseClient } from '@clickhouse/client-common'
-import type { NodeConnectionParams, TLSParams } from './connection'
-import { NodeHttpConnection, NodeHttpsConnection } from './connection'
 import type {
+  BaseClickHouseClientConfigOptions,
   Connection,
   ConnectionParams,
-} from '@clickhouse/client-common/connection'
+  DataFormat,
+} from '@clickhouse/client-common'
+import { ClickHouseClient } from '@clickhouse/client-common'
 import type Stream from 'stream'
+import type { NodeConnectionParams, TLSParams } from './connection'
+import { NodeHttpConnection, NodeHttpsConnection } from './connection'
 import { ResultSet } from './result_set'
-import { NodeValuesEncoder } from './utils/encoder'
-import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common/client'
+import { NodeValuesEncoder } from './utils'
 
 export type NodeClickHouseClientConfigOptions =
   BaseClickHouseClientConfigOptions<Stream.Readable> & {

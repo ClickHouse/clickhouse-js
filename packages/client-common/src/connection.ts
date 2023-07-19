@@ -17,7 +17,7 @@ export interface ConnectionParams {
   application_id?: string
 }
 
-export interface BaseQueryParams {
+export interface ConnBaseQueryParams {
   query: string
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
@@ -26,26 +26,26 @@ export interface BaseQueryParams {
   query_id?: string
 }
 
-export interface InsertParams<Stream> extends BaseQueryParams {
+export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
   values: string | Stream
 }
 
-export interface BaseResult {
+export interface ConnBaseResult {
   query_id: string
 }
 
-export interface QueryResult<Stream> extends BaseResult {
+export interface ConnQueryResult<Stream> extends ConnBaseResult {
   stream: Stream
   query_id: string
 }
 
-export type InsertResult = BaseResult
-export type ExecResult<Stream> = QueryResult<Stream>
+export type ConnInsertResult = ConnBaseResult
+export type ConnExecResult<Stream> = ConnQueryResult<Stream>
 
 export interface Connection<Stream> {
   ping(): Promise<boolean>
   close(): Promise<void>
-  query(params: BaseQueryParams): Promise<QueryResult<Stream>>
-  exec(params: BaseQueryParams): Promise<ExecResult<Stream>>
-  insert(params: InsertParams<Stream>): Promise<InsertResult>
+  query(params: ConnBaseQueryParams): Promise<ConnQueryResult<Stream>>
+  exec(params: ConnBaseQueryParams): Promise<ConnExecResult<Stream>>
+  insert(params: ConnInsertParams<Stream>): Promise<ConnInsertResult>
 }

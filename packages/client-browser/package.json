@@ -1,15 +1,25 @@
 {
   "name": "@clickhouse/client-browser",
+  "description": "Official JS client for ClickHouse DB - browser implementation",
+  "homepage": "https://clickhouse.com",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "keywords": [
+    "clickhouse",
+    "sql",
+    "client"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ClickHouse/clickhouse-js.git"
+  },
+  "private": false,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
   "dependencies": {
-    "@clickhouse/client-common": "*",
-    "uuid": "^9.0.0"
-  },
-  "devDependencies": {
-    "@types/uuid": "^9.0.2"
+    "@clickhouse/client-common": "*"
   }
 }

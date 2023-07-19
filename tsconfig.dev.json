@@ -4,12 +4,11 @@
   "compilerOptions": {
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "outDir": "dist",
+    "outDir": "out",
     "baseUrl": "./",
     "paths": {
       "@test/*": ["packages/client-common/__tests__/*"],
-      "@clickhouse/client-common": ["packages/client-common/src/index.ts"],
-      "@clickhouse/client-common/*": ["packages/client-common/src/*"]
+      "@clickhouse/client-common": ["packages/client-common/src/index.ts"]
     }
   },
   "ts-node": {

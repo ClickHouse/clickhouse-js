@@ -1,4 +1,4 @@
-const webpackConfig = require('./webpack.config.js')
+const webpackConfig = require('./webpack.dev.js')
 
 module.exports = function (config) {
   config.set({
@@ -57,7 +57,7 @@ module.exports = function (config) {
         random: false,
         stopOnSpecFailure: false,
         stopSpecOnExpectationFailure: true,
-        timeoutInterval: 5000,
+        timeoutInterval: 30000,
       },
     },
   })

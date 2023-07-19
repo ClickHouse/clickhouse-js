@@ -1,12 +1,12 @@
 import type { ExecParams, ResponseJSON } from '@clickhouse/client-common'
 import { type ClickHouseClient } from '@clickhouse/client-common'
-import * as uuid from 'uuid'
 import {
   createTestClient,
   getClickHouseTestEnvironment,
   getTestDatabaseName,
   guid,
   TestEnv,
+  validateUUID,
 } from '../utils'
 
 describe('exec', () => {
@@ -26,7 +26,7 @@ describe('exec', () => {
     })
 
     // generated automatically
-    expect(uuid.validate(query_id)).toBeTruthy()
+    expect(validateUUID(query_id)).toBeTruthy()
 
     await checkCreatedTable({
       tableName,

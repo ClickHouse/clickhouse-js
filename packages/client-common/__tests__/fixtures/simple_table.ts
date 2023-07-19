@@ -1,5 +1,7 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
-import type { MergeTreeSettings } from '@clickhouse/client-common/settings'
+import type {
+  ClickHouseClient,
+  MergeTreeSettings,
+} from '@clickhouse/client-common'
 import { createTable, TestEnv } from '../utils'
 
 export function createSimpleTable<Stream = unknown>(

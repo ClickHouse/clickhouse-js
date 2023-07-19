@@ -1,29 +1,26 @@
-import Stream from 'stream'
-import type Http from 'http'
-import Zlib from 'zlib'
-import { parseError } from '@clickhouse/client-common/error'
-
 import type {
-  BaseQueryParams,
+  ConnBaseQueryParams,
   Connection,
   ConnectionParams,
-  ExecResult,
-  InsertParams,
-  InsertResult,
-  QueryResult,
-} from '@clickhouse/client-common/connection'
+  ConnExecResult,
+  ConnInsertParams,
+  ConnInsertResult,
+  ConnQueryResult,
+  LogWriter,
+} from '@clickhouse/client-common'
 import {
-  getQueryId,
   isSuccessfulResponse,
+  parseError,
   toSearchParams,
   transformUrl,
   withHttpSettings,
-} from '@clickhouse/client-common/utils'
-import { getAsText, getUserAgent, isStream } from '../utils'
+} from '@clickhouse/client-common'
+import crypto from 'crypto'
+import type Http from 'http'
 import type * as net from 'net'
-import type { LogWriter } from '@clickhouse/client-common/logger'
-import * as uuid from 'uuid'
-import type { ExecParams } from '@clickhouse/client-common'
+import Stream from 'stream'
+import Zlib from 'zlib'
+import { getAsText, getUserAgent, isStream } from '../utils'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
@@ -225,7 +222,7 @@ export abstract class NodeBaseConnection
               pipeStream()
             }
           } else {
-            const socketId = uuid.v4()
+            const socketId = crypto.randomUUID()
             this.logger.trace({
               module: 'Connection',
               message: `Using a new socket ${socketId}`,
@@ -292,7 +289,9 @@ export abstract class NodeBaseConnection
     return true
   }
 
-  async query(params: BaseQueryParams): Promise<QueryResult<Stream.Readable>> {
+  async query(
+    params: ConnBaseQueryParams
+  ): Promise<ConnQueryResult<Stream.Readable>> {
     const query_id = getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -320,7 +319,9 @@ export abstract class NodeBaseConnection
     }
   }
 
-  async exec(params: ExecParams): Promise<ExecResult<Stream.Readable>> {
+  async exec(
+    params: ConnBaseQueryParams
+  ): Promise<ConnExecResult<Stream.Readable>> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -343,7 +344,9 @@ export abstract class NodeBaseConnection
     }
   }
 
-  async insert(params: InsertParams<Stream.Readable>): Promise<InsertResult> {
+  async insert(
+    params: ConnInsertParams<Stream.Readable>
+  ): Promise<ConnInsertResult> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -427,4 +430,8 @@ function decompressResponse(response: Http.IncomingMessage):
 
 function isDecompressionError(result: any): result is { error: Error } {
   return result.error !== undefined
+}
+
+function getQueryId(query_id: string | undefined): string {
+  return query_id || crypto.randomUUID()
 }

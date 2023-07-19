@@ -18,17 +18,20 @@
     "node": ">=16"
   },
   "scripts": {
-    "build": "rm -rf dist; tsc",
-    "build:all": "rm -rf dist; tsc --project tsconfig.all.json",
+    "build:node:all": "rm -rf out; tsc --project tsconfig.all.json",
+    "build:common:package": ".scripts/build.sh client-common",
+    "build:node:package": ".scripts/build.sh client-node",
+    "build:browser:package": ".scripts/build.sh client-browser",
+    "build:browser:minjs": "webpack --config webpack.release.js",
     "typecheck": "tsc --project tsconfig.all.json --noEmit",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint --fix . --ext .ts",
-    "test": "./jasmine.sh jasmine.all.json",
-    "test:common:unit": "./jasmine.sh jasmine.common.unit.json",
-    "test:common:integration": "./jasmine.sh jasmine.common.integration.json",
-    "test:node:unit": "./jasmine.sh jasmine.node.unit.json",
-    "test:node:tls": "./jasmine.sh jasmine.node.tls.json",
-    "test:node:integration": "./jasmine.sh jasmine.node.integration.json",
+    "test": ".scripts/jasmine.sh jasmine.all.json",
+    "test:common:unit": ".scripts/jasmine.sh jasmine.common.unit.json",
+    "test:common:integration": ".scripts/jasmine.sh jasmine.common.integration.json",
+    "test:node:unit": ".scripts/jasmine.sh jasmine.node.unit.json",
+    "test:node:tls": ".scripts/jasmine.sh jasmine.node.tls.json",
+    "test:node:integration": ".scripts/jasmine.sh jasmine.node.integration.json",
     "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:node:integration",
     "test:node:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:node:integration",
     "test:browser": "karma start karma.config.cjs",
@@ -41,6 +44,7 @@
     "@types/node": "^18.11.18",
     "@types/sinon": "^10.0.15",
     "@types/split2": "^3.2.1",
+    "@types/uuid": "^9.0.2",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
     "@typescript-eslint/parser": "^5.49.0",
     "eslint": "^8.32.0",
@@ -60,16 +64,23 @@
     "prettier": "2.8.3",
     "sinon": "^15.2.0",
     "split2": "^4.1.0",
+    "terser-webpack-plugin": "^5.3.9",
     "ts-jest": "^29.1.0",
     "ts-loader": "^9.4.3",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
     "tsconfig-paths-webpack-plugin": "^4.0.1",
     "typescript": "^4.9.4",
-    "webpack": "^5.84.1"
+    "uuid": "^9.0.0",
+    "webpack": "^5.84.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-merge": "^5.9.0"
   },
   "workspaces": [
     "./packages/*"
+  ],
+  "files": [
+    "dist"
   ],
   "lint-staged": {
     "*.ts": [

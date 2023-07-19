@@ -1,4 +1,4 @@
-import { transformUrl } from '@clickhouse/client-common/utils/url'
+import { transformUrl } from '@clickhouse/client-common'
 
 describe('transformUrl', () => {
   it('attaches pathname and search params to the url', () => {

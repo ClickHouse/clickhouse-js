@@ -1,22 +1,27 @@
 import type {
-  BaseQueryParams,
+  ConnBaseQueryParams,
   Connection,
   ConnectionParams,
-  InsertParams,
-  InsertResult,
-  QueryResult,
-} from '@clickhouse/client-common/connection'
-import { getAsText } from '../utils'
+  ConnInsertParams,
+  ConnInsertResult,
+  ConnQueryResult,
+} from '@clickhouse/client-common'
 import {
-  getQueryId,
   isSuccessfulResponse,
+  parseError,
   toSearchParams,
   transformUrl,
   withCompressionHeaders,
   withHttpSettings,
-} from '@clickhouse/client-common/utils'
-import { parseError } from '@clickhouse/client-common/error'
-import type { URLSearchParams } from 'url'
+} from '@clickhouse/client-common'
+import { getAsText } from '../utils'
+
+type BrowserInsertParams<T> = Omit<
+  ConnInsertParams<ReadableStream<T>>,
+  'values'
+> & {
+  values: string
+}
 
 export class BrowserConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
@@ -27,8 +32,8 @@ export class BrowserConnection implements Connection<ReadableStream> {
   }
 
   async query(
-    params: BaseQueryParams
-  ): Promise<QueryResult<ReadableStream<Uint8Array>>> {
+    params: ConnBaseQueryParams
+  ): Promise<ConnQueryResult<ReadableStream<Uint8Array>>> {
     const query_id = getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -42,7 +47,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
       query_id,
     })
     const response = await this.request({
-      body: params.query,
+      values: params.query,
       params,
       searchParams,
     })
@@ -52,7 +57,9 @@ export class BrowserConnection implements Connection<ReadableStream> {
     }
   }
 
-  async exec(params: BaseQueryParams): Promise<QueryResult<ReadableStream>> {
+  async exec(
+    params: ConnBaseQueryParams
+  ): Promise<ConnQueryResult<ReadableStream>> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -62,7 +69,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
       query_id,
     })
     const response = await this.request({
-      body: params.query,
+      values: params.query,
       params,
       searchParams,
     })
@@ -73,8 +80,8 @@ export class BrowserConnection implements Connection<ReadableStream> {
   }
 
   async insert<T = unknown>(
-    params: InsertParams<ReadableStream<T>>
-  ): Promise<InsertResult> {
+    params: BrowserInsertParams<T>
+  ): Promise<ConnInsertResult> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -85,7 +92,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
       query_id,
     })
     await this.request({
-      body: params.values,
+      values: params.values,
       params,
       searchParams,
     })
@@ -98,7 +105,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
     // TODO: catch an error and just log it, returning false?
     const response = await this.request({
       method: 'GET',
-      body: null,
+      values: null,
       pathname: '/ping',
       searchParams: undefined,
     })
@@ -113,14 +120,14 @@ export class BrowserConnection implements Connection<ReadableStream> {
   }
 
   private async request({
-    body,
+    values,
     params,
     searchParams,
     pathname,
     method,
   }: {
-    body: string | ReadableStream | null
-    params?: BaseQueryParams
+    values: string | null
+    params?: ConnBaseQueryParams
     searchParams: URLSearchParams | undefined
     pathname?: string
     method?: 'GET' | 'POST'
@@ -148,17 +155,17 @@ export class BrowserConnection implements Connection<ReadableStream> {
     }
 
     try {
+      const headers = withCompressionHeaders({
+        headers: this.defaultHeaders,
+        compress_request: false,
+        decompress_response: this.params.compression.decompress_response,
+      })
       const response = await fetch(url, {
-        body,
+        body: values,
+        headers,
         keepalive: false,
         method: method ?? 'POST',
         signal: abortController.signal,
-        headers: withCompressionHeaders({
-          headers: this.defaultHeaders,
-          // FIXME: use https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API
-          compress_request: false,
-          decompress_response: this.params.compression.decompress_response,
-        }),
       })
       clearTimeout(timeout)
       if (isSuccessfulResponse(response.status)) {
@@ -186,4 +193,8 @@ export class BrowserConnection implements Connection<ReadableStream> {
       throw err
     }
   }
+}
+
+function getQueryId(query_id: string | undefined): string {
+  return query_id || crypto.randomUUID()
 }

@@ -1,4 +1,4 @@
-import { formatQueryParams } from '@clickhouse/client-common/data_formatter'
+import { formatQueryParams } from '@clickhouse/client-common'
 
 // JS always creates Date object in local timezone,
 // so we might need to convert the date to another timezone

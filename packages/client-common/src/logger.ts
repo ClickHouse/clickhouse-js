@@ -35,8 +35,8 @@ export class DefaultLogger implements Logger {
 }
 export class LogWriter {
   private readonly logLevel: ClickHouseLogLevel
-  constructor(private readonly logger: Logger) {
-    this.logLevel = this.getClickHouseLogLevel()
+  constructor(private readonly logger: Logger, logLevel?: ClickHouseLogLevel) {
+    this.logLevel = logLevel ?? ClickHouseLogLevel.OFF
     this.info({
       module: 'Logger',
       message: `Log level is set to ${ClickHouseLogLevel[this.logLevel]}`,
@@ -72,42 +72,9 @@ export class LogWriter {
       this.logger.error(params)
     }
   }
-
-  private getClickHouseLogLevel(): ClickHouseLogLevel {
-    const isBrowser = typeof process === 'undefined'
-    const logLevelFromEnv = isBrowser
-      ? 'info' // won't print any debug info in the browser
-      : process.env['CLICKHOUSE_LOG_LEVEL']
-    if (!logLevelFromEnv) {
-      return ClickHouseLogLevel.OFF
-    }
-    const logLevel = logLevelFromEnv.toLocaleLowerCase()
-    if (logLevel === 'info') {
-      return ClickHouseLogLevel.INFO
-    }
-    if (logLevel === 'warn') {
-      return ClickHouseLogLevel.WARN
-    }
-    if (logLevel === 'error') {
-      return ClickHouseLogLevel.ERROR
-    }
-    if (logLevel === 'debug') {
-      return ClickHouseLogLevel.DEBUG
-    }
-    if (logLevel === 'trace') {
-      return ClickHouseLogLevel.TRACE
-    }
-    if (logLevel === 'off') {
-      return ClickHouseLogLevel.OFF
-    }
-    console.error(
-      `Unknown CLICKHOUSE_LOG_LEVEL value: ${logLevelFromEnv}, logs are disabled`
-    )
-    return ClickHouseLogLevel.OFF
-  }
 }
 
-enum ClickHouseLogLevel {
+export enum ClickHouseLogLevel {
   TRACE = 0, // unused at the moment
   DEBUG = 1,
   INFO = 2,

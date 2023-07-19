@@ -1,15 +1,19 @@
-import type { Logger } from '@clickhouse/client-common/logger'
-import { DefaultLogger, LogWriter } from '@clickhouse/client-common/logger'
-import { type DataFormat } from '@clickhouse/client-common/data_formatter'
-import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
-import type { ClickHouseSettings } from '@clickhouse/client-common/settings'
 import type {
+  ClickHouseLogLevel,
+  ClickHouseSettings,
   Connection,
   ConnectionParams,
-  InsertResult,
-  QueryResult,
-} from '@clickhouse/client-common/connection'
-import type { IResultSet } from './result'
+  ConnInsertResult,
+  ConnQueryResult,
+  Logger,
+} from '@clickhouse/client-common'
+import {
+  type DataFormat,
+  DefaultLogger,
+  LogWriter,
+} from '@clickhouse/client-common'
+import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
+import type { BaseResultSet } from './result'
 
 export type MakeConnection<Stream> = (
   params: ConnectionParams
@@ -19,7 +23,7 @@ export type MakeResultSet<Stream> = (
   stream: Stream,
   format: DataFormat,
   session_id: string
-) => IResultSet<Stream>
+) => BaseResultSet<Stream>
 
 export interface ValuesEncoder<Stream> {
   validateInsertValues<T = unknown>(
@@ -82,6 +86,8 @@ export interface ClickHouseClientConfigOptions<Stream> {
     /** A class to instantiate a custom logger implementation.
      * Default: {@link DefaultLogger} */
     LoggerClass?: new () => Logger
+    /** Default: OFF */
+    level?: ClickHouseLogLevel
   }
   session_id?: string
 }
@@ -120,6 +126,9 @@ export type CommandParams = ExecParams
 export interface CommandResult {
   query_id: string
 }
+
+export type InsertResult = ConnInsertResult
+export type ExecResult<Stream> = ConnQueryResult<Stream>
 
 export type InsertValues<Stream, T = unknown> =
   | ReadonlyArray<T>
@@ -172,7 +181,8 @@ function getConnectionParams<Stream>(
     logWriter: new LogWriter(
       config?.log?.LoggerClass
         ? new config.log.LoggerClass()
-        : new DefaultLogger()
+        : new DefaultLogger(),
+      config.log?.level
     ),
   }
 }
@@ -214,7 +224,7 @@ export class ClickHouseClient<Stream = unknown> {
    * Consider using {@link ClickHouseClient.insert} for data insertion,
    * or {@link ClickHouseClient.command} for DDLs.
    */
-  async query(params: QueryParams): Promise<IResultSet<Stream>> {
+  async query(params: QueryParams): Promise<BaseResultSet<Stream>> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
     const { stream, query_id } = await this.connection.query({
@@ -242,7 +252,7 @@ export class ClickHouseClient<Stream = unknown> {
    * but format clause is not applicable. The caller of this method is expected to consume the stream,
    * otherwise, the request will eventually be timed out.
    */
-  async exec(params: ExecParams): Promise<QueryResult<Stream>> {
+  async exec(params: ExecParams): Promise<ExecResult<Stream>> {
     const query = removeTrailingSemi(params.query.trim())
     return await this.connection.exec({
       query,

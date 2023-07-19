@@ -1,8 +1,8 @@
 import type {
   ClickHouseClient,
   ClickHouseSettings,
+  RawDataFormat,
 } from '@clickhouse/client-common'
-import type { RawDataFormat } from '@clickhouse/client-common/data_formatter'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient, guid } from '@test/utils'

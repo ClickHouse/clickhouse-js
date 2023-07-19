@@ -10,7 +10,7 @@ export interface Row {
   json<T>(): T
 }
 
-export interface IResultSet<Stream> {
+export interface BaseResultSet<Stream> {
   /**
    * The method waits for all the rows to be fully loaded
    * and returns the result as a string.

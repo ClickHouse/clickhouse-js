@@ -1,9 +1,9 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
-import type { ClickHouseSettings } from '@clickhouse/client-common'
 import type {
   BaseClickHouseClientConfigOptions,
   ClickHouseClient,
-} from '@clickhouse/client-common/client'
+  ClickHouseSettings,
+} from '@clickhouse/client-common'
 import { getFromEnv } from './env'
 import { guid } from './guid'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
@@ -11,6 +11,7 @@ import { TestLogger } from './test_logger'
 
 let databaseName: string
 beforeAll(async () => {
+  jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000
   if (
     getClickHouseTestEnvironment() === TestEnv.Cloud &&
     databaseName === undefined
