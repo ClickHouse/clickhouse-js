@@ -1,4 +1,4 @@
 module.exports = {
   target: 'web',
-  entry: './packages/client-browser/src/index.ts',
+  entry: './packages/client-web/src/index.ts',
 }

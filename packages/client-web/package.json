@@ -1,6 +1,6 @@
 {
-  "name": "@clickhouse/client-browser",
-  "description": "Official JS client for ClickHouse DB - browser implementation",
+  "name": "@clickhouse/client-web",
+  "description": "Official JS client for ClickHouse DB - Web API implementation",
   "homepage": "https://clickhouse.com",
   "version": "0.0.0",
   "license": "Apache-2.0",

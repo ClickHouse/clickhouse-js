@@ -9,7 +9,7 @@ import { createTestClient, guid } from '@test/utils'
 import Stream from 'stream'
 import { makeRawStream } from '../utils/stream'
 
-describe('Node.js stream raw formats', () => {
+describe('[Node.js] stream raw formats', () => {
   let client: ClickHouseClient
   let tableName: string
 

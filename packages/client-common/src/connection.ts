@@ -42,8 +42,14 @@ export interface ConnQueryResult<Stream> extends ConnBaseResult {
 export type ConnInsertResult = ConnBaseResult
 export type ConnExecResult<Stream> = ConnQueryResult<Stream>
 
+export type ConnPingResult =
+  | {
+      success: true
+    }
+  | { success: false; error: Error }
+
 export interface Connection<Stream> {
-  ping(): Promise<boolean>
+  ping(): Promise<ConnPingResult>
   close(): Promise<void>
   query(params: ConnBaseQueryParams): Promise<ConnQueryResult<Stream>>
   exec(params: ConnBaseQueryParams): Promise<ConnExecResult<Stream>>

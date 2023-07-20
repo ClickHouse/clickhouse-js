@@ -6,7 +6,7 @@ import type {
 } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
-describe('config', () => {
+describe('[Node.js] logger support', () => {
   let client: ClickHouseClient
   let logs: {
     message: string

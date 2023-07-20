@@ -18,6 +18,6 @@
   "exclude": ["node_modules"],
   "include": [
     "./packages/client-common/src/**/*.ts",
-    "./packages/client-browser/src/**/*.ts"
+    "./packages/client-web/src/**/*.ts"
   ]
 }

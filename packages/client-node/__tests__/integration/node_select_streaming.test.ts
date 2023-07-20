@@ -2,7 +2,7 @@ import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 import type Stream from 'stream'
 
-describe('Node.js SELECT streaming', () => {
+describe('[Node.js] SELECT streaming', () => {
   let client: ClickHouseClient<Stream.Readable>
   afterEach(async () => {
     await client.close()

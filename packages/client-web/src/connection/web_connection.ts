@@ -4,6 +4,7 @@ import type {
   ConnectionParams,
   ConnInsertParams,
   ConnInsertResult,
+  ConnPingResult,
   ConnQueryResult,
 } from '@clickhouse/client-common'
 import {
@@ -16,14 +17,14 @@ import {
 } from '@clickhouse/client-common'
 import { getAsText } from '../utils'
 
-type BrowserInsertParams<T> = Omit<
+type WebInsertParams<T> = Omit<
   ConnInsertParams<ReadableStream<T>>,
   'values'
 > & {
   values: string
 }
 
-export class BrowserConnection implements Connection<ReadableStream> {
+export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
   constructor(private readonly params: ConnectionParams) {
     this.defaultHeaders = {
@@ -80,7 +81,7 @@ export class BrowserConnection implements Connection<ReadableStream> {
   }
 
   async insert<T = unknown>(
-    params: BrowserInsertParams<T>
+    params: WebInsertParams<T>
   ): Promise<ConnInsertResult> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
@@ -101,18 +102,27 @@ export class BrowserConnection implements Connection<ReadableStream> {
     }
   }
 
-  async ping(): Promise<boolean> {
-    // TODO: catch an error and just log it, returning false?
-    const response = await this.request({
-      method: 'GET',
-      values: null,
-      pathname: '/ping',
-      searchParams: undefined,
-    })
-    if (response.body !== null) {
-      await response.body.cancel()
+  async ping(): Promise<ConnPingResult> {
+    try {
+      const response = await this.request({
+        method: 'GET',
+        values: null,
+        pathname: '/ping',
+        searchParams: undefined,
+      })
+      if (response.body !== null) {
+        await response.body.cancel()
+      }
+      return { success: true }
+    } catch (error) {
+      if (error instanceof Error) {
+        return {
+          success: false,
+          error,
+        }
+      }
+      throw error // should never happen
     }
-    return true
   }
 
   async close(): Promise<void> {
@@ -179,13 +189,13 @@ export class BrowserConnection implements Connection<ReadableStream> {
       }
     } catch (err) {
       clearTimeout(timeout)
+      if (isAborted) {
+        return Promise.reject(new Error('The user aborted a request.'))
+      }
+      if (isTimedOut) {
+        return Promise.reject(new Error('Timeout error.'))
+      }
       if (err instanceof Error) {
-        if (isAborted) {
-          return Promise.reject(new Error('The user aborted a request.'))
-        }
-        if (isTimedOut) {
-          return Promise.reject(new Error('Timeout error.'))
-        }
         // maybe it's a ClickHouse error
         return Promise.reject(parseError(err))
       }

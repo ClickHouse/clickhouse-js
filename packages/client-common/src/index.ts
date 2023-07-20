@@ -12,6 +12,7 @@ export {
   type CommandResult,
   type ExecResult,
   type InsertResult,
+  type PingResult,
 } from './client'
 export type { Row, BaseResultSet } from './result'
 export { type DataFormat } from './data_formatter'
@@ -63,6 +64,7 @@ export type {
   ConnBaseQueryParams,
   ConnBaseResult,
   ConnInsertParams,
+  ConnPingResult,
 } from './connection'
 export {
   type RawDataFormat,

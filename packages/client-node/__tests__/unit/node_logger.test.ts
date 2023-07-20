@@ -5,7 +5,7 @@ import type {
 } from '@clickhouse/client-common'
 import { ClickHouseLogLevel, LogWriter } from '@clickhouse/client-common'
 
-describe('Node.js Logger', () => {
+describe('[Node.js] Logger', () => {
   type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error'
 
   const module = 'LoggerUnitTest'

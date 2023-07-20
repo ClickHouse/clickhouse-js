@@ -25,6 +25,7 @@ export {
   type InputJSON,
   type InputJSONObjectEachRow,
   type BaseResultSet,
+  type PingResult,
   ClickHouseError,
   ClickHouseLogLevel,
   ClickHouseClient,

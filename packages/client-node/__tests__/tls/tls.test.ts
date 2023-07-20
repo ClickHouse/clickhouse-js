@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import type Stream from 'stream'
 import { createClient } from '../../src'
 
-describe('TLS connection', () => {
+describe('[Node.js] TLS connection', () => {
   let client: ClickHouseClient<Stream.Readable>
   beforeEach(() => {
     client = createTestClient()

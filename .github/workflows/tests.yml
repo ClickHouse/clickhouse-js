@@ -51,7 +51,7 @@ jobs:
         run: |
           npm run test:node:unit
 
-  browser-all-tests-local-single-node:
+  web-all-tests-local-single-node:
     runs-on: ubuntu-latest
     needs: node-unit-tests
     strategy:
@@ -78,9 +78,9 @@ jobs:
         run: |
           npm install
 
-      - name: Run all browser tests
+      - name: Run all web tests
         run: |
-          npm run test:browser
+          npm run test:web
 
   node-integration-tests-local-single-node:
     needs: node-unit-tests
@@ -156,7 +156,7 @@ jobs:
         run: |
           npm run test:node:integration:local_cluster
 
-  browser-integration-tests-local-cluster:
+  web-integration-tests-local-cluster:
     runs-on: ubuntu-latest
     needs: node-unit-tests
     strategy:
@@ -183,9 +183,9 @@ jobs:
         run: |
           npm install
 
-      - name: Run all browser tests
+      - name: Run all web tests
         run: |
-          npm run test:browser:integration:local_cluster
+          npm run test:web:integration:local_cluster
 
   node-integration-tests-cloud:
     needs: node-unit-tests
@@ -214,7 +214,7 @@ jobs:
         run: |
           npm run test:node:integration:cloud
 
-  browser-integration-tests-cloud:
+  web-integration-tests-cloud:
     needs: node-unit-tests
     runs-on: ubuntu-latest
     permissions: write-all
@@ -235,4 +235,4 @@ jobs:
           CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST }}
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
         run: |
-          npm run test:browser:integration:cloud
+          npm run test:web:integration:cloud

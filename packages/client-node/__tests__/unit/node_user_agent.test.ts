@@ -2,7 +2,7 @@ import sinon from 'sinon'
 import { getUserAgent } from '../../src/utils'
 import * as version from '../../src/version'
 
-describe('Node.js User-Agent', () => {
+describe('[Node.js] User-Agent', () => {
   const sandbox = sinon.createSandbox()
   beforeEach(() => {
     // Jasmine's spyOn won't work here: 'platform' property is not configurable

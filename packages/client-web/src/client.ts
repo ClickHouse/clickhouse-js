@@ -1,21 +1,21 @@
 import type {
   BaseClickHouseClientConfigOptions,
+  BaseResultSet,
   ConnectionParams,
   DataFormat,
   InputJSON,
   InputJSONObjectEachRow,
   InsertParams,
   InsertResult,
-  BaseResultSet,
   QueryParams,
   Row,
 } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
-import { BrowserConnection } from './connection'
+import { WebConnection } from './connection'
 import { ResultSet } from './result_set'
-import { BrowserValuesEncoder } from './utils'
+import { WebValuesEncoder } from './utils'
 
-export type BrowserClickHouseClient = Omit<
+export type WebClickHouseClient = Omit<
   ClickHouseClient<ReadableStream>,
   'insert' | 'query'
 > & {
@@ -31,17 +31,16 @@ export type BrowserClickHouseClient = Omit<
 
 export function createClient(
   config?: BaseClickHouseClientConfigOptions<ReadableStream>
-): BrowserClickHouseClient {
+): WebClickHouseClient {
   return new ClickHouseClient<ReadableStream>({
     impl: {
-      make_connection: (params: ConnectionParams) =>
-        new BrowserConnection(params),
+      make_connection: (params: ConnectionParams) => new WebConnection(params),
       make_result_set: (
         stream: ReadableStream,
         format: DataFormat,
         query_id: string
       ) => new ResultSet(stream, format, query_id),
-      values_encoder: new BrowserValuesEncoder(),
+      values_encoder: new WebValuesEncoder(),
       close_stream: (stream) => stream.cancel(),
     },
     ...(config || {}),

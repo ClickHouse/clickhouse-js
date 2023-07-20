@@ -13,6 +13,7 @@ import {
   LogWriter,
 } from '@clickhouse/client-common'
 import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
+import type { ConnPingResult } from './connection'
 import type { BaseResultSet } from './result'
 
 export type MakeConnection<Stream> = (
@@ -129,6 +130,7 @@ export interface CommandResult {
 
 export type InsertResult = ConnInsertResult
 export type ExecResult<Stream> = ConnQueryResult<Stream>
+export type PingResult = ConnPingResult
 
 export type InsertValues<Stream, T = unknown> =
   | ReadonlyArray<T>
@@ -144,47 +146,6 @@ export interface InsertParams<Stream = unknown, T = unknown>
   values: InsertValues<Stream, T>
   /** Format of the dataset to insert. */
   format?: DataFormat
-}
-
-function validateConnectionParams({ url }: ConnectionParams): void {
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error(
-      `Only http(s) protocol is supported, but given: [${url.protocol}]`
-    )
-  }
-}
-
-function createUrl(host: string): URL {
-  try {
-    return new URL(host)
-  } catch (err) {
-    throw new Error('Configuration parameter "host" contains malformed url.')
-  }
-}
-
-function getConnectionParams<Stream>(
-  config: ClickHouseClientConfigOptions<Stream>
-): ConnectionParams {
-  return {
-    application_id: config.application,
-    url: createUrl(config.host ?? 'http://localhost:8123'),
-    request_timeout: config.request_timeout ?? 300_000,
-    max_open_connections: config.max_open_connections ?? Infinity,
-    compression: {
-      decompress_response: config.compression?.response ?? true,
-      compress_request: config.compression?.request ?? false,
-    },
-    username: config.username ?? 'default',
-    password: config.password ?? '',
-    database: config.database ?? 'default',
-    clickhouse_settings: config.clickhouse_settings ?? {},
-    logWriter: new LogWriter(
-      config?.log?.LoggerClass
-        ? new config.log.LoggerClass()
-        : new DefaultLogger(),
-      config.log?.level
-    ),
-  }
 }
 
 export class ClickHouseClient<Stream = unknown> {
@@ -281,9 +242,10 @@ export class ClickHouseClient<Stream = unknown> {
   }
 
   /**
-   * Health-check request. Can throw an error if the connection is refused.
+   * Health-check request. It does not throw if an error occurs -
+   * the error is returned inside the result object.
    */
-  async ping(): Promise<boolean> {
+  async ping(): Promise<PingResult> {
     return await this.connection.ping()
   }
 
@@ -315,4 +277,45 @@ function removeTrailingSemi(query: string) {
     return query.slice(0, lastNonSemiIdx)
   }
   return query
+}
+
+function validateConnectionParams({ url }: ConnectionParams): void {
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(
+      `Only http(s) protocol is supported, but given: [${url.protocol}]`
+    )
+  }
+}
+
+function createUrl(host: string): URL {
+  try {
+    return new URL(host)
+  } catch (err) {
+    throw new Error('Configuration parameter "host" contains malformed url.')
+  }
+}
+
+function getConnectionParams<Stream>(
+  config: ClickHouseClientConfigOptions<Stream>
+): ConnectionParams {
+  return {
+    application_id: config.application,
+    url: createUrl(config.host ?? 'http://localhost:8123'),
+    request_timeout: config.request_timeout ?? 300_000,
+    max_open_connections: config.max_open_connections ?? Infinity,
+    compression: {
+      decompress_response: config.compression?.response ?? true,
+      compress_request: config.compression?.request ?? false,
+    },
+    username: config.username ?? 'default',
+    password: config.password ?? '',
+    database: config.database ?? 'default',
+    clickhouse_settings: config.clickhouse_settings ?? {},
+    logWriter: new LogWriter(
+      config?.log?.LoggerClass
+        ? new config.log.LoggerClass()
+        : new DefaultLogger(),
+      config.log?.level
+    ),
+  }
 }

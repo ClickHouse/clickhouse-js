@@ -6,7 +6,7 @@ import Fs from 'fs'
 import split from 'split2'
 import Stream from 'stream'
 
-describe('Node.js streaming e2e', () => {
+describe('[Node.js] streaming e2e', () => {
   let tableName: string
   let client: ClickHouseClient<Stream.Readable>
   beforeEach(async () => {

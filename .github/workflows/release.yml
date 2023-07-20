@@ -6,7 +6,7 @@ on:
       version:
         type: string
         required: true
-        description: 'Version to release. Released package is based on the version suffix: -browser, -common, -node'
+        description: 'Version to release. Released package is based on the version suffix: -web, -common, -node'
 # TODO: trigger on release, currently it's just manual dispatch
 #  release:
 #    types: [created]

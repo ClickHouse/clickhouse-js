@@ -5,7 +5,7 @@ import { createTestClient, guid } from '@test/utils'
 import Stream from 'stream'
 import { makeObjectStream } from '../utils/stream'
 
-describe('Node.js stream JSON formats', () => {
+describe('[Node.js] stream JSON formats', () => {
   let client: ClickHouseClient
   let tableName: string
 

@@ -10,14 +10,14 @@ module.exports = function (config) {
       'packages/client-common/__tests__/unit/*.test.ts',
       'packages/client-common/__tests__/utils/*.ts',
       'packages/client-common/__tests__/integration/*.test.ts',
-      'packages/client-browser/__tests__/integration/*.test.ts',
-      'packages/client-browser/__tests__/unit/*.test.ts',
+      'packages/client-web/__tests__/integration/*.test.ts',
+      'packages/client-web/__tests__/unit/*.test.ts',
     ],
     exclude: [],
     webpack: webpackConfig,
     preprocessors: {
       'packages/client-common/**/*.ts': ['webpack', 'sourcemap'],
-      'packages/client-browser/**/*.ts': ['webpack', 'sourcemap'],
+      'packages/client-web/**/*.ts': ['webpack', 'sourcemap'],
       'packages/client-common/__tests__/unit/*.test.ts': [
         'webpack',
         'sourcemap',
@@ -27,11 +27,11 @@ module.exports = function (config) {
         'sourcemap',
       ],
       'packages/client-common/__tests__/utils/*.ts': ['webpack', 'sourcemap'],
-      'packages/client-browser/__tests__/unit/*.test.ts': [
+      'packages/client-web/__tests__/unit/*.test.ts': [
         'webpack',
         'sourcemap',
       ],
-      'packages/client-browser/__tests__/integration/*.ts': [
+      'packages/client-web/__tests__/integration/*.ts': [
         'webpack',
         'sourcemap',
       ],
@@ -42,14 +42,7 @@ module.exports = function (config) {
     logLevel: config.LOG_INFO,
     autoWatch: false,
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['Chrome_without_security'],
-    customLaunchers: {
-      Chrome_without_security: {
-        base: 'ChromeHeadless',
-        // to disable CORS
-        flags: ['--disable-web-security'],
-      },
-    },
+    browsers: ['ChromeHeadless', 'FirefoxHeadless'],
     // if true, Karma captures browsers, runs the tests and exits
     singleRun: true,
     client: {
@@ -57,7 +50,7 @@ module.exports = function (config) {
         random: false,
         stopOnSpecFailure: false,
         stopSpecOnExpectationFailure: true,
-        timeoutInterval: 30000,
+        timeoutInterval: 60000,
       },
     },
   })

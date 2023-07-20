@@ -6,7 +6,7 @@ import type {
 import Stream from 'stream'
 import { NodeValuesEncoder } from '../../src/utils'
 
-describe('NodeValuesEncoder', () => {
+describe('[Node.js] ValuesEncoder', () => {
   const rawFormats = [
     'CSV',
     'CSVWithNames',
@@ -48,7 +48,7 @@ describe('NodeValuesEncoder', () => {
 
   const encoder = new NodeValuesEncoder()
 
-  describe('Node.js validateInsertValues', () => {
+  describe('[Node.js] validateInsertValues', () => {
     it('should allow object mode stream for JSON* and raw for Tab* or CSV*', async () => {
       const objectModeStream = Stream.Readable.from('foo,bar\n', {
         objectMode: true,
