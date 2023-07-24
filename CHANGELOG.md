@@ -1,3 +1,14 @@
+## 0.2.0-beta2
+
+- `@clickhouse/client-browser` renamed to `@clickhouse/client-web` as it makes more sense,
+  considering the supported platforms.
+- Firefox is now officially supported with `@clickhouse/client-web`.
+
+### Breaking changes (both Node.js/Web)
+
+- Changed `ping` method behavior: it will not throw now.
+  Instead, either `{ success: true }` or `{ success: false, error: Error }` is returned.
+
 ## 0.2.0-beta1 (browser support)
 
 Introduces browser client (using native [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
