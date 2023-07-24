@@ -1,4 +1,11 @@
-# ClickHouse Node.JS client examples
+# ClickHouse JS client examples
+
+Examples located directly in `examples` directory should work with both Node.js and Web versions of the client.
+The only difference will be in the import statement - `@clickhouse/client` vs `@clickhouse/client-web`.
+
+Node.JS-specific examples are located in `examples/node`, and Web-specific examples reside in `examples/web`.
+
+# Node.JS examples
 
 ## How to run
 
@@ -10,16 +17,17 @@ Start a local ClickHouse first (from the root project folder):
 docker-compose up -d
 ```
 
-Change the working directory to examples:
+Change the working directory to examples and install the dependencies:
 
 ```sh
 cd examples
+npm i
 ```
 
-Then, you should be able to run the sample programs:
+Then, you should be able to run the sample programs, for example:
 
 ```sh
-ts-node --transpile-only --project tsconfig.json array_json_each_row.ts
+ts-node --transpile-only array_json_each_row.ts
 ```
 
 ### TLS examples
@@ -33,8 +41,8 @@ sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 After that, you should be able to run the examples:
 
 ```bash
-ts-node --transpile-only --project tsconfig.json basic_tls.ts
-ts-node --transpile-only --project tsconfig.json mutual_tls.ts
+ts-node --transpile-only node/basic_tls.ts
+ts-node --transpile-only node/mutual_tls.ts
 ```
 
 ### Create table examples
@@ -48,7 +56,7 @@ docker-compose -f docker-compose.cluster.yml up -d
 then run the example:
 
 ```
-ts-node --transpile-only --project tsconfig.json create_table_local_cluster.ts
+ts-node --transpile-only create_table_local_cluster.ts
 ```
 
 - for `create_table_cloud.ts`, Docker containers are not required, but you need to set some environment variables first:
@@ -65,5 +73,5 @@ to your Cloud instance, so it is `default` for both.
 Run the example:
 
 ```
-ts-node --transpile-only --project tsconfig.json create_table_cloud.ts
+ts-node --transpile-only create_table_cloud.ts
 ```

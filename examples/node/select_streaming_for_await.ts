@@ -1,7 +1,7 @@
-import { createClient, type Row } from '@clickhouse/client'
+import { createClient, type Row } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 /**
- * NB: `for await const` has quite significant overhead
+ * NB (Node.js platform): `for await const` has quite significant overhead
  * (up to 2 times worse) vs old school `on(data)` approach
  * for that example, see `select_streaming_on_data.ts`
  *

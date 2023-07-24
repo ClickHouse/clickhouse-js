@@ -1,4 +1,4 @@
-import { createClient } from '@clickhouse/client'
+import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 // A single ClickHouse node - for example, as in our `docker-compose.yml`
 void (async () => {

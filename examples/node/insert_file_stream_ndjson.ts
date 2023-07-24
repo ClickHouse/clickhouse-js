@@ -1,6 +1,7 @@
+import type { Row } from '@clickhouse/client'
 import { createClient } from '@clickhouse/client'
-import Path from 'path'
 import Fs from 'fs'
+import Path from 'path'
 import split from 'split2'
 
 void (async () => {
@@ -19,10 +20,7 @@ void (async () => {
 
   // contains id as numbers in JSONCompactEachRow format ["0"]\n["0"]\n...
   // see also: NDJSON format
-  const filename = Path.resolve(
-    process.cwd(),
-    './examples/resources/data.ndjson'
-  )
+  const filename = Path.resolve(process.cwd(), './node/resources/data.ndjson')
 
   await client.insert({
     table: tableName,
@@ -32,15 +30,17 @@ void (async () => {
     format: 'JSONCompactEachRow',
   })
 
-  const rows = await client.query({
+  const rs = await client.query({
     query: `SELECT * from ${tableName}`,
     format: 'JSONEachRow',
   })
 
-  // or just `rows.text()` / `rows.json()`
-  // to consume the entire response at once
-  for await (const row of rows.stream()) {
-    console.log(row.json())
+  for await (const rows of rs.stream()) {
+    // or just `rows.text()` / `rows.json()`
+    // to consume the entire response at once
+    rows.forEach((row: Row) => {
+      console.log(row.json())
+    })
   }
 
   await client.close()

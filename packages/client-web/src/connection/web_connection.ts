@@ -60,7 +60,7 @@ export class WebConnection implements Connection<ReadableStream> {
 
   async exec(
     params: ConnBaseQueryParams
-  ): Promise<ConnQueryResult<ReadableStream>> {
+  ): Promise<ConnQueryResult<ReadableStream<Uint8Array>>> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -103,12 +103,11 @@ export class WebConnection implements Connection<ReadableStream> {
   }
 
   async ping(): Promise<ConnPingResult> {
+    // ClickHouse /ping endpoint does not support CORS,
+    // so we are using a simple SELECT as a workaround
     try {
       const response = await this.request({
-        method: 'GET',
-        values: null,
-        pathname: '/ping',
-        searchParams: undefined,
+        values: 'SELECT 1 FORMAT CSV',
       })
       if (response.body !== null) {
         await response.body.cancel()
@@ -138,7 +137,7 @@ export class WebConnection implements Connection<ReadableStream> {
   }: {
     values: string | null
     params?: ConnBaseQueryParams
-    searchParams: URLSearchParams | undefined
+    searchParams?: URLSearchParams
     pathname?: string
     method?: 'GET' | 'POST'
   }): Promise<Response> {

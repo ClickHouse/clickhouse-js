@@ -1,6 +1,7 @@
 import { createClient } from '@clickhouse/client'
-import Path from 'path'
+import type { Row } from '@clickhouse/client-common'
 import Fs from 'fs'
+import Path from 'path'
 
 void (async () => {
   const client = createClient()
@@ -18,7 +19,7 @@ void (async () => {
   })
 
   // contains data as 1,"foo","[1,2]"\n2,"bar","[3,4]"\n...
-  const filename = Path.resolve(process.cwd(), './examples/resources/data.csv')
+  const filename = Path.resolve(process.cwd(), './node/resources/data.csv')
 
   await client.insert({
     table: tableName,
@@ -26,15 +27,17 @@ void (async () => {
     format: 'CSV',
   })
 
-  const rows = await client.query({
+  const rs = await client.query({
     query: `SELECT * from ${tableName}`,
     format: 'CSV',
   })
 
-  // or just `rows.text()` to consume the entire response at once
-  // NB: `json()` calls are not supported for "raw" formats such as CSV
-  for await (const row of rows.stream()) {
-    console.log(row.text())
+  for await (const rows of rs.stream()) {
+    // or just `rows.text()`
+    // to consume the entire response at once
+    rows.forEach((row: Row) => {
+      console.log(row.text)
+    })
   }
 
   await client.close()
