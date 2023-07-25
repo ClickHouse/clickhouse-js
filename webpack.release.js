@@ -32,7 +32,7 @@ module.exports = merge(common, {
   },
   output: {
     library: 'ClickHouse',
-    filename: 'client-browser.min.js',
+    filename: 'client-web.min.js',
     path: path.resolve(__dirname, 'dist'),
     clean: true,
   },

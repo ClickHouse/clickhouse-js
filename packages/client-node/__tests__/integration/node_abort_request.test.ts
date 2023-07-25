@@ -5,7 +5,7 @@ import { createTestClient, guid } from '@test/utils'
 import type Stream from 'stream'
 import { makeObjectStream } from '../utils/stream'
 
-describe('Node.js abort request streaming', () => {
+describe('[Node.js] abort request streaming', () => {
   let client: ClickHouseClient<Stream.Readable>
 
   beforeEach(() => {

@@ -5,6 +5,7 @@ import type {
   ConnExecResult,
   ConnInsertParams,
   ConnInsertResult,
+  ConnPingResult,
   ConnQueryResult,
   LogWriter,
 } from '@clickhouse/client-common'
@@ -279,14 +280,23 @@ export abstract class NodeBaseConnection
     })
   }
 
-  async ping(): Promise<boolean> {
-    // TODO add status code check
-    const stream = await this.request({
-      method: 'GET',
-      url: transformUrl({ url: this.params.url, pathname: '/ping' }),
-    })
-    stream.destroy()
-    return true
+  async ping(): Promise<ConnPingResult> {
+    try {
+      const stream = await this.request({
+        method: 'GET',
+        url: transformUrl({ url: this.params.url, pathname: '/ping' }),
+      })
+      stream.destroy()
+      return { success: true }
+    } catch (error) {
+      if (error instanceof Error) {
+        return {
+          success: false,
+          error,
+        }
+      }
+      throw error // should never happen
+    }
   }
 
   async query(

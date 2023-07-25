@@ -14,7 +14,7 @@ import type { NodeConnectionParams } from '../../src/connection'
 import { NodeBaseConnection, NodeHttpConnection } from '../../src/connection'
 import { getAsText } from '../../src/utils'
 
-describe('Node.js HttpAdapter', () => {
+describe('[Node.js] HttpAdapter', () => {
   const gzip = Util.promisify(Zlib.gzip)
 
   describe('compression', () => {

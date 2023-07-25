@@ -2,7 +2,7 @@ import type { Row } from '@clickhouse/client-common'
 import { guid } from '@test/utils'
 import { ResultSet } from '../../src'
 
-describe('Browser ResultSet', () => {
+describe('[Web] ResultSet', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`
   const expectedJson = [{ foo: 'bar' }, { qaz: 'qux' }]
 

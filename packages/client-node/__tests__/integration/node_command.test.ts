@@ -8,7 +8,7 @@ import { createTestClient } from '@test/utils'
  *
  * This test makes sure that the consequent requests are not blocked by command calls
  */
-describe('Node.js command', () => {
+describe('[Node.js] command', () => {
   let client: ClickHouseClient
   beforeEach(() => {
     client = createTestClient({

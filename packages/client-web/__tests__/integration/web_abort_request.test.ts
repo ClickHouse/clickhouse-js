@@ -1,7 +1,7 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
-describe('Browser abort request streaming', () => {
+describe('[Web] abort request streaming', () => {
   let client: ClickHouseClient<ReadableStream>
 
   beforeEach(() => {
@@ -37,7 +37,8 @@ describe('Browser abort request streaming', () => {
 
     await expectAsync(selectPromise).toBeRejectedWith(
       jasmine.objectContaining({
-        message: jasmine.stringContaining('The user aborted a request'),
+        // Chrome = The user aborted a request; FF = The operation was aborted
+        message: jasmine.stringContaining('aborted'),
       })
     )
   })

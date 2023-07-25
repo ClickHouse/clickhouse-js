@@ -5,7 +5,7 @@ import {
   NodeHttpsConnection,
 } from '../../src/connection'
 
-describe('Node.js connection', () => {
+describe('[Node.js] connection', () => {
   const baseParams = {
     keep_alive: {
       enabled: true,

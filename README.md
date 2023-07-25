@@ -16,11 +16,12 @@ thoroughly tested with actual ClickHouse versions.
 
 The repository consists of three packages:
 
-- `@clickhouse/client` - Node.js client, built on top of [HTTP](https://nodejs.org/api/http.html)
+- `@clickhouse/client` - a version of the client designed for Node.js platform only. It is built on top of [HTTP](https://nodejs.org/api/http.html)
   and [Stream](https://nodejs.org/api/stream.html) APIs; supports streaming for both selects and inserts.
-- `@clickhouse/client-browser` - browser client, built on top of [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
+- `@clickhouse/client-web` - a version of the client built on top of [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
   and [Web Streams](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) APIs; supports streaming for selects.
-- `@clickhouse/common` - shared common types and the base framework for building a custom client implementation.
+  Compatible with Chrome/Firefox browsers and CloudFlare workers.
+- `@clickhouse/client-common` - shared common types and the base framework for building a custom client implementation.
 
 ## Documentation
 

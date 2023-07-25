@@ -3,7 +3,7 @@ import { createTestClient } from '@test/utils'
 import type Stream from 'stream'
 import { getAsText } from '../../src/utils'
 
-describe('Node.js exec result streaming', () => {
+describe('[Node.js] exec result streaming', () => {
   let client: ClickHouseClient<Stream.Readable>
   beforeEach(() => {
     client = createTestClient()

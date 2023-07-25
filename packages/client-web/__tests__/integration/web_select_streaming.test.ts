@@ -1,7 +1,7 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
-describe('Browser SELECT streaming', () => {
+describe('[Web] SELECT streaming', () => {
   let client: ClickHouseClient<ReadableStream<Row[]>>
   afterEach(async () => {
     await client.close()

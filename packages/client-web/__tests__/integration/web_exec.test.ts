@@ -2,7 +2,7 @@ import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 import { getAsText } from '../../src/utils'
 
-describe('Browser exec result streaming', () => {
+describe('[Web] exec result streaming', () => {
   let client: ClickHouseClient<ReadableStream>
   beforeEach(() => {
     client = createTestClient()

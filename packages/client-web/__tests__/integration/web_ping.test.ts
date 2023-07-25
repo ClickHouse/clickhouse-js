@@ -1,7 +1,7 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
-describe('[Node.js] ping', () => {
+describe('[Web] ping', () => {
   let client: ClickHouseClient
   afterEach(async () => {
     await client.close()
@@ -15,8 +15,9 @@ describe('[Node.js] ping', () => {
     expect(result.success).toBeFalse()
     // @ts-expect-error
     expect(result.error).toEqual(
+      // Chrome = Failed to fetch; FF = NetworkError when attempting to fetch resource
       jasmine.objectContaining({
-        code: 'ECONNREFUSED',
+        message: jasmine.stringContaining('to fetch'),
       })
     )
   })

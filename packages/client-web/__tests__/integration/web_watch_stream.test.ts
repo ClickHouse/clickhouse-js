@@ -8,7 +8,7 @@ import {
   whenOnEnv,
 } from '@test/utils'
 
-describe('Browser WATCH stream', () => {
+describe('[Web] WATCH stream', () => {
   let client: ClickHouseClient<ReadableStream>
   let viewName: string
 

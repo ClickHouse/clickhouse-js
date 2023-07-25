@@ -1,6 +1,6 @@
 import { createClient } from '../../src'
 
-describe('Browser errors parsing', () => {
+describe('[Web] errors parsing', () => {
   it('should return an error when URL is unreachable', async () => {
     const client = createClient({
       host: 'http://localhost:1111',
@@ -10,8 +10,9 @@ describe('Browser errors parsing', () => {
         query: 'SELECT * FROM system.numbers LIMIT 3',
       })
     ).toBeRejectedWith(
+      // Chrome = Failed to fetch; FF = NetworkError when attempting to fetch resource
       jasmine.objectContaining({
-        message: 'Failed to fetch',
+        message: jasmine.stringContaining('to fetch'),
       })
     )
   })

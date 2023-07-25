@@ -1,4 +1,4 @@
-import { createClient, type ResponseJSON } from '@clickhouse/client'
+import { createClient, type ResponseJSON } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 void (async () => {
   const client = createClient()

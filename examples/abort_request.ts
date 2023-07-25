@@ -1,4 +1,4 @@
-import { createClient } from '@clickhouse/client'
+import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 void (async () => {
   const client = createClient()
@@ -10,10 +10,9 @@ void (async () => {
       abort_signal: controller.signal,
     })
     .catch((e: unknown) => {
-      console.info('Select was aborted')
-      console.info('This is the underlying error message')
-      console.info('------------------------------------')
       console.error(e)
+      console.info('---------------------------------------------------')
+      console.info('Select was aborted, see above for the error details')
     })
   controller.abort()
   await selectPromise

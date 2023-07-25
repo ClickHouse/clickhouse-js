@@ -2,7 +2,7 @@ import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTestClient, guid, sleep } from '@test/utils'
 
-describe('Node.js max_open_connections config', () => {
+describe('[Node.js] max_open_connections config', () => {
   let client: ClickHouseClient
   let results: number[] = []
 

@@ -3,7 +3,7 @@ import { formatQueryParams } from '@clickhouse/client-common'
 // JS always creates Date object in local timezone,
 // so we might need to convert the date to another timezone
 function convertDateToTimezone(date: Date, tz: string) {
-  return new Date(
+  const converted = new Date(
     date.toLocaleString('en-US', {
       timeZone: tz,
       year: 'numeric',
@@ -12,9 +12,11 @@ function convertDateToTimezone(date: Date, tz: string) {
       hour: 'numeric',
       minute: 'numeric',
       second: 'numeric',
-      fractionalSecondDigits: 3, // print millis
+      // fractionalSecondDigits is not supported well in FF
     })
   )
+  converted.setMilliseconds(date.getMilliseconds())
+  return converted
 }
 
 describe('formatQueryParams', () => {

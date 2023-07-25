@@ -10,6 +10,6 @@ describe('ping', () => {
   it('makes a ping request', async () => {
     client = createTestClient()
     const response = await client.ping()
-    expect(response).toBe(true)
+    expect(response.success).toBe(true)
   })
 })

@@ -10,7 +10,7 @@ import {
 } from '@test/utils'
 import type Stream from 'stream'
 
-describe('Node.js WATCH stream', () => {
+describe('[Node.js] WATCH stream', () => {
   let client: ClickHouseClient<Stream.Readable>
   let viewName: string
 
