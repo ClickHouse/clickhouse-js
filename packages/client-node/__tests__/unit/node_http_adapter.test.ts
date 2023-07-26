@@ -257,7 +257,7 @@ describe('[Node.js] HttpAdapter', () => {
       const myHttpAdapter = new MyTestHttpAdapter()
       const headers = myHttpAdapter.getDefaultHeaders()
       expect(headers['User-Agent']).toMatch(
-        /^clickhouse-js\/[0-9\\.]+-(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
+        /^clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
       )
     })
 
@@ -265,7 +265,7 @@ describe('[Node.js] HttpAdapter', () => {
       const myHttpAdapter = new MyTestHttpAdapter('MyFancyApp')
       const headers = myHttpAdapter.getDefaultHeaders()
       expect(headers['User-Agent']).toMatch(
-        /^MyFancyApp clickhouse-js\/[0-9\\.]+-(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
+        /^MyFancyApp clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
       )
     })
   })

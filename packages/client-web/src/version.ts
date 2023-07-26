@@ -1,1 +1,1 @@
-export default '0.2.0-beta2'
+export default '0.2.0'

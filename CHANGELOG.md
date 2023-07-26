@@ -1,30 +1,23 @@
-## 0.2.0-beta2
+## 0.2.0 (web platform support)
 
-- `@clickhouse/client-browser` renamed to `@clickhouse/client-web` as it makes more sense,
-  considering the supported platforms.
-- Firefox is now officially supported with `@clickhouse/client-web`.
-
-### Breaking changes (both Node.js/Web)
-
-- Changed `ping` method behavior: it will not throw now.
-  Instead, either `{ success: true }` or `{ success: false, error: Error }` is returned.
-
-## 0.2.0-beta1 (browser support)
-
-Introduces browser client (using native [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
+Introduces web client (using native [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
 and [WebStream](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) APIs)
-with no Node.js modules in the common interfaces. No polyfills are required.
+without Node.js modules in the common interfaces. No polyfills are required.
+
+Web client is confirmed to work with Chrome/Firefox/CloudFlare workers.
 
 It is now possible to implement new custom connections on top of `@clickhouse/client-common`.
 
 The client was refactored into three packages:
 
 - `@clickhouse/client-common`: all possible platform-independent code, types and interfaces
-- `@clickhouse/client-browser`: new "browser" (or non-Node.js env) connection, uses native fetch.
+- `@clickhouse/client-web`: new web (or non-Node.js env) connection, uses native fetch.
 - `@clickhouse/client`: Node.js connection as it was before.
 
 ### Node.js client breaking changes
 
+- Changed `ping` method behavior: it will not throw now.
+  Instead, either `{ success: true }` or `{ success: false, error: Error }` is returned.
 - Log level configuration parameter is now explicit instead of `CLICKHOUSE_LOG_LEVEL` environment variable.
   Default is `OFF`.
 - `query` return type signature changed to is `BaseResultSet<Stream.Readable>` (no functional changes)
@@ -32,11 +25,11 @@ The client was refactored into three packages:
 - `insert<T>` params argument type changed to `InsertParams<Stream, T>` (no functional changes)
 - Experimental `schema` module is removed
 
-### Browser client known limitations
+### Web client known limitations
 
 - Streaming for select queries works, but it is disabled for inserts (on the type level as well).
 - KeepAlive is disabled and not configurable yet.
-- Request compression is disabled and ignored.
+- Request compression is disabled and configuration is ignored. Response compression works.
 - No logging support yet.
 
 ## 0.1.1
