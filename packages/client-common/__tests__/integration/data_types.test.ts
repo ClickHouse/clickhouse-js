@@ -451,10 +451,7 @@ describe('data types', () => {
     ]
     const table = await createTableWithFields(
       client,
-      'p Point, r Ring, pg Polygon, mpg MultiPolygon',
-      {
-        allow_experimental_geo_types: 1,
-      }
+      'p Point, r Ring, pg Polygon, mpg MultiPolygon'
     )
     await insertAndAssert(table, values)
   })
