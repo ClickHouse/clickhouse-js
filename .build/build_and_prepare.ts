@@ -9,7 +9,7 @@ import * as process from 'process'
   }
 
   let packageName = ''
-  if (tag.endsWith('-browser')) {
+  if (tag.endsWith('-web')) {
     packageName = 'client-web'
   } else if (tag.endsWith('-node')) {
     packageName = 'client-node'
