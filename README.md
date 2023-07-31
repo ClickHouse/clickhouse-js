@@ -25,7 +25,7 @@ The repository consists of three packages:
 
 ## Documentation
 
-See the [ClickHouse website](https://clickhouse.com/docs/en/integrations/language-clients/nodejs) for the full documentation entry.
+See the [ClickHouse website](https://clickhouse.com/docs/en/integrations/language-clients/javascript) for the full documentation entry.
 
 ## Usage examples
 
