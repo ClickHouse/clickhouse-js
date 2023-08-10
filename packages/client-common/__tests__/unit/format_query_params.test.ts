@@ -39,25 +39,25 @@ describe('formatQueryParams', () => {
   it('formats a date without timezone', () => {
     const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14))
 
-    expect(formatQueryParams(date)).toBe('1659081134000')
+    expect(formatQueryParams(date)).toBe('1659081134')
   })
 
   it('formats a date with only nine digits in its Unix timestamp (seconds)', () => {
     const date = new Date(Date.UTC(1973, 10, 29, 21, 33, 9))
 
-    expect(formatQueryParams(date)).toBe('0123456789000')
+    expect(formatQueryParams(date)).toBe('0123456789')
   })
 
   it('formats a date with millis', () => {
     expect(
       formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123)))
-    ).toBe('1659081134123')
+    ).toBe('1659081134.123')
     expect(
       formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 42)))
-    ).toBe('1659081134042')
+    ).toBe('1659081134.042')
     expect(
       formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 5)))
-    ).toBe('1659081134005')
+    ).toBe('1659081134.005')
   })
 
   it('does not wrap a string in quotes', () => {
