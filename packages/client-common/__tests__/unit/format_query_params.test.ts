@@ -1,24 +1,5 @@
 import { formatQueryParams } from '@clickhouse/client-common'
 
-// JS always creates Date object in local timezone,
-// so we might need to convert the date to another timezone
-function convertDateToTimezone(date: Date, tz: string) {
-  const converted = new Date(
-    date.toLocaleString('en-US', {
-      timeZone: tz,
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      second: 'numeric',
-      // fractionalSecondDigits is not supported well in FF
-    })
-  )
-  converted.setMilliseconds(date.getMilliseconds())
-  return converted
-}
-
 describe('formatQueryParams', () => {
   it('formats null', () => {
     expect(formatQueryParams(null)).toBe('\\N')
@@ -56,39 +37,27 @@ describe('formatQueryParams', () => {
   })
 
   it('formats a date without timezone', () => {
-    const date = convertDateToTimezone(
-      new Date(Date.UTC(2022, 6, 29, 7, 52, 14)),
-      'UTC'
-    )
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14))
 
-    expect(formatQueryParams(date)).toBe('2022-07-29 07:52:14')
+    expect(formatQueryParams(date)).toBe('1659081134')
+  })
+
+  it('formats a date with only nine digits in its Unix timestamp (seconds)', () => {
+    const date = new Date(Date.UTC(1973, 10, 29, 21, 33, 9))
+
+    expect(formatQueryParams(date)).toBe('0123456789')
   })
 
   it('formats a date with millis', () => {
     expect(
-      formatQueryParams(
-        convertDateToTimezone(
-          new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123)),
-          'UTC'
-        )
-      )
-    ).toBe('2022-07-29 07:52:14.123')
+      formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123)))
+    ).toBe('1659081134.123')
     expect(
-      formatQueryParams(
-        convertDateToTimezone(
-          new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 42)),
-          'UTC'
-        )
-      )
-    ).toBe('2022-07-29 07:52:14.042')
+      formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 42)))
+    ).toBe('1659081134.042')
     expect(
-      formatQueryParams(
-        convertDateToTimezone(
-          new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 5)),
-          'UTC'
-        )
-      )
-    ).toBe('2022-07-29 07:52:14.005')
+      formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 5)))
+    ).toBe('1659081134.005')
   })
 
   it('does not wrap a string in quotes', () => {

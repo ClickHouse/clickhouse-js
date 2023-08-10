@@ -68,7 +68,7 @@ describe('select with query binding', () => {
         query: 'SELECT toDate({min_time: DateTime})',
         format: 'CSV',
         query_params: {
-          min_time: new Date(2022, 4, 2),
+          min_time: new Date(Date.UTC(2022, 4, 2)),
         },
       })
 
@@ -81,7 +81,7 @@ describe('select with query binding', () => {
         query: 'SELECT toDateTime({min_time: DateTime})',
         format: 'CSV',
         query_params: {
-          min_time: new Date(2022, 4, 2, 13, 25, 55),
+          min_time: new Date(Date.UTC(2022, 4, 2, 13, 25, 55)),
         },
       })
 
@@ -94,7 +94,7 @@ describe('select with query binding', () => {
         query: 'SELECT toDateTime64({min_time: DateTime64(3)}, 3)',
         format: 'CSV',
         query_params: {
-          min_time: new Date(2022, 4, 2, 13, 25, 55, 789),
+          min_time: new Date(Date.UTC(2022, 4, 2, 13, 25, 55, 789)),
         },
       })
 

@@ -1,24 +1,5 @@
 import { replaceAll } from '../utils'
 
-function withPadding(value: number): string {
-  if (value > 9) return String(value)
-  return `0${value}`
-}
-
-function formatMillis(value: Date) {
-  const ms = value.getMilliseconds()
-  if (ms === 0) {
-    return ''
-  }
-  if (ms > 99) {
-    return `.${ms}`
-  }
-  if (ms > 9) {
-    return `.0${ms}`
-  }
-  return `.00${ms}`
-}
-
 export function formatQueryParams(
   value: any,
   wrapStringInQuotes = false
@@ -41,16 +22,14 @@ export function formatQueryParams(
   }
 
   if (value instanceof Date) {
-    // TODO add timezone support
-    const date = `${value.getFullYear()}-${withPadding(
-      value.getMonth() + 1
-    )}-${withPadding(value.getDate())}`
-    const time = `${withPadding(value.getHours())}:${withPadding(
-      value.getMinutes()
-    )}:${withPadding(value.getSeconds())}`
-
-    const ms = formatMillis(value)
-    return `${date} ${time}${ms}`
+    // The ClickHouse server parses numbers as time-zone-agnostic Unix timestamps
+    const unixTimestamp = Math.floor(value.getTime() / 1000)
+      .toString()
+      .padStart(10, '0')
+    const milliseconds = value.getUTCMilliseconds()
+    return milliseconds === 0
+      ? unixTimestamp
+      : `${unixTimestamp}.${milliseconds.toString().padStart(3, '0')}`
   }
 
   if (typeof value === 'object') {
