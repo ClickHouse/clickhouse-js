@@ -1,3 +1,11 @@
+## Unreleased
+
+### Breaking changes
+
+Date objects in query parameters are now serialized as time-zone-agnostic Unix timestamps (NNNNNNNNNN[.NNN], optionally with millisecond-precision) instead of datetime strings without time zones (YYYY-MM-DD HH:MM:SS[.MMM]). This means the server will receive the same absolute timestamp the client sent even if the client's time zone and the database server's time zone differ. Previously, if the server used one time zone and the client used another, Date objects would be encoded in the client's time zone and decoded in the server's time zone and create a mismatch.
+
+For instance, if the server used UTC (GMT) and the client used PST (GMT-8), a Date object for "2023-01-01 13:00:00 **PST**" would be encoded as "2023-01-01 13:00:00.000" and decoded as "2023-01-01 13:00:00 **UTC**" (which is 2023-01-01 **05**:00:00 PST). Now, "2023-01-01 13:00:00 PST" is encoded as "1672606800000" and decoded as "2023-01-01 **21**:00:00 UTC", the same time the client sent.
+
 ## 0.2.0 (web platform support)
 
 Introduces web client (using native [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
