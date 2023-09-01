@@ -43,6 +43,8 @@ module.exports = function (config) {
     autoWatch: false,
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
     browsers: ['ChromeHeadless', 'FirefoxHeadless'],
+    browserNoActivityTimeout: 60000,
+    browserDisconnectTimeout: 60000,
     // if true, Karma captures browsers, runs the tests and exits
     singleRun: true,
     client: {
