@@ -21,7 +21,6 @@ export class ClickHouseError extends Error {
 }
 
 export function parseError(input: string | Error): ClickHouseError | Error {
-  console.error(input)
   const inputIsError = input instanceof Error
   const message = inputIsError ? input.message : input
   const match = message.match(errorRe)
