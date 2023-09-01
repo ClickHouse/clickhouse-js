@@ -128,7 +128,10 @@ describe('insert', () => {
       })
     ).toBeRejectedWith(
       jasmine.objectContaining({
-        message: jasmine.stringContaining('Unknown setting foobar'),
+        // Possible error messages:
+        // Unknown setting foobar
+        // Setting foobar is neither a builtin setting nor started with the prefix 'SQL_' registered for user-defined settings.
+        message: jasmine.stringContaining('foobar'),
         code: '115',
         type: 'UNKNOWN_SETTING',
       })
