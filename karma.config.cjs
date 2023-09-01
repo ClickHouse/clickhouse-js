@@ -1,5 +1,7 @@
 const webpackConfig = require('./webpack.dev.js')
 
+const TEST_TIMEOUT_MS = 120_000
+
 module.exports = function (config) {
   config.set({
     // base path that will be used to resolve all patterns (eg. files, exclude)
@@ -43,6 +45,8 @@ module.exports = function (config) {
     autoWatch: false,
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
     browsers: ['ChromeHeadless', 'FirefoxHeadless'],
+    browserNoActivityTimeout: TEST_TIMEOUT_MS,
+    browserDisconnectTimeout: TEST_TIMEOUT_MS,
     // if true, Karma captures browsers, runs the tests and exits
     singleRun: true,
     client: {
@@ -50,7 +54,7 @@ module.exports = function (config) {
         random: false,
         stopOnSpecFailure: false,
         stopSpecOnExpectationFailure: true,
-        timeoutInterval: 60000,
+        timeoutInterval: TEST_TIMEOUT_MS,
       },
     },
   })

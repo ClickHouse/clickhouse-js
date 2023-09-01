@@ -1,6 +1,7 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 import { getAsText } from '../../src/utils'
+import { ResultSet } from '../../src'
 
 describe('[Web] exec result streaming', () => {
   let client: ClickHouseClient<ReadableStream>
@@ -42,6 +43,18 @@ describe('[Web] exec result streaming', () => {
         query: 'EXISTS system.foobar;;;;;;',
       })
       expect(await getAsText(result.stream)).toEqual('0\n')
+    })
+
+    it('should work with default_format', async () => {
+      const format = 'JSONEachRow'
+      const { stream, query_id } = await client.exec({
+        query: 'SELECT number FROM system.numbers LIMIT 1',
+        clickhouse_settings: {
+          default_format: format,
+        },
+      })
+      const rs = new ResultSet(stream, format, query_id)
+      expect(await rs.json()).toEqual([{ number: '0' }])
     })
   })
 })

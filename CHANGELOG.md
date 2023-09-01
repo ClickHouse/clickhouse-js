@@ -1,3 +1,9 @@
+## 0.2.2 (Common, Node.js & Web)
+
+### New features
+
+- Added `default_format` setting, which allows to perform `exec` calls without `FORMAT` clause.
+
 ## 0.2.1 (Common, Node.js & Web)
 
 ### Breaking changes

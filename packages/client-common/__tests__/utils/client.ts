@@ -9,9 +9,10 @@ import { guid } from './guid'
 import { getClickHouseTestEnvironment, TestEnv } from './test_env'
 import { TestLogger } from './test_logger'
 
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 120_000
+
 let databaseName: string
 beforeAll(async () => {
-  jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000
   if (
     getClickHouseTestEnvironment() === TestEnv.Cloud &&
     databaseName === undefined

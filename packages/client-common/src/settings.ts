@@ -1,3 +1,4 @@
+import type { DataFormat } from './data_formatter'
 /**
  * @see {@link https://github.com/ClickHouse/ClickHouse/blob/46ed4f6cdf68fbbdc59fbe0f0bfa9a361cc0dec1/src/Core/Settings.h}
  * @see {@link https://github.com/ClickHouse/ClickHouse/blob/eae2667a1c29565c801be0ffd465f8bfcffe77ef/src/Storages/MergeTree/MergeTreeSettings.h}
@@ -1579,6 +1580,7 @@ interface ClickHouseServerSettings {
 
 interface ClickHouseHTTPSettings {
   wait_end_of_query: Bool
+  default_format: DataFormat
 }
 
 export type ClickHouseSettings = Partial<ClickHouseServerSettings> &

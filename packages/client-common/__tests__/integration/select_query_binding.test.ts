@@ -260,8 +260,11 @@ describe('select with query binding', () => {
         })
       ).toBeRejectedWith(
         jasmine.objectContaining({
-          message: jasmine.stringContaining(
-            'Query parameter `min_limit` was not set'
+          message: jasmine.stringMatching(
+            // possible error messages here:
+            // (since 23.8+) Substitution `min_limit` is not set.
+            // (pre-23.8) Query parameter `min_limit` was not set
+            /^.+?`min_limit`.+?not set.*$/
           ),
           code: '456',
           type: 'UNKNOWN_QUERY_PARAMETER',
