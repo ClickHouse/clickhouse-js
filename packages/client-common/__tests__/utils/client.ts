@@ -11,7 +11,7 @@ import { TestLogger } from './test_logger'
 
 let databaseName: string
 beforeAll(async () => {
-  jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000
+  jasmine.DEFAULT_TIMEOUT_INTERVAL = 60_000
   if (
     getClickHouseTestEnvironment() === TestEnv.Cloud &&
     databaseName === undefined
