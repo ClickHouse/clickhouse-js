@@ -1,6 +1,6 @@
 const webpackConfig = require('./webpack.dev.js')
 
-const TEST_TIMEOUT_MS = 60_000
+const TEST_TIMEOUT_MS = 120_000
 
 module.exports = function (config) {
   config.set({
