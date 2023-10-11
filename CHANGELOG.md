@@ -1,3 +1,11 @@
+## 0.2.3 (Node.js only)
+
+No changes in web/common modules.
+
+### Bug fixes
+
+- (Node.js only) Fixed an issue where the underlying socket was closed every time after using `insert` with a `keep_alive` option enabled, which led to performance limitations. See [#202](https://github.com/ClickHouse/clickhouse-js/issues/202) for more details. ([@varrocs](https://github.com/varrocs))
+
 ## 0.2.2 (Common, Node.js & Web)
 
 ### New features
