@@ -356,7 +356,7 @@ export abstract class NodeBaseConnection
 
   async drainHttpResponse(stream: Stream.Readable): Promise<void> {
     return new Promise((resolve, reject) => {
-      function dropdata() {
+      function dropData() {
         // We don't care about the data
       }
 
@@ -375,13 +375,13 @@ export abstract class NodeBaseConnection
       }
 
       function removeListeners() {
-        stream.removeListener('data', dropdata)
+        stream.removeListener('data', dropData)
         stream.removeListener('end', onEnd)
         stream.removeListener('error', onError)
         stream.removeListener('onClose', onClose)
       }
 
-      stream.on('data', dropdata)
+      stream.on('data', dropData)
       stream.on('end', onEnd)
       stream.on('error', onError)
       stream.on('close', onClose)
