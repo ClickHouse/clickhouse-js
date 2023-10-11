@@ -354,6 +354,40 @@ export abstract class NodeBaseConnection
     }
   }
 
+  async drainHttpResponse(stream: Stream.Readable): Promise<void> {
+    return new Promise((resolve, reject) => {
+      function dropData() {
+        // We don't care about the data
+      }
+
+      function onEnd() {
+        removeListeners()
+        resolve()
+      }
+
+      function onError(err: Error) {
+        removeListeners()
+        reject(err)
+      }
+
+      function onClose() {
+        removeListeners()
+      }
+
+      function removeListeners() {
+        stream.removeListener('data', dropData)
+        stream.removeListener('end', onEnd)
+        stream.removeListener('error', onError)
+        stream.removeListener('onClose', onClose)
+      }
+
+      stream.on('data', dropData)
+      stream.on('end', onEnd)
+      stream.on('error', onError)
+      stream.on('close', onClose)
+    })
+  }
+
   async insert(
     params: ConnInsertParams<Stream.Readable>
   ): Promise<ConnInsertResult> {
@@ -375,7 +409,7 @@ export abstract class NodeBaseConnection
       compress_request: this.params.compression.compress_request,
     })
 
-    stream.destroy()
+    await this.drainHttpResponse(stream)
     return { query_id }
   }
 
