@@ -1,5 +1,5 @@
 <p align="center">
-<img src=".static/logo.png" width="200px" align="center">
+<img src=".static/logo.svg" width="200px" align="center">
 <h1 align="center">ClickHouse JS client</h1>
 </p>
 <br/>
