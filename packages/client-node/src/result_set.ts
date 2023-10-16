@@ -39,22 +39,22 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
     validateStreamFormat(this.format)
 
     let data: Buffer
-    let leftovers: Buffer | undefined
-
+    let incompleteRow: Buffer | undefined
     const toRows = new Transform({
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
         callback: TransformCallback
       ) {
-        // Already allocated, x2 chunk size should be enough for any leftovers
+        let currentDataSize
+        // The buffer was already allocated
+        // x2 chunk size should be enough for any leftover incomplete rows
         if (data !== undefined) {
           let chunkOffset
-          let currentDataSize
-          if (leftovers !== undefined) {
-            chunkOffset = leftovers.length
+          if (incompleteRow !== undefined) {
+            chunkOffset = incompleteRow.length
             currentDataSize = chunkOffset + chunk.length
-            data.fill(leftovers, 0, chunkOffset)
+            data.fill(incompleteRow, 0, chunkOffset)
           } else {
             chunkOffset = 0
             currentDataSize = chunk.length
@@ -62,16 +62,20 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
           data.fill(chunk, chunkOffset, currentDataSize)
           data.fill(0, currentDataSize, data.length)
         } else {
-          // First pass, allocate enough memory for the chunk and potential leftovers
+          // This is the first chunk, and we need to allocate enough memory
+          // to hold the chunk itself and any potential incomplete rows
+          currentDataSize = chunk.length
           data = Buffer.alloc(chunk.length * 2, 0)
           data.fill(chunk, 0, chunk.length)
         }
         const rows: Row[] = []
         let lastIdx = 0
         do {
-          const idx = data.indexOf(NEWLINE, lastIdx === 0 ? 0 : lastIdx + 1)
+          // +1 to skip previously found '\n', if it's not the first pass
+          const startIdx = lastIdx === 0 ? 0 : lastIdx + 1
+          const idx = data.indexOf(NEWLINE, startIdx)
           if (idx !== -1) {
-            const text = data.subarray(lastIdx, idx).toString()
+            const text = data.subarray(startIdx, idx).toString()
             rows.push({
               text,
               json<T>(): T {
@@ -87,10 +91,8 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
             if (rows.length) {
               this.push(rows)
             }
-            leftovers = data.subarray(
-              lastIdx + 1,
-              (leftovers?.length ?? 0) + chunk.length
-            ) // +1 to skip newline
+            // Buffer after currentDataSize index is filled with zeroes
+            incompleteRow = data.subarray(startIdx, currentDataSize)
           }
           lastIdx = idx
         } while (lastIdx !== -1)
