@@ -1,8 +1,11 @@
 import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
+import { Buffer } from 'buffer'
 import type { TransformCallback } from 'stream'
 import Stream, { Transform } from 'stream'
 import { getAsText } from './utils'
+
+const NEWLINE = 0x0a as const
 
 export class ResultSet implements BaseResultSet<Stream.Readable> {
   constructor(
@@ -35,34 +38,62 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
 
     validateStreamFormat(this.format)
 
-    let decodedChunk = ''
+    let data: Buffer
+    let leftovers: Buffer | undefined
+
     const toRows = new Transform({
       transform(
         chunk: Buffer,
-        encoding: BufferEncoding,
+        _encoding: BufferEncoding,
         callback: TransformCallback
       ) {
-        decodedChunk += chunk.toString()
+        // Already allocated, x2 chunk size should be enough for any leftovers
+        if (data !== undefined) {
+          let chunkOffset
+          let currentDataSize
+          if (leftovers !== undefined) {
+            chunkOffset = leftovers.length
+            currentDataSize = chunkOffset + chunk.length
+            data.fill(leftovers, 0, chunkOffset)
+          } else {
+            chunkOffset = 0
+            currentDataSize = chunk.length
+          }
+          data.fill(chunk, chunkOffset, currentDataSize)
+          data.fill(0, currentDataSize, data.length)
+        } else {
+          // First pass, allocate enough memory for the chunk and potential leftovers
+          data = Buffer.alloc(chunk.length * 2, 0)
+          data.fill(chunk, 0, chunk.length)
+        }
         const rows: Row[] = []
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const idx = decodedChunk.indexOf('\n')
+        let lastIdx = 0
+        do {
+          const idx = data.indexOf(NEWLINE, lastIdx === 0 ? 0 : lastIdx + 1)
           if (idx !== -1) {
-            const text = decodedChunk.slice(0, idx)
-            decodedChunk = decodedChunk.slice(idx + 1)
+            const text = data.subarray(lastIdx, idx).toString()
             rows.push({
               text,
               json<T>(): T {
-                return decode(text, 'JSON')
+                try {
+                  return JSON.parse(text)
+                } catch (e) {
+                  console.error('Failed with: ', text)
+                  throw e
+                }
               },
             })
           } else {
             if (rows.length) {
               this.push(rows)
             }
-            break
+            leftovers = data.subarray(
+              lastIdx + 1,
+              (leftovers?.length ?? 0) + chunk.length
+            ) // +1 to skip newline
           }
-        }
+          lastIdx = idx
+        } while (lastIdx !== -1)
         callback()
       },
       autoDestroy: true,
