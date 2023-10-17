@@ -152,7 +152,7 @@ describe('[Node.js] streaming e2e', () => {
       it('should work with .json()', async () => {
         const { table, values } = await generateData({
           rows: 5,
-          words: 5000,
+          words: 10000,
         })
         const result = await client
           .query({
@@ -166,7 +166,7 @@ describe('[Node.js] streaming e2e', () => {
       it('should work with .stream()', async () => {
         const { table, values } = await generateData({
           rows: 5,
-          words: 5000,
+          words: 10000,
         })
         const stream = await client
           .query({
