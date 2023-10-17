@@ -1,3 +1,11 @@
+## 0.2.4 (Node.js only)
+
+No changes in web/common modules.
+
+### Bug fixes
+
+- (Node.js only) Fixed an issue where streaming large datasets could provide corrupted results. See [#171](https://github.com/ClickHouse/clickhouse-js/issues/171) (issue) and [#204](https://github.com/ClickHouse/clickhouse-js/pull/204) (PR) for more details.
+
 ## 0.2.3 (Node.js only)
 
 No changes in web/common modules.
