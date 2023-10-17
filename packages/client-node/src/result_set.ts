@@ -38,64 +38,58 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
 
     validateStreamFormat(this.format)
 
-    let data: Buffer
-    let incompleteRow: Buffer | undefined
+    let incompleteChunks: Buffer[] = []
     const toRows = new Transform({
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
         callback: TransformCallback
       ) {
-        let currentDataSize
-        // The buffer was already allocated
-        // x2 chunk size should be enough for any leftover incomplete rows
-        if (data !== undefined) {
-          let chunkOffset
-          if (incompleteRow !== undefined) {
-            chunkOffset = incompleteRow.length
-            currentDataSize = chunkOffset + chunk.length
-            data.fill(incompleteRow, 0, chunkOffset)
-          } else {
-            chunkOffset = 0
-            currentDataSize = chunk.length
-          }
-          data.fill(chunk, chunkOffset, currentDataSize)
-          data.fill(0, currentDataSize, data.length)
-        } else {
-          // This is the first chunk, and we need to allocate enough memory
-          // to hold the chunk itself and any potential incomplete rows
-          currentDataSize = chunk.length
-          data = Buffer.alloc(chunk.length * 2, 0)
-          data.fill(chunk, 0, chunk.length)
-        }
         const rows: Row[] = []
         let lastIdx = 0
-        do {
-          // +1 to skip previously found '\n', if it's not the first pass
-          const startIdx = lastIdx === 0 ? 0 : lastIdx + 1
-          const idx = data.indexOf(NEWLINE, startIdx)
-          if (idx !== -1) {
-            const text = data.subarray(startIdx, idx).toString()
-            rows.push({
-              text,
-              json<T>(): T {
-                try {
-                  return JSON.parse(text)
-                } catch (e) {
-                  console.error('Failed with: ', text)
-                  throw e
-                }
-              },
-            })
+        // first pass on the current chunk
+        // using the incomplete row from the previous chunks
+        let idx = chunk.indexOf(NEWLINE)
+        if (idx !== -1) {
+          let text: string
+          if (incompleteChunks.length > 0) {
+            text = Buffer.concat(
+              [...incompleteChunks, chunk.subarray(0, idx)],
+              incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx
+            ).toString()
+            incompleteChunks = []
           } else {
-            if (rows.length) {
+            text = chunk.subarray(0, idx).toString()
+          }
+          rows.push({
+            text,
+            json<T>(): T {
+              return JSON.parse(text)
+            },
+          })
+          lastIdx = idx + 1 // skipping newline character
+          // consequent passes on the current chunk with at least one row parsed
+          // all previous chunks with incomplete rows were already processed
+          do {
+            idx = chunk.indexOf(NEWLINE, lastIdx)
+            if (idx !== -1) {
+              const text = chunk.subarray(lastIdx, idx).toString()
+              rows.push({
+                text,
+                json<T>(): T {
+                  return JSON.parse(text)
+                },
+              })
+            } else {
+              // to be processed during the first pass for the next chunk
+              incompleteChunks.push(chunk.subarray(lastIdx))
               this.push(rows)
             }
-            // Buffer after currentDataSize index is filled with zeroes
-            incompleteRow = data.subarray(startIdx, currentDataSize)
-          }
-          lastIdx = idx
-        } while (lastIdx !== -1)
+            lastIdx = idx + 1 // skipping newline character
+          } while (idx !== -1)
+        } else {
+          incompleteChunks.push(chunk) // this chunk does not contain a full row
+        }
         callback()
       },
       autoDestroy: true,
