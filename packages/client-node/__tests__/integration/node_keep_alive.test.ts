@@ -1,8 +1,6 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { ClickHouseLogLevel } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTestClient, guid, sleep } from '@test/utils'
-import { randomInt } from 'crypto'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/client'
 
@@ -11,9 +9,9 @@ import type { NodeClickHouseClientConfigOptions } from '../../src/client'
  *  maybe because of Jasmine test runner vs Jest and tests isolation
  *  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
  */
-describe('[Node.js] Keep Alive', () => {
+xdescribe('[Node.js] Keep Alive', () => {
   let client: ClickHouseClient<Stream.Readable>
-  const idleSocketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
+  const socketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
   afterEach(async () => {
     await client.close()
   })
@@ -24,14 +22,12 @@ describe('[Node.js] Keep Alive', () => {
         max_open_connections: 1,
         keep_alive: {
           enabled: true,
-          idle_socket_ttl: idleSocketTTL,
-        },
-        log: {
-          level: ClickHouseLogLevel.TRACE,
+          socket_ttl: socketTTL,
+          retry_on_expired_socket: true,
         },
       } as NodeClickHouseClientConfigOptions)
       expect(await query(0)).toEqual(1)
-      await sleep(idleSocketTTL + 1000)
+      await sleep(socketTTL)
       // this one will fail without retries
       expect(await query(1)).toEqual(2)
     })
@@ -42,36 +38,31 @@ describe('[Node.js] Keep Alive', () => {
         keep_alive: {
           enabled: false,
         },
-        log: {
-          level: ClickHouseLogLevel.TRACE,
-        },
       } as NodeClickHouseClientConfigOptions)
       expect(await query(0)).toEqual(1)
-      await sleep(idleSocketTTL + 1000)
+      await sleep(socketTTL)
       // this one won't fail cause a new socket will be assigned
       expect(await query(1)).toEqual(2)
     })
 
-    fit('should use multiple connections', async () => {
+    it('should use multiple connections', async () => {
       client = createTestClient({
-        max_open_connections: 10,
         keep_alive: {
           enabled: true,
-          idle_socket_ttl: idleSocketTTL,
-        },
-        log: {
-          level: ClickHouseLogLevel.TRACE,
+          socket_ttl: socketTTL,
+          retry_on_expired_socket: true,
         },
       } as NodeClickHouseClientConfigOptions)
 
-      for (let i = 0; i < 100; i++) {
-        const arr = [...Array(randomInt(3, 11)).keys()].sort()
-        await Promise.all(
-          arr.map((n) => query(n).then(() => sleep(randomInt(100, 1000))))
-        )
-        expect(1).toEqual(1)
-        await sleep(randomInt(1000, 2000))
-      }
+      const results = await Promise.all(
+        [...Array(4).keys()].map((n) => query(n))
+      )
+      expect(results.sort()).toEqual([1, 2, 3, 4])
+      await sleep(socketTTL)
+      const results2 = await Promise.all(
+        [...Array(4).keys()].map((n) => query(n + 10))
+      )
+      expect(results2.sort()).toEqual([11, 12, 13, 14])
     })
 
     async function query(n: number) {
@@ -93,16 +84,14 @@ describe('[Node.js] Keep Alive', () => {
         max_open_connections: 1,
         keep_alive: {
           enabled: true,
-          idle_socket_ttl: idleSocketTTL,
-        },
-        log: {
-          level: ClickHouseLogLevel.TRACE,
+          socket_ttl: socketTTL,
+          retry_on_expired_socket: true,
         },
       } as NodeClickHouseClientConfigOptions)
       tableName = `keep_alive_single_connection_insert_${guid()}`
       await createSimpleTable(client, tableName)
       await insert(0)
-      await sleep(idleSocketTTL + 1000)
+      await sleep(socketTTL)
       // this one should be retried
       await insert(1)
       const rs = await client.query({
@@ -120,16 +109,14 @@ describe('[Node.js] Keep Alive', () => {
         max_open_connections: 2,
         keep_alive: {
           enabled: true,
-          idle_socket_ttl: idleSocketTTL,
-        },
-        log: {
-          level: ClickHouseLogLevel.TRACE,
+          socket_ttl: socketTTL,
+          retry_on_expired_socket: true,
         },
       } as NodeClickHouseClientConfigOptions)
       tableName = `keep_alive_multiple_connection_insert_${guid()}`
       await createSimpleTable(client, tableName)
       await Promise.all([...Array(3).keys()].map((n) => insert(n)))
-      await sleep(idleSocketTTL + 1000)
+      await sleep(socketTTL)
       // at least two of these should be retried
       await Promise.all([...Array(3).keys()].map((n) => insert(n + 10)))
       const rs = await client.query({
