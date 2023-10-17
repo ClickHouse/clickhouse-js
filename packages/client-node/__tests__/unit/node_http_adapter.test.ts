@@ -224,6 +224,9 @@ describe('[Node.js] HttpAdapter', () => {
           setTimeout: () => {
             //
           },
+          listeners: () => {
+            return []
+          },
         })
 
         await sleep(100)
@@ -581,8 +584,7 @@ describe('[Node.js] HttpAdapter', () => {
         logWriter: new LogWriter(new TestLogger()),
         keep_alive: {
           enabled: true,
-          socket_ttl: 2500,
-          retry_on_expired_socket: false,
+          idle_socket_ttl: 2500,
         },
       },
       ...config,
@@ -611,8 +613,7 @@ class MyTestHttpAdapter extends NodeBaseConnection {
         logWriter: new LogWriter(new TestLogger()),
         keep_alive: {
           enabled: true,
-          socket_ttl: 2500,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: 2500,
         },
       } as NodeConnectionParams,
       {} as Http.Agent

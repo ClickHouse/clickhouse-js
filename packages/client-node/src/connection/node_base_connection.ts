@@ -27,8 +27,7 @@ export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
   keep_alive: {
     enabled: boolean
-    socket_ttl: number
-    retry_on_expired_socket: boolean
+    idle_socket_ttl: number
   }
 }
 
@@ -53,14 +52,11 @@ export interface RequestParams {
   compress_request?: boolean
 }
 
-const expiredSocketMessage = 'expired socket'
-
 export abstract class NodeBaseConnection
   implements Connection<Stream.Readable>
 {
   protected readonly headers: Http.OutgoingHttpHeaders
   private readonly logger: LogWriter
-  private readonly retry_expired_sockets: boolean
   private readonly known_sockets = new WeakMap<
     net.Socket,
     {
@@ -68,14 +64,15 @@ export abstract class NodeBaseConnection
       last_used_time: number
     }
   >()
+  private readonly idleSocketTTL: number
+
   protected constructor(
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent
   ) {
     this.logger = params.logWriter
-    this.retry_expired_sockets =
-      params.keep_alive.enabled && params.keep_alive.retry_on_expired_socket
     this.headers = this.buildDefaultHeaders(params.username, params.password)
+    this.idleSocketTTL = params.keep_alive.idle_socket_ttl
   }
 
   protected buildDefaultHeaders(
@@ -94,29 +91,7 @@ export abstract class NodeBaseConnection
     params: RequestParams
   ): Http.ClientRequest
 
-  private async request(
-    params: RequestParams,
-    retryCount = 0
-  ): Promise<Stream.Readable> {
-    try {
-      return await this._request(params)
-    } catch (e) {
-      if (e instanceof Error && e.message === expiredSocketMessage) {
-        if (this.retry_expired_sockets && retryCount < 3) {
-          this.logger.trace({
-            module: 'Connection',
-            message: `Keep-Alive socket is expired, retrying with a new one, retries so far: ${retryCount}`,
-          })
-          return await this.request(params, retryCount + 1)
-        } else {
-          throw new Error(`Socket hang up after ${retryCount} retries`)
-        }
-      }
-      throw e
-    }
-  }
-
-  private async _request(params: RequestParams): Promise<Stream.Readable> {
+  private async request(params: RequestParams): Promise<Stream.Readable> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
       const request = this.createClientRequest(params)
@@ -189,62 +164,49 @@ export abstract class NodeBaseConnection
       }
 
       const onSocket = (socket: net.Socket) => {
-        if (this.retry_expired_sockets) {
-          // if socket is reused
-          const socketInfo = this.known_sockets.get(socket)
-          if (socketInfo !== undefined) {
-            this.logger.trace({
-              module: 'Connection',
-              message: `Reused socket ${socketInfo.id}`,
-            })
-            // if a socket was reused at an unfortunate time,
-            // and is likely about to expire
-            const isPossiblyExpired =
-              Date.now() - socketInfo.last_used_time >
-              this.params.keep_alive.socket_ttl
-            if (isPossiblyExpired) {
-              this.logger.trace({
-                module: 'Connection',
-                message: 'Socket should be expired - terminate it',
-              })
-              this.known_sockets.delete(socket)
-              socket.destroy() // immediately terminate the connection
-              request.destroy()
-              reject(new Error(expiredSocketMessage))
-            } else {
-              this.logger.trace({
-                module: 'Connection',
-                message: `Socket ${socketInfo.id} is safe to be reused`,
-              })
-              this.known_sockets.set(socket, {
-                id: socketInfo.id,
-                last_used_time: Date.now(),
-              })
-              pipeStream()
-            }
-          } else {
-            const socketId = crypto.randomUUID()
-            this.logger.trace({
-              module: 'Connection',
-              message: `Using a new socket ${socketId}`,
-            })
-            this.known_sockets.set(socket, {
-              id: socketId,
-              last_used_time: Date.now(),
-            })
-            pipeStream()
-          }
+        const socketInfo = this.known_sockets.get(socket)
+        if (socketInfo !== undefined) {
+          this.logger.trace({
+            module: 'Connection',
+            message: `Reusing socket ${socketInfo.id}`,
+          })
+          this.known_sockets.set(socket, {
+            id: socketInfo.id,
+            last_used_time: Date.now(),
+          })
         } else {
-          // no need to track the reused sockets;
-          // keep alive is disabled or retry mechanism is not enabled
-          pipeStream()
+          const socketId = crypto.randomUUID()
+          this.logger.trace({
+            module: 'Connection',
+            message: `Using a fresh socket ${socketId}`,
+          })
+          this.known_sockets.set(socket, {
+            id: socketId,
+            last_used_time: Date.now(),
+          })
         }
 
         // this is for request timeout only.
         // The socket won't be actually destroyed,
         // and it will be returned to the pool.
-        // TODO: investigate if can actually remove the idle sockets properly
         socket.setTimeout(this.params.request_timeout, onTimeout)
+
+        // There is exactly ONE internal Node.js listener for this event
+        if (socket.listeners('free').length === 1) {
+          // Adding our idle timeout in that case
+          socket.on('free', () => {
+            socket.setTimeout(this.idleSocketTTL, () => {
+              const socketInfo = this.known_sockets.get(socket)
+              this.logger.trace({
+                module: 'Connection',
+                message: `Removing idle socket ${socketInfo?.id || ''}`,
+              })
+              socket.end()
+            })
+          })
+        }
+
+        pipeStream()
       }
 
       function onTimeout(): void {

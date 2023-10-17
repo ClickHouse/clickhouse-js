@@ -1,4 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
+import { ClickHouseLogLevel } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTestClient, guid, sleep } from '@test/utils'
 import type Stream from 'stream'
@@ -11,7 +12,7 @@ import type { NodeClickHouseClientConfigOptions } from '../../src/client'
  */
 xdescribe('[Node.js] Keep Alive', () => {
   let client: ClickHouseClient<Stream.Readable>
-  const socketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
+  const idleSocketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
   afterEach(async () => {
     await client.close()
   })
@@ -22,12 +23,14 @@ xdescribe('[Node.js] Keep Alive', () => {
         max_open_connections: 1,
         keep_alive: {
           enabled: true,
-          socket_ttl: socketTTL,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: idleSocketTTL,
+        },
+        log: {
+          level: ClickHouseLogLevel.TRACE,
         },
       } as NodeClickHouseClientConfigOptions)
       expect(await query(0)).toEqual(1)
-      await sleep(socketTTL)
+      await sleep(idleSocketTTL + 1000)
       // this one will fail without retries
       expect(await query(1)).toEqual(2)
     })
@@ -38,9 +41,12 @@ xdescribe('[Node.js] Keep Alive', () => {
         keep_alive: {
           enabled: false,
         },
+        log: {
+          level: ClickHouseLogLevel.TRACE,
+        },
       } as NodeClickHouseClientConfigOptions)
       expect(await query(0)).toEqual(1)
-      await sleep(socketTTL)
+      await sleep(idleSocketTTL + 1000)
       // this one won't fail cause a new socket will be assigned
       expect(await query(1)).toEqual(2)
     })
@@ -49,8 +55,10 @@ xdescribe('[Node.js] Keep Alive', () => {
       client = createTestClient({
         keep_alive: {
           enabled: true,
-          socket_ttl: socketTTL,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: idleSocketTTL,
+        },
+        log: {
+          level: ClickHouseLogLevel.TRACE,
         },
       } as NodeClickHouseClientConfigOptions)
 
@@ -58,7 +66,7 @@ xdescribe('[Node.js] Keep Alive', () => {
         [...Array(4).keys()].map((n) => query(n))
       )
       expect(results.sort()).toEqual([1, 2, 3, 4])
-      await sleep(socketTTL)
+      await sleep(idleSocketTTL + 1000)
       const results2 = await Promise.all(
         [...Array(4).keys()].map((n) => query(n + 10))
       )
@@ -84,14 +92,16 @@ xdescribe('[Node.js] Keep Alive', () => {
         max_open_connections: 1,
         keep_alive: {
           enabled: true,
-          socket_ttl: socketTTL,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: idleSocketTTL,
+        },
+        log: {
+          level: ClickHouseLogLevel.TRACE,
         },
       } as NodeClickHouseClientConfigOptions)
       tableName = `keep_alive_single_connection_insert_${guid()}`
       await createSimpleTable(client, tableName)
       await insert(0)
-      await sleep(socketTTL)
+      await sleep(idleSocketTTL + 1000)
       // this one should be retried
       await insert(1)
       const rs = await client.query({
@@ -109,14 +119,16 @@ xdescribe('[Node.js] Keep Alive', () => {
         max_open_connections: 2,
         keep_alive: {
           enabled: true,
-          socket_ttl: socketTTL,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: idleSocketTTL,
+        },
+        log: {
+          level: ClickHouseLogLevel.TRACE,
         },
       } as NodeClickHouseClientConfigOptions)
       tableName = `keep_alive_multiple_connection_insert_${guid()}`
       await createSimpleTable(client, tableName)
       await Promise.all([...Array(3).keys()].map((n) => insert(n)))
-      await sleep(socketTTL)
+      await sleep(idleSocketTTL + 1000)
       // at least two of these should be retried
       await Promise.all([...Array(3).keys()].map((n) => insert(n + 10)))
       const rs = await client.query({
