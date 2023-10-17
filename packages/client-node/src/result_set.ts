@@ -1,8 +1,11 @@
 import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
+import { Buffer } from 'buffer'
 import type { TransformCallback } from 'stream'
 import Stream, { Transform } from 'stream'
 import { getAsText } from './utils'
+
+const NEWLINE = 0x0a as const
 
 export class ResultSet implements BaseResultSet<Stream.Readable> {
   constructor(
@@ -35,33 +38,57 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
 
     validateStreamFormat(this.format)
 
-    let decodedChunk = ''
+    let incompleteChunks: Buffer[] = []
     const toRows = new Transform({
       transform(
         chunk: Buffer,
-        encoding: BufferEncoding,
+        _encoding: BufferEncoding,
         callback: TransformCallback
       ) {
-        decodedChunk += chunk.toString()
         const rows: Row[] = []
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const idx = decodedChunk.indexOf('\n')
-          if (idx !== -1) {
-            const text = decodedChunk.slice(0, idx)
-            decodedChunk = decodedChunk.slice(idx + 1)
-            rows.push({
-              text,
-              json<T>(): T {
-                return decode(text, 'JSON')
-              },
-            })
+        let lastIdx = 0
+        // first pass on the current chunk
+        // using the incomplete row from the previous chunks
+        let idx = chunk.indexOf(NEWLINE)
+        if (idx !== -1) {
+          let text: string
+          if (incompleteChunks.length > 0) {
+            text = Buffer.concat(
+              [...incompleteChunks, chunk.subarray(0, idx)],
+              incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx
+            ).toString()
+            incompleteChunks = []
           } else {
-            if (rows.length) {
+            text = chunk.subarray(0, idx).toString()
+          }
+          rows.push({
+            text,
+            json<T>(): T {
+              return JSON.parse(text)
+            },
+          })
+          lastIdx = idx + 1 // skipping newline character
+          // consequent passes on the current chunk with at least one row parsed
+          // all previous chunks with incomplete rows were already processed
+          do {
+            idx = chunk.indexOf(NEWLINE, lastIdx)
+            if (idx !== -1) {
+              const text = chunk.subarray(lastIdx, idx).toString()
+              rows.push({
+                text,
+                json<T>(): T {
+                  return JSON.parse(text)
+                },
+              })
+            } else {
+              // to be processed during the first pass for the next chunk
+              incompleteChunks.push(chunk.subarray(lastIdx))
               this.push(rows)
             }
-            break
-          }
+            lastIdx = idx + 1 // skipping newline character
+          } while (idx !== -1)
+        } else {
+          incompleteChunks.push(chunk) // this chunk does not contain a full row
         }
         callback()
       },

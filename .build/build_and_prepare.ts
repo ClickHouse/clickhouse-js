@@ -2,21 +2,21 @@ import { execSync } from 'child_process'
 import fs from 'fs'
 import * as process from 'process'
 ;(() => {
-  const [tag] = process.argv.slice(2)
-  if (!tag) {
-    console.error(`Expected a tag as an argument`)
+  const [pkg] = process.argv.slice(2)
+  if (!pkg) {
+    console.error(`Expected package name as an argument`)
     process.exit(1)
   }
 
   let packageName = ''
-  if (tag.endsWith('-web')) {
+  if (pkg.endsWith('web')) {
     packageName = 'client-web'
-  } else if (tag.endsWith('-node')) {
+  } else if (pkg.endsWith('node')) {
     packageName = 'client-node'
-  } else if (tag.endsWith('-common')) {
+  } else if (pkg.endsWith('common')) {
     packageName = 'client-common'
   } else {
-    console.error(`Provided tag ${tag} does not match any packages`)
+    console.error(`Provided tag ${pkg} does not match any packages`)
     process.exit(1)
   }
 
