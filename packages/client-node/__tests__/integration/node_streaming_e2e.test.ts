@@ -114,7 +114,7 @@ describe('[Node.js] streaming e2e', () => {
     }
 
     describe('large amount of rows', () => {
-      fit('should work with .json()', async () => {
+      it('should work with .json()', async () => {
         const { table, values } = await generateData({
           rows: 10000,
           minWords: 5,
@@ -129,7 +129,7 @@ describe('[Node.js] streaming e2e', () => {
         expect(result).toEqual(values)
       })
 
-      fit('should work with .stream()', async () => {
+      it('should work with .stream()', async () => {
         const { table, values } = await generateData({
           rows: 10000,
           minWords: 5,
@@ -153,7 +153,7 @@ describe('[Node.js] streaming e2e', () => {
     })
 
     describe("rows that don't fit into a single chunk", () => {
-      fit('should work with .json()', async () => {
+      it('should work with .json()', async () => {
         const { table, values } = await generateData({
           rows: 5,
           minWords: 5000,
@@ -168,7 +168,7 @@ describe('[Node.js] streaming e2e', () => {
         expect(result).toEqual(values)
       })
 
-      fit('should work with .stream()', async () => {
+      it('should work with .stream()', async () => {
         const { table, values } = await generateData({
           rows: 5,
           minWords: 5000,
