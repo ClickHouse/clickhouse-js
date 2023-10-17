@@ -9,8 +9,8 @@ and help us maintain up-to-date documentation.
 
 You have installed:
 
-- a compatible LTS version of nodejs: `v14.x`, `v16.x` or `v18.x`
-- NPM >= `6.x`
+- a compatible LTS version of Node.js: `v16.x`, `v18.x` or `v20.x`
+- NPM >= `9.x`
 
 ### Create a fork of the repository and clone it
 
@@ -28,10 +28,19 @@ npm i
 ### Add /etc/hosts entry
 
 Required for TLS tests.
+The generated certificates assume TLS requests use `server.clickhouseconnect.test` as the hostname.
+See [tls.test.ts](packages/client-node/__tests__/tls/tls.test.ts) for more details.
 
 ```bash
 sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 ```
+
+## Style Guide
+
+We use an automatic code formatting with `prettier` and `eslint`, both should be installed after running `npm i`.
+
+Additionally, every commit should trigger a [Husky](https://typicode.github.io/husky/) Git hook that applies `prettier`
+and checks the code with `eslint` via `lint-staged` automatically.
 
 ## Testing
 
@@ -41,17 +50,22 @@ everyone in the community can safely benefit from your contribution.
 
 ### Tooling
 
-We use [Jasmine](https://jasmine.github.io/index.html) as a test runner.
+We use [Jasmine](https://jasmine.github.io/index.html) as a test runner,
+as it is compatible with both Node.js and Web (Karma) clients tests.
 
-### Type check and linting
+Karma is to be replaced, see [#183](https://github.com/ClickHouse/clickhouse-js/issues/183),
+which might allow us to use different test framework.
+
+### Type checking and linting
+
+Both checks can be run manually:
 
 ```bash
 npm run typecheck
 npm run lint:fix
 ```
 
-We use [Husky](https://typicode.github.io/husky) for pre-commit hooks,
-so it will be executed before every commit.
+However, usually, it is enough to rely on Husky Git hooks.
 
 ### Running unit tests
 
@@ -89,10 +103,16 @@ Start a single ClickHouse server using Docker compose:
 docker-compose up -d
 ```
 
-and then run the tests:
+Run the tests (Node.js):
 
 ```bash
-npm run test:integration
+npm run test:node:integration
+```
+
+Run the tests (Web, Karma):
+
+```bash
+npm run test:web:integration
 ```
 
 #### Running TLS integration tests
@@ -105,10 +125,10 @@ Start the containers first:
 docker-compose up -d
 ```
 
-and then run the tests:
+and then run the tests (Node.js only):
 
 ```bash
-npm run test:tls
+npm run test:node:tls
 ```
 
 #### Local two nodes cluster integration tests
@@ -121,10 +141,16 @@ Start a ClickHouse cluster using Docker compose:
 docker compose -f docker-compose.cluster.yml up -d
 ```
 
-and then run the tests:
+Run the tests (Node.js):
 
 ```bash
-npm run test:integration:local_cluster
+npm run test:node:integration:local_cluster
+```
+
+Run the tests (Web, Karma):
+
+```bash
+npm run test:web:integration:local_cluster
 ```
 
 #### Cloud integration tests
@@ -139,50 +165,66 @@ CLICKHOUSE_CLOUD_HOST=<host>
 CLICKHOUSE_CLOUD_PASSWORD=<password>;
 ```
 
-Given these environment variables are set, you can run the tests:
+With these environment variables set, you can run the tests.
+
+Node.js:
 
 ```bash
-npm run test:integration:cloud
+npm run test:node:integration:cloud
+```
+
+Web + Karma:
+
+```bash
+npm run test:web:integration:cloud
 ```
 
 ## CI
 
-GitHub Actions should execute integration test jobs in parallel
-after we complete the TypeScript type check, lint check, and unit tests.
+GitHub Actions should execute integration test jobs for both Node.js and Web versions in parallel
+after we complete the TypeScript type check, lint check, and Node.js unit tests.
 
 ```
-Build + Unit tests
-├─ Integration tests (single local node in Docker)
-├─ Integration tests (a cluster of local two nodes in Docker)
-└─ Integration tests (Cloud)
+Typecheck + Lint + Node.js client unit tests
+├─ Node.js client integration + TLS tests (single local node in Docker)
+├─ Node.js client integration tests (a cluster of local two nodes in Docker)
+├─ Node.js client integration tests (Cloud)
+├─ Web client integration tests (single local node in Docker)
+├─ Web client integration tests (a cluster of local two nodes in Docker)
+└─ Web client integration tests (Cloud)
 ```
-
-## Style Guide
-
-We use an automatic code formatting with `prettier` and `eslint`.
 
 ## Test Coverage
 
-We try to aim for at least 90% tests coverage.
+Prior to switching from Jest to Jasmine with multiple workspaces and client flavours,
+the reported test coverage was above 90%. We generally aim towards that threshold, if it deems reasonable.
 
-Coverage is collected and pushed to the repo automatically
-in the end of each main branch CI run.
+Currently, automatic coverage reports are disabled.
+See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177), as it should be restored in the scope of that issue.
 
-See [tests.yml](./.github/workflows/tests.yml)
-`upload-coverage-and-badge` job for more details.
+## Release process
 
-You can collect and check the coverage locally by running all tests
-(unit, integration, TLS):
+Don't forget to change the package version in `packages/**/src/version.ts` before the release.
+We prefer to keep versions the same across the packages, and release all at once, even if there were no changes in some.
+
+Common package manual release:
 
 ```bash
-docker-compose up -d
-npm t -- --coverage
+ts-node .build/build_and_prepare.ts common && npm pack && npm publish
 ```
 
-Please don't commit the coverage reports manually.
+Node.js client manual release:
 
-## Update package version
+```bash
+ts-node .build/build_and_prepare.ts node && npm pack && npm publish
+```
 
-Don't forget to change the package version in `src/version.ts` before the release.
+Web client manual release:
 
-`release` GitHub action will pick it up and replace `package.json` version automatically.
+```bash
+ts-node .build/build_and_prepare.ts web && npm pack && npm publish
+```
+
+For simplicity, `build_and_prepare.ts` just overrides the root `package.json`,
+which allows to use `npm pack` and `npm publish` as usual despite having multiple workspaces.
+Don't commit the generated `package.json` after the manual release.
