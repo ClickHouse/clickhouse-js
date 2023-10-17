@@ -81,13 +81,11 @@ describe('[Node.js] streaming e2e', () => {
   // effectively testing the implementation of incomplete rows handling
   describe('should correctly process multiple chunks', () => {
     async function generateData({
-      maxWords,
-      minWords,
       rows,
+      words,
     }: {
       rows: number
-      minWords: number
-      maxWords: number
+      words: number
     }): Promise<{
       table: string
       values: { id: number; sentence: string; timestamp: string }[]
@@ -99,7 +97,7 @@ describe('[Node.js] streaming e2e', () => {
       const values = [...new Array(rows)].map((_, id) => ({
         id,
         // it seems that it is easier to trigger an incorrect behavior with non-ASCII symbols
-        sentence: fakerRU.lorem.sentence({ min: minWords, max: maxWords }),
+        sentence: fakerRU.lorem.sentence(words),
         timestamp: new Date().toISOString(),
       }))
       await client.insert({
@@ -117,8 +115,7 @@ describe('[Node.js] streaming e2e', () => {
       it('should work with .json()', async () => {
         const { table, values } = await generateData({
           rows: 10000,
-          minWords: 5,
-          maxWords: 10,
+          words: 10,
         })
         const result = await client
           .query({
@@ -132,8 +129,7 @@ describe('[Node.js] streaming e2e', () => {
       it('should work with .stream()', async () => {
         const { table, values } = await generateData({
           rows: 10000,
-          minWords: 5,
-          maxWords: 10,
+          words: 10,
         })
         const stream = await client
           .query({
@@ -156,8 +152,7 @@ describe('[Node.js] streaming e2e', () => {
       it('should work with .json()', async () => {
         const { table, values } = await generateData({
           rows: 5,
-          minWords: 5000,
-          maxWords: 10000,
+          words: 5000,
         })
         const result = await client
           .query({
@@ -171,8 +166,7 @@ describe('[Node.js] streaming e2e', () => {
       it('should work with .stream()', async () => {
         const { table, values } = await generateData({
           rows: 5,
-          minWords: 5000,
-          maxWords: 10000,
+          words: 5000,
         })
         const stream = await client
           .query({
