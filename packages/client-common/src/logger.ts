@@ -33,9 +33,19 @@ export class DefaultLogger implements Logger {
     console.error(formatMessage({ module, message }), args, err)
   }
 }
+
+export type LogWriterParams = Omit<LogParams, 'module'> & { module?: string }
+export type LogWriterErrorParams = Omit<ErrorLogParams, 'module'> & {
+  module?: string
+}
+
 export class LogWriter {
   private readonly logLevel: ClickHouseLogLevel
-  constructor(private readonly logger: Logger, logLevel?: ClickHouseLogLevel) {
+  constructor(
+    private readonly logger: Logger,
+    private readonly module: string,
+    logLevel?: ClickHouseLogLevel
+  ) {
     this.logLevel = logLevel ?? ClickHouseLogLevel.OFF
     this.info({
       module: 'Logger',
@@ -43,33 +53,48 @@ export class LogWriter {
     })
   }
 
-  trace(params: LogParams): void {
+  trace(params: LogWriterParams): void {
     if (this.logLevel <= (ClickHouseLogLevel.TRACE as number)) {
-      this.logger.trace(params)
+      this.logger.trace({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 
-  debug(params: LogParams): void {
+  debug(params: LogWriterParams): void {
     if (this.logLevel <= (ClickHouseLogLevel.DEBUG as number)) {
-      this.logger.debug(params)
+      this.logger.debug({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 
-  info(params: LogParams): void {
+  info(params: LogWriterParams): void {
     if (this.logLevel <= (ClickHouseLogLevel.INFO as number)) {
-      this.logger.info(params)
+      this.logger.info({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 
-  warn(params: LogParams): void {
+  warn(params: LogWriterParams): void {
     if (this.logLevel <= (ClickHouseLogLevel.WARN as number)) {
-      this.logger.warn(params)
+      this.logger.warn({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 
-  error(params: ErrorLogParams): void {
+  error(params: LogWriterErrorParams): void {
     if (this.logLevel <= (ClickHouseLogLevel.ERROR as number)) {
-      this.logger.error(params)
+      this.logger.error({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 }

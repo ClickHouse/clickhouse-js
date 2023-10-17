@@ -581,7 +581,7 @@ describe('[Node.js] HttpAdapter', () => {
         database: '',
         clickhouse_settings: {},
 
-        logWriter: new LogWriter(new TestLogger()),
+        logWriter: new LogWriter(new TestLogger(), 'Connection'),
         keep_alive: {
           enabled: true,
           idle_socket_ttl: 2500,
@@ -610,7 +610,7 @@ class MyTestHttpAdapter extends NodeBaseConnection {
     super(
       {
         application_id,
-        logWriter: new LogWriter(new TestLogger()),
+        logWriter: new LogWriter(new TestLogger(), 'Connection'),
         keep_alive: {
           enabled: true,
           idle_socket_ttl: 2500,

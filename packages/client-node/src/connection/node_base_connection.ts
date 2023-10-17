@@ -52,18 +52,17 @@ export interface RequestParams {
   compress_request?: boolean
 }
 
+interface SocketInfo {
+  id: string
+  idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
+}
+
 export abstract class NodeBaseConnection
   implements Connection<Stream.Readable>
 {
   protected readonly headers: Http.OutgoingHttpHeaders
   private readonly logger: LogWriter
-  private readonly known_sockets = new WeakMap<
-    net.Socket,
-    {
-      id: string
-      last_used_time: number
-    }
-  >()
+  private readonly known_sockets = new WeakMap<net.Socket, SocketInfo>()
   private readonly idleSocketTTL: number
 
   protected constructor(
@@ -165,47 +164,61 @@ export abstract class NodeBaseConnection
 
       const onSocket = (socket: net.Socket) => {
         const socketInfo = this.known_sockets.get(socket)
-        if (socketInfo !== undefined) {
-          this.logger.trace({
-            module: 'Connection',
-            message: `Reusing socket ${socketInfo.id}`,
-          })
-          this.known_sockets.set(socket, {
-            id: socketInfo.id,
-            last_used_time: Date.now(),
-          })
-        } else {
+        // It is the first time we encounter this socket,
+        // so it doesn't have the idle timeout handler attached to it
+        if (socketInfo === undefined) {
           const socketId = crypto.randomUUID()
-          this.logger.trace({
-            module: 'Connection',
-            message: `Using a fresh socket ${socketId}`,
-          })
           this.known_sockets.set(socket, {
             id: socketId,
-            last_used_time: Date.now(),
+            idle_timeout_handle: undefined,
+          })
+          this.logger.trace({
+            message: `Using a fresh socket ${socketId}`,
+          })
+
+          // When the request is complete and the socket is released,
+          // make sure that the socket is removed after `idleSocketTTL`.
+          socket.on('free', () => {
+            // Avoiding the built-in socket.timeout() method usage here,
+            // as we don't want to clash with the actual request timeout.
+            const idleTimeoutHandle = setTimeout(() => {
+              this.logger.trace({
+                message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
+              })
+              this.known_sockets.delete(socket)
+              socket.end()
+            }, this.idleSocketTTL).unref()
+            this.known_sockets.set(socket, {
+              id: socketId,
+              idle_timeout_handle: idleTimeoutHandle,
+            })
+          })
+
+          // If the socket was "ended" elsewhere, not from our 'free' listener,
+          // we need to clean up a possible dangling idle timeout handle.
+          socket.on('end', () => {
+            const maybeSocketInfo = this.known_sockets.get(socket)
+            if (maybeSocketInfo?.idle_timeout_handle) {
+              clearTimeout(maybeSocketInfo.idle_timeout_handle)
+            }
+          })
+        } else {
+          this.logger.trace({
+            message: `Reusing socket ${socketInfo.id}`,
+          })
+          clearTimeout(socketInfo.idle_timeout_handle)
+          this.known_sockets.set(socket, {
+            ...socketInfo,
+            idle_timeout_handle: undefined,
           })
         }
 
-        // this is for request timeout only.
+        // This is the actual request timeout.
         // The socket won't be actually destroyed,
         // and it will be returned to the pool.
         socket.setTimeout(this.params.request_timeout, onTimeout)
 
-        // There is exactly ONE internal Node.js listener for this event
-        if (socket.listeners('free').length === 1) {
-          // Adding our idle timeout in that case
-          socket.on('free', () => {
-            socket.setTimeout(this.idleSocketTTL, () => {
-              const socketInfo = this.known_sockets.get(socket)
-              this.logger.trace({
-                module: 'Connection',
-                message: `Removing idle socket ${socketInfo?.id || ''}`,
-              })
-              socket.end()
-            })
-          })
-        }
-
+        // Socket is "prepared" with idle handlers, continue with our request
         pipeStream()
       }
 
@@ -248,7 +261,7 @@ export abstract class NodeBaseConnection
         method: 'GET',
         url: transformUrl({ url: this.params.url, pathname: '/ping' }),
       })
-      stream.destroy()
+      await this.drainHttpResponse(stream)
       return { success: true }
     } catch (error) {
       if (error instanceof Error) {
@@ -316,40 +329,6 @@ export abstract class NodeBaseConnection
     }
   }
 
-  async drainHttpResponse(stream: Stream.Readable): Promise<void> {
-    return new Promise((resolve, reject) => {
-      function dropData() {
-        // We don't care about the data
-      }
-
-      function onEnd() {
-        removeListeners()
-        resolve()
-      }
-
-      function onError(err: Error) {
-        removeListeners()
-        reject(err)
-      }
-
-      function onClose() {
-        removeListeners()
-      }
-
-      function removeListeners() {
-        stream.removeListener('data', dropData)
-        stream.removeListener('end', onEnd)
-        stream.removeListener('error', onError)
-        stream.removeListener('onClose', onClose)
-      }
-
-      stream.on('data', dropData)
-      stream.on('end', onEnd)
-      stream.on('error', onError)
-      stream.on('close', onClose)
-    })
-  }
-
   async insert(
     params: ConnInsertParams<Stream.Readable>
   ): Promise<ConnInsertResult> {
@@ -391,7 +370,6 @@ export abstract class NodeBaseConnection
     const { authorization, host, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
     this.params.logWriter.debug({
-      module: 'HTTP Adapter',
       message: 'Got a response from ClickHouse',
       args: {
         request_method: params.method,
@@ -402,6 +380,40 @@ export abstract class NodeBaseConnection
         response_headers: response.headers,
         response_time_ms: duration,
       },
+    })
+  }
+
+  private async drainHttpResponse(stream: Stream.Readable): Promise<void> {
+    return new Promise((resolve, reject) => {
+      function dropData() {
+        // We don't care about the data
+      }
+
+      function onEnd() {
+        removeListeners()
+        resolve()
+      }
+
+      function onError(err: Error) {
+        removeListeners()
+        reject(err)
+      }
+
+      function onClose() {
+        removeListeners()
+      }
+
+      function removeListeners() {
+        stream.removeListener('data', dropData)
+        stream.removeListener('end', onEnd)
+        stream.removeListener('error', onError)
+        stream.removeListener('onClose', onClose)
+      }
+
+      stream.on('data', dropData)
+      stream.on('end', onEnd)
+      stream.on('error', onError)
+      stream.on('close', onClose)
     })
   }
 }

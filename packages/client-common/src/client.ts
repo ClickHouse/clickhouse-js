@@ -315,6 +315,7 @@ function getConnectionParams<Stream>(
       config?.log?.LoggerClass
         ? new config.log.LoggerClass()
         : new DefaultLogger(),
+      'Connection',
       config.log?.level
     ),
   }

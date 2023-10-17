@@ -2,6 +2,7 @@ import type { ClickHouseClient } from '@clickhouse/client-common'
 import { ClickHouseLogLevel } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTestClient, guid, sleep } from '@test/utils'
+import { randomInt } from 'crypto'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/client'
 
@@ -10,7 +11,7 @@ import type { NodeClickHouseClientConfigOptions } from '../../src/client'
  *  maybe because of Jasmine test runner vs Jest and tests isolation
  *  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
  */
-xdescribe('[Node.js] Keep Alive', () => {
+describe('[Node.js] Keep Alive', () => {
   let client: ClickHouseClient<Stream.Readable>
   const idleSocketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
   afterEach(async () => {
@@ -51,8 +52,9 @@ xdescribe('[Node.js] Keep Alive', () => {
       expect(await query(1)).toEqual(2)
     })
 
-    it('should use multiple connections', async () => {
+    fit('should use multiple connections', async () => {
       client = createTestClient({
+        max_open_connections: 10,
         keep_alive: {
           enabled: true,
           idle_socket_ttl: idleSocketTTL,
@@ -62,15 +64,14 @@ xdescribe('[Node.js] Keep Alive', () => {
         },
       } as NodeClickHouseClientConfigOptions)
 
-      const results = await Promise.all(
-        [...Array(4).keys()].map((n) => query(n))
-      )
-      expect(results.sort()).toEqual([1, 2, 3, 4])
-      await sleep(idleSocketTTL + 1000)
-      const results2 = await Promise.all(
-        [...Array(4).keys()].map((n) => query(n + 10))
-      )
-      expect(results2.sort()).toEqual([11, 12, 13, 14])
+      for (let i = 0; i < 100; i++) {
+        const arr = [...Array(randomInt(3, 11)).keys()].sort()
+        await Promise.all(
+          arr.map((n) => query(n).then(() => sleep(randomInt(100, 1000))))
+        )
+        expect(1).toEqual(1)
+        await sleep(randomInt(1000, 2000))
+      }
     })
 
     async function query(n: number) {

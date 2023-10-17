@@ -19,13 +19,17 @@ describe('[Node.js] Logger', () => {
   })
 
   it('should use OFF by default', async () => {
-    const logWriter = new LogWriter(new TestLogger())
+    const logWriter = new LogWriter(new TestLogger(), module)
     logEveryLogLevel(logWriter)
     expect(logs.length).toEqual(0)
   })
 
   it('should explicitly use TRACE', async () => {
-    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.TRACE)
+    const logWriter = new LogWriter(
+      new TestLogger(),
+      module,
+      ClickHouseLogLevel.TRACE
+    )
     checkLogLevelSet('TRACE')
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
@@ -58,7 +62,11 @@ describe('[Node.js] Logger', () => {
   })
 
   it('should explicitly use DEBUG', async () => {
-    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.DEBUG)
+    const logWriter = new LogWriter(
+      new TestLogger(),
+      module,
+      ClickHouseLogLevel.DEBUG
+    )
     checkLogLevelSet('DEBUG')
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
@@ -86,7 +94,11 @@ describe('[Node.js] Logger', () => {
   })
 
   it('should explicitly use INFO', async () => {
-    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.INFO)
+    const logWriter = new LogWriter(
+      new TestLogger(),
+      module,
+      ClickHouseLogLevel.INFO
+    )
     checkLogLevelSet('INFO')
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
@@ -109,7 +121,11 @@ describe('[Node.js] Logger', () => {
   })
 
   it('should explicitly use WARN', async () => {
-    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.WARN)
+    const logWriter = new LogWriter(
+      new TestLogger(),
+      module,
+      ClickHouseLogLevel.WARN
+    )
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
       level: 'warn',
@@ -126,7 +142,11 @@ describe('[Node.js] Logger', () => {
   })
 
   it('should explicitly use ERROR', async () => {
-    const logWriter = new LogWriter(new TestLogger(), ClickHouseLogLevel.ERROR)
+    const logWriter = new LogWriter(
+      new TestLogger(),
+      module,
+      ClickHouseLogLevel.ERROR
+    )
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
       level: 'error',
