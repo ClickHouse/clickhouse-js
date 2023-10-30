@@ -45,6 +45,14 @@ describe('transformUrl', () => {
     expect(newUrl.toString()).toBe('http://clickhouse.com/clickhouse/foobar')
   })
 
+  it('allows a trailing slash in the pathname', () => {
+    const url = new URL('http://clickhouse.com/clickhouse/')
+    const newUrl = transformUrl({
+      url,
+    })
+    expect(newUrl.toString()).toBe('http://clickhouse.com/clickhouse/')
+  })
+
   it('does not mutate an original url', () => {
     const url = new URL('http://clickhouse.com')
     const newUrl = transformUrl({
