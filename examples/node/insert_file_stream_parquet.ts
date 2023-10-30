@@ -6,38 +6,51 @@ import Path from 'path'
 
 void (async () => {
   const client = createClient()
-  const tableName = 'insert_file_stream_csv'
+  const tableName = 'insert_file_stream_parquet'
   await client.command({
     query: `DROP TABLE IF EXISTS ${tableName}`,
   })
   await client.command({
     query: `
       CREATE TABLE ${tableName}
-      (id UInt64, name String, flags Array(UInt8))
+      (id UInt64, name String, sku Array(UInt8))
       ENGINE MergeTree()
       ORDER BY (id)
     `,
   })
 
-  // contains data as 1,"foo","[1,2]"\n2,"bar","[3,4]"\n...
-  const filename = Path.resolve(cwd(), './node/resources/data.csv')
+  const filename = Path.resolve(cwd(), './node/resources/data.parquet')
+
+  /*
+
+  (examples) $ pqrs cat node/resources/data.parquet
+
+    ############################
+    File: node/resources/data.parquet
+    ############################
+
+    {id: 0, name: [97], sku: [1, 2]}
+    {id: 1, name: [98], sku: [3, 4]}
+    {id: 2, name: [99], sku: [5, 6]}
+
+   */
 
   await client.insert({
     table: tableName,
     values: Fs.createReadStream(filename),
-    format: 'CSV',
+    format: 'Parquet',
   })
 
   const rs = await client.query({
     query: `SELECT * from ${tableName}`,
-    format: 'CSV',
+    format: 'JSONEachRow',
   })
 
   for await (const rows of rs.stream()) {
-    // or just `rows.text()`
+    // or just `rows.json()`
     // to consume the entire response at once
     rows.forEach((row: Row) => {
-      console.log(row.text)
+      console.log(row.json())
     })
   }
 

@@ -4,6 +4,7 @@ import { fakerRU } from '@faker-js/faker'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
 import { createTestClient, guid } from '@test/utils'
+import { Buffer } from 'buffer'
 import Fs from 'fs'
 import split from 'split2'
 import Stream from 'stream'
@@ -28,7 +29,7 @@ describe('[Node.js] streaming e2e', () => {
     ['2', 'c', [5, 6]],
   ]
 
-  it('should stream a file', async () => {
+  it('should stream an NDJSON file', async () => {
     // contains id as numbers in JSONCompactEachRow format ["0"]\n["1"]\n...
     const filename =
       'packages/client-common/__tests__/fixtures/streaming_e2e_data.ndjson'
@@ -53,6 +54,43 @@ describe('[Node.js] streaming e2e', () => {
       })
     }
     expect(actual).toEqual(expected)
+  })
+
+  it('should stream a Parquet file', async () => {
+    const filename =
+      'packages/client-common/__tests__/fixtures/streaming_e2e_data.parquet'
+    await client.insert({
+      table: tableName,
+      values: Fs.createReadStream(filename),
+      format: 'Parquet',
+    })
+
+    // check that the data was inserted correctly
+    const rs = await client.query({
+      query: `SELECT * from ${tableName}`,
+      format: 'JSONCompactEachRow',
+    })
+
+    const actual: unknown[] = []
+    for await (const rows of rs.stream()) {
+      rows.forEach((row: Row) => {
+        actual.push(row.json())
+      })
+    }
+    expect(actual).toEqual(expected)
+
+    // check if we can stream it back and get the output matching the input file
+    const stream = await client
+      .exec({
+        query: `SELECT * from ${tableName} FORMAT Parquet`,
+      })
+      .then((r) => r.stream)
+
+    const parquetChunks: Buffer[] = []
+    for await (const chunk of stream) {
+      parquetChunks.push(chunk)
+    }
+    expect(Buffer.concat(parquetChunks)).toEqual(Fs.readFileSync(filename))
   })
 
   it('should stream a stream created in-place', async () => {

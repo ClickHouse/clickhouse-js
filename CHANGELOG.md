@@ -1,3 +1,12 @@
+## 0.2.6 (Common, Node.js)
+
+### New features
+
+- Added [Parquet format](https://clickhouse.com/docs/en/integrations/data-formats/parquet) streaming support.
+  See the new examples:
+  [insert from a file](./examples/node/insert_file_stream_parquet.ts),
+  [select into a file](./examples/node/select_parquet_as_file.ts).
+
 ## 0.2.5 (Common, Node.js, Web)
 
 ### Bug fixes

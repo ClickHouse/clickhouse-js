@@ -1,6 +1,7 @@
 import type { Row } from '@clickhouse/client'
 import { createClient } from '@clickhouse/client'
 import Fs from 'fs'
+import { cwd } from 'node:process'
 import Path from 'path'
 import split from 'split2'
 
@@ -20,7 +21,7 @@ void (async () => {
 
   // contains id as numbers in JSONCompactEachRow format ["0"]\n["0"]\n...
   // see also: NDJSON format
-  const filename = Path.resolve(process.cwd(), './node/resources/data.ndjson')
+  const filename = Path.resolve(cwd(), './node/resources/data.ndjson')
 
   await client.insert({
     table: tableName,
