@@ -1,5 +1,5 @@
-import type { ClickHouseSettings } from '../settings'
 import { formatQueryParams, formatQuerySettings } from '../data_formatter'
+import type { ClickHouseSettings } from '../settings'
 
 export function transformUrl({
   url,
@@ -13,7 +13,14 @@ export function transformUrl({
   const newUrl = new URL(url)
 
   if (pathname) {
-    newUrl.pathname = pathname
+    // See https://developer.mozilla.org/en-US/docs/Web/API/URL/pathname
+    // > value for such "special scheme" URLs can never be the empty string,
+    // > but will instead always have at least one / character.
+    if (newUrl.pathname === '/') {
+      newUrl.pathname = pathname
+    } else {
+      newUrl.pathname += pathname
+    }
   }
 
   if (searchParams) {

@@ -1,3 +1,10 @@
+## 0.2.5 (Common, Node.js, Web)
+
+### Bug fixes
+
+- `pathname` segment from `host` client configuration parameter is now handled properly when making requests.
+  See this [comment](https://github.com/ClickHouse/clickhouse-js/issues/164#issuecomment-1785166626) for more details.
+
 ## 0.2.4 (Node.js only)
 
 No changes in web/common modules.

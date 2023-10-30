@@ -317,7 +317,7 @@ export abstract class NodeBaseConnection
 
     const stream = await this.request({
       method: 'POST',
-      url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
+      url: transformUrl({ url: this.params.url, searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
       decompress_response: clickhouse_settings.enable_http_compression === 1,
@@ -343,7 +343,7 @@ export abstract class NodeBaseConnection
 
     const stream = await this.request({
       method: 'POST',
-      url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
+      url: transformUrl({ url: this.params.url, searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
     })
@@ -403,7 +403,7 @@ export abstract class NodeBaseConnection
 
     const stream = await this.request({
       method: 'POST',
-      url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
+      url: transformUrl({ url: this.params.url, searchParams }),
       body: params.values,
       abort_signal: params.abort_signal,
       compress_request: this.params.compression.compress_request,
