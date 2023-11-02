@@ -227,6 +227,9 @@ describe('[Node.js] HttpAdapter', () => {
           listeners: () => {
             return []
           },
+          on: () => {
+            //
+          },
         })
 
         await sleep(100)
