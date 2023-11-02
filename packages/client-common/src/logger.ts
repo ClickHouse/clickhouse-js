@@ -3,34 +3,40 @@ export interface LogParams {
   message: string
   args?: Record<string, unknown>
 }
+
 export type ErrorLogParams = LogParams & { err: Error }
+
 export interface Logger {
   trace(params: LogParams): void
+
   debug(params: LogParams): void
+
   info(params: LogParams): void
+
   warn(params: LogParams): void
+
   error(params: ErrorLogParams): void
 }
 
 export class DefaultLogger implements Logger {
   trace({ module, message, args }: LogParams): void {
-    console.trace(formatMessage({ module, message }), args)
+    console.log(formatMessage({ module, message, args }))
   }
 
   debug({ module, message, args }: LogParams): void {
-    console.debug(formatMessage({ module, message }), args)
+    console.log(formatMessage({ module, message, args }))
   }
 
   info({ module, message, args }: LogParams): void {
-    console.info(formatMessage({ module, message }), args)
+    console.log(formatMessage({ module, message, args }))
   }
 
   warn({ module, message, args }: LogParams): void {
-    console.warn(formatMessage({ module, message }), args)
+    console.warn(formatMessage({ module, message, args }))
   }
 
   error({ module, message, args, err }: ErrorLogParams): void {
-    console.error(formatMessage({ module, message }), args, err)
+    console.error(formatMessage({ module, message, args }), err)
   }
 }
 
@@ -41,6 +47,7 @@ export type LogWriterErrorParams = Omit<ErrorLogParams, 'module'> & {
 
 export class LogWriter {
   private readonly logLevel: ClickHouseLogLevel
+
   constructor(
     private readonly logger: Logger,
     private readonly module: string,
@@ -111,9 +118,13 @@ export enum ClickHouseLogLevel {
 function formatMessage({
   module,
   message,
+  args,
 }: {
   module: string
   message: string
+  args: Record<string, unknown> | undefined
 }): string {
-  return `[@clickhouse/client][${module}] ${message}`
+  return `[${new Date().toISOString()}][@clickhouse/client][${module}] ${message} ${
+    args !== undefined ? JSON.stringify(args) : ''
+  }`
 }

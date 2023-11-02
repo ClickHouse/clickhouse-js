@@ -76,7 +76,7 @@ export interface ClickHouseClientConfigOptions<Stream> {
   username?: string
   /** The user password. Default: ''. */
   password?: string
-  /** The name of the application using the nodejs client.
+  /** The name of the application using the Node.js client.
    * Default: empty. */
   application?: string
   /** Database name to use. Default value: `default`. */
@@ -89,6 +89,8 @@ export interface ClickHouseClientConfigOptions<Stream> {
     LoggerClass?: new () => Logger
     /** Default: OFF */
     level?: ClickHouseLogLevel
+    /** Log the response (on DEBUG log level). Default: true */
+    log_response?: boolean
   }
   session_id?: string
 }
@@ -311,12 +313,13 @@ function getConnectionParams<Stream>(
     password: config.password ?? '',
     database: config.database ?? 'default',
     clickhouse_settings: config.clickhouse_settings ?? {},
-    logWriter: new LogWriter(
+    log_writer: new LogWriter(
       config?.log?.LoggerClass
         ? new config.log.LoggerClass()
         : new DefaultLogger(),
       'Connection',
       config.log?.level
     ),
+    log_response: config.log?.log_response ?? true,
   }
 }

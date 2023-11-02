@@ -13,8 +13,9 @@ export interface ConnectionParams {
   password: string
   database: string
   clickhouse_settings: ClickHouseSettings
-  logWriter: LogWriter
+  log_writer: LogWriter
   application_id?: string
+  log_response: boolean
 }
 
 export interface ConnBaseQueryParams {

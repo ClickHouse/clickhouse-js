@@ -44,6 +44,7 @@ export type TLSParams =
     }
 
 export interface RequestParams {
+  op: 'INSERT' | 'QUERY' | 'PING' | 'EXEC'
   method: 'GET' | 'POST'
   url: URL
   body?: string | Stream.Readable
@@ -62,14 +63,14 @@ export abstract class NodeBaseConnection
 {
   protected readonly headers: Http.OutgoingHttpHeaders
   private readonly logger: LogWriter
-  private readonly known_sockets = new WeakMap<net.Socket, SocketInfo>()
+  private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
   private readonly idleSocketTTL: number
 
   protected constructor(
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent
   ) {
-    this.logger = params.logWriter
+    this.logger = params.log_writer
     this.headers = this.buildDefaultHeaders(params.username, params.password)
     this.idleSocketTTL = params.keep_alive.idle_socket_ttl
   }
@@ -163,54 +164,60 @@ export abstract class NodeBaseConnection
       }
 
       const onSocket = (socket: net.Socket) => {
-        const socketInfo = this.known_sockets.get(socket)
-        // It is the first time we encounter this socket,
-        // so it doesn't have the idle timeout handler attached to it
-        if (socketInfo === undefined) {
-          const socketId = crypto.randomUUID()
-          this.known_sockets.set(socket, {
-            id: socketId,
-            idle_timeout_handle: undefined,
-          })
-          this.logger.trace({
-            message: `Using a fresh socket ${socketId}`,
-          })
-
-          // When the request is complete and the socket is released,
-          // make sure that the socket is removed after `idleSocketTTL`.
-          socket.on('free', () => {
-            // Avoiding the built-in socket.timeout() method usage here,
-            // as we don't want to clash with the actual request timeout.
-            const idleTimeoutHandle = setTimeout(() => {
-              this.logger.trace({
-                message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
-              })
-              this.known_sockets.delete(socket)
-              socket.end()
-            }, this.idleSocketTTL).unref()
-            this.known_sockets.set(socket, {
-              id: socketId,
-              idle_timeout_handle: idleTimeoutHandle,
+        if (this.params.keep_alive.enabled) {
+          const socketInfo = this.knownSockets.get(socket)
+          // It is the first time we encounter this socket,
+          // so it doesn't have the idle timeout handler attached to it
+          if (socketInfo === undefined) {
+            const socketId = crypto.randomUUID()
+            this.logger.trace({
+              message: `Using a fresh socket ${socketId}, setting up a new 'free' listener`,
             })
-          })
+            this.knownSockets.set(socket, {
+              id: socketId,
+              idle_timeout_handle: undefined,
+            })
+            // When the request is complete and the socket is released,
+            // make sure that the socket is removed after `idleSocketTTL`.
+            socket.on('free', () => {
+              this.logger.trace({
+                message: `Socket ${socketId} was released`,
+              })
+              // Avoiding the built-in socket.timeout() method usage here,
+              // as we don't want to clash with the actual request timeout.
+              const idleTimeoutHandle = setTimeout(() => {
+                this.logger.trace({
+                  message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
+                })
+                this.knownSockets.delete(socket)
+                socket.destroy()
+              }, this.idleSocketTTL).unref()
+              this.knownSockets.set(socket, {
+                id: socketId,
+                idle_timeout_handle: idleTimeoutHandle,
+              })
+            })
 
-          // If the socket was "ended" elsewhere, not from our 'free' listener,
-          // we need to clean up a possible dangling idle timeout handle.
-          socket.on('end', () => {
-            const maybeSocketInfo = this.known_sockets.get(socket)
-            if (maybeSocketInfo?.idle_timeout_handle) {
-              clearTimeout(maybeSocketInfo.idle_timeout_handle)
-            }
-          })
-        } else {
-          this.logger.trace({
-            message: `Reusing socket ${socketInfo.id}`,
-          })
-          clearTimeout(socketInfo.idle_timeout_handle)
-          this.known_sockets.set(socket, {
-            ...socketInfo,
-            idle_timeout_handle: undefined,
-          })
+            socket.on('end', () => {
+              this.logger.trace({
+                message: `Socket ${socketId} was ended elsewhere, removing our 'free' listener`,
+              })
+              const maybeSocketInfo = this.knownSockets.get(socket)
+              // clean up a possibly dangling idle timeout handle (preventing leaks)
+              if (maybeSocketInfo?.idle_timeout_handle) {
+                clearTimeout(maybeSocketInfo.idle_timeout_handle)
+              }
+            })
+          } else {
+            this.logger.trace({
+              message: `Reusing socket ${socketInfo.id}`,
+            })
+            clearTimeout(socketInfo.idle_timeout_handle)
+            this.knownSockets.set(socket, {
+              ...socketInfo,
+              idle_timeout_handle: undefined,
+            })
+          }
         }
 
         // This is the actual request timeout.
@@ -260,6 +267,7 @@ export abstract class NodeBaseConnection
       const stream = await this.request({
         method: 'GET',
         url: transformUrl({ url: this.params.url, pathname: '/ping' }),
+        op: 'PING',
       })
       await this.drainHttpResponse(stream)
       return { success: true }
@@ -296,6 +304,7 @@ export abstract class NodeBaseConnection
       body: params.query,
       abort_signal: params.abort_signal,
       decompress_response: clickhouse_settings.enable_http_compression === 1,
+      op: 'QUERY',
     })
 
     return {
@@ -321,6 +330,7 @@ export abstract class NodeBaseConnection
       url: transformUrl({ url: this.params.url, pathname: '/', searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
+      op: 'EXEC',
     })
 
     return {
@@ -348,6 +358,7 @@ export abstract class NodeBaseConnection
       body: params.values,
       abort_signal: params.abort_signal,
       compress_request: this.params.compression.compress_request,
+      op: 'INSERT',
     })
 
     await this.drainHttpResponse(stream)
@@ -366,21 +377,23 @@ export abstract class NodeBaseConnection
     response: Http.IncomingMessage,
     startTimestamp: number
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { authorization, host, ...headers } = request.getHeaders()
-    const duration = Date.now() - startTimestamp
-    this.params.logWriter.debug({
-      message: 'Got a response from ClickHouse',
-      args: {
-        request_method: params.method,
-        request_path: params.url.pathname,
-        request_params: params.url.search,
-        request_headers: headers,
-        response_status: response.statusCode,
-        response_headers: response.headers,
-        response_time_ms: duration,
-      },
-    })
+    if (this.params.log_response) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { authorization, host, ...headers } = request.getHeaders()
+      const duration = Date.now() - startTimestamp
+      this.params.log_writer.debug({
+        message: 'Got a response from ClickHouse',
+        args: {
+          request_method: params.method,
+          request_path: params.url.pathname,
+          request_params: params.url.search,
+          request_headers: headers,
+          response_status: response.statusCode,
+          response_headers: response.headers,
+          response_time_ms: duration,
+        },
+      })
+    }
   }
 
   private async drainHttpResponse(stream: Stream.Readable): Promise<void> {
