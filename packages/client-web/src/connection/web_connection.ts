@@ -143,7 +143,7 @@ export class WebConnection implements Connection<ReadableStream> {
   }): Promise<Response> {
     const url = transformUrl({
       url: this.params.url,
-      pathname: pathname ?? '/',
+      pathname,
       searchParams,
     }).toString()
 
