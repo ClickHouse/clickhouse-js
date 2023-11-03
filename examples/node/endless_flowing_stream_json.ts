@@ -55,6 +55,7 @@ void (async () => {
           //
         },
       })
+      // Note that this request promise is not awaited
       const promise = client.insert({
         table: tableName,
         values: stream,
