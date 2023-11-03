@@ -79,7 +79,7 @@ void (async () => {
   async function flushInsertStream() {
     console.info('Flushing the insert stream...')
     if (insertFlow !== undefined) {
-      // swap the values here to avoid a potential switch to `pushData`
+      // swap the values here to avoid issues with a potential switch to `pushData`
       // due to awaiting the insert promise when the previous stream was already closed
       const prevFlow = insertFlow
       insertFlow = undefined
