@@ -31,6 +31,7 @@ const supportedRawFormats = [
   'CustomSeparated',
   'CustomSeparatedWithNames',
   'CustomSeparatedWithNamesAndTypes',
+  'Parquet',
 ] as const
 
 export type JSONDataFormat = (typeof supportedJSONFormats)[number]
