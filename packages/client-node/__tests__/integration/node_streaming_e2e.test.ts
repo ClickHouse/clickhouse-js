@@ -4,8 +4,10 @@ import { fakerRU } from '@faker-js/faker'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
 import { createTestClient, guid } from '@test/utils'
+import { tableFromIPC } from 'apache-arrow'
 import { Buffer } from 'buffer'
 import Fs from 'fs'
+import { readParquet } from 'parquet-wasm'
 import split from 'split2'
 import Stream from 'stream'
 
@@ -83,6 +85,10 @@ describe('[Node.js] streaming e2e', () => {
     const stream = await client
       .exec({
         query: `SELECT * from ${tableName} FORMAT Parquet`,
+        clickhouse_settings: {
+          output_format_parquet_compression_method: 'none',
+          output_format_parquet_version: '2.6',
+        },
       })
       .then((r) => r.stream)
 
@@ -90,7 +96,27 @@ describe('[Node.js] streaming e2e', () => {
     for await (const chunk of stream) {
       parquetChunks.push(chunk)
     }
-    expect(Buffer.concat(parquetChunks)).toEqual(Fs.readFileSync(filename))
+
+    const table = tableFromIPC(
+      readParquet(Buffer.concat(parquetChunks)).intoIPCStream()
+    )
+    expect(table.schema.toString()).toEqual(
+      'Schema<{ 0: id: Uint64, 1: name: Binary, 2: sku: List<Uint8> }>'
+    )
+    const actualParquetData: unknown[] = []
+    const textDecoder = new TextDecoder()
+    table.toArray().map((v) => {
+      const row: Record<string, unknown> = {}
+      row['id'] = v.id
+      row['name'] = textDecoder.decode(v.name) // [char] -> String
+      row['sku'] = Array.from(v.sku.toArray()) // Vector -> UInt8Array -> Array
+      actualParquetData.push(row)
+    })
+    expect(actualParquetData).toEqual([
+      { id: 0n, name: 'a', sku: [1, 2] },
+      { id: 1n, name: 'b', sku: [3, 4] },
+      { id: 2n, name: 'c', sku: [5, 6] },
+    ])
   })
 
   it('should stream a stream created in-place', async () => {
