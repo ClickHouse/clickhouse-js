@@ -19,6 +19,7 @@ import {
 import crypto from 'crypto'
 import type Http from 'http'
 import type * as net from 'net'
+import { setTimeout } from 'node:timers'
 import Stream from 'stream'
 import Zlib from 'zlib'
 import { getAsText, getUserAgent, isStream } from '../utils'
@@ -68,6 +69,7 @@ export abstract class NodeBaseConnection
       last_used_time: number
     }
   >()
+  private HTTP_RECEIVE_TIMEOUT_MS: number | undefined
   protected constructor(
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent
@@ -401,16 +403,107 @@ export abstract class NodeBaseConnection
       query_id,
     })
 
-    const stream = await this.request({
-      method: 'POST',
-      url: transformUrl({ url: this.params.url, searchParams }),
-      body: params.values,
-      abort_signal: params.abort_signal,
-      compress_request: this.params.compression.compress_request,
-    })
+    if (isStream(params.values)) {
+      await this.fetchHttpReceiveTimeout()
 
-    await this.drainHttpResponse(stream)
-    return { query_id }
+      const makeRequest = () => {
+        console.log('Making request')
+        return this.request({
+          method: 'POST',
+          url: transformUrl({ url: this.params.url, searchParams }),
+          body: outgoingStream,
+          abort_signal: params.abort_signal,
+          compress_request: this.params.compression.compress_request,
+        })
+      }
+
+      const objectMode = params.values.readableObjectMode
+      let dryStreamTimeout: ReturnType<typeof setTimeout> | undefined
+      let insertPromise: Promise<Stream.Readable> | undefined
+
+      let outgoingStream: Stream.Duplex | undefined
+      const passThrough = new Stream.PassThrough({
+        objectMode,
+        // read() {
+        //   //
+        // },
+      })
+
+      const pipeAndWaitForData = async () => {
+        console.log('pipeAndWaitForData')
+        outgoingStream = new Stream.Duplex({
+          objectMode,
+          // read() {
+          //   //
+          // },
+        })
+        ;(params.values as Stream.Readable).pipe(passThrough) // to observe if the data is there on without consuming
+        passThrough.pipe(outgoingStream) // to send to ClickHouse
+        console.log('piped')
+        // wait for any data inside the input stream ...
+        await new Promise((resolve) => {
+          console.log('setting once on pass through')
+          passThrough.once('data', () => {
+            resetDryStreamTimeout()
+            resolve(undefined)
+          })
+        })
+        console.log('got data into the pipe')
+      }
+
+      const recreateInsert = async () => {
+        console.log('recreateInsert')
+        ;(params.values as Stream.Readable).unpipe(passThrough)
+        if (outgoingStream !== undefined && insertPromise !== undefined) {
+          passThrough.unpipe(outgoingStream)
+          outgoingStream.push(null)
+          const stream = await insertPromise
+          await this.drainHttpResponse(stream)
+        }
+        await pipeAndWaitForData()
+      }
+
+      const resetDryStreamTimeout = () => {
+        console.log('resetDryStreamTimeout')
+        if (dryStreamTimeout) clearTimeout(dryStreamTimeout)
+        dryStreamTimeout = setTimeout(
+          recreateInsert,
+          this.HTTP_RECEIVE_TIMEOUT_MS
+        )
+      }
+
+      await pipeAndWaitForData()
+      passThrough.on('data', resetDryStreamTimeout)
+      console.log('make initial insert request')
+      insertPromise = makeRequest()
+
+      await new Promise((resolve, reject) => {
+        ;(params.values as Stream.Readable)
+          .on('end', () => {
+            console.log('params.values end')
+            resolve(undefined)
+          })
+          .on('error', (err) => {
+            reject(err)
+          })
+      })
+
+      console.log('await final insertPromise')
+      const stream = await insertPromise
+      await this.drainHttpResponse(stream)
+      return { query_id }
+    } else {
+      // Non-streaming scenario: Arrays, JSON
+      const stream = await this.request({
+        method: 'POST',
+        url: transformUrl({ url: this.params.url, searchParams }),
+        body: params.values,
+        abort_signal: params.abort_signal,
+        compress_request: this.params.compression.compress_request,
+      })
+      await this.drainHttpResponse(stream)
+      return { query_id }
+    }
   }
 
   async close(): Promise<void> {
@@ -441,6 +534,25 @@ export abstract class NodeBaseConnection
         response_time_ms: duration,
       },
     })
+  }
+
+  private async fetchHttpReceiveTimeout() {
+    if (this.HTTP_RECEIVE_TIMEOUT_MS === undefined) {
+      const result = await this.query({
+        query: `SELECT value FROM system.settings WHERE name = 'http_receive_timeout' FORMAT CSV`,
+      })
+      const value = await getAsText(result.stream)
+      if (!value || isNaN(+value)) {
+        this.HTTP_RECEIVE_TIMEOUT_MS = 27_000
+      }
+      const httpReceiveTimeout = Number(value)
+      if (httpReceiveTimeout < 5) {
+        // this is rather odd. Throw?
+        throw new Error(
+          `Unexpected low http_receive_timeout: ${httpReceiveTimeout} seconds. Increase this setting in your instance config.xml`
+        )
+      }
+    }
   }
 }
 
