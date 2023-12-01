@@ -137,4 +137,18 @@ describe('insert', () => {
       })
     )
   })
+
+  it('should work with async inserts', async () => {
+    await client.insert({
+      table: tableName,
+      values: jsonValues,
+      format: 'JSONEachRow',
+      // See https://clickhouse.com/docs/en/optimize/asynchronous-inserts
+      clickhouse_settings: {
+        async_insert: 1,
+        wait_for_async_insert: 1,
+      },
+    })
+    await assertJsonValues(client, tableName)
+  })
 })
