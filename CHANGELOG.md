@@ -1,3 +1,9 @@
+## 0.2.7 (Web only)
+
+### Bug fixes
+
+- Drain insert response stream in Web version - required to properly work with `async_insert`, especially in the Cloudflare Workers context.
+
 ## 0.2.6 (Common, Node.js)
 
 ### New features
