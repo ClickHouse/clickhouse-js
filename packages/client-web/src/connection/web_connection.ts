@@ -92,11 +92,14 @@ export class WebConnection implements Connection<ReadableStream> {
       session_id: params.session_id,
       query_id,
     })
-    await this.request({
+    const res = await this.request({
       values: params.values,
       params,
       searchParams,
     })
+    if (res.body !== null) {
+      await res.text() // drain the response (it's empty anyway)
+    }
     return {
       query_id,
     }
