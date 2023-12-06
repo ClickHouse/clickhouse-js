@@ -13,7 +13,7 @@ describe('[Node.js] Summary header parsing', () => {
     tableName = `summary_test_${guid()}`
     await createSimpleTable(client, tableName)
   })
-  afterEach(async () => {
+  afterAll(async () => {
     await client.close()
   })
 
