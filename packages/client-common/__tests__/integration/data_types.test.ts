@@ -401,7 +401,9 @@ describe('data types', () => {
     ).toEqual('3\n')
   })
 
-  it('should work with geo', async () => {
+  // FIXME: somehow broken after, probably, https://github.com/ClickHouse/ClickHouse/pull/56724
+  //  enable once resolved.
+  xit('should work with geo', async () => {
     const values = [
       {
         p: [42, 144],
