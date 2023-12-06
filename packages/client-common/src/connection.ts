@@ -1,3 +1,4 @@
+import type { WithClickHouseSummary } from './clickhouse_types'
 import type { LogWriter } from './logger'
 import type { ClickHouseSettings } from './settings'
 
@@ -39,8 +40,9 @@ export interface ConnQueryResult<Stream> extends ConnBaseResult {
   query_id: string
 }
 
-export type ConnInsertResult = ConnBaseResult
-export type ConnExecResult<Stream> = ConnQueryResult<Stream>
+export type ConnInsertResult = ConnBaseResult & WithClickHouseSummary
+export type ConnExecResult<Stream> = ConnQueryResult<Stream> &
+  WithClickHouseSummary
 
 export type ConnPingResult =
   | {

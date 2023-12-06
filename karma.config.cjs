@@ -4,7 +4,7 @@ const TEST_TIMEOUT_MS = 120_000
 
 module.exports = function (config) {
   config.set({
-    // base path that will be used to resolve all patterns (eg. files, exclude)
+    // base path that will be used to resolve all patterns (e.g. files, exclude)
     basePath: '',
     frameworks: ['webpack', 'jasmine'],
     // list of files / patterns to load in the browser

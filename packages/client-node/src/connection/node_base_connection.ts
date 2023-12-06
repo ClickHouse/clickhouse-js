@@ -1,4 +1,5 @@
 import type {
+  ClickHouseSummary,
   ConnBaseQueryParams,
   Connection,
   ConnectionParams,
@@ -51,9 +52,15 @@ export interface RequestParams {
   abort_signal?: AbortSignal
   decompress_response?: boolean
   compress_request?: boolean
+  parse_summary?: boolean
 }
 
 const expiredSocketMessage = 'expired socket'
+
+interface RequestResult {
+  stream: Stream.Readable
+  summary?: ClickHouseSummary
+}
 
 export abstract class NodeBaseConnection
   implements Connection<Stream.Readable>
@@ -97,7 +104,7 @@ export abstract class NodeBaseConnection
   private async request(
     params: RequestParams,
     retryCount = 0
-  ): Promise<Stream.Readable> {
+  ): Promise<RequestResult> {
     try {
       return await this._request(params)
     } catch (e) {
@@ -116,7 +123,7 @@ export abstract class NodeBaseConnection
     }
   }
 
-  private async _request(params: RequestParams): Promise<Stream.Readable> {
+  private async _request(params: RequestParams): Promise<RequestResult> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
       const request = this.createClientRequest(params)
@@ -138,7 +145,12 @@ export abstract class NodeBaseConnection
         }
 
         if (isSuccessfulResponse(_response.statusCode)) {
-          return resolve(decompressionResult.response)
+          return resolve({
+            stream: decompressionResult.response,
+            summary: params.parse_summary
+              ? this.parseSummary(_response)
+              : undefined,
+          })
         } else {
           reject(parseError(await getAsText(decompressionResult.response)))
         }
@@ -282,7 +294,7 @@ export abstract class NodeBaseConnection
 
   async ping(): Promise<ConnPingResult> {
     try {
-      const stream = await this.request({
+      const { stream } = await this.request({
         method: 'GET',
         url: transformUrl({ url: this.params.url, pathname: '/ping' }),
       })
@@ -315,7 +327,7 @@ export abstract class NodeBaseConnection
       query_id,
     })
 
-    const stream = await this.request({
+    const { stream } = await this.request({
       method: 'POST',
       url: transformUrl({ url: this.params.url, searchParams }),
       body: params.query,
@@ -341,20 +353,78 @@ export abstract class NodeBaseConnection
       query_id,
     })
 
-    const stream = await this.request({
+    const { stream, summary } = await this.request({
       method: 'POST',
       url: transformUrl({ url: this.params.url, searchParams }),
       body: params.query,
       abort_signal: params.abort_signal,
+      parse_summary: true,
     })
 
     return {
       stream,
       query_id,
+      summary,
     }
   }
 
-  async drainHttpResponse(stream: Stream.Readable): Promise<void> {
+  async insert(
+    params: ConnInsertParams<Stream.Readable>
+  ): Promise<ConnInsertResult> {
+    const query_id = getQueryId(params.query_id)
+    const searchParams = toSearchParams({
+      database: this.params.database,
+      clickhouse_settings: params.clickhouse_settings,
+      query_params: params.query_params,
+      query: params.query,
+      session_id: params.session_id,
+      query_id,
+    })
+
+    const { stream, summary } = await this.request({
+      method: 'POST',
+      url: transformUrl({ url: this.params.url, searchParams }),
+      body: params.values,
+      abort_signal: params.abort_signal,
+      compress_request: this.params.compression.compress_request,
+      parse_summary: true,
+    })
+
+    await this.drainHttpResponse(stream)
+    return { query_id, summary }
+  }
+
+  async close(): Promise<void> {
+    if (this.agent !== undefined && this.agent.destroy !== undefined) {
+      this.agent.destroy()
+    }
+  }
+
+  private logResponse(
+    request: Http.ClientRequest,
+    params: RequestParams,
+    response: Http.IncomingMessage,
+    startTimestamp: number
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { authorization, host, ...headers } = request.getHeaders()
+    const duration = Date.now() - startTimestamp
+    this.params.logWriter.debug({
+      module: 'HTTP Adapter',
+      message: 'Got a response from ClickHouse',
+      args: {
+        request_method: params.method,
+        request_path: params.url.pathname,
+        request_params: params.url.search,
+        request_headers: headers,
+        response_status: response.statusCode,
+        response_headers: response.headers,
+        response_time_ms: duration,
+      },
+    })
+  }
+
+  private async drainHttpResponse(stream: Stream.Readable): Promise<void> {
     return new Promise((resolve, reject) => {
       function dropData() {
         // We don't care about the data
@@ -388,59 +458,21 @@ export abstract class NodeBaseConnection
     })
   }
 
-  async insert(
-    params: ConnInsertParams<Stream.Readable>
-  ): Promise<ConnInsertResult> {
-    const query_id = getQueryId(params.query_id)
-    const searchParams = toSearchParams({
-      database: this.params.database,
-      clickhouse_settings: params.clickhouse_settings,
-      query_params: params.query_params,
-      query: params.query,
-      session_id: params.session_id,
-      query_id,
-    })
-
-    const stream = await this.request({
-      method: 'POST',
-      url: transformUrl({ url: this.params.url, searchParams }),
-      body: params.values,
-      abort_signal: params.abort_signal,
-      compress_request: this.params.compression.compress_request,
-    })
-
-    await this.drainHttpResponse(stream)
-    return { query_id }
-  }
-
-  async close(): Promise<void> {
-    if (this.agent !== undefined && this.agent.destroy !== undefined) {
-      this.agent.destroy()
+  private parseSummary(
+    response: Http.IncomingMessage
+  ): ClickHouseSummary | undefined {
+    const summaryHeader = response.headers['x-clickhouse-summary']
+    if (typeof summaryHeader === 'string') {
+      try {
+        return JSON.parse(summaryHeader)
+      } catch (err) {
+        this.logger.error({
+          module: 'Connection',
+          message: `Failed to parse X-ClickHouse-Summary header, got: ${summaryHeader}`,
+          err: err as Error,
+        })
+      }
     }
-  }
-
-  private logResponse(
-    request: Http.ClientRequest,
-    params: RequestParams,
-    response: Http.IncomingMessage,
-    startTimestamp: number
-  ) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { authorization, host, ...headers } = request.getHeaders()
-    const duration = Date.now() - startTimestamp
-    this.params.logWriter.debug({
-      module: 'HTTP Adapter',
-      message: 'Got a response from ClickHouse',
-      args: {
-        request_method: params.method,
-        request_path: params.url.pathname,
-        request_params: params.url.search,
-        request_headers: headers,
-        response_status: response.statusCode,
-        response_headers: response.headers,
-        response_time_ms: duration,
-      },
-    })
   }
 }
 

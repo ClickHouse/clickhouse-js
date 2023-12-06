@@ -8,7 +8,7 @@ describe('insert', () => {
   let tableName: string
 
   beforeEach(async () => {
-    client = await createTestClient()
+    client = createTestClient()
     tableName = `insert_test_${guid()}`
     await createSimpleTable(client, tableName)
   })

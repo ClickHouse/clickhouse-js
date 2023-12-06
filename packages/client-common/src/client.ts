@@ -4,8 +4,9 @@ import type {
   Connection,
   ConnectionParams,
   ConnInsertResult,
-  ConnQueryResult,
   Logger,
+  WithClickHouseSummary,
+  ConnExecResult,
 } from '@clickhouse/client-common'
 import {
   type DataFormat,
@@ -76,7 +77,7 @@ export interface ClickHouseClientConfigOptions<Stream> {
   username?: string
   /** The user password. Default: ''. */
   password?: string
-  /** The name of the application using the nodejs client.
+  /** The name of the application using the JS client.
    * Default: empty. */
   application?: string
   /** Database name to use. Default value: `default`. */
@@ -124,12 +125,10 @@ export interface ExecParams extends BaseQueryParams {
 }
 
 export type CommandParams = ExecParams
-export interface CommandResult {
-  query_id: string
-}
+export type CommandResult = { query_id: string } & WithClickHouseSummary
 
 export type InsertResult = ConnInsertResult
-export type ExecResult<Stream> = ConnQueryResult<Stream>
+export type ExecResult<Stream> = ConnExecResult<Stream>
 export type PingResult = ConnPingResult
 
 export type InsertValues<Stream, T = unknown> =
@@ -203,9 +202,9 @@ export class ClickHouseClient<Stream = unknown> {
    * If you are interested in the response data, consider using {@link ClickHouseClient.exec}
    */
   async command(params: CommandParams): Promise<CommandResult> {
-    const { stream, query_id } = await this.exec(params)
+    const { stream, query_id, summary } = await this.exec(params)
     await this.closeStream(stream)
-    return { query_id }
+    return { query_id, summary }
   }
 
   /**
