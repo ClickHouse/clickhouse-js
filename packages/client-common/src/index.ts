@@ -24,6 +24,8 @@ export {
   type LogParams,
 } from './logger'
 export type {
+  ClickHouseSummary,
+  WithClickHouseSummary,
   ResponseJSON,
   InputJSON,
   InputJSONObjectEachRow,

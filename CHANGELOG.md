@@ -1,4 +1,11 @@
-## 0.2.7 (Web only)
+## 0.2.7 (Common, Node.js, Web)
+
+### New features
+
+- (Node.js only) `X-ClickHouse-Summary` response header is now parsed when working with `insert`/`exec`/`command` methods.
+  See the [related test](./packages/client-node/__tests__/integration/node_summary.test.ts) for more details.
+  NB: it is guaranteed to be correct only for non-streaming scenarios.
+  Web version does not currently support this due to CORS limitations. ([#210](https://github.com/ClickHouse/clickhouse-js/issues/210))
 
 ### Bug fixes
 

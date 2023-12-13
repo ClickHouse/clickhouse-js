@@ -16,3 +16,18 @@ export interface InputJSON<T = unknown> {
 }
 
 export type InputJSONObjectEachRow<T = unknown> = Record<string, T>
+
+export interface ClickHouseSummary {
+  read_rows: string
+  read_bytes: string
+  written_rows: string
+  written_bytes: string
+  total_rows_to_read: string
+  result_rows: string
+  result_bytes: string
+  elapsed_ns: string
+}
+
+export interface WithClickHouseSummary {
+  summary?: ClickHouseSummary
+}
