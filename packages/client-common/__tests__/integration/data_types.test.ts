@@ -1,4 +1,7 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
+import type {
+  ClickHouseClient,
+  ClickHouseSettings,
+} from '@clickhouse/client-common'
 import { randomUUID } from '@test/utils/guid'
 import { createTableWithFields } from '../fixtures/table_with_fields'
 import { createTestClient, getRandomInt } from '../utils'
@@ -139,31 +142,76 @@ describe('data types', () => {
     await insertAndAssert(table, values)
   })
 
-  it('should work with dates', async () => {
-    const values = [
-      {
-        d1: '2149-06-06',
-        d2: '2178-04-16',
-        dt1: '2106-02-07 06:28:15',
-        dt2: '2106-02-07 06:28:15.123',
-        dt3: '2106-02-07 06:28:15.123456',
-        dt4: '2106-02-07 06:28:15.123456789',
-      },
-      {
-        d1: '2022-09-01',
-        d2: '2007-01-29',
-        dt1: '2022-09-01 01:40:42',
-        dt2: '2021-10-02 03:12:42.123',
-        dt3: '2022-12-15 07:10:42.123456',
-        dt4: '2008-04-05 03:45:42.123456789',
-      },
-    ]
-    const table = await createTableWithFields(
-      client,
-      'd1 Date, d2 Date32, dt1 DateTime, ' +
-        'dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9),'
-    )
-    await insertAndAssert(table, values)
+  describe('Dates', () => {
+    it('should work with strings', async () => {
+      const values = [
+        {
+          d1: '2149-06-06',
+          d2: '2178-04-16',
+          dt1: '2106-02-07 06:28:15',
+          dt2: '2106-02-07 06:28:15.123',
+          dt3: '2106-02-07 06:28:15.123456',
+          dt4: '2106-02-07 06:28:15.123456789',
+        },
+        {
+          d1: '2022-09-01',
+          d2: '2007-01-29',
+          dt1: '2022-09-01 01:40:42',
+          dt2: '2021-10-02 03:12:42.123',
+          dt3: '2022-12-15 07:10:42.123456',
+          dt4: '2008-04-05 03:45:42.123456789',
+        },
+      ]
+      const table = await createTableWithFields(
+        client,
+        'd1 Date, d2 Date32, dt1 DateTime, ' +
+          'dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)'
+      )
+      await insertAndAssert(table, values)
+    })
+
+    // NB: JS Date objects work only with DateTime* fields
+    it('should work with JS Date objects', async () => {
+      const values = [
+        {
+          dt1: new Date('2106-02-07T06:28:15Z'),
+          // JS Date is millis only
+          dt2: new Date('2106-02-07T06:28:15.123Z'),
+          dt3: new Date('2106-02-07T06:28:15.123Z'),
+          dt4: new Date('2106-02-07T06:28:15.123Z'),
+        },
+        {
+          dt1: new Date('2022-09-01T01:40:42Z'),
+          dt2: new Date('2021-10-02T03:12:42.123Z'),
+          dt3: new Date('2022-12-15T07:10:42.123Z'),
+          dt4: new Date('2008-04-05T03:45:42.123Z'),
+        },
+      ]
+      const expected = [
+        {
+          dt1: '2106-02-07 06:28:15',
+          // JS Date is millis only
+          dt2: '2106-02-07 06:28:15.123',
+          dt3: '2106-02-07 06:28:15.123000',
+          dt4: '2106-02-07 06:28:15.123000000',
+        },
+        {
+          dt1: '2022-09-01 01:40:42',
+          dt2: '2021-10-02 03:12:42.123',
+          dt3: '2022-12-15 07:10:42.123000',
+          dt4: '2008-04-05 03:45:42.123000000',
+        },
+      ]
+      const table = await createTableWithFields(
+        client,
+        'dt1 DateTime, dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)'
+      )
+      await insertData(table, values, {
+        // Allows to insert serialized JS Dates (such as '2023-12-06T10:54:48.000Z')
+        date_time_input_format: 'best_effort',
+      })
+      await assertData(table, expected)
+    })
   })
 
   it('should work with string enums', async () => {
@@ -525,12 +573,17 @@ describe('data types', () => {
     ])
   })
 
-  async function insertData<T>(table: string, data: T[]) {
+  async function insertData<T>(
+    table: string,
+    data: T[],
+    clickhouse_settings?: ClickHouseSettings
+  ) {
     const values = data.map((v, i) => ({ ...v, id: i + 1 }))
     await client.insert({
       table,
       values,
       format: 'JSONEachRow',
+      clickhouse_settings,
     })
   }
 
