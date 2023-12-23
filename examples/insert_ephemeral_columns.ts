@@ -11,11 +11,8 @@ void (async () => {
   })
 
   await client.command({
-    query: `DROP TABLE IF EXISTS ${tableName}`,
-  })
-  await client.command({
     query: `
-      CREATE TABLE ${tableName}
+      CREATE OR REPLACE TABLE ${tableName}
       (
         event_type  LowCardinality(String) DEFAULT JSONExtractString(message_raw, 'type'),
         repo_name   LowCardinality(String) DEFAULT JSONExtractString(message_raw, 'repo', 'name'),
