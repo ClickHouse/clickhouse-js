@@ -2,14 +2,14 @@ import { createClient } from '../../src'
 import type { WebClickHouseClient } from '../../src/client'
 
 describe('[Web] Connection', () => {
-  let fetchSpy: jasmine.Spy<typeof window.fetch>
-  beforeEach(() => {
-    fetchSpy = spyOn(window, 'fetch').and.returnValue(
-      Promise.resolve(stubResponse())
-    )
-  })
-
   describe('KeepAlive setting', () => {
+    let fetchSpy: jasmine.Spy<typeof window.fetch>
+    beforeEach(() => {
+      fetchSpy = spyOn(window, 'fetch').and.returnValue(
+        Promise.resolve(new Response())
+      )
+    })
+
     it('should be enabled by default', async () => {
       const client = createClient()
       const fetchParams = await pingAndGetRequestInit(client)
@@ -35,8 +35,4 @@ describe('[Web] Connection', () => {
       return fetchParams!
     }
   })
-
-  function stubResponse() {
-    return new Response()
-  }
 })
