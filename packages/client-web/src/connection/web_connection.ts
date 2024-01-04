@@ -24,9 +24,15 @@ type WebInsertParams<T> = Omit<
   values: string
 }
 
+export type WebConnectionParams = ConnectionParams & {
+  keep_alive: {
+    enabled: boolean
+  }
+}
+
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
-  constructor(private readonly params: ConnectionParams) {
+  constructor(private readonly params: WebConnectionParams) {
     this.defaultHeaders = {
       Authorization: `Basic ${btoa(`${params.username}:${params.password}`)}`,
     }
@@ -175,7 +181,7 @@ export class WebConnection implements Connection<ReadableStream> {
       const response = await fetch(url, {
         body: values,
         headers,
-        keepalive: false,
+        keepalive: this.params.keep_alive.enabled,
         method: method ?? 'POST',
         signal: abortController.signal,
       })
