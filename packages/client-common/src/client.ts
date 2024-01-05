@@ -139,8 +139,8 @@ export type InsertValues<Stream, T = unknown> =
 
 type NonEmptyArray<T> = [T, ...T[]]
 
-export type InsertColumnsExcept = {
-  /** A non-empty list of columns to exclude when generating `(* EXCEPT (...))` clause */
+/** {@link except} field contains a non-empty list of columns to exclude when generating `(* EXCEPT (...))` clause */
+export interface InsertColumnsExcept {
   except: NonEmptyArray<string>
 }
 

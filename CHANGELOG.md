@@ -16,7 +16,7 @@ await client.insert({
   table: 'mytable',
   format: 'JSONEachRow',
   values: [{ id: 42 }],
-  columns: { exclude: ['message'] },
+  columns: { except: ['message'] },
 })
 ```
 
