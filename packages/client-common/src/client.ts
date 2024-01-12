@@ -251,19 +251,7 @@ export class ClickHouseClient<Stream = unknown> {
     const format = params.format || 'JSONCompactEachRow'
     this.valuesEncoder.validateInsertValues(params.values, format)
 
-    let columnsPart = ''
-    if (params.columns !== undefined) {
-      if (Array.isArray(params.columns) && params.columns.length > 0) {
-        columnsPart = ` (${params.columns.join(',')})`
-      } else if (
-        isInsertColumnsExcept(params.columns) &&
-        params.columns.except.length > 0
-      ) {
-        columnsPart = ` (* EXCEPT (${params.columns.except.join(',')}))`
-      }
-    }
-
-    const query = `INSERT INTO ${params.table.trim()}${columnsPart} FORMAT ${format}`
+    const query = getInsertQuery(params, format)
     return await this.connection.insert({
       query,
       values: this.valuesEncoder.encodeValues(params.values, format),
@@ -358,4 +346,22 @@ function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
     // Avoiding ESLint no-prototype-builtins error
     Object.prototype.hasOwnProperty.call(obj, 'except')
   )
+}
+
+function getInsertQuery<T>(
+  params: InsertParams<T>,
+  format: DataFormat
+): string {
+  let columnsPart = ''
+  if (params.columns !== undefined) {
+    if (Array.isArray(params.columns) && params.columns.length > 0) {
+      columnsPart = ` (${params.columns.join(', ')})`
+    } else if (
+      isInsertColumnsExcept(params.columns) &&
+      params.columns.except.length > 0
+    ) {
+      columnsPart = ` (* EXCEPT (${params.columns.except.join(', ')}))`
+    }
+  }
+  return `INSERT INTO ${params.table.trim()}${columnsPart} FORMAT ${format}`
 }

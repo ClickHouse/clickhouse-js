@@ -1,6 +1,16 @@
 ## 0.2.8 (Common, Node.js, Web)
 
-It is now possible to either specify a list of columns to insert the data into or a list of excluded columns:
+### New features
+
+- (Web only) Allow to modify Keep-Alive setting (previously always disabled).
+  Keep-Alive setting **is now enabled by default** for the Web version.
+
+```ts
+import { createClient } from '@clickhouse/client-web'
+const client = createClient({ keep_alive: { enabled: true } })
+```
+
+- (Node.js & Web) It is now possible to either specify a list of columns to insert the data into or a list of excluded columns:
 
 ```ts
 // Generated query: INSERT INTO mytable (message) FORMAT JSONEachRow
