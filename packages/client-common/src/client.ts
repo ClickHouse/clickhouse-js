@@ -3,10 +3,10 @@ import type {
   ClickHouseSettings,
   Connection,
   ConnectionParams,
+  ConnExecResult,
   ConnInsertResult,
   Logger,
   WithClickHouseSummary,
-  ConnExecResult,
 } from '@clickhouse/client-common'
 import {
   type DataFormat,
@@ -137,14 +137,34 @@ export type InsertValues<Stream, T = unknown> =
   | InputJSON<T>
   | InputJSONObjectEachRow<T>
 
+type NonEmptyArray<T> = [T, ...T[]]
+
+/** {@link except} field contains a non-empty list of columns to exclude when generating `(* EXCEPT (...))` clause */
+export interface InsertColumnsExcept {
+  except: NonEmptyArray<string>
+}
+
 export interface InsertParams<Stream = unknown, T = unknown>
   extends BaseQueryParams {
   /** Name of a table to insert into. */
   table: string
   /** A dataset to insert. */
   values: InsertValues<Stream, T>
-  /** Format of the dataset to insert. */
+  /** Format of the dataset to insert. Default: `JSONCompactEachRow` */
   format?: DataFormat
+  /**
+   * Allows to specify which columns the data will be inserted into.
+   * Accepts either an array of strings (column names) or an object of {@link InsertColumnsExcept} type.
+   * Examples of generated queries:
+   *
+   * - An array such as `['a', 'b']` will generate: `INSERT INTO table (a, b) FORMAT DataFormat`
+   * - An object such as `{ except: ['a', 'b'] }` will generate: `INSERT INTO table (* EXCEPT (a, b)) FORMAT DataFormat`
+   *
+   * By default, the data is inserted into all columns of the {@link InsertParams.table},
+   * and the generated statement will be: `INSERT INTO table FORMAT DataFormat`.
+   *
+   * See also: https://clickhouse.com/docs/en/sql-reference/statements/insert-into */
+  columns?: NonEmptyArray<string> | InsertColumnsExcept
 }
 
 export class ClickHouseClient<Stream = unknown> {
@@ -229,10 +249,9 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async insert<T>(params: InsertParams<Stream, T>): Promise<InsertResult> {
     const format = params.format || 'JSONCompactEachRow'
-
     this.valuesEncoder.validateInsertValues(params.values, format)
-    const query = `INSERT INTO ${params.table.trim()} FORMAT ${format}`
 
+    const query = getInsertQuery(params, format)
     return await this.connection.insert({
       query,
       values: this.valuesEncoder.encodeValues(params.values, format),
@@ -317,4 +336,32 @@ function getConnectionParams<Stream>(
       config.log?.level
     ),
   }
+}
+
+function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
+  return (
+    obj !== undefined &&
+    obj !== null &&
+    typeof obj === 'object' &&
+    // Avoiding ESLint no-prototype-builtins error
+    Object.prototype.hasOwnProperty.call(obj, 'except')
+  )
+}
+
+function getInsertQuery<T>(
+  params: InsertParams<T>,
+  format: DataFormat
+): string {
+  let columnsPart = ''
+  if (params.columns !== undefined) {
+    if (Array.isArray(params.columns) && params.columns.length > 0) {
+      columnsPart = ` (${params.columns.join(', ')})`
+    } else if (
+      isInsertColumnsExcept(params.columns) &&
+      params.columns.except.length > 0
+    ) {
+      columnsPart = ` (* EXCEPT (${params.columns.except.join(', ')}))`
+    }
+  }
+  return `INSERT INTO ${params.table.trim()}${columnsPart} FORMAT ${format}`
 }

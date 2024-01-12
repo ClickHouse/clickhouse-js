@@ -1,3 +1,42 @@
+## 0.2.8 (Common, Node.js, Web)
+
+### New features
+
+- (Web only) Allow to modify Keep-Alive setting (previously always disabled).
+  Keep-Alive setting **is now enabled by default** for the Web version.
+
+```ts
+import { createClient } from '@clickhouse/client-web'
+const client = createClient({ keep_alive: { enabled: true } })
+```
+
+- (Node.js & Web) It is now possible to either specify a list of columns to insert the data into or a list of excluded columns:
+
+```ts
+// Generated query: INSERT INTO mytable (message) FORMAT JSONEachRow
+await client.insert({
+  table: 'mytable',
+  format: 'JSONEachRow',
+  values: [{ message: 'foo' }],
+  columns: ['message'],
+})
+
+// Generated query: INSERT INTO mytable (* EXCEPT (message)) FORMAT JSONEachRow
+await client.insert({
+  table: 'mytable',
+  format: 'JSONEachRow',
+  values: [{ id: 42 }],
+  columns: { except: ['message'] },
+})
+```
+
+See also the new examples:
+
+- [Including specific columns or excluding certain ones instead](./examples/insert_exclude_columns.ts)
+- [Leveraging this feature](./examples/insert_ephemeral_columns.ts) when working with
+  [ephemeral columns](https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral)
+  ([#217](https://github.com/ClickHouse/clickhouse-js/issues/217))
+
 ## 0.2.7 (Common, Node.js, Web)
 
 ### New features
