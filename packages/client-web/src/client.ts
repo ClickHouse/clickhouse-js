@@ -15,6 +15,14 @@ import { WebConnection } from './connection'
 import { ResultSet } from './result_set'
 import { WebValuesEncoder } from './utils'
 
+export type WebClickHouseClientConfigOptions =
+  BaseClickHouseClientConfigOptions<ReadableStream> & {
+    keep_alive?: {
+      /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
+      enabled: boolean
+    }
+  }
+
 export type WebClickHouseClient = Omit<
   ClickHouseClient<ReadableStream>,
   'insert' | 'query'
@@ -30,11 +38,15 @@ export type WebClickHouseClient = Omit<
 }
 
 export function createClient(
-  config?: BaseClickHouseClientConfigOptions<ReadableStream>
+  config?: WebClickHouseClientConfigOptions
 ): WebClickHouseClient {
+  const keep_alive = {
+    enabled: config?.keep_alive?.enabled ?? true,
+  }
   return new ClickHouseClient<ReadableStream>({
     impl: {
-      make_connection: (params: ConnectionParams) => new WebConnection(params),
+      make_connection: (params: ConnectionParams) =>
+        new WebConnection({ ...params, keep_alive }),
       make_result_set: (
         stream: ReadableStream,
         format: DataFormat,
