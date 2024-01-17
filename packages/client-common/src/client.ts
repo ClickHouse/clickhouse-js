@@ -92,6 +92,7 @@ export interface ClickHouseClientConfigOptions<Stream> {
     level?: ClickHouseLogLevel
   }
   session_id?: string
+  additionalHeaders?: object
 }
 
 export type BaseClickHouseClientConfigOptions<Stream> = Omit<
@@ -335,6 +336,7 @@ function getConnectionParams<Stream>(
         : new DefaultLogger(),
       config.log?.level
     ),
+    additionalHeaders: config.additionalHeaders ?? {},
   }
 }
 
