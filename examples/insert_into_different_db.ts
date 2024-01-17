@@ -2,7 +2,7 @@ import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 void (async () => {
   const dbName = 'clickhouse_js_examples'
-  const tableName = 'other_db'
+  const tableName = `test_table_${Math.random().toString(36).slice(2, 8)}`
   const client = createClient({
     database: 'system',
   })
@@ -22,6 +22,7 @@ void (async () => {
       ORDER BY (id)
     `,
   })
+  console.info(`Created table ${fullTableName}`)
 
   await client.insert({
     table: fullTableName,
@@ -34,6 +35,6 @@ void (async () => {
     format: 'JSONEachRow',
   })
 
-  console.info(await rows.json())
+  console.info('Result:', await rows.json())
   await client.close()
 })()
