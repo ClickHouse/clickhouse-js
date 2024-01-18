@@ -27,7 +27,7 @@ export class NodeHttpsConnection
   protected override buildDefaultHeaders(
     username: string,
     password: string,
-    additionalHeaders?: object
+    additional_headers?: Record<string, number | string | string[]>
   ): Http.OutgoingHttpHeaders {
     if (this.params.tls?.type === 'Mutual') {
       return {
@@ -42,7 +42,7 @@ export class NodeHttpsConnection
         'X-ClickHouse-Key': password,
       }
     }
-    return super.buildDefaultHeaders(username, password, additionalHeaders)
+    return super.buildDefaultHeaders(username, password, additional_headers)
   }
 
   protected createClientRequest(params: RequestParams): Http.ClientRequest {
