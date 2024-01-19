@@ -563,7 +563,7 @@ describe('[Node.js] HttpAdapter', () => {
   function buildHttpAdapter(config: Partial<ConnectionParams>) {
     return new NodeHttpConnection({
       ...{
-        url: new URL('http://localhost:8132'),
+        url: new URL('http://localhost:8123'),
 
         connect_timeout: 10_000,
         request_timeout: 30_000,

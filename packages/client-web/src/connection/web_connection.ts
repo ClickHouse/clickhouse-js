@@ -35,6 +35,7 @@ export class WebConnection implements Connection<ReadableStream> {
   constructor(private readonly params: WebConnectionParams) {
     this.defaultHeaders = {
       Authorization: `Basic ${btoa(`${params.username}:${params.password}`)}`,
+      ...params?.additional_headers,
     }
   }
 

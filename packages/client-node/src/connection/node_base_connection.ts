@@ -82,18 +82,24 @@ export abstract class NodeBaseConnection
     this.logger = params.logWriter
     this.retry_expired_sockets =
       params.keep_alive.enabled && params.keep_alive.retry_on_expired_socket
-    this.headers = this.buildDefaultHeaders(params.username, params.password)
+    this.headers = this.buildDefaultHeaders(
+      params.username,
+      params.password,
+      params.additional_headers
+    )
   }
 
   protected buildDefaultHeaders(
     username: string,
-    password: string
+    password: string,
+    additional_headers?: Record<string, number | string | string[]>
   ): Http.OutgoingHttpHeaders {
     return {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
         'base64'
       )}`,
       'User-Agent': getUserAgent(this.params.application_id),
+      ...additional_headers,
     }
   }
 
