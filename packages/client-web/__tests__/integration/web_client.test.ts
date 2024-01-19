@@ -1,41 +1,40 @@
 import { createClient } from '../../src'
 import type { WebClickHouseClient } from '../../src/client'
 
-describe('[Web] Connection', () => {
-  describe('additional_headers', () => {
-    let fetchSpy: jasmine.Spy<typeof window.fetch>
-    beforeEach(() => {
-      fetchSpy = spyOn(window, 'fetch').and.returnValue(
-        Promise.resolve(new Response())
-      )
-    })
+describe('[Web] Client', () => {
+  let fetchSpy: jasmine.Spy<typeof window.fetch>
+  beforeEach(() => {
+    fetchSpy = spyOn(window, 'fetch').and.returnValue(
+      Promise.resolve(new Response())
+    )
+  })
 
+  describe('Additional headers', () => {
     it('should be possible to set', async () => {
       const client = createClient({
         additional_headers: {
-          'Test-Header': 'default',
+          'Test-Header': 'foobar',
         },
       })
       const fetchParams = await pingAndGetRequestInit(client)
-      expect(fetchParams!.headers?.['Test-Header']).toBe('default')
+      expect(fetchParams!.headers).toEqual({
+        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
+        'Accept-Encoding': 'gzip',
+        'Test-Header': 'foobar',
+      })
+    })
 
-      async function pingAndGetRequestInit(client: WebClickHouseClient) {
-        await client.ping()
-        expect(fetchSpy).toHaveBeenCalledTimes(1)
-        const [, fetchParams] = fetchSpy.calls.mostRecent().args
-        return fetchParams!
-      }
+    it('should work with no additional headers provided', async () => {
+      const client = createClient({})
+      const fetchParams = await pingAndGetRequestInit(client)
+      expect(fetchParams!.headers).toEqual({
+        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
+        'Accept-Encoding': 'gzip',
+      })
     })
   })
 
   describe('KeepAlive setting', () => {
-    let fetchSpy: jasmine.Spy<typeof window.fetch>
-    beforeEach(() => {
-      fetchSpy = spyOn(window, 'fetch').and.returnValue(
-        Promise.resolve(new Response())
-      )
-    })
-
     it('should be enabled by default', async () => {
       const client = createClient()
       const fetchParams = await pingAndGetRequestInit(client)
@@ -53,12 +52,12 @@ describe('[Web] Connection', () => {
       const fetchParams = await pingAndGetRequestInit(client)
       expect(fetchParams.keepalive).toBeTruthy()
     })
-
-    async function pingAndGetRequestInit(client: WebClickHouseClient) {
-      await client.ping()
-      expect(fetchSpy).toHaveBeenCalledTimes(1)
-      const [, fetchParams] = fetchSpy.calls.mostRecent().args
-      return fetchParams!
-    }
   })
+
+  async function pingAndGetRequestInit(client: WebClickHouseClient) {
+    await client.ping()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const [, fetchParams] = fetchSpy.calls.mostRecent().args
+    return fetchParams!
+  }
 })

@@ -92,7 +92,7 @@ export interface ClickHouseClientConfigOptions<Stream> {
     level?: ClickHouseLogLevel
   }
   session_id?: string
-  additional_headers?: Record<string, number | string | string[]>
+  additional_headers?: Record<string, string>
 }
 
 export type BaseClickHouseClientConfigOptions<Stream> = Omit<

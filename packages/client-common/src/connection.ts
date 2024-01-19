@@ -16,7 +16,7 @@ export interface ConnectionParams {
   clickhouse_settings: ClickHouseSettings
   logWriter: LogWriter
   application_id?: string
-  additional_headers?: Record<string, number | string | string[]>
+  additional_headers?: Record<string, string>
 }
 
 export interface ConnBaseQueryParams {

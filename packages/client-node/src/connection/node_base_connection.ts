@@ -92,7 +92,7 @@ export abstract class NodeBaseConnection
   protected buildDefaultHeaders(
     username: string,
     password: string,
-    additional_headers?: Record<string, number | string | string[]>
+    additional_headers?: Record<string, string>
   ): Http.OutgoingHttpHeaders {
     return {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(

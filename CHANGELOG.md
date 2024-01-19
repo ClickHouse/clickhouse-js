@@ -1,3 +1,18 @@
+## 0.2.9 (Common, Node.js, Web)
+
+### New features
+
+- It is now possible to set additional HTTP headers for outgoing ClickHouse requests. This might be useful if, for example, you use a reverse proxy with authorization. ([@teawithfruit](https://github.com/teawithfruit), [#224](https://github.com/ClickHouse/clickhouse-js/pull/224))
+
+```ts
+const client = createClient({
+  additional_headers: {
+    'X-ClickHouse-User': 'clickhouse_user',
+    'X-ClickHouse-Key': 'clickhouse_password',
+  },
+})
+```
+
 ## 0.2.8 (Common, Node.js, Web)
 
 ### New features
