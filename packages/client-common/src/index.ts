@@ -58,6 +58,7 @@ export {
 export { LogWriter, DefaultLogger } from './logger'
 export { parseError } from './error'
 export type {
+  CompressionSettings,
   Connection,
   ConnectionParams,
   ConnInsertResult,

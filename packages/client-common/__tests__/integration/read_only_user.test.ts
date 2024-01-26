@@ -33,9 +33,7 @@ describe('read only user', () => {
         insert_quorum: undefined,
         database_replicated_enforce_synchronous_settings: undefined,
       },
-      compression: {
-        response: false, // cannot enable HTTP compression for a read only user
-      },
+      readonly: true, // disables compression and additional ClickHouse HTTP settings
     })
   })
   afterAll(async () => {
