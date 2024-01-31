@@ -113,9 +113,12 @@ export interface ClickHouseClientConfigOptions<Stream> {
   /** Additional HTTP headers to attach to the outgoing requests.
    * Default: empty. */
   additional_headers?: Record<string, string>
-  /** If the client instance created for a read-only user, some settings such as {@link compression},
-   * `send_progress_in_http_headers`, and `http_headers_progress_interval_ms` can't be modified,
+  /** If the client instance created for a user with `READONLY = 1` mode,
+   * some settings, such as {@link compression}, `send_progress_in_http_headers`,
+   * and `http_headers_progress_interval_ms` can't be modified,
    * and will be removed from the client configuration.
+   * NB: this is not necessary if a user has `READONLY = 2` mode.
+   * See also: https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly
    * Default: false */
   readonly?: boolean
 }

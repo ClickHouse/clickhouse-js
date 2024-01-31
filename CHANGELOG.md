@@ -1,14 +1,14 @@
-## 0.2.10 (Common, Node.js, Web)
+## 0.3.0 (Common, Node.js, Web)
 
 ### Breaking changes
 
-- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set http_headers_progress_interval_ms to `290000` by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. 290s is chosen as a safe value, since AWS LB timeout is 350s by default and some other LBs might have 300s. It can be overridden when creating a client instance if your LB timeout value is even lower than that. See also: [AWS LB documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout).
+- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set http_headers_progress_interval_ms to `290000` by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. Currently, 290s is chosen as a safe value, since AWS LB timeout is 350s by default and some other LBs might have 300s. It can be overridden when creating a client instance if your LB timeout value is even lower than that. See also: [AWS LB documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout).
 
   NB: these settings will be enabled only if the client instance was created without setting `readonly` flag (see below).
 
-- It is now possible to create a client in read-only mode, which will disable default compression and aforementioned ClickHouse HTTP settings. Previously, the response compression had to be disabled explicitly.
+- It is now possible to create a client in read-only mode, which will disable default compression and aforementioned ClickHouse HTTP settings. Previously, if you wanted to use the client with a user created with `READONLY = 1` mode, the response compression had to be disabled explicitly.
 
-Pre 0.2.10:
+Pre 0.3.0:
 
 ```ts
 const client = createClient({
@@ -27,6 +27,10 @@ const client = createClient({
 ```
 
 By default, `readonly` is `false`.
+
+NB: this is not necessary if a user has `READONLY = 2` mode as it allows to modify the settings, so the client can be used without an additional `readonly` setting.
+
+See also: [readonly documentation](https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly).
 
 ## 0.2.9 (Common, Node.js, Web)
 

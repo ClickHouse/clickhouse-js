@@ -1,6 +1,9 @@
 import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 import { randomUUID } from 'crypto'
 
+/**
+ * An illustration of limitations and client-specific settings for users created in `READONLY = 1` mode.
+ */
 void (async () => {
   const defaultClient = createClient()
 
