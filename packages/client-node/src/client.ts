@@ -8,7 +8,7 @@ import { ClickHouseClient } from '@clickhouse/client-common'
 import type Stream from 'stream'
 import type { NodeConnectionParams, TLSParams } from './connection'
 import { NodeHttpConnection, NodeHttpsConnection } from './connection'
-import { ResultSet } from './result_set'
+import { ResultSet, RowBinaryResultSet } from './result_set'
 import { NodeValuesEncoder } from './utils'
 
 export type NodeClickHouseClientConfigOptions =
@@ -82,8 +82,12 @@ export function createClient(
       make_result_set: (
         stream: Stream.Readable,
         format: DataFormat,
-        session_id: string
-      ) => new ResultSet(stream, format, session_id),
+        query_id: string
+      ) => {
+        return format === 'RowBinaryWithNamesAndTypes'
+          ? new RowBinaryResultSet(stream, format, query_id)
+          : new ResultSet(stream, format, query_id)
+      },
       values_encoder: new NodeValuesEncoder(),
       close_stream: async (stream) => {
         stream.destroy()
