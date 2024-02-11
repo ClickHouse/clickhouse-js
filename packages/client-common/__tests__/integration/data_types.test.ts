@@ -714,13 +714,15 @@ describe('data types', () => {
       'n Nested(id UInt32, name String, createdAt DateTime, ' +
         `roles Array(Enum('User', 'Admin')))`,
       {
-        input_format_import_nested_json: 1,
         flatten_nested: 0,
       }
     )
     await client.insert({
       table,
       values,
+      clickhouse_settings: {
+        input_format_import_nested_json: 1,
+      },
       format: 'JSONEachRow',
     })
     const result = await client
