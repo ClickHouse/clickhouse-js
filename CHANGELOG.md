@@ -1,3 +1,13 @@
+## 0.2.10 (Common, Node.js, Web)
+
+### New features
+
+- If `InsertParams.values` is an empty array, no request is sent to the server and `ClickHouseClient.insert` short-circuits itself. In this scenario, the newly added `InsertResult.executed` flag will be `false`, and `InsertResult.query_id` will be an empty string.
+
+### Bug fixes
+
+- Client no longer produces `Code: 354. inflate failed: buffer error` exception if request compression is enabled and `InsertParams.values` is an empty array (see above).
+
 ## 0.2.9 (Common, Node.js, Web)
 
 ### New features
