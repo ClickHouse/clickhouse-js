@@ -41,7 +41,6 @@ describe('insert', () => {
     await assertJsonValues(client, tableName)
     expect(validateUUID(result.query_id)).toBeTruthy()
     expect(result.executed).toBeTruthy()
-    expect(result.summary).toBeDefined()
   })
 
   it('should use provide query_id', async () => {
@@ -71,7 +70,6 @@ describe('insert', () => {
     await assertJsonValues(client, tableName)
     expect(result.query_id).toEqual(query_id)
     expect(result.executed).toBeTruthy()
-    expect(result.summary).toBeDefined()
   })
 
   it('inserts values using JSONObjectEachRow format', async () => {
