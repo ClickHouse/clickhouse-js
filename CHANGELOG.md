@@ -2,7 +2,7 @@
 
 ### Breaking changes
 
-- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set http_headers_progress_interval_ms to `290000` by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. Currently, 290s is chosen as a safe value, since AWS LB timeout is 350s by default and some other LBs might have 300s. It can be overridden when creating a client instance if your LB timeout value is even lower than that. See also: [AWS LB documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout).
+- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `29000` (29 seconds) by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. Currently, 29s is chosen as a safe value, since most LBs will have at least 30s of idle timeout. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `send_progress_in_http_headers` value.
 
   NB: these settings will be enabled only if the client instance was created without setting `readonly` flag (see below).
 
@@ -31,6 +31,16 @@ By default, `readonly` is `false`.
 NB: this is not necessary if a user has `READONLY = 2` mode as it allows to modify the settings, so the client can be used without an additional `readonly` setting.
 
 See also: [readonly documentation](https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly).
+
+## 0.2.10 (Common, Node.js, Web)
+
+### New features
+
+- If `InsertParams.values` is an empty array, no request is sent to the server and `ClickHouseClient.insert` short-circuits itself. In this scenario, the newly added `InsertResult.executed` flag will be `false`, and `InsertResult.query_id` will be an empty string.
+
+### Bug fixes
+
+- Client no longer produces `Code: 354. inflate failed: buffer error` exception if request compression is enabled and `InsertParams.values` is an empty array (see above).
 
 ## 0.2.9 (Common, Node.js, Web)
 
