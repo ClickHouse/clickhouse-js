@@ -79,7 +79,7 @@ export abstract class NodeBaseConnection
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent
   ) {
-    this.logger = params.logWriter
+    this.logger = params.log_writer
     this.retry_expired_sockets =
       params.keep_alive.enabled && params.keep_alive.retry_on_expired_socket
     this.headers = this.buildDefaultHeaders(
@@ -415,7 +415,7 @@ export abstract class NodeBaseConnection
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { authorization, host, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
-    this.params.logWriter.debug({
+    this.params.log_writer.debug({
       module: 'HTTP Adapter',
       message: 'Got a response from ClickHouse',
       args: {

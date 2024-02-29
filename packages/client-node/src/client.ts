@@ -4,7 +4,11 @@ import type {
   ConnectionParams,
   DataFormat,
 } from '@clickhouse/client-common'
-import { ClickHouseClient } from '@clickhouse/client-common'
+import {
+  booleanConfigURLValue,
+  ClickHouseClient,
+  numberConfigURLValue,
+} from '@clickhouse/client-common'
 import type Stream from 'stream'
 import type { NodeConnectionParams, TLSParams } from './connection'
 import { NodeHttpConnection, NodeHttpsConnection } from './connection'
@@ -12,7 +16,7 @@ import { ResultSet } from './result_set'
 import { NodeValuesEncoder } from './utils'
 
 export type NodeClickHouseClientConfigOptions =
-  BaseClickHouseClientConfigOptions<Stream.Readable> & {
+  BaseClickHouseClientConfigOptions & {
     tls?: BasicTLSOptions | MutualTLSOptions
     /** HTTP Keep-Alive related settings */
     keep_alive?: {
@@ -87,6 +91,41 @@ export function createClient(
       values_encoder: new NodeValuesEncoder(),
       close_stream: async (stream) => {
         stream.destroy()
+      },
+      handle_extra_url_params: (config, url) => {
+        const nodeConfig: NodeClickHouseClientConfigOptions = { ...config }
+        const unknownParams = new Set<string>()
+        const handledParams = new Set<string>()
+        if (url.searchParams.size > 0) {
+          url.searchParams.forEach((value, key) => {
+            switch (key) {
+              case 'keep_alive_retry_on_expired_socket':
+                if (nodeConfig.keep_alive === undefined) {
+                  nodeConfig.keep_alive = {}
+                }
+                nodeConfig.keep_alive.retry_on_expired_socket =
+                  booleanConfigURLValue({ key, value })
+                handledParams.add(key)
+                break
+              case 'keep_alive_socket_ttl':
+                if (nodeConfig.keep_alive === undefined) {
+                  nodeConfig.keep_alive = {}
+                }
+                nodeConfig.keep_alive.socket_ttl = numberConfigURLValue({
+                  min: 0,
+                })({ key, value })
+                handledParams.add(key)
+                break
+              default:
+                unknownParams.add(key)
+            }
+          })
+        }
+        return {
+          config: nodeConfig,
+          unknown_params: unknownParams,
+          handled_params: handledParams,
+        }
       },
     },
     ...(config || {}),

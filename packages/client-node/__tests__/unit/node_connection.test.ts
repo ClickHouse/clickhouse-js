@@ -461,7 +461,9 @@ describe('[Node.js] Connection', () => {
     })
   })
 
-  function buildHttpAdapter(config: Partial<ConnectionParams>) {
+  function buildHttpAdapter(
+    config: Partial<ConnectionParams>
+  ): NodeHttpConnection {
     return new NodeHttpConnection({
       ...{
         url: new URL('http://localhost:8123'),
@@ -479,7 +481,7 @@ describe('[Node.js] Connection', () => {
         database: '',
         clickhouse_settings: {},
 
-        logWriter: new LogWriter(new TestLogger()),
+        log_writer: new LogWriter(new TestLogger()),
         keep_alive: {
           enabled: true,
           socket_ttl: 2500,
@@ -509,7 +511,7 @@ class MyTestHttpAdapter extends NodeBaseConnection {
     super(
       {
         application_id,
-        logWriter: new LogWriter(new TestLogger()),
+        log_writer: new LogWriter(new TestLogger()),
         keep_alive: {
           enabled: true,
           socket_ttl: 2500,

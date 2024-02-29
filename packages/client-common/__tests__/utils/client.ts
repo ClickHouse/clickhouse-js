@@ -24,7 +24,7 @@ beforeAll(async () => {
 })
 
 export function createTestClient<Stream = unknown>(
-  config: BaseClickHouseClientConfigOptions<Stream> = {}
+  config: BaseClickHouseClientConfigOptions = {}
 ): ClickHouseClient<Stream> {
   const env = getClickHouseTestEnvironment()
   console.log(
@@ -48,8 +48,8 @@ export function createTestClient<Stream = unknown>(
     },
   }
   if (env === TestEnv.Cloud) {
-    const cloudConfig: BaseClickHouseClientConfigOptions<Stream> = {
-      host: `https://${getFromEnv('CLICKHOUSE_CLOUD_HOST')}:8443`,
+    const cloudConfig: BaseClickHouseClientConfigOptions = {
+      url: `https://${getFromEnv('CLICKHOUSE_CLOUD_HOST')}:8443`,
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
       database: databaseName,
       ...logging,
@@ -66,7 +66,7 @@ export function createTestClient<Stream = unknown>(
       ) as ClickHouseClient
     }
   } else {
-    const localConfig: BaseClickHouseClientConfigOptions<Stream> = {
+    const localConfig: BaseClickHouseClientConfigOptions = {
       database: databaseName,
       ...logging,
       ...config,

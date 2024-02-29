@@ -1,4 +1,10 @@
-## 0.3.0 (Common, Node.js, Web)
+## 1.0.0 (Common, Node.js, Web)
+
+Formal stable release milestone. The client will follow the [official semantic versioning](https://docs.npmjs.com/about-semantic-versioning) guidelines.
+
+### Deprecated API
+
+- `host` configuration parameter is deprecated; use `url` instead.
 
 ### Breaking changes
 
@@ -8,7 +14,7 @@
 
 - It is now possible to create a client in read-only mode, which will disable default compression and aforementioned ClickHouse HTTP settings. Previously, if you wanted to use the client with a user created with `READONLY = 1` mode, the response compression had to be disabled explicitly.
 
-Pre 0.3.0:
+Pre 1.0.0:
 
 ```ts
 const client = createClient({
@@ -31,6 +37,34 @@ By default, `readonly` is `false`.
 NB: this is not necessary if a user has `READONLY = 2` mode as it allows to modify the settings, so the client can be used without an additional `readonly` setting.
 
 See also: [readonly documentation](https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly).
+
+### New features
+
+- Added `url` configuration parameter. It is intended to replace the deprecated `host`, which was already supposed to be passed a valid URL.
+- It is now possible to configure most of the client instance parameters with a URL. The URL format is `http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]`. The name of a particular parameter is supposed to reflect its path in the config options interface. The following parameters are supported:
+
+  - `readonly` - boolean.
+  - `application_id` - non-empty string.
+  - `session_id` - non-empty string.
+  - `request_timeout` - non-negative number.
+  - `max_open_connections` - non-negative number, greater than zero.
+  - `compression_request` - boolean.
+  - `compression_response` - boolean.
+  - `log_level` - allowed values: `OFF`, `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`.
+  - `keep_alive_enabled` - boolean.
+  - (Node.js only) `keep_alive_socket_ttl` - non-negative number.
+  - (Node.js only) `keep_alive_retry_on_expired_socket` - boolean.
+
+For booleans, valid values will be `true`/`1` and `false`/`0`.
+
+URL will _always_ overwrite the hardcoded values and a warning will be logged in this case.
+
+Currently not supported via URL:
+
+- `log.LoggerClass`
+- (Node.js only) `tls_ca_cert`, `tls_cert`, `tls_key`.
+
+See also: [URL configuration examples](./examples/url_configuration.ts).
 
 ## 0.2.10 (Common, Node.js, Web)
 

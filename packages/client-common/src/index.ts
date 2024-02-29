@@ -1,7 +1,5 @@
 /** Should be re-exported by the implementation */
 export {
-  type BaseClickHouseClientConfigOptions,
-  type ClickHouseClientConfigOptions,
   type BaseQueryParams,
   type QueryParams,
   type ExecParams,
@@ -14,6 +12,10 @@ export {
   type InsertResult,
   type PingResult,
 } from './client'
+export {
+  type BaseClickHouseClientConfigOptions,
+  type ClickHouseClientConfigOptions,
+} from './config'
 export type { Row, BaseResultSet } from './result'
 export { type DataFormat } from './data_formatter'
 export { ClickHouseError } from './error'
@@ -47,7 +49,12 @@ export {
   type ValuesEncoder,
   type MakeResultSet,
   type MakeConnection,
-} from './client'
+  type HandleExtraURLParams,
+  booleanConfigURLValue,
+  enumConfigURLValue,
+  numberConfigURLValue,
+  stringConfigURLValue,
+} from './config'
 export {
   withCompressionHeaders,
   isSuccessfulResponse,

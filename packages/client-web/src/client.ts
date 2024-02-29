@@ -15,13 +15,7 @@ import { WebConnection } from './connection'
 import { ResultSet } from './result_set'
 import { WebValuesEncoder } from './utils'
 
-export type WebClickHouseClientConfigOptions =
-  BaseClickHouseClientConfigOptions<ReadableStream> & {
-    keep_alive?: {
-      /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
-      enabled: boolean
-    }
-  }
+export type WebClickHouseClientConfigOptions = BaseClickHouseClientConfigOptions
 
 export type WebClickHouseClient = Omit<
   ClickHouseClient<ReadableStream>,
