@@ -282,21 +282,23 @@ export function loadConfigOptionsFromURL(
             config.readonly = booleanConfigURLValue({ key, value })
             break
           case 'application':
-            config.application = stringConfigURLValue({ key, value })
+            config.application = value
             break
           case 'session_id':
-            config.session_id = stringConfigURLValue({ key, value })
+            config.session_id = value
             break
           case 'request_timeout':
-            config.request_timeout = numberConfigURLValue({ min: 0 })({
+            config.request_timeout = numberConfigURLValue({
               key,
               value,
+              min: 0,
             })
             break
           case 'max_open_connections':
-            config.max_open_connections = numberConfigURLValue({ min: 1 })({
+            config.max_open_connections = numberConfigURLValue({
               key,
               value,
+              min: 1,
             })
             break
           case 'compression_request':
@@ -318,9 +320,10 @@ export function loadConfigOptionsFromURL(
             if (config.log === undefined) {
               config.log = {}
             }
-            config.log.level = enumConfigURLValue(ClickHouseLogLevel)({
+            config.log.level = enumConfigURLValue({
               key,
               value,
+              enumObject: ClickHouseLogLevel,
             })
             break
           case 'keep_alive_enabled':
@@ -350,10 +353,13 @@ export function loadConfigOptionsFromURL(
   return [clickHouseURL, config]
 }
 
-type KV = { key: string; value: string }
-type ConfigURLValue<T = unknown> = (kv: KV) => T
-
-export function booleanConfigURLValue({ key, value }: KV): boolean {
+export function booleanConfigURLValue({
+  key,
+  value,
+}: {
+  key: string
+  value: string
+}): boolean {
   const trimmed = value.trim()
   if (trimmed === 'true' || trimmed === '1') return true
   if (trimmed === 'false' || trimmed === '0') return false
@@ -361,44 +367,44 @@ export function booleanConfigURLValue({ key, value }: KV): boolean {
 }
 
 export function numberConfigURLValue({
+  key,
+  value,
   min,
   max,
 }: {
+  key: string
+  value: string
   min?: number
   max?: number
-}): ConfigURLValue<number> {
-  return ({ key, value }: KV): number => {
-    const trimmed = value.trim()
-    const number = Number(trimmed)
-    if (isNaN(number))
-      throw new Error(`${key} has invalid number value: ${trimmed}`)
-    if (min !== undefined && number < min) {
-      throw new Error(`${key} value is less than minimum: ${trimmed}`)
-    }
-    if (max !== undefined && number > max) {
-      throw new Error(`${key} value is greater than maximum: ${trimmed}`)
-    }
-    return number
-  }
-}
-
-export function enumConfigURLValue<Enum, Key extends string>(enumObject: {
-  [key in Key]: Enum
-}): ConfigURLValue<Enum> {
-  const values = Object.keys(enumObject).filter((item) => isNaN(Number(item)))
-  return ({ key, value }: KV): Enum => {
-    const trimmed = value.trim()
-    if (!values.includes(trimmed)) {
-      throw new Error(`${key} has invalid value: ${trimmed}`)
-    }
-    return enumObject[trimmed as Key]
-  }
-}
-
-export function stringConfigURLValue({ key, value }: KV): string {
+}): number {
   const trimmed = value.trim()
-  if (trimmed === '') {
-    throw new Error(`${key} has empty value.`)
+  const number = Number(trimmed)
+  if (isNaN(number))
+    throw new Error(`${key} has invalid number value: ${trimmed}`)
+  if (min !== undefined && number < min) {
+    throw new Error(`${key} value is less than minimum: ${trimmed}`)
   }
-  return trimmed
+  if (max !== undefined && number > max) {
+    throw new Error(`${key} value is greater than maximum: ${trimmed}`)
+  }
+  return number
+}
+
+export function enumConfigURLValue<Enum, Key extends string>({
+  key,
+  value,
+  enumObject,
+}: {
+  key: string
+  value: string
+  enumObject: {
+    [key in Key]: Enum
+  }
+}): Enum {
+  const values = Object.keys(enumObject).filter((item) => isNaN(Number(item)))
+  const trimmed = value.trim()
+  if (!values.includes(trimmed)) {
+    throw new Error(`${key} has invalid value: ${trimmed}`)
+  }
+  return enumObject[trimmed as Key]
 }

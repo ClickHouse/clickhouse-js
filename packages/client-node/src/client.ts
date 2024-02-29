@@ -112,8 +112,10 @@ export function createClient(
                   nodeConfig.keep_alive = {}
                 }
                 nodeConfig.keep_alive.socket_ttl = numberConfigURLValue({
+                  key,
+                  value,
                   min: 0,
-                })({ key, value })
+                })
                 handledParams.add(key)
                 break
               default:

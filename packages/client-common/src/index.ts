@@ -53,7 +53,6 @@ export {
   booleanConfigURLValue,
   enumConfigURLValue,
   numberConfigURLValue,
-  stringConfigURLValue,
 } from './config'
 export {
   withCompressionHeaders,

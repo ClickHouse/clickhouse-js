@@ -43,7 +43,7 @@ See also: [readonly documentation](https://clickhouse.com/docs/en/operations/set
 - Added `url` configuration parameter. It is intended to replace the deprecated `host`, which was already supposed to be passed a valid URL.
 - It is now possible to configure most of the client instance parameters with a URL. The URL format is `http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]`. The name of a particular parameter is supposed to reflect its path in the config options interface. The following parameters are supported:
 
-  - `readonly` - boolean.
+  - `readonly` - boolean. See below [1].
   - `application_id` - non-empty string.
   - `session_id` - non-empty string.
   - `request_timeout` - non-negative number.
@@ -52,10 +52,33 @@ See also: [readonly documentation](https://clickhouse.com/docs/en/operations/set
   - `compression_response` - boolean.
   - `log_level` - allowed values: `OFF`, `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`.
   - `keep_alive_enabled` - boolean.
+  - `clickhouse_settings_*` - see below [2].
+  - `additional_headers_*` - see below [3].
   - (Node.js only) `keep_alive_socket_ttl` - non-negative number.
   - (Node.js only) `keep_alive_retry_on_expired_socket` - boolean.
 
-For booleans, valid values will be `true`/`1` and `false`/`0`.
+[1] For booleans, valid values will be `true`/`1` and `false`/`0`.
+
+[2] Any parameter prefixed with `clickhouse_settings_` will have this prefix removed and the rest added to client's `clickhouse_settings`. For example, `?clickhouse_settings_async_insert=1&clickhouse_settings_wait_for_async_insert=1` will be the same as:
+
+```ts
+createClient({
+  clickhouse_settings: {
+    async_insert: 1,
+    wait_for_async_insert: 1,
+  },
+})
+```
+
+[3] Similar to [2], but for `additional_headers` configuration. For example, `?additional_headers_x-clickhouse-auth=foobar` will be an equivalent of:
+
+```ts
+createClient({
+  additional_headers: {
+    'x-clickhouse-auth': 'foobar',
+  },
+})
+```
 
 URL will _always_ overwrite the hardcoded values and a warning will be logged in this case.
 
