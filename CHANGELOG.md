@@ -2,7 +2,7 @@
 
 ### Breaking changes
 
-- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `29000` (29 seconds) by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. Currently, 29s is chosen as a safe value, since most LBs will have at least 30s of idle timeout. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `send_progress_in_http_headers` value.
+- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout, and, for example, AWS LB sends KeepAlive packets every 20s. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `send_progress_in_http_headers` value.
 
   NB: these settings will be enabled only if the client instance was created without setting `readonly` flag (see below).
 

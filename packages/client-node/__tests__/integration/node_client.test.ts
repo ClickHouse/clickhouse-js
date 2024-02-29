@@ -89,7 +89,7 @@ describe('[Node.js] Client', () => {
     const searchParams = new URL(callURL).search.slice(1).split('&')
     expect(searchParams).toContain('enable_http_compression=1')
     expect(searchParams).toContain('send_progress_in_http_headers=1')
-    expect(searchParams).toContain('http_headers_progress_interval_ms=290000')
+    expect(searchParams).toContain('http_headers_progress_interval_ms=20000')
     expect(searchParams).toContain(jasmine.stringContaining('query_id='))
     expect(searchParams.length).toEqual(4)
   }

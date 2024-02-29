@@ -51,16 +51,16 @@ export interface ValuesEncoder<Stream> {
 export type CloseStream<Stream> = (stream: Stream) => Promise<void>
 
 /**
- * By default, {@link send_progress_in_http_headers} is enabled, and {@link http_headers_progress_interval_ms} is set to 290s.
+ * By default, {@link send_progress_in_http_headers} is enabled, and {@link http_headers_progress_interval_ms} is set to 20s.
  * These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out,
  * such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly.
- * 290s is chosen as a safe value, since AWS LB timeout is 350s by default and some other LBs might have 300s.
+ * 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout, and AWS LB sends KeepAlive packets every 20s.
  * It can be overridden when creating a client instance if your LB timeout value is even lower than that.
  * See also: https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout
  */
 const DefaultClickHouseSettings: ClickHouseSettings = {
   send_progress_in_http_headers: 1,
-  http_headers_progress_interval_ms: '290000',
+  http_headers_progress_interval_ms: '20000',
 }
 
 export interface ClickHouseClientConfigOptions<Stream> {
