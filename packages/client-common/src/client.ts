@@ -1,6 +1,7 @@
 import type {
   ClickHouseLogLevel,
   ClickHouseSettings,
+  CompressionSettings,
   Connection,
   ConnectionParams,
   ConnExecResult,
@@ -49,6 +50,19 @@ export interface ValuesEncoder<Stream> {
 
 export type CloseStream<Stream> = (stream: Stream) => Promise<void>
 
+/**
+ * By default, {@link send_progress_in_http_headers} is enabled, and {@link http_headers_progress_interval_ms} is set to 20s.
+ * These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out,
+ * such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly.
+ * 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout, and AWS LB sends KeepAlive packets every 20s.
+ * It can be overridden when creating a client instance if your LB timeout value is even lower than that.
+ * See also: https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout
+ */
+const DefaultClickHouseSettings: ClickHouseSettings = {
+  send_progress_in_http_headers: 1,
+  http_headers_progress_interval_ms: '20000',
+}
+
 export interface ClickHouseClientConfigOptions<Stream> {
   impl: {
     make_connection: MakeConnection<Stream>
@@ -65,7 +79,7 @@ export interface ClickHouseClientConfigOptions<Stream> {
 
   compression?: {
     /** `response: true` instructs ClickHouse server to respond with
-     * compressed response body. Default: true. */
+     * compressed response body. Default: true; if {@link readonly} is enabled, then false. */
     response?: boolean
     /** `request: true` enabled compression on the client request body.
      * Default: false. */
@@ -81,7 +95,9 @@ export interface ClickHouseClientConfigOptions<Stream> {
   application?: string
   /** Database name to use. Default value: `default`. */
   database?: string
-  /** ClickHouse settings to apply to all requests. Default value: {} */
+  /** ClickHouse settings to apply to all requests.
+   * Default value: {@link DefaultClickHouseSettings}
+   */
   clickhouse_settings?: ClickHouseSettings
   log?: {
     /** A class to instantiate a custom logger implementation.
@@ -90,8 +106,20 @@ export interface ClickHouseClientConfigOptions<Stream> {
     /** Default: OFF */
     level?: ClickHouseLogLevel
   }
+  /** ClickHouse Session id to attach to the outgoing requests.
+   * Default: empty. */
   session_id?: string
+  /** Additional HTTP headers to attach to the outgoing requests.
+   * Default: empty. */
   additional_headers?: Record<string, string>
+  /** If the client instance created for a user with `READONLY = 1` mode,
+   * some settings, such as {@link compression}, `send_progress_in_http_headers`,
+   * and `http_headers_progress_interval_ms` can't be modified,
+   * and will be removed from the client configuration.
+   * NB: this is not necessary if a user has `READONLY = 2` mode.
+   * See also: https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly
+   * Default: false */
+  readonly?: boolean
 }
 
 export type BaseClickHouseClientConfigOptions<Stream> = Omit<
@@ -335,19 +363,35 @@ function createUrl(host: string): URL {
 function getConnectionParams<Stream>(
   config: ClickHouseClientConfigOptions<Stream>
 ): ConnectionParams {
+  let clickHouseSettings: ClickHouseSettings
+  let compressionSettings: CompressionSettings
+  // TODO: maybe validate certain settings that cannot be modified with read-only user
+  if (!config.readonly) {
+    clickHouseSettings = {
+      ...DefaultClickHouseSettings,
+      ...config.clickhouse_settings,
+    }
+    compressionSettings = {
+      decompress_response: config.compression?.response ?? true,
+      compress_request: config.compression?.request ?? false,
+    }
+  } else {
+    clickHouseSettings = config.clickhouse_settings ?? {}
+    compressionSettings = {
+      decompress_response: false,
+      compress_request: false,
+    }
+  }
   return {
     application_id: config.application,
     url: createUrl(config.host ?? 'http://localhost:8123'),
     request_timeout: config.request_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? Infinity,
-    compression: {
-      decompress_response: config.compression?.response ?? true,
-      compress_request: config.compression?.request ?? false,
-    },
+    compression: compressionSettings,
     username: config.username ?? 'default',
     password: config.password ?? '',
     database: config.database ?? 'default',
-    clickhouse_settings: config.clickhouse_settings ?? {},
+    clickhouse_settings: clickHouseSettings,
     logWriter: new LogWriter(
       config?.log?.LoggerClass
         ? new config.log.LoggerClass()

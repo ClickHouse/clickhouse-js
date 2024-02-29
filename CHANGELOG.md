@@ -1,3 +1,37 @@
+## 0.3.0 (Common, Node.js, Web)
+
+### Breaking changes
+
+- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout, and, for example, AWS LB sends KeepAlive packets every 20s. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `send_progress_in_http_headers` value.
+
+  NB: these settings will be enabled only if the client instance was created without setting `readonly` flag (see below).
+
+- It is now possible to create a client in read-only mode, which will disable default compression and aforementioned ClickHouse HTTP settings. Previously, if you wanted to use the client with a user created with `READONLY = 1` mode, the response compression had to be disabled explicitly.
+
+Pre 0.3.0:
+
+```ts
+const client = createClient({
+  compression: {
+    response: false,
+  },
+})
+```
+
+With `send_progress_in_http_headers` and `http_headers_progress_interval_ms` settings now enabled by default, this is no longer sufficient. If you need to create a client instance for a read-only user, consider this instead:
+
+```ts
+const client = createClient({
+  readonly: true,
+})
+```
+
+By default, `readonly` is `false`.
+
+NB: this is not necessary if a user has `READONLY = 2` mode as it allows to modify the settings, so the client can be used without an additional `readonly` setting.
+
+See also: [readonly documentation](https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly).
+
 ## 0.2.10 (Common, Node.js, Web)
 
 ### New features
