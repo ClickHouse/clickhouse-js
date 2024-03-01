@@ -331,12 +331,13 @@ export function loadConfigOptionsFromURL(
   if (url.pathname.trim().length > 1) {
     config.database = url.pathname.slice(1)
   }
-  if (url.searchParams.size > 0) {
+  const urlSearchParamsKeys = [...url.searchParams.keys()]
+  if (urlSearchParamsKeys.length > 0) {
     const unknownParams = new Set<string>()
     const settingPrefix = 'clickhouse_setting_'
     const settingShortPrefix = 'ch_'
     const httpHeaderPrefix = 'http_header_'
-    ;[...url.searchParams.keys()].forEach((key) => {
+    urlSearchParamsKeys.forEach((key) => {
       let paramWasProcessed = true
       const value = url.searchParams.get(key) as string
       if (key.startsWith(settingPrefix)) {

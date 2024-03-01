@@ -53,8 +53,10 @@ export const NodeConfigImpl: Required<
     const nodeConfig: NodeClickHouseClientConfigOptions = { ...config }
     const unknownParams = new Set<string>()
     const handledParams = new Set<string>()
-    if (url.searchParams.size > 0) {
-      url.searchParams.forEach((value, key) => {
+    const urlSearchParamsKeys = [...url.searchParams.keys()]
+    if (urlSearchParamsKeys.length > 0) {
+      urlSearchParamsKeys.forEach((key) => {
+        const value = url.searchParams.get(key) as string
         switch (key) {
           case 'keep_alive_retry_on_expired_socket':
             if (nodeConfig.keep_alive === undefined) {
