@@ -11,6 +11,10 @@ The client will log a warning if these deprecated configuration parameters are u
 
 See "New features" section for more details.
 
+### Bug fixes
+
+- `request_timeout` default value was incorrectly set to 300s instead of 30s. It is now correctly set to 30s by default.
+
 ### Breaking changes
 
 - Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout, and, for example, AWS LB sends KeepAlive packets every 20s. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `send_progress_in_http_headers` value.
@@ -47,7 +51,7 @@ See also: [readonly documentation](https://clickhouse.com/docs/en/operations/set
 
 - Added `url` configuration parameter. It is intended to replace the deprecated `host`, which was already supposed to be passed as a valid URL.
 - Added `http_headers` configuration parameter as a direct replacement for `additional_headers`. Functionally, it is the same, and the change is purely cosmetic, as we'd like to leave an option to implement TCP connection in the future open.
-- It is now possible to configure most of the client instance parameters with a URL. The URL format is `http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]`. The name of a particular parameter is supposed to reflect its path in the config options interface. The following parameters are supported:
+- It is now possible to configure most of the client instance parameters with a URL. The URL format is `http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]`. In almost every case, the name of a particular parameter reflects its path in the config options interface, with a few exceptions. The following parameters are supported:
 
 | Parameter                                           | Type                                                              |
 | --------------------------------------------------- | ----------------------------------------------------------------- |

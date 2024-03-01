@@ -1,19 +1,19 @@
 import type {
+  BaseClickHouseClientConfigOptions,
   ClickHouseSettings,
   Connection,
-  ConnectionParams,
   ConnExecResult,
   WithClickHouseSummary,
 } from '@clickhouse/client-common'
-import { type DataFormat } from '@clickhouse/client-common'
+import { type DataFormat, DefaultLogger } from '@clickhouse/client-common'
 import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 import type {
-  ClickHouseClientConfigOptions,
   CloseStream,
+  ImplementationDetails,
   MakeResultSet,
   ValuesEncoder,
 } from './config'
-import { getConnectionParams } from './config'
+import { getConnectionParams, prepareConfigWithURL } from './config'
 import type { ConnPingResult } from './connection'
 import type { BaseResultSet } from './result'
 
@@ -100,36 +100,34 @@ export interface InsertParams<Stream = unknown, T = unknown>
 }
 
 export class ClickHouseClient<Stream = unknown> {
-  private readonly connectionParams: ConnectionParams
+  private readonly clientClickHouseSettings: ClickHouseSettings
   private readonly connection: Connection<Stream>
   private readonly makeResultSet: MakeResultSet<Stream>
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly closeStream: CloseStream<Stream>
   private readonly sessionId?: string
 
-  constructor(config: ClickHouseClientConfigOptions<Stream>) {
-    this.connectionParams = getConnectionParams(
+  constructor(
+    config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>
+  ) {
+    const logger = config?.log?.LoggerClass
+      ? new config.log.LoggerClass()
+      : new DefaultLogger()
+    const configWithURL = prepareConfigWithURL(
       config,
-      config.impl.handle_extra_url_params ?? null
+      logger,
+      config.impl.handle_specific_url_params ?? null
     )
+    const connectionParams = getConnectionParams(configWithURL, logger)
+    this.clientClickHouseSettings = connectionParams.clickhouse_settings
     this.sessionId = config.session_id
-    this.connection = config.impl.make_connection(this.connectionParams)
+    this.connection = config.impl.make_connection(
+      configWithURL,
+      connectionParams
+    )
     this.makeResultSet = config.impl.make_result_set
     this.valuesEncoder = config.impl.values_encoder
     this.closeStream = config.impl.close_stream
-  }
-
-  private getQueryParams(params: BaseQueryParams) {
-    return {
-      clickhouse_settings: {
-        ...this.connectionParams.clickhouse_settings,
-        ...params.clickhouse_settings,
-      },
-      query_params: params.query_params,
-      abort_signal: params.abort_signal,
-      query_id: params.query_id,
-      session_id: this.sessionId,
-    }
   }
 
   /**
@@ -143,7 +141,7 @@ export class ClickHouseClient<Stream = unknown> {
     const query = formatQuery(params.query, format)
     const { stream, query_id } = await this.connection.query({
       query,
-      ...this.getQueryParams(params),
+      ...this.withClientQueryParams(params),
     })
     return this.makeResultSet(stream, format, query_id)
   }
@@ -170,7 +168,7 @@ export class ClickHouseClient<Stream = unknown> {
     const query = removeTrailingSemi(params.query.trim())
     return await this.connection.exec({
       query,
-      ...this.getQueryParams(params),
+      ...this.withClientQueryParams(params),
     })
   }
 
@@ -193,7 +191,7 @@ export class ClickHouseClient<Stream = unknown> {
     const result = await this.connection.insert({
       query,
       values: this.valuesEncoder.encodeValues(params.values, format),
-      ...this.getQueryParams(params),
+      ...this.withClientQueryParams(params),
     })
     return { ...result, executed: true }
   }
@@ -213,6 +211,19 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async close(): Promise<void> {
     return await this.connection.close()
+  }
+
+  private withClientQueryParams(params: BaseQueryParams): BaseQueryParams {
+    return {
+      clickhouse_settings: {
+        ...this.clientClickHouseSettings,
+        ...params.clickhouse_settings,
+      },
+      query_params: params.query_params,
+      abort_signal: params.abort_signal,
+      query_id: params.query_id,
+      session_id: this.sessionId,
+    }
   }
 }
 

@@ -1,12 +1,8 @@
 import type { InsertValues } from './client'
-import type {
-  CompressionSettings,
-  Connection,
-  ConnectionParams,
-} from './connection'
+import type { Connection, ConnectionParams } from './connection'
 import type { DataFormat } from './data_formatter'
 import type { Logger } from './logger'
-import { ClickHouseLogLevel, DefaultLogger, LogWriter } from './logger'
+import { ClickHouseLogLevel, LogWriter } from './logger'
 import type { BaseResultSet } from './result'
 import type { ClickHouseSettings } from './settings'
 
@@ -33,7 +29,7 @@ export interface BaseClickHouseClientConfigOptions {
   request_timeout?: number
   /** Maximum number of sockets to allow per host. Default value: `Infinity`. */
   max_open_connections?: number
-
+  /** Request and response compression settings. Can't be enabled for a user with readonly=1. */
   compression?: {
     /** `response: true` instructs ClickHouse server to respond with
      * compressed response body. Default: true; if {@link readonly} is enabled, then false. */
@@ -53,8 +49,7 @@ export interface BaseClickHouseClientConfigOptions {
   /** Database name to use. Default value: `default`. */
   database?: string
   /** ClickHouse settings to apply to all requests.
-   * Default value: {@link DefaultClickHouseSettings}
-   */
+   * Default value: {@link DefaultClickHouseSettings} */
   clickhouse_settings?: ClickHouseSettings
   log?: {
     /** A class to instantiate a custom logger implementation.
@@ -88,9 +83,10 @@ export interface BaseClickHouseClientConfigOptions {
   }
 }
 
-export type MakeConnection<Stream> = (
-  params: ConnectionParams
-) => Connection<Stream>
+export type MakeConnection<
+  Stream,
+  Config = BaseClickHouseClientConfigOptionsWithURL
+> = (config: Config, params: ConnectionParams) => Connection<Stream>
 
 export type MakeResultSet<Stream> = (
   stream: Stream,
@@ -125,9 +121,10 @@ export type CloseStream<Stream> = (stream: Stream) => Promise<void>
  * An implementation might have extra config parameters that we can parse from the connection URL.
  * These are supposed to be processed after we finish parsing the base configuration.
  * URL params handled in the common package will be deleted from the URL object.
- * This way we ensure that only implementation-specific params are passed there.
+ * This way we ensure that only implementation-specific params are passed there,
+ * so we can indicate which URL parameters are unknown by both common and implementation packages.
  */
-export type HandleExtraURLParams = (
+export type HandleImplSpecificURLParams = (
   config: BaseClickHouseClientConfigOptions,
   url: URL
 ) => {
@@ -141,54 +138,63 @@ export type HandleExtraURLParams = (
 }
 
 /** Things that may vary between Web/Node.js/etc client implementations. */
-interface ImplementationDetails<Stream> {
+export interface ImplementationDetails<Stream> {
   impl: {
     make_connection: MakeConnection<Stream>
     make_result_set: MakeResultSet<Stream>
     values_encoder: ValuesEncoder<Stream>
     close_stream: CloseStream<Stream>
-    handle_extra_url_params?: HandleExtraURLParams
+    handle_specific_url_params?: HandleImplSpecificURLParams
   }
 }
 
-export type ClickHouseClientConfigOptions<Stream> =
-  BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>
+// Configuration with parameters parsed from the URL, and the URL itself normalized for the connection.
+export type BaseClickHouseClientConfigOptionsWithURL = Omit<
+  BaseClickHouseClientConfigOptions,
+  'url'
+> & { url: URL } // not string and not undefined
 
-export function getConnectionParams(
-  baseConfig: BaseClickHouseClientConfigOptions,
-  handleExtraURLParams: HandleExtraURLParams | null
-): ConnectionParams {
-  const logger = baseConfig?.log?.LoggerClass
-    ? new baseConfig.log.LoggerClass()
-    : new DefaultLogger()
-  let httpHeaders = baseConfig.http_headers
+/**
+ * Validates and normalizes the provided "base" config.
+ * Warns about deprecated configuration parameters usage.
+ * Parses the common URL parameters into the configuration parameters (these are the same for all implementations).
+ * Parses implementation-specific URL parameters using the handler provided by that implementation.
+ * Merges these parameters with the base config and implementation-specific defaults.
+ * Enforces certain defaults in case of deprecated keys or readonly mode.
+ */
+export function prepareConfigWithURL(
+  baseConfigOptions: BaseClickHouseClientConfigOptions,
+  logger: Logger,
+  handleImplURLParams: HandleImplSpecificURLParams | null
+): BaseClickHouseClientConfigOptionsWithURL {
+  const baseConfig = { ...baseConfigOptions }
   if (baseConfig.additional_headers !== undefined) {
     logger.warn({
       module: 'Config',
       message:
-        'Configuration parameter "additional_headers" is deprecated. Use "http_headers" instead.',
+        '"additional_headers" is deprecated. Use "http_headers" instead.',
     })
-    httpHeaders = baseConfig.additional_headers
+    baseConfig.http_headers = baseConfig.additional_headers
+    delete baseConfig.additional_headers
   }
   let configURL
   if (baseConfig.host !== undefined) {
     logger.warn({
       module: 'Config',
-      message:
-        'Configuration parameter "host" is deprecated. Use "url" instead.',
+      message: '"host" is deprecated. Use "url" instead.',
     })
     configURL = createUrl(baseConfig.host)
+    delete baseConfig.host
   } else {
     configURL = createUrl(baseConfig.url)
   }
   const [url, configFromURL] = loadConfigOptionsFromURL(
     configURL,
-    handleExtraURLParams
+    handleImplURLParams
   )
   const config = mergeConfigs(baseConfig, configFromURL, logger)
-
   let clickHouseSettings: ClickHouseSettings
-  let compressionSettings: CompressionSettings
+  let compressionSettings: BaseClickHouseClientConfigOptions['compression']
   // TODO: maybe validate certain settings that cannot be modified with read-only user
   if (!config.readonly) {
     clickHouseSettings = {
@@ -196,33 +202,68 @@ export function getConnectionParams(
       ...config.clickhouse_settings,
     }
     compressionSettings = {
-      decompress_response: config.compression?.response ?? true,
-      compress_request: config.compression?.request ?? false,
+      response: config.compression?.response ?? true,
+      request: config.compression?.request ?? false,
     }
   } else {
     clickHouseSettings = config.clickhouse_settings ?? {}
+    for (const key of Object.keys(DefaultClickHouseSettings)) {
+      if (clickHouseSettings[key] !== undefined) {
+        logger.warn({
+          module: 'Config',
+          message: `ClickHouse setting ${key} is ignored when readonly mode is enabled.`,
+        })
+      }
+      delete clickHouseSettings[key]
+    }
+    if (
+      config.compression?.request === true ||
+      config.compression?.response === true
+    ) {
+      logger.warn({
+        module: 'Config',
+        message:
+          'Compression configuration is ignored when readonly mode is enabled.',
+      })
+    }
     compressionSettings = {
-      decompress_response: false,
-      compress_request: false,
+      response: false,
+      request: false,
     }
   }
+  config.url = url
+  config.clickhouse_settings = clickHouseSettings
+  config.compression = compressionSettings
+  return config as BaseClickHouseClientConfigOptionsWithURL
+}
+
+export function getConnectionParams(
+  config: BaseClickHouseClientConfigOptionsWithURL,
+  logger: Logger
+): ConnectionParams {
   return {
-    url,
+    url: config.url,
     application_id: config.application,
-    request_timeout: config.request_timeout ?? 300_000,
+    request_timeout: config.request_timeout ?? 30_000,
     max_open_connections: config.max_open_connections ?? Infinity,
-    compression: compressionSettings,
+    compression: {
+      decompress_response: config.compression?.response ?? true,
+      compress_request: config.compression?.request ?? false,
+    },
     username: config.username ?? 'default',
     password: config.password ?? '',
     database: config.database ?? 'default',
-    clickhouse_settings: clickHouseSettings,
     log_writer: new LogWriter(logger, config.log?.level),
-    http_headers: httpHeaders,
+    keep_alive: { enabled: config.keep_alive?.enabled ?? true },
+    clickhouse_settings: config.clickhouse_settings ?? {},
+    http_headers: config.http_headers ?? {},
   }
 }
 
 /**
  * Merge two versions of the config: base (hardcoded) from the instance creation and the URL parsed one.
+ * URL config takes priority and overrides the base config parameters.
+ * If a value is overridden, then a warning will be logged.
  * NB: currently, merges only the top level keys to simplify the flow.
  */
 export function mergeConfigs(
@@ -238,7 +279,7 @@ export function mergeConfigs(
     if (config[key] !== undefined) {
       logger.warn({
         module: 'Config',
-        message: `Configuration parameter ${key} is overridden by URL parameter.`,
+        message: `"${key}" is overridden by a URL parameter.`,
       })
     }
     config[key] = configFromURL[key] as any
@@ -255,12 +296,17 @@ export function createUrl(configURL: string | URL | undefined): URL {
       return new URL('http://localhost:8123')
     }
   } catch (err) {
-    throw new Error('ClickHouse URL is malformed.')
+    throw new Error(
+      'ClickHouse URL is malformed. Expected format: http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]'
+    )
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(
-      `Only http(s) protocol is supported, but given: [${url.protocol}]`
+      `ClickHouse URL protocol must be either http or https. Got: ${url.protocol}`
     )
+  }
+  if (url.port === '' || isNaN(Number(url.port))) {
+    throw new Error('ClickHouse URL must contain a valid port number.')
   }
   return url
 }
@@ -268,11 +314,11 @@ export function createUrl(configURL: string | URL | undefined): URL {
 /**
  * @param url potentially contains auth, database and URL params to parse the configuration from
  * @param handleExtraURLParams some platform-specific URL params might be unknown by the common package;
- * use this function defined in the implementation to handle them.
+ * use this function defined in the implementation to handle them. Logs warnings in case of hardcode overrides.
  */
 export function loadConfigOptionsFromURL(
   url: URL,
-  handleExtraURLParams: HandleExtraURLParams | null
+  handleExtraURLParams: HandleImplSpecificURLParams | null
 ): [URL, BaseClickHouseClientConfigOptions] {
   let config: BaseClickHouseClientConfigOptions = {}
   if (url.username.trim() !== '') {
@@ -290,29 +336,32 @@ export function loadConfigOptionsFromURL(
     const settingPrefix = 'clickhouse_setting_'
     const settingShortPrefix = 'ch_'
     const httpHeaderPrefix = 'http_header_'
-    for (const key of url.searchParams.keys()) {
+    ;[...url.searchParams.keys()].forEach((key) => {
       let paramWasProcessed = true
       const value = url.searchParams.get(key) as string
-      // clickhouse_settings_*
       if (key.startsWith(settingPrefix)) {
+        // clickhouse_settings_*
         const settingKey = key.slice(settingPrefix.length)
         if (config.clickhouse_settings === undefined) {
           config.clickhouse_settings = {}
         }
         config.clickhouse_settings[settingKey] = value
       } else if (key.startsWith(settingShortPrefix)) {
+        // ch_*
         const settingKey = key.slice(settingShortPrefix.length)
         if (config.clickhouse_settings === undefined) {
           config.clickhouse_settings = {}
         }
         config.clickhouse_settings[settingKey] = value
       } else if (key.startsWith(httpHeaderPrefix)) {
+        // http_headers_*
         const headerKey = key.slice(httpHeaderPrefix.length)
         if (config.http_headers === undefined) {
           config.http_headers = {}
         }
         config.http_headers[headerKey] = value
       } else {
+        // static known parameters
         switch (key) {
           case 'readonly':
             config.readonly = booleanConfigURLValue({ key, value })
@@ -371,13 +420,14 @@ export function loadConfigOptionsFromURL(
           default:
             paramWasProcessed = false
             unknownParams.add(key)
+            break
         }
       }
       if (paramWasProcessed) {
         // so it won't be passed to the impl URL params handler
         url.searchParams.delete(key)
       }
-    }
+    })
     if (handleExtraURLParams !== null) {
       const res = handleExtraURLParams(config, url)
       config = res.config
@@ -409,7 +459,9 @@ export function booleanConfigURLValue({
   const trimmed = value.trim()
   if (trimmed === 'true' || trimmed === '1') return true
   if (trimmed === 'false' || trimmed === '0') return false
-  throw new Error(`${key} has invalid boolean value: ${trimmed}`)
+  throw new Error(
+    `"${key}" has invalid boolean value: ${trimmed}. Expected one of: 0, 1, true, false.`
+  )
 }
 
 export function numberConfigURLValue({
@@ -426,12 +478,14 @@ export function numberConfigURLValue({
   const trimmed = value.trim()
   const number = Number(trimmed)
   if (isNaN(number))
-    throw new Error(`${key} has invalid number value: ${trimmed}`)
+    throw new Error(`"${key}" has invalid numeric value: ${trimmed}`)
   if (min !== undefined && number < min) {
-    throw new Error(`${key} value is less than minimum: ${trimmed}`)
+    throw new Error(`"${key}" value ${trimmed} is less than min allowed ${min}`)
   }
   if (max !== undefined && number > max) {
-    throw new Error(`${key} value is greater than maximum: ${trimmed}`)
+    throw new Error(
+      `"${key}" value ${trimmed} is greater than max allowed ${max}`
+    )
   }
   return number
 }
@@ -444,13 +498,16 @@ export function enumConfigURLValue<Enum, Key extends string>({
   key: string
   value: string
   enumObject: {
-    [key in Key]: Enum
+    [k in Key]: Enum
   }
 }): Enum {
   const values = Object.keys(enumObject).filter((item) => isNaN(Number(item)))
   const trimmed = value.trim()
   if (!values.includes(trimmed)) {
-    throw new Error(`${key} has invalid value: ${trimmed}`)
+    const expected = values.join(', ')
+    throw new Error(
+      `"${key}" has invalid value: ${trimmed}. Expected one of: ${expected}.`
+    )
   }
   return enumObject[trimmed as Key]
 }

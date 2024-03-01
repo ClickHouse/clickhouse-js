@@ -12,10 +12,7 @@ export {
   type InsertResult,
   type PingResult,
 } from './client'
-export {
-  type BaseClickHouseClientConfigOptions,
-  type ClickHouseClientConfigOptions,
-} from './config'
+export { type BaseClickHouseClientConfigOptions } from './config'
 export type { Row, BaseResultSet } from './result'
 export { type DataFormat } from './data_formatter'
 export { ClickHouseError } from './error'
@@ -38,7 +35,7 @@ export {
   SettingsMap,
 } from './settings'
 
-/** For implementations usage only */
+/** For implementations usage only - should not be re-exported */
 export {
   encodeJSON,
   isSupportedRawFormat,
@@ -49,9 +46,11 @@ export {
   type ValuesEncoder,
   type MakeResultSet,
   type MakeConnection,
-  type HandleExtraURLParams,
+  type HandleImplSpecificURLParams,
+  type ImplementationDetails,
   booleanConfigURLValue,
   enumConfigURLValue,
+  getConnectionParams,
   numberConfigURLValue,
 } from './config'
 export {

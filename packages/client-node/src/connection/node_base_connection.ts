@@ -24,7 +24,7 @@ import Stream from 'stream'
 import Zlib from 'zlib'
 import { getAsText, getUserAgent, isStream } from '../utils'
 
-export type NodeConnectionParams = ConnectionParams & {
+export type NodeConnectionParams = Omit<ConnectionParams, 'keep_alive'> & {
   tls?: TLSParams
   keep_alive: {
     enabled: boolean
@@ -496,6 +496,8 @@ function decompressResponse(response: Http.IncomingMessage):
         Zlib.createGunzip(),
         function pipelineCb(err) {
           if (err) {
+            // FIXME: use logger instead
+            // eslint-disable-next-line no-console
             console.error(err)
           }
         }

@@ -1,8 +1,5 @@
 import type {
-  BaseClickHouseClientConfigOptions,
   BaseResultSet,
-  ConnectionParams,
-  DataFormat,
   InputJSON,
   InputJSONObjectEachRow,
   InsertParams,
@@ -11,11 +8,8 @@ import type {
   Row,
 } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
-import { WebConnection } from './connection'
-import { ResultSet } from './result_set'
-import { WebValuesEncoder } from './utils'
-
-export type WebClickHouseClientConfigOptions = BaseClickHouseClientConfigOptions
+import type { WebClickHouseClientConfigOptions } from './config'
+import { WebImpl } from './config'
 
 export type WebClickHouseClient = Omit<
   ClickHouseClient<ReadableStream>,
@@ -34,21 +28,8 @@ export type WebClickHouseClient = Omit<
 export function createClient(
   config?: WebClickHouseClientConfigOptions
 ): WebClickHouseClient {
-  const keep_alive = {
-    enabled: config?.keep_alive?.enabled ?? true,
-  }
   return new ClickHouseClient<ReadableStream>({
-    impl: {
-      make_connection: (params: ConnectionParams) =>
-        new WebConnection({ ...params, keep_alive }),
-      make_result_set: (
-        stream: ReadableStream,
-        format: DataFormat,
-        query_id: string
-      ) => new ResultSet(stream, format, query_id),
-      values_encoder: new WebValuesEncoder(),
-      close_stream: (stream) => stream.cancel(),
-    },
+    impl: WebImpl,
     ...(config || {}),
   })
 }

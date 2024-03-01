@@ -1,7 +1,4 @@
-import type {
-  ConnectionParams,
-  ConnQueryResult,
-} from '@clickhouse/client-common'
+import type { ConnQueryResult } from '@clickhouse/client-common'
 import { LogWriter } from '@clickhouse/client-common'
 import { guid, sleep, TestLogger, validateUUID } from '@test/utils'
 import type { ClientRequest } from 'http'
@@ -462,7 +459,7 @@ describe('[Node.js] Connection', () => {
   })
 
   function buildHttpAdapter(
-    config: Partial<ConnectionParams>
+    config: Partial<NodeConnectionParams>
   ): NodeHttpConnection {
     return new NodeHttpConnection({
       ...{

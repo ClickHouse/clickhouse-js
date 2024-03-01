@@ -24,11 +24,7 @@ type WebInsertParams<T> = Omit<
   values: string
 }
 
-export type WebConnectionParams = ConnectionParams & {
-  keep_alive: {
-    enabled: boolean
-  }
-}
+export type WebConnectionParams = ConnectionParams
 
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
