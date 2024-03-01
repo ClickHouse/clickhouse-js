@@ -24,7 +24,7 @@ const DefaultClickHouseSettings: ClickHouseSettings = {
 }
 
 export interface BaseClickHouseClientConfigOptions {
-  /** @deprecated since version 0.3.0. Use {@link url} instead. <br/>
+  /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
    * A ClickHouse instance URL. Default value: `http://localhost:8123`. */
   host?: string
   /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
@@ -66,9 +66,13 @@ export interface BaseClickHouseClientConfigOptions {
   /** ClickHouse Session id to attach to the outgoing requests.
    * Default: empty. */
   session_id?: string
-  /** Additional HTTP headers to attach to the outgoing requests.
+  /** @deprecated since version 1.0.0. Use {@link http_headers} instead. <br/>
+   * Additional HTTP headers to attach to the outgoing requests.
    * Default: empty. */
   additional_headers?: Record<string, string>
+  /** Additional HTTP headers to attach to the outgoing requests.
+   * Default: empty. */
+  http_headers?: Record<string, string>
   /** If the client instance created for a user with `READONLY = 1` mode,
    * some settings, such as {@link compression}, `send_progress_in_http_headers`,
    * and `http_headers_progress_interval_ms` can't be modified,
@@ -120,13 +124,19 @@ export type CloseStream<Stream> = (stream: Stream) => Promise<void>
 /**
  * An implementation might have extra config parameters that we can parse from the connection URL.
  * These are supposed to be processed after we finish parsing the base configuration.
+ * URL params handled in the common package will be deleted from the URL object.
+ * This way we ensure that only implementation-specific params are passed there.
  */
 export type HandleExtraURLParams = (
   config: BaseClickHouseClientConfigOptions,
   url: URL
 ) => {
   config: BaseClickHouseClientConfigOptions
+  // params that were handled in the implementation; used to calculate final "unknown" URL params
+  // i.e. common package does not know about Node.js-specific ones,
+  // but after handling we will be able to remove them from the final unknown set (and not throw).
   handled_params: Set<string>
+  // params that are still unknown even in the implementation
   unknown_params: Set<string>
 }
 
@@ -151,6 +161,15 @@ export function getConnectionParams(
   const logger = baseConfig?.log?.LoggerClass
     ? new baseConfig.log.LoggerClass()
     : new DefaultLogger()
+  let httpHeaders = baseConfig.http_headers
+  if (baseConfig.additional_headers !== undefined) {
+    logger.warn({
+      module: 'Config',
+      message:
+        'Configuration parameter "additional_headers" is deprecated. Use "http_headers" instead.',
+    })
+    httpHeaders = baseConfig.additional_headers
+  }
   let configURL
   if (baseConfig.host !== undefined) {
     logger.warn({
@@ -198,10 +217,14 @@ export function getConnectionParams(
     database: config.database ?? 'default',
     clickhouse_settings: clickHouseSettings,
     log_writer: new LogWriter(logger, config.log?.level),
-    additional_headers: config.additional_headers,
+    http_headers: httpHeaders,
   }
 }
 
+/**
+ * Merge two versions of the config: base (hardcoded) from the instance creation and the URL parsed one.
+ * NB: currently, merges only the top level keys to simplify the flow.
+ */
 export function mergeConfigs(
   baseConfig: BaseClickHouseClientConfigOptions,
   configFromURL: BaseClickHouseClientConfigOptions,
@@ -232,7 +255,7 @@ export function createUrl(configURL: string | URL | undefined): URL {
       return new URL('http://localhost:8123')
     }
   } catch (err) {
-    throw new Error('Client URL is malformed.')
+    throw new Error('ClickHouse URL is malformed.')
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(
@@ -242,6 +265,11 @@ export function createUrl(configURL: string | URL | undefined): URL {
   return url
 }
 
+/**
+ * @param url potentially contains auth, database and URL params to parse the configuration from
+ * @param handleExtraURLParams some platform-specific URL params might be unknown by the common package;
+ * use this function defined in the implementation to handle them.
+ */
 export function loadConfigOptionsFromURL(
   url: URL,
   handleExtraURLParams: HandleExtraURLParams | null
@@ -259,23 +287,31 @@ export function loadConfigOptionsFromURL(
   }
   if (url.searchParams.size > 0) {
     const unknownParams = new Set<string>()
-    const settingsPrefix = 'clickhouse_settings_'
-    const additionalHeadersPrefix = 'additional_headers_'
+    const settingPrefix = 'clickhouse_setting_'
+    const settingShortPrefix = 'ch_'
+    const httpHeaderPrefix = 'http_header_'
     for (const key of url.searchParams.keys()) {
+      let paramWasProcessed = true
       const value = url.searchParams.get(key) as string
       // clickhouse_settings_*
-      if (key.startsWith(settingsPrefix)) {
-        const settingKey = key.slice(settingsPrefix.length)
+      if (key.startsWith(settingPrefix)) {
+        const settingKey = key.slice(settingPrefix.length)
         if (config.clickhouse_settings === undefined) {
           config.clickhouse_settings = {}
         }
         config.clickhouse_settings[settingKey] = value
-      } else if (key.startsWith(additionalHeadersPrefix)) {
-        const headerKey = key.slice(additionalHeadersPrefix.length)
-        if (config.additional_headers === undefined) {
-          config.additional_headers = {}
+      } else if (key.startsWith(settingShortPrefix)) {
+        const settingKey = key.slice(settingShortPrefix.length)
+        if (config.clickhouse_settings === undefined) {
+          config.clickhouse_settings = {}
         }
-        config.additional_headers[headerKey] = value
+        config.clickhouse_settings[settingKey] = value
+      } else if (key.startsWith(httpHeaderPrefix)) {
+        const headerKey = key.slice(httpHeaderPrefix.length)
+        if (config.http_headers === undefined) {
+          config.http_headers = {}
+        }
+        config.http_headers[headerKey] = value
       } else {
         switch (key) {
           case 'readonly':
@@ -333,15 +369,24 @@ export function loadConfigOptionsFromURL(
             config.keep_alive.enabled = booleanConfigURLValue({ key, value })
             break
           default:
+            paramWasProcessed = false
             unknownParams.add(key)
         }
       }
-      url.searchParams.delete(key)
+      if (paramWasProcessed) {
+        // so it won't be passed to the impl URL params handler
+        url.searchParams.delete(key)
+      }
     }
     if (handleExtraURLParams !== null) {
       const res = handleExtraURLParams(config, url)
       config = res.config
-      res.handled_params.forEach((k) => unknownParams.delete(k))
+      if (unknownParams.size > 0) {
+        res.handled_params.forEach((k) => unknownParams.delete(k))
+      }
+      if (res.unknown_params.size > 0) {
+        res.unknown_params.forEach((k) => unknownParams.add(k))
+      }
     }
     if (unknownParams.size > 0) {
       throw new Error(
@@ -349,6 +394,7 @@ export function loadConfigOptionsFromURL(
       )
     }
   }
+  // clean up the final ClickHouse URL to be used in the connection
   const clickHouseURL = new URL(`${url.protocol}//${url.host}`)
   return [clickHouseURL, config]
 }

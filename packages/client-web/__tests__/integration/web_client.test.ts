@@ -9,10 +9,10 @@ describe('[Web] Client', () => {
     )
   })
 
-  describe('Additional headers', () => {
+  describe('HTTP headers', () => {
     it('should be possible to set', async () => {
       const client = createClient({
-        additional_headers: {
+        http_headers: {
           'Test-Header': 'foobar',
         },
       })
@@ -24,7 +24,7 @@ describe('[Web] Client', () => {
       })
     })
 
-    it('should work with no additional headers provided', async () => {
+    it('should work with no additional HTTP headers provided', async () => {
       const client = createClient({})
       const fetchParams = await pingAndGetRequestInit(client)
       expect(fetchParams!.headers).toEqual({

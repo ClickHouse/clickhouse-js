@@ -62,7 +62,7 @@ ts-node --transpile-only create_table_local_cluster.ts
 - for `create_table_cloud.ts`, Docker containers are not required, but you need to set some environment variables first:
 
 ```sh
-export CLICKHOUSE_HOST=https://<your-clickhouse-cloud-hostname>:8443
+export CLICKHOUSE_URL=https://<your-clickhouse-cloud-hostname>:8443
 export CLICKHOUSE_PASSWORD=<your-clickhouse-cloud-password>
 ```
 

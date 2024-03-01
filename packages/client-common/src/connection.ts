@@ -13,7 +13,7 @@ export interface ConnectionParams {
   clickhouse_settings: ClickHouseSettings
   log_writer: LogWriter
   application_id?: string
-  additional_headers?: Record<string, string>
+  http_headers?: Record<string, string>
 }
 
 export interface CompressionSettings {

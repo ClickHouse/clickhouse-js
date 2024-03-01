@@ -85,21 +85,21 @@ export abstract class NodeBaseConnection
     this.headers = this.buildDefaultHeaders(
       params.username,
       params.password,
-      params.additional_headers
+      params.http_headers
     )
   }
 
   protected buildDefaultHeaders(
     username: string,
     password: string,
-    additional_headers?: Record<string, string>
+    http_headers?: Record<string, string>
   ): Http.OutgoingHttpHeaders {
     return {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
         'base64'
       )}`,
       'User-Agent': getUserAgent(this.params.application_id),
-      ...additional_headers,
+      ...http_headers,
     }
   }
 

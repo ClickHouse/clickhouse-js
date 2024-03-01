@@ -2,9 +2,9 @@ import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-commo
 import { createClient } from '../../src'
 
 describe('[Node.js] createClient', () => {
-  it('throws on incorrect "host" config value', () => {
+  it('throws on incorrect "url" config value', () => {
     expect(() => createClient({ url: 'foo' })).toThrowError(
-      'Client URL is malformed.'
+      'ClickHouse URL is malformed.'
     )
   })
 
