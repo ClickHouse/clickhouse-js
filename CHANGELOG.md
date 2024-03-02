@@ -4,20 +4,21 @@ Formal stable release milestone. The client will follow the [official semantic v
 
 ### Deprecated API
 
+The following configuration parameters are marked as deprecated:
+
 - `host` configuration parameter is deprecated; use `url` instead.
 - `additional_headers` configuration parameter is deprecated; use `http_headers` instead.
 
-The client will log a warning if these deprecated configuration parameters are used.
+The client will log a warning if any of these parameters are used. However, it is still allowed to use `host` instead of `url` and `additional_headers` instead of `http_headers` for now; this deprecation is not supposed to break the existing code.
+
+These parameters will be removed in the next major release (2.0.0).
 
 See "New features" section for more details.
 
-### Bug fixes
-
-- `request_timeout` default value was incorrectly set to 300s instead of 30s. It is now correctly set to 30s by default.
-
 ### Breaking changes
 
-- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout, and, for example, AWS LB sends KeepAlive packets every 20s. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `send_progress_in_http_headers` value.
+- `request_timeout` default value was incorrectly set to 300s instead of 30s. It is now correctly set to 30s by default. If your code relies on the previous incorrect default value, consider setting it explicitly.
+- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid potential load balancer timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. In that case, a `socket hang up` error could be thrown on the client side. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout; this is also in line with the default [AWS LB KeepAlive interval](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout), which is 20s by default. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `clickhouse_settings.http_headers_progress_interval_ms` value.
 
   NB: these settings will be enabled only if the client instance was created without setting `readonly` flag (see below).
 
@@ -99,7 +100,7 @@ Currently not supported via URL:
 - `log.LoggerClass`
 - (Node.js only) `tls_ca_cert`, `tls_cert`, `tls_key`.
 
-See also: [URL configuration examples](./examples/url_configuration.ts).
+See also: [URL configuration example](./examples/url_configuration.ts).
 
 ## 0.2.10 (Common, Node.js, Web)
 
