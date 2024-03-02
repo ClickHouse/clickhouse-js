@@ -1,22 +1,85 @@
-import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common'
+import type {
+  BaseClickHouseClientConfigOptions,
+  ConnectionParams,
+} from '@clickhouse/client-common'
+import { DefaultLogger, LogWriter } from '@clickhouse/client-common'
 import { createClient } from '../../src'
+import * as c from '../../src/connection/create_connection'
 
 describe('[Node.js] createClient', () => {
-  it('throws on incorrect "host" config value', () => {
-    expect(() => createClient({ host: 'foo' })).toThrowError(
-      'Configuration parameter "host" contains malformed url.'
+  it('throws on incorrect "url" config value', () => {
+    expect(() => createClient({ url: 'foo' })).toThrow(
+      jasmine.objectContaining({
+        message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+      })
     )
   })
 
   it('should not mutate provided configuration', async () => {
-    const config: BaseClickHouseClientConfigOptions<unknown> = {
-      host: 'http://localhost',
+    const config: BaseClickHouseClientConfigOptions = {
+      url: 'https://localhost:8443',
     }
     createClient(config)
     // initial configuration is not overridden by the defaults we assign
     // when we transform the specified config object to the connection params
     expect(config).toEqual({
-      host: 'http://localhost',
+      url: 'https://localhost:8443',
+    })
+  })
+
+  describe('URL parameters parsing', () => {
+    const params: ConnectionParams = {
+      url: new URL('https://my.host:8443'),
+      request_timeout: 42_000,
+      max_open_connections: Infinity,
+      compression: {
+        compress_request: false,
+        decompress_response: true,
+      },
+      username: 'bob',
+      password: 'secret',
+      database: 'analytics',
+      clickhouse_settings: {
+        send_progress_in_http_headers: 1,
+        http_headers_progress_interval_ms: '20000',
+      },
+      log_writer: new LogWriter(new DefaultLogger()),
+      keep_alive: { enabled: true },
+      http_headers: {
+        'X-ClickHouse-Auth': 'secret_token',
+      },
+      application_id: 'my_app',
+    }
+
+    let createConnectionStub: jasmine.Spy
+    beforeEach(() => {
+      createConnectionStub = spyOn(c, 'createConnection').and.callThrough()
+    })
+
+    it('should parse URL parameters and create a valid connection', async () => {
+      createClient({
+        url:
+          'https://bob:secret@my.host:8443/analytics?' +
+          [
+            // base config parameters
+            'application=my_app',
+            'request_timeout=42000',
+            'http_header_X-ClickHouse-Auth=secret_token',
+            // Node.js specific
+            'keep_alive_retry_on_expired_socket=true',
+            'keep_alive_socket_ttl=1000',
+          ].join('&'),
+      })
+      expect(createConnectionStub).toHaveBeenCalledWith(
+        params,
+        undefined, // TLS
+        {
+          enabled: true,
+          socket_ttl: 1000,
+          retry_on_expired_socket: true,
+        }
+      )
+      expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
   })
 })

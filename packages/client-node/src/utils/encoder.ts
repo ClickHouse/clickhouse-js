@@ -70,6 +70,8 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
 
 function pipelineCb(err: NodeJS.ErrnoException | null) {
   if (err) {
+    // FIXME: use logger instead
+    // eslint-disable-next-line no-console
     console.error(err)
   }
 }

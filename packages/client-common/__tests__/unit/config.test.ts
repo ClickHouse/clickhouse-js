@@ -1,0 +1,784 @@
+import type {
+  BaseClickHouseClientConfigOptions,
+  HandleImplSpecificURLParams,
+} from '@clickhouse/client-common'
+import {
+  ClickHouseLogLevel,
+  getConnectionParams,
+  LogWriter,
+  numberConfigURLValue,
+} from '@clickhouse/client-common'
+import { TestLogger } from '@test/utils'
+import type { BaseClickHouseClientConfigOptionsWithURL } from '../../src/config'
+import {
+  booleanConfigURLValue,
+  createUrl,
+  enumConfigURLValue,
+  loadConfigOptionsFromURL,
+  mergeConfigs,
+  prepareConfigWithURL,
+} from '../../src/config'
+
+describe('config', () => {
+  const logger = new TestLogger()
+
+  describe('prepareConfigWithURL', () => {
+    const defaultConfig: BaseClickHouseClientConfigOptionsWithURL = {
+      url: new URL('http://localhost:8123/'),
+      compression: {
+        request: false,
+        response: true,
+      },
+      clickhouse_settings: {
+        send_progress_in_http_headers: 1,
+        http_headers_progress_interval_ms: '20000',
+      },
+    }
+
+    it('should get all defaults with no extra configuration', async () => {
+      const res = prepareConfigWithURL({}, logger, null)
+      expect(res).toEqual(defaultConfig)
+    })
+
+    it('should set everything, overriding the defaults', async () => {
+      const res = prepareConfigWithURL(
+        {
+          url: 'https://my.host:8443',
+          request_timeout: 42_000,
+          max_open_connections: 144,
+          username: 'bob',
+          password: 'secret',
+          database: 'analytics',
+          http_headers: {
+            'X-CLICKHOUSE-AUTH': 'secret_header',
+          },
+          keep_alive: { enabled: false },
+          application: 'my_app',
+          // override the default HTTP settings + extra CH settings
+          clickhouse_settings: {
+            http_headers_progress_interval_ms: '55000',
+            send_progress_in_http_headers: 0,
+            async_insert: 1,
+          },
+          // by default, it is vice versa - response is compressed, request is not
+          compression: {
+            request: true,
+            response: false,
+          },
+        },
+        logger,
+        null
+      )
+      expect(res).toEqual({
+        url: new URL('https://my.host:8443/'),
+        request_timeout: 42_000,
+        max_open_connections: 144,
+        username: 'bob',
+        password: 'secret',
+        database: 'analytics',
+        http_headers: {
+          'X-CLICKHOUSE-AUTH': 'secret_header',
+        },
+        keep_alive: { enabled: false },
+        application: 'my_app',
+        clickhouse_settings: {
+          http_headers_progress_interval_ms: '55000',
+          send_progress_in_http_headers: 0,
+          async_insert: 1,
+        },
+        compression: {
+          request: true,
+          response: false,
+        },
+      })
+    })
+
+    it('should be able to use the deprecated host parameter', async () => {
+      const deprecated: BaseClickHouseClientConfigOptions = {
+        host: 'https://my.host:8443',
+      }
+      const res = prepareConfigWithURL(deprecated, logger, null)
+      expect(res).toEqual({
+        ...defaultConfig,
+        url: new URL('https://my.host:8443/'),
+      })
+      expect(deprecated).toEqual({
+        host: 'https://my.host:8443',
+      }) // should not be modified
+    })
+
+    it('should be able to use the deprecated additional_headers parameter', async () => {
+      const deprecated: BaseClickHouseClientConfigOptions = {
+        additional_headers: {
+          'X-CLICKHOUSE-AUTH': 'secret_header',
+        },
+      }
+      const res = prepareConfigWithURL(deprecated, logger, null)
+      expect(res).toEqual({
+        ...defaultConfig,
+        http_headers: {
+          'X-CLICKHOUSE-AUTH': 'secret_header',
+        },
+      })
+      expect(deprecated).toEqual({
+        additional_headers: {
+          'X-CLICKHOUSE-AUTH': 'secret_header',
+        },
+      }) // should not be modified
+    })
+
+    it('should enforce certain defaults for a readonly user', async () => {
+      const res = prepareConfigWithURL(
+        {
+          url: 'https://my.host:8443',
+          readonly: true,
+          http_headers: {
+            'X-ClickHouse-Auth': 'secret_header',
+          },
+        },
+        logger,
+        null
+      )
+      expect(res).toEqual({
+        url: new URL('https://my.host:8443/'),
+        compression: {
+          request: false,
+          response: false, // disabled for a readonly user
+        },
+        clickhouse_settings: {}, // no additional HTTP settings for a readonly user
+        http_headers: {
+          'X-ClickHouse-Auth': 'secret_header',
+        },
+        readonly: true,
+      })
+    })
+
+    it('should ignore compression settings modifications for a readonly user', async () => {
+      const res = prepareConfigWithURL(
+        {
+          url: 'https://my.host:8443',
+          readonly: true,
+          compression: {
+            request: true,
+            response: true,
+          },
+        },
+        logger,
+        null
+      )
+      expect(res).toEqual({
+        url: new URL('https://my.host:8443/'),
+        compression: {
+          request: false,
+          response: false, // disabled for a readonly user
+        },
+        clickhouse_settings: {}, // no additional HTTP settings for a readonly user
+        readonly: true,
+      })
+    })
+
+    // TODO: check if we need to disable ClickHouse settings modification entirely for a readonly user
+    it('should ignore certain ClickHouse settings for a readonly user', async () => {
+      const res = prepareConfigWithURL(
+        {
+          url: 'https://my.host:8443',
+          readonly: true,
+          clickhouse_settings: {
+            send_progress_in_http_headers: 1,
+            http_headers_progress_interval_ms: '42',
+            select_sequential_consistency: '1',
+          },
+        },
+        logger,
+        null
+      )
+      expect(res).toEqual({
+        url: new URL('https://my.host:8443/'),
+        compression: {
+          request: false,
+          response: false, // disabled for a readonly user
+        },
+        clickhouse_settings: {
+          select_sequential_consistency: '1',
+        }, // HTTP settings modifications are ignored for a readonly user
+        readonly: true,
+      })
+    })
+
+    // tested more thoroughly in the loadConfigOptionsFromURL section;
+    // this is just a validation that everything works together
+    it('should use settings from the URL', async () => {
+      const res = prepareConfigWithURL(
+        {
+          url:
+            'https://bob:secret@my.host:8443/analytics?' +
+            ['application=my_app', 'impl_specific_setting=42'].join('&'),
+        },
+        logger,
+        (config) => {
+          return {
+            config: {
+              ...config,
+              impl_specific_setting: 42,
+            },
+            handled_params: new Set(['impl_specific_setting']),
+            unknown_params: new Set(),
+          }
+        }
+      )
+      expect(res).toEqual({
+        ...defaultConfig,
+        url: new URL('https://my.host:8443/'),
+        username: 'bob',
+        password: 'secret',
+        database: 'analytics',
+        application: 'my_app',
+        impl_specific_setting: 42,
+      } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+    })
+
+    // more detailed tests are in the createUrl section
+    it('should throw when the URL is not valid', async () => {
+      expect(() => prepareConfigWithURL({ url: 'foo' }, logger, null)).toThrow(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+        })
+      )
+    })
+  })
+
+  describe('getConnectionParams', () => {
+    it('should return the default connection params', async () => {
+      const res = getConnectionParams(
+        {
+          url: new URL('https://my.host:8443/'),
+        },
+        logger
+      )
+      expect(res).toEqual({
+        url: new URL('https://my.host:8443/'),
+        request_timeout: 30_000,
+        max_open_connections: Infinity,
+        compression: {
+          decompress_response: true,
+          compress_request: false,
+        },
+        username: 'default',
+        password: '',
+        database: 'default',
+        clickhouse_settings: {},
+        log_writer: jasmine.any(LogWriter),
+        keep_alive: { enabled: true },
+        application_id: undefined,
+        http_headers: {},
+      })
+    })
+
+    it('should set connection params from the config', async () => {
+      const res = getConnectionParams(
+        {
+          url: new URL('https://my.host:8443/'),
+          request_timeout: 42_000,
+          max_open_connections: 144,
+          compression: {
+            request: true,
+            response: false,
+          },
+          username: 'bob',
+          password: 'secret',
+          database: 'analytics',
+          clickhouse_settings: {
+            async_insert: 1,
+          },
+          http_headers: {
+            'X-CLICKHOUSE-AUTH': 'secret_header',
+          },
+          keep_alive: { enabled: false },
+          application: 'my_app',
+        },
+        logger
+      )
+      expect(res).toEqual({
+        url: new URL('https://my.host:8443/'),
+        request_timeout: 42_000,
+        max_open_connections: 144,
+        compression: {
+          compress_request: true,
+          decompress_response: false,
+        },
+        username: 'bob',
+        password: 'secret',
+        database: 'analytics',
+        clickhouse_settings: {
+          async_insert: 1,
+        },
+        http_headers: {
+          'X-CLICKHOUSE-AUTH': 'secret_header',
+        },
+        log_writer: jasmine.any(LogWriter),
+        keep_alive: { enabled: false },
+        application_id: 'my_app',
+      })
+    })
+  })
+
+  describe('mergeConfigs', () => {
+    it('should merge two empty configs', async () => {
+      expect(mergeConfigs({}, {}, logger)).toEqual({})
+    })
+
+    it('should leave the base config as-is when there is nothing from the URL', async () => {
+      const base: BaseClickHouseClientConfigOptions = {
+        url: 'http://localhost:8123',
+        username: 'bob',
+        password: 'secret',
+      }
+      expect(mergeConfigs(base, {}, logger)).toEqual(base)
+    })
+
+    it('should take URL values first, then base config for the rest', async () => {
+      const base: BaseClickHouseClientConfigOptions = {
+        url: 'https://my.host:8124',
+        username: 'bob',
+        password: 'secret',
+      }
+      const fromURL: BaseClickHouseClientConfigOptions = {
+        password: 'secret_from_url!',
+      }
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res).toEqual({
+        url: 'https://my.host:8124',
+        username: 'bob',
+        password: 'secret_from_url!',
+      })
+    })
+
+    it('should just merge non-conflicting values', async () => {
+      const base: BaseClickHouseClientConfigOptions = {
+        url: 'https://my.host:8124',
+      }
+      const fromURL: BaseClickHouseClientConfigOptions = {
+        username: 'bob',
+        password: 'secret',
+      }
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res).toEqual({
+        url: 'https://my.host:8124',
+        username: 'bob',
+        password: 'secret',
+      })
+    })
+
+    // realistically, we will always have at least URL in the base config
+    it('should only take the URL values when there is nothing in the base config', async () => {
+      const fromURL: BaseClickHouseClientConfigOptions = {
+        url: 'https://my.host:8443',
+        username: 'bob',
+        password: 'secret',
+      }
+      const res = mergeConfigs({}, fromURL, logger)
+      expect(res).toEqual({
+        url: 'https://my.host:8443',
+        username: 'bob',
+        password: 'secret',
+      })
+    })
+  })
+
+  describe('createUrl', () => {
+    it('should create valid URLs', async () => {
+      expect(createUrl(undefined)).toEqual(new URL('http://localhost:8123/'))
+      expect(createUrl('http://localhost:8123')).toEqual(
+        new URL('http://localhost:8123/')
+      )
+      expect(createUrl('https://bob:secret@my.host:8124')).toEqual(
+        new URL('https://bob:secret@my.host:8124/')
+      )
+    })
+
+    it('should fail when the provided URL is not valid', async () => {
+      expect(() => createUrl('foo')).toThrow(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+        })
+      )
+      expect(() => createUrl('http://localhost/foo')).toThrowError(
+        'ClickHouse URL must contain a valid port number.'
+      )
+      expect(() => createUrl('tcp://localhost:8443')).toThrowError(
+        'ClickHouse URL protocol must be either http or https. Got: tcp:'
+      )
+    })
+  })
+
+  describe('loadConfigOptionsFromURL', () => {
+    it('should load all possible config options from the URL params', async () => {
+      const url = new URL(
+        'https://bob:secret@my.host:8124/analytics?' +
+          [
+            'readonly=true',
+            'application=my_app',
+            'session_id=sticky',
+            'request_timeout=42',
+            'max_open_connections=144',
+            'compression_request=1',
+            'compression_response=false',
+            'log_level=TRACE',
+            'keep_alive_enabled=false',
+            'clickhouse_setting_async_insert=1',
+            'ch_wait_for_async_insert=0',
+            'http_header_X-CLICKHOUSE-AUTH=secret_header',
+          ].join('&')
+      )
+      const res = loadConfigOptionsFromURL(url, null)
+      expect(res[0].toString()).toEqual('https://my.host:8124/')
+      expect(res[1]).toEqual({
+        username: 'bob',
+        password: 'secret',
+        database: 'analytics',
+        readonly: true,
+        application: 'my_app',
+        session_id: 'sticky',
+        request_timeout: 42,
+        max_open_connections: 144,
+        compression: {
+          request: true,
+          response: false,
+        },
+        log: { level: ClickHouseLogLevel.TRACE },
+        keep_alive: { enabled: false },
+        clickhouse_settings: {
+          // type (string vs number) does not really matter here, as it will be serialized anyway
+          // it is only important that the value itself is correct.
+          async_insert: '1',
+          wait_for_async_insert: '0',
+        } as Record<string, string>,
+        http_headers: {
+          'X-CLICKHOUSE-AUTH': 'secret_header',
+        },
+      })
+    })
+
+    it('should load only auth from the URL, the rest of the config is unset', async () => {
+      const url = new URL('http://bob:secret@localhost:8124/analytics')
+      const res = loadConfigOptionsFromURL(url, null)
+      expect(res[0].toString()).toEqual('http://localhost:8124/')
+      expect(res[1]).toEqual({
+        username: 'bob',
+        password: 'secret',
+        database: 'analytics',
+      })
+    })
+
+    it('should load only the settings from the URL, without auth', async () => {
+      const url = new URL(
+        'http://localhost:8124/?' +
+          [
+            'application=my_app',
+            'request_timeout=42000',
+            'max_open_connections=2',
+          ].join('&')
+      )
+      const res = loadConfigOptionsFromURL(url, null)
+      expect(res[0].toString()).toEqual('http://localhost:8124/')
+      expect(res[1]).toEqual({
+        application: 'my_app',
+        request_timeout: 42000,
+        max_open_connections: 2,
+      })
+    })
+
+    it('should not parse anything into the config when the URL params are empty', async () => {
+      const url = new URL('http://localhost:8124')
+      const res = loadConfigOptionsFromURL(url, null)
+      expect(res[0].toString()).toEqual('http://localhost:8124/')
+      expect(res[1]).toEqual({})
+    })
+
+    // this lack of validation is a subject to change;
+    // however, it might be not feasible to define and validate every setting defined in the client
+    it('should not fail if there is an arbitrary clickhouse_setting provided (not yet typed in the client)', async () => {
+      const url = new URL('http://localhost:8125/?ch_this_is_a_new_one=1')
+      const res = loadConfigOptionsFromURL(url, null)
+      expect(res[0].toString()).toEqual('http://localhost:8125/')
+      expect(res[1]).toEqual({
+        clickhouse_settings: {
+          this_is_a_new_one: '1',
+        },
+      })
+    })
+
+    it('should fail if there is an unknown setting and the extra URL params handler is not provided', async () => {
+      const url1 = new URL('http://localhost:8124/?this_was_unexpected=1')
+      expect(() => loadConfigOptionsFromURL(url1, null)).toThrowError(
+        'Unknown URL parameters: this_was_unexpected'
+      )
+      const url2 = new URL('http://localhost:8124/?url=this_is_not_allowed')
+      expect(() => loadConfigOptionsFromURL(url2, null)).toThrowError(
+        'Unknown URL parameters: url'
+      )
+    })
+
+    it('should not fail if an unknown default setting is handled by the extra URL params handler', async () => {
+      const url = new URL('http://localhost:8124/?impl_specific_setting=42')
+      const handler: HandleImplSpecificURLParams = (config) => {
+        return {
+          config: {
+            ...config,
+            impl_specific_setting: 42,
+          },
+          handled_params: new Set(['impl_specific_setting']),
+          unknown_params: new Set(),
+        }
+      }
+      const res = loadConfigOptionsFromURL(url, handler)
+      expect(res[0].toString()).toEqual('http://localhost:8124/')
+      expect(res[1]).toEqual({
+        impl_specific_setting: 42,
+      } as unknown as BaseClickHouseClientConfigOptions)
+    })
+
+    it('should fail if the parameter is still unknown after calling the extra URL params handler', async () => {
+      const url = new URL('http://localhost:8124/?impl_specific_setting=42')
+      const handler: HandleImplSpecificURLParams = (config) => {
+        return {
+          config,
+          handled_params: new Set(),
+          unknown_params: new Set(['impl_specific_setting']),
+        }
+      }
+      expect(() => loadConfigOptionsFromURL(url, handler)).toThrowError(
+        'Unknown URL parameters: impl_specific_setting'
+      )
+    })
+
+    it('should fail if only some parameters were handled by the extra URL params handler', async () => {
+      const url = new URL(
+        'http://localhost:8124/?impl_specific_setting=42&whatever=1'
+      )
+      const handler: HandleImplSpecificURLParams = (config) => {
+        return {
+          config: {
+            ...config,
+            impl_specific_setting: 42,
+          },
+          handled_params: new Set(['impl_specific_setting']),
+          unknown_params: new Set(['whatever']),
+        }
+      }
+      expect(() => loadConfigOptionsFromURL(url, handler)).toThrowError(
+        'Unknown URL parameters: whatever'
+      )
+    })
+
+    it('should not fail when some of the settings were parsed in common and some in the extra URL params handler', async () => {
+      const url = new URL(
+        'https://bob:secret@my.host:8124/analytics?' +
+          [
+            'readonly=true',
+            'application=my_app',
+            'session_id=sticky',
+            'request_timeout=42',
+            'max_open_connections=144',
+            'compression_request=1',
+            'compression_response=false',
+            'log_level=TRACE',
+            'keep_alive_enabled=false',
+            'clickhouse_setting_async_insert=1',
+            'ch_wait_for_async_insert=0',
+            'http_header_X-CLICKHOUSE-AUTH=secret_header',
+            'impl_specific_setting=qaz',
+            'another_impl_specific_setting=qux',
+          ].join('&')
+      )
+      const handler: HandleImplSpecificURLParams = (config) => {
+        return {
+          config: {
+            ...config,
+            impl_specific_setting: 'qaz',
+            another_impl_specific_setting: 'qux',
+          },
+          handled_params: new Set([
+            'impl_specific_setting',
+            'another_impl_specific_setting',
+          ]),
+          unknown_params: new Set(),
+        }
+      }
+      const res = loadConfigOptionsFromURL(url, handler)
+      expect(res[0].toString()).toEqual('https://my.host:8124/')
+      expect(res[1]).toEqual({
+        username: 'bob',
+        password: 'secret',
+        database: 'analytics',
+        readonly: true,
+        application: 'my_app',
+        session_id: 'sticky',
+        request_timeout: 42,
+        max_open_connections: 144,
+        compression: {
+          request: true,
+          response: false,
+        },
+        log: { level: ClickHouseLogLevel.TRACE },
+        keep_alive: { enabled: false },
+        clickhouse_settings: {
+          async_insert: '1',
+          wait_for_async_insert: '0',
+        } as Record<string, string>,
+        http_headers: {
+          'X-CLICKHOUSE-AUTH': 'secret_header',
+        },
+        impl_specific_setting: 'qaz',
+        another_impl_specific_setting: 'qux',
+      } as unknown as BaseClickHouseClientConfigOptions)
+    })
+
+    // URL params that were handled by common are removed from the URL passed down to the extra handler by design
+    it('should not override common config with the extra URL params handler', async () => {
+      const url = new URL(
+        'https://bob:secret@my.host:8124/analytics?' +
+          [
+            'application=my_app',
+            'session_id=sticky',
+            'request_timeout=42',
+          ].join('&')
+      )
+      const handler: HandleImplSpecificURLParams = (config, url) => {
+        // should fail the assertion if not empty
+        if (url.searchParams.size > 0) {
+          throw new Error(
+            `Unexpected URL params: ${url.searchParams.toString()}`
+          )
+        }
+        return {
+          config,
+          handled_params: new Set(),
+          unknown_params: new Set(),
+        }
+      }
+      const res = loadConfigOptionsFromURL(url, handler)
+      expect(res[0].toString()).toEqual('https://my.host:8124/')
+      expect(res[1]).toEqual({
+        username: 'bob',
+        password: 'secret',
+        database: 'analytics',
+        application: 'my_app',
+        session_id: 'sticky',
+        request_timeout: 42,
+      })
+    })
+  })
+
+  describe('ConfigURLValues', () => {
+    const key = 'foo'
+
+    it('should be parsed with booleanConfigURLValue', async () => {
+      const args: [string, boolean][] = [
+        ['true', true],
+        [' true ', true],
+        ['false', false],
+        [' false ', false],
+        ['1', true],
+        [' 1 ', true],
+        ['0', false],
+        [' 0 ', false],
+      ]
+      args.forEach(([value, expected]) => {
+        expect(booleanConfigURLValue({ key, value }))
+          .withContext(`Expected value "${value}" to be ${expected}`)
+          .toEqual(expected)
+      })
+      expect(() => booleanConfigURLValue({ key, value: 'bar' })).toThrowError(
+        `"foo" has invalid boolean value: bar. Expected one of: 0, 1, true, false.`
+      )
+    })
+
+    it('should be parsed with numberConfigURLValue', async () => {
+      const args: [string, number][] = [
+        ['0', 0],
+        [' 0 ', 0],
+        ['1', 1],
+        [' 1 ', 1],
+        ['-1', -1],
+        [' -1 ', -1],
+        ['1.5', 1.5],
+        [' 1.5 ', 1.5],
+      ]
+      args.forEach(([value, expected]) => {
+        expect(numberConfigURLValue({ key, value }))
+          .withContext(`Expected value "${value}" to be ${expected}`)
+          .toEqual(expected)
+      })
+      expect(() => numberConfigURLValue({ key, value: 'bar' })).toThrowError(
+        `"foo" has invalid numeric value: bar`
+      )
+    })
+
+    it('should be parsed with numberConfigURLValue (min constraint)', async () => {
+      expect(numberConfigURLValue({ key, value: '2', min: 1 })).toEqual(2)
+      expect(numberConfigURLValue({ key, value: '2', min: 2 })).toEqual(2)
+      expect(() =>
+        numberConfigURLValue({ key, value: '2', min: 3 })
+      ).toThrowError(`"foo" value 2 is less than min allowed 3`)
+    })
+
+    it('should be parsed with numberConfigURLValue (max constraint)', async () => {
+      expect(numberConfigURLValue({ key, value: '2', max: 2 })).toEqual(2)
+      expect(numberConfigURLValue({ key, value: '2', max: 3 })).toEqual(2)
+      expect(() =>
+        numberConfigURLValue({ key, value: '4', max: 3 })
+      ).toThrowError(`"foo" value 4 is greater than max allowed 3`)
+    })
+
+    it('should be parsed with numberConfigURLValue (both min/max constraints)', async () => {
+      const r1 = numberConfigURLValue({ key, value: '1', min: 1, max: 2 })
+      expect(r1).toEqual(1)
+      const r2 = numberConfigURLValue({ key, value: '2', min: 2, max: 2 })
+      expect(r2).toEqual(2)
+      expect(() =>
+        numberConfigURLValue({ key, value: '2', min: 3, max: 4 })
+      ).toThrowError(`"foo" value 2 is less than min allowed 3`)
+      expect(() =>
+        numberConfigURLValue({ key, value: '5', min: 3, max: 4 })
+      ).toThrowError(`"foo" value 5 is greater than max allowed 4`)
+    })
+
+    it('should be parsed with enumConfigURLValue', async () => {
+      const args: [string, ClickHouseLogLevel][] = [
+        ['TRACE', ClickHouseLogLevel.TRACE],
+        [' TRACE ', ClickHouseLogLevel.TRACE],
+        ['DEBUG', ClickHouseLogLevel.DEBUG],
+        [' DEBUG ', ClickHouseLogLevel.DEBUG],
+        ['INFO', ClickHouseLogLevel.INFO],
+        [' INFO ', ClickHouseLogLevel.INFO],
+        ['WARN', ClickHouseLogLevel.WARN],
+        [' WARN ', ClickHouseLogLevel.WARN],
+        ['ERROR', ClickHouseLogLevel.ERROR],
+        [' ERROR ', ClickHouseLogLevel.ERROR],
+        ['OFF', ClickHouseLogLevel.OFF],
+        [' OFF ', ClickHouseLogLevel.OFF],
+      ]
+      args.forEach(([value, expected]) => {
+        expect(
+          enumConfigURLValue({
+            key,
+            value,
+            enumObject: ClickHouseLogLevel,
+          })
+        )
+          .withContext(`Expected log level for value "${value}" is ${expected}`)
+          .toEqual(expected)
+      })
+      expect(() =>
+        enumConfigURLValue({
+          key,
+          value: 'bar',
+          enumObject: ClickHouseLogLevel,
+        })
+      ).toThrowError(
+        `"foo" has invalid value: bar. Expected one of: TRACE, DEBUG, INFO, WARN, ERROR, OFF.`
+      )
+    })
+  })
+})

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
 import { RowBinaryDecoder } from '@clickhouse/client-common/src/data_formatter/row_binary'
@@ -99,6 +100,8 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
 
     return Stream.pipeline(this._stream, toRows, function pipelineCb(err) {
       if (err) {
+        // FIXME: use logger instead
+        // eslint-disable-next-line no-console
         console.error(err)
       }
     })
@@ -186,6 +189,8 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
 
     return Stream.pipeline(this._stream, toRows, function pipelineCb(err) {
       if (err) {
+        // FIXME: use logger instead
+        // eslint-disable-next-line no-console
         console.error(err)
       }
     })

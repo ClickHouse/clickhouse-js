@@ -24,7 +24,7 @@ import Stream from 'stream'
 import Zlib from 'zlib'
 import { getAsText, getUserAgent, isStream } from '../utils'
 
-export type NodeConnectionParams = ConnectionParams & {
+export type NodeConnectionParams = Omit<ConnectionParams, 'keep_alive'> & {
   tls?: TLSParams
   keep_alive: {
     enabled: boolean
@@ -79,27 +79,27 @@ export abstract class NodeBaseConnection
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent
   ) {
-    this.logger = params.logWriter
+    this.logger = params.log_writer
     this.retry_expired_sockets =
       params.keep_alive.enabled && params.keep_alive.retry_on_expired_socket
     this.headers = this.buildDefaultHeaders(
       params.username,
       params.password,
-      params.additional_headers
+      params.http_headers
     )
   }
 
   protected buildDefaultHeaders(
     username: string,
     password: string,
-    additional_headers?: Record<string, string>
+    http_headers?: Record<string, string>
   ): Http.OutgoingHttpHeaders {
     return {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
         'base64'
       )}`,
       'User-Agent': getUserAgent(this.params.application_id),
-      ...additional_headers,
+      ...http_headers,
     }
   }
 
@@ -415,7 +415,7 @@ export abstract class NodeBaseConnection
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { authorization, host, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
-    this.params.logWriter.debug({
+    this.params.log_writer.debug({
       module: 'HTTP Adapter',
       message: 'Got a response from ClickHouse',
       args: {
@@ -496,6 +496,8 @@ function decompressResponse(response: Http.IncomingMessage):
         Zlib.createGunzip(),
         function pipelineCb(err) {
           if (err) {
+            // FIXME: use logger instead
+            // eslint-disable-next-line no-console
             console.error(err)
           }
         }

@@ -17,7 +17,7 @@ describe('insert', () => {
   })
 
   it('inserts values using JSON format', async () => {
-    const { query_id } = await client.insert({
+    const result = await client.insert({
       table: tableName,
       values: {
         meta: [
@@ -39,12 +39,13 @@ describe('insert', () => {
       format: 'JSON',
     })
     await assertJsonValues(client, tableName)
-    expect(validateUUID(query_id)).toBeTruthy()
+    expect(validateUUID(result.query_id)).toBeTruthy()
+    expect(result.executed).toBeTruthy()
   })
 
   it('should use provide query_id', async () => {
     const query_id = guid()
-    const { query_id: q_id } = await client.insert({
+    const result = await client.insert({
       table: tableName,
       query_id,
       values: {
@@ -67,7 +68,8 @@ describe('insert', () => {
       format: 'JSON',
     })
     await assertJsonValues(client, tableName)
-    expect(query_id).toEqual(q_id)
+    expect(result.query_id).toEqual(query_id)
+    expect(result.executed).toBeTruthy()
   })
 
   it('inserts values using JSONObjectEachRow format', async () => {

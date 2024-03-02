@@ -2,7 +2,7 @@ import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 void (async () => {
   const client = createClient({
-    host: getFromEnv('CLICKHOUSE_HOST'),
+    url: getFromEnv('CLICKHOUSE_URL'),
     password: getFromEnv('CLICKHOUSE_PASSWORD'),
   })
   console.info(await client.ping())

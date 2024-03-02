@@ -6,17 +6,20 @@ export interface ConnectionParams {
   url: URL
   request_timeout: number
   max_open_connections: number
-  compression: {
-    decompress_response: boolean
-    compress_request: boolean
-  }
+  compression: CompressionSettings
   username: string
   password: string
   database: string
   clickhouse_settings: ClickHouseSettings
-  logWriter: LogWriter
+  log_writer: LogWriter
+  keep_alive: { enabled: boolean }
   application_id?: string
-  additional_headers?: Record<string, string>
+  http_headers?: Record<string, string>
+}
+
+export interface CompressionSettings {
+  decompress_response: boolean
+  compress_request: boolean
 }
 
 export interface ConnBaseQueryParams {

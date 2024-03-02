@@ -1,4 +1,5 @@
 import type { DataFormat } from './data_formatter'
+
 /**
  * @see {@link https://github.com/ClickHouse/ClickHouse/blob/46ed4f6cdf68fbbdc59fbe0f0bfa9a361cc0dec1/src/Core/Settings.h}
  * @see {@link https://github.com/ClickHouse/ClickHouse/blob/eae2667a1c29565c801be0ffd465f8bfcffe77ef/src/Storages/MergeTree/MergeTreeSettings.h}
@@ -1584,7 +1585,8 @@ interface ClickHouseHTTPSettings {
 }
 
 export type ClickHouseSettings = Partial<ClickHouseServerSettings> &
-  Partial<ClickHouseHTTPSettings>
+  Partial<ClickHouseHTTPSettings> &
+  Record<string, number | string | boolean | SettingsMap | undefined>
 
 export interface MergeTreeSettings {
   /** Allow floating point as partition key */
