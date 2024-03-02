@@ -23,11 +23,7 @@ beforeAll(async () => {
     }`
   )
   if (isCloudTestEnv() && databaseName === undefined) {
-    const client = createTestClient({
-      request_timeout: 30_000,
-      max_open_connections: 1,
-      keep_alive: { enabled: false },
-    })
+    const client = createTestClient({})
     await wakeUpPing(client)
     databaseName = await createRandomDatabase(client)
     await client.close()
@@ -145,16 +141,12 @@ export async function wakeUpPing(
     if (result.success) {
       return
     }
-    if (result.error.message.toLowerCase().includes('timeout')) {
-      // maybe the service is still waking up
-      console.error(
-        `Failed to ping, attempts so far: ${retries + 1}`,
-        result.error
-      )
-      await wakeUpPing(client, retries++, result.error)
-    } else {
-      throw result.error
-    }
+    // maybe the service is still waking up
+    console.error(
+      `Failed to ping, attempts so far: ${retries + 1}`,
+      result.error
+    )
+    await wakeUpPing(client, retries++, result.error)
   } else {
     console.error(
       `Failed to wake up the service after ${MaxPingRetries} retries, exiting...`,
