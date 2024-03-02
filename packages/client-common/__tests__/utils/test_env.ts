@@ -26,9 +26,14 @@ export function getClickHouseTestEnvironment(): TestEnv {
     default:
       throw new Error(
         `Unexpected CLICKHOUSE_TEST_ENVIRONMENT value: ${value}. ` +
-          'Possible options: `local_single_node`, `local_cluster`, `cloud` ' +
-          'or keep it unset to fall back to `local_single_node`'
+          'Possible options: `local_single_node`, `local_cluster`, `cloud`, `cloud_smt`. ' +
+          'You can keep it unset to fall back to `local_single_node`'
       )
   }
   return env
+}
+
+export function isCloudTestEnv(): boolean {
+  const env = getClickHouseTestEnvironment()
+  return env === TestEnv.Cloud || env === TestEnv.CloudSMT
 }

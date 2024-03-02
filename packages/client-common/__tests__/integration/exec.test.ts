@@ -132,9 +132,6 @@ describe('exec', () => {
   }
 
   async function runExec(params: ExecParams): Promise<{ query_id: string }> {
-    console.log(
-      `Running command with query_id ${params.query_id}:\n${params.query}`
-    )
     const { query_id } = await client.exec({
       ...params,
       clickhouse_settings: {
