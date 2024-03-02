@@ -1,5 +1,6 @@
 export enum TestEnv {
   Cloud = 'cloud',
+  CloudSMT = 'cloud_smt',
   LocalSingleNode = 'local_single_node',
   LocalCluster = 'local_cluster',
 }
@@ -10,6 +11,9 @@ export function getClickHouseTestEnvironment(): TestEnv {
   switch (value) {
     case 'cloud':
       env = TestEnv.Cloud
+      break
+    case 'cloud_smt':
+      env = TestEnv.CloudSMT
       break
     case 'local_cluster':
       env = TestEnv.LocalCluster

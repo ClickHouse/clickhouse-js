@@ -38,6 +38,8 @@ export function createTestClient<Stream = unknown>(
   } else if (env === TestEnv.Cloud) {
     clickHouseSettings.insert_quorum = '3'
     clickHouseSettings.database_replicated_enforce_synchronous_settings = 1
+  } else if (env === TestEnv.CloudSMT) {
+    clickHouseSettings.select_sequential_consistency = '1'
   }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
@@ -47,7 +49,7 @@ export function createTestClient<Stream = unknown>(
       LoggerClass: TestLogger,
     },
   }
-  if (env === TestEnv.Cloud) {
+  if (env === TestEnv.Cloud || env === TestEnv.CloudSMT) {
     const cloudConfig: BaseClickHouseClientConfigOptions = {
       url: `https://${getFromEnv('CLICKHOUSE_CLOUD_HOST')}:8443`,
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
