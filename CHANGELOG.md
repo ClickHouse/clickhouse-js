@@ -1,14 +1,30 @@
-## 0.3.0 (Common, Node.js, Web)
+## 1.0.0 (Common, Node.js, Web)
+
+Formal stable release milestone. The client will follow the [official semantic versioning](https://docs.npmjs.com/about-semantic-versioning) guidelines.
+
+### Deprecated API
+
+The following configuration parameters are marked as deprecated:
+
+- `host` configuration parameter is deprecated; use `url` instead.
+- `additional_headers` configuration parameter is deprecated; use `http_headers` instead.
+
+The client will log a warning if any of these parameters are used. However, it is still allowed to use `host` instead of `url` and `additional_headers` instead of `http_headers` for now; this deprecation is not supposed to break the existing code.
+
+These parameters will be removed in the next major release (2.0.0).
+
+See "New features" section for more details.
 
 ### Breaking changes
 
-- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout, and, for example, AWS LB sends KeepAlive packets every 20s. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `send_progress_in_http_headers` value.
+- `request_timeout` default value was incorrectly set to 300s instead of 30s. It is now correctly set to 30s by default. If your code relies on the previous incorrect default value, consider setting it explicitly.
+- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid potential load balancer timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. In that case, a `socket hang up` error could be thrown on the client side. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout; this is also in line with the default [AWS LB KeepAlive interval](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout), which is 20s by default. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `clickhouse_settings.http_headers_progress_interval_ms` value.
 
   NB: these settings will be enabled only if the client instance was created without setting `readonly` flag (see below).
 
 - It is now possible to create a client in read-only mode, which will disable default compression and aforementioned ClickHouse HTTP settings. Previously, if you wanted to use the client with a user created with `READONLY = 1` mode, the response compression had to be disabled explicitly.
 
-Pre 0.3.0:
+Pre 1.0.0:
 
 ```ts
 const client = createClient({
@@ -31,6 +47,60 @@ By default, `readonly` is `false`.
 NB: this is not necessary if a user has `READONLY = 2` mode as it allows to modify the settings, so the client can be used without an additional `readonly` setting.
 
 See also: [readonly documentation](https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly).
+
+### New features
+
+- Added `url` configuration parameter. It is intended to replace the deprecated `host`, which was already supposed to be passed as a valid URL.
+- Added `http_headers` configuration parameter as a direct replacement for `additional_headers`. Functionally, it is the same, and the change is purely cosmetic, as we'd like to leave an option to implement TCP connection in the future open.
+- It is now possible to configure most of the client instance parameters with a URL. The URL format is `http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]`. In almost every case, the name of a particular parameter reflects its path in the config options interface, with a few exceptions. The following parameters are supported:
+
+| Parameter                                           | Type                                                              |
+| --------------------------------------------------- | ----------------------------------------------------------------- |
+| `readonly`                                          | boolean. See below [1].                                           |
+| `application_id`                                    | non-empty string.                                                 |
+| `session_id`                                        | non-empty string.                                                 |
+| `request_timeout`                                   | non-negative number.                                              |
+| `max_open_connections`                              | non-negative number, greater than zero.                           |
+| `compression_request`                               | boolean.                                                          |
+| `compression_response`                              | boolean.                                                          |
+| `log_level`                                         | allowed values: `OFF`, `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`. |
+| `keep_alive_enabled`                                | boolean.                                                          |
+| `clickhouse_setting_*` or `ch_*`                    | see below [2].                                                    |
+| `http_header_*`                                     | see below [3].                                                    |
+| (Node.js only) `keep_alive_socket_ttl`              | non-negative number.                                              |
+| (Node.js only) `keep_alive_retry_on_expired_socket` | boolean.                                                          |
+
+[1] For booleans, valid values will be `true`/`1` and `false`/`0`.
+
+[2] Any parameter prefixed with `clickhouse_setting_` or `ch_` will have this prefix removed and the rest added to client's `clickhouse_settings`. For example, `?ch_async_insert=1&ch_wait_for_async_insert=1` will be the same as:
+
+```ts
+createClient({
+  clickhouse_settings: {
+    async_insert: 1,
+    wait_for_async_insert: 1,
+  },
+})
+```
+
+[3] Similar to [2], but for `http_header` configuration. For example, `?http_header_x-clickhouse-auth=foobar` will be an equivalent of:
+
+```ts
+createClient({
+  http_headers: {
+    'x-clickhouse-auth': 'foobar',
+  },
+})
+```
+
+**Important: URL will _always_ overwrite the hardcoded values and a warning will be logged in this case.**
+
+Currently not supported via URL:
+
+- `log.LoggerClass`
+- (Node.js only) `tls_ca_cert`, `tls_cert`, `tls_key`.
+
+See also: [URL configuration example](./examples/url_configuration.ts).
 
 ## 0.2.10 (Common, Node.js, Web)
 

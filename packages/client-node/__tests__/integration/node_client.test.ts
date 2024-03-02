@@ -12,10 +12,10 @@ describe('[Node.js] Client', () => {
     httpRequestStub = spyOn(Http, 'request').and.returnValue(clientRequest)
   })
 
-  describe('Additional headers', () => {
-    it('should be possible to set additional_headers', async () => {
+  describe('HTTP headers', () => {
+    it('should be possible to set http_headers', async () => {
       const client = createClient({
-        additional_headers: {
+        http_headers: {
           'Test-Header': 'foobar',
         },
       })
@@ -32,7 +32,7 @@ describe('[Node.js] Client', () => {
       assertSearchParams(callURL)
     })
 
-    it('should work without additional headers', async () => {
+    it('should work without additional HTTP headers', async () => {
       const client = createClient({})
       await query(client)
 

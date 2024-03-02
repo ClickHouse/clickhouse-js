@@ -98,6 +98,8 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
 
     return Stream.pipeline(this._stream, toRows, function pipelineCb(err) {
       if (err) {
+        // FIXME: use logger instead
+        // eslint-disable-next-line no-console
         console.error(err)
       }
     })

@@ -11,9 +11,10 @@ export interface ConnectionParams {
   password: string
   database: string
   clickhouse_settings: ClickHouseSettings
-  logWriter: LogWriter
+  log_writer: LogWriter
+  keep_alive: { enabled: boolean }
   application_id?: string
-  additional_headers?: Record<string, string>
+  http_headers?: Record<string, string>
 }
 
 export interface CompressionSettings {

@@ -1,10 +1,10 @@
-export { createConnection, createClient } from './client'
+export { createClient } from './client'
+export { NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
 export { ResultSet } from './result_set'
 
 /** Re-export @clickhouse/client-common types */
 export {
   type BaseClickHouseClientConfigOptions,
-  type ClickHouseClientConfigOptions,
   type BaseQueryParams,
   type QueryParams,
   type ExecParams,

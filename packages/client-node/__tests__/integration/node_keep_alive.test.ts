@@ -2,7 +2,7 @@ import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTestClient, guid, sleep } from '@test/utils'
 import type Stream from 'stream'
-import type { NodeClickHouseClientConfigOptions } from '../../src/client'
+import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 
 /**
  * FIXME: Works fine during the local runs, but it is flaky on GHA,

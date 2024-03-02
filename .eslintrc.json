@@ -19,6 +19,7 @@
     "prettier/prettier": "error",
     "@typescript-eslint/no-floating-promises": "error",
     "eqeqeq": "error",
+    "no-console": "error",
     // Disable some inherited recommended checks until they all are fixed in targeted PRs.
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/consistent-type-imports": "warn"
@@ -30,7 +31,14 @@
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-non-null-assertion": "off",
         "@typescript-eslint/ban-ts-comment": "off",
-        "no-constant-condition": "off"
+        "no-constant-condition": "off",
+        "no-console": "off"
+      }
+    },
+    {
+      "files": ["./**/examples/**/*.ts", "./**/benchmarks/**/*.ts"],
+      "rules": {
+        "no-console": "off"
       }
     }
   ]

@@ -1,18 +1,13 @@
-import type { Connection } from '@clickhouse/client-common'
 import { withCompressionHeaders } from '@clickhouse/client-common'
 import type Http from 'http'
 import Https from 'https'
-import type Stream from 'stream'
 import type {
   NodeConnectionParams,
   RequestParams,
 } from './node_base_connection'
 import { NodeBaseConnection } from './node_base_connection'
 
-export class NodeHttpsConnection
-  extends NodeBaseConnection
-  implements Connection<Stream.Readable>
-{
+export class NodeHttpsConnection extends NodeBaseConnection {
   constructor(params: NodeConnectionParams) {
     const agent = new Https.Agent({
       keepAlive: params.keep_alive.enabled,

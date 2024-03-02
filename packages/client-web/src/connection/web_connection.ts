@@ -24,18 +24,14 @@ type WebInsertParams<T> = Omit<
   values: string
 }
 
-export type WebConnectionParams = ConnectionParams & {
-  keep_alive: {
-    enabled: boolean
-  }
-}
+export type WebConnectionParams = ConnectionParams
 
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
   constructor(private readonly params: WebConnectionParams) {
     this.defaultHeaders = {
       Authorization: `Basic ${btoa(`${params.username}:${params.password}`)}`,
-      ...params?.additional_headers,
+      ...params?.http_headers,
     }
   }
 
