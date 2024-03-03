@@ -91,7 +91,7 @@ export type MakeConnection<
 export type MakeResultSet<Stream> = (
   stream: Stream,
   format: DataFormat,
-  session_id: string
+  query_id: string
 ) => BaseResultSet<Stream>
 
 export interface ValuesEncoder<Stream> {

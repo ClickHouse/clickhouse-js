@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
-import { RowBinaryDecoder } from '@clickhouse/client-common/src/data_formatter/row_binary'
+import { DecodedColumns, RowBinaryColumns } from '@clickhouse/client-common/src/data_formatter'
 import { Buffer } from 'buffer'
 import type { TransformCallback } from 'stream'
 import Stream, { Transform } from 'stream'
@@ -131,18 +131,42 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
     )
   }
 
-  stream(): Stream.Readable {
-    // If the underlying stream has already ended by calling `text` or `json`,
-    // Stream.pipeline will create a new empty stream
-    // but without "readableEnded" flag set to true
-    if (this._stream.readableEnded) {
-      throw Error(streamAlreadyConsumedMessage)
-    }
-    if (this.format !== 'RowBinaryWithNamesAndTypes') {
+  async get(): Promise<unknown[][]> {
+    if (this.format !== 'RowBinary') {
       throw new Error(
         `Can't use RowBinaryResultSet if the format is not RowBinary`
       )
     }
+    const result: unknown[][] = []
+    await new Promise((resolve, reject) => {
+      this.stream()
+        .on('data', (rows: unknown[][]) => {
+          result.push(...rows)
+        })
+        .on('end', resolve)
+        .on('error', reject)
+    })
+    return result
+  }
+
+  stream(): Stream.Readable {
+    // If the underlying stream has already ended,
+    // Stream.pipeline will create a new empty stream,
+    // but without "readableEnded" flag set to true
+    if (this._stream.readableEnded) {
+      throw Error(streamAlreadyConsumedMessage)
+    }
+    if (this.format !== 'RowBinary') {
+      throw new Error(
+        `Can't use RowBinaryResultSet if the format is not RowBinary`
+      )
+    }
+
+    let loc = 0
+    let columns: DecodedColumns[0] | undefined
+    let incompleteChunk: Uint8Array | undefined
+    let row: unknown[] = []
+    let lastColumnIdx: number | undefined
 
     const toRows = new Transform({
       transform(
@@ -150,37 +174,102 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
         _encoding: BufferEncoding,
         callback: TransformCallback
       ) {
-        const src = chunk.subarray()
-        const rows: unknown[][] = []
-        let res: [unknown, number]
-        const colDataRes = RowBinaryDecoder.columns(src)
-        const { names, types } = colDataRes[0]
-        let loc = colDataRes[1]
-        console.log(colDataRes[0])
-        console.log(`Next loc: ${loc}`)
-        while (loc < src.length) {
-          const values = new Array(names.length)
-          types.forEach((t, i) => {
-            switch (t) {
-              case 'Int8':
-                res = RowBinaryDecoder.int8(src, loc)
-                console.log(`Int8: ${res[0]}, next loc: ${res[1]}`)
-                values[i] = res[0]
-                loc = res[1]
-                break
-              case 'String':
-                res = RowBinaryDecoder.string(src, loc)
-                console.log(`String: ${res[0]}, next loc: ${res[1]}`)
-                values[i] = res[0]
-                loc = res[1]
-                break
-              default:
-                throw new Error(`Unknown type ${t}`)
-            }
-          })
-          rows.push(values)
+        // console.log(`got a new chunk, len: ${chunk.length}`)
+        let src: Uint8Array
+        if (incompleteChunk !== undefined) {
+          // console.log('got an incomplete chunk', incompleteChunk.length)
+          src = Buffer.concat([incompleteChunk, chunk.subarray()])
+          incompleteChunk = undefined
+        } else {
+          //console.log('no incomplete chunk')
+          src = chunk.subarray()
         }
-        this.push(rows)
+        if (columns === undefined) {
+          const res = RowBinaryColumns.decode(src)
+          if ('error' in res) {
+            callback(new Error(res.error))
+            return
+          }
+          columns = res[0]
+          loc = res[1]
+          //console.log(`Columns ${columns.names} with types ${columns.types}. Next loc after columns: ${loc}`)
+        }
+        let decodeResult: [unknown, number] | null
+        const rows: unknown[][] = []
+        // an incomplete row from the previous chunk; continue from the known column index
+        if (lastColumnIdx !== undefined) {
+          // console.log('incomplete idx:', lastColumnIdx)
+          for (let i = lastColumnIdx; i < columns.decoders.length; i++) {
+            // FIXME - handle null properly; currently assuming that the second chunk will be enough (but it maybe not be)
+            decodeResult = columns.decoders[i](src, loc)
+            if (decodeResult === null) {
+              callback(new Error('Not enough data to decode the row'))
+              return
+            } else {
+              // console.log(
+              //   `Decoded incomplete column ${columns.names[i]} at loc ${loc} with result ${decodeResult}`
+              // )
+              row[i] = decodeResult[0]
+              loc = decodeResult[1]
+            }
+          }
+          // console.log('incomplete push:', row)
+          rows.push(row)
+          lastColumnIdx = undefined
+        }
+        // done with the previous incomplete rows; processing the rows as normal
+        // console.log('loc and src len', loc, src.length)
+        while (loc <= src.length) {
+          row = new Array(columns.names.length)
+          for (let i = 0; i < columns.decoders.length; i++) {
+            decodeResult = columns.decoders[i](src, loc)
+            // console.log(
+            //   `Decoded column ${columns.names[i]} at loc ${loc} with result ${decodeResult}`
+            // )
+            // maybe not enough data to finish the row
+            if (decodeResult === null) {
+              // console.log(
+              //   `Decode result is null for column ${columns?.names[i]}`
+              // )
+              // keep the remaining data to add to the next chunk
+              incompleteChunk = src.subarray(loc)
+              loc = 0
+              lastColumnIdx = i
+              if (rows.length > 0) {
+                this.push(rows)
+              }
+              callback()
+              return
+            } else {
+              if (String(decodeResult[0]).length > 100) {
+                throw new Error('foo')
+              }
+              // decoded a value
+              row[i] = decodeResult[0]
+              loc = decodeResult[1]
+              if (loc > src.length) {
+                loc = loc - src.length
+                incompleteChunk = src.subarray(loc)
+                // if there are more columns to decode, keep the index
+                if (i < columns.decoders.length - 1) {
+                  lastColumnIdx = i
+                } else {
+                  rows.push(row)
+                }
+                if (rows.length > 0) {
+                  this.push(rows)
+                }
+                callback()
+                return
+              }
+            }
+          }
+          // console.log('complete push, maybe there is more:', row)
+          rows.push(row)
+        }
+        if (rows.length > 0) {
+          this.push(rows)
+        }
         callback()
       },
       autoDestroy: true,

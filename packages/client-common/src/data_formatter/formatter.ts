@@ -32,7 +32,7 @@ const supportedRawFormats = [
   'CustomSeparatedWithNames',
   'CustomSeparatedWithNamesAndTypes',
   'Parquet',
-  'RowBinaryWithNamesAndTypes',
+  'RowBinary',
 ] as const
 
 export type JSONDataFormat = (typeof supportedJSONFormats)[number]

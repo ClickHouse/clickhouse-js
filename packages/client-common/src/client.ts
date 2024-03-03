@@ -230,7 +230,11 @@ export class ClickHouseClient<Stream = unknown> {
 function formatQuery(query: string, format: DataFormat): string {
   query = query.trim()
   query = removeTrailingSemi(query)
-  return query + ' \nFORMAT ' + format
+  return (
+    query +
+    ' \nFORMAT ' +
+    (format === 'RowBinary' ? 'RowBinaryWithNamesAndTypes' : format)
+  )
 }
 
 function removeTrailingSemi(query: string) {
