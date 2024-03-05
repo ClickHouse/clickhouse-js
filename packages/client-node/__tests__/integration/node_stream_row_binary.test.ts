@@ -1,7 +1,6 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, guid } from '@test/utils'
 import type Stream from 'stream'
-import { RowBinaryResultSet } from '../../src/result_set'
 
 describe('[Node.js] stream RowBinary', () => {
   let client: ClickHouseClient<Stream.Readable>
@@ -87,39 +86,6 @@ describe('[Node.js] stream RowBinary', () => {
     await selectAndAssert(assertValues)
   })
 
-  fit('should stream', async () => {
-    await streamJSON()
-    await streamRowBinary()
-    expect(1).toEqual(1)
-  })
-
-  async function streamJSON() {
-    const start = +new Date()
-    const rs = await client.query({
-      query: `SELECT * FROM random ORDER BY id ASC LIMIT 100000`,
-      format: 'JSONEachRow',
-    })
-    const values = await rs.json<unknown[]>()
-    console.log(
-      `JSON elapsed: ${+new Date() - start} ms, length: ${values.length}`
-    )
-    return values.length
-  }
-
-  async function streamRowBinary() {
-    const start = +new Date()
-    const rs = await client.query({
-      query: `SELECT * FROM random ORDER BY id ASC LIMIT 100000`,
-      format: 'RowBinary',
-    })
-    const values = await (rs as RowBinaryResultSet).get()
-    // console.log(values)
-    console.log(
-      `RowBinary elapsed: ${+new Date() - start} ms, length: ${values.length}`
-    )
-    return values.length
-  }
-
   async function selectAndAssert(assertValues: unknown[][]) {
     const rs = await client.query({
       query: `SELECT * EXCEPT id FROM ${tableName} ORDER BY id ASC`,
@@ -149,7 +115,6 @@ describe('[Node.js] stream RowBinary', () => {
         wait_end_of_query: 1,
       },
     })
-    console.log(`Created table ${tableName}`)
     let id = 1
     await client.insert({
       table: tableName,

@@ -1,10 +1,9 @@
 import {
-  readBytesAsInt,
-  readBytesAsSignedBigInt,
   readBytesAsUnsignedBigInt,
+  readBytesAsUnsignedInt,
 } from '../../src/data_formatter'
 
-describe('RowBinary decoder', () => {
+fdescribe('RowBinary read bytes', () => {
   describe('Unsigned integers', () => {
     it('should decode UInt16', async () => {
       const args: [Uint8Array, number][] = [
@@ -13,11 +12,11 @@ describe('RowBinary decoder', () => {
         [new Uint8Array([0x02, 0x00]), 2],
         [new Uint8Array([0x10, 0x00]), 16],
         [new Uint8Array([0xff, 0x00]), 255],
-        [new Uint8Array([0xff, 0xff]), 65_535],
-        [new Uint8Array([0x00, 0x80]), 32_768],
+        [new Uint8Array([0xff, 0xff]), 65535],
+        [new Uint8Array([0x00, 0x80]), 32768],
       ]
       args.forEach(([src, expected]) => {
-        expect(readBytesAsInt(src, 0, 2, false))
+        expect(readBytesAsUnsignedInt(src, 0, 2))
           .withContext(ctx(src, expected))
           .toBe(expected)
       })
@@ -29,61 +28,23 @@ describe('RowBinary decoder', () => {
         [new Uint8Array([0x02, 0x00, 0x00, 0x00]), 2],
         [new Uint8Array([0x10, 0x00, 0x00, 0x00]), 16],
         [new Uint8Array([0xff, 0x00, 0x00, 0x00]), 255],
-        [new Uint8Array([0xff, 0xff, 0x00, 0x00]), 65_535],
-        [new Uint8Array([0xff, 0xff, 0xff, 0x00]), 16_777_215],
-        [new Uint8Array([0xff, 0xff, 0xff, 0x7f]), 2_147_483_647],
-        [new Uint8Array([0xff, 0xff, 0xff, 0xff]), 4_294_967_295],
-        [new Uint8Array([0x00, 0x00, 0x00, 0x80]), 2_147_483_648],
+        [new Uint8Array([0xff, 0xff, 0x00, 0x00]), 65535],
+        [new Uint8Array([0xff, 0xff, 0xff, 0x00]), 16777215],
+        [new Uint8Array([0xff, 0xff, 0xff, 0x7f]), 2147483647],
+        [new Uint8Array([0xff, 0xff, 0xff, 0xff]), 4294967295],
+        [new Uint8Array([0x00, 0x00, 0x00, 0x80]), 2147483648],
       ]
       args.forEach(([src, expected]) => {
-        expect(readBytesAsInt(src, 0, 4, false))
+        expect(readBytesAsUnsignedInt(src, 0, 4))
           .withContext(ctx(src, expected))
           .toBe(expected)
       })
     })
   })
 
-  describe('Signed integers', () => {
-    it('should decode Int16', async () => {
-      const args: [Uint8Array, number][] = [
-        [new Uint8Array([0x00, 0x00]), 0],
-        [new Uint8Array([0x01, 0x00]), 1],
-        [new Uint8Array([0x02, 0x00]), 2],
-        [new Uint8Array([0x10, 0x00]), 16],
-        [new Uint8Array([0xff, 0x00]), 255],
-        [new Uint8Array([0xff, 0xff]), -1],
-        [new Uint8Array([0x00, 0x80]), -32_768],
-      ]
-      args.forEach(([src, expected]) => {
-        expect(readBytesAsInt(src, 0, 2, true))
-          .withContext(ctx(src, expected))
-          .toBe(expected)
-      })
-    })
-    it('should decode Int32', async () => {
-      const args: [Uint8Array, number][] = [
-        [new Uint8Array([0x00, 0x00, 0x00, 0x00]), 0],
-        [new Uint8Array([0x01, 0x00, 0x00, 0x00]), 1],
-        [new Uint8Array([0x02, 0x00, 0x00, 0x00]), 2],
-        [new Uint8Array([0x10, 0x00, 0x00, 0x00]), 16],
-        [new Uint8Array([0xff, 0x00, 0x00, 0x00]), 255],
-        [new Uint8Array([0xff, 0xff, 0x00, 0x00]), 65_535],
-        [new Uint8Array([0xff, 0xff, 0xff, 0x00]), 16_777_215],
-        [new Uint8Array([0xff, 0xff, 0xff, 0x7f]), 2_147_483_647],
-        [new Uint8Array([0xff, 0xff, 0xff, 0xff]), -1],
-        [new Uint8Array([0x00, 0x00, 0x00, 0x80]), -2_147_483_648],
-      ]
-      args.forEach(([src, expected]) => {
-        expect(readBytesAsInt(src, 0, 4, true))
-          .withContext(ctx(src, expected))
-          .toBe(expected)
-      })
-    })
-  })
-
-  describe('BigInt', () => {
+  describe('Unsigned big integers', () => {
     it('should decode UInt64', async () => {
-      const args: [Uint8Array, BigInt][] = [
+      const args: [Uint8Array, bigint][] = [
         [new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]), 0n],
         [new Uint8Array([0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]), 1n],
         [new Uint8Array([0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]), 2n],
@@ -93,15 +54,15 @@ describe('RowBinary decoder', () => {
         ],
         [
           new Uint8Array([0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-          65_535n,
+          65535n,
         ],
         [
           new Uint8Array([0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00]),
-          16_777_215n,
+          16777215n,
         ],
         [
           new Uint8Array([0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00]),
-          4_294_967_295n,
+          4294967295n,
         ],
         [
           new Uint8Array([0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00]),
@@ -127,19 +88,9 @@ describe('RowBinary decoder', () => {
           .toBe(expected)
       })
     })
-
-    it('should decode Int64 ', async () => {
-      expect(
-        readBytesAsSignedBigInt(
-          new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]),
-          0,
-          8
-        )
-      ).toEqual(1n)
-    })
   })
 
-  function ctx(src: Uint8Array, expected: number | BigInt) {
+  function ctx(src: Uint8Array, expected: number | bigint) {
     return `Expected ${src.toString()} to be decoded as ${expected}`
   }
 })

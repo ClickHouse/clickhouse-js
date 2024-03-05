@@ -10,7 +10,8 @@ import {
 } from '@clickhouse/client-common'
 import type Stream from 'stream'
 import { createConnection, type TLSParams } from './connection'
-import { ResultSet, RowBinaryResultSet } from './result_set'
+import { ResultSet } from './result_set'
+import { RowBinaryResultSet } from './row_binary_result_set'
 import { NodeValuesEncoder } from './utils'
 
 export type NodeClickHouseClientConfigOptions =
