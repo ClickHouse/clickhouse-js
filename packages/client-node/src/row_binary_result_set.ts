@@ -4,6 +4,18 @@ import { RowBinaryColumns } from '@clickhouse/client-common/src/data_formatter'
 import { Buffer } from 'buffer'
 import Stream, { Transform, type TransformCallback } from 'stream'
 
+// draft; currently unused.
+export interface RowBinaryMappers {
+  date?: <T>(daysSinceEpochUInt16: number) => T
+  date32?: <T>(daysSinceEpochInt32: number) => T
+  datetime?: <T>(secondsSinceEpochUInt32: number, timezone?: string) => T
+  datetime64?: <T>(seconds: bigint, nanos: number, timezone?: string) => T
+  decimal?: <T>(whole: number | bigint, fractional: number | bigint) => T
+}
+export interface RowBinaryResultSetOptions {
+  mappers?: RowBinaryMappers
+}
+
 export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
   constructor(
     private _stream: Stream.Readable,

@@ -1,6 +1,7 @@
 // Decoded value + the next index to scan from
 export type DecodeResult<T> = [T, number]
 
+// May return null since we cannot determine how many bytes we need to read in advance
 export function readBytesAsUnsignedLEB128(
   src: Uint8Array,
   loc: number
@@ -23,6 +24,8 @@ export function readBytesAsUnsignedLEB128(
   }
 }
 
+// FIXME: use DecodeResult | null for all methods and do the validation here
+//  instead of relying on the caller
 export function readBytesAsUnsignedInt(
   src: Uint8Array,
   loc: number,
@@ -45,4 +48,14 @@ export function readBytesAsUnsignedBigInt(
     result = (result << 8n) + BigInt(src[loc + i])
   }
   return result
+}
+
+export function readBytesAsFloat32(src: Uint8Array, loc: number) {
+  // FIXME: maybe can be optimized without DataView
+  return new DataView(src.buffer.slice(loc, loc + 4)).getFloat32(0, true)
+}
+
+export function readBytesAsFloat64(src: Uint8Array, loc: number) {
+  // FIXME: maybe can be optimized without DataView
+  return new DataView(src.buffer.slice(loc, loc + 8)).getFloat64(0, true)
 }

@@ -1,5 +1,7 @@
 import type { DecodeResult } from './read_bytes'
 import {
+  readBytesAsFloat32,
+  readBytesAsFloat64,
   readBytesAsUnsignedBigInt,
   readBytesAsUnsignedInt,
   readBytesAsUnsignedLEB128,
@@ -19,8 +21,11 @@ export type ColumnType =
   | 'Int128'
   | 'UInt256'
   | 'Int256'
+  | 'Float32'
+  | 'Float64'
   | 'String'
   | 'Date'
+  | 'Date32'
 
 export type TypeDecoder<T = unknown> = (
   src: Uint8Array,
@@ -28,11 +33,14 @@ export type TypeDecoder<T = unknown> = (
 ) => DecodeResult<T> | null
 
 export type DecodeError = { error: string }
-export type DecodedColumns = DecodeResult<{
-  names: string[]
-  types: ColumnType[]
-  decoders: TypeDecoder[]
-}>
+export type DecodedColumnType = {
+  dbType: string
+  columnType: ColumnType
+  isNullable: boolean
+  isLowCardinality: boolean
+}
+
+type DateMapper<T> = (days: number) => T
 
 const Int8Overflow = 128
 const UInt8Overflow = 256
@@ -116,6 +124,14 @@ export const RowBinaryTypesDecoder = {
     const x = readBytesAsUnsignedBigInt(src, loc, 32)
     return [x < Int256Overflow ? x : x - UInt256Overflow, loc + 32]
   },
+  float32: (src: Uint8Array, loc: number): DecodeResult<number> | null => {
+    if (src.length < loc + 4) return null
+    return [readBytesAsFloat32(src, loc), loc + 4]
+  },
+  float64: (src: Uint8Array, loc: number): DecodeResult<number> | null => {
+    if (src.length < loc + 8) return null
+    return [readBytesAsFloat64(src, loc), loc + 8]
+  },
   string: (src: Uint8Array, loc: number): DecodeResult<string> | null => {
     if (src.length < loc + 1) return null
     const res = readBytesAsUnsignedLEB128(src, loc)
@@ -130,11 +146,25 @@ export const RowBinaryTypesDecoder = {
     ]
   },
   date: (src: Uint8Array, loc: number): DecodeResult<Date> | null => {
-    if (src.length < loc + 2) return null
-    const days = readBytesAsUnsignedInt(src, loc, 2)
-    const date = new Date(days * DayMillis)
-    return [date, loc + 2]
+    const res = RowBinaryTypesDecoder.uint16(src, loc)
+    if (res === null) return null
+    return [new Date(res[0] * DayMillis), res[1]]
   },
+  date32: (src: Uint8Array, loc: number): DecodeResult<Date> | null => {
+    const res = RowBinaryTypesDecoder.int32(src, loc)
+    if (res === null) return null
+    return [new Date(res[0] * DayMillis), res[1]]
+  },
+  nullable:
+    <T>(baseTypeDecoder: TypeDecoder<T>) =>
+    (src: Uint8Array, loc: number): DecodeResult<T | null> | null => {
+      const res = RowBinaryTypesDecoder.uint8(src, loc)
+      if (res === null) return null
+      if (res[0] === 1) {
+        return [null, res[1]]
+      }
+      return baseTypeDecoder(src, res[1])
+    },
 }
 
 export const RowBinaryColumnTypeToDecoder: {
@@ -153,51 +183,9 @@ export const RowBinaryColumnTypeToDecoder: {
   Int128: RowBinaryTypesDecoder.int128,
   UInt256: RowBinaryTypesDecoder.uint256,
   Int256: RowBinaryTypesDecoder.int256,
+  Float32: RowBinaryTypesDecoder.float32,
+  Float64: RowBinaryTypesDecoder.float64,
   String: RowBinaryTypesDecoder.string,
   Date: RowBinaryTypesDecoder.date,
-}
-
-export const RowBinaryColumns = {
-  decode: (src: Uint8Array): DecodedColumns | DecodeError => {
-    const res = readBytesAsUnsignedLEB128(src, 0)
-    if (res === null) {
-      return { error: 'Not enough data to decode the number of columns' }
-    }
-    const numColumns = res[0]
-    let nextLoc = res[1]
-    const names = new Array<string>(numColumns)
-    const types = new Array<ColumnType>(numColumns)
-    const decoders: TypeDecoder[] = new Array<TypeDecoder>(numColumns)
-    for (let i = 0; i < numColumns; i++) {
-      const res = RowBinaryTypesDecoder.string(src, nextLoc)
-      if (res === null) {
-        return { error: `Not enough data to decode column ${i} name` }
-      }
-      nextLoc = res[1]
-      names[i] = res[0]
-    }
-    for (let i = 0; i < numColumns; i++) {
-      const res = RowBinaryTypesDecoder.string(src, nextLoc)
-      if (res === null) {
-        return { error: `Not enough data to decode column ${i} type` }
-      }
-      nextLoc = res[1]
-      const colType = removeLowCardinality(res[0])
-      decoders[i] = RowBinaryColumnTypeToDecoder[colType]
-      if (decoders[i] === undefined) {
-        return {
-          error: `Unknown column type ${res[0]} (normalized: ${colType})`,
-        }
-      }
-      types[i] = colType
-    }
-    return [{ names, types, decoders }, nextLoc]
-  },
-}
-
-export function removeLowCardinality(colType: string): ColumnType {
-  if (colType.startsWith('LowCardinality')) {
-    return colType.slice(15, -1) as ColumnType
-  }
-  return colType as ColumnType
+  Date32: RowBinaryTypesDecoder.date32,
 }

@@ -1,7 +1,4 @@
-import {
-  removeLowCardinality,
-  RowBinaryTypesDecoder,
-} from '../../src/data_formatter'
+import { RowBinaryTypesDecoder } from '../../src/data_formatter'
 
 fdescribe('RowBinary decoders', () => {
   it('should decode Date', () => {
@@ -23,16 +20,16 @@ fdescribe('RowBinary decoders', () => {
     })
   })
 
-  it('should remove low cardinality', async () => {
-    const args: [string, string][] = [
-      ['LowCardinality(String)', 'String'],
-      ['LowCardinality(Nullable(String))', 'Nullable(String)'],
-      ['LowCardinality(Array(String))', 'Array(String)'],
-      ['Nullable(String)', 'Nullable(String)'],
-      ['String', 'String'],
-    ]
-    args.forEach(([src, expected]) => {
-      expect(removeLowCardinality(src)).toEqual(expected)
-    })
-  })
+  // it('should remove low cardinality', async () => {
+  //   const args: [string, string][] = [
+  //     ['LowCardinality(String)', 'String'],
+  //     ['LowCardinality(Nullable(String))', 'Nullable(String)'],
+  //     ['LowCardinality(Array(String))', 'Array(String)'],
+  //     ['Nullable(String)', 'Nullable(String)'],
+  //     ['String', 'String'],
+  //   ]
+  //   args.forEach(([src, expected]) => {
+  //     expect(re(src)).toEqual(expected)
+  //   })
+  // })
 })

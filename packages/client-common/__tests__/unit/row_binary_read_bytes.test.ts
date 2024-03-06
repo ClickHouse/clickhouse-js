@@ -1,4 +1,5 @@
 import {
+  readBytesAsFloat32,
   readBytesAsUnsignedBigInt,
   readBytesAsUnsignedInt,
 } from '../../src/data_formatter'
@@ -84,6 +85,27 @@ fdescribe('RowBinary read bytes', () => {
 
       args.forEach(([src, expected]) => {
         expect(readBytesAsUnsignedBigInt(src, 0, 8))
+          .withContext(ctx(src, expected))
+          .toBe(expected)
+      })
+    })
+  })
+
+  fdescribe('Floats', () => {
+    it('should decode Float32', async () => {
+      const args: [Uint8Array, number][] = [
+        [new Uint8Array([0x00, 0x00, 0x00, 0x00]), 0],
+        // some reference values from a random dataset (not 100% matching the CH output, because floats)
+        [new Uint8Array([151, 136, 46, 6]), 3.2826113095459874e-35],
+        [new Uint8Array([176, 183, 118, 153]), -1.2754997313209913e-23],
+        [new Uint8Array([114, 233, 40, 161]), -5.72295763540352e-19],
+        [new Uint8Array([112, 205, 62, 233]), -1.4416628555694005e25],
+        [new Uint8Array([43, 253, 113, 82]), 259833643008],
+        [new Uint8Array([165, 173, 250, 112]), 6.206494065007942e29],
+        [new Uint8Array([175, 228, 124, 108]), 1.2229169371247749e27],
+      ]
+      args.forEach(([src, expected]) => {
+        expect(readBytesAsFloat32(src, 0))
           .withContext(ctx(src, expected))
           .toBe(expected)
       })
