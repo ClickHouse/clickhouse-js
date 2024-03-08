@@ -16,7 +16,7 @@ export const WebImpl: ImplementationDetails<ReadableStream>['impl'] = {
     stream: ReadableStream,
     format: DataFormat,
     query_id: string
-  ) => new ResultSet(stream, format, query_id)) as any, // FIXME: resolve weird type issue - the types actually match
+  ) => new ResultSet(stream, format, query_id)) as any,
   values_encoder: new WebValuesEncoder(),
   close_stream: (stream) => stream.cancel(),
 }

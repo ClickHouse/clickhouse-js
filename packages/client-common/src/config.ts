@@ -142,9 +142,11 @@ export interface ImplementationDetails<Stream> {
   impl: {
     make_connection: MakeConnection<Stream>
     make_result_set: <
-      Stream,
-      Format extends DataFormat,
-      ResultSet extends BaseResultSet<Stream, Format>
+      Format extends DataFormat | undefined,
+      ResultSet extends BaseResultSet<
+        Stream,
+        Format extends undefined ? 'JSON' : NonNullable<Format>
+      >
     >(
       stream: Stream,
       format: Format,

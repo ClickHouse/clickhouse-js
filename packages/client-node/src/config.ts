@@ -119,7 +119,7 @@ export const NodeConfigImpl: Required<
     stream: Stream.Readable,
     format: DataFormat,
     query_id: string
-  ) => new ResultSet(stream, format, query_id)) as any, // FIXME: resolve weird type issue - the types actually match
+  ) => new ResultSet(stream, format, query_id)) as any,
   close_stream: async (stream) => {
     stream.destroy()
   },

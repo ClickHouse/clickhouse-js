@@ -1,13 +1,14 @@
 import type { ResponseJSON } from './clickhouse_types'
-import type {
+import {
   DataFormat,
   RawDataFormat,
   RecordsJSONFormat,
   SingleDocumentJSONFormat,
+  StreamableDataFormat,
   StreamableJSONDataFormat,
 } from './data_formatter'
 
-export type JSONReturnType<T, F extends DataFormat | unknown> =
+export type ResultJSONType<T, F extends DataFormat | unknown> =
   // JSON*EachRow formats
   F extends StreamableJSONDataFormat
     ? T[]
@@ -22,7 +23,19 @@ export type JSONReturnType<T, F extends DataFormat | unknown> =
     ? never
     : T // technically, should never happen
 
-export interface Row {
+export type RowJSONType<T, F extends DataFormat | unknown> =
+  // JSON*EachRow formats
+  F extends StreamableJSONDataFormat
+    ? T
+    : // CSV, TSV, non-streamable JSON formats - cannot be streamed as JSON
+    F extends RawDataFormat | SingleDocumentJSONFormat | RecordsJSONFormat
+    ? never
+    : T // technically, should never happen
+
+export interface Row<
+  Format extends DataFormat | unknown = unknown,
+  JSONType = unknown
+> {
   /** A string representation of a row. */
   text: string
 
@@ -31,7 +44,7 @@ export interface Row {
    * The method will throw if called on a response in JSON incompatible format.
    * It is safe to call this method multiple times.
    */
-  json<T>(): T
+  json<T = JSONType>(): RowJSONType<T, Format>
 }
 
 export interface BaseResultSet<
@@ -59,7 +72,7 @@ export interface BaseResultSet<
    * by calling the other methods, or if it is called for non-JSON formats,
    * such as CSV, TSV etc.
    */
-  json<T>(): Promise<JSONReturnType<T, Format>>
+  json<T = unknown>(): Promise<ResultJSONType<T, Format>>
 
   /**
    * Returns a readable stream for responses that can be streamed.
@@ -83,6 +96,7 @@ export interface BaseResultSet<
    *   * CustomSeparated
    *   * CustomSeparatedWithNames
    *   * CustomSeparatedWithNamesAndTypes
+   *   * Parquet
    *
    * Formats that CANNOT be streamed:
    *   * JSON

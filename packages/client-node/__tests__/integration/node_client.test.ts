@@ -1,6 +1,6 @@
+import { ResultSet } from '../../src'
 import Http from 'http'
-import type Stream from 'stream'
-import type { ClickHouseClient } from '../../src'
+import type { NodeClickHouseClient } from '../../src'
 import { createClient } from '../../src'
 import { emitResponseBody, stubClientRequest } from '../utils/http_stubs'
 
@@ -77,9 +77,20 @@ describe('[Node.js] Client', () => {
     })
   })
 
-  async function query(client: ClickHouseClient<Stream.Readable>) {
+  async function query(client: NodeClickHouseClient) {
     const selectPromise = client.query({
       query: 'SELECT * FROM system.numbers LIMIT 5',
+      format: 'JSONEachRow',
+    })
+    type Data = { foo: string }
+    const rs = await selectPromise
+    const x = rs.json<Data>()
+    const s = rs.stream<Data>()
+    s.on('data', (r) => {
+      r.forEach((r) => {
+        const t = r.text
+        const j = r.json()
+      })
     })
     emitResponseBody(clientRequest, 'hi')
     await selectPromise

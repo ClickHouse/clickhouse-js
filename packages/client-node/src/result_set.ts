@@ -1,11 +1,37 @@
-import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
+import type {
+  BaseResultSet,
+  DataFormat,
+  ResultJSONType,
+  Row,
+  RowJSONType,
+  StreamWithFormat,
+} from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
+import { StreamableDataFormat } from '@clickhouse/client-common/src/data_formatter'
 import { Buffer } from 'buffer'
-import type { TransformCallback } from 'stream'
-import Stream, { Transform } from 'stream'
+import Stream, { Readable, Transform, TransformCallback } from 'stream'
 import { getAsText } from './utils'
 
 const NEWLINE = 0x0a as const
+
+// an exact copy from stream.d.ts, but with typed `on('data')`
+export type ResultStream<T> = Omit<Stream.Readable, 'on'> & {
+  on(event: 'data', listener: (chunk: T) => void): Stream.Readable
+  on(event: 'close', listener: () => void): Stream.Readable
+  on(event: 'drain', listener: () => void): Stream.Readable
+  on(event: 'end', listener: () => void): Stream.Readable
+  on(event: 'error', listener: (err: Error) => void): Stream.Readable
+  on(event: 'finish', listener: () => void): Stream.Readable
+  on(event: 'pause', listener: () => void): Stream.Readable
+  on(event: 'pipe', listener: (src: Readable) => void): Stream.Readable
+  on(event: 'readable', listener: () => void): Stream.Readable
+  on(event: 'resume', listener: () => void): Stream.Readable
+  on(event: 'unpipe', listener: (src: Readable) => void): Stream.Readable
+  on(
+    event: string | symbol,
+    listener: (...args: any[]) => void
+  ): Stream.Readable
+}
 
 export class ResultSet<Format extends DataFormat>
   implements BaseResultSet<Stream.Readable, Format>
@@ -23,14 +49,16 @@ export class ResultSet<Format extends DataFormat>
     return (await getAsText(this._stream)).toString()
   }
 
-  async json<T>(): Promise<T> {
+  async json<T>(): Promise<ResultJSONType<T, Format>> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
     return decode(await this.text(), this.format)
   }
 
-  stream(): Stream.Readable {
+  stream<T>(): Format extends StreamableDataFormat
+    ? ResultStream<Row<Format, T>[]>
+    : never {
     // If the underlying stream has already ended by calling `text` or `json`,
     // Stream.pipeline will create a new empty stream
     // but without "readableEnded" flag set to true

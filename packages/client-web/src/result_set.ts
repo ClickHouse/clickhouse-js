@@ -1,4 +1,9 @@
-import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
+import type {
+  BaseResultSet,
+  DataFormat,
+  ResultJSONType,
+  Row,
+} from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
 import { getAsText } from './utils'
 
@@ -17,7 +22,7 @@ export class ResultSet<Format extends DataFormat>
     return getAsText(this._stream)
   }
 
-  async json<T>(): Promise<T> {
+  async json<T>(): Promise<ResultJSONType<T, Format>> {
     const text = await this.text()
     return decode(text, this.format)
   }
