@@ -38,7 +38,7 @@ describe('Select ResultSet', () => {
         format: 'JSON',
       })
 
-      const { data: nums } = await rs.json<ResponseJSON<{ number: string }>>()
+      const { data: nums } = await rs.json<{ number: string }>()
       expect(Array.isArray(nums)).toBe(true)
       expect(nums.length).toEqual(5)
       const values = nums.map((i) => i.number)
@@ -51,7 +51,7 @@ describe('Select ResultSet', () => {
         format: 'JSON',
       })
 
-      const { meta } = await rs.json<ResponseJSON<{ number: string }>>()
+      const { meta } = await rs.json<{ number: string }>()
 
       expect(meta?.length).toBe(1)
       const column = meta ? meta[0] : undefined

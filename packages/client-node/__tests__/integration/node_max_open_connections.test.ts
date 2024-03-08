@@ -11,13 +11,13 @@ describe('[Node.js] max_open_connections config', () => {
     results = []
   })
 
-  function select(query: string) {
+  async function select(query: string) {
     return client
       .query({
         query,
         format: 'JSONEachRow',
       })
-      .then((r) => r.json<[{ x: number }]>())
+      .then((r) => r.json<{ x: number }>())
       .then(([{ x }]) => results.push(x))
   }
 
@@ -67,7 +67,7 @@ describe('[Node.js] max_open_connections config', () => {
       format: 'JSONEachRow',
     })
 
-    const json = await result.json<object[]>()
+    const json = await result.json()
     expect(json).toContain(value1)
     expect(json).toContain(value2)
     expect(json.length).toEqual(2)

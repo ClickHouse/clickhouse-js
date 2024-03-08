@@ -115,11 +115,11 @@ export const NodeConfigImpl: Required<
     return createConnection(params, tls, keep_alive)
   },
   values_encoder: new NodeValuesEncoder(),
-  make_result_set: (
+  make_result_set: ((
     stream: Stream.Readable,
     format: DataFormat,
-    session_id: string
-  ) => new ResultSet(stream, format, session_id),
+    query_id: string
+  ) => new ResultSet(stream, format, query_id)) as any, // FIXME: resolve weird type issue - the types actually match
   close_stream: async (stream) => {
     stream.destroy()
   },

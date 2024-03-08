@@ -1,4 +1,4 @@
-import type { ExecParams, ResponseJSON } from '@clickhouse/client-common'
+import type { ExecParams } from '@clickhouse/client-common'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import {
   createTestClient,
@@ -100,10 +100,7 @@ describe('exec', () => {
       format: 'JSON',
     })
 
-    const json = await result.json<{
-      rows: number
-      data: Array<{ name: string }>
-    }>()
+    const json = await result.json<{ name: string }>()
     expect(json.rows).toBe(1)
     expect(json.data[0].name).toBe('numbers')
   })
@@ -120,9 +117,11 @@ describe('exec', () => {
       format: 'JSON',
     })
 
-    const { data, rows } = await selectResult.json<
-      ResponseJSON<{ name: string; engine: string; create_table_query: string }>
-    >()
+    const { data, rows } = await selectResult.json<{
+      name: string
+      engine: string
+      create_table_query: string
+    }>()
 
     expect(rows).toBe(1)
     const table = data[0]

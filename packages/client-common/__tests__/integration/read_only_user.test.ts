@@ -45,7 +45,7 @@ describe('read only user', () => {
       .query({
         query: `SELECT * FROM ${tableName}`,
       })
-      .then((r) => r.json<{ data: unknown[] }>())
+      .then((r) => r.json())
     expect(result.data).toEqual([{ id: '42', name: 'hello', sku: [0, 1] }])
   })
 

@@ -2,11 +2,13 @@ import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
 import { getAsText } from './utils'
 
-export class ResultSet implements BaseResultSet<ReadableStream<Row[]>> {
+export class ResultSet<Format extends DataFormat>
+  implements BaseResultSet<ReadableStream<Row[]>, Format>
+{
   private isAlreadyConsumed = false
   constructor(
     private _stream: ReadableStream,
-    private readonly format: DataFormat,
+    private readonly format: Format,
     public readonly query_id: string
   ) {}
 

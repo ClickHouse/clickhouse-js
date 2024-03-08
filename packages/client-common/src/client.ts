@@ -10,7 +10,6 @@ import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 import type {
   CloseStream,
   ImplementationDetails,
-  MakeResultSet,
   ValuesEncoder,
 } from './config'
 import { getConnectionParams, prepareConfigWithURL } from './config'
@@ -102,7 +101,7 @@ export interface InsertParams<Stream = unknown, T = unknown>
 export class ClickHouseClient<Stream = unknown> {
   private readonly clientClickHouseSettings: ClickHouseSettings
   private readonly connection: Connection<Stream>
-  private readonly makeResultSet: MakeResultSet<Stream>
+  private readonly makeResultSet: ImplementationDetails<Stream>['impl']['make_result_set']
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly closeStream: CloseStream<Stream>
   private readonly sessionId?: string
@@ -136,7 +135,14 @@ export class ClickHouseClient<Stream = unknown> {
    * Consider using {@link ClickHouseClient.insert} for data insertion,
    * or {@link ClickHouseClient.command} for DDLs.
    */
-  async query(params: QueryParams): Promise<BaseResultSet<Stream>> {
+  async query<Format extends DataFormat | undefined = undefined>(
+    params: Omit<QueryParams, 'format'> & { format?: Format }
+  ): Promise<
+    BaseResultSet<
+      Stream,
+      Format extends undefined ? 'JSON' : NonNullable<Format>
+    >
+  > {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
     const { stream, query_id } = await this.connection.query({

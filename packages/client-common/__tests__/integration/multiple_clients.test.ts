@@ -20,7 +20,6 @@ describe('multiple clients', () => {
   })
 
   it('should send multiple parallel selects', async () => {
-    type Res = Array<{ sum: number }>
     const results: number[] = []
     await Promise.all(
       clients.map((client, i) =>
@@ -29,8 +28,8 @@ describe('multiple clients', () => {
             query: `SELECT toInt32(sum(*)) AS sum FROM numbers(0, ${i + 2});`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json<Res>())
-          .then((json: Res) => results.push(json[0].sum))
+          .then((r) => r.json<{ sum: number }>())
+          .then((json) => results.push(json[0].sum))
       )
     )
     expect(results.sort((a, b) => a - b)).toEqual([1, 3, 6, 10, 15])

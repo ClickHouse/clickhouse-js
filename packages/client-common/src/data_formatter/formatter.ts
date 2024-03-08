@@ -8,15 +8,18 @@ const streamableJSONFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
 ] as const
+// Returned as { row_1: T, row_2: T, ...}
+const recordsJSONFormats = ['JSONObjectEachRow'] as const
+// See ResponseJSON<T> type
 const singleDocumentJSONFormats = [
   'JSON',
   'JSONStrings',
   'JSONCompact',
   'JSONCompactStrings',
   'JSONColumnsWithMetadata',
-  'JSONObjectEachRow',
 ] as const
 const supportedJSONFormats = [
+  ...recordsJSONFormats,
   ...singleDocumentJSONFormats,
   ...streamableJSONFormats,
 ] as const
@@ -34,31 +37,36 @@ const supportedRawFormats = [
   'Parquet',
 ] as const
 
-export type JSONDataFormat = (typeof supportedJSONFormats)[number]
 export type RawDataFormat = (typeof supportedRawFormats)[number]
-export type DataFormat = JSONDataFormat | RawDataFormat
 
-type SingleDocumentStreamableJsonDataFormat =
+export type StreamableJSONDataFormat = (typeof streamableJSONFormats)[number]
+export type SingleDocumentJSONFormat =
   (typeof singleDocumentJSONFormats)[number]
-type StreamableJsonDataFormat = (typeof streamableJSONFormats)[number]
+export type RecordsJSONFormat = (typeof recordsJSONFormats)[number]
+export type JSONDataFormat =
+  | StreamableJSONDataFormat
+  | SingleDocumentJSONFormat
+  | RecordsJSONFormat
+
+export type DataFormat = JSONDataFormat | RawDataFormat
 
 // TODO add others formats
 const streamableFormat = [
   ...streamableJSONFormats,
   ...supportedRawFormats,
 ] as const
-type StreamableDataFormat = (typeof streamableFormat)[number]
+export type StreamableDataFormat = (typeof streamableFormat)[number]
 
 function isNotStreamableJSONFamily(
   format: DataFormat
-): format is SingleDocumentStreamableJsonDataFormat {
+): format is SingleDocumentJSONFormat {
   // @ts-expect-error JSON is not assignable to notStreamableJSONFormats
   return singleDocumentJSONFormats.includes(format)
 }
 
 function isStreamableJSONFamily(
   format: DataFormat
-): format is StreamableJsonDataFormat {
+): format is StreamableJSONDataFormat {
   // @ts-expect-error JSON is not assignable to streamableJSONFormats
   return streamableJSONFormats.includes(format)
 }

@@ -1,7 +1,4 @@
-import {
-  type ClickHouseClient,
-  type ResponseJSON,
-} from '@clickhouse/client-common'
+import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, guid, validateUUID } from '../utils'
 
 describe('select', () => {
@@ -108,7 +105,7 @@ describe('select', () => {
       format: 'JSON',
     })
 
-    const response = await rs.json<ResponseJSON<{ number: string }>>()
+    const response = await rs.json<{ number: string }>()
     expect(response.data).toEqual([{ number: '0' }, { number: '1' }])
   })
 
@@ -164,7 +161,6 @@ describe('select', () => {
   })
 
   it('can send multiple simultaneous requests', async () => {
-    type Res = Array<{ sum: number }>
     const results: number[] = []
     await Promise.all(
       [...Array(5)].map((_, i) =>
@@ -173,8 +169,8 @@ describe('select', () => {
             query: `SELECT toInt32(sum(*)) AS sum FROM numbers(0, ${i + 2});`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json<Res>())
-          .then((json: Res) => results.push(json[0].sum))
+          .then((r) => r.json<{ sum: number }>())
+          .then((json) => results.push(json[0].sum))
       )
     )
     expect(results.sort((a, b) => a - b)).toEqual([1, 3, 6, 10, 15])

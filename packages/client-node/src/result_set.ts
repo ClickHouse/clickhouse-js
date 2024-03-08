@@ -7,10 +7,12 @@ import { getAsText } from './utils'
 
 const NEWLINE = 0x0a as const
 
-export class ResultSet implements BaseResultSet<Stream.Readable> {
+export class ResultSet<Format extends DataFormat>
+  implements BaseResultSet<Stream.Readable, Format>
+{
   constructor(
     private _stream: Stream.Readable,
-    private readonly format: DataFormat,
+    private readonly format: Format,
     public readonly query_id: string
   ) {}
 

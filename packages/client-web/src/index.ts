@@ -1,3 +1,4 @@
+export type { WebClickHouseClient } from './client'
 export { createClient } from './client'
 export { WebClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
 export { ResultSet } from './result_set'
@@ -26,8 +27,8 @@ export {
   type InputJSONObjectEachRow,
   type BaseResultSet,
   type PingResult,
+  ClickHouseClient,
   ClickHouseError,
   ClickHouseLogLevel,
-  ClickHouseClient,
   SettingsMap,
 } from '@clickhouse/client-common'
