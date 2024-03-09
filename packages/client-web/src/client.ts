@@ -4,8 +4,7 @@ import type {
   InputJSONObjectEachRow,
   InsertParams,
   InsertResult,
-  QueryParamsWithFormat,
-  QueryParamsWithoutFormat,
+  QueryParams,
 } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
 import type { WebClickHouseClientConfigOptions } from './config'
@@ -26,21 +25,11 @@ export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
 }
 
 class WebClickHouseClientImpl extends ClickHouseClient<ReadableStream> {
-  /** Overloads for proper {@link DataFormat} variants handling.
-   *  See the implementation: {@link ClickHouseClient.query} */
-  async query(
-    params: QueryParamsWithoutFormat & { format: undefined }
-  ): Promise<ResultSet<'JSON'>>
-  async query(params: QueryParamsWithoutFormat): Promise<ResultSet<'JSON'>>
-  async query<Format extends DataFormat>(
-    params: QueryParamsWithFormat<Format>
-  ): Promise<ResultSet<Format>>
-
   /** See the base implementation: {@link ClickHouseClient.query} */
   query<Format extends DataFormat>(
-    params: QueryParamsWithFormat<Format>
+    params: Omit<QueryParams, 'format'> & { format?: Format }
   ): Promise<ResultSet<Format>> {
-    return super.query(params) as any
+    return super.query(params) as Promise<ResultSet<Format>>
   }
 }
 

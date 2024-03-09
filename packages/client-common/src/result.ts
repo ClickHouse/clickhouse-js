@@ -20,7 +20,7 @@ export type ResultJSONType<T, F extends DataFormat | unknown> =
     : // CSV, TSV etc. - cannot be represented as JSON
     F extends RawDataFormat
     ? never
-    : T // technically, should never happen
+    : T // happens only when Format could not be inferred from a literal
 
 export type RowJSONType<T, F extends DataFormat | unknown> =
   // JSON*EachRow formats
@@ -29,7 +29,7 @@ export type RowJSONType<T, F extends DataFormat | unknown> =
     : // CSV, TSV, non-streamable JSON formats - cannot be streamed as JSON
     F extends RawDataFormat | SingleDocumentJSONFormat | RecordsJSONFormat
     ? never
-    : T // technically, should never happen
+    : T // happens only when Format could not be inferred from a literal
 
 export interface Row<
   JSONType = unknown,
