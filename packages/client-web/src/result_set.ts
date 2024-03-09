@@ -5,6 +5,7 @@ import type {
   Row,
 } from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
+import type { StreamableDataFormat } from '@clickhouse/client-common/src/data_formatter'
 import { getAsText } from './utils'
 
 export class ResultSet<Format extends DataFormat>
@@ -27,7 +28,9 @@ export class ResultSet<Format extends DataFormat>
     return decode(text, this.format)
   }
 
-  stream(): ReadableStream<Row[]> {
+  stream<T>(): Format extends StreamableDataFormat
+    ? ReadableStream<Row<T, Format>[]>
+    : never {
     this.markAsConsumed()
     validateStreamFormat(this.format)
 
@@ -68,11 +71,12 @@ export class ResultSet<Format extends DataFormat>
       },
     })
 
-    return this._stream.pipeThrough(transform, {
+    const pipeline = this._stream.pipeThrough(transform, {
       preventClose: false,
       preventAbort: false,
       preventCancel: false,
     })
+    return pipeline as any
   }
 
   async close(): Promise<void> {

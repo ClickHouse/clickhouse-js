@@ -1,7 +1,7 @@
 export type { NodeClickHouseClient } from './client'
 export { createClient } from './client'
 export { NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
-export { ResultSet, ResultStream } from './result_set'
+export { ResultSet, StreamReadable } from './result_set'
 
 /** Re-export @clickhouse/client-common types */
 export {

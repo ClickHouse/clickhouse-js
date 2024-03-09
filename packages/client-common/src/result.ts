@@ -1,10 +1,9 @@
 import type { ResponseJSON } from './clickhouse_types'
-import {
+import type {
   DataFormat,
   RawDataFormat,
   RecordsJSONFormat,
   SingleDocumentJSONFormat,
-  StreamableDataFormat,
   StreamableJSONDataFormat,
 } from './data_formatter'
 
@@ -33,8 +32,8 @@ export type RowJSONType<T, F extends DataFormat | unknown> =
     : T // technically, should never happen
 
 export interface Row<
-  Format extends DataFormat | unknown = unknown,
-  JSONType = unknown
+  JSONType = unknown,
+  Format extends DataFormat | unknown = unknown
 > {
   /** A string representation of a row. */
   text: string
@@ -47,10 +46,7 @@ export interface Row<
   json<T = JSONType>(): RowJSONType<T, Format>
 }
 
-export interface BaseResultSet<
-  Stream,
-  Format extends DataFormat | unknown = unknown
-> {
+export interface BaseResultSet<Stream, Format extends DataFormat> {
   /**
    * The method waits for all the rows to be fully loaded
    * and returns the result as a string.

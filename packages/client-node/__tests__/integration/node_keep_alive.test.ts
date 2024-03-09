@@ -1,8 +1,8 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient, guid, sleep } from '@test/utils'
-import type Stream from 'stream'
+import { guid, sleep } from '@test/utils'
+import type { NodeClickHouseClient } from '../../src'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
+import { createNodeTestClient } from '../utils/node_client'
 
 /**
  * FIXME: Works fine during the local runs, but it is flaky on GHA,
@@ -10,7 +10,7 @@ import type { NodeClickHouseClientConfigOptions } from '../../src/config'
  *  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
  */
 xdescribe('[Node.js] Keep Alive', () => {
-  let client: ClickHouseClient<Stream.Readable>
+  let client: NodeClickHouseClient
   const socketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
   afterEach(async () => {
     await client.close()
@@ -18,7 +18,7 @@ xdescribe('[Node.js] Keep Alive', () => {
 
   describe('query', () => {
     it('should recreate the request if socket is potentially expired', async () => {
-      client = createTestClient({
+      client = createNodeTestClient({
         max_open_connections: 1,
         keep_alive: {
           enabled: true,
@@ -33,7 +33,7 @@ xdescribe('[Node.js] Keep Alive', () => {
     })
 
     it('should disable keep alive', async () => {
-      client = createTestClient({
+      client = createNodeTestClient({
         max_open_connections: 1,
         keep_alive: {
           enabled: false,
@@ -46,7 +46,7 @@ xdescribe('[Node.js] Keep Alive', () => {
     })
 
     it('should use multiple connections', async () => {
-      client = createTestClient({
+      client = createNodeTestClient({
         keep_alive: {
           enabled: true,
           socket_ttl: socketTTL,
@@ -80,7 +80,7 @@ xdescribe('[Node.js] Keep Alive', () => {
   describe('insert', () => {
     let tableName: string
     it('should not duplicate insert requests (single connection)', async () => {
-      client = createTestClient({
+      client = createNodeTestClient({
         max_open_connections: 1,
         keep_alive: {
           enabled: true,
@@ -105,7 +105,7 @@ xdescribe('[Node.js] Keep Alive', () => {
     })
 
     it('should not duplicate insert requests (multiple connections)', async () => {
-      client = createTestClient({
+      client = createNodeTestClient({
         max_open_connections: 2,
         keep_alive: {
           enabled: true,

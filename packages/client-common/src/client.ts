@@ -3,6 +3,7 @@ import type {
   ClickHouseSettings,
   Connection,
   ConnExecResult,
+  MakeResultSet,
   WithClickHouseSummary,
 } from '@clickhouse/client-common'
 import { type DataFormat, DefaultLogger } from '@clickhouse/client-common'
@@ -35,6 +36,15 @@ export interface QueryParams extends BaseQueryParams {
   /** Format of the resulting dataset. */
   format?: DataFormat
 }
+
+/** Same parameters as {@link QueryParams}, but with `format` field as a type */
+export type QueryParamsWithFormat<Format extends DataFormat> = Omit<
+  QueryParams,
+  'format'
+> & { format: Format }
+
+/** Same parameters as {@link QueryParams}, but with `format` field omitted */
+export type QueryParamsWithoutFormat = Omit<QueryParams, 'format'>
 
 export interface ExecParams extends BaseQueryParams {
   /** Statement to execute. */
@@ -101,7 +111,7 @@ export interface InsertParams<Stream = unknown, T = unknown>
 export class ClickHouseClient<Stream = unknown> {
   private readonly clientClickHouseSettings: ClickHouseSettings
   private readonly connection: Connection<Stream>
-  private readonly makeResultSet: ImplementationDetails<Stream>['impl']['make_result_set']
+  private readonly makeResultSet: MakeResultSet<Stream>
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly closeStream: CloseStream<Stream>
   private readonly sessionId?: string
@@ -129,20 +139,28 @@ export class ClickHouseClient<Stream = unknown> {
     this.closeStream = config.impl.close_stream
   }
 
+  /** Overloads for proper {@link DataFormat} variants handling.
+   *  See the implementation: {@link ClickHouseClient.query} */
+  async query(
+    params: QueryParamsWithoutFormat & { format: undefined }
+  ): Promise<BaseResultSet<Stream, 'JSON'>>
+  async query(
+    params: QueryParamsWithoutFormat
+  ): Promise<BaseResultSet<Stream, 'JSON'>>
+  async query<Format extends DataFormat>(
+    params: QueryParamsWithFormat<Format>
+  ): Promise<BaseResultSet<Stream, Format>>
+
   /**
    * Used for most statements that can have a response, such as SELECT.
    * FORMAT clause should be specified separately via {@link QueryParams.format} (default is JSON)
    * Consider using {@link ClickHouseClient.insert} for data insertion,
    * or {@link ClickHouseClient.command} for DDLs.
+   * Returns an implementation of {@link BaseResultSet}.
    */
-  async query<Format extends DataFormat | undefined = undefined>(
-    params: Omit<QueryParams, 'format'> & { format?: Format }
-  ): Promise<
-    BaseResultSet<
-      Stream,
-      Format extends undefined ? 'JSON' : NonNullable<Format>
-    >
-  > {
+  async query<Format extends DataFormat>(
+    params: QueryParams | QueryParamsWithFormat<Format>
+  ) {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
     const { stream, query_id } = await this.connection.query({

@@ -88,11 +88,14 @@ export type MakeConnection<
   Config = BaseClickHouseClientConfigOptionsWithURL
 > = (config: Config, params: ConnectionParams) => Connection<Stream>
 
-export type MakeResultSet<
-  Stream,
+export type MakeResultSet<Stream> = <
   Format extends DataFormat,
   ResultSet extends BaseResultSet<Stream, Format>
-> = (stream: Stream, format: Format, query_id: string) => ResultSet
+>(
+  stream: Stream,
+  format: Format,
+  query_id: string
+) => ResultSet
 
 export interface ValuesEncoder<Stream> {
   validateInsertValues<T = unknown>(
@@ -141,17 +144,7 @@ export type HandleImplSpecificURLParams = (
 export interface ImplementationDetails<Stream> {
   impl: {
     make_connection: MakeConnection<Stream>
-    make_result_set: <
-      Format extends DataFormat | undefined,
-      ResultSet extends BaseResultSet<
-        Stream,
-        Format extends undefined ? 'JSON' : NonNullable<Format>
-      >
-    >(
-      stream: Stream,
-      format: Format,
-      query_id: string
-    ) => ResultSet
+    make_result_set: MakeResultSet<Stream>
     values_encoder: ValuesEncoder<Stream>
     close_stream: CloseStream<Stream>
     handle_specific_url_params?: HandleImplSpecificURLParams

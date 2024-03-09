@@ -274,7 +274,7 @@ describe('select with query binding', () => {
   })
 
   describe('NULL parameter binding', () => {
-    const baseQuery: Pick<QueryParams, 'query' | 'format'> = {
+    const baseQuery: QueryParams = {
       query: 'SELECT number FROM numbers(3) WHERE {n:Nullable(String)} IS NULL',
       format: 'CSV',
     }

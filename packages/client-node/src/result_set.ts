@@ -3,19 +3,19 @@ import type {
   DataFormat,
   ResultJSONType,
   Row,
-  RowJSONType,
-  StreamWithFormat,
+  StreamableDataFormat,
 } from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
-import { StreamableDataFormat } from '@clickhouse/client-common/src/data_formatter'
 import { Buffer } from 'buffer'
-import Stream, { Readable, Transform, TransformCallback } from 'stream'
+import type { Readable, TransformCallback } from 'stream'
+import Stream, { Transform } from 'stream'
 import { getAsText } from './utils'
 
 const NEWLINE = 0x0a as const
 
-// an exact copy from stream.d.ts, but with typed `on('data')`
-export type ResultStream<T> = Omit<Stream.Readable, 'on'> & {
+/** {@link Stream.Readable} with additional types for the `on(data)` method.
+ * Everything else is an exact copy from stream.d.ts */
+export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
   on(event: 'data', listener: (chunk: T) => void): Stream.Readable
   on(event: 'close', listener: () => void): Stream.Readable
   on(event: 'drain', listener: () => void): Stream.Readable
@@ -57,7 +57,7 @@ export class ResultSet<Format extends DataFormat>
   }
 
   stream<T>(): Format extends StreamableDataFormat
-    ? ResultStream<Row<Format, T>[]>
+    ? StreamReadable<Row<T, Format>[]>
     : never {
     // If the underlying stream has already ended by calling `text` or `json`,
     // Stream.pipeline will create a new empty stream
@@ -126,13 +126,18 @@ export class ResultSet<Format extends DataFormat>
       objectMode: true,
     })
 
-    return Stream.pipeline(this._stream, toRows, function pipelineCb(err) {
-      if (err) {
-        // FIXME: use logger instead
-        // eslint-disable-next-line no-console
-        console.error(err)
+    const pipeline = Stream.pipeline(
+      this._stream,
+      toRows,
+      function pipelineCb(err) {
+        if (err) {
+          // FIXME: use logger instead
+          // eslint-disable-next-line no-console
+          console.error(err)
+        }
       }
-    })
+    )
+    return pipeline as any
   }
 
   close() {

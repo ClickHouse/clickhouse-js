@@ -13,13 +13,7 @@ export {
   type PingResult,
 } from './client'
 export { type BaseClickHouseClientConfigOptions } from './config'
-export type {
-  Row,
-  BaseResultSet,
-  ResultJSONType,
-  RowJSONType,
-  StreamWithFormat,
-} from './result'
+export type { Row, BaseResultSet, ResultJSONType, RowJSONType } from './result'
 export { type DataFormat } from './data_formatter'
 export { ClickHouseError } from './error'
 export {
@@ -47,6 +41,7 @@ export {
   isSupportedRawFormat,
   decode,
   validateStreamFormat,
+  StreamableDataFormat,
 } from './data_formatter'
 export {
   type ValuesEncoder,
@@ -86,3 +81,4 @@ export {
   formatQuerySettings,
   formatQueryParams,
 } from './data_formatter'
+export type { QueryParamsWithFormat, QueryParamsWithoutFormat } from './client'
