@@ -42,6 +42,7 @@ export class ResultSet<Format extends DataFormat>
     public readonly query_id: string
   ) {}
 
+  /** See {@link BaseResultSet.text} */
   async text(): Promise<string> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
@@ -49,6 +50,7 @@ export class ResultSet<Format extends DataFormat>
     return (await getAsText(this._stream)).toString()
   }
 
+  /** See {@link BaseResultSet.json} */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
@@ -56,6 +58,7 @@ export class ResultSet<Format extends DataFormat>
     return decode(await this.text(), this.format)
   }
 
+  /** See {@link BaseResultSet.stream} */
   stream<T>(): Format extends StreamableDataFormat
     ? StreamReadable<Row<T, Format>[]>
     : never {

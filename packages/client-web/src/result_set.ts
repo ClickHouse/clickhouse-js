@@ -18,16 +18,19 @@ export class ResultSet<Format extends DataFormat>
     public readonly query_id: string
   ) {}
 
+  /** See {@link BaseResultSet.text} */
   async text(): Promise<string> {
     this.markAsConsumed()
     return getAsText(this._stream)
   }
 
+  /** See {@link BaseResultSet.json} */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
     const text = await this.text()
     return decode(text, this.format)
   }
 
+  /** See {@link BaseResultSet.stream} */
   stream<T>(): Format extends StreamableDataFormat
     ? ReadableStream<Row<T, Format>[]>
     : never {
