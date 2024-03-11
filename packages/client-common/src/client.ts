@@ -41,10 +41,7 @@ export interface QueryParams extends BaseQueryParams {
 export type QueryParamsWithFormat<Format extends DataFormat> = Omit<
   QueryParams,
   'format'
-> & { format: Format }
-
-/** Same parameters as {@link QueryParams}, but with `format` field omitted */
-export type QueryParamsWithoutFormat = Omit<QueryParams, 'format'>
+> & { format?: Format }
 
 export interface ExecParams extends BaseQueryParams {
   /** Statement to execute. */
@@ -147,7 +144,7 @@ export class ClickHouseClient<Stream = unknown> {
    * Returns an implementation of {@link BaseResultSet}.
    */
   async query<Format extends DataFormat = 'JSON'>(
-    params: Omit<QueryParams, 'format'> & { format?: Format }
+    params: QueryParamsWithFormat<Format>
   ): Promise<BaseResultSet<Stream, Format>> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)

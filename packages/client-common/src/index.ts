@@ -81,4 +81,4 @@ export {
   formatQuerySettings,
   formatQueryParams,
 } from './data_formatter'
-export type { QueryParamsWithFormat, QueryParamsWithoutFormat } from './client'
+export type { QueryParamsWithFormat } from './client'

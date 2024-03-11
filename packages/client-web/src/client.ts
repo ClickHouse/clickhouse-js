@@ -4,7 +4,7 @@ import type {
   InputJSONObjectEachRow,
   InsertParams,
   InsertResult,
-  QueryParams,
+  QueryParamsWithFormat,
 } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
 import type { WebClickHouseClientConfigOptions } from './config'
@@ -27,7 +27,7 @@ export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
 class WebClickHouseClientImpl extends ClickHouseClient<ReadableStream> {
   /** See the base implementation: {@link ClickHouseClient.query} */
   query<Format extends DataFormat>(
-    params: Omit<QueryParams, 'format'> & { format?: Format }
+    params: QueryParamsWithFormat<Format>
   ): Promise<ResultSet<Format>> {
     return super.query(params) as Promise<ResultSet<Format>>
   }
