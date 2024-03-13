@@ -26,12 +26,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [16, 18, 20]
+        node: [18, 20, 21]
     steps:
       - uses: actions/checkout@main
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.1.0
+        uses: isbang/compose-action@v1.5.1
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -70,9 +70,9 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
 
       - name: Install dependencies
         run: |
@@ -88,14 +88,14 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [16, 18, 20]
+        node: [18, 20, 21]
         clickhouse: [head, latest]
 
     steps:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.1.0
+        uses: isbang/compose-action@v1.5.1
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -103,7 +103,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
@@ -129,14 +129,14 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [16, 18, 20]
+        node: [18, 20, 21]
         clickhouse: [head, latest]
 
     steps:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.1.0
+        uses: isbang/compose-action@v1.5.1
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -144,7 +144,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
@@ -167,7 +167,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.1.0
+        uses: isbang/compose-action@v1.5.1
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -175,9 +175,9 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
 
       - name: Install dependencies
         run: |
@@ -193,13 +193,13 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [16, 18, 20]
+        node: [18, 20, 21]
 
     steps:
       - uses: actions/checkout@main
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
@@ -222,9 +222,9 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Setup NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
 
       - name: Install dependencies
         run: |

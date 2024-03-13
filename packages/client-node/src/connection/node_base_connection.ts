@@ -86,6 +86,8 @@ export abstract class NodeBaseConnection
     additional_headers?: Record<string, string>
   ): Http.OutgoingHttpHeaders {
     return {
+      // KeepAlive agent for some reason does not set this on its own
+      Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
         'base64'
       )}`,

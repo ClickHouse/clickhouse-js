@@ -2,15 +2,15 @@ import { toSearchParams } from '@clickhouse/client-common'
 import type { URLSearchParams } from 'url'
 
 describe('toSearchParams', () => {
-  it('should return undefined with default settings', async () => {
+  it('should return only query_id, ignoring the default database', async () => {
     const params = toSearchParams({ database: 'default', query_id: 'foo' })
     expect(toSortedArray(params)).toEqual([['query_id', 'foo']])
   })
 
   it('should set database', async () => {
-    const params = toSearchParams({ database: 'mydb', query_id: 'foo' })!
+    const params = toSearchParams({ database: 'my_db', query_id: 'foo' })!
     expect(toSortedArray(params)).toEqual([
-      ['database', 'mydb'],
+      ['database', 'my_db'],
       ['query_id', 'foo'],
     ])
   })
