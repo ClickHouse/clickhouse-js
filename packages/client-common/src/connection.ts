@@ -14,7 +14,7 @@ export interface ConnectionParams {
   password: string
   database: string
   clickhouse_settings: ClickHouseSettings
-  logWriter: LogWriter
+  log_writer: LogWriter
   application_id?: string
   additional_headers?: Record<string, string>
 }
@@ -50,6 +50,8 @@ export type ConnPingResult =
       success: true
     }
   | { success: false; error: Error }
+
+export type ConnOperation = 'Ping' | 'Query' | 'Insert' | 'Exec'
 
 export interface Connection<Stream> {
   ping(): Promise<ConnPingResult>

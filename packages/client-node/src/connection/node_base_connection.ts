@@ -6,6 +6,7 @@ import type {
   ConnExecResult,
   ConnInsertParams,
   ConnInsertResult,
+  ConnOperation,
   ConnPingResult,
   ConnQueryResult,
   LogWriter,
@@ -21,15 +22,17 @@ import crypto from 'crypto'
 import type Http from 'http'
 import type * as net from 'net'
 import Stream from 'stream'
+import type { URLSearchParams } from 'url'
 import Zlib from 'zlib'
 import { getAsText, getUserAgent, isStream } from '../utils'
+import { decompressResponse, isDecompressionError } from './compression'
+import { drainStream } from './stream'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
   keep_alive: {
     enabled: boolean
-    socket_ttl: number
-    retry_on_expired_socket: boolean
+    idle_socket_ttl: number
   }
 }
 
@@ -49,17 +52,11 @@ export interface RequestParams {
   method: 'GET' | 'POST'
   url: URL
   body?: string | Stream.Readable
-  abort_signal?: AbortSignal
+  // provided by the user and wrapped around internally
+  abort_signal: AbortSignal
   decompress_response?: boolean
   compress_request?: boolean
   parse_summary?: boolean
-}
-
-const expiredSocketMessage = 'expired socket'
-
-interface RequestResult {
-  stream: Stream.Readable
-  summary?: ClickHouseSummary
 }
 
 export abstract class NodeBaseConnection
@@ -67,21 +64,15 @@ export abstract class NodeBaseConnection
 {
   protected readonly headers: Http.OutgoingHttpHeaders
   private readonly logger: LogWriter
-  private readonly retry_expired_sockets: boolean
-  private readonly known_sockets = new WeakMap<
-    net.Socket,
-    {
-      id: string
-      last_used_time: number
-    }
-  >()
+  private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
+  private readonly idleSocketTTL: number
+
   protected constructor(
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent
   ) {
-    this.logger = params.logWriter
-    this.retry_expired_sockets =
-      params.keep_alive.enabled && params.keep_alive.retry_on_expired_socket
+    this.logger = params.log_writer
+    this.idleSocketTTL = params.keep_alive.idle_socket_ttl
     this.headers = this.buildDefaultHeaders(
       params.username,
       params.password,
@@ -109,27 +100,8 @@ export abstract class NodeBaseConnection
 
   private async request(
     params: RequestParams,
-    retryCount = 0
+    op: ConnOperation
   ): Promise<RequestResult> {
-    try {
-      return await this._request(params)
-    } catch (e) {
-      if (e instanceof Error && e.message === expiredSocketMessage) {
-        if (this.retry_expired_sockets && retryCount < 3) {
-          this.logger.trace({
-            module: 'Connection',
-            message: `Keep-Alive socket is expired, retrying with a new one, retries so far: ${retryCount}`,
-          })
-          return await this.request(params, retryCount + 1)
-        } else {
-          throw new Error(`Socket hang up after ${retryCount} retries`)
-        }
-      }
-      throw e
-    }
-  }
-
-  private async _request(params: RequestParams): Promise<RequestResult> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
       const request = this.createClientRequest(params)
@@ -142,19 +114,17 @@ export abstract class NodeBaseConnection
       const onResponse = async (
         _response: Http.IncomingMessage
       ): Promise<void> => {
-        this.logResponse(request, params, _response, start)
+        this.logResponse(op, request, params, _response, start)
 
         const decompressionResult = decompressResponse(_response)
-
         if (isDecompressionError(decompressionResult)) {
           return reject(decompressionResult.error)
         }
-
         if (isSuccessfulResponse(_response.statusCode)) {
           return resolve({
             stream: decompressionResult.response,
             summary: params.parse_summary
-              ? this.parseSummary(_response)
+              ? this.parseSummary(op, _response)
               : undefined,
           })
         } else {
@@ -207,61 +177,69 @@ export abstract class NodeBaseConnection
       }
 
       const onSocket = (socket: net.Socket) => {
-        if (this.retry_expired_sockets) {
-          // if socket is reused
-          const socketInfo = this.known_sockets.get(socket)
-          if (socketInfo !== undefined) {
-            this.logger.trace({
-              module: 'Connection',
-              message: `Reused socket ${socketInfo.id}`,
-            })
-            // if a socket was reused at an unfortunate time,
-            // and is likely about to expire
-            const isPossiblyExpired =
-              Date.now() - socketInfo.last_used_time >
-              this.params.keep_alive.socket_ttl
-            if (isPossiblyExpired) {
-              this.logger.trace({
-                module: 'Connection',
-                message: 'Socket should be expired - terminate it',
-              })
-              this.known_sockets.delete(socket)
-              socket.destroy() // immediately terminate the connection
-              request.destroy()
-              reject(new Error(expiredSocketMessage))
-            } else {
-              this.logger.trace({
-                module: 'Connection',
-                message: `Socket ${socketInfo.id} is safe to be reused`,
-              })
-              this.known_sockets.set(socket, {
-                id: socketInfo.id,
-                last_used_time: Date.now(),
-              })
-              pipeStream()
-            }
-          } else {
+        if (this.params.keep_alive.enabled) {
+          const socketInfo = this.knownSockets.get(socket)
+          // It is the first time we encounter this socket,
+          // so it doesn't have the idle timeout handler attached to it
+          if (socketInfo === undefined) {
             const socketId = crypto.randomUUID()
             this.logger.trace({
-              module: 'Connection',
-              message: `Using a new socket ${socketId}`,
+              message: `Using a fresh socket ${socketId}, setting up a new 'free' listener`,
             })
-            this.known_sockets.set(socket, {
+            this.knownSockets.set(socket, {
               id: socketId,
-              last_used_time: Date.now(),
+              idle_timeout_handle: undefined,
             })
-            pipeStream()
+            // When the request is complete and the socket is released,
+            // make sure that the socket is removed after `idleSocketTTL`.
+            socket.on('free', () => {
+              this.logger.trace({
+                message: `Socket ${socketId} was released`,
+              })
+              // Avoiding the built-in socket.timeout() method usage here,
+              // as we don't want to clash with the actual request timeout.
+              const idleTimeoutHandle = setTimeout(() => {
+                this.logger.trace({
+                  message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
+                })
+                this.knownSockets.delete(socket)
+                socket.destroy()
+              }, this.idleSocketTTL).unref()
+              this.knownSockets.set(socket, {
+                id: socketId,
+                idle_timeout_handle: idleTimeoutHandle,
+              })
+            })
+
+            const cleanup = () => {
+              const maybeSocketInfo = this.knownSockets.get(socket)
+              // clean up a possibly dangling idle timeout handle (preventing leaks)
+              if (maybeSocketInfo?.idle_timeout_handle) {
+                clearTimeout(maybeSocketInfo.idle_timeout_handle)
+              }
+              this.logger.trace({
+                message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
+              })
+            }
+            socket.once('end', cleanup)
+            socket.once('close', cleanup)
+          } else {
+            clearTimeout(socketInfo.idle_timeout_handle)
+            this.logger.trace({
+              message: `Reusing socket ${socketInfo.id}`,
+            })
+            this.knownSockets.set(socket, {
+              ...socketInfo,
+              idle_timeout_handle: undefined,
+            })
           }
-        } else {
-          // no need to track the reused sockets;
-          // keep alive is disabled or retry mechanism is not enabled
-          pipeStream()
         }
 
-        // this is for request timeout only.
-        // The socket won't be actually destroyed,
-        // and it will be returned to the pool.
-        // TODO: investigate if can actually remove the idle sockets properly
+        // Socket is "prepared" with idle handlers, continue with our request
+        pipeStream()
+
+        // This is for request timeout only. Surprisingly, it is not always enough to set in the HTTP request.
+        // The socket won't be actually destroyed, and it will be returned to the pool.
         socket.setTimeout(this.params.request_timeout, onTimeout)
       }
 
@@ -299,28 +277,38 @@ export abstract class NodeBaseConnection
   }
 
   async ping(): Promise<ConnPingResult> {
+    const abortController = new AbortController()
     try {
-      const { stream } = await this.request({
-        method: 'GET',
-        url: transformUrl({ url: this.params.url, pathname: '/ping' }),
-      })
-      stream.destroy()
+      const { stream } = await this.request(
+        {
+          method: 'GET',
+          url: transformUrl({ url: this.params.url, pathname: '/ping' }),
+          abort_signal: abortController.signal,
+        },
+        'Ping'
+      )
+      await drainStream(stream)
       return { success: true }
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          success: false,
-          error,
-        }
+      // it is used to ensure that the outgoing request is terminated,
+      // and we don't get an unhandled error propagation later
+      abortController.abort('Ping failed')
+      // not an error, as this might be semi-expected
+      this.logger.warn({
+        message: this.httpRequestErrorMessage('Ping'),
+        err: error as Error,
+      })
+      return {
+        success: false,
+        error: error as Error, // should NOT be propagated to the user
       }
-      throw error // should never happen
     }
   }
 
   async query(
     params: ConnBaseQueryParams
   ): Promise<ConnQueryResult<Stream.Readable>> {
-    const query_id = getQueryId(params.query_id)
+    const query_id = this.getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
       this.params.compression.decompress_response
@@ -332,25 +320,46 @@ export abstract class NodeBaseConnection
       session_id: params.session_id,
       query_id,
     })
-
-    const { stream } = await this.request({
-      method: 'POST',
-      url: transformUrl({ url: this.params.url, searchParams }),
-      body: params.query,
-      abort_signal: params.abort_signal,
-      decompress_response: clickhouse_settings.enable_http_compression === 1,
-    })
-
-    return {
-      stream,
-      query_id,
+    const decompressResponse = clickhouse_settings.enable_http_compression === 1
+    const { controller, controllerCleanup } = this.getAbortController(params)
+    try {
+      const { stream } = await this.request(
+        {
+          method: 'POST',
+          url: transformUrl({ url: this.params.url, searchParams }),
+          body: params.query,
+          abort_signal: controller.signal,
+          decompress_response: decompressResponse,
+        },
+        'Query'
+      )
+      return {
+        stream,
+        query_id,
+      }
+    } catch (err) {
+      controller.abort('Query HTTP request failed')
+      this.logRequestError({
+        op: 'Query',
+        query_id: query_id,
+        query_params: params,
+        search_params: searchParams,
+        err: err as Error,
+        extra_args: {
+          decompress_response: decompressResponse,
+          clickhouse_settings,
+        },
+      })
+      throw err // should be propagated to the user
+    } finally {
+      controllerCleanup()
     }
   }
 
   async exec(
     params: ConnBaseQueryParams
   ): Promise<ConnExecResult<Stream.Readable>> {
-    const query_id = getQueryId(params.query_id)
+    const query_id = this.getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
@@ -358,26 +367,45 @@ export abstract class NodeBaseConnection
       session_id: params.session_id,
       query_id,
     })
-
-    const { stream, summary } = await this.request({
-      method: 'POST',
-      url: transformUrl({ url: this.params.url, searchParams }),
-      body: params.query,
-      abort_signal: params.abort_signal,
-      parse_summary: true,
-    })
-
-    return {
-      stream,
-      query_id,
-      summary,
+    const { controller, controllerCleanup } = this.getAbortController(params)
+    try {
+      const { stream, summary } = await this.request(
+        {
+          method: 'POST',
+          url: transformUrl({ url: this.params.url, searchParams }),
+          body: params.query,
+          abort_signal: controller.signal,
+          parse_summary: true,
+        },
+        'Exec'
+      )
+      return {
+        stream,
+        query_id,
+        summary,
+      }
+    } catch (err) {
+      controller.abort('Exec HTTP request failed')
+      this.logRequestError({
+        op: 'Exec',
+        query_id: query_id,
+        query_params: params,
+        search_params: searchParams,
+        err: err as Error,
+        extra_args: {
+          clickhouse_settings: params.clickhouse_settings ?? {},
+        },
+      })
+      throw err // should be propagated to the user
+    } finally {
+      controllerCleanup()
     }
   }
 
   async insert(
     params: ConnInsertParams<Stream.Readable>
   ): Promise<ConnInsertResult> {
-    const query_id = getQueryId(params.query_id)
+    const query_id = this.getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
@@ -386,18 +414,37 @@ export abstract class NodeBaseConnection
       session_id: params.session_id,
       query_id,
     })
-
-    const { stream, summary } = await this.request({
-      method: 'POST',
-      url: transformUrl({ url: this.params.url, searchParams }),
-      body: params.values,
-      abort_signal: params.abort_signal,
-      compress_request: this.params.compression.compress_request,
-      parse_summary: true,
-    })
-
-    await this.drainHttpResponse(stream)
-    return { query_id, summary }
+    const { controller, controllerCleanup } = this.getAbortController(params)
+    try {
+      const { stream, summary } = await this.request(
+        {
+          method: 'POST',
+          url: transformUrl({ url: this.params.url, searchParams }),
+          body: params.values,
+          abort_signal: controller.signal,
+          compress_request: this.params.compression.compress_request,
+          parse_summary: true,
+        },
+        'Insert'
+      )
+      await drainStream(stream)
+      return { query_id, summary }
+    } catch (err) {
+      controller.abort('Insert HTTP request failed')
+      this.logRequestError({
+        op: 'Insert',
+        query_id: query_id,
+        query_params: params,
+        search_params: searchParams,
+        err: err as Error,
+        extra_args: {
+          clickhouse_settings: params.clickhouse_settings ?? {},
+        },
+      })
+      throw err // should be propagated to the user
+    } finally {
+      controllerCleanup()
+    }
   }
 
   async close(): Promise<void> {
@@ -406,7 +453,30 @@ export abstract class NodeBaseConnection
     }
   }
 
+  private getQueryId(query_id: string | undefined): string {
+    return query_id || crypto.randomUUID()
+  }
+
+  // a wrapper over the user's Signal to terminate the failed requests
+  private getAbortController(params: ConnBaseQueryParams): {
+    controller: AbortController
+    controllerCleanup: () => void
+  } {
+    const controller = new AbortController()
+    function onAbort() {
+      controller.abort()
+    }
+    params.abort_signal?.addEventListener('abort', onAbort)
+    return {
+      controller,
+      controllerCleanup: () => {
+        params.abort_signal?.removeEventListener('abort', onAbort)
+      },
+    }
+  }
+
   private logResponse(
+    op: ConnOperation,
     request: Http.ClientRequest,
     params: RequestParams,
     response: Http.IncomingMessage,
@@ -415,9 +485,9 @@ export abstract class NodeBaseConnection
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { authorization, host, ...headers } = request.getHeaders()
     const duration = Date.now() - startTimestamp
-    this.params.logWriter.debug({
+    this.params.log_writer.debug({
       module: 'HTTP Adapter',
-      message: 'Got a response from ClickHouse',
+      message: `${op}: got a response from ClickHouse`,
       args: {
         request_method: params.method,
         request_path: params.url.pathname,
@@ -430,41 +500,34 @@ export abstract class NodeBaseConnection
     })
   }
 
-  private async drainHttpResponse(stream: Stream.Readable): Promise<void> {
-    return new Promise((resolve, reject) => {
-      function dropData() {
-        // We don't care about the data
-      }
-
-      function onEnd() {
-        removeListeners()
-        resolve()
-      }
-
-      function onError(err: Error) {
-        removeListeners()
-        reject(err)
-      }
-
-      function onClose() {
-        removeListeners()
-      }
-
-      function removeListeners() {
-        stream.removeListener('data', dropData)
-        stream.removeListener('end', onEnd)
-        stream.removeListener('error', onError)
-        stream.removeListener('onClose', onClose)
-      }
-
-      stream.on('data', dropData)
-      stream.on('end', onEnd)
-      stream.on('error', onError)
-      stream.on('close', onClose)
+  private logRequestError({
+    op,
+    err,
+    query_id,
+    query_params,
+    search_params,
+    extra_args,
+  }: LogRequestErrorParams) {
+    this.logger.error({
+      message: this.httpRequestErrorMessage(op),
+      err: err as Error,
+      args: {
+        query: query_params.query,
+        search_params: search_params?.toString() ?? '',
+        with_abort_signal: query_params.abort_signal !== undefined,
+        session_id: query_params.session_id,
+        query_id: query_id,
+        ...extra_args,
+      },
     })
   }
 
+  private httpRequestErrorMessage(op: ConnOperation): string {
+    return `${op}: HTTP request error.`
+  }
+
   private parseSummary(
+    op: ConnOperation,
     response: Http.IncomingMessage
   ): ClickHouseSummary | undefined {
     const summaryHeader = response.headers['x-clickhouse-summary']
@@ -473,8 +536,10 @@ export abstract class NodeBaseConnection
         return JSON.parse(summaryHeader)
       } catch (err) {
         this.logger.error({
-          module: 'Connection',
-          message: `Failed to parse X-ClickHouse-Summary header, got: ${summaryHeader}`,
+          message: `${op}: failed to parse X-ClickHouse-Summary header.`,
+          args: {
+            'X-ClickHouse-Summary': summaryHeader,
+          },
           err: err as Error,
         })
       }
@@ -482,38 +547,21 @@ export abstract class NodeBaseConnection
   }
 }
 
-function decompressResponse(response: Http.IncomingMessage):
-  | {
-      response: Stream.Readable
-    }
-  | { error: Error } {
-  const encoding = response.headers['content-encoding']
-
-  if (encoding === 'gzip') {
-    return {
-      response: Stream.pipeline(
-        response,
-        Zlib.createGunzip(),
-        function pipelineCb(err) {
-          if (err) {
-            console.error(err)
-          }
-        }
-      ),
-    }
-  } else if (encoding !== undefined) {
-    return {
-      error: new Error(`Unexpected encoding: ${encoding}`),
-    }
-  }
-
-  return { response }
+interface RequestResult {
+  stream: Stream.Readable
+  summary?: ClickHouseSummary
 }
 
-function isDecompressionError(result: any): result is { error: Error } {
-  return result.error !== undefined
+interface LogRequestErrorParams {
+  op: ConnOperation
+  err: Error
+  query_id: string
+  query_params: ConnBaseQueryParams
+  search_params: URLSearchParams | undefined
+  extra_args: Record<string, unknown>
 }
 
-function getQueryId(query_id: string | undefined): string {
-  return query_id || crypto.randomUUID()
+interface SocketInfo {
+  id: string
+  idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
 }

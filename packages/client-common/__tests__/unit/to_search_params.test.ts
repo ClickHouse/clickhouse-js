@@ -3,17 +3,22 @@ import type { URLSearchParams } from 'url'
 
 describe('toSearchParams', () => {
   it('should return undefined with default settings', async () => {
-    expect(toSearchParams({ database: 'default' })).toBeUndefined()
+    const params = toSearchParams({ database: 'default', query_id: 'foo' })
+    expect(toSortedArray(params)).toEqual([['query_id', 'foo']])
   })
 
   it('should set database', async () => {
-    const params = toSearchParams({ database: 'mydb' })!
-    expect([...params.entries()]).toEqual([['database', 'mydb']])
+    const params = toSearchParams({ database: 'mydb', query_id: 'foo' })!
+    expect(toSortedArray(params)).toEqual([
+      ['database', 'mydb'],
+      ['query_id', 'foo'],
+    ])
   })
 
   it('should set ClickHouse settings', async () => {
     const params = toSearchParams({
       database: 'default',
+      query_id: 'foo',
       clickhouse_settings: {
         insert_quorum: '2',
         distributed_product_mode: 'global',
@@ -25,12 +30,14 @@ describe('toSearchParams', () => {
       ['distributed_product_mode', 'global'],
       ['insert_quorum', '2'],
       ['limit', '42'],
+      ['query_id', 'foo'],
     ])
   })
 
   it('should set query params', async () => {
     const params = toSearchParams({
       database: 'default',
+      query_id: 'foo',
       query_params: {
         foo: 42,
         bar: true,
@@ -41,6 +48,7 @@ describe('toSearchParams', () => {
       ['param_bar', '1'],
       ['param_foo', '42'],
       ['param_qaz', 'qux'],
+      ['query_id', 'foo'],
     ])
   })
 
@@ -48,9 +56,13 @@ describe('toSearchParams', () => {
     const query = 'SELECT * FROM system.settings'
     const params = toSearchParams({
       database: 'default',
+      query_id: 'foo',
       query,
     })!
-    expect(toSortedArray(params)).toEqual([['query', query]])
+    expect(toSortedArray(params)).toEqual([
+      ['query', query],
+      ['query_id', 'foo'],
+    ])
   })
 
   it('should set everything', async () => {

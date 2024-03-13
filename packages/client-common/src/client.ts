@@ -60,7 +60,7 @@ export interface ClickHouseClientConfigOptions<Stream> {
   host?: string
   /** The request timeout in milliseconds. Default value: `30_000`. */
   request_timeout?: number
-  /** Maximum number of sockets to allow per host. Default value: `Infinity`. */
+  /** Maximum number of sockets to allow per host. Default value: `10`. */
   max_open_connections?: number
 
   compression?: {
@@ -338,8 +338,8 @@ function getConnectionParams<Stream>(
   return {
     application_id: config.application,
     url: createUrl(config.host ?? 'http://localhost:8123'),
-    request_timeout: config.request_timeout ?? 300_000,
-    max_open_connections: config.max_open_connections ?? Infinity,
+    request_timeout: config.request_timeout ?? 30_000,
+    max_open_connections: config.max_open_connections ?? 10,
     compression: {
       decompress_response: config.compression?.response ?? true,
       compress_request: config.compression?.request ?? false,
@@ -348,10 +348,11 @@ function getConnectionParams<Stream>(
     password: config.password ?? '',
     database: config.database ?? 'default',
     clickhouse_settings: config.clickhouse_settings ?? {},
-    logWriter: new LogWriter(
+    log_writer: new LogWriter(
       config?.log?.LoggerClass
         ? new config.log.LoggerClass()
         : new DefaultLogger(),
+      'Connection',
       config.log?.level
     ),
     additional_headers: config.additional_headers,
