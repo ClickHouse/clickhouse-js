@@ -9,8 +9,7 @@ describe('[Node.js] createConnection', () => {
   const baseParams = {
     keep_alive: {
       enabled: true,
-      retry_on_expired_socket: false,
-      socket_ttl: 2500,
+      idle_socket_ttl: 2500,
     },
   } as NodeConnectionParams
 

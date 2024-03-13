@@ -1,3 +1,23 @@
+## 0.3.0-beta.1 (Node.js only)
+
+A subset of changes from the upcoming 1.0.0 release.
+
+### New features
+
+- Idle sockets timeout rework; now, the client tracks the idling sockets (on top of what the KeepAlive agent should normally do) and forcefully destroys them when it sees fit (by default, after 2500ms of idling, to match the default ClickHouse server KeepAlive configuration).
+- Logging improvements: more logs on failing requests; all client methods except ping will log an error on failure now, and ping will log a warning, since the error is returned as part of its result. Logging needs to be enabled explicitly, as the log level is `OFF` by default.
+
+### Breaking changes
+
+- `keep_alive.retry_on_expired_socket` and `keep_alive.socket_ttl` configuration parameters are removed. Instead, the new `keep_alive.idle_socket_ttl` parameter should be used. The default value for `keep_alive.idle_socket_ttl` is 2500.
+- The `max_open_connections` configuration parameter is now 10 by default, as we should not rely on the KeepAlive agent's defaults.
+- Fixed the default request_timeout configuration value (now it is correctly set to 30s, previously 300s).
+
+### Bug fixes
+
+- Fixed a bug with Ping that could lead to unhandled Socket hang-up propagation.
+- Ensure proper Connection header value considering KeepAlive settings. If KeepAlive is disabled, its value is now forced to ["close"](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Connection#close).
+
 ## 0.2.10 (Common, Node.js, Web)
 
 ### New features

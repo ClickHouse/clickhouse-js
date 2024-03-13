@@ -18,19 +18,10 @@ export type NodeClickHouseClientConfigOptions =
     keep_alive?: {
       /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
       enabled?: boolean
-      /** How long to keep a particular open socket alive
-       * on the client side (in milliseconds).
-       * Should be less than the server setting
-       * (see `keep_alive_timeout` in server's `config.xml`).
-       * Currently, has no effect if {@link retry_on_expired_socket}
-       * is unset or false. Default value: 2500
-       * (based on the default ClickHouse server setting, which is 3000) */
-      socket_ttl?: number
-      /** If the client detects a potentially expired socket based on the
-       * {@link socket_ttl}, this socket will be immediately destroyed
-       * before sending the request, and this request will be retried
-       * with a new socket up to 3 times. Default: false (no retries) */
-      retry_on_expired_socket?: boolean
+      /** For how long keep a particular idle socket alive on the client side (in milliseconds).
+       * It is supposed to be a fair bit less that the ClickHouse server KeepAlive timeout, which is by default 3000 ms.
+       * Default value: 2500 */
+      idle_socket_ttl?: number
     }
   }
 
@@ -63,9 +54,7 @@ export function createClient(
   }
   const keep_alive = {
     enabled: config?.keep_alive?.enabled ?? true,
-    socket_ttl: config?.keep_alive?.socket_ttl ?? 2500,
-    retry_on_expired_socket:
-      config?.keep_alive?.retry_on_expired_socket ?? false,
+    idle_socket_ttl: config?.keep_alive?.idle_socket_ttl ?? 2500,
   }
   return new ClickHouseClient({
     impl: {

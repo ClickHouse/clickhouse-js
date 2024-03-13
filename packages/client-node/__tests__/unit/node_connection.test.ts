@@ -1,264 +1,42 @@
-import type {
-  ConnectionParams,
-  ConnQueryResult,
-} from '@clickhouse/client-common'
-import { LogWriter } from '@clickhouse/client-common'
-import { guid, sleep, TestLogger, validateUUID } from '@test/utils'
-import type { ClientRequest } from 'http'
+import { guid } from '@test/utils'
 import Http from 'http'
-import Stream from 'stream'
-import Zlib from 'zlib'
-import type { NodeConnectionParams } from '../../src/connection'
-import { NodeBaseConnection, NodeHttpConnection } from '../../src/connection'
 import { getAsText } from '../../src/utils'
+import { assertQueryId, assertConnQueryResult } from '../utils/assert'
 import {
-  buildIncomingMessage,
-  emitCompressedBody,
+  buildHttpConnection,
   emitResponseBody,
+  MyTestHttpConnection,
   stubClientRequest,
 } from '../utils/http_stubs'
 
 describe('[Node.js] Connection', () => {
-  describe('compression', () => {
-    describe('response decompression', () => {
-      it('hints ClickHouse server to send a gzip compressed response if compress_request: true', async () => {
-        const request = stubClientRequest()
-        const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
-
-        const adapter = buildHttpAdapter({
-          compression: {
-            decompress_response: true,
-            compress_request: false,
-          },
-        })
-
-        const selectPromise = adapter.query({
-          query: 'SELECT * FROM system.numbers LIMIT 5',
-        })
-
-        const responseBody = 'foobar'
-        await emitCompressedBody(request, responseBody)
-
-        await selectPromise
-
-        expect(httpRequestStub).toHaveBeenCalledTimes(1)
-        const calledWith = httpRequestStub.calls.mostRecent().args[1]
-        expect(calledWith.headers!['Accept-Encoding']).toBe('gzip')
-      })
-
-      it('does not send a compression algorithm hint if compress_request: false', async () => {
-        const request = stubClientRequest()
-        const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
-        const adapter = buildHttpAdapter({
-          compression: {
-            decompress_response: false,
-            compress_request: false,
-          },
-        })
-
-        const selectPromise = adapter.query({
-          query: 'SELECT * FROM system.numbers LIMIT 5',
-        })
-
-        const responseBody = 'foobar'
-        emitResponseBody(request, responseBody)
-
-        const queryResult = await selectPromise
-        await assertQueryResult(queryResult, responseBody)
-
-        expect(httpRequestStub).toHaveBeenCalledTimes(1)
-        const calledWith = httpRequestStub.calls.mostRecent().args[1]
-        expect(calledWith.headers!['Accept-Encoding']).toBeUndefined()
-      })
-
-      it('uses request-specific settings over config settings', async () => {
-        const request = stubClientRequest()
-        const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
-        const adapter = buildHttpAdapter({
-          compression: {
-            decompress_response: false,
-            compress_request: false,
-          },
-        })
-
-        const selectPromise = adapter.query({
-          query: 'SELECT * FROM system.numbers LIMIT 5',
-          clickhouse_settings: {
-            enable_http_compression: 1,
-          },
-        })
-
-        const responseBody = 'foobar'
-        await emitCompressedBody(request, responseBody)
-
-        const queryResult = await selectPromise
-        await assertQueryResult(queryResult, responseBody)
-
-        expect(httpRequestStub).toHaveBeenCalledTimes(1)
-        const calledWith = httpRequestStub.calls.mostRecent().args[1]
-        expect(calledWith.headers!['Accept-Encoding']).toBe('gzip')
-      })
-
-      it('decompresses a gzip response', async () => {
-        const request = stubClientRequest()
-        spyOn(Http, 'request').and.returnValue(request)
-        const adapter = buildHttpAdapter({
-          compression: {
-            decompress_response: true,
-            compress_request: false,
-          },
-        })
-
-        const selectPromise = adapter.query({
-          query: 'SELECT * FROM system.numbers LIMIT 5',
-        })
-
-        const responseBody = 'abc'.repeat(1_000)
-        await emitCompressedBody(request, responseBody)
-
-        const queryResult = await selectPromise
-        await assertQueryResult(queryResult, responseBody)
-      })
-
-      it('throws on an unexpected encoding', async () => {
-        const request = stubClientRequest()
-        spyOn(Http, 'request').and.returnValue(request)
-        const adapter = buildHttpAdapter({
-          compression: {
-            decompress_response: true,
-            compress_request: false,
-          },
-        })
-
-        const selectPromise = adapter.query({
-          query: 'SELECT * FROM system.numbers LIMIT 5',
-        })
-
-        await emitCompressedBody(request, 'abc', 'br')
-
-        await expectAsync(selectPromise).toBeRejectedWith(
-          jasmine.objectContaining({
-            message: 'Unexpected encoding: br',
-          })
-        )
-      })
-
-      it('provides decompression error to a stream consumer', async () => {
-        const request = stubClientRequest()
-        spyOn(Http, 'request').and.returnValue(request)
-        const adapter = buildHttpAdapter({
-          compression: {
-            decompress_response: true,
-            compress_request: false,
-          },
-        })
-
-        const selectPromise = adapter.query({
-          query: 'SELECT * FROM system.numbers LIMIT 5',
-        })
-
-        // No GZIP encoding for the body here
-        request.emit(
-          'response',
-          buildIncomingMessage({
-            body: 'abc',
-            headers: {
-              'content-encoding': 'gzip',
-            },
-          })
-        )
-
-        const readStream = async () => {
-          const { stream } = await selectPromise
-          for await (const chunk of stream) {
-            void chunk // stub
-          }
-        }
-
-        await expectAsync(readStream()).toBeRejectedWith(
-          jasmine.objectContaining({
-            message: 'incorrect header check',
-            code: 'Z_DATA_ERROR',
-          })
-        )
-      })
-    })
-
-    describe('request compression', () => {
-      it('sends a compressed request if compress_request: true', async () => {
-        const adapter = buildHttpAdapter({
-          compression: {
-            decompress_response: false,
-            compress_request: true,
-          },
-        })
-
-        const values = 'abc'.repeat(1_000)
-
-        let chunks = Buffer.alloc(0)
-        let finalResult: Buffer | undefined = undefined
-        const request = new Stream.Writable({
-          write(chunk, encoding, next) {
-            chunks = Buffer.concat([chunks, chunk])
-            next()
-          },
-          final() {
-            Zlib.unzip(chunks, (err, result) => {
-              finalResult = result
-            })
-          },
-        }) as ClientRequest
-
-        const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
-
-        void adapter.insert({
-          query: 'INSERT INTO insert_compression_table',
-          values,
-        })
-
-        // trigger stream pipeline
-        request.emit('socket', {
-          setTimeout: () => {
-            //
-          },
-        })
-
-        await sleep(100)
-        expect(finalResult!.toString('utf8')).toEqual(values)
-        expect(httpRequestStub).toHaveBeenCalledTimes(1)
-        const calledWith = httpRequestStub.calls.mostRecent().args[1]
-        expect(calledWith.headers!['Content-Encoding']).toBe('gzip')
-      })
-    })
-  })
-
   describe('User-Agent', () => {
     it('should have proper user agent without app id', async () => {
-      const myHttpAdapter = new MyTestHttpAdapter()
+      const myHttpAdapter = new MyTestHttpConnection()
       const headers = myHttpAdapter.getDefaultHeaders()
       expect(headers['User-Agent']).toMatch(
-        /^clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
+        /^clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\.\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
       )
     })
 
     it('should have proper user agent with app id', async () => {
-      const myHttpAdapter = new MyTestHttpAdapter('MyFancyApp')
+      const myHttpAdapter = new MyTestHttpConnection('MyFancyApp')
       const headers = myHttpAdapter.getDefaultHeaders()
       expect(headers['User-Agent']).toMatch(
-        /^MyFancyApp clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
+        /^MyFancyApp clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\.\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
       )
     })
   })
 
   it('should have proper auth header', async () => {
-    const myHttpAdapter = new MyTestHttpAdapter()
+    const myHttpAdapter = new MyTestHttpConnection()
     const headers = myHttpAdapter.getDefaultHeaders()
     expect(headers['Authorization']).toMatch(/^Basic [A-Za-z0-9/+=]+$/)
   })
 
   describe('query_id', () => {
     it('should generate random query_id for each query', async () => {
-      const adapter = buildHttpAdapter({
+      const adapter = buildHttpConnection({
         compression: {
           decompress_response: false,
           compress_request: false,
@@ -287,19 +65,19 @@ describe('[Node.js] Connection', () => {
       emitResponseBody(request2, responseBody2)
       const queryResult2 = await selectPromise2
 
-      await assertQueryResult(queryResult1, responseBody1)
-      await assertQueryResult(queryResult2, responseBody2)
+      await assertConnQueryResult(queryResult1, responseBody1)
+      await assertConnQueryResult(queryResult2, responseBody2)
       expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
 
       const url1 = httpRequestStub.calls.all()[0].args[0]
-      expect(url1.search).toContain(`&query_id=${queryResult1.query_id}`)
+      expect(url1.search).toContain(`?query_id=${queryResult1.query_id}`)
 
       const url2 = httpRequestStub.calls.all()[1].args[0]
-      expect(url2.search).toContain(`&query_id=${queryResult2.query_id}`)
+      expect(url2.search).toContain(`?query_id=${queryResult2.query_id}`)
     })
 
     it('should use provided query_id for query', async () => {
-      const adapter = buildHttpAdapter({
+      const adapter = buildHttpConnection({
         compression: {
           decompress_response: false,
           compress_request: false,
@@ -321,11 +99,11 @@ describe('[Node.js] Connection', () => {
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const [url] = httpRequestStub.calls.mostRecent().args
-      expect(url.search).toContain(`&query_id=${query_id}`)
+      expect(url.search).toContain(`?query_id=${query_id}`)
     })
 
     it('should generate random query_id for every exec request', async () => {
-      const adapter = buildHttpAdapter({
+      const adapter = buildHttpConnection({
         compression: {
           decompress_response: false,
           compress_request: false,
@@ -354,19 +132,20 @@ describe('[Node.js] Connection', () => {
       emitResponseBody(request2, responseBody2)
       const queryResult2 = await execPromise2
 
-      await assertQueryResult(queryResult1, responseBody1)
-      await assertQueryResult(queryResult2, responseBody2)
+      await assertConnQueryResult(queryResult1, responseBody1)
+      await assertConnQueryResult(queryResult2, responseBody2)
       expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
 
       const [url1] = httpRequestStub.calls.all()[0].args
-      expect(url1.search).toContain(`&query_id=${queryResult1.query_id}`)
+
+      expect(url1.search).toContain(`?query_id=${queryResult1.query_id}`)
 
       const [url2] = httpRequestStub.calls.all()[1].args
-      expect(url2.search).toContain(`&query_id=${queryResult2.query_id}`)
+      expect(url2.search).toContain(`?query_id=${queryResult2.query_id}`)
     })
 
     it('should use provided query_id for exec', async () => {
-      const adapter = buildHttpAdapter({
+      const adapter = buildHttpConnection({
         compression: {
           decompress_response: false,
           compress_request: false,
@@ -389,11 +168,11 @@ describe('[Node.js] Connection', () => {
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const [url] = httpRequestStub.calls.mostRecent().args
-      expect(url.search).toContain(`&query_id=${query_id}`)
+      expect(url.search).toContain(`?query_id=${query_id}`)
     })
 
     it('should generate random query_id for every insert request', async () => {
-      const adapter = buildHttpAdapter({
+      const adapter = buildHttpConnection({
         compression: {
           decompress_response: false,
           compress_request: false,
@@ -429,14 +208,14 @@ describe('[Node.js] Connection', () => {
       expect(queryId1).not.toEqual(queryId2)
 
       const [url1] = httpRequestStub.calls.all()[0].args
-      expect(url1.search).toContain(`&query_id=${queryId1}`)
+      expect(url1.search).toContain(`?query_id=${queryId1}`)
 
       const [url2] = httpRequestStub.calls.all()[1].args
-      expect(url2.search).toContain(`&query_id=${queryId2}`)
+      expect(url2.search).toContain(`?query_id=${queryId2}`)
     })
 
     it('should use provided query_id for insert', async () => {
-      const adapter = buildHttpAdapter({
+      const adapter = buildHttpConnection({
         compression: {
           decompress_response: false,
           compress_request: false,
@@ -457,72 +236,7 @@ describe('[Node.js] Connection', () => {
       await insertPromise
 
       const [url] = httpRequestStub.calls.mostRecent().args
-      expect(url.search).toContain(`&query_id=${query_id}`)
+      expect(url.search).toContain(`?query_id=${query_id}`)
     })
   })
-
-  function buildHttpAdapter(config: Partial<ConnectionParams>) {
-    return new NodeHttpConnection({
-      ...{
-        url: new URL('http://localhost:8123'),
-
-        connect_timeout: 10_000,
-        request_timeout: 30_000,
-        compression: {
-          decompress_response: true,
-          compress_request: false,
-        },
-        max_open_connections: Infinity,
-
-        username: '',
-        password: '',
-        database: '',
-        clickhouse_settings: {},
-
-        logWriter: new LogWriter(new TestLogger()),
-        keep_alive: {
-          enabled: true,
-          socket_ttl: 2500,
-          retry_on_expired_socket: false,
-        },
-      },
-      ...config,
-    })
-  }
-
-  async function assertQueryResult(
-    { stream, query_id }: ConnQueryResult<Stream.Readable>,
-    expectedResponseBody: any
-  ) {
-    expect(await getAsText(stream)).toBe(expectedResponseBody)
-    assertQueryId(query_id)
-  }
-
-  function assertQueryId(query_id: string) {
-    expect(typeof query_id).toBe('string')
-    expect(validateUUID(query_id)).toBeTruthy()
-  }
 })
-
-class MyTestHttpAdapter extends NodeBaseConnection {
-  constructor(application_id?: string) {
-    super(
-      {
-        application_id,
-        logWriter: new LogWriter(new TestLogger()),
-        keep_alive: {
-          enabled: true,
-          socket_ttl: 2500,
-          retry_on_expired_socket: true,
-        },
-      } as NodeConnectionParams,
-      {} as Http.Agent
-    )
-  }
-  protected createClientRequest(): Http.ClientRequest {
-    return {} as any
-  }
-  public getDefaultHeaders() {
-    return this.headers
-  }
-}

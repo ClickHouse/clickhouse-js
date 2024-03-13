@@ -59,16 +59,7 @@ describe('[Node.js] abort request streaming', () => {
           })
         }
       })
-    // There was a breaking change in Node.js 18.x+ behavior
-    if (
-      process.version.startsWith('v18') ||
-      process.version.startsWith('v20')
-    ) {
-      // FIXME: add proper error message matching (does not work on Node.js 18/20)
-      await expectAsync(selectPromise).toBeRejectedWithError()
-    } else {
-      expect(await selectPromise).toEqual(undefined)
-    }
+    await expectAsync(selectPromise).toBeRejectedWithError()
   })
 
   describe('insert', () => {
