@@ -29,11 +29,8 @@ void (async () => {
   })
   const tableName = 'async_insert_without_waiting'
   await client.command({
-    query: `DROP TABLE IF EXISTS ${tableName}`,
-  })
-  await client.command({
     query: `
-      CREATE TABLE ${tableName}
+      CREATE OR REPLACE TABLE ${tableName}
       (id Int32, name String)
       ENGINE MergeTree()
       ORDER BY (id)
@@ -52,29 +49,27 @@ void (async () => {
     // Each individual insert operation will be resolved as soon as the request itself was processed on the server.
     // The data will be batched on the server side. Insert will not wait for an ack about a successfully written batch.
     // This is the main difference from the `examples/async_insert.ts` example.
-    await client
-      .insert({
+    try {
+      await client.insert({
         table: tableName,
         values: rows,
         format: 'JSONEachRow',
       })
-      .then(() => {
-        rowsInserted += rows.length
-        const elapsed = +new Date() - start
-        console.log(`Insert ${rows.length} rows finished in ${elapsed} ms`)
-      })
-      .catch((err: unknown) => {
-        // Depending on the error, it is possible that the request itself was not processed on the server.
-        if (err instanceof ClickHouseError) {
-          // You could decide what to do with a failed insert based on the error code.
-          // An overview of possible error codes is available in the `system.errors` ClickHouse table.
-          console.error(`ClickHouse error: ${err.code}. Insert failed:`, err)
-          return
-        }
-        // You could implement a proper retry mechanism depending on your application needs;
-        // for the sake of this example, we just log an error.
-        console.error(`Insert failed:`, err)
-      })
+      rowsInserted += rows.length
+      const elapsed = +new Date() - start
+      console.log(`Insert ${rows.length} rows finished in ${elapsed} ms`)
+    } catch (err) {
+      // Depending on the error, it is possible that the request itself was not processed on the server.
+      if (err instanceof ClickHouseError) {
+        // You could decide what to do with a failed insert based on the error code.
+        // An overview of possible error codes is available in the `system.errors` ClickHouse table.
+        console.error(`ClickHouse error: ${err.code}. Insert failed:`, err)
+        return
+      }
+      // You could implement a proper retry mechanism depending on your application needs;
+      // for the sake of this example, we just log an error.
+      console.error(`Insert failed:`, err)
+    }
   }
   listener.on('data', asyncInsertOnData)
 
@@ -97,20 +92,24 @@ void (async () => {
   // Periodically check the number of rows inserted so far.
   // Amount of inserted values will be almost always slightly behind due to async inserts.
   const rowsCountHandle = setInterval(async () => {
-    await client
-      .query({
+    try {
+      const resultSet = await client.query({
         query: `SELECT count(*) AS count FROM ${tableName}`,
         format: 'JSONEachRow',
       })
-      .then((rs) => rs.json<[{ count: string }]>())
-      .then(([result]) => {
-        console.log(
-          'Rows inserted so far:',
-          `${rowsInserted};`,
-          'written to the table:',
-          result.count
-        )
-      })
+      const [{ count }] = await resultSet.json<[{ count: string }]>()
+      console.log(
+        'Rows inserted so far:',
+        `${rowsInserted};`,
+        'written to the table:',
+        count
+      )
+    } catch (err) {
+      console.error(
+        'Failed to get the number of rows written to the table:',
+        err
+      )
+    }
   }, 1000)
 
   // When Ctrl+C is pressed - clean up and exit.

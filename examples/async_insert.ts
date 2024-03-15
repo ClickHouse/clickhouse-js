@@ -25,7 +25,7 @@ void (async () => {
   const table = 'async_insert_example'
   await client.command({
     query: `
-      CREATE TABLE IF NOT EXISTS ${table}
+      CREATE OR REPLACE TABLE ${table}
       (id Int32, data String)
       ENGINE MergeTree
       ORDER BY id
@@ -77,13 +77,11 @@ void (async () => {
   // cause due to small amount of data its internal buffer was not exceeded.
   console.log('Inserts took', new Date().getTime() - start.getTime(), 'ms')
 
-  const res = await client
-    .query({
-      query: `SELECT count(*) AS count FROM ${table}`,
-      format: 'JSONEachRow',
-    })
-    .then((r) => r.json())
-
+  const resultSet = await client.query({
+    query: `SELECT count(*) AS count FROM ${table}`,
+    format: 'JSONEachRow',
+  })
+  const [{ count }] = await resultSet.json<[{ count: string }]>()
   // It is expected to have 10k records in the table.
-  console.info('Select count result:', res)
+  console.info('Select count result:', count)
 })()

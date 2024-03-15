@@ -64,22 +64,19 @@ Environment requirements for all examples:
 
 - Node.js 18+
 - NPM
+- Docker Compose
 
-Run ClickHouse in Docker:
+Run ClickHouse in Docker from the root folder of this repository:
 
 ```bash
 docker-compose up -d
 ```
 
+This will create two local ClickHouse instances: one with plain authentication and one that requires [TLS](#tls-examples).
+
 ### Any example except `create_table_*`
 
-Start a local ClickHouse first (from the root project folder):
-
-```sh
-docker-compose up -d
-```
-
-Change the working directory to examples and install the dependencies:
+Change the working directory to `examples` and install the dependencies:
 
 ```sh
 cd examples
@@ -94,7 +91,9 @@ ts-node --transpile-only array_json_each_row.ts
 
 ### TLS examples
 
-You need to add `server.clickhouseconnect.test` to your `/etc/hosts` to make it work.
+You will need to add `server.clickhouseconnect.test` to your `/etc/hosts` to make it work, as self-signed certificates are used in these examples.
+
+Execute the following command to add the required `/etc/hosts` entry:
 
 ```bash
 sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
@@ -109,13 +108,15 @@ ts-node --transpile-only node/mutual_tls.ts
 
 ### On-premise cluster examples
 
-- for `create_table_on_premise_cluster.ts`, you will need to start a local cluster first:
+For `create_table_on_premise_cluster.ts`, you will need to start a local cluster first.
+
+Run this command from the root folder of this repository:
 
 ```sh
 docker-compose -f docker-compose.cluster.yml up -d
 ```
 
-then run the example:
+Now, you should be able to run the example:
 
 ```
 ts-node --transpile-only create_table_on_premise_cluster.ts
@@ -130,10 +131,11 @@ export CLICKHOUSE_HOST=https://<your-clickhouse-cloud-hostname>:8443
 export CLICKHOUSE_PASSWORD=<your-clickhouse-cloud-password>
 ```
 
-You can obtain these credentials in the ClickHouse Cloud console.
-This example assumes that you use `default` user and database.
+You can obtain these credentials in the ClickHouse Cloud console (check [the docs](https://clickhouse.com/docs/en/integrations/language-clients/javascript#gather-your-connection-details) for more information).
 
-Run one of the examples:
+Cloud examples assume that you are using the `default` user and database.
+
+Run one of the Cloud examples:
 
 ```
 ts-node --transpile-only create_table_cloud.ts
