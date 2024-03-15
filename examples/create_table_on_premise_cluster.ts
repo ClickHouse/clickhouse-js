@@ -4,7 +4,7 @@ import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 void (async () => {
   const client = createClient()
   await client.command({
-    // See macro definitions in `.docker/clickhouse/cluster/serverN_config.xml`
+    // Sample macro definitions are located in `.docker/clickhouse/cluster/serverN_config.xml`
     query: `
       CREATE TABLE IF NOT EXISTS clickhouse_js_examples_local_cluster_table
       ON CLUSTER '{cluster}'
@@ -15,9 +15,8 @@ void (async () => {
       )
       ORDER BY (id)
     `,
-    // Recommended for cluster usage to avoid situations
-    // where a query processing error occurred after the response code
-    // and HTTP headers were sent to the client.
+    // Recommended for cluster usage.
+    // By default, a query processing error might occur after the HTTP response was sent to the client.
     // See https://clickhouse.com/docs/en/interfaces/http/#response-buffering
     clickhouse_settings: {
       wait_end_of_query: 1,
