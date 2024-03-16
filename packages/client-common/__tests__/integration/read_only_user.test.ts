@@ -6,6 +6,7 @@ import { createTestClient, getTestDatabaseName, guid } from '../utils'
 describe('read only user', () => {
   let client: ClickHouseClient
   let tableName: string
+
   beforeAll(async () => {
     const database = getTestDatabaseName()
     const defaultClient = createTestClient()
@@ -19,7 +20,6 @@ describe('read only user', () => {
       table: tableName,
       values: [[42, 'hello', [0, 1]]],
     })
-
     await defaultClient.close()
 
     // Create a client that connects read only user to the test database
@@ -36,6 +36,7 @@ describe('read only user', () => {
       readonly: true, // disables compression and additional ClickHouse HTTP settings
     })
   })
+
   afterAll(async () => {
     await client.close()
   })

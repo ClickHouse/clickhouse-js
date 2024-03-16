@@ -4,7 +4,7 @@ import type {
 } from '@clickhouse/client-common'
 import { randomUUID } from '@test/utils/guid'
 import { createTableWithFields } from '../fixtures/table_with_fields'
-import { createTestClient, getRandomInt } from '../utils'
+import { createTestClient, getRandomInt, TestEnv, whenOnEnv } from '../utils'
 
 describe('data types', () => {
   let client: ClickHouseClient
@@ -504,247 +504,176 @@ describe('data types', () => {
     await insertAndAssert(table, values)
   })
 
-  it('should work with JSON', async () => {
-    const values = [
-      {
-        o: { a: 1, b: { c: 2, d: [1, 2, 3] } },
-      },
-      {
-        o: { a: 2, b: { c: 3, d: [4, 5, 6] } },
-      },
-    ]
-    const table = await createTableWithFields(client, 'o JSON', {
-      allow_experimental_object_type: 1,
-    })
-    await insertAndAssert(table, values)
-  })
-
-  it('should work with nested', async () => {
-    const values = [
-      {
-        id: 1,
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        id: 2,
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ]
-    const table = await createTableWithFields(
-      client,
-      'n Nested(id UInt32, name String, createdAt DateTime, ' +
-        `roles Array(Enum('User', 'Admin')))`
-    )
-    await client.insert({
-      table,
-      values,
-      format: 'JSONEachRow',
-    })
-    const result = await client
-      .query({
-        query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
-        format: 'JSONEachRow',
-      })
-      .then((r) => r.json())
-    expect(result).toEqual([
-      {
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ])
-  })
-
-  it('should work with nested (flatten_nested = 0)', async () => {
-    const values = [
-      {
-        id: 1,
-        n: [
-          {
-            id: 42,
-            name: 'foo',
-            createdAt: '2001-04-23 00:00:00',
-            roles: ['User'],
-          },
-        ],
-      },
-      {
-        id: 2,
-        n: [
-          {
-            id: 43,
-            name: 'bar',
-            createdAt: '2000-01-12 00:00:00',
-            roles: ['Admin'],
-          },
-        ],
-      },
-    ]
-    const table = await createTableWithFields(
-      client,
-      'n Nested(id UInt32, name String, createdAt DateTime, ' +
-        `roles Array(Enum('User', 'Admin')))`,
-      {
-        flatten_nested: 0,
-      }
-    )
-    await client.insert({
-      table,
-      values,
-      format: 'JSONEachRow',
-    })
-    const result = await client
-      .query({
-        query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
-        format: 'JSONEachRow',
-      })
-      .then((r) => r.json())
-    expect(result).toEqual([
-      {
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ])
-  })
-
-  it('should work with nested (input_format_import_nested_json = 1)', async () => {
-    const values = [
-      {
-        id: 1,
-        n: {
-          id: [42],
-          name: ['foo'],
-          createdAt: ['2001-04-23 00:00:00'],
-          roles: [['User']],
+  // JSON cannot be used on a "modern" Cloud instance
+  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster, TestEnv.Cloud).it(
+    'should work with JSON',
+    async () => {
+      const values = [
+        {
+          o: { a: 1, b: { c: 2, d: [1, 2, 3] } },
         },
-      },
-      {
-        id: 2,
-        n: {
-          id: [43],
-          name: ['bar'],
-          createdAt: ['2000-01-12 00:00:00'],
-          roles: [['Admin']],
+        {
+          o: { a: 2, b: { c: 3, d: [4, 5, 6] } },
         },
-      },
-    ]
-    const table = await createTableWithFields(
-      client,
-      'n Nested(id UInt32, name String, createdAt DateTime, ' +
-        `roles Array(Enum('User', 'Admin')))`
-    )
-    await client.insert({
-      table,
-      values,
-      clickhouse_settings: {
-        input_format_import_nested_json: 1,
-      },
-      format: 'JSONEachRow',
-    })
-    const result = await client
-      .query({
-        query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
-        format: 'JSONEachRow',
+      ]
+      const table = await createTableWithFields(client, 'o JSON', {
+        allow_experimental_object_type: 1,
       })
-      .then((r) => r.json())
-    expect(result).toEqual([
-      {
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ])
-  })
+      await insertAndAssert(table, values)
+    }
+  )
 
-  it('should work with nested with (flatten_nested = 0 and input_format_import_nested_json = 1)', async () => {
-    const values = [
-      {
-        id: 1,
-        n: [
-          {
-            id: 42,
-            name: 'foo',
-            createdAt: '2001-04-23 00:00:00',
-            roles: ['User'],
-          },
-        ],
-      },
-      {
-        id: 2,
-        n: [
-          {
-            id: 43,
-            name: 'bar',
-            createdAt: '2000-01-12 00:00:00',
-            roles: ['Admin'],
-          },
-        ],
-      },
-    ]
-    const table = await createTableWithFields(
-      client,
-      'n Nested(id UInt32, name String, createdAt DateTime, ' +
-        `roles Array(Enum('User', 'Admin')))`,
-      {
-        flatten_nested: 0,
-      }
-    )
-    await client.insert({
-      table,
-      values,
-      clickhouse_settings: {
-        input_format_import_nested_json: 1,
-      },
-      format: 'JSONEachRow',
+  describe('Nested', () => {
+    it('should work by default', async () => {
+      const values = [
+        {
+          id: 1,
+          'n.id': [42],
+          'n.name': ['foo'],
+          'n.createdAt': ['2001-04-23 00:00:00'],
+          'n.roles': [['User']],
+        },
+        {
+          id: 2,
+          'n.id': [43],
+          'n.name': ['bar'],
+          'n.createdAt': ['2000-01-12 00:00:00'],
+          'n.roles': [['Admin']],
+        },
+      ]
+      await insertAndAssertNestedValues(values, {}, {})
     })
-    const result = await client
-      .query({
-        query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
+
+    it('should work with nested (flatten_nested = 0)', async () => {
+      const values = [
+        {
+          id: 1,
+          n: [
+            {
+              id: 42,
+              name: 'foo',
+              createdAt: '2001-04-23 00:00:00',
+              roles: ['User'],
+            },
+          ],
+        },
+        {
+          id: 2,
+          n: [
+            {
+              id: 43,
+              name: 'bar',
+              createdAt: '2000-01-12 00:00:00',
+              roles: ['Admin'],
+            },
+          ],
+        },
+      ]
+      await insertAndAssertNestedValues(values, { flatten_nested: 0 }, {})
+    })
+
+    it('should work with nested (input_format_import_nested_json = 1)', async () => {
+      const values = [
+        {
+          id: 1,
+          n: {
+            id: [42],
+            name: ['foo'],
+            createdAt: ['2001-04-23 00:00:00'],
+            roles: [['User']],
+          },
+        },
+        {
+          id: 2,
+          n: {
+            id: [43],
+            name: ['bar'],
+            createdAt: ['2000-01-12 00:00:00'],
+            roles: [['Admin']],
+          },
+        },
+      ]
+      await insertAndAssertNestedValues(
+        values,
+        {},
+        {
+          input_format_import_nested_json: 1,
+        }
+      )
+    })
+
+    it('should work with nested with (flatten_nested = 0 and input_format_import_nested_json = 1)', async () => {
+      const values = [
+        {
+          id: 1,
+          n: [
+            {
+              id: 42,
+              name: 'foo',
+              createdAt: '2001-04-23 00:00:00',
+              roles: ['User'],
+            },
+          ],
+        },
+        {
+          id: 2,
+          n: [
+            {
+              id: 43,
+              name: 'bar',
+              createdAt: '2000-01-12 00:00:00',
+              roles: ['Admin'],
+            },
+          ],
+        },
+      ]
+      await insertAndAssertNestedValues(
+        values,
+        { flatten_nested: 0 },
+        {
+          input_format_import_nested_json: 1,
+        }
+      )
+    })
+
+    async function insertAndAssertNestedValues(
+      values: unknown[],
+      createTableSettings: ClickHouseSettings,
+      insertSettings: ClickHouseSettings
+    ) {
+      const table = await createTableWithFields(
+        client,
+        'n Nested(id UInt32, name String, createdAt DateTime, ' +
+          `roles Array(Enum('User', 'Admin')))`,
+        createTableSettings
+      )
+      await client.insert({
+        table,
+        values,
+        clickhouse_settings: insertSettings,
         format: 'JSONEachRow',
       })
-      .then((r) => r.json())
-    expect(result).toEqual([
-      {
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ])
+      const result = await client
+        .query({
+          query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
+          format: 'JSONEachRow',
+        })
+        .then((r) => r.json())
+      expect(result).toEqual([
+        {
+          'n.id': [42],
+          'n.name': ['foo'],
+          'n.createdAt': ['2001-04-23 00:00:00'],
+          'n.roles': [['User']],
+        },
+        {
+          'n.id': [43],
+          'n.name': ['bar'],
+          'n.createdAt': ['2000-01-12 00:00:00'],
+          'n.roles': [['Admin']],
+        },
+      ])
+    }
   })
 
   async function insertData<T>(

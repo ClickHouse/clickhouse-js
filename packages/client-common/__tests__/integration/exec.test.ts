@@ -132,9 +132,6 @@ describe('exec', () => {
   }
 
   async function runExec(params: ExecParams): Promise<{ query_id: string }> {
-    console.log(
-      `Running command with query_id ${params.query_id}:\n${params.query}`
-    )
     const { query_id } = await client.exec({
       ...params,
       clickhouse_settings: {
@@ -154,8 +151,16 @@ function getDDL(): {
   const env = getClickHouseTestEnvironment()
   const tableName = `command_test_${guid()}`
   switch (env) {
-    // ENGINE can be omitted in the cloud statements:
-    // it will use ReplicatedMergeTree and will add ON CLUSTER as well
+    // ENGINE and ON CLUSTER can be omitted in the cloud statements.
+    // It will use Shared (CloudSMT)/Replicated (Cloud) MergeTree by default.
+    case TestEnv.CloudSMT: {
+      const ddl = `
+        CREATE TABLE ${tableName}
+        (id UInt64, name String, sku Array(UInt8), timestamp DateTime)
+        ORDER BY (id)
+      `
+      return { ddl, tableName, engine: 'SharedMergeTree' }
+    }
     case TestEnv.Cloud: {
       const ddl = `
         CREATE TABLE ${tableName}

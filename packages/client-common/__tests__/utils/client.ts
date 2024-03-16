@@ -6,18 +6,25 @@ import type {
 } from '@clickhouse/client-common'
 import { getFromEnv } from './env'
 import { guid } from './guid'
-import { getClickHouseTestEnvironment, TestEnv } from './test_env'
+import {
+  getClickHouseTestEnvironment,
+  isCloudTestEnv,
+  TestEnv,
+} from './test_env'
 import { TestLogger } from './test_logger'
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 120_000
 
 let databaseName: string
 beforeAll(async () => {
-  if (
-    getClickHouseTestEnvironment() === TestEnv.Cloud &&
-    databaseName === undefined
-  ) {
-    const client = createTestClient()
+  console.log(
+    `\nTest environment: ${getClickHouseTestEnvironment()}, database: ${
+      databaseName ?? 'default'
+    }`
+  )
+  if (isCloudTestEnv() && databaseName === undefined) {
+    const client = createTestClient({})
+    await wakeUpPing(client)
     databaseName = await createRandomDatabase(client)
     await client.close()
   }
@@ -27,17 +34,14 @@ export function createTestClient<Stream = unknown>(
   config: BaseClickHouseClientConfigOptions = {}
 ): ClickHouseClient<Stream> {
   const env = getClickHouseTestEnvironment()
-  console.log(
-    `Using ${env} test environment to create a Client instance for database ${
-      databaseName || 'default'
-    }`
-  )
   const clickHouseSettings: ClickHouseSettings = {}
   if (env === TestEnv.LocalCluster) {
     clickHouseSettings.insert_quorum = '2'
   } else if (env === TestEnv.Cloud) {
     clickHouseSettings.insert_quorum = '3'
     clickHouseSettings.database_replicated_enforce_synchronous_settings = 1
+  } else if (env === TestEnv.CloudSMT) {
+    clickHouseSettings.select_sequential_consistency = '1'
   }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
@@ -47,7 +51,7 @@ export function createTestClient<Stream = unknown>(
       LoggerClass: TestLogger,
     },
   }
-  if (env === TestEnv.Cloud) {
+  if (isCloudTestEnv()) {
     const cloudConfig: BaseClickHouseClientConfigOptions = {
       url: `https://${getFromEnv('CLICKHOUSE_CLOUD_HOST')}:8443`,
       password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
@@ -91,13 +95,14 @@ export async function createRandomDatabase(
   if (getClickHouseTestEnvironment() === TestEnv.LocalCluster) {
     maybeOnCluster = `ON CLUSTER '{cluster}'`
   }
+  const ddl = `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`
   await client.command({
-    query: `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`,
+    query: ddl,
     clickhouse_settings: {
       wait_end_of_query: 1,
     },
   })
-  console.log(`Created database ${databaseName}`)
+  console.log(`\nCreated database ${databaseName}`)
   return databaseName
 }
 
@@ -118,9 +123,35 @@ export async function createTable<Stream = unknown>(
       ...(clickhouse_settings || {}),
     },
   })
-  console.log(`Created a table using DDL:\n${ddl}`)
+  console.log(`\nCreated a table using DDL:\n${ddl}`)
 }
 
 export function getTestDatabaseName(): string {
   return databaseName || 'default'
+}
+
+const MaxPingRetries = 4
+export async function wakeUpPing(
+  client: ClickHouseClient,
+  retries = 0,
+  lastError?: Error | unknown
+) {
+  if (retries < MaxPingRetries) {
+    const result = await client.ping()
+    if (result.success) {
+      return
+    }
+    // maybe the service is still waking up
+    console.error(
+      `Failed to ping, attempts so far: ${retries + 1}`,
+      result.error
+    )
+    await wakeUpPing(client, retries++, result.error)
+  } else {
+    console.error(
+      `Failed to wake up the service after ${MaxPingRetries} retries, exiting...`,
+      lastError
+    )
+    process.exit(1)
+  }
 }

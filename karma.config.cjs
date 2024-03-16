@@ -38,7 +38,7 @@ module.exports = function (config) {
         'sourcemap',
       ],
     },
-    reporters: ['progress'],
+    reporters: ['mocha'],
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,
