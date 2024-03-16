@@ -19,6 +19,7 @@ export { ClickHouseError } from './error'
 export {
   ClickHouseLogLevel,
   type ErrorLogParams,
+  type WarnLogParams,
   type Logger,
   type LogParams,
 } from './logger'
@@ -60,7 +61,7 @@ export {
   transformUrl,
   withHttpSettings,
 } from './utils'
-export { LogWriter, DefaultLogger } from './logger'
+export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
 export { parseError } from './error'
 export type {
   CompressionSettings,
@@ -73,6 +74,7 @@ export type {
   ConnBaseResult,
   ConnInsertParams,
   ConnPingResult,
+  ConnOperation,
 } from './connection'
 export {
   type RawDataFormat,

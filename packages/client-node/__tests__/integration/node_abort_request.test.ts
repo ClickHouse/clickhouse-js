@@ -59,7 +59,6 @@ describe('[Node.js] abort request streaming', () => {
           })
         }
       })
-    // FIXME: add proper error message matching (does not work on Node.js 18/20)
     await expectAsync(selectPromise).toBeRejectedWithError()
   })
 

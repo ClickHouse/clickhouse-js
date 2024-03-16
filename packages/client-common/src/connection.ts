@@ -54,6 +54,8 @@ export type ConnPingResult =
     }
   | { success: false; error: Error }
 
+export type ConnOperation = 'Ping' | 'Query' | 'Insert' | 'Exec'
+
 export interface Connection<Stream> {
   ping(): Promise<ConnPingResult>
   close(): Promise<void>

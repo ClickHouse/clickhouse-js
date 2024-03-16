@@ -11,6 +11,8 @@ void (async () => {
   const client = createClient()
   const rs = await client.query({
     query: 'SELECT number FROM system.numbers LIMIT 10',
+    // See all supported formats for streaming:
+    // https://clickhouse.com/docs/en/integrations/language-clients/javascript#supported-data-formats
     format: 'JSONEachRow',
   })
   for await (const rows of rs.stream()) {
