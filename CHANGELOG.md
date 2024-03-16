@@ -102,6 +102,37 @@ Currently not supported via URL:
 
 See also: [URL configuration example](./examples/url_configuration.ts).
 
+## 0.3.0 (Node.js only)
+
+This release primarily focuses on improving the Keep-Alive mechanism's reliability on the client side.
+
+### New features
+
+- Idle sockets timeout rework; now, the client attaches internal timers to idling sockets, and forcefully removes them from the pool if it considers that a particular socket is idling for too long. The intention of this additional sockets housekeeping is to eliminate "Socket hang-up" errors that could previously still occur on certain configurations. Now, the client does not rely on KeepAlive agent when it comes to removing the idling sockets; in most cases, the server will not close the socket before the client does.
+- There is a new `keep_alive.idle_socket_ttl` configuration parameter. The default value is `2500` (milliseconds), which is considered to be safe, as [ClickHouse versions prior to 23.11 had `keep_alive_timeout` set to 3 seconds by default](https://github.com/ClickHouse/ClickHouse/commit/1685cdcb89fe110b45497c7ff27ce73cc03e82d1), and `keep_alive.idle_socket_ttl` is supposed to be slightly less than that to allow the client to remove the sockets that are about to expire before the server does so.
+- Logging improvements: more internal logs on failing requests; all client methods except ping will log an error on failure now. A failed ping will log a warning, since the underlying error is returned as a part of its result. Client logging still needs to be enabled explicitly by specifying the desired `log.level` config option, as the log level is `OFF` by default. Currently, the client logs the following events, depending on the selected `log.level` value:
+
+  - `TRACE` - low-level information about the Keep-Alive sockets lifecycle.
+  - `DEBUG` - response information (without authorization headers and host info).
+  - `INFO` - still mostly unused, will print the current log level when the client is initialized.
+  - `WARN` - non-fatal errors; failed `ping` request is logged as a warning, as the underlying error is included in the returned result.
+  - `ERROR` - fatal errors from `query`/`insert`/`exec`/`command` methods, such as a failed request.
+
+### Breaking changes
+
+- `keep_alive.retry_on_expired_socket` and `keep_alive.socket_ttl` configuration parameters are removed.
+- The `max_open_connections` configuration parameter is now 10 by default, as we should not rely on the KeepAlive agent's defaults.
+- Fixed the default `request_timeout` configuration value (now it is correctly set to `30_000`, previously `300_000` (milliseconds)).
+
+### Bug fixes
+
+- Fixed a bug with Ping that could lead to an unhandled "Socket hang-up" propagation.
+- Ensure proper `Connection` header value considering Keep-Alive settings. If Keep-Alive is disabled, its value is now forced to ["close"](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Connection#close).
+
+## 0.3.0-beta.1 (Node.js only)
+
+See [0.3.0](#030-nodejs-only).
+
 ## 0.2.10 (Common, Node.js, Web)
 
 ### New features

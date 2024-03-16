@@ -11,8 +11,7 @@
 
 ## About
 
-Official JS client for [ClickHouse](https://clickhouse.com/), written purely in TypeScript,
-thoroughly tested with actual ClickHouse versions.
+Official JS client for [ClickHouse](https://clickhouse.com/), written purely in TypeScript, thoroughly tested with actual ClickHouse versions.
 
 The repository consists of three packages:
 
@@ -29,7 +28,11 @@ See the [ClickHouse website](https://clickhouse.com/docs/en/integrations/languag
 
 ## Usage examples
 
-You can find code samples in the [examples](./examples) folder (with [README](./examples/README.md)).
+We have a wide range of [examples](./examples), aiming to cover various scenarios of client usage. The overview is available in the [examples README](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/README.md#overview).
+
+## Contact us
+
+If you have any questions or need help, feel free to reach out to us in the [Community Slack](https://clickhouse.com/slack) (`#clickhouse-js` channel) or via [GitHub issues](https://github.com/ClickHouse/clickhouse-js/issues).
 
 ## Contributing
 
