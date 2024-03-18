@@ -5,6 +5,8 @@ import type { DataFormat } from '@clickhouse/client-common'
  * An overview of all available formats for selecting your data.
  * Run this example and see the shape of the parsed data for different formats.
  *
+ * An example of console output is available here: https://gist.github.com/slvrtrn/3ad657c4e236e089a234d79b87600f76
+ *
  * See also:
  * - ClickHouse formats documentation - https://clickhouse.com/docs/en/interfaces/formats
  * - INSERT formats overview - insert_data_formats_overview.ts
