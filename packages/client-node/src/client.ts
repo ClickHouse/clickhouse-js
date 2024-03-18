@@ -1,5 +1,6 @@
 import type {
   BaseClickHouseClientConfigOptions,
+  ClickHouseSummary,
   Connection,
   ConnectionParams,
   DataFormat,
@@ -71,8 +72,9 @@ export function createClient(
       make_result_set: (
         stream: Stream.Readable,
         format: DataFormat,
-        session_id: string
-      ) => new ResultSet(stream, format, session_id),
+        session_id: string,
+        summary?: ClickHouseSummary
+      ) => new ResultSet(stream, format, session_id, summary),
       values_encoder: new NodeValuesEncoder(),
       close_stream: async (stream) => {
         stream.destroy()

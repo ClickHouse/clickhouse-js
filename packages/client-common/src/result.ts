@@ -1,3 +1,5 @@
+import type { ClickHouseSummary } from './clickhouse_types'
+
 export interface Row {
   /** A string representation of a row. */
   text: string
@@ -47,6 +49,25 @@ export interface BaseResultSet<Stream> {
   /** Close the underlying stream. */
   close(): void
 
+  summary(): ResultSetSummary
+
   /** ClickHouse server QueryID. */
   query_id: string
+}
+
+/**
+ * X-ClickHouse-Summary header + additional client-side statistics.
+ * If the server does not provide this header, or it could not be parsed,
+ * {@link ResultSetSummary.server} will be undefined.
+ */
+export type ResultSetSummary = {
+  /** X-ClickHouse-Summary header, if it was parsed */
+  server?: ClickHouseSummary
+  /** Additional client-side statistics */
+  client: {
+    /** Time spent on processing the response on the client side (in milliseconds) */
+    response_processing_time_ms: number
+    /** Bytes from the response processed by the client */
+    response_processed_bytes: number
+  }
 }

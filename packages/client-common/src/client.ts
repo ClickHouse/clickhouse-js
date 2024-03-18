@@ -1,6 +1,7 @@
 import type {
   ClickHouseLogLevel,
   ClickHouseSettings,
+  ClickHouseSummary,
   Connection,
   ConnectionParams,
   ConnExecResult,
@@ -23,7 +24,8 @@ export type MakeConnection<Stream> = (
 export type MakeResultSet<Stream> = (
   stream: Stream,
   format: DataFormat,
-  session_id: string
+  session_id: string,
+  summary?: ClickHouseSummary
 ) => BaseResultSet<Stream>
 
 export interface ValuesEncoder<Stream> {
@@ -221,11 +223,11 @@ export class ClickHouseClient<Stream = unknown> {
   async query(params: QueryParams): Promise<BaseResultSet<Stream>> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
-    const { stream, query_id } = await this.connection.query({
+    const { stream, query_id, summary } = await this.connection.query({
       query,
       ...this.getQueryParams(params),
     })
-    return this.makeResultSet(stream, format, query_id)
+    return this.makeResultSet(stream, format, query_id, summary)
   }
 
   /**

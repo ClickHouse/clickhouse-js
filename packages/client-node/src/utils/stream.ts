@@ -4,17 +4,33 @@ export function isStream(obj: any): obj is Stream.Readable {
   return obj !== null && typeof obj.pipe === 'function'
 }
 
-export async function getAsText(stream: Stream.Readable): Promise<string> {
-  let result = ''
+export async function getAsText(stream: Stream.Readable): Promise<{
+  text: string
+  processed_bytes: number
+}> {
+  let processedBytes = 0
+  const textRows: string[] = []
   const textDecoder = new TextDecoder()
 
-  for await (const chunk of stream) {
-    result += textDecoder.decode(chunk, { stream: true })
-  }
+  await new Promise((resolve, reject) => {
+    stream.on('data', (chunk) => {
+      textRows.push(textDecoder.decode(chunk, { stream: true }))
+      processedBytes += chunk.length
+    })
+    stream.on('end', resolve)
+    stream.on('error', reject)
+  })
 
   // flush
-  result += textDecoder.decode()
-  return result
+  const last = textDecoder.decode()
+  if (last) {
+    textRows.push(last)
+    processedBytes += last.length
+  }
+  return {
+    text: textRows.join(''),
+    processed_bytes: processedBytes,
+  }
 }
 
 export function mapStream(

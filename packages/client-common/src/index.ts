@@ -14,7 +14,7 @@ export {
   type InsertResult,
   type PingResult,
 } from './client'
-export type { Row, BaseResultSet } from './result'
+export type { Row, BaseResultSet, ResultSetSummary } from './result'
 export { type DataFormat } from './data_formatter'
 export { ClickHouseError } from './error'
 export {
@@ -39,10 +39,21 @@ export {
 
 /** For implementations usage only */
 export {
-  encodeJSON,
+  formatQuerySettings,
+  formatQueryParams,
   isSupportedRawFormat,
-  decode,
+  isStreamableJSONFamily,
+  isNotStreamableJSONFamily,
   validateStreamFormat,
+  decode,
+  encodeJSON,
+} from './data_formatter'
+export type {
+  RawDataFormat,
+  JSONDataFormat,
+  StreamableJSONDataFormat,
+  SingleDocumentJSONFormat,
+  RecordsJSONFormat,
 } from './data_formatter'
 export {
   type ValuesEncoder,
@@ -70,9 +81,3 @@ export type {
   ConnPingResult,
   ConnOperation,
 } from './connection'
-export {
-  type RawDataFormat,
-  type JSONDataFormat,
-  formatQuerySettings,
-  formatQueryParams,
-} from './data_formatter'

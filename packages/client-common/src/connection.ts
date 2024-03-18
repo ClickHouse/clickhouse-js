@@ -36,14 +36,11 @@ export interface ConnBaseResult {
   query_id: string
 }
 
-export interface ConnQueryResult<Stream> extends ConnBaseResult {
-  stream: Stream
-  query_id: string
-}
+export type ConnQueryResult<Stream> = { stream: Stream } & ConnBaseResult &
+  WithClickHouseSummary
 
 export type ConnInsertResult = ConnBaseResult & WithClickHouseSummary
-export type ConnExecResult<Stream> = ConnQueryResult<Stream> &
-  WithClickHouseSummary
+export type ConnExecResult<Stream> = ConnQueryResult<Stream>
 
 export type ConnPingResult =
   | {

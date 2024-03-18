@@ -1,13 +1,13 @@
 import { guid } from '@test/utils'
 import Http from 'http'
-import { getAsText } from '../../src/utils'
-import { assertQueryId, assertConnQueryResult } from '../utils/assert'
+import { assertConnQueryResult, assertQueryId } from '../utils/assert'
 import {
   buildHttpConnection,
   emitResponseBody,
   MyTestHttpConnection,
   stubClientRequest,
 } from '../utils/http_stubs'
+import { readTextFromStream } from '../utils/stream'
 
 describe('[Node.js] Connection', () => {
   describe('User-Agent', () => {
@@ -95,7 +95,7 @@ describe('[Node.js] Connection', () => {
       const responseBody = 'foobar'
       emitResponseBody(request, responseBody)
       const { stream } = await selectPromise
-      expect(await getAsText(stream)).toBe(responseBody)
+      expect(await readTextFromStream(stream)).toBe(responseBody)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const [url] = httpRequestStub.calls.mostRecent().args
@@ -164,7 +164,7 @@ describe('[Node.js] Connection', () => {
       const responseBody = 'foobar'
       emitResponseBody(request, responseBody)
       const { stream } = await execPromise
-      expect(await getAsText(stream)).toBe(responseBody)
+      expect(await readTextFromStream(stream)).toBe(responseBody)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const [url] = httpRequestStub.calls.mostRecent().args

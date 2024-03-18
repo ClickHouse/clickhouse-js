@@ -1,4 +1,5 @@
 import Stream from 'stream'
+import { getAsText } from '../../src/utils'
 
 export function makeRawStream() {
   return new Stream.Readable({
@@ -16,4 +17,9 @@ export function makeObjectStream() {
       /* stub */
     },
   })
+}
+
+export async function readTextFromStream(stream: Stream.Readable) {
+  const { text } = await getAsText(stream)
+  return text
 }

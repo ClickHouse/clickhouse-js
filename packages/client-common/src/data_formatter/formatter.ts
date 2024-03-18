@@ -8,15 +8,18 @@ const streamableJSONFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
 ] as const
+// Returned as { row_1: T, row_2: T, ...}
+const recordsJSONFormats = ['JSONObjectEachRow'] as const
+// See ResponseJSON<T> type
 const singleDocumentJSONFormats = [
   'JSON',
   'JSONStrings',
   'JSONCompact',
   'JSONCompactStrings',
   'JSONColumnsWithMetadata',
-  'JSONObjectEachRow',
 ] as const
 const supportedJSONFormats = [
+  ...recordsJSONFormats,
   ...singleDocumentJSONFormats,
   ...streamableJSONFormats,
 ] as const
@@ -34,37 +37,43 @@ const supportedRawFormats = [
   'Parquet',
 ] as const
 
-export type JSONDataFormat = (typeof supportedJSONFormats)[number]
 export type RawDataFormat = (typeof supportedRawFormats)[number]
-export type DataFormat = JSONDataFormat | RawDataFormat
 
-type SingleDocumentStreamableJsonDataFormat =
+export type StreamableJSONDataFormat = (typeof streamableJSONFormats)[number]
+export type SingleDocumentJSONFormat =
   (typeof singleDocumentJSONFormats)[number]
-type StreamableJsonDataFormat = (typeof streamableJSONFormats)[number]
+export type RecordsJSONFormat = (typeof recordsJSONFormats)[number]
+export type JSONDataFormat =
+  | StreamableJSONDataFormat
+  | SingleDocumentJSONFormat
+  | RecordsJSONFormat
+
+export type DataFormat = JSONDataFormat | RawDataFormat
 
 // TODO add others formats
 const streamableFormat = [
   ...streamableJSONFormats,
   ...supportedRawFormats,
 ] as const
-type StreamableDataFormat = (typeof streamableFormat)[number]
+export type StreamableDataFormat = (typeof streamableFormat)[number]
 
-function isNotStreamableJSONFamily(
+export function isNotStreamableJSONFamily(
   format: DataFormat
-): format is SingleDocumentStreamableJsonDataFormat {
-  // @ts-expect-error JSON is not assignable to notStreamableJSONFormats
-  return singleDocumentJSONFormats.includes(format)
+): format is SingleDocumentJSONFormat {
+  return (
+    (singleDocumentJSONFormats as readonly string[]).includes(format) ||
+    (recordsJSONFormats as readonly string[]).includes(format)
+  )
 }
 
-function isStreamableJSONFamily(
+export function isStreamableJSONFamily(
   format: DataFormat
-): format is StreamableJsonDataFormat {
-  // @ts-expect-error JSON is not assignable to streamableJSONFormats
-  return streamableJSONFormats.includes(format)
+): format is StreamableJSONDataFormat {
+  return (streamableJSONFormats as readonly string[]).includes(format)
 }
 
-export function isSupportedRawFormat(dataFormat: DataFormat) {
-  return (supportedRawFormats as readonly string[]).includes(dataFormat)
+export function isSupportedRawFormat(format: DataFormat) {
+  return (supportedRawFormats as readonly string[]).includes(format)
 }
 
 export function validateStreamFormat(

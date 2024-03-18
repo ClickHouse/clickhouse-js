@@ -130,7 +130,8 @@ export abstract class NodeBaseConnection
               : undefined,
           })
         } else {
-          reject(parseError(await getAsText(decompressionResult.response)))
+          const { text } = await getAsText(decompressionResult.response)
+          reject(parseError(text))
         }
       }
 
@@ -325,19 +326,21 @@ export abstract class NodeBaseConnection
     const decompressResponse = clickhouse_settings.enable_http_compression === 1
     const { controller, controllerCleanup } = this.getAbortController(params)
     try {
-      const { stream } = await this.request(
+      const { stream, summary } = await this.request(
         {
           method: 'POST',
           url: transformUrl({ url: this.params.url, searchParams }),
           body: params.query,
           abort_signal: controller.signal,
           decompress_response: decompressResponse,
+          parse_summary: true,
         },
         'Query'
       )
       return {
         stream,
         query_id,
+        summary,
       }
     } catch (err) {
       controller.abort('Query HTTP request failed')

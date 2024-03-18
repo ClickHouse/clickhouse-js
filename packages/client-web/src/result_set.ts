@@ -1,4 +1,9 @@
-import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
+import type {
+  BaseResultSet,
+  DataFormat,
+  ResultSetSummary,
+  Row,
+} from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
 import { getAsText } from './utils'
 
@@ -71,6 +76,10 @@ export class ResultSet implements BaseResultSet<ReadableStream<Row[]>> {
   async close(): Promise<void> {
     this.markAsConsumed()
     await this._stream.cancel()
+  }
+
+  summary(): ResultSetSummary {
+    return {} as any
   }
 
   private markAsConsumed() {
