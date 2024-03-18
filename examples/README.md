@@ -41,14 +41,15 @@ We aim to cover various scenarios of client usage with these examples.
 - [insert_values_and_functions.ts](insert_values_and_functions.ts) - generating an `INSERT INTO ... VALUES` statement that uses a combination of values and function calls.
 - [insert_ephemeral_columns.ts](insert_ephemeral_columns.ts) - inserting data into a table that has [ephemeral columns](https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral).
 
-#### Selecting the data
+#### Selecting data
 
 - [select_json_each_row.ts](select_json_each_row.ts) - simple select of the data in the `JSONEachRow` format.
 - [select_json_with_metadata.ts](select_json_with_metadata.ts) - select result as a JSON object with query metadata.
 - [query_with_parameter_binding.ts](query_with_parameter_binding.ts) - query parameter binding example.
 - [select_parquet_as_file.ts](node/select_parquet_as_file.ts) - (Node.js only) select data from ClickHouse and save it as a Parquet file. This example can be adjusted to save the data in other formats, such as CSV/TSV/TabSeparated, by changing the format in the query.
-- [select_streaming_for_await.ts](node/select_streaming_for_await.ts) - (Node.js only) streaming the data from ClickHouse and processing it with `for await` loop.
-- [select_streaming_on_data.ts](node/select_streaming_on_data.ts) - (Node.js only) streaming the data from ClickHouse and processing it with `on('data')` event.
+- [select_streaming_json_each_row.ts](node/select_streaming_json_each_row.ts) - (Node.js only) streaming JSON\* formats from ClickHouse and processing it with `on('data')` event.
+- [select_streaming_json_each_row_for_await.ts](node/select_streaming_json_each_row_for_await.ts) - (Node.js only) similar to [select_streaming_json_each_row.ts](node/select_streaming_json_each_row.ts), but using the `for await` loop syntax.
+- [select_streaming_text_line_by_line.ts](node/select_streaming_text_line_by_line.ts) - (Node.js only) streaming text formats from ClickHouse and processing it line by line. In this example, CSV format is used.
 
 #### Special cases
 
