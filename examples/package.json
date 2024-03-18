@@ -12,7 +12,10 @@
   },
   "scripts": {},
   "dependencies": {
-    "@clickhouse/client": "latest",
+    "@clickhouse/client": "latest"
+  },
+  "devDependencies": {
+    "split2": "^4.2.0",
     "ts-node": "^10.9.1"
   }
 }

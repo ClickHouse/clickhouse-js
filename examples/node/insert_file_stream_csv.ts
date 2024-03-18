@@ -21,10 +21,11 @@ void (async () => {
 
   // contains data as 1,"foo","[1,2]"\n2,"bar","[3,4]"\n...
   const filename = Path.resolve(cwd(), './node/resources/data.csv')
+  const fileStream = Fs.createReadStream(filename)
 
   await client.insert({
     table: tableName,
-    values: Fs.createReadStream(filename),
+    values: fileStream,
     format: 'CSV',
   })
 
