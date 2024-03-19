@@ -16,7 +16,6 @@ export interface ResponseJSON<T = unknown> {
   query_id?: string
   totals?: Record<string, number>
   extremes?: Record<string, any>
-  // Supported only by responses in JSON, XML. Otherwise, it can be read from X-ClickHouse-Summary header
   meta?: Array<{ name: string; type: string }>
   statistics?: { elapsed: number; rows_read: number; bytes_read: number }
   rows?: number

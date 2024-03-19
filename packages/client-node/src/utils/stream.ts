@@ -8,13 +8,13 @@ export async function getAsText(stream: Stream.Readable): Promise<{
   text: string
   processed_bytes: number
 }> {
+  let text = ''
   let processedBytes = 0
-  const textRows: string[] = []
-  const textDecoder = new TextDecoder()
 
+  const textDecoder = new TextDecoder()
   await new Promise((resolve, reject) => {
     stream.on('data', (chunk) => {
-      textRows.push(textDecoder.decode(chunk, { stream: true }))
+      text += textDecoder.decode(chunk, { stream: true })
       processedBytes += chunk.length
     })
     stream.on('end', resolve)
@@ -24,11 +24,12 @@ export async function getAsText(stream: Stream.Readable): Promise<{
   // flush
   const last = textDecoder.decode()
   if (last) {
-    textRows.push(last)
+    text += last
     processedBytes += last.length
   }
+
   return {
-    text: textRows.join(''),
+    text,
     processed_bytes: processedBytes,
   }
 }
