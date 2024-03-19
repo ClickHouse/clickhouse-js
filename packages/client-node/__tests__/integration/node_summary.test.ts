@@ -1,19 +1,28 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
+import type {
+  ClickHouseClient,
+  ClickHouseSettings,
+} from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { jsonValues } from '@test/fixtures/test_data'
-import { createTestClient, guid, TestEnv, whenOnEnv } from '@test/utils'
+import { createTestClient, guid } from '@test/utils'
 import type Stream from 'stream'
 
 // FIXME: figure out if we can get non-flaky assertion with an SMT Cloud instance.
 //  It could be that it requires full quorum settings for non-flaky assertions.
 //  SharedMergeTree Cloud instance is auto by default (and cannot be modified).
-whenOnEnv(
-  TestEnv.LocalSingleNode,
-  TestEnv.LocalCluster,
-  TestEnv.Cloud
-).describe('[Node.js] Summary header parsing', () => {
+// whenOnEnv(
+//   TestEnv.LocalSingleNode,
+//   TestEnv.LocalCluster,
+//   TestEnv.Cloud
+// ).
+describe('[Node.js] Summary header parsing', () => {
   let client: ClickHouseClient<Stream.Readable>
   let tableName: string
+
+  // otherwise, the summary might not be correct for an SMT instance
+  const settings: ClickHouseSettings = {
+    wait_end_of_query: 1,
+  }
 
   beforeAll(async () => {
     client = createTestClient()
@@ -29,6 +38,7 @@ whenOnEnv(
       table: tableName,
       values: jsonValues,
       format: 'JSONEachRow',
+      clickhouse_settings: settings,
     })
     expect(insertSummary).toEqual({
       read_rows: '5',
@@ -43,6 +53,7 @@ whenOnEnv(
 
     const { summary: execSummary } = await client.exec({
       query: `INSERT INTO ${tableName} SELECT * FROM ${tableName}`,
+      clickhouse_settings: settings,
     })
     expect(execSummary).toEqual({
       read_rows: '5',
@@ -59,9 +70,7 @@ whenOnEnv(
   it('should provide summary for command', async () => {
     const { summary } = await client.command({
       query: `INSERT INTO ${tableName} VALUES (144, 'Hello', [2, 4]), (255, 'World', [3, 5])`,
-      clickhouse_settings: {
-        wait_end_of_query: 1,
-      },
+      clickhouse_settings: settings,
     })
     expect(summary).toEqual({
       read_rows: '2',
