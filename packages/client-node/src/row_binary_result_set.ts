@@ -1,20 +1,8 @@
 import type { BaseResultSet, DataFormat } from '@clickhouse/client-common'
-import type { DecodedColumns } from '@clickhouse/client-common/src/data_formatter'
-import { RowBinaryColumns } from '@clickhouse/client-common/src/data_formatter'
+import type { DecodedColumns } from '@clickhouse/client-common/src/data_formatter/row_binary/columns_header'
+import { RowBinaryColumnsHeader } from '@clickhouse/client-common/src/data_formatter/row_binary/columns_header'
 import { Buffer } from 'buffer'
 import Stream, { Transform, type TransformCallback } from 'stream'
-
-// draft; currently unused.
-export interface RowBinaryMappers {
-  date?: <T>(daysSinceEpochUInt16: number) => T
-  date32?: <T>(daysSinceEpochInt32: number) => T
-  datetime?: <T>(secondsSinceEpochUInt32: number, timezone?: string) => T
-  datetime64?: <T>(seconds: bigint, nanos: number, timezone?: string) => T
-  decimal?: <T>(whole: number | bigint, fractional: number | bigint) => T
-}
-export interface RowBinaryResultSetOptions {
-  mappers?: RowBinaryMappers
-}
 
 export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
   constructor(
@@ -71,6 +59,11 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
     let columnIndex = 0
     const rowsToPush: unknown[][] = []
 
+    const measures: Record<string, number> = {}
+    let iterations = 0
+    let incompleteChunksTotal = 0
+    const NS_PER_SEC = 1e9
+
     const toRows = new Transform({
       transform(
         chunk: Buffer,
@@ -80,6 +73,7 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
         //console.log(`transform call, chunk length: ${chunk.length}`)
         let src: Buffer
         if (incompleteChunk !== undefined) {
+          incompleteChunksTotal++
           src = Buffer.concat([incompleteChunk, chunk.subarray()])
           incompleteChunk = undefined
         } else {
@@ -88,24 +82,37 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
 
         let loc = 0
         if (columns === undefined) {
-          const res = RowBinaryColumns.decode(src)
-          if ('error' in res) {
-            return callback(new Error(res.error))
+          try {
+            const res = RowBinaryColumnsHeader.decode(src)
+            columns = res[0]
+            loc = res[1]
+          } catch (err) {
+            return callback(err as Error)
           }
-          columns = res[0]
-          loc = res[1]
+        }
+        function logIterationExecutionTime(end: [number, number]) {
+          const col = columns!.types[columnIndex]
+          const name = columns!.names[columnIndex]
+          const execTime = end[0] * NS_PER_SEC + end[1]
+          iterations++
+          const key = `${col.dbType} - ${name}`
+          measures[key] = (measures[key] || 0) + execTime
         }
 
         while (loc < src.length) {
           const row = new Array(columns.names.length)
           while (columnIndex < columns.names.length) {
+            const start = process.hrtime()
             const decodeResult = columns.decoders[columnIndex](src, loc)
+            const end = process.hrtime(start)
+            logIterationExecutionTime(end)
             //console.log(decodeResult, loc, src.length, columns?.names[columnIndex], columns?.types[columnIndex])
             // not enough data to finish the row - null indicates that
             if (decodeResult === null) {
               // will be added to the beginning of the next received chunk
               incompleteChunk = src.subarray(loc)
               if (rowsToPush.length > 0) {
+                // console.log(`pushing ${rowsToPush.length} rows`)
                 this.push(rowsToPush)
                 rowsToPush.length = 0
               }
@@ -126,6 +133,7 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
         }
 
         if (rowsToPush.length > 0) {
+          // console.log(`pushing ${rowsToPush.length} rows`)
           this.push(rowsToPush)
           rowsToPush.length = 0
         }
@@ -137,6 +145,11 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
           this.push(rowsToPush)
           rowsToPush.length = 0
         }
+        console.log(`Measures (${iterations})`, measures)
+        for (const key in measures) {
+          console.log(`Avg ns for ${key}:`, measures[key] / iterations)
+        }
+        console.log(`Incomplete chunks total:`, incompleteChunksTotal)
         return callback()
       },
       autoDestroy: true,
@@ -151,6 +164,113 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
       }
     })
   }
+  //
+  // streamDataView() {
+  //   // If the underlying stream has already ended,
+  //   // Stream.pipeline will create a new empty stream,
+  //   // but without "readableEnded" flag set to true
+  //   if (this._stream.readableEnded) {
+  //     throw Error('Stream has been already consumed')
+  //   }
+  //   if (this.format !== 'RowBinary') {
+  //     throw Error(`Format ${this.format} is not RowBinary`)
+  //   }
+  //
+  //   let columns: { names: string[]; types: ParsedColumnType[]; decoders: SimpleTypeDecoderDataView[] }
+  //   let incompleteChunk: Uint8Array | undefined
+  //   let columnIndex = 0
+  //   const rowsToPush: unknown[][] = []
+  //
+  //   const toRows = new Transform({
+  //     transform(
+  //       chunk: Buffer,
+  //       _encoding: BufferEncoding,
+  //       callback: TransformCallback
+  //     ) {
+  //       //console.log(`transform call, chunk length: ${chunk.length}`)
+  //       let src: DataView
+  //       if (incompleteChunk !== undefined) {
+  //         const uint8Arr = new Uint8Array(incompleteChunk.length + chunk.length)
+  //         uint8Arr.set(incompleteChunk)
+  //         uint8Arr.set(chunk, incompleteChunk.length)
+  //         src = new DataView(uint8Arr.buffer)
+  //         incompleteChunk = undefined
+  //       } else {
+  //         src = new DataView(chunk.buffer)
+  //       }
+  //
+  //       let loc = 0
+  //       if (columns === undefined) {
+  //         try {
+  //           const res = RowBinaryColumnsHeaderDataView.decode(chunk)
+  //           columns = res[0]
+  //           loc = res[1]
+  //         } catch (err) {
+  //           return callback(err as Error)
+  //         }
+  //       }
+  //
+  //       while (loc < src.byteLength) {
+  //         const row = new Array(columns.names.length)
+  //         while (columnIndex < columns.names.length) {
+  //           const decodeResult = (
+  //             columns.decoders[columnIndex] as any as SimpleTypeDecoderDataView
+  //           )(src, loc)
+  //           //console.log(decodeResult, loc, src.length, columns?.names[columnIndex], columns?.types[columnIndex])
+  //           // not enough data to finish the row - null indicates that
+  //           if (decodeResult === null) {
+  //             // will be added to the beginning of the next received chunk
+  //             incompleteChunk = new Uint8Array(src.buffer.slice(loc))
+  //             if (rowsToPush.length > 0) {
+  //               // console.log(`pushing ${rowsToPush.length} rows`)
+  //               this.push(rowsToPush)
+  //               rowsToPush.length = 0
+  //             }
+  //             return callback()
+  //           } else {
+  //             // decoded a value
+  //             row[columnIndex] = decodeResult[0]
+  //             loc = decodeResult[1]
+  //             columnIndex++
+  //           }
+  //         }
+  //         rowsToPush.push(row)
+  //         columnIndex = 0
+  //       }
+  //
+  //       if (loc > src.byteLength) {
+  //         incompleteChunk = new Uint8Array(
+  //           src.buffer.slice(loc - src.byteLength)
+  //         )
+  //       }
+  //
+  //       if (rowsToPush.length > 0) {
+  //         // console.log(`pushing ${rowsToPush.length} rows`)
+  //         this.push(rowsToPush)
+  //         rowsToPush.length = 0
+  //       }
+  //
+  //       return callback()
+  //     },
+  //     final(callback: TransformCallback) {
+  //       if (rowsToPush.length > 0) {
+  //         this.push(rowsToPush)
+  //         rowsToPush.length = 0
+  //       }
+  //       return callback()
+  //     },
+  //     autoDestroy: true,
+  //     objectMode: true,
+  //   })
+  //
+  //   return Stream.pipeline(this._stream, toRows, function pipelineCb(err) {
+  //     if (err) {
+  //       // FIXME: use logger instead
+  //       // eslint-disable-next-line no-console
+  //       console.error(err)
+  //     }
+  //   })
+  // }
 
   close() {
     this._stream.destroy()
