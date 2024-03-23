@@ -1,144 +1,55 @@
-import { parseEnum } from '../../src/data_formatter/row_binary/columns_parser'
+import { parseFixedStringType } from '../../src/data_formatter/row_binary/columns_parser'
 
-fdescribe('RowBinaryColumnsParser', () => {
-  describe('Enum', () => {
-    // pass-through; will be used as-is in the result and in the error messages.
-    const dbType = 'SomeEnumTypeFromDB'
-    it('should parse correct values', async () => {
-      type TestArgs = {
-        columnType: string
-        expectedValues: Map<number, string>
-        expectedIntSize: 8 | 16
-      }
-      const enumTypes: ['Enum8' | 'Enum16', 8 | 16][] = [
-        ['Enum8', 8],
-        ['Enum16', 16],
+fdescribe('RowBinary column types parser', () => {
+  describe('FixedString', () => {
+    it('should parse FixedString', async () => {
+      const args: [string, number][] = [
+        ['FixedString(1)', 1],
+        ['FixedString(42)', 42],
+        ['FixedString(100)', 100],
+        ['FixedString(32768)', 32768],
       ]
-      const allEnumSizeArgs: TestArgs[][] = enumTypes.map(
-        ([enumType, expectedIntSize]) => [
-          {
-            columnType: `${enumType}('a' = 1)`,
-            expectedValues: new Map([[1, 'a']]),
-            expectedIntSize,
-          },
-          {
-            columnType: `${enumType}('a' = 0, 'b' = 2)`,
-            expectedValues: new Map([
-              [0, 'a'],
-              [2, 'b'],
-            ]),
-            expectedIntSize,
-          },
-          {
-            columnType: `${enumType}('a' = 1, 'b' = 2, 'c' = 42)`,
-            expectedValues: new Map([
-              [1, 'a'],
-              [2, 'b'],
-              [42, 'c'],
-            ]),
-            expectedIntSize,
-          },
-          {
-            columnType: `${enumType}('f\\'' = 1, 'x =' = 2, 'b\\'\\'\\'' = 3, '\\'c=4=' = 42, '4' = 100)`,
-            expectedValues: new Map([
-              [1, "f\\'"],
-              [2, 'x ='],
-              [3, "b\\'\\'\\'"],
-              [42, "\\'c=4="],
-              [100, '4'],
-            ]),
-            expectedIntSize,
-          },
-          {
-            columnType: `${enumType}('' = 0)`,
-            expectedValues: new Map([[0, '']]),
-            expectedIntSize,
-          },
-          {
-            columnType: `${enumType}('' = 42)`,
-            expectedValues: new Map([[42, '']]),
-            expectedIntSize,
-          },
-          {
-            columnType: `${enumType}('foo' = 1, '' = 42)`,
-            expectedValues: new Map([
-              [1, 'foo'],
-              [42, ''],
-            ]),
-            expectedIntSize,
-          },
-          {
-            columnType: `${enumType}('' = 0, 'foo' = 42)`,
-            expectedValues: new Map([
-              [0, ''],
-              [42, 'foo'],
-            ]),
-            expectedIntSize,
-          },
-        ]
-      )
-
-      allEnumSizeArgs.forEach((args) =>
-        args.forEach(({ columnType, expectedValues, expectedIntSize }) => {
-          const result = parseEnum({ columnType, dbType })
-          expect(result)
-            .withContext(
-              `Expected ${columnType} to be parsed as an Enum with intSize ${expectedIntSize} and values [${[
-                ...expectedValues.entries(),
-              ]}]`
-            )
-            .toEqual({
-              type: 'Enum',
-              intSize: expectedIntSize,
-              values: expectedValues,
-              dbType,
-            })
+      args.forEach(([columnType, sizeBytes]) => {
+        const result = parseFixedStringType({
+          columnType,
+          sourceType: columnType,
         })
-      )
+        expect(result)
+          .withContext(
+            `Expected ${columnType} to be parsed as a FixedString with size ${sizeBytes}`
+          )
+          .toEqual({ type: 'FixedString', sizeBytes, sourceType: columnType })
+      })
     })
 
-    it('should throw when the type is not a valid enum', async () => {
+    it('should throw on invalid FixedString type', async () => {
       const args: [string][] = [
-        ['Enum'], // should be either 8 or 16
-        ['Enum32'],
-        ['Enum64'],
+        ['FixedString'],
+        ['FixedString('],
+        ['FixedString()'],
         ['String'],
-        ['Enum(String)'],
       ]
       args.forEach(([columnType]) => {
-        expect(() => parseEnum({ columnType, dbType }))
+        expect(() =>
+          parseFixedStringType({ columnType, sourceType: columnType })
+        )
           .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Expected Enum to be either Enum8 or Enum16')
+          .toThrowError('Invalid FixedString type')
       })
     })
-    it('should throw when the values are not valid', async () => {
-      const negativeArgs: [string][] = [["Enum8('a' = x)"], ["Enum8('foo')"]]
-      negativeArgs.forEach(([columnType]) => {
-        expect(() => parseEnum({ columnType, dbType }))
-          .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Expected Enum index to be a valid number')
-      })
-    })
-    it('should throw on duplicate indices', async () => {
+
+    it('should throw on invalid FixedString size', async () => {
       const args: [string][] = [
-        ["Enum8('a' = 0, 'b' = 0)"],
-        ["Enum8('a' = 0, 'b' = 1, 'c' = 1)"],
+        ['FixedString(0)'],
+        ['FixedString(x)'],
+        [`FixedString(')`],
       ]
       args.forEach(([columnType]) => {
-        expect(() => parseEnum({ columnType, dbType }))
+        expect(() =>
+          parseFixedStringType({ columnType, sourceType: columnType })
+        )
           .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Duplicate Enum index')
-      })
-    })
-    it('should throw on duplicate names', async () => {
-      const args: [string][] = [
-        ["Enum8('a' = 0, 'a' = 1)"],
-        ["Enum8('a' = 0, 'b' = 1, 'b' = 2)"],
-      ]
-      args.forEach(([columnType]) => {
-        expect(() => parseEnum({ columnType, dbType }))
-          .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Duplicate Enum name')
+          .toThrowError('Invalid FixedString size in bytes')
       })
     })
   })

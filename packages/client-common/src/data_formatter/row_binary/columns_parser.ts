@@ -8,28 +8,29 @@ export interface ParsedColumnSimple {
    *  * UInt8 -> UInt8
    *  * LowCardinality(Nullable(String)) -> String */
   columnType: SimpleColumnType
-  /** ClickHouse type as it is defined in the table. */
-  dbType: string
+  /** The original type before parsing. */
+  sourceType: string
 }
 
-interface ParsedColumnNullableBase {
-  type: 'Nullable'
-  dbType: string
+export interface ParsedColumnFixedString {
+  type: 'FixedString'
+  sizeBytes: number
+  sourceType: string
 }
-export type ParsedColumnNullable =
-  | (ParsedColumnNullableBase & {
-      /** Used to determine how to decode T from Nullable(T) */
-      valueType: SimpleColumnType
-    })
-  | (ParsedColumnNullableBase & {
-      valueType: 'Decimal'
-      decimalParams: ParsedColumnDecimal['params']
-    })
-  | (ParsedColumnNullableBase & {
-      valueType: 'Enum'
-      values: ParsedColumnEnum['values']
-      intSize: ParsedColumnEnum['intSize']
-    })
+
+export interface ParsedColumnDateTime {
+  type: 'DateTime'
+  timezone: string | null
+  sourceType: string
+}
+
+export interface ParsedColumnDateTime64 {
+  type: 'DateTime64'
+  timezone: string | null
+  /** Valid range: [0 : 9] */
+  precision: number
+  sourceType: string
+}
 
 export interface ParsedColumnEnum {
   type: 'Enum'
@@ -37,13 +38,7 @@ export interface ParsedColumnEnum {
   values: Map<number, string>
   /** UInt8 or UInt16 */
   intSize: 8 | 16
-  dbType: string
-}
-
-export interface ParseColumnTuple {
-  type: 'Tuple'
-  elements: ParsedColumnType[]
-  dbType: string
+  sourceType: string
 }
 
 /** Int size for Decimal depends on the Precision
@@ -60,52 +55,81 @@ export interface DecimalParams {
 export interface ParsedColumnDecimal {
   type: 'Decimal'
   params: DecimalParams
-  dbType: string
+  sourceType: string
+}
+
+/** Array or Map itself cannot be Nullable */
+export interface ParsedColumnNullable {
+  type: 'Nullable'
+  value:
+    | ParsedColumnSimple
+    | ParsedColumnEnum
+    | ParsedColumnDecimal
+    | ParsedColumnFixedString
+    | ParsedColumnDateTime
+    | ParsedColumnDateTime64
+  sourceType: string
 }
 
 /** Array cannot be Nullable or LowCardinality, but its value type can be.
  *  Arrays can be multidimensional, e.g. Array(Array(Array(T))).
  *  Arrays are allowed to have a Map as the value type.
  */
-interface ParsedColumnArrayBase {
+export interface ParsedColumnArray {
   type: 'Array'
-  valueNullable: boolean
+  value:
+    | ParsedColumnNullable
+    | ParsedColumnSimple
+    | ParsedColumnFixedString
+    | ParsedColumnDecimal
+    | ParsedColumnEnum
+    | ParsedColumnMap
+    | ParsedColumnDateTime
+    | ParsedColumnDateTime64
   /** Array(T) = 1 dimension, Array(Array(T)) = 2, etc. */
   dimensions: number
-  dbType: string
+  sourceType: string
 }
-export type ParsedColumnArray =
-  | (ParsedColumnArrayBase & {
-      /** Represents the final value type; nested arrays are handled with {@link ParsedColumnArray.dimensions} */
-      valueType: SimpleColumnType
-    })
-  | (ParsedColumnArrayBase & {
-      valueType: 'Decimal'
-      decimalParams: DecimalParams
-    })
-  | (ParsedColumnArrayBase & {
-      valueType: 'Enum'
-      values: ParsedColumnEnum['values']
-      intSize: ParsedColumnEnum['intSize']
-    }) // TODO: add Tuple support.
 
-// export interface ParsedColumnMap {
-//   type: 'Map'
-//   key: ParsedColumnSimple
-//   value: ParsedColumnType
-//   dbType: string
-// } // TODO - add Map support.
+/** @see https://clickhouse.com/docs/en/sql-reference/data-types/map */
+export interface ParsedColumnMap {
+  type: 'Map'
+  /** Possible key types:
+   *  - String, Integer, UUID, Date, Date32 ({@link ParsedColumnSimple})
+   *  - FixedString
+   *  - DateTime
+   *  - Enum
+   */
+  key:
+    | ParsedColumnSimple
+    | ParsedColumnFixedString
+    | ParsedColumnEnum
+    | ParsedColumnDateTime
+  /** Possible value type: arbitrary, including Map and Array. */
+  value: ParsedColumnType
+  sourceType: string
+}
+
+// TODO: Tuple support.
+// export interface ParseColumnTuple {
+//   type: 'Tuple'
+//   elements: ParsedColumnType[]
+//   sourceType: string
+// }
 
 export type ParsedColumnType =
   | ParsedColumnSimple
+  | ParsedColumnFixedString
   | ParsedColumnNullable
   | ParsedColumnDecimal
+  | ParsedColumnDateTime
+  | ParsedColumnDateTime64
   | ParsedColumnArray
   | ParsedColumnEnum
-// | ParsedColumnMap  // TODO - add Map support.
+  | ParsedColumnMap
 
-export function parseColumnType(dbType: string): ParsedColumnType {
-  let columnType = dbType
+export function parseColumnType(sourceType: string): ParsedColumnType {
+  let columnType = sourceType
   let isNullable = false
   if (columnType.startsWith(LowCardinalityPrefix)) {
     columnType = columnType.slice(LowCardinalityPrefix.length, -1)
@@ -115,87 +139,103 @@ export function parseColumnType(dbType: string): ParsedColumnType {
     isNullable = true
   }
   let result: ParsedColumnType
-  if (columnType.startsWith(DecimalPrefix)) {
-    const params = parseDecimalParams({
-      dbType,
+  if (columnType in RowBinarySimpleDecoders) {
+    result = {
+      type: 'Simple',
+      columnType: columnType as SimpleColumnType,
+      sourceType,
+    }
+  } else if (columnType.startsWith(DecimalPrefix)) {
+    result = parseDecimalType({
+      sourceType,
       columnType,
     })
-    result = {
-      type: 'Decimal',
-      params,
-      dbType,
-    }
+  } else if (columnType.startsWith(DateTime64Prefix)) {
+    result = parseDateTime64Type({ sourceType, columnType })
+  } else if (columnType.startsWith(DateTimePrefix)) {
+    result = parseDateTimeType({ sourceType, columnType })
   } else if (
     columnType.startsWith(Enum8Prefix) ||
     columnType.startsWith(Enum16Prefix)
   ) {
-    result = parseEnum({ dbType, columnType })
+    result = parseEnumType({ sourceType, columnType })
   } else if (columnType.startsWith(ArrayPrefix)) {
-    result = parseArrayType({ dbType, columnType })
+    result = parseArrayType({ sourceType, columnType })
   } else if (columnType.startsWith(MapPrefix)) {
+    result = parseMapType({ sourceType, columnType })
+  } else {
     throw ClickHouseRowBinaryError.headerDecodingError(
-      'Map types are not supported yet',
+      'Unsupported column type',
       { columnType }
     )
-  } else {
-    // "Simple" types
-    if (columnType in RowBinarySimpleDecoders) {
-      result = {
-        type: 'Simple',
-        columnType: columnType as SimpleColumnType,
-        dbType,
-      }
-    } else {
-      throw ClickHouseRowBinaryError.headerDecodingError(
-        'Unsupported column type',
-        { columnType }
-      )
-    }
   }
   if (isNullable) {
-    return asNullableType(result, dbType)
+    return asNullableType(result, sourceType)
   } else {
     return result
   }
 }
 
-export function parseDecimalParams({
+export function parseDecimalType({
   columnType,
-  dbType,
-}: ParseColumnTypeParams): DecimalParams {
-  if (!columnType.startsWith(DecimalPrefix)) {
+  sourceType,
+}: ParseColumnTypeParams): ParsedColumnDecimal {
+  if (
+    !columnType.startsWith(DecimalPrefix) ||
+    columnType.length < DecimalPrefix.length + 5 // Decimal(1, 0) is the shortest valid definition
+  ) {
     throw ClickHouseRowBinaryError.headerDecodingError('Invalid Decimal type', {
-      dbType,
+      sourceType,
       columnType,
     })
   }
-
-  const split = columnType.slice(DecimalPrefix.length, -1).split(',')
+  const split = columnType.slice(DecimalPrefix.length, -1).split(', ')
   if (split.length !== 2) {
-    throw ClickHouseRowBinaryError.headerDecodingError('Invalid Decimal type', {
-      dbType,
-      columnType,
-      split,
-    })
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Expected Decimal type to have both precision and scale',
+      {
+        sourceType,
+        columnType,
+        split,
+      }
+    )
   }
-  const params: DecimalParams = {
-    precision: parseInt(split[0], 10),
-    scale: parseInt(split[1], 10),
-    intSize: 32,
+  let intSize: DecimalParams['intSize'] = 32
+  const precision = parseInt(split[0], 10)
+  if (Number.isNaN(precision) || precision < 1 || precision > 76) {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Invalid Decimal precision',
+      { columnType, sourceType, precision }
+    )
   }
-  if (params.precision > 38) {
-    params.intSize = 256
-  } else if (params.precision > 18) {
-    params.intSize = 128
-  } else if (params.precision > 9) {
-    params.intSize = 64
+  const scale = parseInt(split[1], 10)
+  if (Number.isNaN(scale) || scale < 0 || scale > precision) {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Invalid Decimal scale',
+      { columnType, sourceType, precision, scale }
+    )
   }
-  return params
+  if (precision > 38) {
+    intSize = 256
+  } else if (precision > 18) {
+    intSize = 128
+  } else if (precision > 9) {
+    intSize = 64
+  }
+  return {
+    type: 'Decimal',
+    params: {
+      precision,
+      scale,
+      intSize,
+    },
+    sourceType,
+  }
 }
 
-export function parseEnum({
+export function parseEnumType({
   columnType,
-  dbType,
+  sourceType,
 }: ParseColumnTypeParams): ParsedColumnEnum {
   let intSize: 8 | 16
   if (columnType.startsWith(Enum8Prefix)) {
@@ -209,17 +249,18 @@ export function parseEnum({
       'Expected Enum to be either Enum8 or Enum16',
       {
         columnType,
-        dbType,
+        sourceType,
       }
     )
   }
 
-  if (columnType.length < 2) {
+  // The minimal allowed Enum definition is Enum8('' = 0), i.e. 6 chars inside.
+  if (columnType.length < 6) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Invalid Enum type values',
       {
         columnType,
-        dbType,
+        sourceType,
       }
     )
   }
@@ -229,31 +270,6 @@ export function parseEnum({
   let parsingName = true // false when parsing the index
   let charEscaped = false // we should ignore escaped ticks
   let startIndex = 1 // Skip the first '
-
-  function pushEnumIndex(start: number, end: number) {
-    const index = parseInt(columnType.slice(start, end), 10)
-    if (Number.isNaN(index) || index < 0) {
-      throw ClickHouseRowBinaryError.headerDecodingError(
-        'Expected Enum index to be a valid number',
-        {
-          columnType,
-          dbType,
-          names,
-          indices,
-          index,
-          start,
-          end,
-        }
-      )
-    }
-    if (indices.includes(index)) {
-      throw ClickHouseRowBinaryError.headerDecodingError(
-        'Duplicate Enum index',
-        { columnType, dbType, index, names, indices }
-      )
-    }
-    indices.push(index)
-  }
 
   // Should support the most complicated enums, such as Enum8('f\'' = 1, 'x =' = 2, 'b\'\'\'' = 3, '\'c=4=' = 42, '4' = 100)
   for (let i = 1; i < columnType.length; i++) {
@@ -267,7 +283,7 @@ export function parseEnum({
           if (names.includes(name)) {
             throw ClickHouseRowBinaryError.headerDecodingError(
               'Duplicate Enum name',
-              { columnType, dbType, name, names, indices }
+              { columnType, sourceType, name, names, indices }
             )
           }
           names.push(name)
@@ -297,7 +313,7 @@ export function parseEnum({
   if (names.length !== indices.length) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Expected Enum to have the same number of names and indices',
-      { columnType, dbType, names, indices }
+      { columnType, sourceType, names, indices }
     )
   }
 
@@ -310,150 +326,297 @@ export function parseEnum({
     type: 'Enum',
     values,
     intSize,
-    dbType,
+    sourceType,
+  }
+
+  function pushEnumIndex(start: number, end: number) {
+    const index = parseInt(columnType.slice(start, end), 10)
+    if (Number.isNaN(index) || index < 0) {
+      throw ClickHouseRowBinaryError.headerDecodingError(
+        'Expected Enum index to be a valid number',
+        {
+          columnType,
+          sourceType,
+          names,
+          indices,
+          index,
+          start,
+          end,
+        }
+      )
+    }
+    if (indices.includes(index)) {
+      throw ClickHouseRowBinaryError.headerDecodingError(
+        'Duplicate Enum index',
+        { columnType, sourceType, index, names, indices }
+      )
+    }
+    indices.push(index)
   }
 }
 
-export function parseTupleType({
+export function parseMapType({
   columnType,
-  dbType,
-}: ParseColumnTypeParams): ParseColumnTuple {
-  if (!columnType.startsWith(TuplePrefix)) {
-    throw ClickHouseRowBinaryError.headerDecodingError('Invalid Tuple type', {
+  sourceType,
+}: ParseColumnTypeParams): ParsedColumnMap {
+  if (
+    !columnType.startsWith(MapPrefix) ||
+    columnType.length < MapPrefix.length + 11 // the shortest definition seems to be Map(Int8, Int8)
+  ) {
+    throw ClickHouseRowBinaryError.headerDecodingError('Invalid Map type', {
       columnType,
-      dbType,
+      sourceType,
     })
   }
-  columnType = columnType.slice(TuplePrefix.length, -1)
-  // TODO.
+  columnType = columnType.slice(MapPrefix.length, -1)
+
+  let openParens = 0 // consider the type parsed once we reach a comma outside of parens.
+
+  let keyColumnType: string | undefined
+  for (let i = 0; i < columnType.length; i++) {
+    if (openParens === 0) {
+      if (columnType[i] === ',') {
+        keyColumnType = columnType.slice(0, i)
+        break
+      }
+    }
+    if (columnType[i] === '(') {
+      openParens++
+    } else if (columnType[i] === ')') {
+      openParens--
+    }
+  }
+  if (keyColumnType === undefined) {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Could not parse Map key type',
+      {
+        sourceType,
+        columnType,
+      }
+    )
+  }
+
+  const key = parseColumnType(keyColumnType)
+  if (
+    key.type === 'DateTime64' ||
+    key.type === 'Nullable' ||
+    key.type === 'Array' ||
+    key.type === 'Map' ||
+    key.type === 'Decimal' // TODO: disallow Tuple as well.
+  ) {
+    throw ClickHouseRowBinaryError.headerDecodingError('Invalid Map key type', {
+      key,
+      sourceType,
+    })
+  }
+
+  const value = parseColumnType(columnType.slice(keyColumnType.length + 2))
   return {
-    type: 'Tuple',
-    elements: [],
-    dbType,
+    type: 'Map',
+    key,
+    value,
+    sourceType,
   }
 }
+
+// TODO.
+// export function parseTupleType({
+//   columnType,
+//   dbType,
+// }: ParseColumnTypeParams): ParseColumnTuple {
+//   if (!columnType.startsWith(TuplePrefix)) {
+//     throw ClickHouseRowBinaryError.headerDecodingError('Invalid Tuple type', {
+//       columnType,
+//       dbType,
+//     })
+//   }
+//   // columnType = columnType.slice(TuplePrefix.length, -1)
+//   return {
+//     type: 'Tuple',
+//     elements: [],
+//     dbType,
+//   }
+// }
 
 export function parseArrayType({
   columnType,
-  dbType,
+  sourceType,
 }: ParseColumnTypeParams): ParsedColumnArray {
-  if (!columnType.startsWith(ArrayPrefix)) {
+  if (
+    !columnType.startsWith(ArrayPrefix) ||
+    columnType.length < ArrayPrefix.length + 5 // Array(Int8) is the shortest valid definition
+  ) {
     throw ClickHouseRowBinaryError.headerDecodingError('Invalid Array type', {
       columnType,
-      dbType,
+      sourceType,
     })
   }
 
   let dimensions = 0
   while (columnType.length > 0) {
     if (columnType.startsWith(ArrayPrefix)) {
-      columnType.slice(ArrayPrefix.length, -1) // Array(T) -> T
+      columnType = columnType.slice(ArrayPrefix.length, -1) // Array(T) -> T
       dimensions++
     } else {
       break
     }
   }
-  if (dimensions === 0) {
+  if (dimensions === 0 || dimensions > 10) {
+    // TODO: check how many we can handle; max 10 seems more than enough.
     throw ClickHouseRowBinaryError.headerDecodingError(
-      'Array type without dimensions',
+      'Expected Array to have between 1 and 10 dimensions',
       { columnType }
     )
   }
-  if (dimensions > 10) {
+  const value = parseColumnType(columnType)
+  if (value.type === 'Array') {
     throw ClickHouseRowBinaryError.headerDecodingError(
-      'Array type with too many dimensions',
-      { columnType }
+      'Unexpected Array as value type',
+      { columnType, sourceType }
     )
   }
-  const valueNullable = columnType.startsWith(NullablePrefix)
-  if (valueNullable) {
-    columnType = columnType.slice(NullablePrefix.length, -1)
+  return {
+    type: 'Array',
+    value,
+    dimensions,
+    sourceType,
   }
-  if (columnType.startsWith(DecimalPrefix)) {
-    const decimalParams = parseDecimalParams({
-      dbType,
-      columnType,
-    })
-    return {
-      type: 'Array',
-      valueType: 'Decimal',
-      valueNullable,
-      decimalParams,
-      dimensions,
-      dbType,
-    }
-  }
+}
+
+export function parseDateTimeType({
+  columnType,
+  sourceType,
+}: ParseColumnTypeParams): ParsedColumnDateTime {
   if (
-    columnType.startsWith(Enum8Prefix) ||
-    columnType.startsWith(Enum16Prefix)
+    columnType.startsWith(DateTimeWithTimezonePrefix) &&
+    columnType.length > DateTimeWithTimezonePrefix.length + 4 // DateTime('GB') has the least amount of chars
   ) {
-    const { values, intSize } = parseEnum({ dbType, columnType })
+    const timezone = columnType.slice(DateTimeWithTimezonePrefix.length + 1, -2)
     return {
-      type: 'Array',
-      valueType: 'Enum',
-      valueNullable,
-      values,
-      intSize,
-      dimensions,
-      dbType,
+      type: 'DateTime',
+      timezone,
+      sourceType,
     }
-  }
-  if (columnType in RowBinarySimpleDecoders) {
+  } else if (
+    columnType.startsWith(DateTimePrefix) &&
+    columnType.length === DateTimePrefix.length
+  ) {
     return {
-      type: 'Array',
-      valueType: columnType as SimpleColumnType,
-      valueNullable,
-      dimensions,
-      dbType,
+      type: 'DateTime',
+      timezone: null,
+      sourceType,
     }
+  } else {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Invalid DateTime type',
+      {
+        columnType,
+        sourceType,
+      }
+    )
   }
-  throw ClickHouseRowBinaryError.headerDecodingError(
-    'Unsupported array value type',
-    { dbType, columnType }
-  )
+}
+
+export function parseDateTime64Type({
+  columnType,
+  sourceType,
+}: ParseColumnTypeParams): ParsedColumnDateTime64 {
+  if (
+    !columnType.startsWith(DateTime64Prefix) ||
+    columnType.length < DateTime64Prefix.length + 2 // should at least have a precision
+  ) {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Invalid DateTime64 type',
+      {
+        columnType,
+        sourceType,
+      }
+    )
+  }
+  const precision = parseInt(columnType[DateTime64Prefix.length], 10)
+  if (Number.isNaN(precision) || precision < 0 || precision > 9) {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Invalid DateTime64 precision',
+      {
+        columnType,
+        sourceType,
+        precision,
+      }
+    )
+  }
+  let timezone = null
+  if (columnType.length > DateTime64Prefix.length + 2) {
+    // e.g. DateTime64(3, 'UTC') -> UTC
+    timezone = columnType.slice(DateTime64Prefix.length + 4, -2)
+  }
+  return {
+    type: 'DateTime64',
+    timezone,
+    precision,
+    sourceType,
+  }
+}
+
+export function parseFixedStringType({
+  columnType,
+  sourceType,
+}: ParseColumnTypeParams): ParsedColumnFixedString {
+  if (
+    !columnType.startsWith(FixedStringPrefix) ||
+    columnType.length < FixedStringPrefix.length + 2 // i.e. at least FixedString(1)
+  ) {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Invalid FixedString type',
+      { columnType, sourceType }
+    )
+  }
+  const sizeBytes = parseInt(columnType.slice(FixedStringPrefix.length, -1), 10)
+  if (Number.isNaN(sizeBytes) || sizeBytes < 1) {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Invalid FixedString size in bytes',
+      { columnType, sourceType, sizeBytes }
+    )
+  }
+  return {
+    type: 'FixedString',
+    sizeBytes,
+    sourceType,
+  }
 }
 
 export function asNullableType(
-  result:
+  value:
     | ParsedColumnSimple
     | ParsedColumnEnum
     | ParsedColumnDecimal
-    | ParsedColumnArray,
-  dbType: string
+    | ParsedColumnArray
+    | ParsedColumnMap
+    | ParsedColumnDateTime
+    | ParsedColumnDateTime64,
+  sourceType: string
 ): ParsedColumnNullable {
-  if (result.type === 'Array') {
+  // TODO: disallow Tuple as well.
+  if (value.type === 'Array' || value.type === 'Map') {
     throw ClickHouseRowBinaryError.headerDecodingError(
-      'Array cannot be Nullable',
-      { dbType }
+      `${value.type} cannot be Nullable`,
+      { sourceType }
     )
   }
-  if (result.type === 'Decimal') {
-    return {
-      type: 'Nullable',
-      valueType: 'Decimal',
-      decimalParams: result.params,
-      dbType,
-    }
-  }
-  if (result.type === 'Enum') {
-    return {
-      type: 'Nullable',
-      valueType: 'Enum',
-      values: result.values,
-      intSize: result.intSize,
-      dbType,
-    }
+  if (value.sourceType.startsWith(NullablePrefix)) {
+    value.sourceType = value.sourceType.slice(NullablePrefix.length, -1)
   }
   return {
     type: 'Nullable',
-    valueType: result.columnType,
-    dbType,
+    sourceType,
+    value,
   }
 }
 
 interface ParseColumnTypeParams {
-  dbType: string
+  /** A particular type to parse, such as DateTime. */
   columnType: string
+  /** Full type definition, such as Map(String, DateTime). */
+  sourceType: string
 }
 
 const NullablePrefix = 'Nullable(' as const
@@ -464,3 +627,7 @@ const MapPrefix = 'Map(' as const
 const Enum8Prefix = 'Enum8(' as const
 const Enum16Prefix = 'Enum16(' as const
 const TuplePrefix = 'Tuple(' as const
+const DateTimePrefix = 'DateTime' as const
+const DateTimeWithTimezonePrefix = 'DateTime(' as const
+const DateTime64Prefix = 'DateTime64(' as const
+const FixedStringPrefix = 'FixedString(' as const

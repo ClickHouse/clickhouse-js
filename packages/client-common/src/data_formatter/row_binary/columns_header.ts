@@ -8,7 +8,7 @@ import { parseColumnType } from './columns_parser'
 import { ClickHouseRowBinaryError } from './errors'
 import type { DecodeResult } from './read_bytes'
 import { readBytesAsUnsignedLEB128 } from './read_bytes'
-import type { SimpleTypeDecoder, TypeDecoder } from './types'
+import type { SimpleTypeDecoder } from './types'
 import { RowBinarySimpleDecoders, RowBinaryTypesDecoder } from './types'
 
 export type DecodedColumns = DecodeResult<{
@@ -60,7 +60,6 @@ export class RowBinaryColumnsHeader {
       nextLoc = res[1]
       const col = parseColumnType(res[0])
       types[i] = col
-      let valueDecoder: TypeDecoder
       switch (col.type) {
         case 'Simple':
           decoders[i] = RowBinarySimpleDecoders[col.columnType]
@@ -76,7 +75,7 @@ export class RowBinaryColumnsHeader {
           break
         default:
           throw ClickHouseRowBinaryError.headerDecodingError(
-            'Unsupported column type',
+            `Unsupported column type ${col.type}`,
             { col }
           )
       }
@@ -113,29 +112,32 @@ function getEnumDecoder(
 
 function getArrayDecoder(col: ParsedColumnArray): SimpleTypeDecoder {
   let valueDecoder
-  if (col.valueType === 'Decimal') {
-    valueDecoder = getDecimalDecoder(col.decimalParams)
-  } else if (col.valueType === 'Enum') {
-    valueDecoder = getEnumDecoder(col.intSize, col.values)
+  if (col.value.type === 'Simple') {
+    valueDecoder = RowBinarySimpleDecoders[col.value.columnType]
+  } else if (col.value.type === 'Decimal') {
+    valueDecoder = getDecimalDecoder(col.value.params)
+  } else if (col.value.type === 'Enum') {
+    valueDecoder = getEnumDecoder(col.value.intSize, col.value.values)
+  } else if (col.value.type === 'Nullable') {
+    valueDecoder = getNullableDecoder(col.value)
   } else {
-    valueDecoder = RowBinarySimpleDecoders[col.valueType]
+    // FIXME: add other types
+    throw new Error(`Unsupported Array value type: ${col.value.type}`)
   }
-  return RowBinaryTypesDecoder.array(
-    col.valueNullable
-      ? RowBinaryTypesDecoder.nullable(valueDecoder)
-      : valueDecoder,
-    col.dimensions
-  )
+  return RowBinaryTypesDecoder.array(valueDecoder, col.dimensions)
 }
 
 function getNullableDecoder(col: ParsedColumnNullable) {
   let valueDecoder
-  if (col.valueType === 'Decimal') {
-    valueDecoder = getDecimalDecoder(col.decimalParams)
-  } else if (col.valueType === 'Enum') {
-    valueDecoder = getEnumDecoder(col.intSize, col.values)
+  if (col.value.type === 'Simple') {
+    valueDecoder = RowBinarySimpleDecoders[col.value.columnType]
+  } else if (col.value.type === 'Decimal') {
+    valueDecoder = getDecimalDecoder(col.value.params)
+  } else if (col.value.type === 'Enum') {
+    valueDecoder = getEnumDecoder(col.value.intSize, col.value.values)
   } else {
-    valueDecoder = RowBinarySimpleDecoders[col.valueType]
+    // FIXME: add other types
+    throw new Error(`Unsupported Nullable value type: ${col.value.type}`)
   }
   return RowBinaryTypesDecoder.nullable(valueDecoder)
 }
