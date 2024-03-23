@@ -1,19 +1,15 @@
-import {
+import type {
   DecimalParams,
-  parseColumnType,
   ParsedColumnArray,
   ParsedColumnNullable,
   ParsedColumnType,
 } from './columns_parser'
+import { parseColumnType } from './columns_parser'
 import { ClickHouseRowBinaryError } from './errors'
 import type { DecodeResult } from './read_bytes'
 import { readBytesAsUnsignedLEB128 } from './read_bytes'
-import {
-  RowBinarySimpleDecoders,
-  RowBinaryTypesDecoder,
-  SimpleTypeDecoder,
-  TypeDecoder,
-} from './types'
+import type { SimpleTypeDecoder, TypeDecoder } from './types'
+import { RowBinarySimpleDecoders, RowBinaryTypesDecoder } from './types'
 
 export type DecodedColumns = DecodeResult<{
   names: string[]
@@ -119,6 +115,8 @@ function getArrayDecoder(col: ParsedColumnArray): SimpleTypeDecoder {
   let valueDecoder
   if (col.valueType === 'Decimal') {
     valueDecoder = getDecimalDecoder(col.decimalParams)
+  } else if (col.valueType === 'Enum') {
+    valueDecoder = getEnumDecoder(col.intSize, col.values)
   } else {
     valueDecoder = RowBinarySimpleDecoders[col.valueType]
   }

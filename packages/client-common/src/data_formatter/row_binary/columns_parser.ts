@@ -8,33 +8,34 @@ export interface ParsedColumnSimple {
    *  * UInt8 -> UInt8
    *  * LowCardinality(Nullable(String)) -> String */
   columnType: SimpleColumnType
+  /** ClickHouse type as it is defined in the table. */
   dbType: string
 }
 
+interface ParsedColumnNullableBase {
+  type: 'Nullable'
+  dbType: string
+}
 export type ParsedColumnNullable =
-  | {
-      type: 'Nullable'
+  | (ParsedColumnNullableBase & {
       /** Used to determine how to decode T from Nullable(T) */
       valueType: SimpleColumnType
-      dbType: string
-    }
-  | {
-      type: 'Nullable'
+    })
+  | (ParsedColumnNullableBase & {
       valueType: 'Decimal'
       decimalParams: ParsedColumnDecimal['params']
-      dbType: string
-    }
-  | {
-      type: 'Nullable'
+    })
+  | (ParsedColumnNullableBase & {
       valueType: 'Enum'
       values: ParsedColumnEnum['values']
       intSize: ParsedColumnEnum['intSize']
-      dbType: string
-    }
+    })
 
 export interface ParsedColumnEnum {
   type: 'Enum'
+  /** Index to name */
   values: Map<number, string>
+  /** UInt8 or UInt16 */
   intSize: 8 | 16
   dbType: string
 }
@@ -66,28 +67,32 @@ export interface ParsedColumnDecimal {
  *  Arrays can be multidimensional, e.g. Array(Array(Array(T))).
  *  Arrays are allowed to have a Map as the value type.
  */
+interface ParsedColumnArrayBase {
+  type: 'Array'
+  valueNullable: boolean
+  /** Array(T) = 1 dimension, Array(Array(T)) = 2, etc. */
+  dimensions: number
+  dbType: string
+}
 export type ParsedColumnArray =
-  | {
-      type: 'Array'
-      dimensions: number
+  | (ParsedColumnArrayBase & {
       /** Represents the final value type; nested arrays are handled with {@link ParsedColumnArray.dimensions} */
       valueType: SimpleColumnType
-      valueNullable: boolean
-      dbType: string
-    }
-  | {
-      type: 'Array'
-      dimensions: number
+    })
+  | (ParsedColumnArrayBase & {
       valueType: 'Decimal'
-      valueNullable: boolean
       decimalParams: DecimalParams
-      dbType: string
-    }
+    })
+  | (ParsedColumnArrayBase & {
+      valueType: 'Enum'
+      values: ParsedColumnEnum['values']
+      intSize: ParsedColumnEnum['intSize']
+    }) // TODO: add Tuple support.
 
 // export interface ParsedColumnMap {
 //   type: 'Map'
 //   key: ParsedColumnSimple
-//   value: ParsedColumnSimple | ParsedColumnArray | ParsedColumnMap
+//   value: ParsedColumnType
 //   dbType: string
 // } // TODO - add Map support.
 
@@ -208,8 +213,8 @@ export function parseEnum({
       }
     )
   }
-  const matches = [...columnType.matchAll(/(?:'(.*?)' = (\d+),?)+/g)]
-  if (matches.length === 0) {
+
+  if (columnType.length < 2) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Invalid Enum type values',
       {
@@ -219,38 +224,92 @@ export function parseEnum({
     )
   }
 
-  // FIXME: regex is not enough to validate possibly incorrect Enum values.
-  //  needs to be processed char by char instead.
   const names: string[] = []
-  const values = new Map<number, string>()
-  for (const match of matches) {
-    const index = parseInt(match[2], 10)
-    if (index < 0 || Number.isNaN(index)) {
+  const indices: number[] = []
+  let parsingName = true // false when parsing the index
+  let charEscaped = false // we should ignore escaped ticks
+  let startIndex = 1 // Skip the first '
+
+  function pushEnumIndex(start: number, end: number) {
+    const index = parseInt(columnType.slice(start, end), 10)
+    if (Number.isNaN(index) || index < 0) {
       throw ClickHouseRowBinaryError.headerDecodingError(
-        'Enum index must be >= 0',
-        { columnType, dbType, index, matches: [...matches] }
+        'Expected Enum index to be a valid number',
+        {
+          columnType,
+          dbType,
+          names,
+          indices,
+          index,
+          start,
+          end,
+        }
       )
     }
-    if (values.has(index)) {
+    if (indices.includes(index)) {
       throw ClickHouseRowBinaryError.headerDecodingError(
         'Duplicate Enum index',
-        { columnType, dbType, index, matches: [...matches] }
+        { columnType, dbType, index, names, indices }
       )
     }
-    if (names.includes(match[1])) {
-      throw ClickHouseRowBinaryError.headerDecodingError(
-        'Duplicate Enum name',
-        { columnType, dbType, name: match[1], matches: [...matches] }
-      )
+    indices.push(index)
+  }
+
+  // Should support the most complicated enums, such as Enum8('f\'' = 1, 'x =' = 2, 'b\'\'\'' = 3, '\'c=4=' = 42, '4' = 100)
+  for (let i = 1; i < columnType.length; i++) {
+    if (parsingName) {
+      if (!charEscaped) {
+        if (columnType[i] === '\\') {
+          charEscaped = true
+        } else if (columnType[i] === "'") {
+          // non-escaped closing tick - push the name
+          const name = columnType.slice(startIndex, i)
+          if (names.includes(name)) {
+            throw ClickHouseRowBinaryError.headerDecodingError(
+              'Duplicate Enum name',
+              { columnType, dbType, name, names, indices }
+            )
+          }
+          names.push(name)
+          i += 4 // skip ` = ` and the first digit, as it will always have at least one.
+          startIndex = i
+          parsingName = false
+        }
+      } else {
+        // current char was escaped, ignoring.
+        charEscaped = false
+      }
+    } else {
+      // Parsing the index
+      if (columnType[i] < '0' || columnType[i] > '9') {
+        pushEnumIndex(startIndex, i)
+        // the char at this index should be comma.
+        i += 2 // skip ` '`, but not the first char - ClickHouse allows something like Enum8('foo' = 0, '' = 42)
+        startIndex = i + 1
+        parsingName = true
+        charEscaped = false
+      }
     }
-    values.set(index, match[1])
-    names.push(match[1])
+  }
+
+  // Push the last index
+  pushEnumIndex(startIndex, columnType.length)
+  if (names.length !== indices.length) {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Expected Enum to have the same number of names and indices',
+      { columnType, dbType, names, indices }
+    )
+  }
+
+  const values = new Map<number, string>()
+  for (let i = 0; i < names.length; i++) {
+    values.set(indices[i], names[i])
   }
 
   return {
     type: 'Enum',
-    intSize,
     values,
+    intSize,
     dbType,
   }
 }
@@ -320,6 +379,21 @@ export function parseArrayType({
       valueType: 'Decimal',
       valueNullable,
       decimalParams,
+      dimensions,
+      dbType,
+    }
+  }
+  if (
+    columnType.startsWith(Enum8Prefix) ||
+    columnType.startsWith(Enum16Prefix)
+  ) {
+    const { values, intSize } = parseEnum({ dbType, columnType })
+    return {
+      type: 'Array',
+      valueType: 'Enum',
+      valueNullable,
+      values,
+      intSize,
       dimensions,
       dbType,
     }

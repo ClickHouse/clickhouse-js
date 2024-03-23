@@ -4,92 +4,99 @@ fdescribe('RowBinaryColumnsParser', () => {
   describe('Enum', () => {
     // pass-through; will be used as-is in the result and in the error messages.
     const dbType = 'SomeEnumTypeFromDB'
-    it('should parse Enum8', async () => {
-      const args: [string, Map<number, string>][] = [
-        ["Enum8('a' = 1)", new Map([[1, 'a']])],
-        [
-          "Enum8('a' = 0, 'b' = 2)",
-          new Map([
-            [0, 'a'],
-            [2, 'b'],
-          ]),
-        ],
-        [
-          "Enum8('a' = 1, 'b' = 2, 'c' = 42)",
-          new Map([
-            [1, 'a'],
-            [2, 'b'],
-            [42, 'c'],
-          ]),
-        ],
-        [
-          "Enum8('f'' = 1, 'x =' = 2, 'b'''' = 3, ''c==' = 42)",
-          new Map([
-            [1, "f'"],
-            [2, 'x ='],
-            [3, "b'''"],
-            [42, "'c=="],
-          ]),
-        ],
+    it('should parse correct values', async () => {
+      type TestArgs = {
+        columnType: string
+        expectedValues: Map<number, string>
+        expectedIntSize: 8 | 16
+      }
+      const enumTypes: ['Enum8' | 'Enum16', 8 | 16][] = [
+        ['Enum8', 8],
+        ['Enum16', 16],
       ]
-      args.forEach(([columnType, values]) => {
-        expect(parseEnum({ columnType, dbType }))
-          .withContext(
-            `Expected ${columnType} to be parsed as Enum8 [${[
-              ...values.entries(),
-            ]}]`
-          )
-          .toEqual({
-            type: 'Enum',
-            intSize: 8,
-            dbType,
-            values,
-          })
-      })
+      const allEnumSizeArgs: TestArgs[][] = enumTypes.map(
+        ([enumType, expectedIntSize]) => [
+          {
+            columnType: `${enumType}('a' = 1)`,
+            expectedValues: new Map([[1, 'a']]),
+            expectedIntSize,
+          },
+          {
+            columnType: `${enumType}('a' = 0, 'b' = 2)`,
+            expectedValues: new Map([
+              [0, 'a'],
+              [2, 'b'],
+            ]),
+            expectedIntSize,
+          },
+          {
+            columnType: `${enumType}('a' = 1, 'b' = 2, 'c' = 42)`,
+            expectedValues: new Map([
+              [1, 'a'],
+              [2, 'b'],
+              [42, 'c'],
+            ]),
+            expectedIntSize,
+          },
+          {
+            columnType: `${enumType}('f\\'' = 1, 'x =' = 2, 'b\\'\\'\\'' = 3, '\\'c=4=' = 42, '4' = 100)`,
+            expectedValues: new Map([
+              [1, "f\\'"],
+              [2, 'x ='],
+              [3, "b\\'\\'\\'"],
+              [42, "\\'c=4="],
+              [100, '4'],
+            ]),
+            expectedIntSize,
+          },
+          {
+            columnType: `${enumType}('' = 0)`,
+            expectedValues: new Map([[0, '']]),
+            expectedIntSize,
+          },
+          {
+            columnType: `${enumType}('' = 42)`,
+            expectedValues: new Map([[42, '']]),
+            expectedIntSize,
+          },
+          {
+            columnType: `${enumType}('foo' = 1, '' = 42)`,
+            expectedValues: new Map([
+              [1, 'foo'],
+              [42, ''],
+            ]),
+            expectedIntSize,
+          },
+          {
+            columnType: `${enumType}('' = 0, 'foo' = 42)`,
+            expectedValues: new Map([
+              [0, ''],
+              [42, 'foo'],
+            ]),
+            expectedIntSize,
+          },
+        ]
+      )
+
+      allEnumSizeArgs.forEach((args) =>
+        args.forEach(({ columnType, expectedValues, expectedIntSize }) => {
+          const result = parseEnum({ columnType, dbType })
+          expect(result)
+            .withContext(
+              `Expected ${columnType} to be parsed as an Enum with intSize ${expectedIntSize} and values [${[
+                ...expectedValues.entries(),
+              ]}]`
+            )
+            .toEqual({
+              type: 'Enum',
+              intSize: expectedIntSize,
+              values: expectedValues,
+              dbType,
+            })
+        })
+      )
     })
-    it('should parse Enum16', async () => {
-      const args: [string, Map<number, string>][] = [
-        ["Enum16('a' = 1)", new Map([[1, 'a']])],
-        [
-          "Enum16('a' = 0, 'b' = 2)",
-          new Map([
-            [0, 'a'],
-            [2, 'b'],
-          ]),
-        ],
-        [
-          "Enum16('a' = 1, 'b' = 2, 'c' = 42)",
-          new Map([
-            [1, 'a'],
-            [2, 'b'],
-            [42, 'c'],
-          ]),
-        ],
-        [
-          "Enum16('f'' = 1, 'x =' = 2, 'b'''' = 3, ''c==' = 25000)",
-          new Map([
-            [1, "f'"],
-            [2, 'x ='],
-            [3, "b'''"],
-            [25000, "'c=="],
-          ]),
-        ],
-      ]
-      args.forEach(([columnType, values]) => {
-        expect(parseEnum({ columnType, dbType }))
-          .withContext(
-            `Expected ${columnType} to be parsed as Enum16 [${[
-              ...values.entries(),
-            ]}]`
-          )
-          .toEqual({
-            type: 'Enum',
-            intSize: 16,
-            dbType,
-            values,
-          })
-      })
-    })
+
     it('should throw when the type is not a valid enum', async () => {
       const args: [string][] = [
         ['Enum'], // should be either 8 or 16
@@ -105,14 +112,11 @@ fdescribe('RowBinaryColumnsParser', () => {
       })
     })
     it('should throw when the values are not valid', async () => {
-      const negativeArgs: [string][] = [
-        ["Enum8('a' = x)"],
-        ["Enum8('foo')"],
-      ]
+      const negativeArgs: [string][] = [["Enum8('a' = x)"], ["Enum8('foo')"]]
       negativeArgs.forEach(([columnType]) => {
         expect(() => parseEnum({ columnType, dbType }))
           .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Invalid Enum type values')
+          .toThrowError('Expected Enum index to be a valid number')
       })
     })
     it('should throw on duplicate indices', async () => {
