@@ -11,7 +11,7 @@ fdescribe('RowBinary decoders', () => {
       [new Uint8Array([0xff, 0xff]), new Date('2149-06-06T00:00:00.000Z')],
     ]
     args.forEach(([src, expected]) => {
-      const res = RowBinaryTypesDecoder.date(src, 0)!
+      const res = RowBinaryTypesDecoder.date(Buffer.from(src), 0)!
       expect(+res[0])
         .withContext(
           `Decoded ${src.toString()}. Result ${res[0]} != expected ${expected}`
@@ -19,17 +19,4 @@ fdescribe('RowBinary decoders', () => {
         .toEqual(+expected)
     })
   })
-
-  // it('should remove low cardinality', async () => {
-  //   const args: [string, string][] = [
-  //     ['LowCardinality(String)', 'String'],
-  //     ['LowCardinality(Nullable(String))', 'Nullable(String)'],
-  //     ['LowCardinality(Array(String))', 'Array(String)'],
-  //     ['Nullable(String)', 'Nullable(String)'],
-  //     ['String', 'String'],
-  //   ]
-  //   args.forEach(([src, expected]) => {
-  //     expect(re(src)).toEqual(expected)
-  //   })
-  // })
 })

@@ -1,6 +1,10 @@
 export { createClient } from './client'
 export { NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
 export { ResultSet } from './result_set'
+export {
+  RowBinaryStreamParams,
+  RowBinaryResultSet,
+} from './row_binary_result_set'
 
 /** Re-export @clickhouse/client-common types */
 export {

@@ -1,5 +1,10 @@
-import type { DecimalParams, ParsedColumnType } from './columns_parser'
-import { RowBinaryColumnTypesParser } from './columns_parser'
+import {
+  DecimalParams,
+  parseColumnType,
+  ParsedColumnArray,
+  ParsedColumnNullable,
+  ParsedColumnType,
+} from './columns_parser'
 import { ClickHouseRowBinaryError } from './errors'
 import type { DecodeResult } from './read_bytes'
 import { readBytesAsUnsignedLEB128 } from './read_bytes'
@@ -18,7 +23,7 @@ export type DecodedColumns = DecodeResult<{
 
 /** @throws ClickHouseRowBinaryError */
 export class RowBinaryColumnsHeader {
-  static decode(src: Uint8Array): DecodedColumns {
+  static decode(src: Buffer): DecodedColumns {
     const res = readBytesAsUnsignedLEB128(src, 0)
     if (res === null) {
       throw ClickHouseRowBinaryError.headerDecodingError(
@@ -27,6 +32,12 @@ export class RowBinaryColumnsHeader {
       )
     }
     const numColumns = res[0]
+    if (numColumns === 0) {
+      throw ClickHouseRowBinaryError.headerDecodingError(
+        'Unexpected zero number of columns',
+        {}
+      )
+    }
     let nextLoc = res[1]
     const names = new Array<string>(numColumns)
     const types = new Array<ParsedColumnType>(numColumns)
@@ -51,7 +62,7 @@ export class RowBinaryColumnsHeader {
         )
       }
       nextLoc = res[1]
-      const col = RowBinaryColumnTypesParser.parseColumnType(res[0])
+      const col = parseColumnType(res[0])
       types[i] = col
       let valueDecoder: TypeDecoder
       switch (col.type) {
@@ -62,25 +73,10 @@ export class RowBinaryColumnsHeader {
           decoders[i] = getDecimalDecoder(col.params)
           break
         case 'Array':
-          if (col.valueType === 'Decimal') {
-            valueDecoder = getDecimalDecoder(col.decimalParams)
-          } else {
-            valueDecoder = RowBinarySimpleDecoders[col.valueType]
-          }
-          decoders[i] = RowBinaryTypesDecoder.array(
-            col.valueNullable
-              ? RowBinaryTypesDecoder.nullable(valueDecoder)
-              : valueDecoder,
-            col.dimensions
-          )
+          decoders[i] = getArrayDecoder(col)
           break
         case 'Nullable':
-          if (col.valueType === 'Decimal') {
-            valueDecoder = getDecimalDecoder(col.decimalParams)
-          } else {
-            valueDecoder = RowBinarySimpleDecoders[col.valueType]
-          }
-          decoders[i] = RowBinaryTypesDecoder.nullable(valueDecoder)
+          decoders[i] = getNullableDecoder(col)
           break
         default:
           throw ClickHouseRowBinaryError.headerDecodingError(
@@ -105,103 +101,43 @@ function getDecimalDecoder(decimalParams: DecimalParams): SimpleTypeDecoder {
   // for tests only (128 and 256 support is there)
   throw new Error(`Unsupported Decimal size: ${intSize}`)
 }
-//
-// export class RowBinaryColumnsHeaderDataView {
-//   static decode(src: Uint8Array): DecodeResult<{
-//     names: string[]
-//     types: ParsedColumnType[]
-//     decoders: SimpleTypeDecoderDataView[]
-//   }>
-//   {
-//     const res = readBytesAsUnsignedLEB128(src, 0)
-//     if (res === null) {
-//       throw ClickHouseRowBinaryError.headerDecodingError(
-//         'Not enough data to decode number of columns',
-//         {}
-//       )
-//     }
-//     const numColumns = res[0]
-//     let nextLoc = res[1]
-//     const names = new Array<string>(numColumns)
-//     const types = new Array<ParsedColumnType>(numColumns)
-//     const decoders = new Array<SimpleTypeDecoderDataView>(numColumns)
-//     for (let i = 0; i < numColumns; i++) {
-//       const res = RowBinaryTypesDecoder.string(src, nextLoc)
-//       if (res === null) {
-//         throw ClickHouseRowBinaryError.headerDecodingError(
-//           `Not enough data to decode column name`,
-//           { i, names, numColumns, nextLoc }
-//         )
-//       }
-//       nextLoc = res[1]
-//       names[i] = res[0]
-//     }
-//     for (let i = 0; i < numColumns; i++) {
-//       const res = RowBinaryTypesDecoder.string(src, nextLoc)
-//       if (res === null) {
-//         throw ClickHouseRowBinaryError.headerDecodingError(
-//           `Not enough data to decode column type`,
-//           { i, names, types, numColumns, nextLoc }
-//         )
-//       }
-//       nextLoc = res[1]
-//       const col = RowBinaryColumnTypesParser.parseColumnType(res[0])
-//       types[i] = col
-//       let valueDecoder: SimpleTypeDecoderDataView
-//       switch (col.type) {
-//         case 'Simple':
-//           decoders[i] =
-//             RowBinarySimpleDecodersDataView[
-//               col.columnType as keyof RowBinaryTypesDecoderDataView
-//             ]
-//           break
-//         case 'Decimal':
-//           decoders[i] = RowBinaryTypesDecoderDataView.decimal(
-//             col.params.precision,
-//             col.params.scale
-//           )
-//           break
-//         case 'Array':
-//           // if (col.valueType === 'Decimal') {
-//           //   valueDecoder = RowBinaryTypesDecoder.decimal(
-//           //     col.decimalParams.precision,
-//           //     col.decimalParams.scale
-//           //   )
-//           // } else {
-//           //   valueDecoder =
-//           //     RowBinarySimpleDecodersDataView[
-//           //       col.valueType as keyof RowBinaryTypesDecoderDataView
-//           //     ]
-//           // }
-//           // decoders[i] = RowBinaryTypesDecoderDataView.array(
-//           //   col.valueNullable
-//           //     ? RowBinaryTypesDecoder.nullable(valueDecoder)
-//           //     : valueDecoder,
-//           //   col.dimensions
-//           // )
-//           throw new Error('Array type is not supported yet')
-//         case 'Nullable':
-//           if (col.valueType === 'Decimal') {
-//             valueDecoder = RowBinaryTypesDecoderDataView.decimal(
-//               col.decimalParams.precision,
-//               col.decimalParams.scale
-//             )
-//           } else {
-//             valueDecoder =
-//               RowBinarySimpleDecodersDataView[
-//                 col.valueType as keyof RowBinaryTypesDecoderDataView
-//               ]
-//           }
-//           decoders[i] = RowBinaryTypesDecoderDataView.nullable(valueDecoder)
-//           break
-//         default:
-//           throw ClickHouseRowBinaryError.headerDecodingError(
-//             'Unsupported column type',
-//             { col }
-//           )
-//       }
-//     }
-//     // console.log(`Decoded columns:`, names, types)
-//     return [{ names, types, decoders }, nextLoc]
-//   }
-// }
+
+function getEnumDecoder(
+  intSize: 8 | 16,
+  values: Map<number, string>
+): SimpleTypeDecoder {
+  if (intSize === 8) {
+    return RowBinaryTypesDecoder.enum8(values)
+  }
+  if (intSize === 16) {
+    return RowBinaryTypesDecoder.enum16(values)
+  }
+  throw new Error(`Unsupported Enum size: ${intSize}`)
+}
+
+function getArrayDecoder(col: ParsedColumnArray): SimpleTypeDecoder {
+  let valueDecoder
+  if (col.valueType === 'Decimal') {
+    valueDecoder = getDecimalDecoder(col.decimalParams)
+  } else {
+    valueDecoder = RowBinarySimpleDecoders[col.valueType]
+  }
+  return RowBinaryTypesDecoder.array(
+    col.valueNullable
+      ? RowBinaryTypesDecoder.nullable(valueDecoder)
+      : valueDecoder,
+    col.dimensions
+  )
+}
+
+function getNullableDecoder(col: ParsedColumnNullable) {
+  let valueDecoder
+  if (col.valueType === 'Decimal') {
+    valueDecoder = getDecimalDecoder(col.decimalParams)
+  } else if (col.valueType === 'Enum') {
+    valueDecoder = getEnumDecoder(col.intSize, col.values)
+  } else {
+    valueDecoder = RowBinarySimpleDecoders[col.valueType]
+  }
+  return RowBinaryTypesDecoder.nullable(valueDecoder)
+}

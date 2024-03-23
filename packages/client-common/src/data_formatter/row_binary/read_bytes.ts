@@ -3,7 +3,7 @@ export type DecodeResult<T> = [T, number]
 
 // May return null since we cannot determine how many bytes we need to read in advance
 export function readBytesAsUnsignedLEB128(
-  src: Uint8Array,
+  src: Buffer,
   loc: number
 ): DecodeResult<number> | null {
   let result = 0
@@ -22,40 +22,4 @@ export function readBytesAsUnsignedLEB128(
     }
     shift += 7
   }
-}
-
-// FIXME: use DecodeResult | null for all methods and do the validation here
-//  instead of relying on the caller
-export function readBytesAsUnsignedInt(
-  src: Uint8Array,
-  loc: number,
-  bytes: 2 | 4 // (U)Int16 | (U)Int32
-): number {
-  let result = 0
-  for (let i = bytes - 1; i >= 0; i--) {
-    result = (result << 8) + src[loc + i]
-  }
-  return result >>> 0
-}
-
-export function readBytesAsUnsignedBigInt(
-  src: Uint8Array,
-  loc: number,
-  bytes: 8 | 16 | 32 // (U)Int64 | (U)Int128 | (U)Int256
-): bigint {
-  let result = 0n
-  for (let i = bytes - 1; i >= 0; i--) {
-    result = (result << 8n) + BigInt(src[loc + i])
-  }
-  return result
-}
-
-export function readBytesAsFloat32(src: Uint8Array, loc: number) {
-  // FIXME: maybe can be optimized without DataView
-  return new DataView(src.buffer.slice(loc, loc + 4)).getFloat32(0, true)
-}
-
-export function readBytesAsFloat64(src: Uint8Array, loc: number) {
-  // FIXME: maybe can be optimized without DataView
-  return new DataView(src.buffer.slice(loc, loc + 8)).getFloat64(0, true)
 }

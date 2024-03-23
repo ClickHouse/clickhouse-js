@@ -1,4 +1,4 @@
-const HeaderDecodingError = 'HEADER_DECODING_ERROR'
+const HeaderDecodingError = 'HEADER_DECODING_ERROR' as const
 
 export class ClickHouseRowBinaryError extends Error {
   readonly args: Record<string, unknown>
