@@ -6,7 +6,7 @@ import type {
 } from '../../src/data_formatter/row_binary/columns_parser'
 import { parseArrayType } from '../../src/data_formatter/row_binary/columns_parser'
 
-fdescribe('RowBinary column types parser - Array', () => {
+describe('RowBinary column types parser - Array', () => {
   it('should parse Array with a simple value type', async () => {
     type TestArgs = {
       columnType: string

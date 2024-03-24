@@ -58,7 +58,7 @@ export interface ParsedColumnDecimal {
   sourceType: string
 }
 
-/** Array or Map itself cannot be Nullable */
+/** Tuple, Array or Map itself cannot be Nullable */
 export interface ParsedColumnNullable {
   type: 'Nullable'
   value:
@@ -86,6 +86,7 @@ export interface ParsedColumnArray {
     | ParsedColumnMap
     | ParsedColumnDateTime
     | ParsedColumnDateTime64
+    | ParsedColumnTuple
   /** Array(T) = 1 dimension, Array(Array(T)) = 2, etc. */
   dimensions: number
   sourceType: string
@@ -105,27 +106,28 @@ export interface ParsedColumnMap {
     | ParsedColumnFixedString
     | ParsedColumnEnum
     | ParsedColumnDateTime
-  /** Possible value type: arbitrary, including Map and Array. */
+  /** Value types are arbitrary, including Map, Array, and Tuple. */
   value: ParsedColumnType
   sourceType: string
 }
 
-// TODO: Tuple support.
-// export interface ParseColumnTuple {
-//   type: 'Tuple'
-//   elements: ParsedColumnType[]
-//   sourceType: string
-// }
+export interface ParsedColumnTuple {
+  type: 'Tuple'
+  /** Element types are arbitrary, including Map, Array, and Tuple. */
+  elements: ParsedColumnType[]
+  sourceType: string
+}
 
 export type ParsedColumnType =
   | ParsedColumnSimple
+  | ParsedColumnEnum
   | ParsedColumnFixedString
   | ParsedColumnNullable
   | ParsedColumnDecimal
   | ParsedColumnDateTime
   | ParsedColumnDateTime64
   | ParsedColumnArray
-  | ParsedColumnEnum
+  | ParsedColumnTuple
   | ParsedColumnMap
 
 export function parseColumnType(sourceType: string): ParsedColumnType {
@@ -154,6 +156,8 @@ export function parseColumnType(sourceType: string): ParsedColumnType {
     result = parseDateTime64Type({ sourceType, columnType })
   } else if (columnType.startsWith(DateTimePrefix)) {
     result = parseDateTimeType({ sourceType, columnType })
+  } else if (columnType.startsWith(FixedStringPrefix)) {
+    result = parseFixedStringType({ sourceType, columnType })
   } else if (
     columnType.startsWith(Enum8Prefix) ||
     columnType.startsWith(Enum16Prefix)
@@ -163,6 +167,8 @@ export function parseColumnType(sourceType: string): ParsedColumnType {
     result = parseArrayType({ sourceType, columnType })
   } else if (columnType.startsWith(MapPrefix)) {
     result = parseMapType({ sourceType, columnType })
+  } else if (columnType.startsWith(TuplePrefix)) {
+    result = parseTupleType({ sourceType, columnType })
   } else {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Unsupported column type',
@@ -253,7 +259,6 @@ export function parseEnumType({
       }
     )
   }
-
   // The minimal allowed Enum definition is Enum8('' = 0), i.e. 6 chars inside.
   if (columnType.length < 6) {
     throw ClickHouseRowBinaryError.headerDecodingError(
@@ -274,10 +279,12 @@ export function parseEnumType({
   // Should support the most complicated enums, such as Enum8('f\'' = 1, 'x =' = 2, 'b\'\'\'' = 3, '\'c=4=' = 42, '4' = 100)
   for (let i = 1; i < columnType.length; i++) {
     if (parsingName) {
-      if (!charEscaped) {
-        if (columnType[i] === '\\') {
+      if (charEscaped) {
+        charEscaped = false
+      } else {
+        if (columnType.charCodeAt(i) === BackslashASCII) {
           charEscaped = true
-        } else if (columnType[i] === "'") {
+        } else if (columnType.charCodeAt(i) === SingleQuoteASCII) {
           // non-escaped closing tick - push the name
           const name = columnType.slice(startIndex, i)
           if (names.includes(name)) {
@@ -291,20 +298,19 @@ export function parseEnumType({
           startIndex = i
           parsingName = false
         }
-      } else {
-        // current char was escaped, ignoring.
-        charEscaped = false
       }
-    } else {
-      // Parsing the index
-      if (columnType[i] < '0' || columnType[i] > '9') {
-        pushEnumIndex(startIndex, i)
-        // the char at this index should be comma.
-        i += 2 // skip ` '`, but not the first char - ClickHouse allows something like Enum8('foo' = 0, '' = 42)
-        startIndex = i + 1
-        parsingName = true
-        charEscaped = false
-      }
+    }
+    // Parsing the index, skipping next iterations until the first non-digit one
+    else if (
+      columnType.charCodeAt(i) < ZeroASCII ||
+      columnType.charCodeAt(i) > NineASCII
+    ) {
+      pushEnumIndex(startIndex, i)
+      // the char at this index should be comma.
+      i += 2 // skip ` '`, but not the first char - ClickHouse allows something like Enum8('foo' = 0, '' = 42)
+      startIndex = i + 1
+      parsingName = true
+      charEscaped = false
     }
   }
 
@@ -321,7 +327,6 @@ export function parseEnumType({
   for (let i = 0; i < names.length; i++) {
     values.set(indices[i], names[i])
   }
-
   return {
     type: 'Enum',
     values,
@@ -369,48 +374,22 @@ export function parseMapType({
     })
   }
   columnType = columnType.slice(MapPrefix.length, -1)
-
-  let openParens = 0 // consider the type parsed once we reach a comma outside of parens.
-
-  let keyColumnType: string | undefined
-  for (let i = 0; i < columnType.length; i++) {
-    if (openParens === 0) {
-      if (columnType[i] === ',') {
-        keyColumnType = columnType.slice(0, i)
-        break
-      }
-    }
-    if (columnType[i] === '(') {
-      openParens++
-    } else if (columnType[i] === ')') {
-      openParens--
-    }
-  }
-  if (keyColumnType === undefined) {
-    throw ClickHouseRowBinaryError.headerDecodingError(
-      'Could not parse Map key type',
-      {
-        sourceType,
-        columnType,
-      }
-    )
-  }
-
-  const key = parseColumnType(keyColumnType)
+  const [keyType, valueType] = getElementsTypes({ columnType, sourceType }, 2)
+  const key = parseColumnType(keyType)
   if (
     key.type === 'DateTime64' ||
     key.type === 'Nullable' ||
     key.type === 'Array' ||
     key.type === 'Map' ||
-    key.type === 'Decimal' // TODO: disallow Tuple as well.
+    key.type === 'Decimal' ||
+    key.type === 'Tuple'
   ) {
     throw ClickHouseRowBinaryError.headerDecodingError('Invalid Map key type', {
       key,
       sourceType,
     })
   }
-
-  const value = parseColumnType(columnType.slice(keyColumnType.length + 2))
+  const value = parseColumnType(valueType)
   return {
     type: 'Map',
     key,
@@ -419,24 +398,29 @@ export function parseMapType({
   }
 }
 
-// TODO.
-// export function parseTupleType({
-//   columnType,
-//   dbType,
-// }: ParseColumnTypeParams): ParseColumnTuple {
-//   if (!columnType.startsWith(TuplePrefix)) {
-//     throw ClickHouseRowBinaryError.headerDecodingError('Invalid Tuple type', {
-//       columnType,
-//       dbType,
-//     })
-//   }
-//   // columnType = columnType.slice(TuplePrefix.length, -1)
-//   return {
-//     type: 'Tuple',
-//     elements: [],
-//     dbType,
-//   }
-// }
+export function parseTupleType({
+  columnType,
+  sourceType,
+}: ParseColumnTypeParams): ParsedColumnTuple {
+  if (
+    !columnType.startsWith(TuplePrefix) ||
+    columnType.length < TuplePrefix.length + 5 // Tuple(Int8) is the shortest valid definition
+  ) {
+    throw ClickHouseRowBinaryError.headerDecodingError('Invalid Tuple type', {
+      columnType,
+      sourceType,
+    })
+  }
+  columnType = columnType.slice(TuplePrefix.length, -1)
+  const elements = getElementsTypes({ columnType, sourceType }, 1).map((type) =>
+    parseColumnType(type)
+  )
+  return {
+    type: 'Tuple',
+    elements,
+    sourceType,
+  }
+}
 
 export function parseArrayType({
   columnType,
@@ -585,18 +569,15 @@ export function parseFixedStringType({
 }
 
 export function asNullableType(
-  value:
-    | ParsedColumnSimple
-    | ParsedColumnEnum
-    | ParsedColumnDecimal
-    | ParsedColumnArray
-    | ParsedColumnMap
-    | ParsedColumnDateTime
-    | ParsedColumnDateTime64,
+  value: ParsedColumnType,
   sourceType: string
 ): ParsedColumnNullable {
-  // TODO: disallow Tuple as well.
-  if (value.type === 'Array' || value.type === 'Map') {
+  if (
+    value.type === 'Array' ||
+    value.type === 'Map' ||
+    value.type === 'Tuple' ||
+    value.type === 'Nullable'
+  ) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       `${value.type} cannot be Nullable`,
       { sourceType }
@@ -610,6 +591,67 @@ export function asNullableType(
     sourceType,
     value,
   }
+}
+
+/** Used for Map key/value types and Tuple elements.
+ *  * `String, UInt8` results in [`String`, `UInt8`].
+ *  * `String, UInt8, Array(String)` results in [`String`, `UInt8`, `Array(String)`].
+ *  * Throws if parsed values are below the required minimum. */
+export function getElementsTypes(
+  { columnType, sourceType }: ParseColumnTypeParams,
+  minElements: number
+): string[] {
+  const elements: string[] = []
+  /** Consider the element type parsed once we reach a comma outside of parens AND after an unescaped tick.
+   *  The most complicated cases are values names in the self-defined Enum types:
+   *  * `Tuple(Enum8('f\'()' = 1))`  ->  `f\'()`
+   *  * `Tuple(Enum8('(' = 1))`      ->  `(`
+   *  See also: {@link parseEnumType }, which works similarly (but has to deal with the indices following the names). */
+  let openParens = 0
+  let quoteOpen = false
+  let charEscaped = false
+  let lastElementIndex = 0
+  for (let i = 0; i < columnType.length; i++) {
+    // prettier-ignore
+    // console.log(i, 'Current char:', columnType[i], 'openParens:', openParens, 'quoteOpen:', quoteOpen, 'charEscaped:', charEscaped)
+    if (charEscaped) {
+      charEscaped = false
+    } else if (columnType.charCodeAt(i) === BackslashASCII) {
+      charEscaped = true
+    } else if (columnType.charCodeAt(i) === SingleQuoteASCII) {
+      quoteOpen = !quoteOpen // unescaped quote
+    } else {
+      if (!quoteOpen) {
+        if (columnType.charCodeAt(i) === LeftParenASCII) {
+          openParens++
+        } else if (columnType.charCodeAt(i) === RightParenASCII) {
+          openParens--
+        } else if (columnType.charCodeAt(i) === CommaASCII) {
+          if (openParens === 0) {
+            elements.push(columnType.slice(lastElementIndex, i))
+            // console.log('Pushed element:', elements[elements.length - 1])
+            i += 2 // skip ', '
+            lastElementIndex = i
+          }
+        }
+      }
+    }
+  }
+
+  // prettier-ignore
+  // console.log('Final elements:', elements, 'nextElementIndex:', lastElementIndex, 'minElements:', minElements, 'openParens:', openParens)
+
+  // Push the remaining part of the type if it seems to be valid (at least all parentheses are closed)
+  if (!openParens && lastElementIndex < columnType.length - 1) {
+    elements.push(columnType.slice(lastElementIndex))
+  }
+  if (elements.length < minElements) {
+    throw ClickHouseRowBinaryError.headerDecodingError(
+      'Expected more elements in the type',
+      { sourceType, columnType, elements, minElements }
+    )
+  }
+  return elements
 }
 
 interface ParseColumnTypeParams {
@@ -631,3 +673,11 @@ const DateTimePrefix = 'DateTime' as const
 const DateTimeWithTimezonePrefix = 'DateTime(' as const
 const DateTime64Prefix = 'DateTime64(' as const
 const FixedStringPrefix = 'FixedString(' as const
+
+const SingleQuoteASCII = 39 as const
+const LeftParenASCII = 40 as const
+const RightParenASCII = 41 as const
+const CommaASCII = 44 as const
+const ZeroASCII = 48 as const
+const NineASCII = 57 as const
+const BackslashASCII = 92 as const

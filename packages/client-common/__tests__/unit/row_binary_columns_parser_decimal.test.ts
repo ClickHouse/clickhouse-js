@@ -1,6 +1,6 @@
 import { parseDecimalType } from '../../src/data_formatter/row_binary/columns_parser'
 
-fdescribe('RowBinary column types parser - Decimal', () => {
+describe('RowBinary column types parser - Decimal', () => {
   type TestArgs = {
     sourceType: string
     precision: number

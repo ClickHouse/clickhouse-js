@@ -1,7 +1,7 @@
 import type { ParsedColumnMap } from '../../src/data_formatter/row_binary/columns_parser'
 import { parseMapType } from '../../src/data_formatter/row_binary/columns_parser'
 
-fdescribe('RowBinary column types parser - Map', () => {
+describe('RowBinary column types parser - Map', () => {
   it('should parse Map with simple types', async () => {
     const args: [ParsedColumnMap, string][] = [
       [

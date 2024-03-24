@@ -7,7 +7,7 @@ import type {
 } from '../../src/data_formatter/row_binary/columns_parser'
 import { asNullableType } from '../../src/data_formatter/row_binary/columns_parser'
 
-fdescribe('RowBinary column types parser - Nullable', () => {
+describe('RowBinary column types parser - Nullable', () => {
   it('should wrap a simple type', async () => {
     const args: [ParsedColumnSimple, string][] = [
       [

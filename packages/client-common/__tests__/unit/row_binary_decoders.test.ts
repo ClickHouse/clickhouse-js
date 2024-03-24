@@ -1,6 +1,6 @@
 import { RowBinaryTypesDecoder } from '../../src/data_formatter'
 
-fdescribe('RowBinary decoders', () => {
+describe('RowBinary decoders', () => {
   it('should decode Date', () => {
     const args: [Uint8Array, Date][] = [
       [new Uint8Array([0x00, 0x00]), new Date('1970-01-01T00:00:00.000Z')],

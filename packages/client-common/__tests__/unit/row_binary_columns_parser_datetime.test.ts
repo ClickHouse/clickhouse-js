@@ -3,7 +3,7 @@ import {
   parseDateTimeType,
 } from '../../src/data_formatter/row_binary/columns_parser'
 
-fdescribe('RowBinary column types parser - DateTime and DateTime64', () => {
+describe('RowBinary column types parser - DateTime and DateTime64', () => {
   describe('DateTime', () => {
     it('should parse DateTime', async () => {
       const args: [string, string | null][] = [

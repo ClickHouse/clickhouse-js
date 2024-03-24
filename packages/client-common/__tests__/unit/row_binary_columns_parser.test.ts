@@ -1,6 +1,6 @@
 import { parseFixedStringType } from '../../src/data_formatter/row_binary/columns_parser'
 
-fdescribe('RowBinary column types parser', () => {
+describe('RowBinary column types parser', () => {
   describe('FixedString', () => {
     it('should parse FixedString', async () => {
       const args: [string, number][] = [
