@@ -1,10 +1,10 @@
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { guid, sleep } from '@test/utils'
-import type { NodeClickHouseClient } from '../../src'
+import type { ClickHouseClient } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
 
 describe('[Node.js] max_open_connections config', () => {
-  let client: NodeClickHouseClient
+  let client: ClickHouseClient
   let results: number[] = []
 
   afterEach(async () => {

@@ -1,5 +1,5 @@
 import Http from 'http'
-import type { NodeClickHouseClient } from '../../src'
+import type { ClickHouseClient } from '../../src'
 import { createClient } from '../../src'
 import { emitResponseBody, stubClientRequest } from '../utils/http_stubs'
 
@@ -110,7 +110,7 @@ describe('[Node.js] Client', () => {
     })
   })
 
-  async function query(client: NodeClickHouseClient) {
+  async function query(client: ClickHouseClient) {
     const selectPromise = client.query({
       query: 'SELECT * FROM system.numbers LIMIT 5',
     })

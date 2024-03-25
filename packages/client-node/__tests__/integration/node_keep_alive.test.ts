@@ -1,7 +1,7 @@
 import { ClickHouseLogLevel } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { guid, sleep } from '@test/utils'
-import type { NodeClickHouseClient } from '../../src'
+import type { ClickHouseClient } from '../../src'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { createNodeTestClient } from '../utils/node_client'
 
@@ -11,7 +11,7 @@ import { createNodeTestClient } from '../utils/node_client'
  *  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
  */
 xdescribe('[Node.js] Keep Alive', () => {
-  let client: NodeClickHouseClient
+  let client: ClickHouseClient
   const socketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
   afterEach(async () => {
     await client.close()
