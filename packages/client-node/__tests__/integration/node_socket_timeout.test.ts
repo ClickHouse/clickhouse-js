@@ -52,13 +52,13 @@ describe('Node.js socket timeout handling', () => {
           const pingResult = await ping()
           expect(pingResult.success).toBeFalse()
           expect((pingResult as { error: Error }).error.message).toEqual(
-            jasmine.stringContaining('Timeout error.')
+            jasmine.stringContaining('Timeout error.'),
           )
           await expectAsync(fn())
             .withContext(
               `${opName} should have been rejected. Current ops: ${ops
                 .map(({ opName }) => opName)
-                .join(', ')}`
+                .join(', ')}`,
             )
             .toBeRejectedWithError('Timeout error.')
         }
@@ -72,7 +72,7 @@ describe('Node.js socket timeout handling', () => {
       const pingResult = await client.ping()
       expect(pingResult.success).toBeFalse()
       expect((pingResult as { error: Error }).error.message).toEqual(
-        jasmine.stringContaining('Timeout error.')
+        jasmine.stringContaining('Timeout error.'),
       )
     }
     expect().nothing()

@@ -7,7 +7,7 @@ export class ResultSet implements BaseResultSet<ReadableStream<Row[]>> {
   constructor(
     private _stream: ReadableStream,
     private readonly format: DataFormat,
-    public readonly query_id: string
+    public readonly query_id: string,
   ) {}
 
   async text(): Promise<string> {

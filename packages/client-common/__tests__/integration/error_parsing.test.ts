@@ -11,34 +11,44 @@ describe('ClickHouse server errors parsing', () => {
   })
 
   it('returns "unknown identifier" error', async () => {
+    // possible error messages here:
+    // On-premise:    Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'.
+    // Cloud SMT:     Unknown expression identifier 'number' in scope
+    const errorMessagePattern =
+      `((?:^Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'.*$)|` +
+      `(?:^Unknown expression identifier 'number' in scope.*$))`
     await expectAsync(
       client.query({
         query: 'SELECT number FR',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
-        message: `Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'. `,
+        message: jasmine.stringMatching(errorMessagePattern),
         code: '47',
         type: 'UNKNOWN_IDENTIFIER',
-      })
+      }),
     )
   })
 
   it('returns "unknown table" error', async () => {
     // possible error messages here:
-    // (since 23.8+) Table foo.unknown_table does not exist.
-    // (pre-23.8) Table foo.unknown_table doesn't exist.
-    const errorMessagePattern = `^Table ${getTestDatabaseName()}.unknown_table does(n't| not) exist.*$`
+    // (since 23.8+): Table foo.unknown_table does not exist.
+    // (pre-23.8):    Table foo.unknown_table doesn't exist.
+    // Cloud SMT:     Unknown table expression identifier 'unknown_table' in scope
+    const dbName = getTestDatabaseName()
+    const errorMessagePattern =
+      `((?:^Table ${dbName}.unknown_table does(n't| not) exist.*)|` +
+      `(?:Unknown table expression identifier 'unknown_table' in scope))`
     await expectAsync(
       client.query({
         query: 'SELECT * FROM unknown_table',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringMatching(errorMessagePattern),
         code: '60',
         type: 'UNKNOWN_TABLE',
-      })
+      }),
     )
   })
 
@@ -46,13 +56,13 @@ describe('ClickHouse server errors parsing', () => {
     await expectAsync(
       client.query({
         query: 'SELECT * FRON unknown_table',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Syntax error: failed at position'),
         code: '62',
         type: 'SYNTAX_ERROR',
-      })
+      }),
     )
   })
 
@@ -66,13 +76,13 @@ describe('ClickHouse server errors parsing', () => {
         */
         FRON unknown_table
         `,
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Syntax error: failed at position'),
         code: '62',
         type: 'SYNTAX_ERROR',
-      })
+      }),
     )
   })
 })

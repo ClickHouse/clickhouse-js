@@ -19,14 +19,14 @@ export type WebClickHouseClient = Omit<
   insert<T>(
     params: Omit<InsertParams<ReadableStream, T>, 'values'> & {
       values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
-    }
+    },
   ): Promise<InsertResult>
   // narrow down the return type here for better type-hinting
   query(params: QueryParams): Promise<BaseResultSet<ReadableStream<Row[]>>>
 }
 
 export function createClient(
-  config?: WebClickHouseClientConfigOptions
+  config?: WebClickHouseClientConfigOptions,
 ): WebClickHouseClient {
   return new ClickHouseClient<ReadableStream>({
     impl: WebImpl,

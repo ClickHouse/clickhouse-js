@@ -20,7 +20,7 @@ export function decompressResponse(response: Http.IncomingMessage):
             // eslint-disable-next-line no-console
             console.error(err)
           }
-        }
+        },
       ),
     }
   } else if (encoding !== undefined) {

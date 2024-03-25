@@ -69,7 +69,7 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
   }
   console.log(
     `Created user ${username} with default database ${database} ` +
-      'and restricted access to the system database'
+      'and restricted access to the system database',
   )
 
   return {

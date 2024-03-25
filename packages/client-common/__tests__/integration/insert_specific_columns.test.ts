@@ -6,7 +6,7 @@ import { createTestClient, TestEnv, whenOnEnv } from '../utils'
 whenOnEnv(
   TestEnv.LocalSingleNode,
   TestEnv.LocalCluster,
-  TestEnv.Cloud
+  TestEnv.Cloud,
 ).describe('Insert with specific columns', () => {
   let client: ClickHouseClient
   let table: string
@@ -34,7 +34,7 @@ whenOnEnv(
         repo_name   LowCardinality(String) DEFAULT JSONExtractString(message_raw, 'repo', 'name'),
         message     JSON                   DEFAULT message_raw,
         message_raw String                 EPHEMERAL
-      ` // `id UInt32` will be added as well
+      `, // `id UInt32` will be added as well
       )
     })
 
@@ -214,11 +214,11 @@ whenOnEnv(
           ],
           format: 'JSONEachRow',
           columns: ['foobar', 'message_raw'],
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringContaining('No such column foobar'),
-        })
+        }),
       )
     })
   })
@@ -229,7 +229,7 @@ whenOnEnv(
     beforeEach(async () => {
       table = await createTableWithFields(
         client,
-        `s String, b Boolean` // `id UInt32` will be added as well
+        `s String, b Boolean`, // `id UInt32` will be added as well
       )
     })
 
@@ -264,7 +264,7 @@ whenOnEnv(
     beforeEach(async () => {
       table = await createTableWithFields(
         client,
-        `s String, b Boolean` // `id UInt32` will be added as well
+        `s String, b Boolean`, // `id UInt32` will be added as well
       )
     })
 

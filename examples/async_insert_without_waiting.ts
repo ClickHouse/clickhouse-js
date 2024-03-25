@@ -102,12 +102,12 @@ void (async () => {
         'Rows inserted so far:',
         `${rowsInserted};`,
         'written to the table:',
-        count
+        count,
       )
     } catch (err) {
       console.error(
         'Failed to get the number of rows written to the table:',
-        err
+        err,
       )
     }
   }, 1000)

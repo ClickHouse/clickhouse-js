@@ -114,8 +114,8 @@ describe('insert', () => {
           values: [row],
           table: tableName,
           format: 'JSONEachRow',
-        })
-      )
+        }),
+      ),
     )
     await assertJsonValues(client, tableName)
   })
@@ -127,7 +127,7 @@ describe('insert', () => {
         values: jsonValues,
         format: 'JSONEachRow',
         clickhouse_settings: { foobar: 1 } as any,
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         // Possible error messages:
@@ -136,7 +136,7 @@ describe('insert', () => {
         message: jasmine.stringContaining('foobar'),
         code: '115',
         type: 'UNKNOWN_SETTING',
-      })
+      }),
     )
   })
 

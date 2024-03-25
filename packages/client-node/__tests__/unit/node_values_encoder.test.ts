@@ -59,26 +59,26 @@ describe('[Node.js] ValuesEncoder', () => {
 
       objectFormats.forEach((format) => {
         expect(() =>
-          encoder.validateInsertValues(objectModeStream, format as DataFormat)
+          encoder.validateInsertValues(objectModeStream, format as DataFormat),
         ).not.toThrow()
         expect(() =>
-          encoder.validateInsertValues(rawStream, format as DataFormat)
+          encoder.validateInsertValues(rawStream, format as DataFormat),
         ).toThrow(
           jasmine.objectContaining({
             message: jasmine.stringContaining('with enabled object mode'),
-          })
+          }),
         )
       })
       rawFormats.forEach((format) => {
         expect(() =>
-          encoder.validateInsertValues(objectModeStream, format as DataFormat)
+          encoder.validateInsertValues(objectModeStream, format as DataFormat),
         ).toThrow(
           jasmine.objectContaining({
             message: jasmine.stringContaining('with disabled object mode'),
-          })
+          }),
         )
         expect(() =>
-          encoder.validateInsertValues(rawStream, format as DataFormat)
+          encoder.validateInsertValues(rawStream, format as DataFormat),
         ).not.toThrow()
       })
     })
@@ -91,7 +91,7 @@ describe('[Node.js] ValuesEncoder', () => {
       rawFormats.forEach((format) => {
         // should be exactly the same object (no duplicate instances)
         expect(encoder.encodeValues(values, format as DataFormat)).toEqual(
-          values
+          values,
         )
       })
     })
@@ -155,7 +155,7 @@ describe('[Node.js] ValuesEncoder', () => {
 
     it('should fail when we try to encode an unknown type of input', async () => {
       expect(() => encoder.encodeValues(1 as any, 'JSON')).toThrowError(
-        'Cannot encode values of type number with JSON format'
+        'Cannot encode values of type number with JSON format',
       )
     })
   })

@@ -72,7 +72,7 @@ describe('ClickHouse settings', () => {
           query: `SELECT * FROM ${tableName}`,
           format: 'JSONEachRow',
         })
-        .then((r) => r.json())
+        .then((r) => r.json()),
     ).toEqual([
       { id: '1', name: 'foobar', sku: [1, 2] },
       { id: '1', name: 'foobar', sku: [1, 2] },

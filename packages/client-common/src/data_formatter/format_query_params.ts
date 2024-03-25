@@ -2,7 +2,7 @@ import { replaceAll } from '../utils'
 
 export function formatQueryParams(
   value: any,
-  wrapStringInQuotes = false
+  wrapStringInQuotes = false,
 ): string {
   if (value === null || value === undefined) return '\\N'
   if (Number.isNaN(value)) return 'nan'
@@ -36,7 +36,7 @@ export function formatQueryParams(
     const formatted: string[] = []
     for (const [key, val] of Object.entries(value)) {
       formatted.push(
-        `${formatQueryParams(key, true)}:${formatQueryParams(val, true)}`
+        `${formatQueryParams(key, true)}:${formatQueryParams(val, true)}`,
       )
     }
     return `{${formatted.join(',')}}`

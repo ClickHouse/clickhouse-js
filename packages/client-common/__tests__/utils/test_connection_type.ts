@@ -16,7 +16,7 @@ export function getTestConnectionType(): TestConnectionType {
       throw new Error(
         'Unexpected CLICKHOUSE_TEST_CONNECTION_TYPE value. ' +
           'Possible options: `node`, `browser` ' +
-          'or keep it unset to fall back to `node`'
+          'or keep it unset to fall back to `node`',
       )
   }
   return connectionType

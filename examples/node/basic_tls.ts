@@ -6,7 +6,7 @@ void (async () => {
     url: 'https://server.clickhouseconnect.test:8443',
     tls: {
       ca_cert: fs.readFileSync(
-        '../.docker/clickhouse/single_node_tls/certificates/ca.crt'
+        '../.docker/clickhouse/single_node_tls/certificates/ca.crt',
       ),
     },
   })

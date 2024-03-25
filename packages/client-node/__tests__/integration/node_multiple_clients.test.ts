@@ -48,8 +48,8 @@ describe('[Node.js] multiple clients', () => {
           table: tableName,
           values: Stream.Readable.from([getValue(i)]),
           format: 'JSONEachRow',
-        })
-      )
+        }),
+      ),
     )
     const result = await clients[0].query({
       query: `SELECT * FROM ${tableName} ORDER BY id ASC`,

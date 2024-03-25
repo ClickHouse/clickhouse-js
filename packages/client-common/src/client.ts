@@ -108,7 +108,7 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly sessionId?: string
 
   constructor(
-    config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>
+    config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,
   ) {
     const logger = config?.log?.LoggerClass
       ? new config.log.LoggerClass()
@@ -116,14 +116,14 @@ export class ClickHouseClient<Stream = unknown> {
     const configWithURL = prepareConfigWithURL(
       config,
       logger,
-      config.impl.handle_specific_url_params ?? null
+      config.impl.handle_specific_url_params ?? null,
     )
     const connectionParams = getConnectionParams(configWithURL, logger)
     this.clientClickHouseSettings = connectionParams.clickhouse_settings
     this.sessionId = config.session_id
     this.connection = config.impl.make_connection(
       configWithURL,
-      connectionParams
+      connectionParams,
     )
     this.makeResultSet = config.impl.make_result_set
     this.valuesEncoder = config.impl.values_encoder
@@ -259,7 +259,7 @@ function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
 
 function getInsertQuery<T>(
   params: InsertParams<T>,
-  format: DataFormat
+  format: DataFormat,
 ): string {
   let columnsPart = ''
   if (params.columns !== undefined) {

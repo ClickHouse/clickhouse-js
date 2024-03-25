@@ -10,7 +10,7 @@ import type Stream from 'stream'
 whenOnEnv(
   TestEnv.LocalSingleNode,
   TestEnv.LocalCluster,
-  TestEnv.Cloud
+  TestEnv.Cloud,
 ).describe('[Node.js] Summary header parsing', () => {
   let client: ClickHouseClient<Stream.Readable>
   let tableName: string

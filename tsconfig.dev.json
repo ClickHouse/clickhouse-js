@@ -2,6 +2,8 @@
   "extends": "./tsconfig.json",
   "include": ["./packages/**/*.ts", ".build/**/*.ts"],
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "outDir": "out",

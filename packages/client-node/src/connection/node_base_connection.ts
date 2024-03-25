@@ -69,27 +69,27 @@ export abstract class NodeBaseConnection
 
   protected constructor(
     protected readonly params: NodeConnectionParams,
-    protected readonly agent: Http.Agent
+    protected readonly agent: Http.Agent,
   ) {
     this.logger = params.log_writer
     this.idleSocketTTL = params.keep_alive.idle_socket_ttl
     this.headers = this.buildDefaultHeaders(
       params.username,
       params.password,
-      params.http_headers
+      params.http_headers,
     )
   }
 
   protected buildDefaultHeaders(
     username: string,
     password: string,
-    additional_http_headers?: Record<string, string>
+    additional_http_headers?: Record<string, string>,
   ): Http.OutgoingHttpHeaders {
     return {
       // KeepAlive agent for some reason does not set this on its own
       Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
-        'base64'
+        'base64',
       )}`,
       'User-Agent': getUserAgent(this.params.application_id),
       ...additional_http_headers,
@@ -97,12 +97,12 @@ export abstract class NodeBaseConnection
   }
 
   protected abstract createClientRequest(
-    params: RequestParams
+    params: RequestParams,
   ): Http.ClientRequest
 
   private async request(
     params: RequestParams,
-    op: ConnOperation
+    op: ConnOperation,
   ): Promise<RequestResult> {
     return new Promise((resolve, reject) => {
       const start = Date.now()
@@ -114,7 +114,7 @@ export abstract class NodeBaseConnection
       }
 
       const onResponse = async (
-        _response: Http.IncomingMessage
+        _response: Http.IncomingMessage,
       ): Promise<void> => {
         this.logResponse(op, request, params, _response, start)
 
@@ -287,7 +287,7 @@ export abstract class NodeBaseConnection
           url: transformUrl({ url: this.params.url, pathname: '/ping' }),
           abort_signal: abortController.signal,
         },
-        'Ping'
+        'Ping',
       )
       await drainStream(stream)
       return { success: true }
@@ -308,12 +308,12 @@ export abstract class NodeBaseConnection
   }
 
   async query(
-    params: ConnBaseQueryParams
+    params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<Stream.Readable>> {
     const query_id = this.getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
-      this.params.compression.decompress_response
+      this.params.compression.decompress_response,
     )
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -333,7 +333,7 @@ export abstract class NodeBaseConnection
           abort_signal: controller.signal,
           decompress_response: decompressResponse,
         },
-        'Query'
+        'Query',
       )
       return {
         stream,
@@ -359,7 +359,7 @@ export abstract class NodeBaseConnection
   }
 
   async exec(
-    params: ConnBaseQueryParams
+    params: ConnBaseQueryParams,
   ): Promise<ConnExecResult<Stream.Readable>> {
     const query_id = this.getQueryId(params.query_id)
     const searchParams = toSearchParams({
@@ -379,7 +379,7 @@ export abstract class NodeBaseConnection
           abort_signal: controller.signal,
           parse_summary: true,
         },
-        'Exec'
+        'Exec',
       )
       return {
         stream,
@@ -405,7 +405,7 @@ export abstract class NodeBaseConnection
   }
 
   async insert(
-    params: ConnInsertParams<Stream.Readable>
+    params: ConnInsertParams<Stream.Readable>,
   ): Promise<ConnInsertResult> {
     const query_id = this.getQueryId(params.query_id)
     const searchParams = toSearchParams({
@@ -427,7 +427,7 @@ export abstract class NodeBaseConnection
           compress_request: this.params.compression.compress_request,
           parse_summary: true,
         },
-        'Insert'
+        'Insert',
       )
       await drainStream(stream)
       return { query_id, summary }
@@ -482,7 +482,7 @@ export abstract class NodeBaseConnection
     request: Http.ClientRequest,
     params: RequestParams,
     response: Http.IncomingMessage,
-    startTimestamp: number
+    startTimestamp: number,
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { authorization, host, ...headers } = request.getHeaders()
@@ -530,7 +530,7 @@ export abstract class NodeBaseConnection
 
   private parseSummary(
     op: ConnOperation,
-    response: Http.IncomingMessage
+    response: Http.IncomingMessage,
   ): ClickHouseSummary | undefined {
     const summaryHeader = response.headers['x-clickhouse-summary']
     if (typeof summaryHeader === 'string') {

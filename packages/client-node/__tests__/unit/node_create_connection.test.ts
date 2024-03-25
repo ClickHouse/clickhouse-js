@@ -21,7 +21,7 @@ describe('[Node.js] createConnection', () => {
       url: new URL('http://localhost'),
     } as ConnectionParams,
     tlsParams,
-    keepAliveParams
+    keepAliveParams,
   )
 
   it('should create an instance of HTTPS adapter', async () => {
@@ -30,7 +30,7 @@ describe('[Node.js] createConnection', () => {
         url: new URL('https://localhost'),
       } as ConnectionParams,
       tlsParams,
-      keepAliveParams
+      keepAliveParams,
     )
     expect(adapter).toBeInstanceOf(NodeHttpsConnection)
   })
@@ -42,8 +42,8 @@ describe('[Node.js] createConnection', () => {
           url: new URL('tcp://localhost'),
         } as ConnectionParams,
         tlsParams,
-        keepAliveParams
-      )
+        keepAliveParams,
+      ),
     ).toThrowError('Only HTTP and HTTPS protocols are supported')
   })
 })

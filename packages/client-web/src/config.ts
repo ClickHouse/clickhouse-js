@@ -15,7 +15,7 @@ export const WebImpl: ImplementationDetails<ReadableStream>['impl'] = {
   make_result_set: (
     stream: ReadableStream,
     format: DataFormat,
-    query_id: string
+    query_id: string,
   ) => new ResultSet(stream, format, query_id),
   values_encoder: new WebValuesEncoder(),
   close_stream: (stream) => stream.cancel(),

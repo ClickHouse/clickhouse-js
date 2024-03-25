@@ -18,7 +18,7 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
 }
 
 export function mapStream(
-  mapper: (input: unknown) => string
+  mapper: (input: unknown) => string,
 ): Stream.Transform {
   return new Stream.Transform({
     objectMode: true,

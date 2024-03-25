@@ -67,7 +67,7 @@ describe('config', () => {
           },
         },
         logger,
-        null
+        null,
       )
       expect(res).toEqual({
         url: new URL('https://my.host:8443/'),
@@ -137,7 +137,7 @@ describe('config', () => {
           },
         },
         logger,
-        null
+        null,
       )
       expect(res).toEqual({
         url: new URL('https://my.host:8443/'),
@@ -164,7 +164,7 @@ describe('config', () => {
           },
         },
         logger,
-        null
+        null,
       )
       expect(res).toEqual({
         url: new URL('https://my.host:8443/'),
@@ -190,7 +190,7 @@ describe('config', () => {
           },
         },
         logger,
-        null
+        null,
       )
       expect(res).toEqual({
         url: new URL('https://my.host:8443/'),
@@ -224,7 +224,7 @@ describe('config', () => {
             handled_params: new Set(['impl_specific_setting']),
             unknown_params: new Set(),
           }
-        }
+        },
       )
       expect(res).toEqual({
         ...defaultConfig,
@@ -242,7 +242,7 @@ describe('config', () => {
       expect(() => prepareConfigWithURL({ url: 'foo' }, logger, null)).toThrow(
         jasmine.objectContaining({
           message: jasmine.stringContaining('ClickHouse URL is malformed.'),
-        })
+        }),
       )
     })
   })
@@ -253,7 +253,7 @@ describe('config', () => {
         {
           url: new URL('https://my.host:8443/'),
         },
-        logger
+        logger,
       )
       expect(res).toEqual({
         url: new URL('https://my.host:8443/'),
@@ -296,7 +296,7 @@ describe('config', () => {
           keep_alive: { enabled: false },
           application: 'my_app',
         },
-        logger
+        logger,
       )
       expect(res).toEqual({
         url: new URL('https://my.host:8443/'),
@@ -389,10 +389,10 @@ describe('config', () => {
     it('should create valid URLs', async () => {
       expect(createUrl(undefined)).toEqual(new URL('http://localhost:8123/'))
       expect(createUrl('http://localhost:8123')).toEqual(
-        new URL('http://localhost:8123/')
+        new URL('http://localhost:8123/'),
       )
       expect(createUrl('https://bob:secret@my.host:8124')).toEqual(
-        new URL('https://bob:secret@my.host:8124/')
+        new URL('https://bob:secret@my.host:8124/'),
       )
     })
 
@@ -400,13 +400,13 @@ describe('config', () => {
       expect(() => createUrl('foo')).toThrow(
         jasmine.objectContaining({
           message: jasmine.stringContaining('ClickHouse URL is malformed.'),
-        })
+        }),
       )
       expect(() => createUrl('http://localhost/foo')).toThrowError(
-        'ClickHouse URL must contain a valid port number.'
+        'ClickHouse URL must contain a valid port number.',
       )
       expect(() => createUrl('tcp://localhost:8443')).toThrowError(
-        'ClickHouse URL protocol must be either http or https. Got: tcp:'
+        'ClickHouse URL protocol must be either http or https. Got: tcp:',
       )
     })
   })
@@ -428,7 +428,7 @@ describe('config', () => {
             'clickhouse_setting_async_insert=1',
             'ch_wait_for_async_insert=0',
             'http_header_X-CLICKHOUSE-AUTH=secret_header',
-          ].join('&')
+          ].join('&'),
       )
       const res = loadConfigOptionsFromURL(url, null)
       expect(res[0].toString()).toEqual('https://my.host:8124/')
@@ -477,7 +477,7 @@ describe('config', () => {
             'application=my_app',
             'request_timeout=42000',
             'max_open_connections=2',
-          ].join('&')
+          ].join('&'),
       )
       const res = loadConfigOptionsFromURL(url, null)
       expect(res[0].toString()).toEqual('http://localhost:8124/')
@@ -511,11 +511,11 @@ describe('config', () => {
     it('should fail if there is an unknown setting and the extra URL params handler is not provided', async () => {
       const url1 = new URL('http://localhost:8124/?this_was_unexpected=1')
       expect(() => loadConfigOptionsFromURL(url1, null)).toThrowError(
-        'Unknown URL parameters: this_was_unexpected'
+        'Unknown URL parameters: this_was_unexpected',
       )
       const url2 = new URL('http://localhost:8124/?url=this_is_not_allowed')
       expect(() => loadConfigOptionsFromURL(url2, null)).toThrowError(
-        'Unknown URL parameters: url'
+        'Unknown URL parameters: url',
       )
     })
 
@@ -548,13 +548,13 @@ describe('config', () => {
         }
       }
       expect(() => loadConfigOptionsFromURL(url, handler)).toThrowError(
-        'Unknown URL parameters: impl_specific_setting'
+        'Unknown URL parameters: impl_specific_setting',
       )
     })
 
     it('should fail if only some parameters were handled by the extra URL params handler', async () => {
       const url = new URL(
-        'http://localhost:8124/?impl_specific_setting=42&whatever=1'
+        'http://localhost:8124/?impl_specific_setting=42&whatever=1',
       )
       const handler: HandleImplSpecificURLParams = (config) => {
         return {
@@ -567,7 +567,7 @@ describe('config', () => {
         }
       }
       expect(() => loadConfigOptionsFromURL(url, handler)).toThrowError(
-        'Unknown URL parameters: whatever'
+        'Unknown URL parameters: whatever',
       )
     })
 
@@ -589,7 +589,7 @@ describe('config', () => {
             'http_header_X-CLICKHOUSE-AUTH=secret_header',
             'impl_specific_setting=qaz',
             'another_impl_specific_setting=qux',
-          ].join('&')
+          ].join('&'),
       )
       const handler: HandleImplSpecificURLParams = (config) => {
         return {
@@ -642,13 +642,13 @@ describe('config', () => {
             'application=my_app',
             'session_id=sticky',
             'request_timeout=42',
-          ].join('&')
+          ].join('&'),
       )
       const handler: HandleImplSpecificURLParams = (config, url) => {
         // should fail the assertion if not empty
         if (url.searchParams.size > 0) {
           throw new Error(
-            `Unexpected URL params: ${url.searchParams.toString()}`
+            `Unexpected URL params: ${url.searchParams.toString()}`,
           )
         }
         return {
@@ -690,7 +690,7 @@ describe('config', () => {
           .toEqual(expected)
       })
       expect(() => booleanConfigURLValue({ key, value: 'bar' })).toThrowError(
-        `"foo" has invalid boolean value: bar. Expected one of: 0, 1, true, false.`
+        `"foo" has invalid boolean value: bar. Expected one of: 0, 1, true, false.`,
       )
     })
 
@@ -711,7 +711,7 @@ describe('config', () => {
           .toEqual(expected)
       })
       expect(() => numberConfigURLValue({ key, value: 'bar' })).toThrowError(
-        `"foo" has invalid numeric value: bar`
+        `"foo" has invalid numeric value: bar`,
       )
     })
 
@@ -719,7 +719,7 @@ describe('config', () => {
       expect(numberConfigURLValue({ key, value: '2', min: 1 })).toEqual(2)
       expect(numberConfigURLValue({ key, value: '2', min: 2 })).toEqual(2)
       expect(() =>
-        numberConfigURLValue({ key, value: '2', min: 3 })
+        numberConfigURLValue({ key, value: '2', min: 3 }),
       ).toThrowError(`"foo" value 2 is less than min allowed 3`)
     })
 
@@ -727,7 +727,7 @@ describe('config', () => {
       expect(numberConfigURLValue({ key, value: '2', max: 2 })).toEqual(2)
       expect(numberConfigURLValue({ key, value: '2', max: 3 })).toEqual(2)
       expect(() =>
-        numberConfigURLValue({ key, value: '4', max: 3 })
+        numberConfigURLValue({ key, value: '4', max: 3 }),
       ).toThrowError(`"foo" value 4 is greater than max allowed 3`)
     })
 
@@ -737,10 +737,10 @@ describe('config', () => {
       const r2 = numberConfigURLValue({ key, value: '2', min: 2, max: 2 })
       expect(r2).toEqual(2)
       expect(() =>
-        numberConfigURLValue({ key, value: '2', min: 3, max: 4 })
+        numberConfigURLValue({ key, value: '2', min: 3, max: 4 }),
       ).toThrowError(`"foo" value 2 is less than min allowed 3`)
       expect(() =>
-        numberConfigURLValue({ key, value: '5', min: 3, max: 4 })
+        numberConfigURLValue({ key, value: '5', min: 3, max: 4 }),
       ).toThrowError(`"foo" value 5 is greater than max allowed 4`)
     })
 
@@ -765,7 +765,7 @@ describe('config', () => {
             key,
             value,
             enumObject: ClickHouseLogLevel,
-          })
+          }),
         )
           .withContext(`Expected log level for value "${value}" is ${expected}`)
           .toEqual(expected)
@@ -775,9 +775,9 @@ describe('config', () => {
           key,
           value: 'bar',
           enumObject: ClickHouseLogLevel,
-        })
+        }),
       ).toThrowError(
-        `"foo" has invalid value: bar. Expected one of: TRACE, DEBUG, INFO, WARN, ERROR, OFF.`
+        `"foo" has invalid value: bar. Expected one of: TRACE, DEBUG, INFO, WARN, ERROR, OFF.`,
       )
     })
   })

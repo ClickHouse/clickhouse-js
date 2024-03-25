@@ -11,7 +11,7 @@ describe('[Node.js] createClient', () => {
     expect(() => createClient({ url: 'foo' })).toThrow(
       jasmine.objectContaining({
         message: jasmine.stringContaining('ClickHouse URL is malformed.'),
-      })
+      }),
     )
   })
 
@@ -75,7 +75,7 @@ describe('[Node.js] createClient', () => {
         {
           enabled: true,
           idle_socket_ttl: 2500,
-        }
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
