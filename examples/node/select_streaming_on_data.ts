@@ -15,6 +15,8 @@ void (async () => {
   const client = createClient()
   const rows = await client.query({
     query: 'SELECT number FROM system.numbers_mt LIMIT 5',
+    // See all supported formats for streaming:
+    // https://clickhouse.com/docs/en/integrations/language-clients/javascript#supported-data-formats
     format: 'CSV',
   })
   const stream = rows.stream()

@@ -43,7 +43,7 @@ describe('[Node.js] createClient', () => {
         send_progress_in_http_headers: 1,
         http_headers_progress_interval_ms: '20000',
       },
-      log_writer: new LogWriter(new DefaultLogger()),
+      log_writer: new LogWriter(new DefaultLogger(), 'Connection'),
       keep_alive: { enabled: true },
       http_headers: {
         'X-ClickHouse-Auth': 'secret_token',
@@ -66,8 +66,7 @@ describe('[Node.js] createClient', () => {
             'request_timeout=42000',
             'http_header_X-ClickHouse-Auth=secret_token',
             // Node.js specific
-            'keep_alive_retry_on_expired_socket=true',
-            'keep_alive_socket_ttl=1000',
+            'keep_alive_idle_socket_ttl=2500',
           ].join('&'),
       })
       expect(createConnectionStub).toHaveBeenCalledWith(
@@ -75,8 +74,7 @@ describe('[Node.js] createClient', () => {
         undefined, // TLS
         {
           enabled: true,
-          socket_ttl: 1000,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: 2500,
         },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)

@@ -1,8 +1,13 @@
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
-import { createTestClient } from '../utils'
+import { createTestClient, TestEnv, whenOnEnv } from '../utils'
 
-describe('Insert with specific columns', () => {
+// allow_experimental_object_type is not permitted on a modern Cloud instance
+whenOnEnv(
+  TestEnv.LocalSingleNode,
+  TestEnv.LocalCluster,
+  TestEnv.Cloud,
+).describe('Insert with specific columns', () => {
   let client: ClickHouseClient
   let table: string
 

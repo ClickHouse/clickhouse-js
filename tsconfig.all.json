@@ -8,6 +8,8 @@
     "benchmarks/**/*.ts"
   ],
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "outDir": "out",

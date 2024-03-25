@@ -8,6 +8,10 @@ void (async () => {
 
   const { stream } = await client.exec({
     query: `SELECT * from system.numbers LIMIT 10 FORMAT Parquet`,
+    clickhouse_settings: {
+      /** See also https://clickhouse.com/docs/en/interfaces/formats#parquet-format-settings.
+       *  You could specify these (and other settings) here. */
+    },
   })
 
   const filename = Path.resolve(cwd(), './node/out.parquet')

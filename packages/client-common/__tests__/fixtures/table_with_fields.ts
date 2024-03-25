@@ -17,6 +17,7 @@ export async function createTableWithFields(
         // ENGINE can be omitted in the cloud statements:
         // it will use ReplicatedMergeTree and will add ON CLUSTER as well
         case TestEnv.Cloud:
+        case TestEnv.CloudSMT:
           return `
             CREATE TABLE ${tableName}
             (id UInt32, ${fields})

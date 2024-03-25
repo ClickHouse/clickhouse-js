@@ -11,6 +11,36 @@ describe('[Node.js] Client', () => {
     httpRequestStub = spyOn(Http, 'request').and.returnValue(clientRequest)
   })
 
+  describe('Connection header (KeepAlive)', () => {
+    it('should set "keep-alive" by default', async () => {
+      const client = createClient({})
+      await query(client)
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      expect(calledWith.headers!['Connection']).toEqual('keep-alive')
+    })
+
+    it('should set "close" when KeepAlive is disabled', async () => {
+      const client = createClient({
+        keep_alive: { enabled: false },
+      })
+      await query(client)
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      expect(calledWith.headers!['Connection']).toEqual('close')
+    })
+
+    it('should set "keep-alive" when KeepAlive is explicitly enabled', async () => {
+      const client = createClient({
+        keep_alive: { enabled: true },
+      })
+      await query(client)
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      expect(calledWith.headers!['Connection']).toEqual('keep-alive')
+    })
+  })
+
   describe('HTTP headers', () => {
     it('should be possible to set http_headers', async () => {
       const client = createClient({
@@ -24,6 +54,7 @@ describe('[Node.js] Client', () => {
       const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
       expect(callOptions.headers).toEqual({
         'Accept-Encoding': 'gzip',
+        Connection: 'keep-alive',
         Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
         'Test-Header': 'foobar',
         'User-Agent': jasmine.stringContaining('clickhouse-js'),
@@ -39,6 +70,7 @@ describe('[Node.js] Client', () => {
       const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
       expect(callOptions.headers).toEqual({
         'Accept-Encoding': 'gzip',
+        Connection: 'keep-alive',
         Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
         'User-Agent': jasmine.stringContaining('clickhouse-js'),
       })
@@ -55,6 +87,7 @@ describe('[Node.js] Client', () => {
       const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
       expect(callOptions.headers).toEqual({
         // no GZIP header
+        Connection: 'keep-alive',
         Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
         'User-Agent': jasmine.stringContaining('clickhouse-js'),
       })
@@ -69,6 +102,7 @@ describe('[Node.js] Client', () => {
       const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
       expect(callOptions.headers).toEqual({
         'Accept-Encoding': 'gzip',
+        Connection: 'keep-alive',
         Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
         'User-Agent': jasmine.stringContaining('clickhouse-js'),
       })

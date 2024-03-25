@@ -44,6 +44,7 @@ export class NodeHttpsConnection extends NodeBaseConnection {
     return Https.request(params.url, {
       method: params.method,
       agent: this.agent,
+      timeout: this.params.request_timeout,
       headers: withCompressionHeaders({
         headers: this.headers,
         compress_request: params.compress_request,

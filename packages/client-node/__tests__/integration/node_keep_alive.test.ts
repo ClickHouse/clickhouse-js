@@ -22,13 +22,12 @@ xdescribe('[Node.js] Keep Alive', () => {
         max_open_connections: 1,
         keep_alive: {
           enabled: true,
-          socket_ttl: socketTTL,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: socketTTL,
         },
       } as NodeClickHouseClientConfigOptions)
       expect(await query(0)).toEqual(1)
       await sleep(socketTTL)
-      // this one will fail without retries
+      // this one could've failed without idle socket release
       expect(await query(1)).toEqual(2)
     })
 
@@ -36,7 +35,7 @@ xdescribe('[Node.js] Keep Alive', () => {
       client = createNodeTestClient({
         max_open_connections: 1,
         keep_alive: {
-          enabled: false,
+          enabled: true,
         },
       } as NodeClickHouseClientConfigOptions)
       expect(await query(0)).toEqual(1)
@@ -49,8 +48,7 @@ xdescribe('[Node.js] Keep Alive', () => {
       client = createNodeTestClient({
         keep_alive: {
           enabled: true,
-          socket_ttl: socketTTL,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: socketTTL,
         },
       } as NodeClickHouseClientConfigOptions)
 
@@ -75,24 +73,26 @@ xdescribe('[Node.js] Keep Alive', () => {
   })
 
   // the stream is not even piped into the request before we check
-  // if the assigned socket is potentially expired, but better safe than sorry
-  // observation: sockets seem to be never reused for insert operations
+  // if the assigned socket is potentially expired, but better safe than sorry.
+  // keep alive sockets for insert operations should be reused as normal
   describe('insert', () => {
     let tableName: string
     it('should not duplicate insert requests (single connection)', async () => {
       client = createNodeTestClient({
         max_open_connections: 1,
+        log: {
+          level: ClickHouseLogLevel.TRACE,
+        },
         keep_alive: {
           enabled: true,
-          socket_ttl: socketTTL,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: socketTTL,
         },
       } as NodeClickHouseClientConfigOptions)
       tableName = `keep_alive_single_connection_insert_${guid()}`
       await createSimpleTable(client, tableName)
       await insert(0)
       await sleep(socketTTL)
-      // this one should be retried
+      // this one should not fail, as it will have a fresh socket
       await insert(1)
       const rs = await client.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
@@ -109,15 +109,14 @@ xdescribe('[Node.js] Keep Alive', () => {
         max_open_connections: 2,
         keep_alive: {
           enabled: true,
-          socket_ttl: socketTTL,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: socketTTL,
         },
       } as NodeClickHouseClientConfigOptions)
       tableName = `keep_alive_multiple_connection_insert_${guid()}`
       await createSimpleTable(client, tableName)
       await Promise.all([...Array(3).keys()].map((n) => insert(n)))
       await sleep(socketTTL)
-      // at least two of these should be retried
+      // at least two of these should use a fresh socket
       await Promise.all([...Array(3).keys()].map((n) => insert(n + 10)))
       const rs = await client.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
