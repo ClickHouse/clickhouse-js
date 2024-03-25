@@ -11,13 +11,19 @@ describe('ClickHouse server errors parsing', () => {
   })
 
   it('returns "unknown identifier" error', async () => {
+    // possible error messages here:
+    // On-premise:    Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'.
+    // Cloud SMT:     Unknown expression identifier 'number' in scope
+    const errorMessagePattern =
+      `((?:^Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'.*$)|` +
+      `(?:^Unknown expression identifier 'number' in scope.*$))`
     await expectAsync(
       client.query({
         query: 'SELECT number FR',
       }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
-        message: `Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'. `,
+        message: jasmine.stringMatching(errorMessagePattern),
         code: '47',
         type: 'UNKNOWN_IDENTIFIER',
       }),
