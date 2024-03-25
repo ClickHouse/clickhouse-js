@@ -15,7 +15,7 @@ describe('[Node.js] Config implementation details', () => {
     it('should handle known URL params', async () => {
       const url = new URL(
         'http://localhost:8123/?' +
-          ['keep_alive_idle_socket_ttl=2500'].join('&')
+          ['keep_alive_idle_socket_ttl=2500'].join('&'),
       )
       const config: BaseClickHouseClientConfigOptions = {
         keep_alive: {
@@ -79,7 +79,7 @@ describe('[Node.js] Config implementation details', () => {
     const fakeConnection = { test: true } as unknown as NodeBaseConnection
     beforeEach(() => {
       createConnectionStub = spyOn(c, 'createConnection').and.returnValue(
-        fakeConnection
+        fakeConnection,
       )
     })
 
@@ -94,7 +94,7 @@ describe('[Node.js] Config implementation details', () => {
         {
           enabled: true,
           idle_socket_ttl: 2500,
-        }
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -117,7 +117,7 @@ describe('[Node.js] Config implementation details', () => {
         {
           enabled: true,
           idle_socket_ttl: 2500,
-        }
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -144,7 +144,7 @@ describe('[Node.js] Config implementation details', () => {
         {
           enabled: true,
           idle_socket_ttl: 2500,
-        }
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -171,7 +171,7 @@ describe('[Node.js] Config implementation details', () => {
         {
           enabled: false,
           idle_socket_ttl: 42_000,
-        }
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)

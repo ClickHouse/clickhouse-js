@@ -28,7 +28,7 @@ describe('DateTime', () => {
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([{ d: '2022-09-05' }])
     })
   })
@@ -50,7 +50,7 @@ describe('DateTime', () => {
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([{ d: '2022-09-05' }])
     })
   })
@@ -73,7 +73,7 @@ describe('DateTime', () => {
             query: `SELECT d FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([
         { d: '2022-09-04 22:02:49' }, // converted to UTC on the server
         { d: '2022-09-05 00:02:49' }, // this one was assumed UTC upon insertion
@@ -87,14 +87,14 @@ describe('DateTime', () => {
             query: `SELECT toDateTime(d, 'Europe/Amsterdam') AS d FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([{ d: '2022-09-05 00:02:49' }, { d: '2022-09-05 02:02:49' }])
     })
 
     it('should insert DateTime and get it back (different timezone)', async () => {
       const table = await createTableWithFields(
         client,
-        `d DateTime('Asia/Istanbul')`
+        `d DateTime('Asia/Istanbul')`,
       )
       await client.insert({
         table,
@@ -111,7 +111,7 @@ describe('DateTime', () => {
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([
         { d: '2022-09-05 01:02:49' }, // converted to Asia/Istanbul on the server
         { d: '2022-09-05 00:02:49' }, // this one was assumed Asia/Istanbul upon insertion
@@ -125,7 +125,7 @@ describe('DateTime', () => {
             query: `SELECT toDateTime(d, 'Europe/Amsterdam') AS d FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([{ d: '2022-09-05 00:02:49' }, { d: '2022-09-04 23:02:49' }])
     })
   })
@@ -148,7 +148,7 @@ describe('DateTime', () => {
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([
         { d: '2022-09-04 22:02:49.123' }, // converted to UTC on the server
         { d: '2022-09-05 00:02:49.456' }, // this one was assumed UTC upon insertion
@@ -162,7 +162,7 @@ describe('DateTime', () => {
             query: `SELECT toDateTime64(d, 3, 'Europe/Amsterdam') AS d FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([
         { d: '2022-09-05 00:02:49.123' },
         { d: '2022-09-05 02:02:49.456' },
@@ -172,7 +172,7 @@ describe('DateTime', () => {
     it('should insert DateTime64(3) and get it back (different timezone)', async () => {
       const table = await createTableWithFields(
         client,
-        `d DateTime64(3, 'Asia/Istanbul')`
+        `d DateTime64(3, 'Asia/Istanbul')`,
       )
       await client.insert({
         table,
@@ -189,7 +189,7 @@ describe('DateTime', () => {
             query: `SELECT * EXCEPT id FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([
         { d: '2022-09-05 01:02:49.123' }, // converted to Asia/Istanbul on the server
         { d: '2022-09-05 00:02:49.456' }, // this one was assumed Asia/Istanbul upon insertion
@@ -203,7 +203,7 @@ describe('DateTime', () => {
             query: `SELECT toDateTime64(d, 3, 'Europe/Amsterdam') AS d FROM ${table}`,
             format: 'JSONEachRow',
           })
-          .then((r) => r.json())
+          .then((r) => r.json()),
       ).toEqual([
         { d: '2022-09-05 00:02:49.123' },
         { d: '2022-09-04 23:02:49.456' },

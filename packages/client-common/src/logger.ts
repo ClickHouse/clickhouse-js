@@ -80,7 +80,7 @@ export class LogWriter {
   constructor(
     private readonly logger: Logger,
     private readonly module: string,
-    logLevel?: ClickHouseLogLevel
+    logLevel?: ClickHouseLogLevel,
   ) {
     this.logLevel = logLevel ?? ClickHouseLogLevel.OFF
     this.info({

@@ -4,7 +4,7 @@ import type { NodeClickHouseClientConfigOptions } from './config'
 import { NodeConfigImpl } from './config'
 
 export function createClient(
-  config?: NodeClickHouseClientConfigOptions
+  config?: NodeClickHouseClientConfigOptions,
 ): ClickHouseClient<Stream.Readable> {
   return new ClickHouseClient({
     impl: NodeConfigImpl,

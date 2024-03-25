@@ -22,7 +22,7 @@ export class NodeHttpsConnection extends NodeBaseConnection {
   protected override buildDefaultHeaders(
     username: string,
     password: string,
-    additional_headers?: Record<string, string>
+    additional_headers?: Record<string, string>,
   ): Http.OutgoingHttpHeaders {
     if (this.params.tls?.type === 'Mutual') {
       return {

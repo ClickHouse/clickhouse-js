@@ -7,7 +7,7 @@ import { createTable, guid, TestEnv } from '../utils'
 export async function createTableWithFields(
   client: ClickHouseClient,
   fields: string,
-  clickhouse_settings?: ClickHouseSettings
+  clickhouse_settings?: ClickHouseSettings,
 ): Promise<string> {
   const tableName = `test_table__${guid()}`
   await createTable(
@@ -42,7 +42,7 @@ export async function createTableWithFields(
           `
       }
     },
-    clickhouse_settings
+    clickhouse_settings,
   )
   return tableName
 }

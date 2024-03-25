@@ -50,13 +50,13 @@ describe('formatQueryParams', () => {
 
   it('formats a date with millis', () => {
     expect(
-      formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123)))
+      formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123))),
     ).toBe('1659081134.123')
     expect(
-      formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 42)))
+      formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 42))),
     ).toBe('1659081134.042')
     expect(
-      formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 5)))
+      formatQueryParams(new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 5))),
     ).toBe('1659081134.005')
   })
 
@@ -77,7 +77,7 @@ describe('formatQueryParams', () => {
     expect(
       formatQueryParams({
         ["na'me"]: "cust'om",
-      })
+      }),
     ).toBe("{'na\\'me':'cust\\'om'}")
   })
 
@@ -87,7 +87,7 @@ describe('formatQueryParams', () => {
         name: 'custom',
         id: 42,
         params: { refs: [44] },
-      })
+      }),
     ).toBe("{'name':'custom','id':42,'params':{'refs':[44]}}")
   })
 })

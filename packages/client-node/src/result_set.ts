@@ -11,7 +11,7 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
   constructor(
     private _stream: Stream.Readable,
     private readonly format: DataFormat,
-    public readonly query_id: string
+    public readonly query_id: string,
   ) {}
 
   async text(): Promise<string> {
@@ -43,7 +43,7 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
-        callback: TransformCallback
+        callback: TransformCallback,
       ) {
         const rows: Row[] = []
         let lastIdx = 0
@@ -55,7 +55,7 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
           if (incompleteChunks.length > 0) {
             text = Buffer.concat(
               [...incompleteChunks, chunk.subarray(0, idx)],
-              incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx
+              incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx,
             ).toString()
             incompleteChunks = []
           } else {

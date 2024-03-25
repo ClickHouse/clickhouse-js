@@ -20,7 +20,7 @@ beforeAll(async () => {
   console.log(
     `\nTest environment: ${getClickHouseTestEnvironment()}, database: ${
       databaseName ?? 'default'
-    }`
+    }`,
   )
   if (isCloudTestEnv() && databaseName === undefined) {
     const client = createTestClient({})
@@ -31,7 +31,7 @@ beforeAll(async () => {
 })
 
 export function createTestClient<Stream = unknown>(
-  config: BaseClickHouseClientConfigOptions = {}
+  config: BaseClickHouseClientConfigOptions = {},
 ): ClickHouseClient<Stream> {
   const env = getClickHouseTestEnvironment()
   const clickHouseSettings: ClickHouseSettings = {}
@@ -66,7 +66,7 @@ export function createTestClient<Stream = unknown>(
       // props to https://stackoverflow.com/a/41063795/4575540
       // @ts-expect-error
       return eval('require')('../../../client-node/src/client').createClient(
-        cloudConfig
+        cloudConfig,
       ) as ClickHouseClient
     }
   } else {
@@ -81,14 +81,14 @@ export function createTestClient<Stream = unknown>(
     } else {
       // @ts-expect-error
       return eval('require')('../../../client-node/src/client').createClient(
-        localConfig
+        localConfig,
       ) as ClickHouseClient
     }
   }
 }
 
 export async function createRandomDatabase(
-  client: ClickHouseClient
+  client: ClickHouseClient,
 ): Promise<string> {
   const databaseName = `clickhousejs__${guid()}__${+new Date()}`
   let maybeOnCluster = ''
@@ -109,7 +109,7 @@ export async function createRandomDatabase(
 export async function createTable<Stream = unknown>(
   client: ClickHouseClient<Stream>,
   definition: (environment: TestEnv) => string,
-  clickhouse_settings?: ClickHouseSettings
+  clickhouse_settings?: ClickHouseSettings,
 ) {
   const env = getClickHouseTestEnvironment()
   const ddl = definition(env)
@@ -134,7 +134,7 @@ const MaxPingRetries = 4
 export async function wakeUpPing(
   client: ClickHouseClient,
   retries = 0,
-  lastError?: Error | unknown
+  lastError?: Error | unknown,
 ) {
   if (retries < MaxPingRetries) {
     const result = await client.ping()
@@ -144,13 +144,13 @@ export async function wakeUpPing(
     // maybe the service is still waking up
     console.error(
       `Failed to ping, attempts so far: ${retries + 1}`,
-      result.error
+      result.error,
     )
     await wakeUpPing(client, retries++, result.error)
   } else {
     console.error(
       `Failed to wake up the service after ${MaxPingRetries} retries, exiting...`,
-      lastError
+      lastError,
     )
     process.exit(1)
   }

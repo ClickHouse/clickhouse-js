@@ -15,14 +15,14 @@ describe('[Web] SELECT streaming', () => {
       await expectAsync(fn()).toBeRejectedWith(
         jasmine.objectContaining({
           message: 'Stream has been already consumed',
-        })
+        }),
       )
     }
     function assertAlreadyConsumed<T>(fn: () => T) {
       expect(fn).toThrow(
         jasmine.objectContaining({
           message: 'Stream has been already consumed',
-        })
+        }),
       )
     }
     it('should consume a JSON response only once', async () => {
@@ -73,7 +73,7 @@ describe('[Web] SELECT streaming', () => {
       expect(() => result.stream()).toThrow(
         jasmine.objectContaining({
           message: jasmine.stringContaining('JSON format is not streamable'),
-        })
+        }),
       )
     })
   })
@@ -202,7 +202,7 @@ describe('[Web] SELECT streaming', () => {
 })
 
 async function rowsJsonValues<T = unknown>(
-  stream: ReadableStream<Row[]>
+  stream: ReadableStream<Row[]>,
 ): Promise<T[]> {
   const result: T[] = []
   const reader = stream.getReader()

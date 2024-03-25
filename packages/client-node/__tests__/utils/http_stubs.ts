@@ -65,20 +65,20 @@ export function stubClientRequest(): ClientRequest {
 
 export function emitResponseBody(
   request: Http.ClientRequest,
-  body: string | Buffer | undefined
+  body: string | Buffer | undefined,
 ) {
   request.emit(
     'response',
     buildIncomingMessage({
       body,
-    })
+    }),
   )
 }
 
 export async function emitCompressedBody(
   request: ClientRequest,
   body: string | Buffer,
-  encoding = 'gzip'
+  encoding = 'gzip',
 ) {
   const compressedBody = await gzip(body)
   request.emit(
@@ -88,7 +88,7 @@ export async function emitCompressedBody(
       headers: {
         'content-encoding': encoding,
       },
-    })
+    }),
   )
 }
 
@@ -127,7 +127,7 @@ export class MyTestHttpConnection extends NodeBaseConnection {
           enabled: false,
         },
       } as NodeConnectionParams,
-      {} as Http.Agent
+      {} as Http.Agent,
     )
   }
   protected createClientRequest(): Http.ClientRequest {

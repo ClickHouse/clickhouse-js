@@ -9,7 +9,7 @@ import { isStream } from './stream'
 export class WebValuesEncoder implements ValuesEncoder<ReadableStream> {
   encodeValues<T = unknown>(
     values: InsertValues<T>,
-    format: DataFormat
+    format: DataFormat,
   ): string | ReadableStream {
     throwIfStream(values)
     // JSON* arrays
@@ -21,7 +21,7 @@ export class WebValuesEncoder implements ValuesEncoder<ReadableStream> {
       return encodeJSON(values, format)
     }
     throw new Error(
-      `Cannot encode values of type ${typeof values} with ${format} format`
+      `Cannot encode values of type ${typeof values} with ${format} format`,
     )
   }
 
@@ -30,7 +30,7 @@ export class WebValuesEncoder implements ValuesEncoder<ReadableStream> {
     if (!Array.isArray(values) && typeof values !== 'object') {
       throw new Error(
         'Insert expected "values" to be an array or a JSON object, ' +
-          `got: ${typeof values}`
+          `got: ${typeof values}`,
       )
     }
   }
@@ -39,7 +39,7 @@ export class WebValuesEncoder implements ValuesEncoder<ReadableStream> {
 function throwIfStream(values: unknown) {
   if (isStream(values)) {
     throw new Error(
-      'Streaming is not supported for inserts in the web version of the client'
+      'Streaming is not supported for inserts in the web version of the client',
     )
   }
 }

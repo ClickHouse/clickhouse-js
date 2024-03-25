@@ -33,7 +33,7 @@ void (async () => {
     })
   }
   console.log(
-    `Created user ${readOnlyUsername} with restricted access to the system database`
+    `Created user ${readOnlyUsername} with restricted access to the system database`,
   )
   printSeparator()
 
@@ -79,7 +79,7 @@ void (async () => {
     .catch((err) => {
       console.error(
         '[Expected error] Readonly user cannot insert the data into the table. Cause:\n',
-        err
+        err,
       )
     })
   printSeparator()
@@ -93,7 +93,7 @@ void (async () => {
     .catch((err) => {
       console.error(
         '[Expected error] Cannot query system.users cause it was not granted. Cause:\n',
-        err
+        err,
       )
     })
   printSeparator()
@@ -125,7 +125,7 @@ void (async () => {
     .catch((err) => {
       console.error(
         `[Expected error] Cannot modify 'send_progress_in_http_headers' setting in readonly mode. Cause:\n`,
-        err
+        err,
       )
     })
   printSeparator()
@@ -137,6 +137,6 @@ void (async () => {
 
 function printSeparator() {
   console.log(
-    '------------------------------------------------------------------------'
+    '------------------------------------------------------------------------',
   )
 }

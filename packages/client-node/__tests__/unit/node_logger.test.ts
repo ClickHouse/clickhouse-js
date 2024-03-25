@@ -28,7 +28,7 @@ describe('[Node.js] Logger/LogWriter', () => {
     const logWriter = new LogWriter(
       new TestLogger(),
       'LoggerTest',
-      ClickHouseLogLevel.TRACE
+      ClickHouseLogLevel.TRACE,
     )
     checkLogLevelSet('TRACE')
     logEveryLogLevel(logWriter)
@@ -65,7 +65,7 @@ describe('[Node.js] Logger/LogWriter', () => {
     const logWriter = new LogWriter(
       new TestLogger(),
       'LoggerTest',
-      ClickHouseLogLevel.DEBUG
+      ClickHouseLogLevel.DEBUG,
     )
     checkLogLevelSet('DEBUG')
     logEveryLogLevel(logWriter)
@@ -97,7 +97,7 @@ describe('[Node.js] Logger/LogWriter', () => {
     const logWriter = new LogWriter(
       new TestLogger(),
       'LoggerTest',
-      ClickHouseLogLevel.INFO
+      ClickHouseLogLevel.INFO,
     )
     checkLogLevelSet('INFO')
     logEveryLogLevel(logWriter)
@@ -124,7 +124,7 @@ describe('[Node.js] Logger/LogWriter', () => {
     const logWriter = new LogWriter(
       new TestLogger(),
       'LoggerTest',
-      ClickHouseLogLevel.WARN
+      ClickHouseLogLevel.WARN,
     )
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({
@@ -145,7 +145,7 @@ describe('[Node.js] Logger/LogWriter', () => {
     const logWriter = new LogWriter(
       new TestLogger(),
       'LoggerTest',
-      ClickHouseLogLevel.ERROR
+      ClickHouseLogLevel.ERROR,
     )
     logEveryLogLevel(logWriter)
     expect(logs[0]).toEqual({

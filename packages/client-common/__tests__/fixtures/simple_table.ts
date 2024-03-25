@@ -7,7 +7,7 @@ import { createTable, TestEnv } from '../utils'
 export function createSimpleTable<Stream = unknown>(
   client: ClickHouseClient<Stream>,
   tableName: string,
-  settings: MergeTreeSettings = {}
+  settings: MergeTreeSettings = {},
 ) {
   return createTable(client, (env) => {
     const filteredSettings = filterSettingsBasedOnEnv(settings, env)

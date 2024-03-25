@@ -26,7 +26,7 @@ void (async () => {
   await client.insert({
     table: tableName,
     values: Fs.createReadStream(filename).pipe(
-      split((row: string) => JSON.parse(row))
+      split((row: string) => JSON.parse(row)),
     ),
     format: 'JSONCompactEachRow',
   })

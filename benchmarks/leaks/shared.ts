@@ -47,7 +47,7 @@ export function logMemoryUsageDiff({
     const k = key as keyof MemoryUsage
     const diff = current[k] - previous[k]
     console.log(
-      `${k}: ${diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} MB`
+      `${k}: ${diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} MB`,
     )
   }
 }

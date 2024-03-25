@@ -66,9 +66,9 @@ describe('exec', () => {
         code: '57',
         type: 'TABLE_ALREADY_EXISTS',
         message: jasmine.stringContaining(
-          `Table ${getTestDatabaseName()}.${tableName} already exists. `
+          `Table ${getTestDatabaseName()}.${tableName} already exists. `,
         ),
-      })
+      }),
     )
   })
 
@@ -89,7 +89,7 @@ describe('exec', () => {
       await expectAsync(
         sessionClient.exec({
           query: `CREATE TEMPORARY TABLE ${tableName} (val Int32)`,
-        })
+        }),
       ).toBeResolved()
     })
   })
@@ -121,7 +121,11 @@ describe('exec', () => {
     })
 
     const { data, rows } = await selectResult.json<
-      ResponseJSON<{ name: string; engine: string; create_table_query: string }>
+      ResponseJSON<{
+        name: string
+        engine: string
+        create_table_query: string
+      }>
     >()
 
     expect(rows).toBe(1)

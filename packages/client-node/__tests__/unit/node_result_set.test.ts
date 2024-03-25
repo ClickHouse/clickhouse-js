@@ -53,7 +53,7 @@ describe('[Node.js] ResultSet', () => {
     const rs = new ResultSet(
       Stream.Readable.from([Buffer.from('{"foo":"bar"}\n')]),
       'JSONEachRow',
-      guid()
+      guid(),
     )
     const allRows: Row[] = []
     for await (const rows of rs.stream()) {
@@ -74,7 +74,7 @@ describe('[Node.js] ResultSet', () => {
         Buffer.from('{"qaz":"qux"}\n'),
       ]),
       'JSONEachRow',
-      guid()
+      guid(),
     )
   }
 })

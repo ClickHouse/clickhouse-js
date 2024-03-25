@@ -5,7 +5,7 @@ describe('[Web] Client', () => {
   let fetchSpy: jasmine.Spy<typeof window.fetch>
   beforeEach(() => {
     fetchSpy = spyOn(window, 'fetch').and.returnValue(
-      Promise.resolve(new Response())
+      Promise.resolve(new Response()),
     )
   })
 
