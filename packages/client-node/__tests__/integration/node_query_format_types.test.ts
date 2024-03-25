@@ -77,14 +77,17 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
 
       // stream + async iterator
       for await (const rows of stream) {
-        rows.forEach((row) => {
-          // $ExpectType unknown
-          row.json()
-          // $ExpectType Data
-          row.json<Data>()
-          // $ExpectType string
-          row.text
-        })
+        rows.forEach(
+          // $ExpectType (row: Row<unknown, "JSONEachRow">) => void
+          (row) => {
+            // $ExpectType unknown
+            row.json()
+            // $ExpectType Data
+            row.json<Data>()
+            // $ExpectType string
+            row.text
+          },
+        )
       }
     })
 
@@ -293,7 +296,7 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       const rs = await runQuery('JSON')
 
       // All possible JSON variants are now allowed
-      // $ExpectType unknown[] | ResponseJSON<unknown> | Record<string, unknown>
+      // $ExpectType unknown[] | Record<string, unknown> | ResponseJSON<unknown>
       await rs.json()
       // $ExpectType Data[] | ResponseJSON<Data> | Record<string, Data>
       await rs.json<Data>()
