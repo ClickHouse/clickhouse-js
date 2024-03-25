@@ -8,11 +8,12 @@
   "env": {
     "node": true
   },
-  "plugins": ["@typescript-eslint", "prettier"],
+  "plugins": ["@typescript-eslint", "prettier", "eslint-plugin-expect-type"],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/recommended",
+    "plugin:expect-type/recommended",
     "prettier"
   ],
   "rules": {

@@ -12,11 +12,10 @@ import { WebImpl } from './config'
 import type { ResultSet } from './result_set'
 
 export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
-  /**
-   * See the base implementation: {@link ClickHouseClient.insert}
+  /** See {@link ClickHouseClient.insert}.
    *
-   * ReadableStream is removed from possible insert values
-   * until it is supported by all major web platforms */
+   *  ReadableStream is removed from possible insert values
+   *  until it is supported by all major web platforms. */
   insert<T>(
     params: Omit<InsertParams<ReadableStream, T>, 'values'> & {
       values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
@@ -25,7 +24,7 @@ export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
 }
 
 class WebClickHouseClientImpl extends ClickHouseClient<ReadableStream> {
-  /** See the base implementation: {@link ClickHouseClient.query} */
+  /** See {@link ClickHouseClient.query}. */
   query<Format extends DataFormat>(
     params: QueryParamsWithFormat<Format>,
   ): Promise<ResultSet<Format>> {

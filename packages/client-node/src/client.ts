@@ -9,7 +9,7 @@ import { NodeConfigImpl } from './config'
 import type { ResultSet } from './result_set'
 
 export class NodeClickHouseClient extends ClickHouseClient<Stream.Readable> {
-  /** See the base implementation: {@link ClickHouseClient.query} */
+  /** See {@link ClickHouseClient.query}. */
   query<Format extends DataFormat = 'JSON'>(
     params: QueryParamsWithFormat<Format>,
   ): Promise<ResultSet<Format>> {

@@ -13,9 +13,10 @@ import { getAsText } from './utils'
 
 const NEWLINE = 0x0a as const
 
-/** {@link Stream.Readable} with additional types for the `on(data)` method.
+/** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
  * Everything else is an exact copy from stream.d.ts */
 export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
+  [Symbol.asyncIterator](): AsyncIterableIterator<T>
   on(event: 'data', listener: (chunk: T) => void): Stream.Readable
   on(event: 'close', listener: () => void): Stream.Readable
   on(event: 'drain', listener: () => void): Stream.Readable
@@ -42,7 +43,7 @@ export class ResultSet<Format extends DataFormat>
     public readonly query_id: string,
   ) {}
 
-  /** See {@link BaseResultSet.text} */
+  /** See {@link BaseResultSet.text}. */
   async text(): Promise<string> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
@@ -50,7 +51,7 @@ export class ResultSet<Format extends DataFormat>
     return (await getAsText(this._stream)).toString()
   }
 
-  /** See {@link BaseResultSet.json} */
+  /** See {@link BaseResultSet.json}. */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
@@ -58,7 +59,7 @@ export class ResultSet<Format extends DataFormat>
     return decode(await this.text(), this.format)
   }
 
-  /** See {@link BaseResultSet.stream} */
+  /** See {@link BaseResultSet.stream}. */
   stream<T>(): Format extends StreamableDataFormat
     ? StreamReadable<Row<T, Format>[]>
     : never {

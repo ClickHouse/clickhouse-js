@@ -1,12 +1,9 @@
 import { createTestClient } from '@test/utils'
 import type Stream from 'stream'
-import type {
-  BaseClickHouseClientConfigOptions,
-  ClickHouseClient,
-} from '../../src'
+import type { ClickHouseClient, ClickHouseClientConfigOptions } from '../../src'
 
 export function createNodeTestClient(
-  config: BaseClickHouseClientConfigOptions = {},
+  config: ClickHouseClientConfigOptions = {},
 ): ClickHouseClient {
   return createTestClient<Stream.Readable>(config) as ClickHouseClient
 }
