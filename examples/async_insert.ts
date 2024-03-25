@@ -81,7 +81,7 @@ void (async () => {
     query: `SELECT count(*) AS count FROM ${table}`,
     format: 'JSONEachRow',
   })
-  const [{ count }] = await resultSet.json<[{ count: string }]>()
+  const [{ count }] = await resultSet.json<{ count: string }>()
   // It is expected to have 10k records in the table.
   console.info('Select count result:', count)
 })()
