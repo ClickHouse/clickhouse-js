@@ -1,5 +1,8 @@
 import type { Row } from '@clickhouse/client-common'
-import { type ClickHouseClient } from '@clickhouse/client-common'
+import {
+  type ClickHouseClient,
+  type ClickHouseSettings,
+} from '@clickhouse/client-common'
 import { fakerRU } from '@faker-js/faker'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
@@ -7,10 +10,9 @@ import { createTestClient, guid } from '@test/utils'
 import { tableFromIPC } from 'apache-arrow'
 import { Buffer } from 'buffer'
 import Fs from 'fs'
+import { readParquet } from 'parquet-wasm'
 import split from 'split2'
 import Stream from 'stream'
-
-import { readParquet } from 'parquet-wasm'
 
 describe('[Node.js] streaming e2e', () => {
   let tableName: string
@@ -60,6 +62,15 @@ describe('[Node.js] streaming e2e', () => {
   })
 
   it('should stream a Parquet file', async () => {
+    const streamParquetSettings: ClickHouseSettings = {
+      output_format_parquet_compression_method: 'none',
+      output_format_parquet_version: '2.6',
+      // 24.3+ has this enabled by default; prior versions need this setting to be enforced for consistent assertions
+      // Otherwise, the string type for Parquet will be Binary (24.3+) vs Utf8 (24.3-).
+      // https://github.com/ClickHouse/ClickHouse/pull/61817/files#diff-aa3c979016a9f8c6ab5a51560411afa3f4cef55d34c899a2b1e7aff38aca4076R1097
+      output_format_parquet_string_as_string: 1,
+    }
+
     const filename =
       'packages/client-common/__tests__/fixtures/streaming_e2e_data.parquet'
     await client.insert({
@@ -86,10 +97,7 @@ describe('[Node.js] streaming e2e', () => {
     const stream = await client
       .exec({
         query: `SELECT * from ${tableName} FORMAT Parquet`,
-        clickhouse_settings: {
-          output_format_parquet_compression_method: 'none',
-          output_format_parquet_version: '2.6',
-        },
+        clickhouse_settings: streamParquetSettings,
       })
       .then((r) => r.stream)
 
@@ -102,14 +110,13 @@ describe('[Node.js] streaming e2e', () => {
       readParquet(Buffer.concat(parquetChunks)).intoIPCStream(),
     )
     expect(table.schema.toString()).toEqual(
-      'Schema<{ 0: id: Uint64, 1: name: Binary, 2: sku: List<Uint8> }>',
+      'Schema<{ 0: id: Uint64, 1: name: Utf8, 2: sku: List<Uint8> }>',
     )
     const actualParquetData: unknown[] = []
-    const textDecoder = new TextDecoder()
     table.toArray().map((v) => {
       const row: Record<string, unknown> = {}
       row['id'] = v.id
-      row['name'] = textDecoder.decode(v.name) // [char] -> String
+      row['name'] = v.name
       row['sku'] = Array.from(v.sku.toArray()) // Vector -> UInt8Array -> Array
       actualParquetData.push(row)
     })
