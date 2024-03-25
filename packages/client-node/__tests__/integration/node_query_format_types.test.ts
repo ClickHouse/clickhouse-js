@@ -89,6 +89,46 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
           },
         )
       }
+
+      // stream + T hint + on('data')
+      const streamTyped = rs.stream<Data>()
+      await new Promise((resolve, reject) => {
+        streamTyped
+          .on(
+            'data',
+            // $ExpectType (rows: Row<Data, "JSONEachRow">[]) => void
+            (rows) => {
+              rows.forEach(
+                // $ExpectType (row: Row<Data, "JSONEachRow">) => void
+                (row) => {
+                  // $ExpectType Data
+                  row.json()
+                  // $ExpectType Data
+                  row.json<Data>()
+                  // $ExpectType string
+                  row.text
+                },
+              )
+            },
+          )
+          .on('end', resolve)
+          .on('error', reject)
+      })
+
+      // stream + T hint + async iterator
+      for await (const rows of streamTyped) {
+        rows.forEach(
+          // $ExpectType (row: Row<Data, "JSONEachRow">) => void
+          (row) => {
+            // $ExpectType Data
+            row.json()
+            // $ExpectType Data
+            row.json<Data>()
+            // $ExpectType string
+            row.text
+          },
+        )
+      }
     })
 
     /**
@@ -297,7 +337,7 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
 
       // All possible JSON variants are now allowed
       // $ExpectType unknown[] | Record<string, unknown> | ResponseJSON<unknown>
-      await rs.json()
+      await rs.json() // in the IDE sometimes the type is reported in a different order
       // $ExpectType Data[] | ResponseJSON<Data> | Record<string, Data>
       await rs.json<Data>()
       // $ExpectType string
