@@ -136,7 +136,7 @@ describe('[Node.js] Connection', () => {
         await expectAsync(selectPromise).toBeRejectedWith(
           jasmine.objectContaining({
             message: 'Unexpected encoding: br',
-          })
+          }),
         )
       })
 
@@ -162,7 +162,7 @@ describe('[Node.js] Connection', () => {
             headers: {
               'content-encoding': 'gzip',
             },
-          })
+          }),
         )
 
         const readStream = async () => {
@@ -176,7 +176,7 @@ describe('[Node.js] Connection', () => {
           jasmine.objectContaining({
             message: 'incorrect header check',
             code: 'Z_DATA_ERROR',
-          })
+          }),
         )
       })
     })
@@ -234,7 +234,7 @@ describe('[Node.js] Connection', () => {
       const myHttpAdapter = new MyTestHttpAdapter()
       const headers = myHttpAdapter.getDefaultHeaders()
       expect(headers['User-Agent']).toMatch(
-        /^clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
+        /^clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/,
       )
     })
 
@@ -242,7 +242,7 @@ describe('[Node.js] Connection', () => {
       const myHttpAdapter = new MyTestHttpAdapter('MyFancyApp')
       const headers = myHttpAdapter.getDefaultHeaders()
       expect(headers['User-Agent']).toMatch(
-        /^MyFancyApp clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/
+        /^MyFancyApp clickhouse-js\/[0-9\\.]+-?(?:(alpha|beta)\d*)? \(lv:nodejs\/v[0-9\\.]+?; os:(?:linux|darwin|win32)\)$/,
       )
     })
   })
@@ -459,7 +459,7 @@ describe('[Node.js] Connection', () => {
   })
 
   function buildHttpAdapter(
-    config: Partial<NodeConnectionParams>
+    config: Partial<NodeConnectionParams>,
   ): NodeHttpConnection {
     return new NodeHttpConnection({
       ...{
@@ -491,7 +491,7 @@ describe('[Node.js] Connection', () => {
 
   async function assertQueryResult(
     { stream, query_id }: ConnQueryResult<Stream.Readable>,
-    expectedResponseBody: any
+    expectedResponseBody: any,
   ) {
     expect(await getAsText(stream)).toBe(expectedResponseBody)
     assertQueryId(query_id)
@@ -515,7 +515,7 @@ class MyTestHttpAdapter extends NodeBaseConnection {
           retry_on_expired_socket: true,
         },
       } as NodeConnectionParams,
-      {} as Http.Agent
+      {} as Http.Agent,
     )
   }
   protected createClientRequest(): Http.ClientRequest {

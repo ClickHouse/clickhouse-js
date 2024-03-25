@@ -90,7 +90,7 @@ export const NodeConfigImpl: Required<
   },
   make_connection: (
     nodeConfig: NodeClickHouseClientConfigOptions,
-    params: ConnectionParams
+    params: ConnectionParams,
   ) => {
     let tls: TLSParams | undefined = undefined
     if (nodeConfig.tls !== undefined) {
@@ -118,7 +118,7 @@ export const NodeConfigImpl: Required<
   make_result_set: ((
     stream: Stream.Readable,
     format: DataFormat,
-    query_id: string
+    query_id: string,
   ) => new ResultSet(stream, format, query_id)) as any,
   close_stream: async (stream) => {
     stream.destroy()

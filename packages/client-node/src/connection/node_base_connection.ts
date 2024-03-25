@@ -77,7 +77,7 @@ export abstract class NodeBaseConnection
   >()
   protected constructor(
     protected readonly params: NodeConnectionParams,
-    protected readonly agent: Http.Agent
+    protected readonly agent: Http.Agent,
   ) {
     this.logger = params.log_writer
     this.retry_expired_sockets =
@@ -85,18 +85,18 @@ export abstract class NodeBaseConnection
     this.headers = this.buildDefaultHeaders(
       params.username,
       params.password,
-      params.http_headers
+      params.http_headers,
     )
   }
 
   protected buildDefaultHeaders(
     username: string,
     password: string,
-    http_headers?: Record<string, string>
+    http_headers?: Record<string, string>,
   ): Http.OutgoingHttpHeaders {
     return {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
-        'base64'
+        'base64',
       )}`,
       'User-Agent': getUserAgent(this.params.application_id),
       ...http_headers,
@@ -104,12 +104,12 @@ export abstract class NodeBaseConnection
   }
 
   protected abstract createClientRequest(
-    params: RequestParams
+    params: RequestParams,
   ): Http.ClientRequest
 
   private async request(
     params: RequestParams,
-    retryCount = 0
+    retryCount = 0,
   ): Promise<RequestResult> {
     try {
       return await this._request(params)
@@ -140,7 +140,7 @@ export abstract class NodeBaseConnection
       }
 
       const onResponse = async (
-        _response: Http.IncomingMessage
+        _response: Http.IncomingMessage,
       ): Promise<void> => {
         this.logResponse(request, params, _response, start)
 
@@ -318,12 +318,12 @@ export abstract class NodeBaseConnection
   }
 
   async query(
-    params: ConnBaseQueryParams
+    params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<Stream.Readable>> {
     const query_id = getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
-      this.params.compression.decompress_response
+      this.params.compression.decompress_response,
     )
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -348,7 +348,7 @@ export abstract class NodeBaseConnection
   }
 
   async exec(
-    params: ConnBaseQueryParams
+    params: ConnBaseQueryParams,
   ): Promise<ConnExecResult<Stream.Readable>> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
@@ -375,7 +375,7 @@ export abstract class NodeBaseConnection
   }
 
   async insert(
-    params: ConnInsertParams<Stream.Readable>
+    params: ConnInsertParams<Stream.Readable>,
   ): Promise<ConnInsertResult> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
@@ -410,7 +410,7 @@ export abstract class NodeBaseConnection
     request: Http.ClientRequest,
     params: RequestParams,
     response: Http.IncomingMessage,
-    startTimestamp: number
+    startTimestamp: number,
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { authorization, host, ...headers } = request.getHeaders()
@@ -465,7 +465,7 @@ export abstract class NodeBaseConnection
   }
 
   private parseSummary(
-    response: Http.IncomingMessage
+    response: Http.IncomingMessage,
   ): ClickHouseSummary | undefined {
     const summaryHeader = response.headers['x-clickhouse-summary']
     if (typeof summaryHeader === 'string') {
@@ -500,7 +500,7 @@ function decompressResponse(response: Http.IncomingMessage):
             // eslint-disable-next-line no-console
             console.error(err)
           }
-        }
+        },
       ),
     }
   } else if (encoding !== undefined) {

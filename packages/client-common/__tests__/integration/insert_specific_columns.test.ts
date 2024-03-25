@@ -29,7 +29,7 @@ describe('Insert with specific columns', () => {
         repo_name   LowCardinality(String) DEFAULT JSONExtractString(message_raw, 'repo', 'name'),
         message     JSON                   DEFAULT message_raw,
         message_raw String                 EPHEMERAL
-      ` // `id UInt32` will be added as well
+      `, // `id UInt32` will be added as well
       )
     })
 
@@ -209,11 +209,11 @@ describe('Insert with specific columns', () => {
           ],
           format: 'JSONEachRow',
           columns: ['foobar', 'message_raw'],
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringContaining('No such column foobar'),
-        })
+        }),
       )
     })
   })
@@ -224,7 +224,7 @@ describe('Insert with specific columns', () => {
     beforeEach(async () => {
       table = await createTableWithFields(
         client,
-        `s String, b Boolean` // `id UInt32` will be added as well
+        `s String, b Boolean`, // `id UInt32` will be added as well
       )
     })
 
@@ -259,7 +259,7 @@ describe('Insert with specific columns', () => {
     beforeEach(async () => {
       table = await createTableWithFields(
         client,
-        `s String, b Boolean` // `id UInt32` will be added as well
+        `s String, b Boolean`, // `id UInt32` will be added as well
       )
     })
 

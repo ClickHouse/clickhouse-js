@@ -12,28 +12,28 @@ export type ResultJSONType<T, F extends DataFormat | unknown> =
   F extends StreamableJSONDataFormat
     ? T[]
     : // JSON formats with known layout { data, meta, statistics, ... }
-    F extends SingleDocumentJSONFormat
-    ? ResponseJSON<T>
-    : // JSON formats returned as a Record<string, T>
-    F extends RecordsJSONFormat
-    ? Record<string, T>
-    : // CSV, TSV etc. - cannot be represented as JSON
-    F extends RawDataFormat
-    ? never
-    : T // happens only when Format could not be inferred from a literal
+      F extends SingleDocumentJSONFormat
+      ? ResponseJSON<T>
+      : // JSON formats returned as a Record<string, T>
+        F extends RecordsJSONFormat
+        ? Record<string, T>
+        : // CSV, TSV etc. - cannot be represented as JSON
+          F extends RawDataFormat
+          ? never
+          : T // happens only when Format could not be inferred from a literal
 
 export type RowJSONType<T, F extends DataFormat | unknown> =
   // JSON*EachRow formats
   F extends StreamableJSONDataFormat
     ? T
     : // CSV, TSV, non-streamable JSON formats - cannot be streamed as JSON
-    F extends RawDataFormat | SingleDocumentJSONFormat | RecordsJSONFormat
-    ? never
-    : T // happens only when Format could not be inferred from a literal
+      F extends RawDataFormat | SingleDocumentJSONFormat | RecordsJSONFormat
+      ? never
+      : T // happens only when Format could not be inferred from a literal
 
 export interface Row<
   JSONType = unknown,
-  Format extends DataFormat | unknown = unknown
+  Format extends DataFormat | unknown = unknown,
 > {
   /** A string representation of a row. */
   text: string

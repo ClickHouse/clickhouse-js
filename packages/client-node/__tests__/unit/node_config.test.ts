@@ -18,7 +18,7 @@ describe('[Node.js] Config implementation details', () => {
           [
             'keep_alive_retry_on_expired_socket=true',
             'keep_alive_socket_ttl=1000',
-          ].join('&')
+          ].join('&'),
       )
       const config: BaseClickHouseClientConfigOptions = {
         keep_alive: {
@@ -86,7 +86,7 @@ describe('[Node.js] Config implementation details', () => {
     const fakeConnection = { test: true } as unknown as NodeBaseConnection
     beforeEach(() => {
       createConnectionStub = spyOn(c, 'createConnection').and.returnValue(
-        fakeConnection
+        fakeConnection,
       )
     })
 
@@ -102,7 +102,7 @@ describe('[Node.js] Config implementation details', () => {
           enabled: true,
           socket_ttl: 2500,
           retry_on_expired_socket: false,
-        }
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -126,7 +126,7 @@ describe('[Node.js] Config implementation details', () => {
           enabled: true,
           socket_ttl: 2500,
           retry_on_expired_socket: false,
-        }
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -154,7 +154,7 @@ describe('[Node.js] Config implementation details', () => {
           enabled: true,
           socket_ttl: 2500,
           retry_on_expired_socket: false,
-        }
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -183,7 +183,7 @@ describe('[Node.js] Config implementation details', () => {
           enabled: false,
           socket_ttl: 42_000,
           retry_on_expired_socket: true,
-        }
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)

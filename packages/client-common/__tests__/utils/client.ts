@@ -24,13 +24,13 @@ beforeAll(async () => {
 })
 
 export function createTestClient<Stream = unknown>(
-  config: BaseClickHouseClientConfigOptions = {}
+  config: BaseClickHouseClientConfigOptions = {},
 ): ClickHouseClient<Stream> {
   const env = getClickHouseTestEnvironment()
   console.log(
     `Using ${env} test environment to create a Client instance for database ${
       databaseName || 'default'
-    }`
+    }`,
   )
   const clickHouseSettings: ClickHouseSettings = {}
   if (env === TestEnv.LocalCluster) {
@@ -62,7 +62,7 @@ export function createTestClient<Stream = unknown>(
       // props to https://stackoverflow.com/a/41063795/4575540
       // @ts-expect-error
       return eval('require')('../../../client-node/src/client').createClient(
-        cloudConfig
+        cloudConfig,
       ) as ClickHouseClient
     }
   } else {
@@ -77,14 +77,14 @@ export function createTestClient<Stream = unknown>(
     } else {
       // @ts-expect-error
       return eval('require')('../../../client-node/src/client').createClient(
-        localConfig
+        localConfig,
       ) as ClickHouseClient
     }
   }
 }
 
 export async function createRandomDatabase(
-  client: ClickHouseClient
+  client: ClickHouseClient,
 ): Promise<string> {
   const databaseName = `clickhousejs__${guid()}__${+new Date()}`
   let maybeOnCluster = ''
@@ -104,7 +104,7 @@ export async function createRandomDatabase(
 export async function createTable<Stream = unknown>(
   client: ClickHouseClient<Stream>,
   definition: (environment: TestEnv) => string,
-  clickhouse_settings?: ClickHouseSettings
+  clickhouse_settings?: ClickHouseSettings,
 ) {
   const env = getClickHouseTestEnvironment()
   const ddl = definition(env)

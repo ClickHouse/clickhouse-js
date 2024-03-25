@@ -11,14 +11,14 @@ import type { ResultSet } from './result_set'
 export class NodeClickHouseClient extends ClickHouseClient<Stream.Readable> {
   /** See the base implementation: {@link ClickHouseClient.query} */
   query<Format extends DataFormat = 'JSON'>(
-    params: QueryParamsWithFormat<Format>
+    params: QueryParamsWithFormat<Format>,
   ): Promise<ResultSet<Format>> {
     return super.query(params) as Promise<ResultSet<Format>>
   }
 }
 
 export function createClient(
-  config?: NodeClickHouseClientConfigOptions
+  config?: NodeClickHouseClientConfigOptions,
 ): NodeClickHouseClient {
   return new ClickHouseClient<Stream.Readable>({
     impl: NodeConfigImpl,

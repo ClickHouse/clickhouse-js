@@ -39,7 +39,7 @@ describe('[Node.js] streaming e2e', () => {
       table: tableName,
       values: Fs.createReadStream(filename).pipe(
         // should be removed when "insert" accepts a stream of strings/bytes
-        split((row: string) => JSON.parse(row))
+        split((row: string) => JSON.parse(row)),
       ),
       format: 'JSONCompactEachRow',
     })
@@ -98,10 +98,10 @@ describe('[Node.js] streaming e2e', () => {
     }
 
     const table = tableFromIPC(
-      readParquet(Buffer.concat(parquetChunks)).intoIPCStream()
+      readParquet(Buffer.concat(parquetChunks)).intoIPCStream(),
     )
     expect(table.schema.toString()).toEqual(
-      'Schema<{ 0: id: Uint64, 1: name: Binary, 2: sku: List<Uint8> }>'
+      'Schema<{ 0: id: Uint64, 1: name: Binary, 2: sku: List<Uint8> }>',
     )
     const actualParquetData: unknown[] = []
     const textDecoder = new TextDecoder()
@@ -156,7 +156,7 @@ describe('[Node.js] streaming e2e', () => {
     }> {
       const table = await createTableWithFields(
         client as ClickHouseClient,
-        `sentence String, timestamp String`
+        `sentence String, timestamp String`,
       )
       const values = [...new Array(rows)].map((_, id) => ({
         id,

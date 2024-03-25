@@ -25,7 +25,7 @@ describe('abort request', () => {
       await expectAsync(selectPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
 
@@ -47,7 +47,7 @@ describe('abort request', () => {
       await expectAsync(selectPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
 
@@ -71,7 +71,7 @@ describe('abort request', () => {
       await expectAsync(selectPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
 
@@ -106,7 +106,7 @@ describe('abort request', () => {
         queries.every((q) => {
           console.log(`${q.query} VS ${longRunningQuery}`)
           return !q.query.includes(longRunningQuery)
-        })
+        }),
       )
     })
 
@@ -134,7 +134,7 @@ describe('abort request', () => {
             })
           }
           return requestPromise
-        })
+        }),
       )
 
       controller.abort()
@@ -147,7 +147,7 @@ describe('abort request', () => {
 
 async function assertActiveQueries(
   client: ClickHouseClient,
-  assertQueries: (queries: Array<{ query: string }>) => boolean
+  assertQueries: (queries: Array<{ query: string }>) => boolean,
 ) {
   let isRunning = true
   while (isRunning) {

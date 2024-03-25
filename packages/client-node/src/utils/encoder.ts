@@ -10,7 +10,7 @@ import { isStream, mapStream } from './stream'
 export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
   encodeValues<T>(
     values: InsertValues<Stream.Readable, T>,
-    format: DataFormat
+    format: DataFormat,
   ): string | Stream.Readable {
     if (isStream(values)) {
       // TSV/CSV/CustomSeparated formats don't require additional serialization
@@ -21,7 +21,7 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
       return Stream.pipeline(
         values,
         mapStream((value) => encodeJSON(value, format)),
-        pipelineCb
+        pipelineCb,
       )
     }
     // JSON* arrays
@@ -33,13 +33,13 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
       return encodeJSON(values, format)
     }
     throw new Error(
-      `Cannot encode values of type ${typeof values} with ${format} format`
+      `Cannot encode values of type ${typeof values} with ${format} format`,
     )
   }
 
   validateInsertValues<T>(
     values: InsertValues<Stream.Readable, T>,
-    format: DataFormat
+    format: DataFormat,
   ): void {
     if (
       !Array.isArray(values) &&
@@ -48,7 +48,7 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
     ) {
       throw new Error(
         'Insert expected "values" to be an array, a stream of values or a JSON object, ' +
-          `got: ${typeof values}`
+          `got: ${typeof values}`,
       )
     }
 
@@ -56,12 +56,12 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
       if (isSupportedRawFormat(format)) {
         if (values.readableObjectMode) {
           throw new Error(
-            `Insert for ${format} expected Readable Stream with disabled object mode.`
+            `Insert for ${format} expected Readable Stream with disabled object mode.`,
           )
         }
       } else if (!values.readableObjectMode) {
         throw new Error(
-          `Insert for ${format} expected Readable Stream with enabled object mode.`
+          `Insert for ${format} expected Readable Stream with enabled object mode.`,
         )
       }
     }

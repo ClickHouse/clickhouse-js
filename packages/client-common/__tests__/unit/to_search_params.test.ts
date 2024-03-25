@@ -85,6 +85,6 @@ describe('toSearchParams', () => {
 
 function toSortedArray(params: URLSearchParams): [string, string][] {
   return [...params.entries()].sort(([key1], [key2]) =>
-    String(key1).localeCompare(String(key2))
+    String(key1).localeCompare(String(key2)),
   )
 }

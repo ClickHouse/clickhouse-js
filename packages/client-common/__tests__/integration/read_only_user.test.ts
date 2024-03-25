@@ -51,11 +51,11 @@ describe('read only user', () => {
 
   it('should fail to create a table', async () => {
     await expectAsync(
-      createSimpleTable(client, `should_not_be_created_${guid()}`)
+      createSimpleTable(client, `should_not_be_created_${guid()}`),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Not enough privileges'),
-      })
+      }),
     )
   })
 
@@ -64,11 +64,11 @@ describe('read only user', () => {
       client.insert({
         table: tableName,
         values: [[43, 'foobar', [5, 25]]],
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Not enough privileges'),
-      })
+      }),
     )
   })
 
@@ -78,7 +78,7 @@ describe('read only user', () => {
     await expectAsync(client.query({ query })).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Not enough privileges'),
-      })
+      }),
     )
   })
 })

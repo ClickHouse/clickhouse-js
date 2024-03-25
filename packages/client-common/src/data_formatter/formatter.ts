@@ -58,14 +58,14 @@ const streamableFormat = [
 export type StreamableDataFormat = (typeof streamableFormat)[number]
 
 function isNotStreamableJSONFamily(
-  format: DataFormat
+  format: DataFormat,
 ): format is SingleDocumentJSONFormat {
   // @ts-expect-error JSON is not assignable to notStreamableJSONFormats
   return singleDocumentJSONFormats.includes(format)
 }
 
 function isStreamableJSONFamily(
-  format: DataFormat
+  format: DataFormat,
 ): format is StreamableJSONDataFormat {
   // @ts-expect-error JSON is not assignable to streamableJSONFormats
   return streamableJSONFormats.includes(format)
@@ -76,13 +76,13 @@ export function isSupportedRawFormat(dataFormat: DataFormat) {
 }
 
 export function validateStreamFormat(
-  format: any
+  format: any,
 ): format is StreamableDataFormat {
   if (!streamableFormat.includes(format)) {
     throw new Error(
       `${format} format is not streamable. Streamable formats: ${streamableFormat.join(
-        ','
-      )}`
+        ',',
+      )}`,
     )
   }
   return true
@@ -120,6 +120,6 @@ export function encodeJSON(value: any, format: DataFormat): string {
     return JSON.stringify(value) + '\n'
   }
   throw new Error(
-    `The client does not support JSON encoding in [${format}] format.`
+    `The client does not support JSON encoding in [${format}] format.`,
   )
 }

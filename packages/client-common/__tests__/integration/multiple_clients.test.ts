@@ -29,8 +29,8 @@ describe('multiple clients', () => {
             format: 'JSONEachRow',
           })
           .then((r) => r.json<{ sum: number }>())
-          .then((json) => results.push(json[0].sum))
-      )
+          .then((json) => results.push(json[0].sum)),
+      ),
     )
     expect(results.sort((a, b) => a - b)).toEqual([1, 3, 6, 10, 15])
   })
@@ -39,7 +39,7 @@ describe('multiple clients', () => {
     const id = guid()
     const tableName = (i: number) => `multiple_clients_ddl_test__${id}__${i}`
     await Promise.all(
-      clients.map((client, i) => createSimpleTable(client, tableName(i)))
+      clients.map((client, i) => createSimpleTable(client, tableName(i))),
     )
     for (let i = 0; i < CLIENTS_COUNT; i++) {
       const result = await clients[i].query({
@@ -79,8 +79,8 @@ describe('multiple clients', () => {
             table: tableName,
             values: [getValue(i)],
             format: 'JSONEachRow',
-          })
-        )
+          }),
+        ),
       )
       const result = await clients[0].query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,

@@ -55,12 +55,12 @@ xdescribe('[Node.js] Keep Alive', () => {
       } as NodeClickHouseClientConfigOptions)
 
       const results = await Promise.all(
-        [...Array(4).keys()].map((n) => query(n))
+        [...Array(4).keys()].map((n) => query(n)),
       )
       expect(results.sort()).toEqual([1, 2, 3, 4])
       await sleep(socketTTL)
       const results2 = await Promise.all(
-        [...Array(4).keys()].map((n) => query(n + 10))
+        [...Array(4).keys()].map((n) => query(n + 10)),
       )
       expect(results2.sort()).toEqual([11, 12, 13, 14])
     })

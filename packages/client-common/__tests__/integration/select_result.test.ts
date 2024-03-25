@@ -26,7 +26,7 @@ describe('Select ResultSet', () => {
       })
 
       expect(await rs.text()).toBe(
-        '{"number":"0"}\n{"number":"1"}\n{"number":"2"}\n'
+        '{"number":"0"}\n{"number":"1"}\n{"number":"2"}\n',
       )
     })
   })
@@ -86,7 +86,7 @@ describe('Select ResultSet', () => {
             rows_read: jasmine.any(Number),
             bytes_read: jasmine.any(Number),
           },
-        })
+        }),
       )
     })
   })

@@ -43,20 +43,20 @@ export function stubClientRequest() {
 
 export function emitResponseBody(
   request: Http.ClientRequest,
-  body: string | Buffer | undefined
+  body: string | Buffer | undefined,
 ) {
   request.emit(
     'response',
     buildIncomingMessage({
       body,
-    })
+    }),
   )
 }
 
 export async function emitCompressedBody(
   request: ClientRequest,
   body: string | Buffer,
-  encoding = 'gzip'
+  encoding = 'gzip',
 ) {
   const compressedBody = await gzip(body)
   request.emit(
@@ -66,6 +66,6 @@ export async function emitCompressedBody(
       headers: {
         'content-encoding': encoding,
       },
-    })
+    }),
   )
 }

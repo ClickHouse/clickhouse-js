@@ -71,7 +71,7 @@ const program = async () => {
   console.time('insert')
   const filename = Path.resolve(
     process.cwd(),
-    'benchmarks/leaks/input/mgbench1.csv'
+    'benchmarks/leaks/input/mgbench1.csv',
   )
   await client.insert({
     table: tableName,

@@ -4,7 +4,7 @@ import type { NodeClickHouseClient } from '../../src'
 import { type BaseClickHouseClientConfigOptions } from '../../src'
 
 export function createNodeTestClient(
-  config: BaseClickHouseClientConfigOptions = {}
+  config: BaseClickHouseClientConfigOptions = {},
 ): NodeClickHouseClient {
   return createTestClient<Stream.Readable>(config) as NodeClickHouseClient
 }

@@ -37,7 +37,7 @@ describe('select', () => {
           query: 'SELECT * FROM system.numbers LIMIT 0',
           format: 'JSONEachRow',
         })
-        .then((r) => r.json())
+        .then((r) => r.json()),
     ).toEqual([])
     expect(
       await client
@@ -45,7 +45,7 @@ describe('select', () => {
           query: 'SELECT * FROM system.numbers LIMIT 0',
           format: 'TabSeparated',
         })
-        .then((r) => r.text())
+        .then((r) => r.text()),
     ).toEqual('')
   })
 
@@ -124,11 +124,11 @@ describe('select', () => {
 
   it('does not swallow a client error', async () => {
     await expectAsync(
-      client.query({ query: 'SELECT number FR' })
+      client.query({ query: 'SELECT number FR' }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         type: 'UNKNOWN_IDENTIFIER',
-      })
+      }),
     )
   })
 
@@ -138,7 +138,7 @@ describe('select', () => {
         message: jasmine.stringContaining('Syntax error'),
         code: '62',
         type: 'SYNTAX_ERROR',
-      })
+      }),
     )
   })
 
@@ -147,7 +147,7 @@ describe('select', () => {
       client.query({
         query: 'SELECT * FROM system.numbers',
         clickhouse_settings: { foobar: 1 } as any,
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         // Possible error messages:
@@ -156,7 +156,7 @@ describe('select', () => {
         message: jasmine.stringContaining('foobar'),
         code: '115',
         type: 'UNKNOWN_SETTING',
-      })
+      }),
     )
   })
 
@@ -170,8 +170,8 @@ describe('select', () => {
             format: 'JSONEachRow',
           })
           .then((r) => r.json<{ sum: number }>())
-          .then((json) => results.push(json[0].sum))
-      )
+          .then((json) => results.push(json[0].sum)),
+      ),
     )
     expect(results.sort((a, b) => a - b)).toEqual([1, 3, 6, 10, 15])
   })

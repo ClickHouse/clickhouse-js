@@ -21,7 +21,7 @@ export class TestLogger implements Logger {
     console.error(
       formatMessage({ level: 'ERROR', module, message }),
       args || '',
-      err
+      err,
     )
   }
 }

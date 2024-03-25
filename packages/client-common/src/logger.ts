@@ -36,7 +36,10 @@ export class DefaultLogger implements Logger {
 }
 export class LogWriter {
   private readonly logLevel: ClickHouseLogLevel
-  constructor(private readonly logger: Logger, logLevel?: ClickHouseLogLevel) {
+  constructor(
+    private readonly logger: Logger,
+    logLevel?: ClickHouseLogLevel,
+  ) {
     this.logLevel = logLevel ?? ClickHouseLogLevel.OFF
     this.info({
       module: 'Logger',

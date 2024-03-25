@@ -15,7 +15,7 @@ export class ResultSet<Format extends DataFormat>
   constructor(
     private _stream: ReadableStream,
     private readonly format: Format,
-    public readonly query_id: string
+    public readonly query_id: string,
   ) {}
 
   /** See {@link BaseResultSet.text} */

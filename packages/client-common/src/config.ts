@@ -85,22 +85,22 @@ export interface BaseClickHouseClientConfigOptions {
 
 export type MakeConnection<
   Stream,
-  Config = BaseClickHouseClientConfigOptionsWithURL
+  Config = BaseClickHouseClientConfigOptionsWithURL,
 > = (config: Config, params: ConnectionParams) => Connection<Stream>
 
 export type MakeResultSet<Stream> = <
   Format extends DataFormat,
-  ResultSet extends BaseResultSet<Stream, Format>
+  ResultSet extends BaseResultSet<Stream, Format>,
 >(
   stream: Stream,
   format: Format,
-  query_id: string
+  query_id: string,
 ) => ResultSet
 
 export interface ValuesEncoder<Stream> {
   validateInsertValues<T = unknown>(
     values: InsertValues<Stream, T>,
-    format: DataFormat
+    format: DataFormat,
   ): void
 
   /**
@@ -114,7 +114,7 @@ export interface ValuesEncoder<Stream> {
    */
   encodeValues<T = unknown>(
     values: InsertValues<Stream, T>,
-    format: DataFormat
+    format: DataFormat,
   ): string | Stream
 }
 
@@ -129,7 +129,7 @@ export type CloseStream<Stream> = (stream: Stream) => Promise<void>
  */
 export type HandleImplSpecificURLParams = (
   config: BaseClickHouseClientConfigOptions,
-  url: URL
+  url: URL,
 ) => {
   config: BaseClickHouseClientConfigOptions
   // params that were handled in the implementation; used to calculate final "unknown" URL params
@@ -168,7 +168,7 @@ export type BaseClickHouseClientConfigOptionsWithURL = Omit<
 export function prepareConfigWithURL(
   baseConfigOptions: BaseClickHouseClientConfigOptions,
   logger: Logger,
-  handleImplURLParams: HandleImplSpecificURLParams | null
+  handleImplURLParams: HandleImplSpecificURLParams | null,
 ): BaseClickHouseClientConfigOptionsWithURL {
   const baseConfig = { ...baseConfigOptions }
   if (baseConfig.additional_headers !== undefined) {
@@ -193,7 +193,7 @@ export function prepareConfigWithURL(
   }
   const [url, configFromURL] = loadConfigOptionsFromURL(
     configURL,
-    handleImplURLParams
+    handleImplURLParams,
   )
   const config = mergeConfigs(baseConfig, configFromURL, logger)
   let clickHouseSettings: ClickHouseSettings
@@ -242,7 +242,7 @@ export function prepareConfigWithURL(
 
 export function getConnectionParams(
   config: BaseClickHouseClientConfigOptionsWithURL,
-  logger: Logger
+  logger: Logger,
 ): ConnectionParams {
   return {
     url: config.url,
@@ -272,11 +272,11 @@ export function getConnectionParams(
 export function mergeConfigs(
   baseConfig: BaseClickHouseClientConfigOptions,
   configFromURL: BaseClickHouseClientConfigOptions,
-  logger: Logger
+  logger: Logger,
 ): BaseClickHouseClientConfigOptions {
   const config = { ...baseConfig }
   const keys = Object.keys(
-    configFromURL
+    configFromURL,
   ) as (keyof BaseClickHouseClientConfigOptions)[]
   for (const key of keys) {
     if (config[key] !== undefined) {
@@ -300,12 +300,12 @@ export function createUrl(configURL: string | URL | undefined): URL {
     }
   } catch (err) {
     throw new Error(
-      'ClickHouse URL is malformed. Expected format: http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]'
+      'ClickHouse URL is malformed. Expected format: http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]',
     )
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(
-      `ClickHouse URL protocol must be either http or https. Got: ${url.protocol}`
+      `ClickHouse URL protocol must be either http or https. Got: ${url.protocol}`,
     )
   }
   if (url.port === '' || isNaN(Number(url.port))) {
@@ -321,7 +321,7 @@ export function createUrl(configURL: string | URL | undefined): URL {
  */
 export function loadConfigOptionsFromURL(
   url: URL,
-  handleExtraURLParams: HandleImplSpecificURLParams | null
+  handleExtraURLParams: HandleImplSpecificURLParams | null,
 ): [URL, BaseClickHouseClientConfigOptions] {
   let config: BaseClickHouseClientConfigOptions = {}
   if (url.username.trim() !== '') {
@@ -444,7 +444,7 @@ export function loadConfigOptionsFromURL(
     }
     if (unknownParams.size > 0) {
       throw new Error(
-        `Unknown URL parameters: ${Array.from(unknownParams).join(', ')}`
+        `Unknown URL parameters: ${Array.from(unknownParams).join(', ')}`,
       )
     }
   }
@@ -464,7 +464,7 @@ export function booleanConfigURLValue({
   if (trimmed === 'true' || trimmed === '1') return true
   if (trimmed === 'false' || trimmed === '0') return false
   throw new Error(
-    `"${key}" has invalid boolean value: ${trimmed}. Expected one of: 0, 1, true, false.`
+    `"${key}" has invalid boolean value: ${trimmed}. Expected one of: 0, 1, true, false.`,
   )
 }
 
@@ -488,7 +488,7 @@ export function numberConfigURLValue({
   }
   if (max !== undefined && number > max) {
     throw new Error(
-      `"${key}" value ${trimmed} is greater than max allowed ${max}`
+      `"${key}" value ${trimmed} is greater than max allowed ${max}`,
     )
   }
   return number
@@ -510,7 +510,7 @@ export function enumConfigURLValue<Enum, Key extends string>({
   if (!values.includes(trimmed)) {
     const expected = values.join(', ')
     throw new Error(
-      `"${key}" has invalid value: ${trimmed}. Expected one of: ${expected}.`
+      `"${key}" has invalid value: ${trimmed}. Expected one of: ${expected}.`,
     )
   }
   return enumObject[trimmed as Key]

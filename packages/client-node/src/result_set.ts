@@ -29,7 +29,7 @@ export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
   on(event: 'unpipe', listener: (src: Readable) => void): Stream.Readable
   on(
     event: string | symbol,
-    listener: (...args: any[]) => void
+    listener: (...args: any[]) => void,
   ): Stream.Readable
 }
 
@@ -39,7 +39,7 @@ export class ResultSet<Format extends DataFormat>
   constructor(
     private _stream: Stream.Readable,
     private readonly format: Format,
-    public readonly query_id: string
+    public readonly query_id: string,
   ) {}
 
   /** See {@link BaseResultSet.text} */
@@ -76,7 +76,7 @@ export class ResultSet<Format extends DataFormat>
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
-        callback: TransformCallback
+        callback: TransformCallback,
       ) {
         const rows: Row[] = []
         let lastIdx = 0
@@ -88,7 +88,7 @@ export class ResultSet<Format extends DataFormat>
           if (incompleteChunks.length > 0) {
             text = Buffer.concat(
               [...incompleteChunks, chunk.subarray(0, idx)],
-              incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx
+              incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx,
             ).toString()
             incompleteChunks = []
           } else {
@@ -138,7 +138,7 @@ export class ResultSet<Format extends DataFormat>
           // eslint-disable-next-line no-console
           console.error(err)
         }
-      }
+      },
     )
     return pipeline as any
   }

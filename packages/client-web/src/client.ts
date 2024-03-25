@@ -20,21 +20,21 @@ export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
   insert<T>(
     params: Omit<InsertParams<ReadableStream, T>, 'values'> & {
       values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
-    }
+    },
   ): Promise<InsertResult>
 }
 
 class WebClickHouseClientImpl extends ClickHouseClient<ReadableStream> {
   /** See the base implementation: {@link ClickHouseClient.query} */
   query<Format extends DataFormat>(
-    params: QueryParamsWithFormat<Format>
+    params: QueryParamsWithFormat<Format>,
   ): Promise<ResultSet<Format>> {
     return super.query(params) as Promise<ResultSet<Format>>
   }
 }
 
 export function createClient(
-  config?: WebClickHouseClientConfigOptions
+  config?: WebClickHouseClientConfigOptions,
 ): WebClickHouseClient {
   return new WebClickHouseClientImpl({
     impl: WebImpl,
