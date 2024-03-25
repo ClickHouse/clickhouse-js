@@ -34,6 +34,8 @@ void (async () => {
       'log_level=TRACE',
       // sets keep_alive.enabled = false
       'keep_alive_enabled=false',
+      // (Node.js only) sets keep_alive.idle_socket_ttl = 1500
+      'keep_alive_idle_socket_ttl=1500',
       // all values prefixed with clickhouse_setting_ will be added to clickhouse_settings
       // this will set clickhouse_settings.async_insert = 1
       'clickhouse_setting_async_insert=1',
