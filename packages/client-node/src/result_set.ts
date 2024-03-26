@@ -2,8 +2,8 @@ import type {
   BaseResultSet,
   DataFormat,
   ResultJSONType,
+  ResultStream,
   Row,
-  StreamableDataFormat,
 } from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
 import { Buffer } from 'buffer'
@@ -34,7 +34,7 @@ export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
   ): Stream.Readable
 }
 
-export class ResultSet<Format extends DataFormat>
+export class ResultSet<Format extends DataFormat | unknown>
   implements BaseResultSet<Stream.Readable, Format>
 {
   constructor(
@@ -56,13 +56,11 @@ export class ResultSet<Format extends DataFormat>
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
-    return decode(await this.text(), this.format)
+    return decode(await this.text(), this.format as DataFormat)
   }
 
   /** See {@link BaseResultSet.stream}. */
-  stream<T>(): Format extends StreamableDataFormat
-    ? StreamReadable<Row<T, Format>[]>
-    : never {
+  stream<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
     // If the underlying stream has already ended by calling `text` or `json`,
     // Stream.pipeline will create a new empty stream
     // but without "readableEnded" flag set to true

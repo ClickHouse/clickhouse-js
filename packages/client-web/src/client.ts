@@ -4,12 +4,21 @@ import type {
   InputJSONObjectEachRow,
   InsertParams,
   InsertResult,
+  IsSame,
   QueryParamsWithFormat,
 } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
 import type { WebClickHouseClientConfigOptions } from './config'
 import { WebImpl } from './config'
 import type { ResultSet } from './result_set'
+
+/** If the Format is not a literal type, fall back to the default behavior of the ResultSet,
+ *  allowing to call all methods with all data shapes variants,
+ *  and avoiding generated types that include all possible DataFormat literal values. */
+export type QueryResult<Format extends DataFormat> =
+  IsSame<Format, DataFormat> extends true
+    ? ResultSet<unknown>
+    : ResultSet<Format>
 
 export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
   /** See {@link ClickHouseClient.insert}.
@@ -27,7 +36,7 @@ class WebClickHouseClientImpl extends ClickHouseClient<ReadableStream> {
   /** See {@link ClickHouseClient.query}. */
   query<Format extends DataFormat>(
     params: QueryParamsWithFormat<Format>,
-  ): Promise<ResultSet<Format>> {
+  ): Promise<QueryResult<Format>> {
     return super.query(params) as Promise<ResultSet<Format>>
   }
 }

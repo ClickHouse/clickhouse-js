@@ -3,6 +3,7 @@ import type {
   ClickHouseSettings,
   Connection,
   ConnExecResult,
+  IsSame,
   MakeResultSet,
   WithClickHouseSummary,
 } from '@clickhouse/client-common'
@@ -42,6 +43,14 @@ export type QueryParamsWithFormat<Format extends DataFormat> = Omit<
   QueryParams,
   'format'
 > & { format?: Format }
+
+/** If the Format is not a literal type, fall back to the default behavior of the ResultSet,
+ *  allowing to call all methods with all data shapes variants,
+ *  and avoiding generated types that include all possible DataFormat literal values. */
+export type QueryResult<Stream, Format extends DataFormat> =
+  IsSame<Format, DataFormat> extends true
+    ? BaseResultSet<Stream, unknown>
+    : BaseResultSet<Stream, Format>
 
 export interface ExecParams extends BaseQueryParams {
   /** Statement to execute. */
@@ -145,7 +154,7 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async query<Format extends DataFormat = 'JSON'>(
     params: QueryParamsWithFormat<Format>,
-  ): Promise<BaseResultSet<Stream, Format>> {
+  ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
     const { stream, query_id } = await this.connection.query({

@@ -1,4 +1,7 @@
-export type { NodeClickHouseClient as ClickHouseClient } from './client'
+export type {
+  NodeClickHouseClient as ClickHouseClient,
+  QueryResult,
+} from './client'
 export { createClient } from './client'
 export { type NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
 export { ResultSet, type StreamReadable } from './result_set'

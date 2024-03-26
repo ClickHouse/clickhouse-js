@@ -2,13 +2,13 @@ import type {
   BaseResultSet,
   DataFormat,
   ResultJSONType,
+  ResultStream,
   Row,
 } from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
-import type { StreamableDataFormat } from '@clickhouse/client-common/src/data_formatter'
 import { getAsText } from './utils'
 
-export class ResultSet<Format extends DataFormat>
+export class ResultSet<Format extends DataFormat | unknown>
   implements BaseResultSet<ReadableStream<Row[]>, Format>
 {
   private isAlreadyConsumed = false
@@ -27,13 +27,11 @@ export class ResultSet<Format extends DataFormat>
   /** See {@link BaseResultSet.json} */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
     const text = await this.text()
-    return decode(text, this.format)
+    return decode(text, this.format as DataFormat)
   }
 
   /** See {@link BaseResultSet.stream} */
-  stream<T>(): Format extends StreamableDataFormat
-    ? ReadableStream<Row<T, Format>[]>
-    : never {
+  stream<T>(): ResultStream<Format, ReadableStream<Row<T, Format>[]>> {
     this.markAsConsumed()
     validateStreamFormat(this.format)
 

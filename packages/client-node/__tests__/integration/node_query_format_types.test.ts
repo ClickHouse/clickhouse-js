@@ -76,7 +76,10 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       })
 
       // stream + async iterator
-      for await (const rows of stream) {
+      for await (const _rows of stream) {
+        // $ExpectType Row<unknown, "JSONEachRow">[]
+        const rows = _rows
+        rows.length // avoid unused variable warning (rows reassigned for type assertion)
         rows.forEach(
           // $ExpectType (row: Row<unknown, "JSONEachRow">) => void
           (row) => {
@@ -116,7 +119,10 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       })
 
       // stream + T hint + async iterator
-      for await (const rows of streamTyped) {
+      for await (const _rows of streamTyped) {
+        // $ExpectType Row<Data, "JSONEachRow">[]
+        const rows = _rows
+        rows.length // avoid unused variable warning (rows reassigned for type assertion)
         rows.forEach(
           // $ExpectType (row: Row<Data, "JSONEachRow">) => void
           (row) => {
@@ -131,10 +137,132 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       }
     })
 
+    it('should infer ResultSet features when similar JSON formats are used in a function call', async () => {
+      // $ExpectType (format: "JSONEachRow" | "JSONCompactEachRow") => Promise<ResultSet<"JSONEachRow" | "JSONCompactEachRow">>
+      function runQuery(format: 'JSONEachRow' | 'JSONCompactEachRow') {
+        return client.query({
+          query,
+          format,
+        })
+      }
+
+      // ResultSet cannot infer the type from the literal, so it falls back to both possible formats.
+      // However, these are both streamable, both can use JSON features, and both have the same data layout.
+
+      //// JSONCompactEachRow
+
+      // $ExpectType ResultSet<"JSONEachRow" | "JSONCompactEachRow">
+      const rs = await runQuery('JSONCompactEachRow')
+      // $ExpectType unknown[]
+      await rs.json()
+      // $ExpectType Data[]
+      await rs.json<Data>()
+      // $ExpectType string
+      await rs.text()
+      // $ExpectType StreamReadable<Row<unknown, "JSONEachRow" | "JSONCompactEachRow">[]>
+      const stream = rs.stream()
+
+      // stream + on('data')
+      await new Promise((resolve, reject) => {
+        stream
+          .on(
+            'data',
+            // $ExpectType (rows: Row<unknown, "JSONEachRow" | "JSONCompactEachRow">[]) => void
+            (rows) => {
+              rows.forEach(
+                // $ExpectType (row: Row<unknown, "JSONEachRow" | "JSONCompactEachRow">) => void
+                (row) => {
+                  // $ExpectType unknown
+                  row.json()
+                  // $ExpectType Data
+                  row.json<Data>()
+                  // $ExpectType string
+                  row.text
+                },
+              )
+            },
+          )
+          .on('end', resolve)
+          .on('error', reject)
+      })
+
+      // stream + async iterator
+      for await (const _rows of stream) {
+        // $ExpectType Row<unknown, "JSONEachRow" | "JSONCompactEachRow">[]
+        const rows = _rows
+        rows.length // avoid unused variable warning (rows reassigned for type assertion)
+        rows.forEach(
+          // $ExpectType (row: Row<unknown, "JSONEachRow" | "JSONCompactEachRow">) => void
+          (row) => {
+            // $ExpectType unknown
+            row.json()
+            // $ExpectType Data
+            row.json<Data>()
+            // $ExpectType string
+            row.text
+          },
+        )
+      }
+
+      //// JSONEachRow
+
+      // $ExpectType ResultSet<"JSONEachRow" | "JSONCompactEachRow">
+      const rs2 = await runQuery('JSONEachRow')
+      // $ExpectType unknown[]
+      await rs2.json()
+      // $ExpectType Data[]
+      await rs2.json<Data>()
+      // $ExpectType string
+      await rs2.text()
+      // $ExpectType StreamReadable<Row<unknown, "JSONEachRow" | "JSONCompactEachRow">[]>
+      const stream2 = rs2.stream()
+
+      // stream + on('data')
+      await new Promise((resolve, reject) => {
+        stream2
+          .on(
+            'data',
+            // $ExpectType (rows: Row<unknown, "JSONEachRow" | "JSONCompactEachRow">[]) => void
+            (rows) => {
+              rows.forEach(
+                // $ExpectType (row: Row<unknown, "JSONEachRow" | "JSONCompactEachRow">) => void
+                (row) => {
+                  // $ExpectType unknown
+                  row.json()
+                  // $ExpectType Data
+                  row.json<Data>()
+                  // $ExpectType string
+                  row.text
+                },
+              )
+            },
+          )
+          .on('end', resolve)
+          .on('error', reject)
+      })
+
+      // stream + async iterator
+      for await (const _rows of stream2) {
+        // $ExpectType Row<unknown, "JSONEachRow" | "JSONCompactEachRow">[]
+        const rows = _rows
+        rows.length // avoid unused variable warning (rows reassigned for type assertion)
+        rows.forEach(
+          // $ExpectType (row: Row<unknown, "JSONEachRow" | "JSONCompactEachRow">) => void
+          (row) => {
+            // $ExpectType unknown
+            row.json()
+            // $ExpectType Data
+            row.json<Data>()
+            // $ExpectType string
+            row.text
+          },
+        )
+      }
+    })
+
     /**
-     * TODO: the rest of the streamable JSON formats
+     * Not covered, but should behave similarly:
      *  'JSONStringsEachRow',
-     *  'JSONCompactEachRow',
      *  'JSONCompactStringsEachRow',
      *  'JSONCompactEachRowWithNames',
      *  'JSONCompactEachRowWithNamesAndTypes',
@@ -192,7 +320,7 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
     })
 
     /**
-     * TODO: the rest of the single document JSON formats
+     * Not covered, but should behave similarly:
      *  'JSONStrings',
      *  'JSONCompact',
      *  'JSONCompactStrings',
@@ -241,7 +369,10 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       })
 
       // stream + async iterator
-      for await (const rows of stream) {
+      for await (const _rows of stream) {
+        // $ExpectType Row<unknown, "CSV">[]
+        const rows = _rows
+        rows.length // avoid unused variable warning (rows reassigned for type assertion)
         rows.forEach(
           // $ExpectType (row: Row<unknown, "CSV">) => void
           (row) => {
@@ -256,11 +387,133 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       }
     })
 
+    it('should infer ResultSet features when similar raw formats are used in a function call', async () => {
+      // $ExpectType (format: "CSV" | "TabSeparated") => Promise<ResultSet<"CSV" | "TabSeparated">>
+      function runQuery(format: 'CSV' | 'TabSeparated') {
+        return client.query({
+          query,
+          format,
+        })
+      }
+
+      // ResultSet cannot infer the type from the literal, so it falls back to both possible formats.
+      // However, these are both streamable, and both cannot use JSON features.
+
+      //// CSV
+
+      // $ExpectType ResultSet<"CSV" | "TabSeparated">
+      const rs = await runQuery('CSV')
+      // $ExpectType never
+      await rs.json()
+      // $ExpectType never
+      await rs.json<Data>()
+      // $ExpectType string
+      await rs.text()
+      // $ExpectType StreamReadable<Row<unknown, "CSV" | "TabSeparated">[]>
+      const stream = rs.stream()
+
+      // stream + on('data')
+      await new Promise((resolve, reject) => {
+        stream
+          .on(
+            'data',
+            // $ExpectType (rows: Row<unknown, "CSV" | "TabSeparated">[]) => void
+            (rows) => {
+              rows.forEach(
+                // $ExpectType (row: Row<unknown, "CSV" | "TabSeparated">) => void
+                (row) => {
+                  // $ExpectType never
+                  row.json()
+                  // $ExpectType never
+                  row.json<Data>()
+                  // $ExpectType string
+                  row.text
+                },
+              )
+            },
+          )
+          .on('end', resolve)
+          .on('error', reject)
+      })
+
+      // stream + async iterator
+      for await (const _rows of stream) {
+        // $ExpectType Row<unknown, "CSV" | "TabSeparated">[]
+        const rows = _rows
+        rows.length // avoid unused variable warning (rows reassigned for type assertion)
+        rows.forEach(
+          // $ExpectType (row: Row<unknown, "CSV" | "TabSeparated">) => void
+          (row) => {
+            // $ExpectType never
+            row.json()
+            // $ExpectType never
+            row.json<Data>()
+            // $ExpectType string
+            row.text
+          },
+        )
+      }
+
+      //// TabSeparated
+
+      // $ExpectType ResultSet<"CSV" | "TabSeparated">
+      const rs2 = await runQuery('TabSeparated')
+      // $ExpectType never
+      await rs2.json()
+      // $ExpectType never
+      await rs2.json<Data>()
+      // $ExpectType string
+      await rs2.text()
+      // $ExpectType StreamReadable<Row<unknown, "CSV" | "TabSeparated">[]>
+      const stream2 = rs2.stream()
+
+      // stream + on('data')
+      await new Promise((resolve, reject) => {
+        stream2
+          .on(
+            'data',
+            // $ExpectType (rows: Row<unknown, "CSV" | "TabSeparated">[]) => void
+            (rows) => {
+              rows.forEach(
+                // $ExpectType (row: Row<unknown, "CSV" | "TabSeparated">) => void
+                (row) => {
+                  // $ExpectType never
+                  row.json()
+                  // $ExpectType never
+                  row.json<Data>()
+                  // $ExpectType string
+                  row.text
+                },
+              )
+            },
+          )
+          .on('end', resolve)
+          .on('error', reject)
+      })
+
+      // stream + async iterator
+      for await (const _rows of stream2) {
+        // $ExpectType Row<unknown, "CSV" | "TabSeparated">[]
+        const rows = _rows
+        rows.length // avoid unused variable warning (rows reassigned for type assertion)
+        rows.forEach(
+          // $ExpectType (row: Row<unknown, "CSV" | "TabSeparated">) => void
+          (row) => {
+            // $ExpectType never
+            row.json()
+            // $ExpectType never
+            row.json<Data>()
+            // $ExpectType string
+            row.text
+          },
+        )
+      }
+    })
+
     /**
-     * TODO: the rest of the raw formats
+     * Not covered, but should behave similarly:
      *  'CSVWithNames',
      *  'CSVWithNamesAndTypes',
-     *  'TabSeparated',
      *  'TabSeparatedRaw',
      *  'TabSeparatedWithNames',
      *  'TabSeparatedWithNamesAndTypes',
@@ -272,14 +525,18 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
   })
 
   describe('Type inference with ambiguous format variants', () => {
-    // FIXME: Maybe there is a way to infer the format without an extra type parameter?
+    // TODO: Maybe there is a way to infer the format without an extra type parameter?
     it('should infer types for JSON or JSONEachRow (no extra type params)', async () => {
-      function runQuery(format: 'JSON' | 'JSONEachRow') {
+      // $ExpectType (format: "JSONEachRow" | "JSON") => Promise<ResultSet<"JSONEachRow" | "JSON">>
+      function runQuery(format: 'JSONEachRow' | 'JSON') {
         return client.query({
           query,
           format,
         })
       }
+
+      // ResultSet falls back to both possible formats (both JSON and JSONEachRow); 'JSON' string provided to `runQuery`
+      // cannot be used to narrow down the literal type, since the function argument is just DataFormat.
       // $ExpectType ResultSet<"JSONEachRow" | "JSON">
       const rs = await runQuery('JSON')
       // $ExpectType unknown[] | ResponseJSON<unknown>
@@ -288,11 +545,12 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       await rs.json<Data>()
       // $ExpectType string
       await rs.text()
-      // $ExpectType StreamReadable<Row<unknown, "JSONEachRow">[]>
+      // $ExpectType StreamReadable<Row<unknown, "JSONEachRow" | "JSON">[]>
       rs.stream()
     })
 
     it('should infer types for JSON or JSONEachRow (with extra type parameter)', async () => {
+      // $ExpectType <F extends "JSONEachRow" | "JSON">(format: F) => Promise<QueryResult<F>>
       function runQuery<F extends 'JSON' | 'JSONEachRow'>(format: F) {
         return client.query({
           query,
@@ -323,7 +581,8 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
     })
 
     it('should fail to infer the types when the format is any', async () => {
-      // In a separate function, which breaks the format inference from the literal (due to DataFormat usage)
+      // In a separate function, which breaks the format inference from the literal (due to "generic" DataFormat usage)
+      // $ExpectType (format: DataFormat) => Promise<ResultSet<unknown>>
       function runQuery(format: DataFormat) {
         return client.query({
           query,
@@ -331,28 +590,36 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
         })
       }
 
-      // ResultSet falls back to all possible formats (ResultSet type prints all possible formats)
-      // $ExpectType ResultSet<"JSONEachRow" | "JSONStringsEachRow" | "JSONCompactEachRow" | "JSONCompactStringsEachRow" | "JSONCompactEachRowWithNames" | "JSONCompactEachRowWithNamesAndTypes" | "JSONCompactStringsEachRowWithNames" | "JSONCompactStringsEachRowWithNamesAndTypes" | "JSON" | "JSONStrings" | "JSONCompact" | "JSONCompactStrings" | "JSONColumnsWithMetadata" | "JSONObjectEachRow" | "CSV" | "CSVWithNames" | "CSVWithNamesAndTypes" | "TabSeparated" | "TabSeparatedRaw" | "TabSeparatedWithNames" | "TabSeparatedWithNamesAndTypes" | "CustomSeparated" | "CustomSeparatedWithNames" | "CustomSeparatedWithNamesAndTypes" | "Parquet">
+      // ResultSet falls back to all possible formats; 'JSON' string provided as an argument to `runQuery`
+      // cannot be used to narrow down the literal type, since the function argument is just DataFormat.
+      // $ExpectType ResultSet<unknown>
       const rs = await runQuery('JSON')
 
       // All possible JSON variants are now allowed
       // $ExpectType unknown[] | Record<string, unknown> | ResponseJSON<unknown>
-      await rs.json() // in the IDE sometimes the type is reported in a different order
+      await rs.json() // IDE error here, different type order
       // $ExpectType Data[] | ResponseJSON<Data> | Record<string, Data>
       await rs.json<Data>()
       // $ExpectType string
       await rs.text()
       // Stream is still allowed (can't be inferred, so it is not "never")
+      // $ExpectType StreamReadable<Row<unknown, unknown>[]>
       const stream = rs.stream()
-      for await (const rows of stream) {
-        rows.forEach((row) => {
-          // $ExpectType unknown
-          row.json()
-          // $ExpectType Data
-          row.json<Data>()
-          // $ExpectType string
-          row.text
-        })
+      for await (const _rows of stream) {
+        // $ExpectType Row<unknown, unknown>[]
+        const rows = _rows
+        rows.length // avoid unused variable warning (rows reassigned for type assertion)
+        rows.forEach(
+          // $ExpectType (row: Row<unknown, unknown>) => void
+          (row) => {
+            // $ExpectType unknown
+            row.json()
+            // $ExpectType Data
+            row.json<Data>()
+            // $ExpectType string
+            row.text
+          },
+        )
       }
     })
   })

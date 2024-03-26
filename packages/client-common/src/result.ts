@@ -4,23 +4,38 @@ import type {
   RawDataFormat,
   RecordsJSONFormat,
   SingleDocumentJSONFormat,
+  StreamableDataFormat,
   StreamableJSONDataFormat,
 } from './data_formatter'
 
+export type ResultStream<Format extends DataFormat | unknown, Stream> =
+  // JSON*EachRow (except JSONObjectEachRow), CSV, TSV etc.
+  Format extends StreamableDataFormat
+    ? Stream
+    : // JSON formats represented as an object { data, meta, statistics, ... }
+      Format extends SingleDocumentJSONFormat
+      ? never
+      : // JSON formats represented as a Record<string, T>
+        Format extends RecordsJSONFormat
+        ? never
+        : // If we fail to infer the literal type, allow to obtain the stream
+          Stream
+
 export type ResultJSONType<T, F extends DataFormat | unknown> =
-  // JSON*EachRow formats
+  // JSON*EachRow formats except JSONObjectEachRow
   F extends StreamableJSONDataFormat
     ? T[]
     : // JSON formats with known layout { data, meta, statistics, ... }
       F extends SingleDocumentJSONFormat
       ? ResponseJSON<T>
-      : // JSON formats returned as a Record<string, T>
+      : // JSON formats represented as a Record<string, T>
         F extends RecordsJSONFormat
         ? Record<string, T>
         : // CSV, TSV etc. - cannot be represented as JSON
           F extends RawDataFormat
           ? never
-          : T // happens only when Format could not be inferred from a literal
+          : // happens only when Format could not be inferred from a literal
+            T[] | Record<string, T> | ResponseJSON<T>
 
 export type RowJSONType<T, F extends DataFormat | unknown> =
   // JSON*EachRow formats
@@ -46,7 +61,7 @@ export interface Row<
   json<T = JSONType>(): RowJSONType<T, Format>
 }
 
-export interface BaseResultSet<Stream, Format extends DataFormat> {
+export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
   /**
    * The method waits for all the rows to be fully loaded
    * and returns the result as a string.
@@ -94,7 +109,7 @@ export interface BaseResultSet<Stream, Format extends DataFormat> {
    *   * CustomSeparatedWithNamesAndTypes
    *   * Parquet
    *
-   * Formats that CANNOT be streamed:
+   * Formats that CANNOT be streamed (the method returns "never" in TS):
    *   * JSON
    *   * JSONStrings
    *   * JSONCompact
@@ -111,7 +126,7 @@ export interface BaseResultSet<Stream, Format extends DataFormat> {
    * and if the underlying stream was already consumed
    * by calling the other methods.
    */
-  stream(): Stream
+  stream(): ResultStream<Format, Stream>
 
   /** Close the underlying stream. */
   close(): void
