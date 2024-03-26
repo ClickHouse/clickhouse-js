@@ -67,6 +67,9 @@ describe('formatQueryParams', () => {
   it('escapes special characters in an input string', () => {
     expect(formatQueryParams("hel'lo")).toBe("hel\\'lo")
     expect(formatQueryParams('hel\\lo')).toBe('hel\\\\lo')
+    expect(formatQueryParams('hel\tlo')).toBe('hel\\tlo')
+    expect(formatQueryParams('hel\nlo')).toBe('hel\\nlo')
+    expect(formatQueryParams('hel\rlo')).toBe('hel\\rlo')
   })
 
   it('wraps strings in an array in quotes', () => {
@@ -79,6 +82,11 @@ describe('formatQueryParams', () => {
         ["na'me"]: "cust'om",
       })
     ).toBe("{'na\\'me':'cust\\'om'}")
+    expect(
+      formatQueryParams({
+        ["a'b\nc\td\re\\"]: "\\q'w\ne\tr\rt\\y",
+      })
+    ).toBe("{'a\\'b\\nc\\td\\re\\\\':'\\\\q\\'w\\ne\\tr\\rt\\\\y'}")
   })
 
   it('formats a nested object', () => {
