@@ -22,12 +22,13 @@ void (async () => {
   // contains id as numbers in JSONCompactEachRow format ["0"]\n["0"]\n...
   // see also: NDJSON format
   const filename = Path.resolve(cwd(), './node/resources/data.ndjson')
+  const fileStream = Fs.createReadStream(filename).pipe(
+    split((row: string) => JSON.parse(row)),
+  )
 
   await client.insert({
     table: tableName,
-    values: Fs.createReadStream(filename).pipe(
-      split((row: string) => JSON.parse(row)),
-    ),
+    values: fileStream,
     format: 'JSONCompactEachRow',
   })
 

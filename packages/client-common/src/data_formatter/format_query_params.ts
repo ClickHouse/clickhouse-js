@@ -1,5 +1,3 @@
-import { replaceAll } from '../utils'
-
 export function formatQueryParams(
   value: any,
   wrapStringInQuotes = false,
@@ -12,8 +10,29 @@ export function formatQueryParams(
   if (typeof value === 'number') return String(value)
   if (typeof value === 'boolean') return value ? '1' : '0'
   if (typeof value === 'string') {
-    const escapedValue = replaceAll(replaceAll(value, `\\`, `\\\\`), `'`, `\\'`)
-    return wrapStringInQuotes ? `'${escapedValue}'` : escapedValue
+    let result = ''
+    for (let i = 0; i < value.length; i++) {
+      switch (value.charCodeAt(i)) {
+        case TabASCII:
+          result += '\\t'
+          break
+        case NewlineASCII:
+          result += '\\n'
+          break
+        case CarriageReturnASCII:
+          result += '\\r'
+          break
+        case SingleQuoteASCII:
+          result += `\\'`
+          break
+        case BackslashASCII:
+          result += '\\\\'
+          break
+        default:
+          result += value[i]
+      }
+    }
+    return wrapStringInQuotes ? `'${result}'` : result
   }
 
   if (Array.isArray(value)) {
@@ -44,3 +63,9 @@ export function formatQueryParams(
 
   throw new Error(`Unsupported value in query parameters: [${value}].`)
 }
+
+const TabASCII = 9
+const NewlineASCII = 10
+const CarriageReturnASCII = 13
+const SingleQuoteASCII = 39
+const BackslashASCII = 92

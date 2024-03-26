@@ -1,11 +1,10 @@
 import { createClient, type Row } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 /**
- * NB (Node.js platform): `for await const` has quite significant overhead
- * (up to 2 times worse) vs old school `on(data)` approach
- * for that example, see `select_streaming_on_data.ts`
+ * Similar to `select_streaming_text_line_by_line.ts`, but using `for await const` syntax instead of `on(data)`.
  *
- * See also: https://github.com/nodejs/node/issues/31979
+ * NB (Node.js platform): `for await const` has some overhead (up to 2 times worse) vs the old-school `on(data)` approach.
+ * See the related Node.js issue: https://github.com/nodejs/node/issues/31979
  */
 void (async () => {
   const client = createClient()
@@ -20,5 +19,6 @@ void (async () => {
       console.log(row.json())
     })
   }
+  console.log('Completed!')
   await client.close()
 })()

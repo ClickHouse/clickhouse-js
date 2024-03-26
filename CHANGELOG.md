@@ -238,6 +238,12 @@ See also: [URL configuration example](./examples/url_configuration.ts).
 
 - Added `http_headers` configuration parameter as a direct replacement for `additional_headers`. Functionally, it is the same, and the change is purely cosmetic, as we'd like to leave an option to implement TCP connection in the future open.
 
+## 0.3.1 (Common, Node.js, Web)
+
+### Bug fixes
+
+- Fixed an issue where query parameters containing tabs or newline characters were not encoded properly.
+
 ## 0.3.0 (Node.js only)
 
 This release primarily focuses on improving the Keep-Alive mechanism's reliability on the client side.

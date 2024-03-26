@@ -21,6 +21,7 @@ void (async () => {
   })
 
   const filename = Path.resolve(cwd(), './node/resources/data.parquet')
+  const fileStream = Fs.createReadStream(filename)
 
   /*
 
@@ -38,7 +39,7 @@ void (async () => {
 
   await client.insert({
     table: tableName,
-    values: Fs.createReadStream(filename),
+    values: fileStream,
     format: 'Parquet',
     clickhouse_settings: {
       /** See also https://clickhouse.com/docs/en/interfaces/formats#parquet-format-settings.
