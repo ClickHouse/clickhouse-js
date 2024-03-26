@@ -7,7 +7,7 @@ Node.JS-specific examples are located in the `examples/node` directory.
 
 ## Overview
 
-We aim to cover various scenarios of client usage with these examples.
+We aim to cover various scenarios of client usage with these examples. You should be able to run any of these examples, see [How to run](#how-to-run) section below.
 
 #### General usage
 
@@ -28,6 +28,7 @@ We aim to cover various scenarios of client usage with these examples.
 #### Inserting data
 
 - [array_json_each_row.ts](array_json_each_row.ts) - a simple insert of an array of values using `JSONEachRow` format.
+- [insert_data_formats_overview.ts](insert_data_formats_overview.ts) - an overview of available data formats for inserting data.
 - [async_insert.ts](async_insert.ts) - server-side batching using async inserts; the client will be waiting for a written batch ack.
 - [async_insert_without_waiting.ts](async_insert_without_waiting.ts) - server-side batching using async inserts; the client will not be waiting for a written batch ack. This is a bit more advanced async insert example simulating an event listener.
 - [insert_exclude_columns.ts](insert_exclude_columns.ts) - inserting into specific columns only, or excluding certain columns from the INSERT statement.
@@ -44,6 +45,7 @@ We aim to cover various scenarios of client usage with these examples.
 #### Selecting data
 
 - [select_json_each_row.ts](select_json_each_row.ts) - simple select of the data in the `JSONEachRow` format.
+- [select_data_formats_overview.ts](select_data_formats_overview.ts) - an overview of all available data formats for select queries.
 - [select_json_with_metadata.ts](select_json_with_metadata.ts) - select result as a JSON object with query metadata.
 - [query_with_parameter_binding.ts](query_with_parameter_binding.ts) - query parameter binding example.
 - [select_parquet_as_file.ts](node/select_parquet_as_file.ts) - (Node.js only) select data from ClickHouse and save it as a Parquet file. This example can be adjusted to save the data in other formats, such as CSV/TSV/TabSeparated, by changing the format in the query.
