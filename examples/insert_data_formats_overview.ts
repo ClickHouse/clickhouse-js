@@ -23,6 +23,8 @@ import {
  *  - streaming from a CSV file - node/insert_file_stream_csv.ts
  *  - streaming from a Parquet file - node/insert_file_stream_parquet.ts
  *
+ * If some format is missing from the overview, you could help us by updating this example or submitting an issue.
+ *
  * See also:
  * - ClickHouse formats documentation - https://clickhouse.com/docs/en/interfaces/formats
  * - SELECT formats overview - select_data_formats_overview.ts
@@ -124,7 +126,7 @@ void (async () => {
   // Inserting data in different JSON formats
   async function insertJSON<T = unknown>(
     format: DataFormat,
-    values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
+    values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>,
   ) {
     try {
       await client.insert({

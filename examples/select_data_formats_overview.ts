@@ -7,6 +7,8 @@ import type { DataFormat } from '@clickhouse/client-common'
  *
  * An example of console output is available here: https://gist.github.com/slvrtrn/3ad657c4e236e089a234d79b87600f76
  *
+ * If some format is missing from the overview, you could help us by updating this example or submitting an issue.
+ *
  * See also:
  * - ClickHouse formats documentation - https://clickhouse.com/docs/en/interfaces/formats
  * - INSERT formats overview - insert_data_formats_overview.ts
