@@ -1,6 +1,10 @@
+export type {
+  NodeClickHouseClient as ClickHouseClient,
+  QueryResult,
+} from './client'
 export { createClient } from './client'
-export { NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
-export { ResultSet } from './result_set'
+export { type NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
+export { ResultSet, type StreamReadable } from './result_set'
 
 /** Re-export @clickhouse/client-common types */
 export {
@@ -29,6 +33,5 @@ export {
   type PingResult,
   ClickHouseError,
   ClickHouseLogLevel,
-  ClickHouseClient,
   SettingsMap,
 } from '@clickhouse/client-common'

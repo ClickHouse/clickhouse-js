@@ -3,6 +3,8 @@ import type {
   ClickHouseSettings,
   Connection,
   ConnExecResult,
+  IsSame,
+  MakeResultSet,
   WithClickHouseSummary,
 } from '@clickhouse/client-common'
 import { type DataFormat, DefaultLogger } from '@clickhouse/client-common'
@@ -10,7 +12,6 @@ import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
 import type {
   CloseStream,
   ImplementationDetails,
-  MakeResultSet,
   ValuesEncoder,
 } from './config'
 import { getConnectionParams, prepareConfigWithURL } from './config'
@@ -36,6 +37,20 @@ export interface QueryParams extends BaseQueryParams {
   /** Format of the resulting dataset. */
   format?: DataFormat
 }
+
+/** Same parameters as {@link QueryParams}, but with `format` field as a type */
+export type QueryParamsWithFormat<Format extends DataFormat> = Omit<
+  QueryParams,
+  'format'
+> & { format?: Format }
+
+/** If the Format is not a literal type, fall back to the default behavior of the ResultSet,
+ *  allowing to call all methods with all data shapes variants,
+ *  and avoiding generated types that include all possible DataFormat literal values. */
+export type QueryResult<Stream, Format extends DataFormat> =
+  IsSame<Format, DataFormat> extends true
+    ? BaseResultSet<Stream, unknown>
+    : BaseResultSet<Stream, Format>
 
 export interface ExecParams extends BaseQueryParams {
   /** Statement to execute. */
@@ -135,8 +150,11 @@ export class ClickHouseClient<Stream = unknown> {
    * FORMAT clause should be specified separately via {@link QueryParams.format} (default is JSON)
    * Consider using {@link ClickHouseClient.insert} for data insertion,
    * or {@link ClickHouseClient.command} for DDLs.
+   * Returns an implementation of {@link BaseResultSet}.
    */
-  async query(params: QueryParams): Promise<BaseResultSet<Stream>> {
+  async query<Format extends DataFormat = 'JSON'>(
+    params: QueryParamsWithFormat<Format>,
+  ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
     const { stream, query_id } = await this.connection.query({

@@ -8,8 +8,9 @@ export async function createTableWithFields(
   client: ClickHouseClient,
   fields: string,
   clickhouse_settings?: ClickHouseSettings,
+  table_name?: string,
 ): Promise<string> {
-  const tableName = `test_table__${guid()}`
+  const tableName = table_name ?? `test_table__${guid()}`
   await createTable(
     client,
     (env) => {

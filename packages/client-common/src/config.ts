@@ -88,11 +88,14 @@ export type MakeConnection<
   Config = BaseClickHouseClientConfigOptionsWithURL,
 > = (config: Config, params: ConnectionParams) => Connection<Stream>
 
-export type MakeResultSet<Stream> = (
+export type MakeResultSet<Stream> = <
+  Format extends DataFormat,
+  ResultSet extends BaseResultSet<Stream, Format>,
+>(
   stream: Stream,
-  format: DataFormat,
-  session_id: string,
-) => BaseResultSet<Stream>
+  format: Format,
+  query_id: string,
+) => ResultSet
 
 export interface ValuesEncoder<Stream> {
   validateInsertValues<T = unknown>(

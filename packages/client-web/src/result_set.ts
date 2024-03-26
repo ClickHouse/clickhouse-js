@@ -1,26 +1,37 @@
-import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
+import type {
+  BaseResultSet,
+  DataFormat,
+  ResultJSONType,
+  ResultStream,
+  Row,
+} from '@clickhouse/client-common'
 import { decode, validateStreamFormat } from '@clickhouse/client-common'
 import { getAsText } from './utils'
 
-export class ResultSet implements BaseResultSet<ReadableStream<Row[]>> {
+export class ResultSet<Format extends DataFormat | unknown>
+  implements BaseResultSet<ReadableStream<Row[]>, Format>
+{
   private isAlreadyConsumed = false
   constructor(
     private _stream: ReadableStream,
-    private readonly format: DataFormat,
+    private readonly format: Format,
     public readonly query_id: string,
   ) {}
 
+  /** See {@link BaseResultSet.text} */
   async text(): Promise<string> {
     this.markAsConsumed()
     return getAsText(this._stream)
   }
 
-  async json<T>(): Promise<T> {
+  /** See {@link BaseResultSet.json} */
+  async json<T>(): Promise<ResultJSONType<T, Format>> {
     const text = await this.text()
-    return decode(text, this.format)
+    return decode(text, this.format as DataFormat)
   }
 
-  stream(): ReadableStream<Row[]> {
+  /** See {@link BaseResultSet.stream} */
+  stream<T>(): ResultStream<Format, ReadableStream<Row<T, Format>[]>> {
     this.markAsConsumed()
     validateStreamFormat(this.format)
 
@@ -61,11 +72,12 @@ export class ResultSet implements BaseResultSet<ReadableStream<Row[]>> {
       },
     })
 
-    return this._stream.pipeThrough(transform, {
+    const pipeline = this._stream.pipeThrough(transform, {
       preventClose: false,
       preventAbort: false,
       preventCancel: false,
     })
+    return pipeline as any
   }
 
   async close(): Promise<void> {

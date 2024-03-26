@@ -97,7 +97,7 @@ void (async () => {
         query: `SELECT count(*) AS count FROM ${tableName}`,
         format: 'JSONEachRow',
       })
-      const [{ count }] = await resultSet.json<[{ count: string }]>()
+      const [{ count }] = await resultSet.json<{ count: string }>()
       console.log(
         'Rows inserted so far:',
         `${rowsInserted};`,

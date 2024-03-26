@@ -11,6 +11,7 @@ We aim to cover various scenarios of client usage with these examples.
 
 #### General usage
 
+- [url_configuration.ts](url_configuration.ts) - client configuration using the URL parameters.
 - [clickhouse_settings.ts](clickhouse_settings.ts) - ClickHouse settings on the client side, both global and per operation.
 - [ping.ts](ping.ts) - sample checks if the server can be reached.
 - [abort_request.ts](abort_request.ts) - cancelling an outgoing request or a read-only query.
