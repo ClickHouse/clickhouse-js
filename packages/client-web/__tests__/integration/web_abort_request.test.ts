@@ -39,7 +39,7 @@ describe('[Web] abort request streaming', () => {
       jasmine.objectContaining({
         // Chrome = The user aborted a request; FF = The operation was aborted
         message: jasmine.stringContaining('aborted'),
-      })
+      }),
     )
   })
 
@@ -67,7 +67,7 @@ describe('[Web] abort request streaming', () => {
     await expectAsync(selectPromise).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Stream has been already consumed'),
-      })
+      }),
     )
   })
 })

@@ -54,7 +54,7 @@ describe('[Node.js] logger support', () => {
             'transfer-encoding': 'chunked',
           }),
           response_status: 200,
-        })
+        }),
       )
     })
 
@@ -74,7 +74,7 @@ describe('[Node.js] logger support', () => {
             request_path: '/ping',
             request_method: 'GET',
           }),
-        })
+        }),
       )
     })
 

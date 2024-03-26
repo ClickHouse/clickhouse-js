@@ -1,4 +1,4 @@
-import type { ExecParams, ResponseJSON } from '@clickhouse/client-common'
+import type { ExecParams } from '@clickhouse/client-common'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import {
   createTestClient,
@@ -66,9 +66,9 @@ describe('exec', () => {
         code: '57',
         type: 'TABLE_ALREADY_EXISTS',
         message: jasmine.stringContaining(
-          `Table ${getTestDatabaseName()}.${tableName} already exists. `
+          `Table ${getTestDatabaseName()}.${tableName} already exists. `,
         ),
-      })
+      }),
     )
   })
 
@@ -89,7 +89,7 @@ describe('exec', () => {
       await expectAsync(
         sessionClient.exec({
           query: `CREATE TEMPORARY TABLE ${tableName} (val Int32)`,
-        })
+        }),
       ).toBeResolved()
     })
   })
@@ -100,10 +100,7 @@ describe('exec', () => {
       format: 'JSON',
     })
 
-    const json = await result.json<{
-      rows: number
-      data: Array<{ name: string }>
-    }>()
+    const json = await result.json<{ name: string }>()
     expect(json.rows).toBe(1)
     expect(json.data[0].name).toBe('numbers')
   })
@@ -120,9 +117,11 @@ describe('exec', () => {
       format: 'JSON',
     })
 
-    const { data, rows } = await selectResult.json<
-      ResponseJSON<{ name: string; engine: string; create_table_query: string }>
-    >()
+    const { data, rows } = await selectResult.json<{
+      name: string
+      engine: string
+      create_table_query: string
+    }>()
 
     expect(rows).toBe(1)
     const table = data[0]
@@ -132,9 +131,6 @@ describe('exec', () => {
   }
 
   async function runExec(params: ExecParams): Promise<{ query_id: string }> {
-    console.log(
-      `Running command with query_id ${params.query_id}:\n${params.query}`
-    )
     const { query_id } = await client.exec({
       ...params,
       clickhouse_settings: {
@@ -154,8 +150,16 @@ function getDDL(): {
   const env = getClickHouseTestEnvironment()
   const tableName = `command_test_${guid()}`
   switch (env) {
-    // ENGINE can be omitted in the cloud statements:
-    // it will use ReplicatedMergeTree and will add ON CLUSTER as well
+    // ENGINE and ON CLUSTER can be omitted in the cloud statements.
+    // It will use Shared (CloudSMT)/Replicated (Cloud) MergeTree by default.
+    case TestEnv.CloudSMT: {
+      const ddl = `
+        CREATE TABLE ${tableName}
+        (id UInt64, name String, sku Array(UInt8), timestamp DateTime)
+        ORDER BY (id)
+      `
+      return { ddl, tableName, engine: 'SharedMergeTree' }
+    }
     case TestEnv.Cloud: {
       const ddl = `
         CREATE TABLE ${tableName}

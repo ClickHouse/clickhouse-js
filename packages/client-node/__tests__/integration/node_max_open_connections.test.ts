@@ -1,6 +1,7 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient, guid, sleep } from '@test/utils'
+import { guid, sleep } from '@test/utils'
+import type { ClickHouseClient } from '../../src'
+import { createNodeTestClient } from '../utils/node_client'
 
 describe('[Node.js] max_open_connections config', () => {
   let client: ClickHouseClient
@@ -11,18 +12,18 @@ describe('[Node.js] max_open_connections config', () => {
     results = []
   })
 
-  function select(query: string) {
+  async function select(query: string) {
     return client
       .query({
         query,
         format: 'JSONEachRow',
       })
-      .then((r) => r.json<[{ x: number }]>())
+      .then((r) => r.json<{ x: number }>())
       .then(([{ x }]) => results.push(x))
   }
 
   it('should use only one connection', async () => {
-    client = createTestClient({
+    client = createNodeTestClient({
       max_open_connections: 1,
     })
     void select('SELECT 1 AS x, sleep(0.3)')
@@ -39,7 +40,7 @@ describe('[Node.js] max_open_connections config', () => {
 
   it('should use only one connection for insert', async () => {
     const tableName = `node_connections_single_connection_insert_${guid()}`
-    client = createTestClient({
+    client = createNodeTestClient({
       max_open_connections: 1,
       request_timeout: 3000,
     })
@@ -67,14 +68,14 @@ describe('[Node.js] max_open_connections config', () => {
       format: 'JSONEachRow',
     })
 
-    const json = await result.json<object[]>()
+    const json = await result.json()
     expect(json).toContain(value1)
     expect(json).toContain(value2)
     expect(json.length).toEqual(2)
   })
 
   it('should use several connections', async () => {
-    client = createTestClient({
+    client = createNodeTestClient({
       max_open_connections: 2,
     })
     void select('SELECT 1 AS x, sleep(0.3)')

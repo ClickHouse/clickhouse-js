@@ -126,7 +126,7 @@ void (async () => {
   // Inserting data in different JSON formats
   async function insertJSON<T = unknown>(
     format: DataFormat,
-    values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
+    values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>,
   ) {
     try {
       await client.insert({

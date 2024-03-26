@@ -14,7 +14,22 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
   let createUser: string
   let grant: string
   switch (env) {
-    case TestEnv.Cloud: // we do not need 'ON CLUSTER' in the cloud
+    // requires select_sequential_consistency = 1 for immediate selects after inserts
+    case TestEnv.CloudSMT:
+      createUser = `
+          CREATE USER ${username}
+          IDENTIFIED WITH sha256_password BY '${password}'
+          DEFAULT DATABASE ${database}
+          SETTINGS readonly = 1, select_sequential_consistency = 1
+        `
+      grant = `
+          GRANT SHOW TABLES, SELECT
+          ON ${database}.*
+          TO ${username}
+        `
+      break
+    // we do not need 'ON CLUSTER' in the cloud, so it's the same as a local docker
+    case TestEnv.Cloud:
     case TestEnv.LocalSingleNode:
       createUser = `
           CREATE USER ${username}
@@ -54,7 +69,7 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
   }
   console.log(
     `Created user ${username} with default database ${database} ` +
-      'and restricted access to the system database'
+      'and restricted access to the system database',
   )
 
   return {

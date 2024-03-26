@@ -1,6 +1,9 @@
 import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 import { randomUUID } from 'crypto'
 
+/**
+ * An illustration of limitations and client-specific settings for users created in `READONLY = 1` mode.
+ */
 void (async () => {
   const defaultClient = createClient()
 
@@ -30,7 +33,7 @@ void (async () => {
     })
   }
   console.log(
-    `Created user ${readOnlyUsername} with restricted access to the system database`
+    `Created user ${readOnlyUsername} with restricted access to the system database`,
   )
   printSeparator()
 
@@ -60,9 +63,7 @@ void (async () => {
   let readOnlyUserClient = createClient({
     username: readOnlyUsername,
     password: readOnlyPassword,
-    compression: {
-      response: false, // cannot enable HTTP compression for a read-only user
-    },
+    readonly: true, // this disables compression and additional ClickHouse settings
   })
 
   // read-only user cannot insert the data into the table
@@ -78,7 +79,7 @@ void (async () => {
     .catch((err) => {
       console.error(
         '[Expected error] Readonly user cannot insert the data into the table. Cause:\n',
-        err
+        err,
       )
     })
   printSeparator()
@@ -92,7 +93,7 @@ void (async () => {
     .catch((err) => {
       console.error(
         '[Expected error] Cannot query system.users cause it was not granted. Cause:\n',
-        err
+        err,
       )
     })
   printSeparator()
@@ -105,15 +106,15 @@ void (async () => {
   console.log('Select result:', await rs.json())
   printSeparator()
 
-  // ... cannot use compression
+  // ... cannot use compression or specific ClickHouse HTTP settings
   await readOnlyUserClient.close()
   readOnlyUserClient = createClient({
     username: readOnlyUsername,
     password: readOnlyPassword,
-    compression: {
-      // this is a default value, but it will cause an error from the ClickHouse side with a read-only user
-      response: true,
-    },
+    /** omitting read-only setting here, and it will cause an error from the ClickHouse side with a read-only user,
+     * since we enable compression and set `send_progress_in_http_headers` + `http_headers_progress_interval_ms`
+     * for non-read-only users by default */
+    // readonly: true,
   })
 
   await readOnlyUserClient
@@ -123,8 +124,8 @@ void (async () => {
     })
     .catch((err) => {
       console.error(
-        '[Expected error] Cannot use compression with a read-only user. Cause:\n',
-        err
+        `[Expected error] Cannot modify 'send_progress_in_http_headers' setting in readonly mode. Cause:\n`,
+        err,
       )
     })
   printSeparator()
@@ -136,6 +137,6 @@ void (async () => {
 
 function printSeparator() {
   console.log(
-    '------------------------------------------------------------------------'
+    '------------------------------------------------------------------------',
   )
 }

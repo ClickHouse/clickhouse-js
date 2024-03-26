@@ -26,13 +26,13 @@ describe('[Node.js] insert', () => {
             objectMode: false,
           }),
           format: 'TabSeparated',
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringContaining('Cannot parse input'),
           code: '27',
           type: 'CANNOT_PARSE_INPUT_ASSERTION_FAILED',
-        })
+        }),
       )
     })
   })

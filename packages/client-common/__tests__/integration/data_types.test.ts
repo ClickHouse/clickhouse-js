@@ -4,7 +4,7 @@ import type {
 } from '@clickhouse/client-common'
 import { randomUUID } from '@test/utils/guid'
 import { createTableWithFields } from '../fixtures/table_with_fields'
-import { createTestClient, getRandomInt } from '../utils'
+import { createTestClient, getRandomInt, TestEnv, whenOnEnv } from '../utils'
 
 describe('data types', () => {
   let client: ClickHouseClient
@@ -49,7 +49,7 @@ describe('data types', () => {
     const table = await createTableWithFields(
       client,
       'u1 UInt8, u2 UInt16, u3 UInt32, u4 UInt64, u5 UInt128, u6 UInt256, ' +
-        'i1 Int8, i2 Int16, i3 Int32, i4 Int64, i5 Int128, i6 Int256'
+        'i1 Int8, i2 Int16, i3 Int32, i4 Int64, i5 Int128, i6 Int256',
     )
     await insertAndAssert(table, values)
   })
@@ -76,7 +76,7 @@ describe('data types', () => {
     ]
     const table = await createTableWithFields(
       client,
-      's String, fs FixedString(3)'
+      's String, fs FixedString(3)',
     )
     await insertAndAssert(table, values)
   })
@@ -88,11 +88,11 @@ describe('data types', () => {
         table,
         values: [{ fs: 'foobar' }],
         format: 'JSONEachRow',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Too large value for FixedString(3)'),
-      })
+      }),
     )
   })
 
@@ -120,7 +120,7 @@ describe('data types', () => {
     const table = await createTableWithFields(
       client,
       'd1 Decimal(9, 2), d2 Decimal(18, 3), ' +
-        'd3 Decimal(38, 10), d4 Decimal(76, 20)'
+        'd3 Decimal(38, 10), d4 Decimal(76, 20)',
     )
     await client.insert({
       table,
@@ -165,7 +165,7 @@ describe('data types', () => {
       const table = await createTableWithFields(
         client,
         'd1 Date, d2 Date32, dt1 DateTime, ' +
-          'dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)'
+          'dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)',
       )
       await insertAndAssert(table, values)
     })
@@ -204,7 +204,7 @@ describe('data types', () => {
       ]
       const table = await createTableWithFields(
         client,
-        'dt1 DateTime, dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)'
+        'dt1 DateTime, dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)',
       )
       await insertData(table, values, {
         // Allows to insert serialized JS Dates (such as '2023-12-06T10:54:48.000Z')
@@ -221,7 +221,7 @@ describe('data types', () => {
     ]
     const table = await createTableWithFields(
       client,
-      `e1 Enum('Foo', 'Bar'), e2 Enum('Qaz', 'Qux')`
+      `e1 Enum('Foo', 'Bar'), e2 Enum('Qaz', 'Qux')`,
     )
     await insertAndAssert(table, values)
   })
@@ -233,7 +233,7 @@ describe('data types', () => {
     ]
     const table = await createTableWithFields(
       client,
-      `e1 Enum('Foo' = 42, 'Bar' = 43), e2 Enum('Qaz' = 100, 'Qux' = 127)`
+      `e1 Enum('Foo' = 42, 'Bar' = 43), e2 Enum('Qaz' = 100, 'Qux' = 127)`,
     )
     await insertData(table, values)
     const result = await client
@@ -258,7 +258,7 @@ describe('data types', () => {
     ]
     const table = await createTableWithFields(
       client,
-      's LowCardinality(String), fs LowCardinality(FixedString(3))'
+      's LowCardinality(String), fs LowCardinality(FixedString(3))',
     )
     await insertAndAssert(table, values)
   })
@@ -270,7 +270,7 @@ describe('data types', () => {
     ]
     const table = await createTableWithFields(
       client,
-      't1 Tuple(String, Int32), t2 Tuple(Date, Array(Int32))'
+      't1 Tuple(String, Int32), t2 Tuple(Date, Array(Int32))',
     )
     await insertAndAssert(table, values)
   })
@@ -282,7 +282,7 @@ describe('data types', () => {
     ]
     const table = await createTableWithFields(
       client,
-      's Nullable(String), i Nullable(Int32), a Array(Nullable(Int32))'
+      's Nullable(String), i Nullable(Int32), a Array(Nullable(Int32))',
     )
     await insertAndAssert(table, values)
   })
@@ -313,7 +313,7 @@ describe('data types', () => {
     function genNestedArray(level: number): unknown {
       if (level === 1) {
         return [...Array(getRandomInt(2, 4))].map(() =>
-          Math.random().toString(36).slice(2)
+          Math.random().toString(36).slice(2),
         )
       }
       return [...Array(getRandomInt(1, 3))].map(() => genNestedArray(level - 1))
@@ -371,12 +371,12 @@ describe('data types', () => {
       if (level === 1) {
         ;[...Array(getRandomInt(2, 4))].forEach(
           () =>
-            (obj[getRandomInt(1, 1000)] = Math.random().toString(36).slice(2))
+            (obj[getRandomInt(1, 1000)] = Math.random().toString(36).slice(2)),
         )
         return obj
       }
       ;[...Array(getRandomInt(1, 3))].forEach(
-        () => (obj[getRandomInt(1, 1000)] = genNestedMap(level - 1))
+        () => (obj[getRandomInt(1, 1000)] = genNestedMap(level - 1)),
       )
       return obj
     }
@@ -403,7 +403,7 @@ describe('data types', () => {
     const table = await createTableWithFields(
       client,
       'm1 Map(String, String), m2 Map(Int32, Int64), ' +
-        `m3 ${genMapType(maxNestingLevel)}`
+        `m3 ${genMapType(maxNestingLevel)}`,
     )
     await insertAndAssert(table, values)
   })
@@ -416,7 +416,7 @@ describe('data types', () => {
     ]
     const table = await createTableWithFields(
       client,
-      `route Int32, distance Decimal(10, 2)`
+      `route Int32, distance Decimal(10, 2)`,
     )
     await client.insert({
       table,
@@ -429,7 +429,7 @@ describe('data types', () => {
           query: `SELECT sum(distance) FROM ${table}`,
           format: 'TabSeparated',
         })
-        .then((r) => r.text())
+        .then((r) => r.text()),
     ).toEqual('125.53\n')
     expect(
       await client
@@ -437,7 +437,7 @@ describe('data types', () => {
           query: `SELECT max(distance) FROM ${table}`,
           format: 'TabSeparated',
         })
-        .then((r) => r.text())
+        .then((r) => r.text()),
     ).toEqual('100.52\n')
     expect(
       await client
@@ -445,7 +445,7 @@ describe('data types', () => {
           query: `SELECT uniqExact(distance) FROM ${table}`,
           format: 'TabSeparated',
         })
-        .then((r) => r.text())
+        .then((r) => r.text()),
     ).toEqual('3\n')
   })
 
@@ -499,258 +499,187 @@ describe('data types', () => {
     ]
     const table = await createTableWithFields(
       client,
-      'p Point, r Ring, pg Polygon, mpg MultiPolygon'
+      'p Point, r Ring, pg Polygon, mpg MultiPolygon',
     )
     await insertAndAssert(table, values)
   })
 
-  it('should work with JSON', async () => {
-    const values = [
-      {
-        o: { a: 1, b: { c: 2, d: [1, 2, 3] } },
-      },
-      {
-        o: { a: 2, b: { c: 3, d: [4, 5, 6] } },
-      },
-    ]
-    const table = await createTableWithFields(client, 'o JSON', {
-      allow_experimental_object_type: 1,
-    })
-    await insertAndAssert(table, values)
-  })
-
-  it('should work with nested', async () => {
-    const values = [
-      {
-        id: 1,
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        id: 2,
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ]
-    const table = await createTableWithFields(
-      client,
-      'n Nested(id UInt32, name String, createdAt DateTime, ' +
-        `roles Array(Enum('User', 'Admin')))`
-    )
-    await client.insert({
-      table,
-      values,
-      format: 'JSONEachRow',
-    })
-    const result = await client
-      .query({
-        query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
-        format: 'JSONEachRow',
-      })
-      .then((r) => r.json())
-    expect(result).toEqual([
-      {
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ])
-  })
-
-  it('should work with nested (flatten_nested = 0)', async () => {
-    const values = [
-      {
-        id: 1,
-        n: [
-          {
-            id: 42,
-            name: 'foo',
-            createdAt: '2001-04-23 00:00:00',
-            roles: ['User'],
-          },
-        ],
-      },
-      {
-        id: 2,
-        n: [
-          {
-            id: 43,
-            name: 'bar',
-            createdAt: '2000-01-12 00:00:00',
-            roles: ['Admin'],
-          },
-        ],
-      },
-    ]
-    const table = await createTableWithFields(
-      client,
-      'n Nested(id UInt32, name String, createdAt DateTime, ' +
-        `roles Array(Enum('User', 'Admin')))`,
-      {
-        flatten_nested: 0,
-      }
-    )
-    await client.insert({
-      table,
-      values,
-      format: 'JSONEachRow',
-    })
-    const result = await client
-      .query({
-        query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
-        format: 'JSONEachRow',
-      })
-      .then((r) => r.json())
-    expect(result).toEqual([
-      {
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ])
-  })
-
-  it('should work with nested (input_format_import_nested_json = 1)', async () => {
-    const values = [
-      {
-        id: 1,
-        n: {
-          id: [42],
-          name: ['foo'],
-          createdAt: ['2001-04-23 00:00:00'],
-          roles: [['User']],
+  // JSON cannot be used on a "modern" Cloud instance
+  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster, TestEnv.Cloud).it(
+    'should work with JSON',
+    async () => {
+      const values = [
+        {
+          o: { a: 1, b: { c: 2, d: [1, 2, 3] } },
         },
-      },
-      {
-        id: 2,
-        n: {
-          id: [43],
-          name: ['bar'],
-          createdAt: ['2000-01-12 00:00:00'],
-          roles: [['Admin']],
+        {
+          o: { a: 2, b: { c: 3, d: [4, 5, 6] } },
         },
-      },
-    ]
-    const table = await createTableWithFields(
-      client,
-      'n Nested(id UInt32, name String, createdAt DateTime, ' +
-        `roles Array(Enum('User', 'Admin')))`
-    )
-    await client.insert({
-      table,
-      values,
-      clickhouse_settings: {
-        input_format_import_nested_json: 1,
-      },
-      format: 'JSONEachRow',
-    })
-    const result = await client
-      .query({
-        query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
-        format: 'JSONEachRow',
+      ]
+      const table = await createTableWithFields(client, 'o JSON', {
+        allow_experimental_object_type: 1,
       })
-      .then((r) => r.json())
-    expect(result).toEqual([
-      {
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ])
-  })
+      await insertAndAssert(table, values)
+    },
+  )
 
-  it('should work with nested with (flatten_nested = 0 and input_format_import_nested_json = 1)', async () => {
-    const values = [
-      {
-        id: 1,
-        n: [
-          {
-            id: 42,
-            name: 'foo',
-            createdAt: '2001-04-23 00:00:00',
-            roles: ['User'],
-          },
-        ],
-      },
-      {
-        id: 2,
-        n: [
-          {
-            id: 43,
-            name: 'bar',
-            createdAt: '2000-01-12 00:00:00',
-            roles: ['Admin'],
-          },
-        ],
-      },
-    ]
-    const table = await createTableWithFields(
-      client,
-      'n Nested(id UInt32, name String, createdAt DateTime, ' +
-        `roles Array(Enum('User', 'Admin')))`,
-      {
-        flatten_nested: 0,
-      }
-    )
-    await client.insert({
-      table,
-      values,
-      clickhouse_settings: {
-        input_format_import_nested_json: 1,
-      },
-      format: 'JSONEachRow',
+  describe('Nested', () => {
+    it('should work by default', async () => {
+      const values = [
+        {
+          id: 1,
+          'n.id': [42],
+          'n.name': ['foo'],
+          'n.createdAt': ['2001-04-23 00:00:00'],
+          'n.roles': [['User']],
+        },
+        {
+          id: 2,
+          'n.id': [43],
+          'n.name': ['bar'],
+          'n.createdAt': ['2000-01-12 00:00:00'],
+          'n.roles': [['Admin']],
+        },
+      ]
+      await insertAndAssertNestedValues(values, {}, {})
     })
-    const result = await client
-      .query({
-        query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
+
+    it('should work with nested (flatten_nested = 0)', async () => {
+      const values = [
+        {
+          id: 1,
+          n: [
+            {
+              id: 42,
+              name: 'foo',
+              createdAt: '2001-04-23 00:00:00',
+              roles: ['User'],
+            },
+          ],
+        },
+        {
+          id: 2,
+          n: [
+            {
+              id: 43,
+              name: 'bar',
+              createdAt: '2000-01-12 00:00:00',
+              roles: ['Admin'],
+            },
+          ],
+        },
+      ]
+      await insertAndAssertNestedValues(values, { flatten_nested: 0 }, {})
+    })
+
+    it('should work with nested (input_format_import_nested_json = 1)', async () => {
+      const values = [
+        {
+          id: 1,
+          n: {
+            id: [42],
+            name: ['foo'],
+            createdAt: ['2001-04-23 00:00:00'],
+            roles: [['User']],
+          },
+        },
+        {
+          id: 2,
+          n: {
+            id: [43],
+            name: ['bar'],
+            createdAt: ['2000-01-12 00:00:00'],
+            roles: [['Admin']],
+          },
+        },
+      ]
+      await insertAndAssertNestedValues(
+        values,
+        {},
+        {
+          input_format_import_nested_json: 1,
+        },
+      )
+    })
+
+    it('should work with nested with (flatten_nested = 0 and input_format_import_nested_json = 1)', async () => {
+      const values = [
+        {
+          id: 1,
+          n: [
+            {
+              id: 42,
+              name: 'foo',
+              createdAt: '2001-04-23 00:00:00',
+              roles: ['User'],
+            },
+          ],
+        },
+        {
+          id: 2,
+          n: [
+            {
+              id: 43,
+              name: 'bar',
+              createdAt: '2000-01-12 00:00:00',
+              roles: ['Admin'],
+            },
+          ],
+        },
+      ]
+      await insertAndAssertNestedValues(
+        values,
+        { flatten_nested: 0 },
+        {
+          input_format_import_nested_json: 1,
+        },
+      )
+    })
+
+    async function insertAndAssertNestedValues(
+      values: unknown[],
+      createTableSettings: ClickHouseSettings,
+      insertSettings: ClickHouseSettings,
+    ) {
+      const table = await createTableWithFields(
+        client,
+        'n Nested(id UInt32, name String, createdAt DateTime, ' +
+          `roles Array(Enum('User', 'Admin')))`,
+        createTableSettings,
+      )
+      await client.insert({
+        table,
+        values,
+        clickhouse_settings: insertSettings,
         format: 'JSONEachRow',
       })
-      .then((r) => r.json())
-    expect(result).toEqual([
-      {
-        'n.id': [42],
-        'n.name': ['foo'],
-        'n.createdAt': ['2001-04-23 00:00:00'],
-        'n.roles': [['User']],
-      },
-      {
-        'n.id': [43],
-        'n.name': ['bar'],
-        'n.createdAt': ['2000-01-12 00:00:00'],
-        'n.roles': [['Admin']],
-      },
-    ])
+      const result = await client
+        .query({
+          query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
+          format: 'JSONEachRow',
+        })
+        .then((r) => r.json())
+      expect(result).toEqual([
+        {
+          'n.id': [42],
+          'n.name': ['foo'],
+          'n.createdAt': ['2001-04-23 00:00:00'],
+          'n.roles': [['User']],
+        },
+        {
+          'n.id': [43],
+          'n.name': ['bar'],
+          'n.createdAt': ['2000-01-12 00:00:00'],
+          'n.roles': [['Admin']],
+        },
+      ])
+    }
   })
 
   async function insertData<T>(
     table: string,
     data: T[],
-    clickhouse_settings?: ClickHouseSettings
+    clickhouse_settings?: ClickHouseSettings,
   ) {
     const values = data.map((v, i) => ({ ...v, id: i + 1 }))
     await client.insert({

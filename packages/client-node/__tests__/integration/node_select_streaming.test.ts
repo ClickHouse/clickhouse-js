@@ -16,14 +16,14 @@ describe('[Node.js] SELECT streaming', () => {
       await expectAsync(fn()).toBeRejectedWith(
         jasmine.objectContaining({
           message: 'Stream has been already consumed',
-        })
+        }),
       )
     }
     function assertAlreadyConsumed<T>(fn: () => T) {
       expect(fn).toThrow(
         jasmine.objectContaining({
           message: 'Stream has been already consumed',
-        })
+        }),
       )
     }
     it('should consume a JSON response only once', async () => {
@@ -79,7 +79,7 @@ describe('[Node.js] SELECT streaming', () => {
         await expectAsync((async () => result.stream())()).toBeRejectedWith(
           jasmine.objectContaining({
             message: jasmine.stringContaining('JSON format is not streamable'),
-          })
+          }),
         )
       } finally {
         result.close()

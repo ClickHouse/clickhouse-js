@@ -1,8 +1,13 @@
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
-import { createTestClient } from '../utils'
+import { createTestClient, TestEnv, whenOnEnv } from '../utils'
 
-describe('Insert with specific columns', () => {
+// allow_experimental_object_type is not permitted on a modern Cloud instance
+whenOnEnv(
+  TestEnv.LocalSingleNode,
+  TestEnv.LocalCluster,
+  TestEnv.Cloud,
+).describe('Insert with specific columns', () => {
   let client: ClickHouseClient
   let table: string
 
@@ -29,7 +34,7 @@ describe('Insert with specific columns', () => {
         repo_name   LowCardinality(String) DEFAULT JSONExtractString(message_raw, 'repo', 'name'),
         message     JSON                   DEFAULT message_raw,
         message_raw String                 EPHEMERAL
-      ` // `id UInt32` will be added as well
+      `, // `id UInt32` will be added as well
       )
     })
 
@@ -209,11 +214,11 @@ describe('Insert with specific columns', () => {
           ],
           format: 'JSONEachRow',
           columns: ['foobar', 'message_raw'],
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringContaining('No such column foobar'),
-        })
+        }),
       )
     })
   })
@@ -224,7 +229,7 @@ describe('Insert with specific columns', () => {
     beforeEach(async () => {
       table = await createTableWithFields(
         client,
-        `s String, b Boolean` // `id UInt32` will be added as well
+        `s String, b Boolean`, // `id UInt32` will be added as well
       )
     })
 
@@ -259,7 +264,7 @@ describe('Insert with specific columns', () => {
     beforeEach(async () => {
       table = await createTableWithFields(
         client,
-        `s String, b Boolean` // `id UInt32` will be added as well
+        `s String, b Boolean`, // `id UInt32` will be added as well
       )
     })
 

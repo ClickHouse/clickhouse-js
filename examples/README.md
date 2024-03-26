@@ -11,6 +11,7 @@ We aim to cover various scenarios of client usage with these examples. You shoul
 
 #### General usage
 
+- [url_configuration.ts](url_configuration.ts) - client configuration using the URL parameters.
 - [clickhouse_settings.ts](clickhouse_settings.ts) - ClickHouse settings on the client side, both global and per operation.
 - [ping.ts](ping.ts) - sample checks if the server can be reached.
 - [abort_request.ts](abort_request.ts) - cancelling an outgoing request or a read-only query.
@@ -130,7 +131,7 @@ ts-node --transpile-only create_table_on_premise_cluster.ts
 - for `*_cloud.ts` examples, Docker containers are not required, but you need to set some environment variables first:
 
 ```sh
-export CLICKHOUSE_HOST=https://<your-clickhouse-cloud-hostname>:8443
+export CLICKHOUSE_URL=https://<your-clickhouse-cloud-hostname>:8443
 export CLICKHOUSE_PASSWORD=<your-clickhouse-cloud-password>
 ```
 

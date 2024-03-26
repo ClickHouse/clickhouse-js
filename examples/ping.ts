@@ -28,7 +28,7 @@ async function existingHostPing() {
   } else {
     console.error(
       '[ExistingHostPing] Ping expected to succeed, but got:',
-      pingResult
+      pingResult,
     )
   }
   await client.close()
@@ -46,7 +46,7 @@ async function nonExistingHostPing() {
   } else {
     console.error(
       '[NonExistingHostPing] Ping expected to fail with ECONNREFUSED, but got:',
-      pingResult
+      pingResult,
     )
   }
   await client.close()
@@ -70,7 +70,7 @@ async function timeoutPing() {
   } else {
     console.error(
       '[TimeoutPing] Ping expected to fail with a timeout error, but got:',
-      pingResult
+      pingResult,
     )
   }
   await client.close()
@@ -87,7 +87,7 @@ function startSlowHTTPServer() {
 }
 
 function hasConnectionRefusedError(
-  pingResult: PingResult
+  pingResult: PingResult,
 ): pingResult is PingResult & { error: { code: 'ECONNREFUSED' } } {
   return (
     !pingResult.success &&
@@ -97,7 +97,7 @@ function hasConnectionRefusedError(
 }
 
 function hasTimeoutError(
-  pingResult: PingResult
+  pingResult: PingResult,
 ): pingResult is PingResult & { error: Error } {
   return (
     !pingResult.success &&

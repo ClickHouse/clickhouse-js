@@ -7,9 +7,10 @@ import { createTable, guid, TestEnv } from '../utils'
 export async function createTableWithFields(
   client: ClickHouseClient,
   fields: string,
-  clickhouse_settings?: ClickHouseSettings
+  clickhouse_settings?: ClickHouseSettings,
+  table_name?: string,
 ): Promise<string> {
-  const tableName = `test_table__${guid()}`
+  const tableName = table_name ?? `test_table__${guid()}`
   await createTable(
     client,
     (env) => {
@@ -17,6 +18,7 @@ export async function createTableWithFields(
         // ENGINE can be omitted in the cloud statements:
         // it will use ReplicatedMergeTree and will add ON CLUSTER as well
         case TestEnv.Cloud:
+        case TestEnv.CloudSMT:
           return `
             CREATE TABLE ${tableName}
             (id UInt32, ${fields})
@@ -41,7 +43,7 @@ export async function createTableWithFields(
           `
       }
     },
-    clickhouse_settings
+    clickhouse_settings,
   )
   return tableName
 }

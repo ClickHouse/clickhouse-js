@@ -1,9 +1,9 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
 import { ClickHouseLogLevel } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient, guid, sleep } from '@test/utils'
-import type Stream from 'stream'
-import type { NodeClickHouseClientConfigOptions } from '../../src/client'
+import { guid, sleep } from '@test/utils'
+import type { ClickHouseClient } from '../../src'
+import type { NodeClickHouseClientConfigOptions } from '../../src/config'
+import { createNodeTestClient } from '../utils/node_client'
 
 /**
  * FIXME: Works fine during the local runs, but it is flaky on GHA,
@@ -11,15 +11,15 @@ import type { NodeClickHouseClientConfigOptions } from '../../src/client'
  *  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
  */
 xdescribe('[Node.js] Keep Alive', () => {
-  let client: ClickHouseClient<Stream.Readable>
+  let client: ClickHouseClient
   const socketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
   afterEach(async () => {
     await client.close()
   })
 
   describe('query', () => {
-    it('should not use expired sockets', async () => {
-      client = createTestClient({
+    it('should recreate the request if socket is potentially expired', async () => {
+      client = createNodeTestClient({
         max_open_connections: 1,
         keep_alive: {
           enabled: true,
@@ -33,7 +33,7 @@ xdescribe('[Node.js] Keep Alive', () => {
     })
 
     it('should disable keep alive', async () => {
-      client = createTestClient({
+      client = createNodeTestClient({
         max_open_connections: 1,
         keep_alive: {
           enabled: true,
@@ -46,7 +46,7 @@ xdescribe('[Node.js] Keep Alive', () => {
     })
 
     it('should use multiple connections', async () => {
-      client = createTestClient({
+      client = createNodeTestClient({
         keep_alive: {
           enabled: true,
           idle_socket_ttl: socketTTL,
@@ -54,12 +54,12 @@ xdescribe('[Node.js] Keep Alive', () => {
       } as NodeClickHouseClientConfigOptions)
 
       const results = await Promise.all(
-        [...Array(4).keys()].map((n) => query(n))
+        [...Array(4).keys()].map((n) => query(n)),
       )
       expect(results.sort()).toEqual([1, 2, 3, 4])
       await sleep(socketTTL)
       const results2 = await Promise.all(
-        [...Array(4).keys()].map((n) => query(n + 10))
+        [...Array(4).keys()].map((n) => query(n + 10)),
       )
       expect(results2.sort()).toEqual([11, 12, 13, 14])
     })
@@ -79,7 +79,7 @@ xdescribe('[Node.js] Keep Alive', () => {
   describe('insert', () => {
     let tableName: string
     it('should not duplicate insert requests (single connection)', async () => {
-      client = createTestClient({
+      client = createNodeTestClient({
         max_open_connections: 1,
         log: {
           level: ClickHouseLogLevel.TRACE,
@@ -106,7 +106,7 @@ xdescribe('[Node.js] Keep Alive', () => {
     })
 
     it('should not duplicate insert requests (multiple connections)', async () => {
-      client = createTestClient({
+      client = createNodeTestClient({
         max_open_connections: 2,
         keep_alive: {
           enabled: true,

@@ -31,7 +31,7 @@ const program = async () => {
   console.log()
   console.log(
     `Batch size: ${BATCH_SIZE}, iterations count: ${ITERATIONS}, ` +
-      `logging memory usage every ${LOG_INTERVAL} iterations`
+      `logging memory usage every ${LOG_INTERVAL} iterations`,
   )
 
   console.log()

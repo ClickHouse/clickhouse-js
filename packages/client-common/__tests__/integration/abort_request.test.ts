@@ -1,4 +1,4 @@
-import type { ClickHouseClient, ResponseJSON } from '@clickhouse/client-common'
+import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, guid, sleep } from '../utils'
 
 describe('abort request', () => {
@@ -25,7 +25,7 @@ describe('abort request', () => {
       await expectAsync(selectPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
 
@@ -47,7 +47,7 @@ describe('abort request', () => {
       await expectAsync(selectPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
 
@@ -71,7 +71,7 @@ describe('abort request', () => {
       await expectAsync(selectPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
 
@@ -106,13 +106,11 @@ describe('abort request', () => {
         queries.every((q) => {
           console.log(`${q.query} VS ${longRunningQuery}`)
           return !q.query.includes(longRunningQuery)
-        })
+        }),
       )
     })
 
     it('should cancel of the select queries while keeping the others', async () => {
-      type Res = Array<{ foo: number }>
-
       const controller = new AbortController()
       const results: number[] = []
 
@@ -127,7 +125,7 @@ describe('abort request', () => {
                 // we will cancel the request that should've yielded '3'
                 shouldAbort ? controller.signal : undefined,
             })
-            .then((r) => r.json<Res>())
+            .then((r) => r.json<{ foo: number }>())
             .then((r) => results.push(r[0].foo))
           // this way, the cancelled request will not cancel the others
           if (shouldAbort) {
@@ -136,7 +134,7 @@ describe('abort request', () => {
             })
           }
           return requestPromise
-        })
+        }),
       )
 
       controller.abort()
@@ -149,7 +147,7 @@ describe('abort request', () => {
 
 async function assertActiveQueries(
   client: ClickHouseClient,
-  assertQueries: (queries: Array<{ query: string }>) => boolean
+  assertQueries: (queries: Array<{ query: string }>) => boolean,
 ) {
   let isRunning = true
   while (isRunning) {
@@ -157,7 +155,7 @@ async function assertActiveQueries(
       query: 'SELECT query FROM system.processes',
       format: 'JSON',
     })
-    const queries = await rs.json<ResponseJSON<{ query: string }>>()
+    const queries = await rs.json<{ query: string }>()
     if (assertQueries(queries.data)) {
       isRunning = false
     } else {

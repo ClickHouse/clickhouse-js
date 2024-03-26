@@ -10,7 +10,7 @@ export const jsonValues = [
 
 export async function assertJsonValues(
   client: ClickHouseClient,
-  tableName: string
+  tableName: string,
 ) {
   const result = await client
     .query({

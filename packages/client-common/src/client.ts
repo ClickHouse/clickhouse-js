@@ -1,103 +1,22 @@
 import type {
-  ClickHouseLogLevel,
+  BaseClickHouseClientConfigOptions,
   ClickHouseSettings,
   Connection,
-  ConnectionParams,
   ConnExecResult,
-  Logger,
+  IsSame,
+  MakeResultSet,
   WithClickHouseSummary,
 } from '@clickhouse/client-common'
-import {
-  type DataFormat,
-  DefaultLogger,
-  LogWriter,
-} from '@clickhouse/client-common'
+import { type DataFormat, DefaultLogger } from '@clickhouse/client-common'
 import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
+import type {
+  CloseStream,
+  ImplementationDetails,
+  ValuesEncoder,
+} from './config'
+import { getConnectionParams, prepareConfigWithURL } from './config'
 import type { ConnPingResult } from './connection'
 import type { BaseResultSet } from './result'
-
-export type MakeConnection<Stream> = (
-  params: ConnectionParams
-) => Connection<Stream>
-
-export type MakeResultSet<Stream> = (
-  stream: Stream,
-  format: DataFormat,
-  session_id: string
-) => BaseResultSet<Stream>
-
-export interface ValuesEncoder<Stream> {
-  validateInsertValues<T = unknown>(
-    values: InsertValues<Stream, T>,
-    format: DataFormat
-  ): void
-
-  /**
-   * A function encodes an array or a stream of JSON objects to a format compatible with ClickHouse.
-   * If values are provided as an array of JSON objects, the function encodes it in place.
-   * If values are provided as a stream of JSON objects, the function sets up the encoding of each chunk.
-   * If values are provided as a raw non-object stream, the function does nothing.
-   *
-   * @param values a set of values to send to ClickHouse.
-   * @param format a format to encode value to.
-   */
-  encodeValues<T = unknown>(
-    values: InsertValues<Stream, T>,
-    format: DataFormat
-  ): string | Stream
-}
-
-export type CloseStream<Stream> = (stream: Stream) => Promise<void>
-
-export interface ClickHouseClientConfigOptions<Stream> {
-  impl: {
-    make_connection: MakeConnection<Stream>
-    make_result_set: MakeResultSet<Stream>
-    values_encoder: ValuesEncoder<Stream>
-    close_stream: CloseStream<Stream>
-  }
-  /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
-  host?: string
-  /** The request timeout in milliseconds. Default value: `30_000`. */
-  request_timeout?: number
-  /** Maximum number of sockets to allow per host. Default value: `10`. */
-  max_open_connections?: number
-
-  compression?: {
-    /** `response: true` instructs ClickHouse server to respond with
-     * compressed response body. Default: true. */
-    response?: boolean
-    /** `request: true` enabled compression on the client request body.
-     * Default: false. */
-    request?: boolean
-  }
-  /** The name of the user on whose behalf requests are made.
-   * Default: 'default'. */
-  username?: string
-  /** The user password. Default: ''. */
-  password?: string
-  /** The name of the application using the JS client.
-   * Default: empty. */
-  application?: string
-  /** Database name to use. Default value: `default`. */
-  database?: string
-  /** ClickHouse settings to apply to all requests. Default value: {} */
-  clickhouse_settings?: ClickHouseSettings
-  log?: {
-    /** A class to instantiate a custom logger implementation.
-     * Default: {@link DefaultLogger} */
-    LoggerClass?: new () => Logger
-    /** Default: OFF */
-    level?: ClickHouseLogLevel
-  }
-  session_id?: string
-  additional_headers?: Record<string, string>
-}
-
-export type BaseClickHouseClientConfigOptions<Stream> = Omit<
-  ClickHouseClientConfigOptions<Stream>,
-  'impl'
->
 
 export interface BaseQueryParams {
   /** ClickHouse's settings that can be applied on query level. */
@@ -118,6 +37,20 @@ export interface QueryParams extends BaseQueryParams {
   /** Format of the resulting dataset. */
   format?: DataFormat
 }
+
+/** Same parameters as {@link QueryParams}, but with `format` field as a type */
+export type QueryParamsWithFormat<Format extends DataFormat> = Omit<
+  QueryParams,
+  'format'
+> & { format?: Format }
+
+/** If the Format is not a literal type, fall back to the default behavior of the ResultSet,
+ *  allowing to call all methods with all data shapes variants,
+ *  and avoiding generated types that include all possible DataFormat literal values. */
+export type QueryResult<Stream, Format extends DataFormat> =
+  IsSame<Format, DataFormat> extends true
+    ? BaseResultSet<Stream, unknown>
+    : BaseResultSet<Stream, Format>
 
 export interface ExecParams extends BaseQueryParams {
   /** Statement to execute. */
@@ -182,34 +115,34 @@ export interface InsertParams<Stream = unknown, T = unknown>
 }
 
 export class ClickHouseClient<Stream = unknown> {
-  private readonly connectionParams: ConnectionParams
+  private readonly clientClickHouseSettings: ClickHouseSettings
   private readonly connection: Connection<Stream>
   private readonly makeResultSet: MakeResultSet<Stream>
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly closeStream: CloseStream<Stream>
   private readonly sessionId?: string
 
-  constructor(config: ClickHouseClientConfigOptions<Stream>) {
-    this.connectionParams = getConnectionParams(config)
+  constructor(
+    config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,
+  ) {
+    const logger = config?.log?.LoggerClass
+      ? new config.log.LoggerClass()
+      : new DefaultLogger()
+    const configWithURL = prepareConfigWithURL(
+      config,
+      logger,
+      config.impl.handle_specific_url_params ?? null,
+    )
+    const connectionParams = getConnectionParams(configWithURL, logger)
+    this.clientClickHouseSettings = connectionParams.clickhouse_settings
     this.sessionId = config.session_id
-    validateConnectionParams(this.connectionParams)
-    this.connection = config.impl.make_connection(this.connectionParams)
+    this.connection = config.impl.make_connection(
+      configWithURL,
+      connectionParams,
+    )
     this.makeResultSet = config.impl.make_result_set
     this.valuesEncoder = config.impl.values_encoder
     this.closeStream = config.impl.close_stream
-  }
-
-  private getQueryParams(params: BaseQueryParams) {
-    return {
-      clickhouse_settings: {
-        ...this.connectionParams.clickhouse_settings,
-        ...params.clickhouse_settings,
-      },
-      query_params: params.query_params,
-      abort_signal: params.abort_signal,
-      query_id: params.query_id,
-      session_id: this.sessionId,
-    }
   }
 
   /**
@@ -217,13 +150,16 @@ export class ClickHouseClient<Stream = unknown> {
    * FORMAT clause should be specified separately via {@link QueryParams.format} (default is JSON)
    * Consider using {@link ClickHouseClient.insert} for data insertion,
    * or {@link ClickHouseClient.command} for DDLs.
+   * Returns an implementation of {@link BaseResultSet}.
    */
-  async query(params: QueryParams): Promise<BaseResultSet<Stream>> {
+  async query<Format extends DataFormat = 'JSON'>(
+    params: QueryParamsWithFormat<Format>,
+  ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
     const { stream, query_id } = await this.connection.query({
       query,
-      ...this.getQueryParams(params),
+      ...this.withClientQueryParams(params),
     })
     return this.makeResultSet(stream, format, query_id)
   }
@@ -250,7 +186,7 @@ export class ClickHouseClient<Stream = unknown> {
     const query = removeTrailingSemi(params.query.trim())
     return await this.connection.exec({
       query,
-      ...this.getQueryParams(params),
+      ...this.withClientQueryParams(params),
     })
   }
 
@@ -273,7 +209,7 @@ export class ClickHouseClient<Stream = unknown> {
     const result = await this.connection.insert({
       query,
       values: this.valuesEncoder.encodeValues(params.values, format),
-      ...this.getQueryParams(params),
+      ...this.withClientQueryParams(params),
     })
     return { ...result, executed: true }
   }
@@ -293,6 +229,19 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async close(): Promise<void> {
     return await this.connection.close()
+  }
+
+  private withClientQueryParams(params: BaseQueryParams): BaseQueryParams {
+    return {
+      clickhouse_settings: {
+        ...this.clientClickHouseSettings,
+        ...params.clickhouse_settings,
+      },
+      query_params: params.query_params,
+      abort_signal: params.abort_signal,
+      query_id: params.query_id,
+      session_id: this.sessionId,
+    }
   }
 }
 
@@ -316,49 +265,6 @@ function removeTrailingSemi(query: string) {
   return query
 }
 
-function validateConnectionParams({ url }: ConnectionParams): void {
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error(
-      `Only http(s) protocol is supported, but given: [${url.protocol}]`
-    )
-  }
-}
-
-function createUrl(host: string): URL {
-  try {
-    return new URL(host)
-  } catch (err) {
-    throw new Error('Configuration parameter "host" contains malformed url.')
-  }
-}
-
-function getConnectionParams<Stream>(
-  config: ClickHouseClientConfigOptions<Stream>
-): ConnectionParams {
-  return {
-    application_id: config.application,
-    url: createUrl(config.host ?? 'http://localhost:8123'),
-    request_timeout: config.request_timeout ?? 30_000,
-    max_open_connections: config.max_open_connections ?? 10,
-    compression: {
-      decompress_response: config.compression?.response ?? true,
-      compress_request: config.compression?.request ?? false,
-    },
-    username: config.username ?? 'default',
-    password: config.password ?? '',
-    database: config.database ?? 'default',
-    clickhouse_settings: config.clickhouse_settings ?? {},
-    log_writer: new LogWriter(
-      config?.log?.LoggerClass
-        ? new config.log.LoggerClass()
-        : new DefaultLogger(),
-      'Connection',
-      config.log?.level
-    ),
-    additional_headers: config.additional_headers,
-  }
-}
-
 function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
   return (
     obj !== undefined &&
@@ -371,7 +277,7 @@ function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
 
 function getInsertQuery<T>(
   params: InsertParams<T>,
-  format: DataFormat
+  format: DataFormat,
 ): string {
   let columnsPart = ''
   if (params.columns !== undefined) {

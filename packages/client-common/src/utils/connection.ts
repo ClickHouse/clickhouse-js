@@ -21,7 +21,7 @@ export function withCompressionHeaders({
 
 export function withHttpSettings(
   clickhouse_settings?: ClickHouseSettings,
-  compression?: boolean
+  compression?: boolean,
 ): ClickHouseSettings {
   return {
     ...(compression

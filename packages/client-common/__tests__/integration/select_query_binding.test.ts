@@ -287,24 +287,24 @@ describe('select with query binding', () => {
             SELECT * FROM system.numbers
             WHERE number > {min_limit: UInt64} LIMIT 3
           `,
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching(
             // possible error messages here:
             // (since 23.8+) Substitution `min_limit` is not set.
             // (pre-23.8) Query parameter `min_limit` was not set
-            /^.+?`min_limit`.+?not set.*$/
+            /^.+?`min_limit`.+?not set.*$/,
           ),
           code: '456',
           type: 'UNKNOWN_QUERY_PARAMETER',
-        })
+        }),
       )
     })
   })
 
   describe('NULL parameter binding', () => {
-    const baseQuery: Pick<QueryParams, 'query' | 'format'> = {
+    const baseQuery: QueryParams = {
       query: 'SELECT number FROM numbers(3) WHERE {n:Nullable(String)} IS NULL',
       format: 'CSV',
     }

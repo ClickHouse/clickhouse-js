@@ -8,11 +8,11 @@ describe('[Node.js] errors parsing', () => {
     await expectAsync(
       client.query({
         query: 'SELECT * FROM system.numbers LIMIT 3',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         code: 'ECONNREFUSED',
-      })
+      }),
     )
   })
 })

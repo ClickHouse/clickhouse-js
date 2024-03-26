@@ -4,6 +4,7 @@ import Fs from 'fs'
 import { cwd } from 'node:process'
 import Path from 'path'
 
+/** See also: https://clickhouse.com/docs/en/interfaces/formats#parquet-format-settings */
 void (async () => {
   const client = createClient()
   const tableName = 'insert_file_stream_parquet'
@@ -40,6 +41,10 @@ void (async () => {
     table: tableName,
     values: fileStream,
     format: 'Parquet',
+    clickhouse_settings: {
+      /** See also https://clickhouse.com/docs/en/interfaces/formats#parquet-format-settings.
+       *  You could specify these (and other settings) here. */
+    },
   })
 
   const rs = await client.query({

@@ -1,60 +1,51 @@
 import type {
-  BaseClickHouseClientConfigOptions,
-  BaseResultSet,
-  ConnectionParams,
   DataFormat,
   InputJSON,
   InputJSONObjectEachRow,
   InsertParams,
   InsertResult,
-  QueryParams,
-  Row,
+  IsSame,
+  QueryParamsWithFormat,
 } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
-import { WebConnection } from './connection'
-import { ResultSet } from './result_set'
-import { WebValuesEncoder } from './utils'
+import type { WebClickHouseClientConfigOptions } from './config'
+import { WebImpl } from './config'
+import type { ResultSet } from './result_set'
 
-export type WebClickHouseClientConfigOptions =
-  BaseClickHouseClientConfigOptions<ReadableStream> & {
-    keep_alive?: {
-      /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
-      enabled: boolean
-    }
-  }
+/** If the Format is not a literal type, fall back to the default behavior of the ResultSet,
+ *  allowing to call all methods with all data shapes variants,
+ *  and avoiding generated types that include all possible DataFormat literal values. */
+export type QueryResult<Format extends DataFormat> =
+  IsSame<Format, DataFormat> extends true
+    ? ResultSet<unknown>
+    : ResultSet<Format>
 
-export type WebClickHouseClient = Omit<
-  ClickHouseClient<ReadableStream>,
-  'insert' | 'query'
-> & {
-  // restrict ReadableStream as a possible insert value
+export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
+  /** See {@link ClickHouseClient.insert}.
+   *
+   *  ReadableStream is removed from possible insert values
+   *  until it is supported by all major web platforms. */
   insert<T>(
     params: Omit<InsertParams<ReadableStream, T>, 'values'> & {
       values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
-    }
+    },
   ): Promise<InsertResult>
-  // narrow down the return type here for better type-hinting
-  query(params: QueryParams): Promise<BaseResultSet<ReadableStream<Row[]>>>
+}
+
+class WebClickHouseClientImpl extends ClickHouseClient<ReadableStream> {
+  /** See {@link ClickHouseClient.query}. */
+  query<Format extends DataFormat>(
+    params: QueryParamsWithFormat<Format>,
+  ): Promise<QueryResult<Format>> {
+    return super.query(params) as Promise<ResultSet<Format>>
+  }
 }
 
 export function createClient(
-  config?: WebClickHouseClientConfigOptions
+  config?: WebClickHouseClientConfigOptions,
 ): WebClickHouseClient {
-  const keep_alive = {
-    enabled: config?.keep_alive?.enabled ?? true,
-  }
-  return new ClickHouseClient<ReadableStream>({
-    impl: {
-      make_connection: (params: ConnectionParams) =>
-        new WebConnection({ ...params, keep_alive }),
-      make_result_set: (
-        stream: ReadableStream,
-        format: DataFormat,
-        query_id: string
-      ) => new ResultSet(stream, format, query_id),
-      values_encoder: new WebValuesEncoder(),
-      close_stream: (stream) => stream.cancel(),
-    },
+  return new WebClickHouseClientImpl({
+    impl: WebImpl,
     ...(config || {}),
   })
 }

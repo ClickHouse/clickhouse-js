@@ -27,18 +27,18 @@ describe('[Node.js] stream raw formats', () => {
       `"baz","foo","[1,2]"\n43,"bar","[3,4]"\n`,
       {
         objectMode: false,
-      }
+      },
     )
     await expectAsync(
       client.insert({
         table: tableName,
         values: stream,
         format: 'CSV',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Cannot parse input'),
-      })
+      }),
     )
   })
 
@@ -104,11 +104,11 @@ describe('[Node.js] stream raw formats', () => {
           table: tableName,
           values: stream,
           format: 'TabSeparated',
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringContaining('Cannot parse input'),
-        })
+        }),
       )
     })
 
@@ -124,7 +124,7 @@ describe('[Node.js] stream raw formats', () => {
             format: 'TabSeparated',
             table: tableName,
           })
-        })
+        }),
       )
       setTimeout(() => {
         streams.forEach((stream) => stream.push(null))
@@ -179,7 +179,7 @@ describe('[Node.js] stream raw formats', () => {
         `"id","name","sku"
 0,"foo","[1,2]"
 0,"bar","[3,4]"
-`
+`,
       )
     })
 
@@ -201,20 +201,20 @@ describe('[Node.js] stream raw formats', () => {
         `"id","name","sku"\n"UInt64","UInt64","Array(UInt8)"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`,
         {
           objectMode: false,
-        }
+        },
       )
       await expectAsync(
         client.insert({
           table: tableName,
           values: stream,
           format: 'CSVWithNamesAndTypes',
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringContaining(
-            `Type of 'name' must be String, not UInt64`
+            `Type of 'name' must be String, not UInt64`,
           ),
-        })
+        }),
       )
     })
 
@@ -227,11 +227,11 @@ describe('[Node.js] stream raw formats', () => {
           table: tableName,
           values: stream,
           format: 'CSV',
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringContaining('Cannot parse input'),
-        })
+        }),
       )
     })
 
@@ -247,7 +247,7 @@ describe('[Node.js] stream raw formats', () => {
             format: 'CSV',
             table: tableName,
           })
-        })
+        }),
       )
       setTimeout(() => {
         streams.forEach((stream) => stream.push(null))
@@ -291,7 +291,7 @@ describe('[Node.js] stream raw formats', () => {
       await assertInsertedValues(
         'CustomSeparatedWithNames',
         values,
-        clickhouse_settings
+        clickhouse_settings,
       )
     })
 
@@ -309,7 +309,7 @@ describe('[Node.js] stream raw formats', () => {
       await assertInsertedValues(
         'CustomSeparatedWithNamesAndTypes',
         values,
-        clickhouse_settings
+        clickhouse_settings,
       )
     })
 
@@ -323,11 +323,11 @@ describe('[Node.js] stream raw formats', () => {
           values: stream,
           format: 'CustomSeparated',
           clickhouse_settings,
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringContaining('Cannot parse input'),
-        })
+        }),
       )
     })
 
@@ -344,7 +344,7 @@ describe('[Node.js] stream raw formats', () => {
             table: tableName,
             clickhouse_settings,
           })
-        })
+        }),
       )
       setTimeout(() => {
         streams.forEach((stream) => stream.push(null))
@@ -357,7 +357,7 @@ describe('[Node.js] stream raw formats', () => {
   async function assertInsertedValues(
     format: RawDataFormat,
     expected: string,
-    clickhouse_settings?: ClickHouseSettings
+    clickhouse_settings?: ClickHouseSettings,
   ) {
     const result = await client.query({
       query: `SELECT * FROM ${tableName} ORDER BY id ASC`,

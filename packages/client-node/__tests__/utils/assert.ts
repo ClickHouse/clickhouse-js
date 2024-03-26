@@ -5,7 +5,7 @@ import { getAsText } from '../../src/utils'
 
 export async function assertConnQueryResult(
   { stream, query_id }: ConnQueryResult<Stream.Readable>,
-  expectedResponseBody: any
+  expectedResponseBody: any,
 ) {
   expect(await getAsText(stream)).toBe(expectedResponseBody)
   assertQueryId(query_id)
