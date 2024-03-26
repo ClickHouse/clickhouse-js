@@ -1,3 +1,9 @@
+## 0.3.1 (Common, Node.js, Web)
+
+### Bug fixes
+
+- Fixed an issue where query parameters containing tabs or newline characters were not encoded properly.
+
 ## 0.3.0 (Node.js only)
 
 This release primarily focuses on improving the Keep-Alive mechanism's reliability on the client side.
