@@ -239,6 +239,94 @@ describe('config', () => {
       } as unknown as BaseClickHouseClientConfigOptionsWithURL)
     })
 
+    describe('Pathname', () => {
+      it('should correctly load pathname + database from the URL', async () => {
+        const pathNames = [
+          'my_proxy',
+          'my_proxy/ch',
+          'my_proxy/',
+          'my_proxy/ch/',
+        ]
+        pathNames.forEach((pathname) => {
+          const url = new URL(
+            'http://my_host:8124/my_db?' +
+              [
+                'application=my_app',
+                `pathname=${pathname}`,
+                'request_timeout=42000',
+                'max_open_connections=2',
+              ].join('&'),
+          )
+          const res = prepareConfigWithURL({ url }, logger, null)
+          expect(res)
+            .withContext(`With pathname (no trailing slash) ${pathname}`)
+            .toEqual({
+              ...defaultConfig,
+              pathname,
+              url: new URL(`http://my_host:8124/${pathname}`),
+              application: 'my_app',
+              database: 'my_db',
+              request_timeout: 42000,
+              max_open_connections: 2,
+            } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+        })
+      })
+
+      it('should correctly load pathname + database from the URL (leading slash)', async () => {
+        const leadingSlashPathNames = [
+          '/my_proxy',
+          '/my_proxy/ch',
+          '/my_proxy/',
+          '/my_proxy/ch/',
+        ]
+        leadingSlashPathNames.forEach((pathname) => {
+          const url = new URL(
+            'http://my_host:8124/my_db?' +
+              [
+                'application=my_app',
+                `pathname=${pathname}`,
+                'request_timeout=42000',
+                'max_open_connections=2',
+              ].join('&'),
+          )
+          const res = prepareConfigWithURL({ url }, logger, null)
+          expect(res)
+            .withContext(`With pathname (leading slash only) ${pathname}`)
+            .toEqual({
+              ...defaultConfig,
+              pathname,
+              url: new URL('http://my_host:8124' + pathname),
+              application: 'my_app',
+              database: 'my_db',
+              request_timeout: 42000,
+              max_open_connections: 2,
+            } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+        })
+      })
+
+      it('should correctly process pathname with the default db', async () => {
+        const url = new URL(
+          'http://my_host:8124?' +
+            [
+              'application=my_app',
+              `pathname=my_proxy`,
+              'request_timeout=42000',
+              'max_open_connections=2',
+            ].join('&'),
+        )
+        const res = prepareConfigWithURL({ url }, logger, null)
+        expect(res).toEqual({
+          ...defaultConfig,
+          url: new URL(`http://my_host:8124/my_proxy`),
+          application: 'my_app',
+          pathname: 'my_proxy',
+          // no `database` key
+          request_timeout: 42000,
+          max_open_connections: 2,
+        } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+      })
+    })
+
     // more detailed tests are in the createUrl section
     it('should throw when the URL is not valid', async () => {
       expect(() => prepareConfigWithURL({ url: 'foo' }, logger, null)).toThrow(
@@ -569,6 +657,7 @@ describe('config', () => {
           [
             'readonly=true',
             'application=my_app',
+            'pathname=/my_proxy',
             'session_id=sticky',
             'request_timeout=42',
             'max_open_connections=144',
@@ -582,13 +671,14 @@ describe('config', () => {
           ].join('&'),
       )
       const res = loadConfigOptionsFromURL(url, null)
-      expect(res[0].toString()).toEqual('https://my.host:8124/')
+      expect(res[0].toString()).toEqual('https://my.host:8124/') // pathname will be attached later.
       expect(res[1]).toEqual({
         username: 'bob',
         password: 'secret',
         database: 'analytics',
         readonly: true,
         application: 'my_app',
+        pathname: '/my_proxy',
         session_id: 'sticky',
         request_timeout: 42,
         max_open_connections: 144,

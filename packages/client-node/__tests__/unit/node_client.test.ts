@@ -79,5 +79,30 @@ describe('[Node.js] createClient', () => {
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
+
+    it('should parse pathname and db from the URL and create a valid connection', async () => {
+      createClient({
+        url:
+          'https://bob:secret@my.host:8443/analytics?' +
+          [
+            // base config parameters
+            'application=my_app',
+            'pathname=my_proxy',
+            'request_timeout=42000',
+            'http_header_X-ClickHouse-Auth=secret_token',
+            // Node.js specific
+            'keep_alive_idle_socket_ttl=1500',
+          ].join('&'),
+      })
+      expect(createConnectionStub).toHaveBeenCalledWith(
+        { ...params, url: new URL('https://my.host:8443/my_proxy') },
+        undefined, // TLS
+        {
+          enabled: true,
+          idle_socket_ttl: 1500,
+        },
+      )
+      expect(createConnectionStub).toHaveBeenCalledTimes(1)
+    })
   })
 })

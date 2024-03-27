@@ -407,6 +407,9 @@ export function loadConfigOptionsFromURL(
           case 'application':
             config.application = value
             break
+          case 'pathname':
+            config.pathname = value
+            break
           case 'session_id':
             config.session_id = value
             break

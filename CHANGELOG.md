@@ -19,7 +19,7 @@ See "New features" section for more details.
 
 ## Breaking changes
 
-- `request_timeout` default value was incorrectly set to 300s instead of 30s. It is now correctly set to 30s by default. If your code relies on the previous incorrect default value, consider setting it explicitly.
+- As the client now supports parsing [URL configuration](#url-configuration), you should specify `pathname` as a separate configuration option (as it would be considered as the `database` otherwise).
 - Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid potential load balancer timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. In that case, a `socket hang up` error could be thrown on the client side. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout; this is also in line with the default [AWS LB KeepAlive interval](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout), which is 20s by default. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `clickhouse_settings.http_headers_progress_interval_ms` value.
 
   NB: these settings will be enabled only if the client instance was created without setting `readonly` flag (see below).
@@ -190,6 +190,7 @@ async function runQuery(
 | Parameter                                   | Type                                                              |
 | ------------------------------------------- | ----------------------------------------------------------------- |
 | `readonly`                                  | boolean. See below [1].                                           |
+| `pathname`                                  | non-empty string.                                                 |
 | `application_id`                            | non-empty string.                                                 |
 | `session_id`                                | non-empty string.                                                 |
 | `request_timeout`                           | non-negative number.                                              |

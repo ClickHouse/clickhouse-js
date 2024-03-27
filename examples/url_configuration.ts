@@ -19,6 +19,7 @@ void (async () => {
       // arbitrary string values
       'application=my_analytics_app',
       'session_id=random_session_id',
+      'pathname=/my_proxy', // or `my_proxy`, without the leading slash
       // a numeric value
       'request_timeout=60000',
       // a numeric value; max_open_connections is expected to be at least 1 when set explicitly.

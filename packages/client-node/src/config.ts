@@ -90,6 +90,7 @@ export const NodeConfigImpl: Required<
         }
       }
     }
+    // normally, it should be already set after processing the config
     const keep_alive = {
       enabled: nodeConfig?.keep_alive?.enabled ?? true,
       idle_socket_ttl: nodeConfig?.keep_alive?.idle_socket_ttl ?? 2500,
