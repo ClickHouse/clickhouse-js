@@ -66,7 +66,7 @@ describe('[Node.js] createClient', () => {
             'request_timeout=42000',
             'http_header_X-ClickHouse-Auth=secret_token',
             // Node.js specific
-            'keep_alive_idle_socket_ttl=2500',
+            'keep_alive_idle_socket_ttl=1500',
           ].join('&'),
       })
       expect(createConnectionStub).toHaveBeenCalledWith(
@@ -74,7 +74,7 @@ describe('[Node.js] createClient', () => {
         undefined, // TLS
         {
           enabled: true,
-          idle_socket_ttl: 2500,
+          idle_socket_ttl: 1500,
         },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)

@@ -21,64 +21,78 @@ const DefaultClickHouseSettings: ClickHouseSettings = {
 
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
-   * A ClickHouse instance URL. Default value: `http://localhost:8123`. */
+   *  A ClickHouse instance URL.
+   *  @default http://localhost:8123 */
   host?: string
-  /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
+  /** A ClickHouse instance URL.
+   *  @default http://localhost:8123 */
   url?: string | URL
-  /** The request timeout in milliseconds. Default value: `30_000`. */
+  /** An optional pathname to add to the ClickHouse URL after it is parsed by the client.
+   *  For example, if you use a proxy, and your ClickHouse instance can be accessed as http://proxy:8123/clickhouse_server,
+   *  specify `clickhouse_server` here (with or without a leading slash);
+   *  otherwise, if provided directly in the {@link url}, it will be considered as the `database` option.
+   *  @default empty string */
+  pathname?: string
+  /** The request timeout in milliseconds.
+   *  @default 30_000 */
   request_timeout?: number
-  /** Maximum number of sockets to allow per host. Default value: `Infinity`. */
+  /** Maximum number of sockets to allow per host.
+   *  @default 10 */
   max_open_connections?: number
   /** Request and response compression settings. Can't be enabled for a user with readonly=1. */
   compression?: {
     /** `response: true` instructs ClickHouse server to respond with
-     * compressed response body. Default: true; if {@link readonly} is enabled, then false. */
+     *  compressed response body.
+     *  @default true; if {@link readonly} is enabled, then false. */
     response?: boolean
     /** `request: true` enabled compression on the client request body.
-     * Default: false. */
+     *  @default false. */
     request?: boolean
   }
   /** The name of the user on whose behalf requests are made.
-   * Default: 'default'. */
+   *  @default default */
   username?: string
-  /** The user password. Default: ''. */
+  /** The user password.
+   *  @default empty */
   password?: string
   /** The name of the application using the JS client.
-   * Default: empty. */
+   *  @default empty */
   application?: string
-  /** Database name to use. Default value: `default`. */
+  /** Database name to use.
+   * @default default */
   database?: string
   /** ClickHouse settings to apply to all requests.
-   * Default value: {@link DefaultClickHouseSettings} */
+   *  @default see {@link DefaultClickHouseSettings} */
   clickhouse_settings?: ClickHouseSettings
   log?: {
     /** A class to instantiate a custom logger implementation.
-     * Default: {@link DefaultLogger} */
+     *  @default see {@link DefaultLogger} */
     LoggerClass?: new () => Logger
-    /** Default: OFF */
+    /** @default set to {@link ClickHouseLogLevel.OFF} */
     level?: ClickHouseLogLevel
   }
   /** ClickHouse Session id to attach to the outgoing requests.
-   * Default: empty. */
+   *  @default empty */
   session_id?: string
   /** @deprecated since version 1.0.0. Use {@link http_headers} instead. <br/>
-   * Additional HTTP headers to attach to the outgoing requests.
-   * Default: empty. */
+   *  Additional HTTP headers to attach to the outgoing requests.
+   *  @default empty */
   additional_headers?: Record<string, string>
   /** Additional HTTP headers to attach to the outgoing requests.
-   * Default: empty. */
+   *  @default empty */
   http_headers?: Record<string, string>
   /** If the client instance created for a user with `READONLY = 1` mode,
-   * some settings, such as {@link compression}, `send_progress_in_http_headers`,
-   * and `http_headers_progress_interval_ms` can't be modified,
-   * and will be removed from the client configuration.
-   * NB: this is not necessary if a user has `READONLY = 2` mode.
-   * See also: https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly
-   * Default: false */
+   *  some settings, such as {@link compression}, `send_progress_in_http_headers`,
+   *  and `http_headers_progress_interval_ms` can't be modified,
+   *  and will be removed from the client configuration.
+   *  NB: this is not necessary if a user has `READONLY = 2` mode.
+   *  @see https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly
+   *  @default false */
   readonly?: boolean
   /** HTTP Keep-Alive related settings */
   keep_alive?: {
-    /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
+    /** Enable or disable HTTP Keep-Alive mechanism.
+     *  @default true */
     enabled?: boolean
   }
 }
@@ -234,6 +248,9 @@ export function prepareConfigWithURL(
       request: false,
     }
   }
+  if (config.pathname !== undefined) {
+    url.pathname = config.pathname
+  }
   config.url = url
   config.clickhouse_settings = clickHouseSettings
   config.compression = compressionSettings
@@ -266,28 +283,45 @@ export function getConnectionParams(
 /**
  * Merge two versions of the config: base (hardcoded) from the instance creation and the URL parsed one.
  * URL config takes priority and overrides the base config parameters.
- * If a value is overridden, then a warning will be logged.
- * NB: currently, merges only the top level keys to simplify the flow.
+ * If a value is overridden, then a warning will be logged (even if the log level is OFF).
  */
 export function mergeConfigs(
   baseConfig: BaseClickHouseClientConfigOptions,
   configFromURL: BaseClickHouseClientConfigOptions,
   logger: Logger,
 ): BaseClickHouseClientConfigOptions {
-  const config = { ...baseConfig }
-  const keys = Object.keys(
-    configFromURL,
-  ) as (keyof BaseClickHouseClientConfigOptions)[]
-  for (const key of keys) {
-    if (config[key] !== undefined) {
-      logger.warn({
-        module: 'Config',
-        message: `"${key}" is overridden by a URL parameter.`,
-      })
+  function deepMerge(
+    base: Record<string, any>,
+    fromURL: Record<string, any>,
+    path: string[] = [],
+  ) {
+    for (const key of Object.keys(fromURL)) {
+      if (typeof fromURL[key] === 'object') {
+        deepMerge(base, fromURL[key], path.concat(key))
+      } else {
+        let baseAtPath: Record<string, any> = base
+        for (const key of path) {
+          if (baseAtPath[key] === undefined) {
+            baseAtPath[key] = {}
+          }
+          baseAtPath = baseAtPath[key]
+        }
+        const baseAtKey = baseAtPath[key]
+        if (baseAtKey !== undefined) {
+          const fullPath = path.concat(key).join('.')
+          logger.warn({
+            module: 'Config',
+            message: `"${fullPath}" is overridden by a URL parameter.`,
+          })
+        }
+        baseAtPath[key] = fromURL[key]
+      }
     }
-    config[key] = configFromURL[key] as any
   }
-  return config
+
+  const config: Record<string, any> = { ...baseConfig }
+  deepMerge(config, configFromURL)
+  return config as BaseClickHouseClientConfigOptions
 }
 
 export function createUrl(configURL: string | URL | undefined): URL {

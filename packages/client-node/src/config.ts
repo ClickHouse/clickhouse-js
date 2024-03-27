@@ -17,11 +17,13 @@ export type NodeClickHouseClientConfigOptions =
     tls?: BasicTLSOptions | MutualTLSOptions
     /** HTTP Keep-Alive related settings */
     keep_alive?: {
-      /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
+      /** Enable or disable HTTP Keep-Alive mechanism.
+       *  @default true */
       enabled?: boolean
       /** For how long keep a particular idle socket alive on the client side (in milliseconds).
-       * It is supposed to be a fair bit less that the ClickHouse server KeepAlive timeout, which is by default 3000 ms.
-       * Default value: 2500 */
+       *  It is supposed to be a fair bit less that the ClickHouse server KeepAlive timeout,
+       *  which is by default 3000 ms for pre-23.11 versions.
+       *  @default 2500 */
       idle_socket_ttl?: number
     }
   }

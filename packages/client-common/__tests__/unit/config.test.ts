@@ -44,6 +44,7 @@ describe('config', () => {
       const res = prepareConfigWithURL(
         {
           url: 'https://my.host:8443',
+          pathname: '/my_proxy',
           request_timeout: 42_000,
           max_open_connections: 144,
           username: 'bob',
@@ -70,7 +71,8 @@ describe('config', () => {
         null,
       )
       expect(res).toEqual({
-        url: new URL('https://my.host:8443/'),
+        url: new URL('https://my.host:8443/my_proxy'),
+        pathname: '/my_proxy',
         request_timeout: 42_000,
         max_open_connections: 144,
         username: 'bob',
@@ -381,6 +383,155 @@ describe('config', () => {
         url: 'https://my.host:8443',
         username: 'bob',
         password: 'secret',
+      })
+    })
+
+    it('should correctly work with nested levels when there are no defaults', async () => {
+      const base: BaseClickHouseClientConfigOptions = {
+        url: 'https://my.host:8124',
+        application: 'my_app',
+        // does not have clickhouse_settings
+      }
+      const fromURL: BaseClickHouseClientConfigOptions = {
+        clickhouse_settings: {
+          wait_for_async_insert: 0,
+        },
+      }
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res).toEqual({
+        url: 'https://my.host:8124',
+        application: 'my_app',
+        clickhouse_settings: {
+          wait_for_async_insert: 0,
+        },
+      })
+    })
+
+    it('should deep merge two configs', async () => {
+      const base: BaseClickHouseClientConfigOptions = {
+        url: 'https://my.host:8124',
+        application: 'my_app',
+        compression: {
+          response: false,
+        },
+        clickhouse_settings: {
+          async_insert: 1,
+        },
+      }
+      const fromURL: BaseClickHouseClientConfigOptions = {
+        pathname: '/my_proxy',
+        clickhouse_settings: {
+          wait_for_async_insert: 0,
+        },
+      }
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res).toEqual({
+        url: 'https://my.host:8124',
+        application: 'my_app',
+        pathname: '/my_proxy',
+        compression: {
+          response: false,
+        },
+        clickhouse_settings: {
+          async_insert: 1,
+          wait_for_async_insert: 0,
+        },
+      })
+    })
+
+    it('should deep merge more than two levels', async () => {
+      // Currently, we don't have this. Future-proofing.
+      type TestOptions = BaseClickHouseClientConfigOptions & {
+        very: {
+          deeply: {
+            nested_setting: string
+            nested: {
+              setting: number
+            }
+            this_is_not_overridden?: number[]
+          }
+        }
+      }
+      const base: TestOptions = {
+        url: 'https://my.host:8124',
+        clickhouse_settings: {
+          async_insert: 1,
+        },
+        very: {
+          deeply: {
+            nested_setting: 'foo',
+            nested: {
+              setting: 42,
+            },
+            this_is_not_overridden: [1, 2, 3],
+          },
+        },
+      }
+      const fromURL: TestOptions = {
+        clickhouse_settings: {
+          wait_for_async_insert: 0,
+        },
+        very: {
+          deeply: {
+            nested_setting: 'bar',
+            nested: {
+              setting: 144,
+            },
+          },
+        },
+      }
+
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res as TestOptions).toEqual({
+        url: 'https://my.host:8124',
+        clickhouse_settings: {
+          async_insert: 1,
+          wait_for_async_insert: 0,
+        },
+        very: {
+          deeply: {
+            nested_setting: 'bar',
+            nested: {
+              setting: 144,
+            },
+            this_is_not_overridden: [1, 2, 3],
+          },
+        },
+      })
+    })
+
+    it('should deep merge two configs with nested overrides', async () => {
+      const base: BaseClickHouseClientConfigOptions = {
+        url: 'https://my.host:8124',
+        compression: {
+          request: true,
+          response: false,
+        },
+        clickhouse_settings: {
+          async_insert: 1,
+        },
+      }
+      const fromURL: BaseClickHouseClientConfigOptions = {
+        compression: {
+          request: false,
+          response: true,
+        },
+        clickhouse_settings: {
+          async_insert: 0,
+          wait_for_async_insert: 0,
+        },
+      }
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res).toEqual({
+        url: 'https://my.host:8124',
+        compression: {
+          request: false,
+          response: true,
+        },
+        clickhouse_settings: {
+          async_insert: 0,
+          wait_for_async_insert: 0,
+        },
       })
     })
   })
