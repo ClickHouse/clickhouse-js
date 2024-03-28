@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '../utils'
+import { createTestClient, getTestDatabaseName } from '../utils'
 
 describe('ClickHouse server errors parsing', () => {
   let client: ClickHouseClient
@@ -11,15 +11,19 @@ describe('ClickHouse server errors parsing', () => {
   })
 
   it('returns "unknown identifier" error', async () => {
+    // Possible error messages here:
+    // (since 24.3+, Cloud SMT): Unknown expression identifier 'number' in scope SELECT number AS FR
+    // (since 23.8+, Cloud RMT): Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'
+    const errorMessagePattern =
+      `((?:Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number')|` +
+      `(?:Unknown expression identifier 'number' in scope SELECT number AS FR))`
     await expectAsync(
       client.query({
         query: 'SELECT number FR',
       })
     ).toBeRejectedWith(
       jasmine.objectContaining({
-        message: jasmine.stringContaining(
-          `Unknown expression identifier 'number' in scope SELECT number AS FR`
-        ),
+        message: jasmine.stringMatching(errorMessagePattern),
         code: '47',
         type: 'UNKNOWN_IDENTIFIER',
       })
@@ -27,15 +31,20 @@ describe('ClickHouse server errors parsing', () => {
   })
 
   it('returns "unknown table" error', async () => {
+    // Possible error messages here:
+    // (since 24.3+, Cloud SMT): Unknown table expression identifier 'unknown_table' in scope
+    // (since 23.8+, Cloud RMT): Table foo.unknown_table does not exist.
+    const dbName = getTestDatabaseName()
+    const errorMessagePattern =
+      `((?:^Table ${dbName}.unknown_table does not exist.*)|` +
+      `(?:Unknown table expression identifier 'unknown_table' in scope))`
     await expectAsync(
       client.query({
         query: 'SELECT * FROM unknown_table',
       })
     ).toBeRejectedWith(
       jasmine.objectContaining({
-        message: jasmine.stringContaining(
-          `Unknown table expression identifier 'unknown_table' in scope`
-        ),
+        message: jasmine.stringMatching(errorMessagePattern),
         code: '60',
         type: 'UNKNOWN_TABLE',
       })
