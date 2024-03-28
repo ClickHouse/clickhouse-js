@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient, getTestDatabaseName } from '../utils'
+import { createTestClient } from '../utils'
 
 describe('ClickHouse server errors parsing', () => {
   let client: ClickHouseClient
@@ -17,7 +17,9 @@ describe('ClickHouse server errors parsing', () => {
       })
     ).toBeRejectedWith(
       jasmine.objectContaining({
-        message: `Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'. `,
+        message: jasmine.stringContaining(
+          `Unknown expression identifier 'number' in scope SELECT number AS FR`
+        ),
         code: '47',
         type: 'UNKNOWN_IDENTIFIER',
       })
@@ -25,17 +27,15 @@ describe('ClickHouse server errors parsing', () => {
   })
 
   it('returns "unknown table" error', async () => {
-    // possible error messages here:
-    // (since 23.8+) Table foo.unknown_table does not exist.
-    // (pre-23.8) Table foo.unknown_table doesn't exist.
-    const errorMessagePattern = `^Table ${getTestDatabaseName()}.unknown_table does(n't| not) exist.*$`
     await expectAsync(
       client.query({
         query: 'SELECT * FROM unknown_table',
       })
     ).toBeRejectedWith(
       jasmine.objectContaining({
-        message: jasmine.stringMatching(errorMessagePattern),
+        message: jasmine.stringContaining(
+          `Unknown table expression identifier 'unknown_table' in scope`
+        ),
         code: '60',
         type: 'UNKNOWN_TABLE',
       })
