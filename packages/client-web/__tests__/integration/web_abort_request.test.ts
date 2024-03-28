@@ -16,7 +16,7 @@ describe('[Web] abort request streaming', () => {
     const controller = new AbortController()
     const selectPromise = client
       .query({
-        query: 'SELECT * from system.numbers',
+        query: 'SELECT * from system.numbers LIMIT 100000',
         format: 'JSONCompactEachRow',
         abort_signal: controller.signal,
       })
@@ -26,7 +26,7 @@ describe('[Web] abort request streaming', () => {
           const { done, value: rows } = await reader.read()
           if (done) break
           ;(rows as Row[]).forEach((row: Row) => {
-            const [[number]] = row.json<[[string]]>()
+            const [number] = row.json<[string]>()
             // abort when reach number 3
             if (number === '3') {
               controller.abort()
@@ -46,7 +46,7 @@ describe('[Web] abort request streaming', () => {
   it('cancels a select query while reading response by closing response stream', async () => {
     const selectPromise = client
       .query({
-        query: 'SELECT * from system.numbers',
+        query: 'SELECT * from system.numbers LIMIT 100000',
         format: 'JSONCompactEachRow',
       })
       .then(async function (rs) {
@@ -55,7 +55,7 @@ describe('[Web] abort request streaming', () => {
           const { done, value: rows } = await reader.read()
           if (done) break
           for (const row of rows as Row[]) {
-            const [[number]] = row.json<[[string]]>()
+            const [number] = row.json<[string]>()
             // abort when reach number 3
             if (number === '3') {
               await reader.releaseLock()

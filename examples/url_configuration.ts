@@ -19,12 +19,12 @@ void (async () => {
       // arbitrary string values
       'application=my_analytics_app',
       'session_id=random_session_id',
+      'pathname=/my_proxy', // or `my_proxy`, without the leading slash
       // a numeric value
       'request_timeout=60000',
       // a numeric value; max_open_connections is expected to be at least 1 when set explicitly.
       'max_open_connections=10',
-      // boolean values can be set as 1/0 or true/false
-      'readonly=false',
+      // boolean values can be set as 1/0 or true/false;
       // sets compression.request = true
       'compression_request=1',
       // sets compression.response = false
@@ -47,13 +47,13 @@ void (async () => {
       'http_header_X-CLICKHOUSE-AUTH=secret_header',
     ].join('&')
   /*
-    The URL above is equivalent to the following configuration object:
+    The URL above is an equivalent to the following configuration object:
     {
       url: 'https://my.host:8124',
       username: 'bob',
       password: 'secret',
       database: 'analytics',
-      readonly: false,
+      pathname: '/my_proxy',
       application: 'my_analytics_app',
       session_id: 'random_session_id',
       request_timeout: 60_000,

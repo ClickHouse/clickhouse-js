@@ -39,6 +39,11 @@ jobs:
         run: |
           npm install
 
+      - name: Install dependencies (examples)
+        working-directory: examples
+        run: |
+          npm install
+
       - name: Run linting
         run: |
           npm run lint

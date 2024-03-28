@@ -63,7 +63,6 @@ void (async () => {
   let readOnlyUserClient = createClient({
     username: readOnlyUsername,
     password: readOnlyPassword,
-    readonly: true, // this disables compression and additional ClickHouse settings
   })
 
   // read-only user cannot insert the data into the table
@@ -106,15 +105,14 @@ void (async () => {
   console.log('Select result:', await rs.json())
   printSeparator()
 
-  // ... cannot use compression or specific ClickHouse HTTP settings
+  // ... cannot use ClickHouse settings
   await readOnlyUserClient.close()
   readOnlyUserClient = createClient({
     username: readOnlyUsername,
     password: readOnlyPassword,
-    /** omitting read-only setting here, and it will cause an error from the ClickHouse side with a read-only user,
-     * since we enable compression and set `send_progress_in_http_headers` + `http_headers_progress_interval_ms`
-     * for non-read-only users by default */
-    // readonly: true,
+    clickhouse_settings: {
+      send_progress_in_http_headers: 1,
+    },
   })
 
   await readOnlyUserClient
@@ -129,6 +127,29 @@ void (async () => {
       )
     })
   printSeparator()
+
+  // ... cannot use response compression. Request compression is still allowed.
+  await readOnlyUserClient.close()
+  readOnlyUserClient = createClient({
+    username: readOnlyUsername,
+    password: readOnlyPassword,
+    compression: {
+      response: true,
+    },
+  })
+  await readOnlyUserClient
+    .query({
+      query: `SELECT * FROM ${testTableName}`,
+      format: 'JSONEachRow',
+    })
+    .catch((err) => {
+      console.error(
+        `[Expected error] Cannot enable compression setting in readonly mode. Cause:\n`,
+        err,
+      )
+    })
+  printSeparator()
+
   console.log('All done!')
 
   await readOnlyUserClient.close()
