@@ -113,7 +113,6 @@ describe('[Node.js] streaming e2e', () => {
       'Schema<{ 0: id: Uint64, 1: name: Utf8, 2: sku: List<Uint8> }>'
     )
     const actualParquetData: unknown[] = []
-    const textDecoder = new TextDecoder()
     table.toArray().map((v) => {
       const row: Record<string, unknown> = {}
       row['id'] = v.id
