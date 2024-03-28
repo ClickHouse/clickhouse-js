@@ -1,8 +1,13 @@
 # 1.0.0 (Common, Node.js, Web)
 
-Formal stable release milestone with a lot of improvements and a fair bit of breaking changes.
+Formal stable release milestone with a lot of improvements and some [breaking changes](#breaking-changes-in-100).
 
-The client will follow the [official semantic versioning](https://docs.npmjs.com/about-semantic-versioning) guidelines.
+Major new features overview:
+
+- [Advanced TypeScript support for `query` + `ResultSet`](#advanced-typescript-support-for-query--resultset)
+- [URL configuration](#url-configuration)
+
+From now on, the client will follow the [official semantic versioning](https://docs.npmjs.com/about-semantic-versioning) guidelines.
 
 ## Deprecated API
 
@@ -17,44 +22,14 @@ These parameters will be removed in the next major release (2.0.0).
 
 See "New features" section for more details.
 
-## Breaking changes
+## Breaking changes in 1.0.0
 
+- `compression.response` is now disabled by default in the client configuration options, as it cannot be used with readonly=1 users, and it was not clear from the ClickHouse error message what exact client option was causing the failing query in this case. If you'd like to continue using response compression, you should explicitly enable it in the client configuration.
 - As the client now supports parsing [URL configuration](#url-configuration), you should specify `pathname` as a separate configuration option (as it would be considered as the `database` otherwise).
-- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid potential load balancer timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. In that case, a `socket hang up` error could be thrown on the client side. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout; this is also in line with the default [AWS LB KeepAlive interval](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout), which is 20s by default. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `clickhouse_settings.http_headers_progress_interval_ms` value.
-
-  NB: these settings will be enabled only if the client instance was created without setting `readonly` flag (see below).
-
-- It is now possible to create a client in read-only mode, which will disable default compression and aforementioned ClickHouse HTTP settings. Previously, if you wanted to use the client with a user created with `READONLY = 1` mode, the response compression had to be disabled explicitly.
-
-Pre 1.0.0:
-
-```ts
-const client = createClient({
-  compression: {
-    response: false,
-  },
-})
-```
-
-With `send_progress_in_http_headers` and `http_headers_progress_interval_ms` settings now enabled by default, this is no longer sufficient. If you need to create a client instance for a read-only user, consider this instead:
-
-```ts
-// 1.0.0
-const client = createClient({
-  readonly: true,
-})
-```
-
-By default, `readonly` is `false`.
-
-NB: this is not necessary if a user has `READONLY = 2` mode as it allows to modify the settings, so the client can be used without an additional `readonly` setting.
-
-See also: [readonly documentation](https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly).
-
 - (TypeScript only) `ResultSet` and `Row` are now more strictly typed, according to the format used during the `query` call. See [this section](#advanced-typescript-support-for-query--resultset) for more details.
 - (TypeScript only) Both Node.js and Web versions now uniformly export correct `ClickHouseClient` and `ClickHouseClientConfigOptions` types, specific to each implementation. Exported `ClickHouseClient` now does not have a `Stream` type parameter, as it was unintended to expose it there. NB: you should still use `createClient` factory function provided in the package.
 
-## New features
+## New features in 1.0.0
 
 ### Advanced TypeScript support for `query` + `ResultSet`
 
@@ -71,7 +46,7 @@ Complete reference:
 | JSON                            | ResponseJSON\<T\>     | never                       | never             | never           |
 | JSONObjectEachRow               | Record\<string, T\>   | never                       | never             | never           |
 | All other JSON\*EachRow         | Array\<T\>            | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | T               |
-| CSV/TSV/CustomSeparated/Parquet | never                 | Stream\<Array\<Row\<?\>\>\> | Array\<Row\<?\>\> | never           |
+| CSV/TSV/CustomSeparated/Parquet | never                 | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | never           |
 
 By default, `T` (which represents `JSONType`) is still `unknown`. However, considering `JSONObjectsEachRow` example: prior to 1.0.0, you had to specify the entire type hint, including the shape of the data, manually:
 
@@ -155,7 +130,7 @@ const resultSet = await client.query('SELECT * FROM table', {
 const json = resultSet.json()
 ```
 
-There is one currently known limitation: as the general shape of the data and the methods allowed for calling are inferred from the format literal, there might be situations where it will fail to do so, for example:
+Currently, there is one known limitation: as the general shape of the data and the methods allowed for calling are inferred from the format literal, there might be situations where it will fail to do so, for example:
 
 ```ts
 // assuming that `queryParams` has `JSONObjectsEachRow` format inside
@@ -164,6 +139,7 @@ async function runQuery(
 ): Promise<Record<string, Data>> {
   const resultSet = await client.query(queryParams)
   // type hint here will provide a union of all known shapes instead of a specific one
+  // inferred shapes: Data[] | ResponseJSON<Data> | Record<string, Data>
   return resultSet.json<Data>()
 }
 ```
@@ -178,9 +154,12 @@ async function runQuery(
     ...queryParams,
     format: 'JSONObjectsEachRow',
   })
-  return resultSet.json<Data>() // TS understands that it is a Record<string, Data> now
+  // TS understands that it is a Record<string, Data> now
+  return resultSet.json<Data>()
 }
 ```
+
+If you are interested in more details, see the [related test](./packages/client-node/__tests__/integration/node_query_format_types.test.ts) (featuring a great ESLint plugin [expect-types](https://github.com/JoshuaKGoldberg/eslint-plugin-expect-type)) in the client package.
 
 ### URL configuration
 
@@ -189,13 +168,12 @@ async function runQuery(
 
 | Parameter                                   | Type                                                              |
 | ------------------------------------------- | ----------------------------------------------------------------- |
-| `readonly`                                  | boolean. See below [1].                                           |
-| `pathname`                                  | non-empty string.                                                 |
-| `application_id`                            | non-empty string.                                                 |
-| `session_id`                                | non-empty string.                                                 |
+| `pathname`                                  | an arbitrary string.                                              |
+| `application_id`                            | an arbitrary string.                                              |
+| `session_id`                                | an arbitrary string.                                              |
 | `request_timeout`                           | non-negative number.                                              |
 | `max_open_connections`                      | non-negative number, greater than zero.                           |
-| `compression_request`                       | boolean.                                                          |
+| `compression_request`                       | boolean. See below [1].                                           |
 | `compression_response`                      | boolean.                                                          |
 | `log_level`                                 | allowed values: `OFF`, `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`. |
 | `keep_alive_enabled`                        | boolean.                                                          |
@@ -215,6 +193,8 @@ createClient({
   },
 })
 ```
+
+Note: boolean values for `clickhouse_settings` should be passed as `1`/`0` in the URL.
 
 [3] Similar to [2], but for `http_header` configuration. For example, `?http_header_x-clickhouse-auth=foobar` will be an equivalent of:
 

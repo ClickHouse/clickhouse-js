@@ -527,7 +527,7 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
   describe('Type inference with ambiguous format variants', () => {
     // TODO: Maybe there is a way to infer the format without an extra type parameter?
     it('should infer types for JSON or JSONEachRow (no extra type params)', async () => {
-      // $ExpectType (format: "JSONEachRow" | "JSON") => Promise<ResultSet<"JSONEachRow" | "JSON">>
+      // $ExpectType (format: "JSON" | "JSONEachRow") => Promise<ResultSet<"JSON" | "JSONEachRow">>
       function runQuery(format: 'JSONEachRow' | 'JSON') {
         return client.query({
           query,
@@ -537,7 +537,7 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
 
       // ResultSet falls back to both possible formats (both JSON and JSONEachRow); 'JSON' string provided to `runQuery`
       // cannot be used to narrow down the literal type, since the function argument is just DataFormat.
-      // $ExpectType ResultSet<"JSONEachRow" | "JSON">
+      // $ExpectType ResultSet<"JSON" | "JSONEachRow">
       const rs = await runQuery('JSON')
       // $ExpectType unknown[] | ResponseJSON<unknown>
       await rs.json()
@@ -545,12 +545,12 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       await rs.json<Data>()
       // $ExpectType string
       await rs.text()
-      // $ExpectType StreamReadable<Row<unknown, "JSONEachRow" | "JSON">[]>
+      // $ExpectType StreamReadable<Row<unknown, "JSON" | "JSONEachRow">[]>
       rs.stream()
     })
 
     it('should infer types for JSON or JSONEachRow (with extra type parameter)', async () => {
-      // $ExpectType <F extends "JSONEachRow" | "JSON">(format: F) => Promise<QueryResult<F>>
+      // $ExpectType <F extends "JSON" | "JSONEachRow">(format: F) => Promise<QueryResult<F>>
       function runQuery<F extends 'JSON' | 'JSONEachRow'>(format: F) {
         return client.query({
           query,

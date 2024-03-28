@@ -25,14 +25,6 @@ describe('config', () => {
   describe('prepareConfigWithURL', () => {
     const defaultConfig: BaseClickHouseClientConfigOptionsWithURL = {
       url: new URL('http://localhost:8123/'),
-      compression: {
-        request: false,
-        response: true,
-      },
-      clickhouse_settings: {
-        send_progress_in_http_headers: 1,
-        http_headers_progress_interval_ms: '20000',
-      },
     }
 
     it('should get all defaults with no extra configuration', async () => {
@@ -61,10 +53,10 @@ describe('config', () => {
             send_progress_in_http_headers: 0,
             async_insert: 1,
           },
-          // by default, it is vice versa - response is compressed, request is not
+          // by default both are disabled
           compression: {
             request: true,
-            response: false,
+            response: true,
           },
         },
         logger,
@@ -90,7 +82,7 @@ describe('config', () => {
         },
         compression: {
           request: true,
-          response: false,
+          response: true,
         },
       })
     })
@@ -127,84 +119,6 @@ describe('config', () => {
           'X-CLICKHOUSE-AUTH': 'secret_header',
         },
       }) // should not be modified
-    })
-
-    it('should enforce certain defaults for a readonly user', async () => {
-      const res = prepareConfigWithURL(
-        {
-          url: 'https://my.host:8443',
-          readonly: true,
-          http_headers: {
-            'X-ClickHouse-Auth': 'secret_header',
-          },
-        },
-        logger,
-        null,
-      )
-      expect(res).toEqual({
-        url: new URL('https://my.host:8443/'),
-        compression: {
-          request: false,
-          response: false, // disabled for a readonly user
-        },
-        clickhouse_settings: {}, // no additional HTTP settings for a readonly user
-        http_headers: {
-          'X-ClickHouse-Auth': 'secret_header',
-        },
-        readonly: true,
-      })
-    })
-
-    it('should ignore compression settings modifications for a readonly user', async () => {
-      const res = prepareConfigWithURL(
-        {
-          url: 'https://my.host:8443',
-          readonly: true,
-          compression: {
-            request: true,
-            response: true,
-          },
-        },
-        logger,
-        null,
-      )
-      expect(res).toEqual({
-        url: new URL('https://my.host:8443/'),
-        compression: {
-          request: false,
-          response: false, // disabled for a readonly user
-        },
-        clickhouse_settings: {}, // no additional HTTP settings for a readonly user
-        readonly: true,
-      })
-    })
-
-    // TODO: check if we need to disable ClickHouse settings modification entirely for a readonly user
-    it('should ignore certain ClickHouse settings for a readonly user', async () => {
-      const res = prepareConfigWithURL(
-        {
-          url: 'https://my.host:8443',
-          readonly: true,
-          clickhouse_settings: {
-            send_progress_in_http_headers: 1,
-            http_headers_progress_interval_ms: '42',
-            select_sequential_consistency: '1',
-          },
-        },
-        logger,
-        null,
-      )
-      expect(res).toEqual({
-        url: new URL('https://my.host:8443/'),
-        compression: {
-          request: false,
-          response: false, // disabled for a readonly user
-        },
-        clickhouse_settings: {
-          select_sequential_consistency: '1',
-        }, // HTTP settings modifications are ignored for a readonly user
-        readonly: true,
-      })
     })
 
     // tested more thoroughly in the loadConfigOptionsFromURL section;
@@ -348,9 +262,9 @@ describe('config', () => {
       expect(res).toEqual({
         url: new URL('https://my.host:8443/'),
         request_timeout: 30_000,
-        max_open_connections: Infinity,
+        max_open_connections: 10,
         compression: {
-          decompress_response: true,
+          decompress_response: false,
           compress_request: false,
         },
         username: 'default',
@@ -655,7 +569,6 @@ describe('config', () => {
       const url = new URL(
         'https://bob:secret@my.host:8124/analytics?' +
           [
-            'readonly=true',
             'application=my_app',
             'pathname=/my_proxy',
             'session_id=sticky',
@@ -676,7 +589,6 @@ describe('config', () => {
         username: 'bob',
         password: 'secret',
         database: 'analytics',
-        readonly: true,
         application: 'my_app',
         pathname: '/my_proxy',
         session_id: 'sticky',
@@ -816,13 +728,12 @@ describe('config', () => {
       const url = new URL(
         'https://bob:secret@my.host:8124/analytics?' +
           [
-            'readonly=true',
             'application=my_app',
             'session_id=sticky',
             'request_timeout=42',
             'max_open_connections=144',
             'compression_request=1',
-            'compression_response=false',
+            'compression_response=true',
             'log_level=TRACE',
             'keep_alive_enabled=false',
             'clickhouse_setting_async_insert=1',
@@ -852,14 +763,13 @@ describe('config', () => {
         username: 'bob',
         password: 'secret',
         database: 'analytics',
-        readonly: true,
         application: 'my_app',
         session_id: 'sticky',
         request_timeout: 42,
         max_open_connections: 144,
         compression: {
           request: true,
-          response: false,
+          response: true,
         },
         log: { level: ClickHouseLogLevel.TRACE },
         keep_alive: { enabled: false },

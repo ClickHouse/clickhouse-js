@@ -31,18 +31,15 @@ describe('[Node.js] createClient', () => {
     const params: ConnectionParams = {
       url: new URL('https://my.host:8443'),
       request_timeout: 42_000,
-      max_open_connections: Infinity,
+      max_open_connections: 10,
       compression: {
         compress_request: false,
-        decompress_response: true,
+        decompress_response: false,
       },
       username: 'bob',
       password: 'secret',
       database: 'analytics',
-      clickhouse_settings: {
-        send_progress_in_http_headers: 1,
-        http_headers_progress_interval_ms: '20000',
-      },
+      clickhouse_settings: {},
       log_writer: new LogWriter(new DefaultLogger(), 'Connection'),
       keep_alive: { enabled: true },
       http_headers: {

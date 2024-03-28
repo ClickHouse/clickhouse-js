@@ -53,11 +53,8 @@ describe('[Node.js] Client', () => {
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
       expect(callOptions.headers).toEqual({
-        'Accept-Encoding': 'gzip',
-        Connection: 'keep-alive',
-        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
+        ...defaultHeaders,
         'Test-Header': 'foobar',
-        'User-Agent': jasmine.stringContaining('clickhouse-js'),
       })
       assertSearchParams(callURL)
     })
@@ -68,46 +65,79 @@ describe('[Node.js] Client', () => {
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
-      expect(callOptions.headers).toEqual({
-        'Accept-Encoding': 'gzip',
-        Connection: 'keep-alive',
-        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-        'User-Agent': jasmine.stringContaining('clickhouse-js'),
-      })
+      expect(callOptions.headers).toEqual(defaultHeaders)
       assertSearchParams(callURL)
     })
   })
 
-  describe('Readonly switch', () => {
-    it('should disable certain settings by default for a read-only user', async () => {
-      const client = createClient({ readonly: true })
+  describe('Compression headers', () => {
+    it('should disable response compression by default', async () => {
+      const client = createClient()
       await query(client)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
-      expect(callOptions.headers).toEqual({
-        // no GZIP header
-        Connection: 'keep-alive',
-        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-        'User-Agent': jasmine.stringContaining('clickhouse-js'),
-      })
-      assertReadOnlySearchParams(callURL)
-    })
-
-    it('should behave like default with an explicit false', async () => {
-      const client = createClient({ readonly: false })
-      await query(client)
-
-      expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
-      expect(callOptions.headers).toEqual({
-        'Accept-Encoding': 'gzip',
-        Connection: 'keep-alive',
-        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-        'User-Agent': jasmine.stringContaining('clickhouse-js'),
-      })
+      expect(callOptions.headers).toEqual(defaultHeaders)
       assertSearchParams(callURL)
     })
+
+    it('should enable response compression only', async () => {
+      const client = createClient({
+        compression: {
+          response: true,
+        },
+      })
+      await query(client)
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      assertCompressionRequestHeaders(callURL, callOptions)
+    })
+
+    it('should enable request compression only', async () => {
+      const client = createClient({
+        compression: {
+          request: true,
+          response: false,
+        },
+      })
+      await query(client)
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      // no additional request headers in this case
+      expect(callOptions.headers).toEqual(defaultHeaders)
+      assertSearchParams(callURL)
+    })
+
+    it('should enable both request and response compression', async () => {
+      const client = createClient({
+        compression: {
+          request: true,
+          response: true,
+        },
+      })
+      await query(client)
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      assertCompressionRequestHeaders(callURL, callOptions)
+    })
+
+    function assertCompressionRequestHeaders(
+      callURL: string | URL,
+      callOptions: Http.RequestOptions,
+    ) {
+      expect(callOptions.headers).toEqual({
+        ...defaultHeaders,
+        'Accept-Encoding': 'gzip',
+      })
+
+      const searchParams = new URL(callURL).searchParams
+      expect(searchParams.get('enable_http_compression')).toEqual('1')
+      expect(searchParams.get('query_id')).not.toBeNull()
+      expect(searchParams.size).toEqual(2)
+    }
   })
 
   async function query(client: ClickHouseClient) {
@@ -119,17 +149,17 @@ describe('[Node.js] Client', () => {
   }
 
   function assertSearchParams(callURL: string | URL) {
-    const searchParams = new URL(callURL).search.slice(1).split('&')
-    expect(searchParams).toContain('enable_http_compression=1')
-    expect(searchParams).toContain('send_progress_in_http_headers=1')
-    expect(searchParams).toContain('http_headers_progress_interval_ms=20000')
-    expect(searchParams).toContain(jasmine.stringContaining('query_id='))
-    expect(searchParams.length).toEqual(4)
+    const searchParams = new URL(callURL).searchParams
+    expect(searchParams.get('query_id')).not.toBeNull()
+    expect(searchParams.size).toEqual(1) // only query_id by default
   }
 
-  function assertReadOnlySearchParams(callURL: string | URL) {
-    const searchParams = new URL(callURL).search.slice(1).split('&')
-    expect(searchParams).toContain(jasmine.stringContaining('query_id='))
-    expect(searchParams.length).toEqual(1) // No compression or HTTP settings
+  const defaultHeaders: Record<
+    string,
+    string | jasmine.AsymmetricMatcher<string>
+  > = {
+    Connection: 'keep-alive',
+    Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
+    'User-Agent': jasmine.stringContaining('clickhouse-js'),
   }
 })
