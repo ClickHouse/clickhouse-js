@@ -11,12 +11,12 @@ describe('ClickHouse server errors parsing', () => {
   })
 
   it('returns "unknown identifier" error', async () => {
-    // possible error messages here:
-    // On-premise:    Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'.
-    // Cloud SMT:     Unknown expression identifier 'number' in scope
+    // Possible error messages here:
+    // (since 24.3+, Cloud SMT): Unknown expression identifier 'number' in scope SELECT number AS FR
+    // (since 23.8+, Cloud RMT): Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'
     const errorMessagePattern =
-      `((?:^Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'.*$)|` +
-      `(?:^Unknown expression identifier 'number' in scope.*$))`
+      `((?:Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number')|` +
+      `(?:Unknown expression identifier 'number' in scope SELECT number AS FR))`
     await expectAsync(
       client.query({
         query: 'SELECT number FR',
@@ -31,13 +31,12 @@ describe('ClickHouse server errors parsing', () => {
   })
 
   it('returns "unknown table" error', async () => {
-    // possible error messages here:
-    // (since 23.8+): Table foo.unknown_table does not exist.
-    // (pre-23.8):    Table foo.unknown_table doesn't exist.
-    // Cloud SMT:     Unknown table expression identifier 'unknown_table' in scope
+    // Possible error messages here:
+    // (since 24.3+, Cloud SMT): Unknown table expression identifier 'unknown_table' in scope
+    // (since 23.8+, Cloud RMT): Table foo.unknown_table does not exist.
     const dbName = getTestDatabaseName()
     const errorMessagePattern =
-      `((?:^Table ${dbName}.unknown_table does(n't| not) exist.*)|` +
+      `((?:^Table ${dbName}.unknown_table does not exist.*)|` +
       `(?:Unknown table expression identifier 'unknown_table' in scope))`
     await expectAsync(
       client.query({
