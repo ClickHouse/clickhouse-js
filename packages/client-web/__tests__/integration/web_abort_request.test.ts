@@ -19,9 +19,6 @@ describe('[Web] abort request streaming', () => {
         query: 'SELECT * from system.numbers LIMIT 100000',
         format: 'JSONCompactEachRow',
         abort_signal: controller.signal,
-        clickhouse_settings: {
-          cancel_http_readonly_queries_on_client_close: 1,
-        },
       })
       .then(async (rs) => {
         const reader = rs.stream().getReader()
@@ -51,9 +48,6 @@ describe('[Web] abort request streaming', () => {
       .query({
         query: 'SELECT * from system.numbers LIMIT 100000',
         format: 'JSONCompactEachRow',
-        clickhouse_settings: {
-          cancel_http_readonly_queries_on_client_close: 1,
-        },
       })
       .then(async function (rs) {
         const reader = rs.stream().getReader()
