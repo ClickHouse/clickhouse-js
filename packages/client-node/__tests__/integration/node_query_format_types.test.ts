@@ -1,3 +1,4 @@
+import type { ResultSet } from '../../src'
 import type {
   ClickHouseClient as BaseClickHouseClient,
   DataFormat,
@@ -525,10 +526,13 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
   })
 
   describe('Type inference with ambiguous format variants', () => {
+    // expect-type itself fails a bit here sometimes. It can get a wrong order of the variants = flaky ESLint run.
+    type JSONFormat = 'JSON' | 'JSONEachRow'
+    type ResultSetJSONFormat = ResultSet<JSONFormat>
+
     // TODO: Maybe there is a way to infer the format without an extra type parameter?
     it('should infer types for JSON or JSONEachRow (no extra type params)', async () => {
-      // $ExpectType (format: "JSONEachRow" | "JSON") => Promise<ResultSet<"JSONEachRow" | "JSON">>
-      function runQuery(format: 'JSONEachRow' | 'JSON') {
+      function runQuery(format: JSONFormat): Promise<ResultSetJSONFormat> {
         return client.query({
           query,
           format,
@@ -537,7 +541,7 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
 
       // ResultSet falls back to both possible formats (both JSON and JSONEachRow); 'JSON' string provided to `runQuery`
       // cannot be used to narrow down the literal type, since the function argument is just DataFormat.
-      // $ExpectType ResultSet<"JSONEachRow" | "JSON">
+      // $ExpectType ResultSetJSONFormat
       const rs = await runQuery('JSON')
       // $ExpectType unknown[] | ResponseJSON<unknown>
       await rs.json()
@@ -545,13 +549,13 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       await rs.json<Data>()
       // $ExpectType string
       await rs.text()
-      // $ExpectType StreamReadable<Row<unknown, "JSONEachRow" | "JSON">[]>
+      // $ExpectType StreamReadable<Row<unknown, JSONFormat>[]>
       rs.stream()
     })
 
     it('should infer types for JSON or JSONEachRow (with extra type parameter)', async () => {
-      // $ExpectType <F extends "JSONEachRow" | "JSON">(format: F) => Promise<QueryResult<F>>
-      function runQuery<F extends 'JSON' | 'JSONEachRow'>(format: F) {
+      // $ExpectType <F extends JSONFormat>(format: F) => Promise<QueryResult<F>>
+      function runQuery<F extends JSONFormat>(format: F) {
         return client.query({
           query,
           format,

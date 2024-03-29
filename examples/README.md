@@ -9,6 +9,8 @@ Node.JS-specific examples are located in the `examples/node` directory.
 
 We aim to cover various scenarios of client usage with these examples. You should be able to run any of these examples, see [How to run](#how-to-run) section below.
 
+If something is missing, or you found a mistake in one of these examples, please open an issue or a pull request, or [contact us](../README.md#contact-us).
+
 #### General usage
 
 - [url_configuration.ts](url_configuration.ts) - client configuration using the URL parameters.
@@ -16,6 +18,7 @@ We aim to cover various scenarios of client usage with these examples. You shoul
 - [ping.ts](ping.ts) - sample checks if the server can be reached.
 - [abort_request.ts](abort_request.ts) - cancelling an outgoing request or a read-only query.
 - [cancel_query.ts](cancel_query.ts) - cancelling a potentially long-running query on the server side.
+- [long_running_queries_timeouts.ts](long_running_queries_timeouts.ts) - avoiding timeout errors for long-running queries (two different approaches).
 - [read_only_user.ts](read_only_user.ts) - an example of using the client with a read-only user, with possible read-only user limitations highlights.
 - [basic_tls.ts](node/basic_tls.ts) - (Node.js only) using certificates for basic TLS authentication.
 - [mutual_tls.ts](node/mutual_tls.ts) - (Node.js only) using certificates for mutual TLS authentication.

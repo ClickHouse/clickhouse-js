@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { permutations } from '@clickhouse/client-common/src/utils'
+import { permutations } from '@test/utils'
 import { createTestClient } from '@test/utils'
 import * as http from 'http'
 import type Stream from 'stream'

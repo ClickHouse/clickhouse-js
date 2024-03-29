@@ -5,7 +5,11 @@ import type {
   ResultStream,
   Row,
 } from '@clickhouse/client-common'
-import { decode, validateStreamFormat } from '@clickhouse/client-common'
+import {
+  isNotStreamableJSONFamily,
+  isStreamableJSONFamily,
+  validateStreamFormat,
+} from '@clickhouse/client-common'
 import { Buffer } from 'buffer'
 import type { Readable, TransformCallback } from 'stream'
 import Stream, { Transform } from 'stream'
@@ -56,7 +60,28 @@ export class ResultSet<Format extends DataFormat | unknown>
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
-    return decode(await this.text(), this.format as DataFormat)
+    // JSONEachRow, etc.
+    if (isStreamableJSONFamily(this.format as DataFormat)) {
+      const result: T[] = []
+      await new Promise((resolve, reject) => {
+        const stream = this.stream<T>()
+        stream.on('data', (rows: Row[]) => {
+          for (const row of rows) {
+            result.push(row.json())
+          }
+        })
+        stream.on('end', resolve)
+        stream.on('error', reject)
+      })
+      return result as any
+    }
+    // JSON, JSONObjectEachRow, etc.
+    if (isNotStreamableJSONFamily(this.format as DataFormat)) {
+      const text = await getAsText(this._stream)
+      return JSON.parse(text)
+    }
+    // should not be called for CSV, etc.
+    throw new Error(`Cannot decode ${this.format} as JSON`)
   }
 
   /** See {@link BaseResultSet.stream}. */

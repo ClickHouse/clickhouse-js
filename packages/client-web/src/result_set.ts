@@ -5,7 +5,11 @@ import type {
   ResultStream,
   Row,
 } from '@clickhouse/client-common'
-import { decode, validateStreamFormat } from '@clickhouse/client-common'
+import {
+  isNotStreamableJSONFamily,
+  isStreamableJSONFamily,
+} from '@clickhouse/client-common'
+import { validateStreamFormat } from '@clickhouse/client-common'
 import { getAsText } from './utils'
 
 export class ResultSet<Format extends DataFormat | unknown>
@@ -26,8 +30,29 @@ export class ResultSet<Format extends DataFormat | unknown>
 
   /** See {@link BaseResultSet.json} */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
-    const text = await this.text()
-    return decode(text, this.format as DataFormat)
+    // JSONEachRow, etc.
+    if (isStreamableJSONFamily(this.format as DataFormat)) {
+      const result: T[] = []
+      const reader = this.stream<T>().getReader()
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+        for (const row of value) {
+          result.push(row.json())
+        }
+      }
+      return result as any
+    }
+    // JSON, JSONObjectEachRow, etc.
+    if (isNotStreamableJSONFamily(this.format as DataFormat)) {
+      const text = await getAsText(this._stream)
+      return JSON.parse(text)
+    }
+    // should not be called for CSV, etc.
+    throw new Error(`Cannot decode ${this.format} as JSON`)
   }
 
   /** See {@link BaseResultSet.stream} */
@@ -56,7 +81,7 @@ export class ResultSet<Format extends DataFormat | unknown>
             rows.push({
               text,
               json<T>(): T {
-                return decode(text, 'JSON')
+                return JSON.parse(text)
               },
             })
           } else {
