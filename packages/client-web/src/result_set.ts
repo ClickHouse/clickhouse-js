@@ -30,7 +30,6 @@ export class ResultSet<Format extends DataFormat | unknown>
 
   /** See {@link BaseResultSet.json} */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
-    this.markAsConsumed()
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
       const result: T[] = []
