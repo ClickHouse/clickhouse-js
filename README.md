@@ -5,7 +5,7 @@
 <br/>
 <p align="center">
 <a href="https://www.npmjs.com/package/@clickhouse/client">
-<img alt="NPM Version" src="<img alt="NPM Version" src="https://img.shields.io/npm/v/%40clickhouse%2Fclient?color=%233178C6&logo=npm">
+<img alt="NPM Version" src="https://img.shields.io/npm/v/%40clickhouse%2Fclient?color=%233178C6&logo=npm">
 </a>
 
 <a href="https://www.npmjs.com/package/@clickhouse/client">
