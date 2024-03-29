@@ -40,9 +40,9 @@ describe('[Web] SELECT streaming', () => {
     it('should consume a text response only once', async () => {
       const rs = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
-        format: 'TabSeparated',
+        format: 'JSONEachRow',
       })
-      expect(await rs.text()).toEqual('0\n')
+      expect(await rs.text()).toEqual('{"number":"0"}\n')
       // wrap in a func to avoid changing inner "this"
       await assertAlreadyConsumed$(() => rs.json())
       await assertAlreadyConsumed$(() => rs.text())
@@ -52,10 +52,10 @@ describe('[Web] SELECT streaming', () => {
     it('should consume a stream response only once', async () => {
       const rs = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
-        format: 'TabSeparated',
+        format: 'JSONEachRow',
       })
       const result = await rowsText(rs.stream())
-      expect(result).toEqual(['0'])
+      expect(result).toEqual(['{"number":"0"}'])
       // wrap in a func to avoid changing inner "this"
       await assertAlreadyConsumed$(() => rs.json())
       await assertAlreadyConsumed$(() => rs.text())
