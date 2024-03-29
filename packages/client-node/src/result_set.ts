@@ -1,11 +1,13 @@
-import {
+import type {
   BaseResultSet,
   DataFormat,
-  isNotStreamableJSONFamily,
-  isStreamableJSONFamily,
   ResultJSONType,
   ResultStream,
   Row,
+} from '@clickhouse/client-common'
+import {
+  isNotStreamableJSONFamily,
+  isStreamableJSONFamily,
   validateStreamFormat,
 } from '@clickhouse/client-common'
 import { Buffer } from 'buffer'
@@ -64,22 +66,22 @@ export class ResultSet<Format extends DataFormat | unknown>
       await new Promise((resolve, reject) => {
         const stream = this.stream<T>()
         stream.on('data', (rows: Row[]) => {
-          rows.forEach((row) => {
+          for (const row of rows) {
             result.push(row.json())
-          })
+          }
         })
         stream.on('end', resolve)
         stream.on('error', reject)
       })
       return result as any
     }
-    // JSON, etc.
+    // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
       const text = await getAsText(this._stream)
       return JSON.parse(text)
     }
     // should not be called for CSV, etc.
-    throw new Error(`Cannot decode ${this.format} to JSON`)
+    throw new Error(`Cannot decode ${this.format} as JSON`)
   }
 
   /** See {@link BaseResultSet.stream}. */

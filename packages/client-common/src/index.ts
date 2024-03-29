@@ -58,7 +58,6 @@ export {
   isSupportedRawFormat,
   isStreamableJSONFamily,
   isNotStreamableJSONFamily,
-  decode,
   validateStreamFormat,
 } from './data_formatter'
 export {

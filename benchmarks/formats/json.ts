@@ -25,11 +25,11 @@ Large strings table definition:
 const WarmupIterations = 3
 const BenchmarkIterations = 10
 
-const largeStringsQuery = `SELECT * FROM large_strings ORDER BY id ASC LIMIT 100000`
-const cellTowersQuery = `SELECT * FROM cell_towers ORDER BY (radio, mcc, net, created) ASC LIMIT 500000`
+const largeStringsQuery = `SELECT * FROM large_strings ORDER BY id ASC LIMIT 50000`
+const cellTowersQuery = `SELECT * FROM cell_towers ORDER BY (radio, mcc, net, created) ASC LIMIT 200000`
 const queries = [largeStringsQuery, cellTowersQuery]
 
-const formats = ['JSON', 'JSONEachRow', 'JSONObjectEachRow'] as const
+const formats = ['JSONEachRow'] as const
 
 void (async () => {
   const client = createClient({
@@ -42,9 +42,7 @@ void (async () => {
 
   type TotalPerQuery = Record<string, number>
   const results: Record<(typeof formats)[number], TotalPerQuery> = {
-    JSON: {},
     JSONEachRow: {},
-    JSONObjectEachRow: {},
   }
 
   async function benchmarkJSON(

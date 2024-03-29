@@ -107,27 +107,6 @@ export function validateStreamFormat(
 }
 
 /**
- * Decodes a string in a ClickHouse format into a plain JavaScript object or an array of objects.
- * @param text a string in a ClickHouse data format
- * @param format One of the supported formats: https://clickhouse.com/docs/en/interfaces/formats/
- */
-export function decode(text: string, format: DataFormat): any {
-  if (isNotStreamableJSONFamily(format)) {
-    return JSON.parse(text)
-  }
-  if (isStreamableJSONFamily(format)) {
-    return text
-      .split('\n')
-      .filter(Boolean)
-      .map((l) => decode(l, 'JSON'))
-  }
-  if (isSupportedRawFormat(format)) {
-    throw new Error(`Cannot decode ${format} to JSON`)
-  }
-  throw new Error(`The client does not support [${format}] format decoding.`)
-}
-
-/**
  * Encodes a single row of values into a string in a JSON format acceptable by ClickHouse.
  * @param value a single value to encode.
  * @param format One of the supported JSON formats: https://clickhouse.com/docs/en/interfaces/formats/
