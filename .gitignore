@@ -7,3 +7,6 @@ benchmarks/leaks/input
 .npmrc
 webpack
 out
+coverage
+coverage-web
+.nyc_output
