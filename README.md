@@ -7,6 +7,7 @@
 <a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml">
 <img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml/badge.svg?branch=main">
 </a>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=ClickHouse_clickhouse-js&metric=alert_status">
 </p>
 
 ## About

@@ -82,6 +82,7 @@ jobs:
         run: |
           npm run test:web
 
+  # With unit tests + coverage, avoiding an extra run for that
   node-integration-tests-local-single-node:
     needs: node-unit-tests
     runs-on: ubuntu-latest
@@ -115,13 +116,15 @@ jobs:
         run: |
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
-      - name: Run integration tests
+      - name: Run unit + integration + TLS tests with coverage
         run: |
-          npm run test:node:integration
+          npm run test:node:coverage
 
-      - name: Run TLS tests
-        run: |
-          npm run test:node:tls
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   node-integration-tests-local-cluster:
     needs: node-unit-tests
