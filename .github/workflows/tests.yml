@@ -311,6 +311,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@main
+        with:
+          fetch-depth: 0
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
         uses: isbang/compose-action@v1.5.1
