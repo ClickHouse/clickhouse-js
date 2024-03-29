@@ -8,9 +8,7 @@ const streamableJSONFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
 ] as const
-// Returned as { row_1: T, row_2: T, ...}
 const recordsJSONFormats = ['JSONObjectEachRow'] as const
-// See ResponseJSON<T> type
 const singleDocumentJSONFormats = [
   'JSON',
   'JSONStrings',
@@ -37,38 +35,58 @@ const supportedRawFormats = [
   'Parquet',
 ] as const
 
+/** CSV, TSV, etc. - can be streamed, but cannot be decoded as JSON. */
 export type RawDataFormat = (typeof supportedRawFormats)[number]
 
+/** Each row is returned as a separate JSON object or an array, and these formats can be streamed. */
 export type StreamableJSONDataFormat = (typeof streamableJSONFormats)[number]
+
+/** Returned as a single {@link ResponseJSON} object, cannot be streamed. */
 export type SingleDocumentJSONFormat =
   (typeof singleDocumentJSONFormats)[number]
+
+/** Returned as a single object { row_1: T, row_2: T, ...} <br/>
+ *  (i.e. Record<string, T>), cannot be streamed. */
 export type RecordsJSONFormat = (typeof recordsJSONFormats)[number]
+
+/** All allowed JSON formats, whether streamable or not. */
 export type JSONDataFormat =
   | StreamableJSONDataFormat
   | SingleDocumentJSONFormat
   | RecordsJSONFormat
 
+/** Data formats that are currently supported by the client. <br/>
+ *  This is a union of the following types:<br/>
+ *  * {@link JSONDataFormat}
+ *  * {@link RawDataFormat}
+ *  * {@link StreamableDataFormat}
+ *  * {@link StreamableJSONDataFormat}
+ *  * {@link SingleDocumentJSONFormat}
+ *  * {@link RecordsJSONFormat}
+ *  @see https://clickhouse.com/docs/en/interfaces/formats */
 export type DataFormat = JSONDataFormat | RawDataFormat
 
-// TODO add others formats
 const streamableFormat = [
   ...streamableJSONFormats,
   ...supportedRawFormats,
 ] as const
+
+/** All data formats that can be streamed, whether it can be decoded as JSON or not. */
 export type StreamableDataFormat = (typeof streamableFormat)[number]
 
-function isNotStreamableJSONFamily(
+export function isNotStreamableJSONFamily(
   format: DataFormat,
 ): format is SingleDocumentJSONFormat {
-  // @ts-expect-error JSON is not assignable to notStreamableJSONFormats
-  return singleDocumentJSONFormats.includes(format)
+  return (
+    (singleDocumentJSONFormats as readonly string[]).includes(format) ||
+    (recordsJSONFormats as readonly string[]).includes(format)
+  )
 }
 
-function isStreamableJSONFamily(
+export function isStreamableJSONFamily(
   format: DataFormat,
 ): format is StreamableJSONDataFormat {
-  // @ts-expect-error JSON is not assignable to streamableJSONFormats
-  return streamableJSONFormats.includes(format)
+  return (streamableJSONFormats as readonly string[]).includes(format)
 }
 
 export function isSupportedRawFormat(dataFormat: DataFormat) {
