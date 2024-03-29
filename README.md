@@ -4,9 +4,20 @@
 </p>
 <br/>
 <p align="center">
+<a href="https://www.npmjs.com/package/@clickhouse/client">
+<img alt="NPM Version" src="<img alt="NPM Version" src="https://img.shields.io/npm/v/%40clickhouse%2Fclient?color=%233178C6&logo=npm">
+</a>
+
+<a href="https://www.npmjs.com/package/@clickhouse/client">
+<img alt="NPM Downloads" src="https://img.shields.io/npm/dw/%40clickhouse%2Fclient?color=%233178C6&logo=npm">
+</a>
+
+<img alt="NPM Type Definitions" src="https://img.shields.io/npm/types/%40clickhouse%2Fclient?color=%233178C6&logo=typescript">
+
 <a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml">
 <img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml/badge.svg?branch=main">
 </a>
+
 <img src="https://sonarcloud.io/api/project_badges/measure?project=ClickHouse_clickhouse-js&metric=alert_status">
 </p>
 
