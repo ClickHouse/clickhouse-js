@@ -314,8 +314,6 @@ jobs:
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
         uses: isbang/compose-action@v1.5.1
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
