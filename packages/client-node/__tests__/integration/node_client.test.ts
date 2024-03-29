@@ -1,5 +1,4 @@
 import Http from 'http'
-import type Stream from 'stream'
 import type { ClickHouseClient } from '../../src'
 import { createClient } from '../../src'
 import { emitResponseBody, stubClientRequest } from '../utils/http_stubs'
@@ -42,46 +41,125 @@ describe('[Node.js] Client', () => {
     })
   })
 
-  describe('Additional headers', () => {
-    it('should be possible to set additional_headers', async () => {
+  describe('HTTP headers', () => {
+    it('should be possible to set http_headers', async () => {
       const client = createClient({
-        additional_headers: {
+        http_headers: {
           'Test-Header': 'foobar',
         },
       })
       await query(client)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const calledWith = httpRequestStub.calls.mostRecent().args[1]
-      expect(calledWith.headers).toEqual({
-        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-        'Accept-Encoding': 'gzip',
-        Connection: 'keep-alive',
+      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      expect(callOptions.headers).toEqual({
+        ...defaultHeaders,
         'Test-Header': 'foobar',
-        'User-Agent': jasmine.stringContaining('clickhouse-js'),
       })
+      assertSearchParams(callURL)
     })
 
-    it('should work without additional headers', async () => {
+    it('should work without additional HTTP headers', async () => {
       const client = createClient({})
       await query(client)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const calledWith = httpRequestStub.calls.mostRecent().args[1]
-      expect(calledWith.headers).toEqual({
-        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-        'Accept-Encoding': 'gzip',
-        Connection: 'keep-alive',
-        'User-Agent': jasmine.stringContaining('clickhouse-js'),
-      })
+      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      expect(callOptions.headers).toEqual(defaultHeaders)
+      assertSearchParams(callURL)
     })
   })
 
-  async function query(client: ClickHouseClient<Stream.Readable>) {
+  describe('Compression headers', () => {
+    it('should disable response compression by default', async () => {
+      const client = createClient()
+      await query(client)
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      expect(callOptions.headers).toEqual(defaultHeaders)
+      assertSearchParams(callURL)
+    })
+
+    it('should enable response compression only', async () => {
+      const client = createClient({
+        compression: {
+          response: true,
+        },
+      })
+      await query(client)
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      assertCompressionRequestHeaders(callURL, callOptions)
+    })
+
+    it('should enable request compression only', async () => {
+      const client = createClient({
+        compression: {
+          request: true,
+          response: false,
+        },
+      })
+      await query(client)
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      // no additional request headers in this case
+      expect(callOptions.headers).toEqual(defaultHeaders)
+      assertSearchParams(callURL)
+    })
+
+    it('should enable both request and response compression', async () => {
+      const client = createClient({
+        compression: {
+          request: true,
+          response: true,
+        },
+      })
+      await query(client)
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      assertCompressionRequestHeaders(callURL, callOptions)
+    })
+
+    function assertCompressionRequestHeaders(
+      callURL: string | URL,
+      callOptions: Http.RequestOptions,
+    ) {
+      expect(callOptions.headers).toEqual({
+        ...defaultHeaders,
+        'Accept-Encoding': 'gzip',
+      })
+
+      const searchParams = new URL(callURL).searchParams
+      expect(searchParams.get('enable_http_compression')).toEqual('1')
+      expect(searchParams.get('query_id')).not.toBeNull()
+      expect(searchParams.size).toEqual(2)
+    }
+  })
+
+  async function query(client: ClickHouseClient) {
     const selectPromise = client.query({
       query: 'SELECT * FROM system.numbers LIMIT 5',
     })
     emitResponseBody(clientRequest, 'hi')
     await selectPromise
+  }
+
+  function assertSearchParams(callURL: string | URL) {
+    const searchParams = new URL(callURL).searchParams
+    expect(searchParams.get('query_id')).not.toBeNull()
+    expect(searchParams.size).toEqual(1) // only query_id by default
+  }
+
+  const defaultHeaders: Record<
+    string,
+    string | jasmine.AsymmetricMatcher<string>
+  > = {
+    Connection: 'keep-alive',
+    Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
+    'User-Agent': jasmine.stringContaining('clickhouse-js'),
   }
 })

@@ -5,20 +5,28 @@ export function isStream(obj: any): obj is Stream.Readable {
 }
 
 export async function getAsText(stream: Stream.Readable): Promise<string> {
-  let result = ''
-  const textDecoder = new TextDecoder()
+  let text = ''
 
-  for await (const chunk of stream) {
-    result += textDecoder.decode(chunk, { stream: true })
-  }
+  const textDecoder = new TextDecoder()
+  await new Promise((resolve, reject) => {
+    stream.on('data', (chunk) => {
+      text += textDecoder.decode(chunk, { stream: true })
+    })
+    stream.on('end', resolve)
+    stream.on('error', reject)
+  })
 
   // flush
-  result += textDecoder.decode()
-  return result
+  const last = textDecoder.decode()
+  if (last) {
+    text += last
+  }
+
+  return text
 }
 
 export function mapStream(
-  mapper: (input: unknown) => string
+  mapper: (input: unknown) => string,
 ): Stream.Transform {
   return new Stream.Transform({
     objectMode: true,

@@ -23,7 +23,7 @@ describe('response compression', () => {
       format: 'JSONEachRow',
     })
 
-    const response = await rs.json<{ number: string }[]>()
+    const response = await rs.json<{ number: string }>()
     const last = response[response.length - 1]
     expect(last.number).toBe('19999')
   })

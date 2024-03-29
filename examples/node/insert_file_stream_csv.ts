@@ -27,6 +27,10 @@ void (async () => {
     table: tableName,
     values: fileStream,
     format: 'CSV',
+    clickhouse_settings: {
+      /** See also: https://clickhouse.com/docs/en/interfaces/formats#csv-format-settings.
+       *  You could specify these (and other settings) here. */
+    },
   })
 
   const rs = await client.query({

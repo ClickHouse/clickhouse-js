@@ -16,9 +16,11 @@ export function decompressResponse(response: Http.IncomingMessage):
         Zlib.createGunzip(),
         function pipelineCb(err) {
           if (err) {
+            // FIXME: use logger instead
+            // eslint-disable-next-line no-console
             console.error(err)
           }
-        }
+        },
       ),
     }
   } else if (encoding !== undefined) {

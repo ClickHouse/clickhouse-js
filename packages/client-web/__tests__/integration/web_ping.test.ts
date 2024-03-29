@@ -18,7 +18,7 @@ describe('[Web] ping', () => {
       // Chrome = Failed to fetch; FF = NetworkError when attempting to fetch resource
       jasmine.objectContaining({
         message: jasmine.stringContaining('to fetch'),
-      })
+      }),
     )
   })
 })

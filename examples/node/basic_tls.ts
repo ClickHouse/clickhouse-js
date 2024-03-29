@@ -3,10 +3,10 @@ import fs from 'fs'
 
 void (async () => {
   const client = createClient({
-    host: 'https://server.clickhouseconnect.test:8443',
+    url: 'https://server.clickhouseconnect.test:8443',
     tls: {
       ca_cert: fs.readFileSync(
-        '../.docker/clickhouse/single_node_tls/certificates/ca.crt'
+        '../.docker/clickhouse/single_node_tls/certificates/ca.crt',
       ),
     },
   })

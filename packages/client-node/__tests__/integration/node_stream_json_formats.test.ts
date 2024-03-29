@@ -178,9 +178,9 @@ describe('[Node.js] stream JSON formats', () => {
       await expectAsync(insertPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching(
-            `Type of 'name' must be String, not UInt64`
+            `Type of 'name' must be String, not UInt64`,
           ),
-        })
+        }),
       )
     })
 
@@ -243,7 +243,7 @@ describe('[Node.js] stream JSON formats', () => {
       client.insert({
         table: tableName,
         values: stream,
-      })
+      }),
     ).toBeResolved()
   })
 
@@ -281,7 +281,7 @@ describe('[Node.js] stream JSON formats', () => {
           format: 'JSONEachRow',
           table: tableName,
         })
-      })
+      }),
     )
     setTimeout(() => {
       streams.forEach((stream) => stream.push(null))
@@ -299,11 +299,11 @@ describe('[Node.js] stream JSON formats', () => {
         table: tableName,
         values: stream,
         format: 'JSONEachRow',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Cannot parse input'),
-      })
+      }),
     )
   })
 })

@@ -5,31 +5,29 @@ describe('[Web] Client', () => {
   let fetchSpy: jasmine.Spy<typeof window.fetch>
   beforeEach(() => {
     fetchSpy = spyOn(window, 'fetch').and.returnValue(
-      Promise.resolve(new Response())
+      Promise.resolve(new Response()),
     )
   })
 
-  describe('Additional headers', () => {
+  describe('HTTP headers', () => {
     it('should be possible to set', async () => {
       const client = createClient({
-        additional_headers: {
+        http_headers: {
           'Test-Header': 'foobar',
         },
       })
       const fetchParams = await pingAndGetRequestInit(client)
       expect(fetchParams!.headers).toEqual({
         Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-        'Accept-Encoding': 'gzip',
         'Test-Header': 'foobar',
       })
     })
 
-    it('should work with no additional headers provided', async () => {
+    it('should work with no additional HTTP headers provided', async () => {
       const client = createClient({})
       const fetchParams = await pingAndGetRequestInit(client)
       expect(fetchParams!.headers).toEqual({
         Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-        'Accept-Encoding': 'gzip',
       })
     })
   })

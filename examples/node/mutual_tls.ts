@@ -4,7 +4,7 @@ import fs from 'fs'
 void (async () => {
   const certsPath = '../.docker/clickhouse/single_node_tls/certificates'
   const client = createClient({
-    host: 'https://server.clickhouseconnect.test:8443',
+    url: 'https://server.clickhouseconnect.test:8443',
     username: 'cert_user',
     tls: {
       ca_cert: fs.readFileSync(`${certsPath}/ca.crt`),

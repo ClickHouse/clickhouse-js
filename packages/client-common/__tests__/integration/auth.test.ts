@@ -16,13 +16,13 @@ describe('authentication', () => {
     await expectAsync(
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         code: '516',
         type: 'AUTHENTICATION_FAILED',
         message: jasmine.stringMatching('Authentication failed'),
-      })
+      }),
     )
   })
 })

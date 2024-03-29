@@ -16,11 +16,11 @@ describe('config', () => {
     await expectAsync(
       client.query({
         query: 'SELECT sleep(3)',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringMatching('Timeout error.'),
-      })
+      }),
     )
   })
 

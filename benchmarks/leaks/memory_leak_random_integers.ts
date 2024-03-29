@@ -1,9 +1,9 @@
-import Stream from 'stream'
 import { createClient } from '@clickhouse/client'
-import { v4 as uuid_v4 } from 'uuid'
 import { randomInt } from 'crypto'
+import Stream from 'stream'
+import { v4 as uuid_v4 } from 'uuid'
+import { attachExceptionHandlers } from '../common'
 import {
-  attachExceptionHandlers,
   getMemoryUsageInMegabytes,
   logFinalMemoryUsage,
   logMemoryUsage,
@@ -31,7 +31,7 @@ const program = async () => {
   console.log()
   console.log(
     `Batch size: ${BATCH_SIZE}, iterations count: ${ITERATIONS}, ` +
-      `logging memory usage every ${LOG_INTERVAL} iterations`
+      `logging memory usage every ${LOG_INTERVAL} iterations`,
   )
 
   console.log()

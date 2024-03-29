@@ -20,13 +20,13 @@ describe('ClickHouse server errors parsing', () => {
     await expectAsync(
       client.query({
         query: 'SELECT number FR',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringMatching(errorMessagePattern),
         code: '47',
         type: 'UNKNOWN_IDENTIFIER',
-      })
+      }),
     )
   })
 
@@ -41,13 +41,13 @@ describe('ClickHouse server errors parsing', () => {
     await expectAsync(
       client.query({
         query: 'SELECT * FROM unknown_table',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringMatching(errorMessagePattern),
         code: '60',
         type: 'UNKNOWN_TABLE',
-      })
+      }),
     )
   })
 
@@ -55,13 +55,13 @@ describe('ClickHouse server errors parsing', () => {
     await expectAsync(
       client.query({
         query: 'SELECT * FRON unknown_table',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Syntax error: failed at position'),
         code: '62',
         type: 'SYNTAX_ERROR',
-      })
+      }),
     )
   })
 
@@ -75,13 +75,13 @@ describe('ClickHouse server errors parsing', () => {
         */
         FRON unknown_table
         `,
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Syntax error: failed at position'),
         code: '62',
         type: 'SYNTAX_ERROR',
-      })
+      }),
     )
   })
 })

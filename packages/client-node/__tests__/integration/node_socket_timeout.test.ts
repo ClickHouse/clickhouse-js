@@ -1,9 +1,9 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { permutations } from '@clickhouse/client-common/src/utils'
+import { permutations } from '@test/utils'
 import { createTestClient } from '@test/utils'
 import * as http from 'http'
 import type Stream from 'stream'
-import type { NodeClickHouseClientConfigOptions } from '../../src/client'
+import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 
 const ServerTimeout = 20 // ms
 const ClientTimeout = 10 // ms
@@ -24,7 +24,7 @@ describe('Node.js socket timeout handling', () => {
     server.listen(18123)
     // Client has request timeout set to lower than the server's "sleep" time
     client = createTestClient({
-      host: 'http://localhost:18123',
+      url: 'http://localhost:18123',
       request_timeout: ClientTimeout,
       max_open_connections: MaxOpenConnections,
       keep_alive: {
@@ -52,13 +52,13 @@ describe('Node.js socket timeout handling', () => {
           const pingResult = await ping()
           expect(pingResult.success).toBeFalse()
           expect((pingResult as { error: Error }).error.message).toEqual(
-            jasmine.stringContaining('Timeout error.')
+            jasmine.stringContaining('Timeout error.'),
           )
           await expectAsync(fn())
             .withContext(
               `${opName} should have been rejected. Current ops: ${ops
                 .map(({ opName }) => opName)
-                .join(', ')}`
+                .join(', ')}`,
             )
             .toBeRejectedWithError('Timeout error.')
         }
@@ -72,7 +72,7 @@ describe('Node.js socket timeout handling', () => {
       const pingResult = await client.ping()
       expect(pingResult.success).toBeFalse()
       expect((pingResult as { error: Error }).error.message).toEqual(
-        jasmine.stringContaining('Timeout error.')
+        jasmine.stringContaining('Timeout error.'),
       )
     }
     expect().nothing()

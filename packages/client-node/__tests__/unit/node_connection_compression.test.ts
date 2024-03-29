@@ -132,7 +132,7 @@ describe('Node.js Connection compression', () => {
       await expectAsync(selectPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: 'Unexpected encoding: br',
-        })
+        }),
       )
     })
 
@@ -158,7 +158,7 @@ describe('Node.js Connection compression', () => {
           headers: {
             'content-encoding': 'gzip',
           },
-        })
+        }),
       )
 
       const readStream = async () => {
@@ -172,7 +172,7 @@ describe('Node.js Connection compression', () => {
         jasmine.objectContaining({
           message: 'incorrect header check',
           code: 'Z_DATA_ERROR',
-        })
+        }),
       )
     })
   })

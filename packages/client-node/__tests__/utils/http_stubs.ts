@@ -1,9 +1,8 @@
-import type { ConnectionParams } from '@clickhouse/client-common'
 import { LogWriter } from '@clickhouse/client-common'
 import { TestLogger } from '@test/utils'
 import { randomUUID } from '@test/utils/guid'
-import type { ClientRequest } from 'http'
 import type Http from 'http'
+import type { ClientRequest } from 'http'
 import Stream from 'stream'
 import Util from 'util'
 import Zlib from 'zlib'
@@ -66,20 +65,20 @@ export function stubClientRequest(): ClientRequest {
 
 export function emitResponseBody(
   request: Http.ClientRequest,
-  body: string | Buffer | undefined
+  body: string | Buffer | undefined,
 ) {
   request.emit(
     'response',
     buildIncomingMessage({
       body,
-    })
+    }),
   )
 }
 
 export async function emitCompressedBody(
   request: ClientRequest,
   body: string | Buffer,
-  encoding = 'gzip'
+  encoding = 'gzip',
 ) {
   const compressedBody = await gzip(body)
   request.emit(
@@ -89,11 +88,11 @@ export async function emitCompressedBody(
       headers: {
         'content-encoding': encoding,
       },
-    })
+    }),
   )
 }
 
-export function buildHttpConnection(config: Partial<ConnectionParams>) {
+export function buildHttpConnection(config: Partial<NodeConnectionParams>) {
   return new NodeHttpConnection({
     url: new URL('http://localhost:8123'),
 
@@ -128,7 +127,7 @@ export class MyTestHttpConnection extends NodeBaseConnection {
           enabled: false,
         },
       } as NodeConnectionParams,
-      {} as Http.Agent
+      {} as Http.Agent,
     )
   }
   protected createClientRequest(): Http.ClientRequest {

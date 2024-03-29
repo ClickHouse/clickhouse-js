@@ -24,28 +24,24 @@ type WebInsertParams<T> = Omit<
   values: string
 }
 
-export type WebConnectionParams = ConnectionParams & {
-  keep_alive: {
-    enabled: boolean
-  }
-}
+export type WebConnectionParams = ConnectionParams
 
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
   constructor(private readonly params: WebConnectionParams) {
     this.defaultHeaders = {
       Authorization: `Basic ${btoa(`${params.username}:${params.password}`)}`,
-      ...params?.additional_headers,
+      ...params?.http_headers,
     }
   }
 
   async query(
-    params: ConnBaseQueryParams
+    params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<ReadableStream<Uint8Array>>> {
     const query_id = getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
-      this.params.compression.decompress_response
+      this.params.compression.decompress_response,
     )
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -66,7 +62,7 @@ export class WebConnection implements Connection<ReadableStream> {
   }
 
   async exec(
-    params: ConnBaseQueryParams
+    params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<ReadableStream<Uint8Array>>> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
@@ -88,7 +84,7 @@ export class WebConnection implements Connection<ReadableStream> {
   }
 
   async insert<T = unknown>(
-    params: WebInsertParams<T>
+    params: WebInsertParams<T>,
   ): Promise<ConnInsertResult> {
     const query_id = getQueryId(params.query_id)
     const searchParams = toSearchParams({
@@ -192,8 +188,8 @@ export class WebConnection implements Connection<ReadableStream> {
       } else {
         return Promise.reject(
           parseError(
-            await getAsText(response.body || new ReadableStream<Uint8Array>())
-          )
+            await getAsText(response.body || new ReadableStream<Uint8Array>()),
+          ),
         )
       }
     } catch (err) {

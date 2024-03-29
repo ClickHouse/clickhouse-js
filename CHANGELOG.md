@@ -1,3 +1,224 @@
+# 1.0.0 (Common, Node.js, Web)
+
+Formal stable release milestone with a lot of improvements and some [breaking changes](#breaking-changes-in-100).
+
+Major new features overview:
+
+- [Advanced TypeScript support for `query` + `ResultSet`](#advanced-typescript-support-for-query--resultset)
+- [URL configuration](#url-configuration)
+
+From now on, the client will follow the [official semantic versioning](https://docs.npmjs.com/about-semantic-versioning) guidelines.
+
+## Deprecated API
+
+The following configuration parameters are marked as deprecated:
+
+- `host` configuration parameter is deprecated; use `url` instead.
+- `additional_headers` configuration parameter is deprecated; use `http_headers` instead.
+
+The client will log a warning if any of these parameters are used. However, it is still allowed to use `host` instead of `url` and `additional_headers` instead of `http_headers` for now; this deprecation is not supposed to break the existing code.
+
+These parameters will be removed in the next major release (2.0.0).
+
+See "New features" section for more details.
+
+## Breaking changes in 1.0.0
+
+- `compression.response` is now disabled by default in the client configuration options, as it cannot be used with readonly=1 users, and it was not clear from the ClickHouse error message what exact client option was causing the failing query in this case. If you'd like to continue using response compression, you should explicitly enable it in the client configuration.
+- As the client now supports parsing [URL configuration](#url-configuration), you should specify `pathname` as a separate configuration option (as it would be considered as the `database` otherwise).
+- (TypeScript only) `ResultSet` and `Row` are now more strictly typed, according to the format used during the `query` call. See [this section](#advanced-typescript-support-for-query--resultset) for more details.
+- (TypeScript only) Both Node.js and Web versions now uniformly export correct `ClickHouseClient` and `ClickHouseClientConfigOptions` types, specific to each implementation. Exported `ClickHouseClient` now does not have a `Stream` type parameter, as it was unintended to expose it there. NB: you should still use `createClient` factory function provided in the package.
+
+## New features in 1.0.0
+
+### Advanced TypeScript support for `query` + `ResultSet`
+
+Client will now try its best to figure out the shape of the data based on the DataFormat literal specified to the `query` call, as well as which methods are allowed to be called on the `ResultSet`.
+
+Live demo (see the full description below):
+
+[Screencast](https://github.com/ClickHouse/clickhouse-js/assets/3175289/b66afcb2-3a10-4411-af59-51d2754c417e)
+
+Complete reference:
+
+| Format                          | `ResultSet.json<T>()` | `ResultSet.stream<T>()`     | Stream data       | `Row.json<T>()` |
+| ------------------------------- | --------------------- | --------------------------- | ----------------- | --------------- |
+| JSON                            | ResponseJSON\<T\>     | never                       | never             | never           |
+| JSONObjectEachRow               | Record\<string, T\>   | never                       | never             | never           |
+| All other JSON\*EachRow         | Array\<T\>            | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | T               |
+| CSV/TSV/CustomSeparated/Parquet | never                 | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | never           |
+
+By default, `T` (which represents `JSONType`) is still `unknown`. However, considering `JSONObjectsEachRow` example: prior to 1.0.0, you had to specify the entire type hint, including the shape of the data, manually:
+
+```ts
+type Data = { foo: string }
+
+const resultSet = await client.query({
+  query: 'SELECT * FROM my_table',
+  format: 'JSONObjectsEachRow',
+})
+
+// pre-1.0.0, `resultOld` has type Record<string, Data>
+const resultOld = resultSet.json<Record<string, Data>>()
+// const resultOld = resultSet.json<Data>() // incorrect! The type hint should've been `Record<string, Data>` here.
+
+// 1.0.0, `resultNew` also has type Record<string, Data>; client inferred that it has to be a Record from the format literal.
+const resultNew = resultSet.json<Data>()
+```
+
+This is even more handy in case of streaming on the Node.js platform:
+
+```ts
+const resultSet = await client.query({
+  query: 'SELECT * FROM my_table',
+  format: 'JSONEachRow',
+})
+
+// pre-1.0.0
+// `streamOld` was just a regular Node.js Stream.Readable
+const streamOld = resultSet.stream()
+// `rows` were `any`, needed an explicit type hint
+streamNew.on('data', (rows: Row[]) => {
+  rows.forEach((row) => {
+    // without an explicit type hint to `rows`, calling `forEach` and other array methods resulted in TS compiler errors
+    const t = row.text
+    const j = row.json<Data>() // `j` needed a type hint here, otherwise, it's `unknown`
+  })
+})
+
+// 1.0.0
+// `streamNew` is now StreamReadable<T> (Node.js Stream.Readable with a bit more type hints);
+// type hint for the further `json` calls can be added here (and removed from the `json` calls)
+const streamNew = resultSet.stream<Data>()
+// `rows` are inferred as an Array<Row<Data, "JSONEachRow">> instead of `any`
+streamNew.on('data', (rows) => {
+  // `row` is inferred as Row<Data, "JSONEachRow">
+  rows.forEach((row) => {
+    // no explicit type hints required, you can use `forEach` straight away and TS compiler will be happy
+    const t = row.text
+    const j = row.json() // `j` will be of type Data
+  })
+})
+
+// async iterator now also has type hints
+// similarly to the `on(data)` example above, `rows` are inferred as Array<Row<Data, "JSONEachRow">>
+for await (const rows of streamNew) {
+  // `row` is inferred as Row<Data, "JSONEachRow">
+  rows.forEach((row) => {
+    const t = row.text
+    const j = row.json() // `j` will be of type Data
+  })
+}
+```
+
+Calling `ResultSet.stream` is not allowed for certain data formats, such as `JSON` and `JSONObjectsEachRow` (unlike `JSONEachRow` and the rest of `JSON*EachRow`, these formats return a single object). In these cases, the client throws an error. However, it was previously not reflected on the type level; now, calling `stream` on these formats will result in a TS compiler error. For example:
+
+```ts
+const resultSet = await client.query('SELECT * FROM table', {
+  format: 'JSON',
+})
+const stream = resultSet.stream() // `stream` is `never`
+```
+
+Calling `ResultSet.json` also does not make sense on `CSV` and similar "raw" formats, and the client throws. Again, now, it is typed properly:
+
+```ts
+const resultSet = await client.query('SELECT * FROM table', {
+  format: 'CSV',
+})
+// `json` is `never`; same if you stream CSV, and call `Row.json` - it will be `never`, too.
+const json = resultSet.json()
+```
+
+Currently, there is one known limitation: as the general shape of the data and the methods allowed for calling are inferred from the format literal, there might be situations where it will fail to do so, for example:
+
+```ts
+// assuming that `queryParams` has `JSONObjectsEachRow` format inside
+async function runQuery(
+  queryParams: QueryParams,
+): Promise<Record<string, Data>> {
+  const resultSet = await client.query(queryParams)
+  // type hint here will provide a union of all known shapes instead of a specific one
+  // inferred shapes: Data[] | ResponseJSON<Data> | Record<string, Data>
+  return resultSet.json<Data>()
+}
+```
+
+In this case, as it is _likely_ that you already know the desired format in advance (otherwise, returning a specific shape like `Record<string, Data>` would've been incorrect), consider helping the client a bit:
+
+```ts
+async function runQuery(
+  queryParams: QueryParams,
+): Promise<Record<string, Data>> {
+  const resultSet = await client.query({
+    ...queryParams,
+    format: 'JSONObjectsEachRow',
+  })
+  // TS understands that it is a Record<string, Data> now
+  return resultSet.json<Data>()
+}
+```
+
+If you are interested in more details, see the [related test](./packages/client-node/__tests__/integration/node_query_format_types.test.ts) (featuring a great ESLint plugin [expect-types](https://github.com/JoshuaKGoldberg/eslint-plugin-expect-type)) in the client package.
+
+### URL configuration
+
+- Added `url` configuration parameter. It is intended to replace the deprecated `host`, which was already supposed to be passed as a valid URL.
+- It is now possible to configure most of the client instance parameters with a URL. The URL format is `http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]`. In almost every case, the name of a particular parameter reflects its path in the config options interface, with a few exceptions. The following parameters are supported:
+
+| Parameter                                   | Type                                                              |
+| ------------------------------------------- | ----------------------------------------------------------------- |
+| `pathname`                                  | an arbitrary string.                                              |
+| `application_id`                            | an arbitrary string.                                              |
+| `session_id`                                | an arbitrary string.                                              |
+| `request_timeout`                           | non-negative number.                                              |
+| `max_open_connections`                      | non-negative number, greater than zero.                           |
+| `compression_request`                       | boolean. See below [1].                                           |
+| `compression_response`                      | boolean.                                                          |
+| `log_level`                                 | allowed values: `OFF`, `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`. |
+| `keep_alive_enabled`                        | boolean.                                                          |
+| `clickhouse_setting_*` or `ch_*`            | see below [2].                                                    |
+| `http_header_*`                             | see below [3].                                                    |
+| (Node.js only) `keep_alive_idle_socket_ttl` | non-negative number.                                              |
+
+[1] For booleans, valid values will be `true`/`1` and `false`/`0`.
+
+[2] Any parameter prefixed with `clickhouse_setting_` or `ch_` will have this prefix removed and the rest added to client's `clickhouse_settings`. For example, `?ch_async_insert=1&ch_wait_for_async_insert=1` will be the same as:
+
+```ts
+createClient({
+  clickhouse_settings: {
+    async_insert: 1,
+    wait_for_async_insert: 1,
+  },
+})
+```
+
+Note: boolean values for `clickhouse_settings` should be passed as `1`/`0` in the URL.
+
+[3] Similar to [2], but for `http_header` configuration. For example, `?http_header_x-clickhouse-auth=foobar` will be an equivalent of:
+
+```ts
+createClient({
+  http_headers: {
+    'x-clickhouse-auth': 'foobar',
+  },
+})
+```
+
+**Important: URL will _always_ overwrite the hardcoded values and a warning will be logged in this case.**
+
+Currently not supported via URL:
+
+- `log.LoggerClass`
+- (Node.js only) `tls_ca_cert`, `tls_cert`, `tls_key`.
+
+See also: [URL configuration example](./examples/url_configuration.ts).
+
+### Miscellaneous
+
+- Added `http_headers` configuration parameter as a direct replacement for `additional_headers`. Functionally, it is the same, and the change is purely cosmetic, as we'd like to leave an option to implement TCP connection in the future open.
+
 ## 0.3.1 (Common, Node.js, Web)
 
 ### Bug fixes
@@ -250,7 +471,7 @@ await client.exec('CREATE TABLE foo (id String) ENGINE Memory')
 
 // correct: stream does not contain any information and just destroyed
 const { stream } = await client.exec(
-  'CREATE TABLE foo (id String) ENGINE Memory'
+  'CREATE TABLE foo (id String) ENGINE Memory',
 )
 stream.destroy()
 

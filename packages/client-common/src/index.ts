@@ -1,9 +1,8 @@
 /** Should be re-exported by the implementation */
 export {
-  type BaseClickHouseClientConfigOptions,
-  type ClickHouseClientConfigOptions,
   type BaseQueryParams,
   type QueryParams,
+  type QueryResult,
   type ExecParams,
   type InsertParams,
   type InsertValues,
@@ -14,7 +13,14 @@ export {
   type InsertResult,
   type PingResult,
 } from './client'
-export type { Row, BaseResultSet } from './result'
+export { type BaseClickHouseClientConfigOptions } from './config'
+export type {
+  Row,
+  BaseResultSet,
+  ResultJSONType,
+  RowJSONType,
+  ResultStream,
+} from './result'
 export { type DataFormat } from './data_formatter'
 export { ClickHouseError } from './error'
 export {
@@ -37,18 +43,34 @@ export {
   SettingsMap,
 } from './settings'
 
-/** For implementations usage only */
+/** For implementations usage only - should not be re-exported */
+export type {
+  RawDataFormat,
+  JSONDataFormat,
+  StreamableDataFormat,
+  StreamableJSONDataFormat,
+  SingleDocumentJSONFormat,
+} from './data_formatter'
 export {
+  formatQuerySettings,
+  formatQueryParams,
   encodeJSON,
   isSupportedRawFormat,
-  decode,
+  isStreamableJSONFamily,
+  isNotStreamableJSONFamily,
   validateStreamFormat,
 } from './data_formatter'
 export {
   type ValuesEncoder,
   type MakeResultSet,
   type MakeConnection,
-} from './client'
+  type HandleImplSpecificURLParams,
+  type ImplementationDetails,
+  booleanConfigURLValue,
+  enumConfigURLValue,
+  getConnectionParams,
+  numberConfigURLValue,
+} from './config'
 export {
   withCompressionHeaders,
   isSuccessfulResponse,
@@ -59,6 +81,7 @@ export {
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
 export { parseError } from './error'
 export type {
+  CompressionSettings,
   Connection,
   ConnectionParams,
   ConnInsertResult,
@@ -70,9 +93,5 @@ export type {
   ConnPingResult,
   ConnOperation,
 } from './connection'
-export {
-  type RawDataFormat,
-  type JSONDataFormat,
-  formatQuerySettings,
-  formatQueryParams,
-} from './data_formatter'
+export type { QueryParamsWithFormat } from './client'
+export type { IsSame } from './ts_utils'

@@ -4,6 +4,6 @@ export function permutations<T>(args: T[], n: number, prefix: T[] = []): T[][] {
     return [prefix]
   }
   return args.flatMap((arg, i) =>
-    permutations(args.slice(i + 1), n - 1, [...prefix, arg])
+    permutations(args.slice(i + 1), n - 1, [...prefix, arg]),
   )
 }

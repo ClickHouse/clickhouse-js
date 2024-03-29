@@ -95,7 +95,7 @@ describe('[Node.js] abort request streaming', () => {
             })
           }
           return insertPromise
-        })
+        }),
       )
 
       setTimeout(() => {
@@ -137,7 +137,7 @@ describe('[Node.js] abort request streaming', () => {
       await expectAsync(insertPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
 
@@ -149,11 +149,11 @@ describe('[Node.js] abort request streaming', () => {
         await client.insert({
           table: tableName,
           values: stream,
-        })
+        }),
       ).toEqual(
         jasmine.objectContaining({
           query_id: jasmine.any(String),
-        })
+        }),
       )
     })
 
@@ -173,7 +173,7 @@ describe('[Node.js] abort request streaming', () => {
       await expectAsync(insertPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
   })

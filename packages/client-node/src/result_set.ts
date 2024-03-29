@@ -1,19 +1,53 @@
-import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
-import { decode, validateStreamFormat } from '@clickhouse/client-common'
+import type {
+  BaseResultSet,
+  DataFormat,
+  ResultJSONType,
+  ResultStream,
+  Row,
+} from '@clickhouse/client-common'
+import {
+  isNotStreamableJSONFamily,
+  isStreamableJSONFamily,
+  validateStreamFormat,
+} from '@clickhouse/client-common'
 import { Buffer } from 'buffer'
-import type { TransformCallback } from 'stream'
+import type { Readable, TransformCallback } from 'stream'
 import Stream, { Transform } from 'stream'
 import { getAsText } from './utils'
 
 const NEWLINE = 0x0a as const
 
-export class ResultSet implements BaseResultSet<Stream.Readable> {
+/** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
+ * Everything else is an exact copy from stream.d.ts */
+export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
+  [Symbol.asyncIterator](): AsyncIterableIterator<T>
+  on(event: 'data', listener: (chunk: T) => void): Stream.Readable
+  on(event: 'close', listener: () => void): Stream.Readable
+  on(event: 'drain', listener: () => void): Stream.Readable
+  on(event: 'end', listener: () => void): Stream.Readable
+  on(event: 'error', listener: (err: Error) => void): Stream.Readable
+  on(event: 'finish', listener: () => void): Stream.Readable
+  on(event: 'pause', listener: () => void): Stream.Readable
+  on(event: 'pipe', listener: (src: Readable) => void): Stream.Readable
+  on(event: 'readable', listener: () => void): Stream.Readable
+  on(event: 'resume', listener: () => void): Stream.Readable
+  on(event: 'unpipe', listener: (src: Readable) => void): Stream.Readable
+  on(
+    event: string | symbol,
+    listener: (...args: any[]) => void,
+  ): Stream.Readable
+}
+
+export class ResultSet<Format extends DataFormat | unknown>
+  implements BaseResultSet<Stream.Readable, Format>
+{
   constructor(
     private _stream: Stream.Readable,
-    private readonly format: DataFormat,
-    public readonly query_id: string
+    private readonly format: Format,
+    public readonly query_id: string,
   ) {}
 
+  /** See {@link BaseResultSet.text}. */
   async text(): Promise<string> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
@@ -21,14 +55,37 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
     return (await getAsText(this._stream)).toString()
   }
 
-  async json<T>(): Promise<T> {
+  /** See {@link BaseResultSet.json}. */
+  async json<T>(): Promise<ResultJSONType<T, Format>> {
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
-    return decode(await this.text(), this.format)
+    // JSONEachRow, etc.
+    if (isStreamableJSONFamily(this.format as DataFormat)) {
+      const result: T[] = []
+      await new Promise((resolve, reject) => {
+        const stream = this.stream<T>()
+        stream.on('data', (rows: Row[]) => {
+          for (const row of rows) {
+            result.push(row.json())
+          }
+        })
+        stream.on('end', resolve)
+        stream.on('error', reject)
+      })
+      return result as any
+    }
+    // JSON, JSONObjectEachRow, etc.
+    if (isNotStreamableJSONFamily(this.format as DataFormat)) {
+      const text = await getAsText(this._stream)
+      return JSON.parse(text)
+    }
+    // should not be called for CSV, etc.
+    throw new Error(`Cannot decode ${this.format} as JSON`)
   }
 
-  stream(): Stream.Readable {
+  /** See {@link BaseResultSet.stream}. */
+  stream<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
     // If the underlying stream has already ended by calling `text` or `json`,
     // Stream.pipeline will create a new empty stream
     // but without "readableEnded" flag set to true
@@ -43,7 +100,7 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
-        callback: TransformCallback
+        callback: TransformCallback,
       ) {
         const rows: Row[] = []
         let lastIdx = 0
@@ -55,7 +112,7 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
           if (incompleteChunks.length > 0) {
             text = Buffer.concat(
               [...incompleteChunks, chunk.subarray(0, idx)],
-              incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx
+              incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx,
             ).toString()
             incompleteChunks = []
           } else {
@@ -96,11 +153,18 @@ export class ResultSet implements BaseResultSet<Stream.Readable> {
       objectMode: true,
     })
 
-    return Stream.pipeline(this._stream, toRows, function pipelineCb(err) {
-      if (err) {
-        console.error(err)
-      }
-    })
+    const pipeline = Stream.pipeline(
+      this._stream,
+      toRows,
+      function pipelineCb(err) {
+        if (err) {
+          // FIXME: use logger instead
+          // eslint-disable-next-line no-console
+          console.error(err)
+        }
+      },
+    )
+    return pipeline as any
   }
 
   close() {

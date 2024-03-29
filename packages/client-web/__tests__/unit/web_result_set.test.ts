@@ -56,7 +56,7 @@ describe('[Web] ResultSet', () => {
         },
       }),
       'JSONEachRow',
-      guid()
+      guid(),
     )
 
     const allRows: Row[] = []
@@ -86,7 +86,7 @@ describe('[Web] ResultSet', () => {
         },
       }),
       'JSONEachRow',
-      guid()
+      guid(),
     )
   }
 })

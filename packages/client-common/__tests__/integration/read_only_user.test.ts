@@ -6,6 +6,7 @@ import { createTestClient, getTestDatabaseName, guid } from '../utils'
 describe('read only user', () => {
   let client: ClickHouseClient
   let tableName: string
+
   beforeAll(async () => {
     const database = getTestDatabaseName()
     const defaultClient = createTestClient()
@@ -19,7 +20,6 @@ describe('read only user', () => {
       table: tableName,
       values: [[42, 'hello', [0, 1]]],
     })
-
     await defaultClient.close()
 
     // Create a client that connects read only user to the test database
@@ -33,11 +33,9 @@ describe('read only user', () => {
         insert_quorum: undefined,
         database_replicated_enforce_synchronous_settings: undefined,
       },
-      compression: {
-        response: false, // cannot enable HTTP compression for a read only user
-      },
     })
   })
+
   afterAll(async () => {
     await client.close()
   })
@@ -47,17 +45,17 @@ describe('read only user', () => {
       .query({
         query: `SELECT * FROM ${tableName}`,
       })
-      .then((r) => r.json<{ data: unknown[] }>())
+      .then((r) => r.json())
     expect(result.data).toEqual([{ id: '42', name: 'hello', sku: [0, 1] }])
   })
 
   it('should fail to create a table', async () => {
     await expectAsync(
-      createSimpleTable(client, `should_not_be_created_${guid()}`)
+      createSimpleTable(client, `should_not_be_created_${guid()}`),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Not enough privileges'),
-      })
+      }),
     )
   })
 
@@ -66,11 +64,11 @@ describe('read only user', () => {
       client.insert({
         table: tableName,
         values: [[43, 'foobar', [5, 25]]],
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Not enough privileges'),
-      })
+      }),
     )
   })
 
@@ -80,7 +78,7 @@ describe('read only user', () => {
     await expectAsync(client.query({ query })).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining('Not enough privileges'),
-      })
+      }),
     )
   })
 })

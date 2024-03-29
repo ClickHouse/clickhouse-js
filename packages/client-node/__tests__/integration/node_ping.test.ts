@@ -17,7 +17,7 @@ describe('[Node.js] ping', () => {
     expect(result.error).toEqual(
       jasmine.objectContaining({
         code: 'ECONNREFUSED',
-      })
+      }),
     )
   })
 })

@@ -8,15 +8,16 @@ const streamableJSONFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
 ] as const
+const recordsJSONFormats = ['JSONObjectEachRow'] as const
 const singleDocumentJSONFormats = [
   'JSON',
   'JSONStrings',
   'JSONCompact',
   'JSONCompactStrings',
   'JSONColumnsWithMetadata',
-  'JSONObjectEachRow',
 ] as const
 const supportedJSONFormats = [
+  ...recordsJSONFormats,
   ...singleDocumentJSONFormats,
   ...streamableJSONFormats,
 ] as const
@@ -34,33 +35,58 @@ const supportedRawFormats = [
   'Parquet',
 ] as const
 
-export type JSONDataFormat = (typeof supportedJSONFormats)[number]
+/** CSV, TSV, etc. - can be streamed, but cannot be decoded as JSON. */
 export type RawDataFormat = (typeof supportedRawFormats)[number]
+
+/** Each row is returned as a separate JSON object or an array, and these formats can be streamed. */
+export type StreamableJSONDataFormat = (typeof streamableJSONFormats)[number]
+
+/** Returned as a single {@link ResponseJSON} object, cannot be streamed. */
+export type SingleDocumentJSONFormat =
+  (typeof singleDocumentJSONFormats)[number]
+
+/** Returned as a single object { row_1: T, row_2: T, ...} <br/>
+ *  (i.e. Record<string, T>), cannot be streamed. */
+export type RecordsJSONFormat = (typeof recordsJSONFormats)[number]
+
+/** All allowed JSON formats, whether streamable or not. */
+export type JSONDataFormat =
+  | StreamableJSONDataFormat
+  | SingleDocumentJSONFormat
+  | RecordsJSONFormat
+
+/** Data formats that are currently supported by the client. <br/>
+ *  This is a union of the following types:<br/>
+ *  * {@link JSONDataFormat}
+ *  * {@link RawDataFormat}
+ *  * {@link StreamableDataFormat}
+ *  * {@link StreamableJSONDataFormat}
+ *  * {@link SingleDocumentJSONFormat}
+ *  * {@link RecordsJSONFormat}
+ *  @see https://clickhouse.com/docs/en/interfaces/formats */
 export type DataFormat = JSONDataFormat | RawDataFormat
 
-type SingleDocumentStreamableJsonDataFormat =
-  (typeof singleDocumentJSONFormats)[number]
-type StreamableJsonDataFormat = (typeof streamableJSONFormats)[number]
-
-// TODO add others formats
 const streamableFormat = [
   ...streamableJSONFormats,
   ...supportedRawFormats,
 ] as const
-type StreamableDataFormat = (typeof streamableFormat)[number]
 
-function isNotStreamableJSONFamily(
-  format: DataFormat
-): format is SingleDocumentStreamableJsonDataFormat {
-  // @ts-expect-error JSON is not assignable to notStreamableJSONFormats
-  return singleDocumentJSONFormats.includes(format)
+/** All data formats that can be streamed, whether it can be decoded as JSON or not. */
+export type StreamableDataFormat = (typeof streamableFormat)[number]
+
+export function isNotStreamableJSONFamily(
+  format: DataFormat,
+): format is SingleDocumentJSONFormat {
+  return (
+    (singleDocumentJSONFormats as readonly string[]).includes(format) ||
+    (recordsJSONFormats as readonly string[]).includes(format)
+  )
 }
 
-function isStreamableJSONFamily(
-  format: DataFormat
-): format is StreamableJsonDataFormat {
-  // @ts-expect-error JSON is not assignable to streamableJSONFormats
-  return streamableJSONFormats.includes(format)
+export function isStreamableJSONFamily(
+  format: DataFormat,
+): format is StreamableJSONDataFormat {
+  return (streamableJSONFormats as readonly string[]).includes(format)
 }
 
 export function isSupportedRawFormat(dataFormat: DataFormat) {
@@ -68,37 +94,16 @@ export function isSupportedRawFormat(dataFormat: DataFormat) {
 }
 
 export function validateStreamFormat(
-  format: any
+  format: any,
 ): format is StreamableDataFormat {
   if (!streamableFormat.includes(format)) {
     throw new Error(
       `${format} format is not streamable. Streamable formats: ${streamableFormat.join(
-        ','
-      )}`
+        ',',
+      )}`,
     )
   }
   return true
-}
-
-/**
- * Decodes a string in a ClickHouse format into a plain JavaScript object or an array of objects.
- * @param text a string in a ClickHouse data format
- * @param format One of the supported formats: https://clickhouse.com/docs/en/interfaces/formats/
- */
-export function decode(text: string, format: DataFormat): any {
-  if (isNotStreamableJSONFamily(format)) {
-    return JSON.parse(text)
-  }
-  if (isStreamableJSONFamily(format)) {
-    return text
-      .split('\n')
-      .filter(Boolean)
-      .map((l) => decode(l, 'JSON'))
-  }
-  if (isSupportedRawFormat(format)) {
-    throw new Error(`Cannot decode ${format} to JSON`)
-  }
-  throw new Error(`The client does not support [${format}] format decoding.`)
 }
 
 /**
@@ -112,6 +117,6 @@ export function encodeJSON(value: any, format: DataFormat): string {
     return JSON.stringify(value) + '\n'
   }
   throw new Error(
-    `The client does not support JSON encoding in [${format}] format.`
+    `The client does not support JSON encoding in [${format}] format.`,
   )
 }

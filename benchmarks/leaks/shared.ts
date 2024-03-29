@@ -1,15 +1,5 @@
 import { memoryUsage } from 'process'
 
-export function attachExceptionHandlers() {
-  process.on('uncaughtException', (err) => logAndQuit(err))
-  process.on('unhandledRejection', (err) => logAndQuit(err))
-
-  function logAndQuit(err: unknown) {
-    console.error(err)
-    process.exit(1)
-  }
-}
-
 export interface MemoryUsage {
   rss: number
   heapTotal: number
@@ -47,7 +37,7 @@ export function logMemoryUsageDiff({
     const k = key as keyof MemoryUsage
     const diff = current[k] - previous[k]
     console.log(
-      `${k}: ${diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} MB`
+      `${k}: ${diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} MB`,
     )
   }
 }
