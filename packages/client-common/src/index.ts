@@ -44,12 +44,21 @@ export {
 } from './settings'
 
 /** For implementations usage only - should not be re-exported */
+export type {
+  RawDataFormat,
+  JSONDataFormat,
+  StreamableDataFormat,
+  StreamableJSONDataFormat,
+  SingleDocumentJSONFormat,
+} from './data_formatter'
 export {
+  formatQuerySettings,
+  formatQueryParams,
   encodeJSON,
   isSupportedRawFormat,
-  decode,
+  isStreamableJSONFamily,
+  isNotStreamableJSONFamily,
   validateStreamFormat,
-  StreamableDataFormat,
 } from './data_formatter'
 export {
   type ValuesEncoder,
@@ -84,11 +93,5 @@ export type {
   ConnPingResult,
   ConnOperation,
 } from './connection'
-export {
-  type RawDataFormat,
-  type JSONDataFormat,
-  formatQuerySettings,
-  formatQueryParams,
-} from './data_formatter'
 export type { QueryParamsWithFormat } from './client'
 export type { IsSame } from './ts_utils'

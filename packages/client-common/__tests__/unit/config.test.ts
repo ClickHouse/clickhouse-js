@@ -25,14 +25,6 @@ describe('config', () => {
   describe('prepareConfigWithURL', () => {
     const defaultConfig: BaseClickHouseClientConfigOptionsWithURL = {
       url: new URL('http://localhost:8123/'),
-      compression: {
-        request: false,
-        response: true,
-      },
-      clickhouse_settings: {
-        send_progress_in_http_headers: 1,
-        http_headers_progress_interval_ms: '20000',
-      },
     }
 
     it('should get all defaults with no extra configuration', async () => {
@@ -44,6 +36,7 @@ describe('config', () => {
       const res = prepareConfigWithURL(
         {
           url: 'https://my.host:8443',
+          pathname: '/my_proxy',
           request_timeout: 42_000,
           max_open_connections: 144,
           username: 'bob',
@@ -60,17 +53,18 @@ describe('config', () => {
             send_progress_in_http_headers: 0,
             async_insert: 1,
           },
-          // by default, it is vice versa - response is compressed, request is not
+          // by default both are disabled
           compression: {
             request: true,
-            response: false,
+            response: true,
           },
         },
         logger,
         null,
       )
       expect(res).toEqual({
-        url: new URL('https://my.host:8443/'),
+        url: new URL('https://my.host:8443/my_proxy'),
+        pathname: '/my_proxy',
         request_timeout: 42_000,
         max_open_connections: 144,
         username: 'bob',
@@ -88,7 +82,7 @@ describe('config', () => {
         },
         compression: {
           request: true,
-          response: false,
+          response: true,
         },
       })
     })
@@ -127,84 +121,6 @@ describe('config', () => {
       }) // should not be modified
     })
 
-    it('should enforce certain defaults for a readonly user', async () => {
-      const res = prepareConfigWithURL(
-        {
-          url: 'https://my.host:8443',
-          readonly: true,
-          http_headers: {
-            'X-ClickHouse-Auth': 'secret_header',
-          },
-        },
-        logger,
-        null,
-      )
-      expect(res).toEqual({
-        url: new URL('https://my.host:8443/'),
-        compression: {
-          request: false,
-          response: false, // disabled for a readonly user
-        },
-        clickhouse_settings: {}, // no additional HTTP settings for a readonly user
-        http_headers: {
-          'X-ClickHouse-Auth': 'secret_header',
-        },
-        readonly: true,
-      })
-    })
-
-    it('should ignore compression settings modifications for a readonly user', async () => {
-      const res = prepareConfigWithURL(
-        {
-          url: 'https://my.host:8443',
-          readonly: true,
-          compression: {
-            request: true,
-            response: true,
-          },
-        },
-        logger,
-        null,
-      )
-      expect(res).toEqual({
-        url: new URL('https://my.host:8443/'),
-        compression: {
-          request: false,
-          response: false, // disabled for a readonly user
-        },
-        clickhouse_settings: {}, // no additional HTTP settings for a readonly user
-        readonly: true,
-      })
-    })
-
-    // TODO: check if we need to disable ClickHouse settings modification entirely for a readonly user
-    it('should ignore certain ClickHouse settings for a readonly user', async () => {
-      const res = prepareConfigWithURL(
-        {
-          url: 'https://my.host:8443',
-          readonly: true,
-          clickhouse_settings: {
-            send_progress_in_http_headers: 1,
-            http_headers_progress_interval_ms: '42',
-            select_sequential_consistency: '1',
-          },
-        },
-        logger,
-        null,
-      )
-      expect(res).toEqual({
-        url: new URL('https://my.host:8443/'),
-        compression: {
-          request: false,
-          response: false, // disabled for a readonly user
-        },
-        clickhouse_settings: {
-          select_sequential_consistency: '1',
-        }, // HTTP settings modifications are ignored for a readonly user
-        readonly: true,
-      })
-    })
-
     // tested more thoroughly in the loadConfigOptionsFromURL section;
     // this is just a validation that everything works together
     it('should use settings from the URL', async () => {
@@ -237,6 +153,94 @@ describe('config', () => {
       } as unknown as BaseClickHouseClientConfigOptionsWithURL)
     })
 
+    describe('Pathname', () => {
+      it('should correctly load pathname + database from the URL', async () => {
+        const pathNames = [
+          'my_proxy',
+          'my_proxy/ch',
+          'my_proxy/',
+          'my_proxy/ch/',
+        ]
+        pathNames.forEach((pathname) => {
+          const url = new URL(
+            'http://my_host:8124/my_db?' +
+              [
+                'application=my_app',
+                `pathname=${pathname}`,
+                'request_timeout=42000',
+                'max_open_connections=2',
+              ].join('&'),
+          )
+          const res = prepareConfigWithURL({ url }, logger, null)
+          expect(res)
+            .withContext(`With pathname (no trailing slash) ${pathname}`)
+            .toEqual({
+              ...defaultConfig,
+              pathname,
+              url: new URL(`http://my_host:8124/${pathname}`),
+              application: 'my_app',
+              database: 'my_db',
+              request_timeout: 42000,
+              max_open_connections: 2,
+            } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+        })
+      })
+
+      it('should correctly load pathname + database from the URL (leading slash)', async () => {
+        const leadingSlashPathNames = [
+          '/my_proxy',
+          '/my_proxy/ch',
+          '/my_proxy/',
+          '/my_proxy/ch/',
+        ]
+        leadingSlashPathNames.forEach((pathname) => {
+          const url = new URL(
+            'http://my_host:8124/my_db?' +
+              [
+                'application=my_app',
+                `pathname=${pathname}`,
+                'request_timeout=42000',
+                'max_open_connections=2',
+              ].join('&'),
+          )
+          const res = prepareConfigWithURL({ url }, logger, null)
+          expect(res)
+            .withContext(`With pathname (leading slash only) ${pathname}`)
+            .toEqual({
+              ...defaultConfig,
+              pathname,
+              url: new URL('http://my_host:8124' + pathname),
+              application: 'my_app',
+              database: 'my_db',
+              request_timeout: 42000,
+              max_open_connections: 2,
+            } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+        })
+      })
+
+      it('should correctly process pathname with the default db', async () => {
+        const url = new URL(
+          'http://my_host:8124?' +
+            [
+              'application=my_app',
+              `pathname=my_proxy`,
+              'request_timeout=42000',
+              'max_open_connections=2',
+            ].join('&'),
+        )
+        const res = prepareConfigWithURL({ url }, logger, null)
+        expect(res).toEqual({
+          ...defaultConfig,
+          url: new URL(`http://my_host:8124/my_proxy`),
+          application: 'my_app',
+          pathname: 'my_proxy',
+          // no `database` key
+          request_timeout: 42000,
+          max_open_connections: 2,
+        } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+      })
+    })
+
     // more detailed tests are in the createUrl section
     it('should throw when the URL is not valid', async () => {
       expect(() => prepareConfigWithURL({ url: 'foo' }, logger, null)).toThrow(
@@ -258,9 +262,9 @@ describe('config', () => {
       expect(res).toEqual({
         url: new URL('https://my.host:8443/'),
         request_timeout: 30_000,
-        max_open_connections: Infinity,
+        max_open_connections: 10,
         compression: {
-          decompress_response: true,
+          decompress_response: false,
           compress_request: false,
         },
         username: 'default',
@@ -383,6 +387,155 @@ describe('config', () => {
         password: 'secret',
       })
     })
+
+    it('should correctly work with nested levels when there are no defaults', async () => {
+      const base: BaseClickHouseClientConfigOptions = {
+        url: 'https://my.host:8124',
+        application: 'my_app',
+        // does not have clickhouse_settings
+      }
+      const fromURL: BaseClickHouseClientConfigOptions = {
+        clickhouse_settings: {
+          wait_for_async_insert: 0,
+        },
+      }
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res).toEqual({
+        url: 'https://my.host:8124',
+        application: 'my_app',
+        clickhouse_settings: {
+          wait_for_async_insert: 0,
+        },
+      })
+    })
+
+    it('should deep merge two configs', async () => {
+      const base: BaseClickHouseClientConfigOptions = {
+        url: 'https://my.host:8124',
+        application: 'my_app',
+        compression: {
+          response: false,
+        },
+        clickhouse_settings: {
+          async_insert: 1,
+        },
+      }
+      const fromURL: BaseClickHouseClientConfigOptions = {
+        pathname: '/my_proxy',
+        clickhouse_settings: {
+          wait_for_async_insert: 0,
+        },
+      }
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res).toEqual({
+        url: 'https://my.host:8124',
+        application: 'my_app',
+        pathname: '/my_proxy',
+        compression: {
+          response: false,
+        },
+        clickhouse_settings: {
+          async_insert: 1,
+          wait_for_async_insert: 0,
+        },
+      })
+    })
+
+    it('should deep merge more than two levels', async () => {
+      // Currently, we don't have this. Future-proofing.
+      type TestOptions = BaseClickHouseClientConfigOptions & {
+        very: {
+          deeply: {
+            nested_setting: string
+            nested: {
+              setting: number
+            }
+            this_is_not_overridden?: number[]
+          }
+        }
+      }
+      const base: TestOptions = {
+        url: 'https://my.host:8124',
+        clickhouse_settings: {
+          async_insert: 1,
+        },
+        very: {
+          deeply: {
+            nested_setting: 'foo',
+            nested: {
+              setting: 42,
+            },
+            this_is_not_overridden: [1, 2, 3],
+          },
+        },
+      }
+      const fromURL: TestOptions = {
+        clickhouse_settings: {
+          wait_for_async_insert: 0,
+        },
+        very: {
+          deeply: {
+            nested_setting: 'bar',
+            nested: {
+              setting: 144,
+            },
+          },
+        },
+      }
+
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res as TestOptions).toEqual({
+        url: 'https://my.host:8124',
+        clickhouse_settings: {
+          async_insert: 1,
+          wait_for_async_insert: 0,
+        },
+        very: {
+          deeply: {
+            nested_setting: 'bar',
+            nested: {
+              setting: 144,
+            },
+            this_is_not_overridden: [1, 2, 3],
+          },
+        },
+      })
+    })
+
+    it('should deep merge two configs with nested overrides', async () => {
+      const base: BaseClickHouseClientConfigOptions = {
+        url: 'https://my.host:8124',
+        compression: {
+          request: true,
+          response: false,
+        },
+        clickhouse_settings: {
+          async_insert: 1,
+        },
+      }
+      const fromURL: BaseClickHouseClientConfigOptions = {
+        compression: {
+          request: false,
+          response: true,
+        },
+        clickhouse_settings: {
+          async_insert: 0,
+          wait_for_async_insert: 0,
+        },
+      }
+      const res = mergeConfigs(base, fromURL, logger)
+      expect(res).toEqual({
+        url: 'https://my.host:8124',
+        compression: {
+          request: false,
+          response: true,
+        },
+        clickhouse_settings: {
+          async_insert: 0,
+          wait_for_async_insert: 0,
+        },
+      })
+    })
   })
 
   describe('createUrl', () => {
@@ -416,8 +569,8 @@ describe('config', () => {
       const url = new URL(
         'https://bob:secret@my.host:8124/analytics?' +
           [
-            'readonly=true',
             'application=my_app',
+            'pathname=/my_proxy',
             'session_id=sticky',
             'request_timeout=42',
             'max_open_connections=144',
@@ -431,13 +584,13 @@ describe('config', () => {
           ].join('&'),
       )
       const res = loadConfigOptionsFromURL(url, null)
-      expect(res[0].toString()).toEqual('https://my.host:8124/')
+      expect(res[0].toString()).toEqual('https://my.host:8124/') // pathname will be attached later.
       expect(res[1]).toEqual({
         username: 'bob',
         password: 'secret',
         database: 'analytics',
-        readonly: true,
         application: 'my_app',
+        pathname: '/my_proxy',
         session_id: 'sticky',
         request_timeout: 42,
         max_open_connections: 144,
@@ -575,13 +728,12 @@ describe('config', () => {
       const url = new URL(
         'https://bob:secret@my.host:8124/analytics?' +
           [
-            'readonly=true',
             'application=my_app',
             'session_id=sticky',
             'request_timeout=42',
             'max_open_connections=144',
             'compression_request=1',
-            'compression_response=false',
+            'compression_response=true',
             'log_level=TRACE',
             'keep_alive_enabled=false',
             'clickhouse_setting_async_insert=1',
@@ -611,14 +763,13 @@ describe('config', () => {
         username: 'bob',
         password: 'secret',
         database: 'analytics',
-        readonly: true,
         application: 'my_app',
         session_id: 'sticky',
         request_timeout: 42,
         max_open_connections: 144,
         compression: {
           request: true,
-          response: false,
+          response: true,
         },
         log: { level: ClickHouseLogLevel.TRACE },
         keep_alive: { enabled: false },

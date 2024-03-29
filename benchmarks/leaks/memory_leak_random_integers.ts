@@ -1,9 +1,9 @@
-import Stream from 'stream'
 import { createClient } from '@clickhouse/client'
-import { v4 as uuid_v4 } from 'uuid'
 import { randomInt } from 'crypto'
+import Stream from 'stream'
+import { v4 as uuid_v4 } from 'uuid'
+import { attachExceptionHandlers } from '../common'
 import {
-  attachExceptionHandlers,
   getMemoryUsageInMegabytes,
   logFinalMemoryUsage,
   logMemoryUsage,

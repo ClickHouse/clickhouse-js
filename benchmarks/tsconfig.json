@@ -1,6 +1,6 @@
 {
   "extends": "../tsconfig.json",
-  "include": ["leaks/**/*.ts"],
+  "include": ["dev/**/*.ts", "formats/**/*.ts", "leaks/**/*.ts"],
   "compilerOptions": {
     "noUnusedLocals": false,
     "noUnusedParameters": false,

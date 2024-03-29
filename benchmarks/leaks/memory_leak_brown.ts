@@ -1,14 +1,14 @@
-import { v4 as uuid_v4 } from 'uuid'
-import Path from 'path'
+import { createClient } from '@clickhouse/client'
 import Fs from 'fs'
+import Path from 'path'
+import { v4 as uuid_v4 } from 'uuid'
+import { attachExceptionHandlers } from '../common'
 import {
-  attachExceptionHandlers,
   getMemoryUsageInMegabytes,
   logFinalMemoryUsage,
   logMemoryUsage,
   logMemoryUsageDiff,
 } from './shared'
-import { createClient } from '@clickhouse/client'
 
 const program = async () => {
   const client = createClient({})
