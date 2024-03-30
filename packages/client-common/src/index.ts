@@ -21,7 +21,14 @@ export type {
   RowJSONType,
   ResultStream,
 } from './result'
-export { type DataFormat } from './data_formatter'
+export type {
+  DataFormat,
+  RawDataFormat,
+  JSONDataFormat,
+  StreamableDataFormat,
+  StreamableJSONDataFormat,
+  SingleDocumentJSONFormat,
+} from './data_formatter'
 export { ClickHouseError } from './error'
 export {
   ClickHouseLogLevel,
@@ -44,13 +51,6 @@ export {
 } from './settings'
 
 /** For implementations usage only - should not be re-exported */
-export type {
-  RawDataFormat,
-  JSONDataFormat,
-  StreamableDataFormat,
-  StreamableJSONDataFormat,
-  SingleDocumentJSONFormat,
-} from './data_formatter'
 export {
   formatQuerySettings,
   formatQueryParams,
