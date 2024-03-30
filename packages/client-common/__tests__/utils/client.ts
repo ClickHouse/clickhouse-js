@@ -24,7 +24,7 @@ beforeAll(async () => {
   )
   if (isCloudTestEnv() && databaseName === undefined) {
     const cloudInitClient = createTestClient({
-      request_timeout: 10_000,
+      request_timeout: 30_000,
     })
     await wakeUpPing(cloudInitClient)
     databaseName = await createRandomDatabase(cloudInitClient)
