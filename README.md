@@ -19,6 +19,8 @@
 </a>
 
 <img src="https://sonarcloud.io/api/project_badges/measure?project=ClickHouse_clickhouse-js&metric=alert_status">
+
+<img src="https://sonarcloud.io/api/project_badges/measure?project=ClickHouse_clickhouse-js&metric=coverage">
 </p>
 
 ## About

@@ -24,10 +24,7 @@ beforeAll(async () => {
   )
   if (isCloudTestEnv() && databaseName === undefined) {
     const cloudInitClient = createTestClient({
-      request_timeout: 60_000,
-      keep_alive: {
-        enabled: false,
-      },
+      request_timeout: 30_000,
     })
     await wakeUpPing(cloudInitClient)
     databaseName = await createRandomDatabase(cloudInitClient)
@@ -98,9 +95,9 @@ export async function createRandomDatabase(
   const databaseName = `clickhousejs__${guid()}__${+new Date()}`
   let maybeOnCluster = ''
   if (getClickHouseTestEnvironment() === TestEnv.LocalCluster) {
-    maybeOnCluster = `ON CLUSTER '{cluster}'`
+    maybeOnCluster = ` ON CLUSTER '{cluster}'`
   }
-  const ddl = `CREATE DATABASE IF NOT EXISTS ${databaseName} ${maybeOnCluster}`
+  const ddl = `CREATE DATABASE IF NOT EXISTS ${databaseName}${maybeOnCluster}`
   await client.command({
     query: ddl,
     clickhouse_settings: {
@@ -115,7 +112,7 @@ export async function createTable<Stream = unknown>(
   client: ClickHouseClient<Stream>,
   definition: (environment: TestEnv) => string,
   clickhouse_settings?: ClickHouseSettings,
-) {
+): Promise<void> {
   const env = getClickHouseTestEnvironment()
   const ddl = definition(env)
   await client.command({
@@ -135,28 +132,30 @@ export function getTestDatabaseName(): string {
   return databaseName || 'default'
 }
 
-const MaxPingRetries = 4
-export async function wakeUpPing(
-  client: ClickHouseClient,
-  retries = 0,
-  lastError?: Error | unknown,
-) {
-  if (retries < MaxPingRetries) {
+const MaxPingRetries = 30
+export async function wakeUpPing(client: ClickHouseClient): Promise<void> {
+  let attempts = 1
+  let lastError: Error | unknown
+  let isAwake = false
+  while (attempts <= MaxPingRetries) {
     const result = await client.ping()
+    isAwake = result.success
     if (result.success) {
-      return
+      break
     }
-    // maybe the service is still waking up
-    console.error(
-      `Failed to ping, attempts so far: ${retries + 1}`,
+    console.warn(
+      `Service is still waking up, ping attempts so far: ${attempts}. Cause:`,
       result.error,
     )
-    await wakeUpPing(client, retries++, result.error)
-  } else {
+    lastError = result.error
+    attempts++
+  }
+  if (!isAwake) {
     console.error(
-      `Failed to wake up the service after ${MaxPingRetries} retries, exiting...`,
+      `Failed to wake up the service after ${MaxPingRetries} attempts, exiting. Last error:`,
       lastError,
     )
+    await client.close()
     process.exit(1)
   }
 }
