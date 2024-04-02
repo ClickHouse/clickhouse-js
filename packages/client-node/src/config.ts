@@ -10,6 +10,7 @@ import {
 import type Stream from 'stream'
 import { createConnection, type TLSParams } from './connection'
 import { ResultSet } from './result_set'
+import { RowBinaryResultSet } from './row_binary_result_set'
 import { NodeValuesEncoder } from './utils'
 
 export type NodeClickHouseClientConfigOptions =
@@ -102,7 +103,13 @@ export const NodeConfigImpl: Required<
     stream: Stream.Readable,
     format: DataFormat,
     query_id: string,
-  ) => new ResultSet(stream, format, query_id)) as any,
+  ) => {
+    if (format === 'RowBinary') {
+      return new RowBinaryResultSet(stream, format, query_id)
+    } else {
+      return new ResultSet(stream, format, query_id)
+    }
+  }) as any,
   close_stream: async (stream) => {
     stream.destroy()
   },
