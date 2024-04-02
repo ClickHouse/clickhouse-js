@@ -32,6 +32,63 @@ describe('config', () => {
       expect(res).toEqual(defaultConfig)
     })
 
+    it('should fall back to default HTTP/HTTPS port numbers', async () => {
+      expect(
+        prepareConfigWithURL({ url: 'http://localhost:80' }, logger, null),
+      ).toEqual({
+        url: new URL('http://localhost/'), // default HTTP port 80 is omitted
+      })
+      expect(
+        prepareConfigWithURL({ url: 'https://localhost:443' }, logger, null),
+      ).toEqual({
+        url: new URL('https://localhost/'), // default HTTPS port 443 is omitted
+      })
+    })
+
+    it('should use non-default HTTP/HTTPS port numbers', async () => {
+      const sampleValidPorts = ['1', '65535', '8123', '8080', '8443']
+      for (const protocol of ['http', 'https']) {
+        for (const port of sampleValidPorts) {
+          expect(
+            prepareConfigWithURL(
+              { url: `${protocol}://localhost:${port}` },
+              logger,
+              null,
+            ),
+          )
+            .withContext(`${protocol} with valid port ${port} should not throw`)
+            .toEqual({
+              url: new URL(`${protocol}://localhost:${port}/`),
+            })
+        }
+      }
+    })
+
+    it('should throw when the HTTP/HTTPS port is not valid', async () => {
+      const invalidPorts = ['foo', '65536', '-1']
+      for (const protocol of ['http', 'https']) {
+        for (const port of invalidPorts) {
+          expect(() =>
+            prepareConfigWithURL(
+              { url: `${protocol}://localhost:${port}` },
+              logger,
+              null,
+            ),
+          )
+            .withContext(
+              `${protocol} with invalid port ${port} is expected to throw`,
+            )
+            .toThrow(
+              jasmine.objectContaining({
+                message: jasmine.stringContaining(
+                  'ClickHouse URL is malformed',
+                ),
+              }),
+            )
+        }
+      }
+    })
+
     it('should set everything, overriding the defaults', async () => {
       const res = prepareConfigWithURL(
         {
@@ -555,8 +612,10 @@ describe('config', () => {
           message: jasmine.stringContaining('ClickHouse URL is malformed.'),
         }),
       )
-      expect(() => createUrl('http://localhost/foo')).toThrowError(
-        'ClickHouse URL must contain a valid port number.',
+      expect(() => createUrl('http://localhost:foo')).toThrow(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+        }),
       )
       expect(() => createUrl('tcp://localhost:8443')).toThrowError(
         'ClickHouse URL protocol must be either http or https. Got: tcp:',
