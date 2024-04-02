@@ -75,9 +75,10 @@ describe('query_log', () => {
     await sleep(1200)
     const logResultSet = await client.query({
       query: `
-            SELECT * FROM system.query_log
-            WHERE query_id = {query_id: String}
-          `,
+        SELECT * FROM system.query_log
+        WHERE query_id = {query_id: String}
+        ORDER BY type ASC
+      `,
       query_params: {
         query_id,
       },
