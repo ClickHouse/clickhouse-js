@@ -14,7 +14,7 @@ describe('RowBinary column types parser - Enum', () => {
             expected.sourceType
           } to be parsed as an Enum with intSize ${
             expected.intSize
-          } and values [${[...expected.values.entries()]}]`
+          } and values [${[...expected.values.entries()]}]`,
         )
         .toEqual(expected)
     })
@@ -83,7 +83,7 @@ describe('RowBinary column types parser - Enum', () => {
         expect(() => parseEnumType({ columnType, sourceType: columnType }))
           .withContext(`Expected ${columnType} to throw`)
           .toThrowError('Invalid Enum type values')
-      })
+      }),
     )
   })
 })

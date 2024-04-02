@@ -1,5 +1,6 @@
-import { Buffer } from 'buffer'
-import { DecodeResult, readBytesAsUnsignedLEB128 } from './read_bytes'
+import type { Buffer } from 'buffer'
+import type { DecodeResult } from './read_bytes'
+import { readBytesAsUnsignedLEB128 } from './read_bytes'
 
 export type SimpleColumnType =
   /** {@link SimpleTypeDecoder} */
@@ -24,18 +25,18 @@ export type SimpleColumnType =
 
 export type SimpleTypeDecoder<T = unknown> = (
   src: Buffer,
-  loc: number
+  loc: number,
 ) => DecodeResult<T> | null
 export type DecimalTypeDecoder = (
   precision: number,
-  scale: number
+  scale: number,
 ) => SimpleTypeDecoder<string>
 export type NullableTypeDecoder<T> = (
-  baseTypeDecoder: SimpleTypeDecoder<T> | DecimalTypeDecoder
+  baseTypeDecoder: SimpleTypeDecoder<T> | DecimalTypeDecoder,
 ) => SimpleTypeDecoder<T>
 export type ArrayTypeDecoder<T = unknown> = (
   innerDecoder: SimpleTypeDecoder<T>,
-  dimensions: number
+  dimensions: number,
 ) => SimpleTypeDecoder<T[]>
 export type TypeDecoder<T = unknown> =
   | SimpleTypeDecoder<T>
@@ -48,7 +49,7 @@ export type MapTypeDecoder<Key, Value> = (
   valueDecoder:
     | SimpleTypeDecoder<Value>
     | ArrayTypeDecoder<Value>
-    | MapTypeDecoder<unknown, unknown>
+    | MapTypeDecoder<unknown, unknown>,
 ) => SimpleTypeDecoder<Map<string, unknown>>
 
 const DayMillis = 24 * 3600 * 1000
@@ -139,7 +140,7 @@ export class RowBinaryTypesDecoder {
     return [new Date(daysBeforeOrSinceEpoch * DayMillis), loc + 4]
   }
   static nullable<T>(
-    baseTypeDecoder: SimpleTypeDecoder<T>
+    baseTypeDecoder: SimpleTypeDecoder<T>,
   ): (src: Buffer, loc: number) => DecodeResult<T | null> | null {
     return (src: Buffer, loc: number) => {
       if (src.length < loc + 1) return null
@@ -151,7 +152,7 @@ export class RowBinaryTypesDecoder {
     }
   }
   static enum8(
-    values: Map<number, string>
+    values: Map<number, string>,
   ): (src: Buffer, loc: number) => DecodeResult<string> | null {
     return (src: Buffer, loc: number) => {
       if (src.length < loc + 1) return null
@@ -161,7 +162,7 @@ export class RowBinaryTypesDecoder {
     }
   }
   static enum16(
-    values: Map<number, string>
+    values: Map<number, string>,
   ): (src: Buffer, loc: number) => DecodeResult<string> | null {
     return (src: Buffer, loc: number) => {
       if (src.length < loc + 2) return null
@@ -213,7 +214,7 @@ export class RowBinaryTypesDecoder {
   // }
   static decimal32(
     scale: number,
-    mapper?: <T>(whole: number, fractional: number) => T
+    mapper?: <T>(whole: number, fractional: number) => T,
   ): (src: Buffer, loc: number) => DecodeResult<string> | null {
     const scaleMultiplier = 10 ** scale
     return (src: Buffer, loc: number) => {
@@ -228,9 +229,9 @@ export class RowBinaryTypesDecoder {
     }
   }
   static decimal64(
-    scale: number
+    scale: number,
   ): (src: Buffer, loc: number) => DecodeResult<string> | null {
-    const scaleMultiplier = BigInt(10) ** BigInt(scale)
+    // const scaleMultiplier = BigInt(10) ** BigInt(scale)
     return (src: Buffer, loc: number) => {
       if (src.length < loc + 8) return null
       const fullDecimal64 = src.readBigInt64LE(loc)
@@ -249,7 +250,7 @@ export class RowBinaryTypesDecoder {
       | SimpleTypeDecoder<T>
       | ReturnType<DecimalTypeDecoder>
       | ReturnType<NullableTypeDecoder<T>>,
-    dimensions = 0
+    dimensions = 0,
   ): (src: Buffer, loc: number) => DecodeResult<Array<unknown>> | null {
     return (src: Buffer, loc: number) => {
       const leb128 = readBytesAsUnsignedLEB128(src, loc)

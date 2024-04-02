@@ -4,7 +4,7 @@ export type DecodeResult<T> = [T, number]
 // May return null since we cannot determine how many bytes we need to read in advance
 export function readBytesAsUnsignedLEB128(
   src: Buffer,
-  loc: number
+  loc: number,
 ): DecodeResult<number> | null {
   let result = 0
   let shift = 0

@@ -45,7 +45,7 @@ describe('RowBinary column types parser - Array', () => {
       const result = parseArrayType({ columnType, sourceType: columnType })
       expect(result)
         .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${valueType} and ${dimensions} dimensions`
+          `Expected ${columnType} to be parsed as an Array with value type ${valueType} and ${dimensions} dimensions`,
         )
         .toEqual({
           type: 'Array',
@@ -82,7 +82,7 @@ describe('RowBinary column types parser - Array', () => {
       const result = parseArrayType({ columnType, sourceType: columnType })
       expect(result)
         .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${valueType} and ${dimensions} dimensions`
+          `Expected ${columnType} to be parsed as an Array with value type ${valueType} and ${dimensions} dimensions`,
         )
         .toEqual({
           type: 'Array',
@@ -160,7 +160,7 @@ describe('RowBinary column types parser - Array', () => {
       const result = parseArrayType({ columnType, sourceType: columnType })
       expect(result)
         .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`
+          `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`,
         )
         .toEqual({
           type: 'Array',
@@ -210,7 +210,7 @@ describe('RowBinary column types parser - Array', () => {
       const result = parseArrayType({ columnType, sourceType: columnType })
       expect(result)
         .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`
+          `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`,
         )
         .toEqual({
           type: 'Array',
@@ -274,7 +274,7 @@ describe('RowBinary column types parser - Array', () => {
       const result = parseArrayType({ columnType, sourceType: columnType })
       expect(result)
         .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`
+          `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`,
         )
         .toEqual({
           type: 'Array',

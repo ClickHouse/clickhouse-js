@@ -24,14 +24,14 @@ export class RowBinaryColumnsHeader {
     if (res === null) {
       throw ClickHouseRowBinaryError.headerDecodingError(
         'Not enough data to decode number of columns',
-        {}
+        {},
       )
     }
     const numColumns = res[0]
     if (numColumns === 0) {
       throw ClickHouseRowBinaryError.headerDecodingError(
         'Unexpected zero number of columns',
-        {}
+        {},
       )
     }
     let nextLoc = res[1]
@@ -43,7 +43,7 @@ export class RowBinaryColumnsHeader {
       if (res === null) {
         throw ClickHouseRowBinaryError.headerDecodingError(
           `Not enough data to decode column name`,
-          { i, names, numColumns, nextLoc }
+          { i, names, numColumns, nextLoc },
         )
       }
       nextLoc = res[1]
@@ -54,7 +54,7 @@ export class RowBinaryColumnsHeader {
       if (res === null) {
         throw ClickHouseRowBinaryError.headerDecodingError(
           `Not enough data to decode column type`,
-          { i, names, types, numColumns, nextLoc }
+          { i, names, types, numColumns, nextLoc },
         )
       }
       nextLoc = res[1]
@@ -76,7 +76,7 @@ export class RowBinaryColumnsHeader {
         default:
           throw ClickHouseRowBinaryError.headerDecodingError(
             `Unsupported column type ${col.type}`,
-            { col }
+            { col },
           )
       }
     }
@@ -99,7 +99,7 @@ function getDecimalDecoder(decimalParams: DecimalParams): SimpleTypeDecoder {
 
 function getEnumDecoder(
   intSize: 8 | 16,
-  values: Map<number, string>
+  values: Map<number, string>,
 ): SimpleTypeDecoder {
   if (intSize === 8) {
     return RowBinaryTypesDecoder.enum8(values)

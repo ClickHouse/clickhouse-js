@@ -172,7 +172,7 @@ export function parseColumnType(sourceType: string): ParsedColumnType {
   } else {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Unsupported column type',
-      { columnType }
+      { columnType },
     )
   }
   if (isNullable) {
@@ -203,7 +203,7 @@ export function parseDecimalType({
         sourceType,
         columnType,
         split,
-      }
+      },
     )
   }
   let intSize: DecimalParams['intSize'] = 32
@@ -211,14 +211,14 @@ export function parseDecimalType({
   if (Number.isNaN(precision) || precision < 1 || precision > 76) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Invalid Decimal precision',
-      { columnType, sourceType, precision }
+      { columnType, sourceType, precision },
     )
   }
   const scale = parseInt(split[1], 10)
   if (Number.isNaN(scale) || scale < 0 || scale > precision) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Invalid Decimal scale',
-      { columnType, sourceType, precision, scale }
+      { columnType, sourceType, precision, scale },
     )
   }
   if (precision > 38) {
@@ -256,7 +256,7 @@ export function parseEnumType({
       {
         columnType,
         sourceType,
-      }
+      },
     )
   }
   // The minimal allowed Enum definition is Enum8('' = 0), i.e. 6 chars inside.
@@ -266,7 +266,7 @@ export function parseEnumType({
       {
         columnType,
         sourceType,
-      }
+      },
     )
   }
 
@@ -290,7 +290,7 @@ export function parseEnumType({
           if (names.includes(name)) {
             throw ClickHouseRowBinaryError.headerDecodingError(
               'Duplicate Enum name',
-              { columnType, sourceType, name, names, indices }
+              { columnType, sourceType, name, names, indices },
             )
           }
           names.push(name)
@@ -319,7 +319,7 @@ export function parseEnumType({
   if (names.length !== indices.length) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Expected Enum to have the same number of names and indices',
-      { columnType, sourceType, names, indices }
+      { columnType, sourceType, names, indices },
     )
   }
 
@@ -347,13 +347,13 @@ export function parseEnumType({
           index,
           start,
           end,
-        }
+        },
       )
     }
     if (indices.includes(index)) {
       throw ClickHouseRowBinaryError.headerDecodingError(
         'Duplicate Enum index',
-        { columnType, sourceType, index, names, indices }
+        { columnType, sourceType, index, names, indices },
       )
     }
     indices.push(index)
@@ -413,7 +413,7 @@ export function parseTupleType({
   }
   columnType = columnType.slice(TuplePrefix.length, -1)
   const elements = getElementsTypes({ columnType, sourceType }, 1).map((type) =>
-    parseColumnType(type)
+    parseColumnType(type),
   )
   return {
     type: 'Tuple',
@@ -449,14 +449,14 @@ export function parseArrayType({
     // TODO: check how many we can handle; max 10 seems more than enough.
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Expected Array to have between 1 and 10 dimensions',
-      { columnType }
+      { columnType },
     )
   }
   const value = parseColumnType(columnType)
   if (value.type === 'Array') {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Unexpected Array as value type',
-      { columnType, sourceType }
+      { columnType, sourceType },
     )
   }
   return {
@@ -496,7 +496,7 @@ export function parseDateTimeType({
       {
         columnType,
         sourceType,
-      }
+      },
     )
   }
 }
@@ -514,7 +514,7 @@ export function parseDateTime64Type({
       {
         columnType,
         sourceType,
-      }
+      },
     )
   }
   const precision = parseInt(columnType[DateTime64Prefix.length], 10)
@@ -525,7 +525,7 @@ export function parseDateTime64Type({
         columnType,
         sourceType,
         precision,
-      }
+      },
     )
   }
   let timezone = null
@@ -551,14 +551,14 @@ export function parseFixedStringType({
   ) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Invalid FixedString type',
-      { columnType, sourceType }
+      { columnType, sourceType },
     )
   }
   const sizeBytes = parseInt(columnType.slice(FixedStringPrefix.length, -1), 10)
   if (Number.isNaN(sizeBytes) || sizeBytes < 1) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Invalid FixedString size in bytes',
-      { columnType, sourceType, sizeBytes }
+      { columnType, sourceType, sizeBytes },
     )
   }
   return {
@@ -570,7 +570,7 @@ export function parseFixedStringType({
 
 export function asNullableType(
   value: ParsedColumnType,
-  sourceType: string
+  sourceType: string,
 ): ParsedColumnNullable {
   if (
     value.type === 'Array' ||
@@ -580,7 +580,7 @@ export function asNullableType(
   ) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       `${value.type} cannot be Nullable`,
-      { sourceType }
+      { sourceType },
     )
   }
   if (value.sourceType.startsWith(NullablePrefix)) {
@@ -599,7 +599,7 @@ export function asNullableType(
  *  * Throws if parsed values are below the required minimum. */
 export function getElementsTypes(
   { columnType, sourceType }: ParseColumnTypeParams,
-  minElements: number
+  minElements: number,
 ): string[] {
   const elements: string[] = []
   /** Consider the element type parsed once we reach a comma outside of parens AND after an unescaped tick.
@@ -648,7 +648,7 @@ export function getElementsTypes(
   if (elements.length < minElements) {
     throw ClickHouseRowBinaryError.headerDecodingError(
       'Expected more elements in the type',
-      { sourceType, columnType, elements, minElements }
+      { sourceType, columnType, elements, minElements },
     )
   }
   return elements

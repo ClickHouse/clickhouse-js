@@ -16,7 +16,7 @@ describe('RowBinary column types parser', () => {
         })
         expect(result)
           .withContext(
-            `Expected ${columnType} to be parsed as a FixedString with size ${sizeBytes}`
+            `Expected ${columnType} to be parsed as a FixedString with size ${sizeBytes}`,
           )
           .toEqual({ type: 'FixedString', sizeBytes, sourceType: columnType })
       })
@@ -31,7 +31,7 @@ describe('RowBinary column types parser', () => {
       ]
       args.forEach(([columnType]) => {
         expect(() =>
-          parseFixedStringType({ columnType, sourceType: columnType })
+          parseFixedStringType({ columnType, sourceType: columnType }),
         )
           .withContext(`Expected ${columnType} to throw`)
           .toThrowError('Invalid FixedString type')
@@ -46,7 +46,7 @@ describe('RowBinary column types parser', () => {
       ]
       args.forEach(([columnType]) => {
         expect(() =>
-          parseFixedStringType({ columnType, sourceType: columnType })
+          parseFixedStringType({ columnType, sourceType: columnType }),
         )
           .withContext(`Expected ${columnType} to throw`)
           .toThrowError('Invalid FixedString size in bytes')

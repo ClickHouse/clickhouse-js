@@ -38,7 +38,7 @@ fdescribe('RowBinary column types parser - Tuple', () => {
       const result = parseTupleType({ columnType: sourceType, sourceType })
       expect(result)
         .withContext(
-          `Expected ${sourceType} to have ${joinElements(expected)} elements`
+          `Expected ${sourceType} to have ${joinElements(expected)} elements`,
         )
         .toEqual(expected)
     })
@@ -70,7 +70,7 @@ fdescribe('RowBinary column types parser - Tuple', () => {
       const result = parseTupleType({ columnType: sourceType, sourceType })
       expect(result)
         .withContext(
-          `Expected ${sourceType} to have ${joinElements(expected)} elements`
+          `Expected ${sourceType} to have ${joinElements(expected)} elements`,
         )
         .toEqual(expected)
     })
@@ -93,7 +93,7 @@ fdescribe('RowBinary column types parser - Tuple', () => {
       const result = parseTupleType({ columnType: sourceType, sourceType })
       expect(result)
         .withContext(
-          `Expected ${sourceType} to have ${joinElements(expected)} elements`
+          `Expected ${sourceType} to have ${joinElements(expected)} elements`,
         )
         .toEqual(expected)
     })

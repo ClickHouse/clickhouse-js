@@ -14,7 +14,7 @@ describe('RowBinary decoders', () => {
       const res = RowBinaryTypesDecoder.date(Buffer.from(src), 0)!
       expect(+res[0])
         .withContext(
-          `Decoded ${src.toString()}. Result ${res[0]} != expected ${expected}`
+          `Decoded ${src.toString()}. Result ${res[0]} != expected ${expected}`,
         )
         .toEqual(+expected)
     })

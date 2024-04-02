@@ -104,5 +104,5 @@ export const parsedEnumTestArgs: ParsedColumnEnum[] = enumTypes.flatMap(
       values: new Map([[1, '()']]),
       intSize,
     },
-  ]
+  ],
 )

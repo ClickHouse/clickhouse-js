@@ -39,7 +39,7 @@ describe('RowBinary column types parser - Decimal', () => {
       const result = parseDecimalType({ columnType: sourceType, sourceType })
       expect(result)
         .withContext(
-          `Expected ${sourceType} to be parsed as a Decimal with precision ${precision}, scale ${scale} and intSize ${intSize}`
+          `Expected ${sourceType} to be parsed as a Decimal with precision ${precision}, scale ${scale} and intSize ${intSize}`,
         )
         .toEqual({
           type: 'Decimal',
@@ -97,7 +97,7 @@ describe('RowBinary column types parser - Decimal', () => {
   it('should throw when precision or scale cannot be parsed', async () => {
     const columnType = 'Decimal(foobar)'
     expect(() =>
-      parseDecimalType({ columnType, sourceType: columnType })
+      parseDecimalType({ columnType, sourceType: columnType }),
     ).toThrowError('Expected Decimal type to have both precision and scale')
   })
 })

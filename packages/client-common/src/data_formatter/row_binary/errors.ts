@@ -12,7 +12,7 @@ export class ClickHouseRowBinaryError extends Error {
   }
   static headerDecodingError(
     message: string,
-    args?: Record<string, unknown>
+    args?: Record<string, unknown>,
   ): ClickHouseRowBinaryError {
     return new ClickHouseRowBinaryError({
       name: HeaderDecodingError,
@@ -21,7 +21,7 @@ export class ClickHouseRowBinaryError extends Error {
     })
   }
   static decoderNotFoundError(
-    col: Record<string, unknown>
+    col: Record<string, unknown>,
   ): ClickHouseRowBinaryError {
     return new ClickHouseRowBinaryError({
       name: HeaderDecodingError,

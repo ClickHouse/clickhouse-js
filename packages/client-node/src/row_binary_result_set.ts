@@ -16,24 +16,26 @@ export interface RowBinaryStreamParams {
 
 // FIXME: remove BaseResultSet inheritance (after 1.0.0 is merged).
 // FIXME: add logger (after 1.0.0 is merged).
-export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
+export class RowBinaryResultSet
+  implements BaseResultSet<Stream.Readable, unknown>
+{
   constructor(
     private _stream: Stream.Readable,
     private readonly format: DataFormat,
-    public readonly query_id: string
+    public readonly query_id: string,
   ) {}
 
   // FIXME: remove this (after 1.0.0 is merged).
   async text(): Promise<string> {
     throw new Error(
-      `Can't call 'text()' on RowBinary result set; please use 'stream' instead`
+      `Can't call 'text()' on RowBinary result set; please use 'stream' instead`,
     )
   }
 
   // FIXME: remove this (after 1.0.0 is merged).
   async json<T>(): Promise<T> {
     throw new Error(
-      `Can't call 'json()' on RowBinary result set; please use 'stream' instead`
+      `Can't call 'json()' on RowBinary result set; please use 'stream' instead`,
     )
   }
 
@@ -45,7 +47,7 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
   async get<T = unknown>(params?: RowBinaryStreamParams): Promise<T[]> {
     if (this.format !== 'RowBinary') {
       throw new Error(
-        `Can't use RowBinaryResultSet if the format is not RowBinary`
+        `Can't use RowBinaryResultSet if the format is not RowBinary`,
       )
     }
     const result: any[] = []
@@ -97,7 +99,7 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
-        callback: TransformCallback
+        callback: TransformCallback,
       ) {
         if (chunk.length === 0) {
           return callback()
@@ -106,7 +108,7 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
         if (incompleteChunk !== undefined) {
           src = Buffer.concat(
             [incompleteChunk, chunk],
-            incompleteChunk.length + chunk.length
+            incompleteChunk.length + chunk.length,
           )
           incompleteChunk = undefined
         } else {
@@ -139,7 +141,6 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
         //   measures[key] = (measures[key] || 0) + execTime
         // }
 
-        let lastLoc = 0
         while (loc < src.length) {
           const row = asObject
             ? Object.create(protoObject)
@@ -171,16 +172,15 @@ export class RowBinaryResultSet implements BaseResultSet<Stream.Readable> {
               }
               loc = decodeResult[1]
               columnIndex++
-              lastLoc = loc
             }
           }
           decodedRows.push(row)
           columnIndex = 0
         }
 
-        if (loc > src.length) {
-          console.log(`loc > src.length, ${loc} > ${src.length}`)
-        }
+        // if (loc > src.length) {
+        //   console.log(`loc > src.length, ${loc} > ${src.length}`)
+        // }
 
         if (decodedRows.length > 0) {
           // console.log(`pushing ${rowsToPush.length} rows`)

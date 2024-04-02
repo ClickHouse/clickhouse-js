@@ -52,7 +52,7 @@ describe('RowBinary column types parser - DateTime and DateTime64', () => {
         })
         expect(result)
           .withContext(
-            `Expected ${columnType} to be parsed as a DateTime64 with precision ${precision}`
+            `Expected ${columnType} to be parsed as a DateTime64 with precision ${precision}`,
           )
           .toEqual({
             type: 'DateTime64',
@@ -69,7 +69,7 @@ describe('RowBinary column types parser - DateTime and DateTime64', () => {
           [`DateTime64(${precision}, 'GB')`, precision, 'GB'],
           [`DateTime64(${precision}, 'UTC')`, precision, 'UTC'],
           [`DateTime64(${precision}, 'Etc/GMT-5')`, precision, 'Etc/GMT-5'],
-        ]
+        ],
       )
       allPrecisionArgs.forEach((args) =>
         args.forEach(([columnType, precision, timezone]) => {
@@ -79,7 +79,7 @@ describe('RowBinary column types parser - DateTime and DateTime64', () => {
           })
           expect(result)
             .withContext(
-              `Expected ${columnType} to be parsed as a DateTime64 with precision ${precision} and timezone ${timezone}`
+              `Expected ${columnType} to be parsed as a DateTime64 with precision ${precision} and timezone ${timezone}`,
             )
             .toEqual({
               type: 'DateTime64',
@@ -87,7 +87,7 @@ describe('RowBinary column types parser - DateTime and DateTime64', () => {
               timezone,
               precision,
             })
-        })
+        }),
       )
     })
 
@@ -95,7 +95,7 @@ describe('RowBinary column types parser - DateTime and DateTime64', () => {
       const args = [['DateTime64('], ['DateTime64()'], ['String']]
       args.forEach(([columnType]) => {
         expect(() =>
-          parseDateTime64Type({ columnType, sourceType: columnType })
+          parseDateTime64Type({ columnType, sourceType: columnType }),
         )
           .withContext(`Expected ${columnType} to throw`)
           .toThrowError('Invalid DateTime64 type')
@@ -106,7 +106,7 @@ describe('RowBinary column types parser - DateTime and DateTime64', () => {
       const args = [[`DateTime64(')`], [`DateTime64(foo)`]]
       args.forEach(([columnType]) => {
         expect(() =>
-          parseDateTime64Type({ columnType, sourceType: columnType })
+          parseDateTime64Type({ columnType, sourceType: columnType }),
         )
           .withContext(`Expected ${columnType} to throw`)
           .toThrowError('Invalid DateTime64 precision')

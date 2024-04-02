@@ -31,7 +31,7 @@ describe('RowBinary column types parser - Nullable', () => {
       const result = asNullableType(value, sourceType)
       expect(result)
         .withContext(
-          `Expected ${value.columnType} to be wrapped as ${sourceType}`
+          `Expected ${value.columnType} to be wrapped as ${sourceType}`,
         )
         .toEqual({
           type: 'Nullable',
@@ -120,7 +120,7 @@ describe('RowBinary column types parser - Nullable', () => {
       const result = asNullableType(value, sourceType)
       expect(result)
         .withContext(
-          `Expected ${value.sourceType} to be wrapped as ${sourceType}`
+          `Expected ${value.sourceType} to be wrapped as ${sourceType}`,
         )
         .toEqual({
           type: 'Nullable',
@@ -157,7 +157,7 @@ describe('RowBinary column types parser - Nullable', () => {
       const result = asNullableType(value, sourceType)
       expect(result)
         .withContext(
-          `Expected ${value.sourceType} to be wrapped as ${sourceType}`
+          `Expected ${value.sourceType} to be wrapped as ${sourceType}`,
         )
         .toEqual({
           type: 'Nullable',
@@ -219,7 +219,7 @@ describe('RowBinary column types parser - Nullable', () => {
       const result = asNullableType(value, sourceType)
       expect(result)
         .withContext(
-          `Expected ${value.sourceType} to be wrapped as ${sourceType}`
+          `Expected ${value.sourceType} to be wrapped as ${sourceType}`,
         )
         .toEqual({
           type: 'Nullable',
@@ -248,8 +248,8 @@ describe('RowBinary column types parser - Nullable', () => {
           value: columnString,
           sourceType: 'Map(UInt8, String)',
         },
-        '...'
-      )
+        '...',
+      ),
     ).toThrowError('Map cannot be Nullable')
     expect(() =>
       asNullableType(
@@ -259,8 +259,8 @@ describe('RowBinary column types parser - Nullable', () => {
           dimensions: 1,
           sourceType: 'Array(UInt8)',
         },
-        '...'
-      )
+        '...',
+      ),
     ).toThrowError('Array cannot be Nullable')
   })
 })
