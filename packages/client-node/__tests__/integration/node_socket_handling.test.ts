@@ -197,7 +197,7 @@ describe('Node.js socket handling', () => {
         const error = (pingResult as ConnPingResult & { success: false }).error
         expect((error as NodeJS.ErrnoException).code).toEqual('ECONNREFUSED')
       }
-      // now we start the server, and it is available; and we should have already used every socket in the pool      server = http.createServer(async (req, res) => {
+      // now we start the server, and it is available; and we should have already used every socket in the pool
       server = http.createServer(async (req, res) => {
         res.write('Ok.')
         return res.end()

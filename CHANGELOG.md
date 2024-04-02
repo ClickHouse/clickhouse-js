@@ -215,6 +215,10 @@ Currently not supported via URL:
 
 See also: [URL configuration example](./examples/url_configuration.ts).
 
+### Performance
+
+- (Node.js only) Improved performance when decoding the entire set of rows with _streamable_ JSON formats (such as `JSONEachRow` or `JSONCompactEachRow`) by calling the `ResultSet.json()` method. NB: The actual streaming performance when consuming the `ResultSet.stream()` hasn't changed. Only the `ResultSet.json()` method used a suboptimal stream processing in some instances, and now `ResultSet.json()` just consumes the same stream transformer provided by the `ResultSet.stream()` method (see [#253](https://github.com/ClickHouse/clickhouse-js/pull/253) for more details).
+
 ### Miscellaneous
 
 - Added `http_headers` configuration parameter as a direct replacement for `additional_headers`. Functionally, it is the same, and the change is purely cosmetic, as we'd like to leave an option to implement TCP connection in the future open.
