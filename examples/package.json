@@ -12,7 +12,11 @@
   },
   "scripts": {},
   "dependencies": {
-    "@clickhouse/client": "latest",
+    "@clickhouse/client": "latest"
+  },
+  "devDependencies": {
+    "set-interval-async": "^3.0.3",
+    "split2": "^4.2.0",
     "ts-node": "^10.9.1"
   }
 }

@@ -1,10 +1,10 @@
+export type {
+  NodeClickHouseClient as ClickHouseClient,
+  QueryResult,
+} from './client'
 export { createClient } from './client'
-export { NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
-export { ResultSet } from './result_set'
-export {
-  RowBinaryStreamParams,
-  RowBinaryResultSet,
-} from './row_binary_result_set'
+export { type NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
+export { ResultSet, type StreamReadable } from './result_set'
 
 /** Re-export @clickhouse/client-common types */
 export {
@@ -19,9 +19,15 @@ export {
   type ExecResult,
   type InsertResult,
   type DataFormat,
-  type ErrorLogParams,
+  type RawDataFormat,
+  type JSONDataFormat,
+  type StreamableDataFormat,
+  type StreamableJSONDataFormat,
+  type SingleDocumentJSONFormat,
   type Logger,
   type LogParams,
+  type ErrorLogParams,
+  type WarnLogParams,
   type ClickHouseSettings,
   type MergeTreeSettings,
   type Row,
@@ -32,6 +38,5 @@ export {
   type PingResult,
   ClickHouseError,
   ClickHouseLogLevel,
-  ClickHouseClient,
   SettingsMap,
 } from '@clickhouse/client-common'

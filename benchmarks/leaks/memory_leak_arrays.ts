@@ -1,7 +1,8 @@
-import { v4 as uuid_v4 } from 'uuid'
+import { createClient } from '@clickhouse/client'
 import { randomInt } from 'crypto'
+import { v4 as uuid_v4 } from 'uuid'
+import { attachExceptionHandlers } from '../common'
 import {
-  attachExceptionHandlers,
   getMemoryUsageInMegabytes,
   logFinalMemoryUsage,
   logMemoryUsage,
@@ -9,7 +10,6 @@ import {
   randomArray,
   randomStr,
 } from './shared'
-import { createClient } from '@clickhouse/client'
 
 const program = async () => {
   const client = createClient({})
@@ -36,7 +36,7 @@ const program = async () => {
   console.log()
   console.log(
     `Batch size: ${BATCH_SIZE}, iterations count: ${ITERATIONS}, ` +
-      `logging memory usage every ${LOG_INTERVAL} iterations`
+      `logging memory usage every ${LOG_INTERVAL} iterations`,
   )
 
   console.log()

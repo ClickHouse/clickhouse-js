@@ -1,8 +1,15 @@
-## 1.0.0 (Common, Node.js, Web)
+# 1.0.0 (Common, Node.js, Web)
 
-Formal stable release milestone. The client will follow the [official semantic versioning](https://docs.npmjs.com/about-semantic-versioning) guidelines.
+Formal stable release milestone with a lot of improvements and some [breaking changes](#breaking-changes-in-100).
 
-### Deprecated API
+Major new features overview:
+
+- [Advanced TypeScript support for `query` + `ResultSet`](#advanced-typescript-support-for-query--resultset)
+- [URL configuration](#url-configuration)
+
+From now on, the client will follow the [official semantic versioning](https://docs.npmjs.com/about-semantic-versioning) guidelines.
+
+## Deprecated API
 
 The following configuration parameters are marked as deprecated:
 
@@ -15,60 +22,164 @@ These parameters will be removed in the next major release (2.0.0).
 
 See "New features" section for more details.
 
-### Breaking changes
+## Breaking changes in 1.0.0
 
-- `request_timeout` default value was incorrectly set to 300s instead of 30s. It is now correctly set to 30s by default. If your code relies on the previous incorrect default value, consider setting it explicitly.
-- Client will enable [send_progress_in_http_headers](https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers) and set `http_headers_progress_interval_ms` to `20000` (20 seconds) by default. These settings in combination allow to avoid potential load balancer timeout issues in case of long-running queries without data coming in or out, such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly. In that case, a `socket hang up` error could be thrown on the client side. Currently, 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout; this is also in line with the default [AWS LB KeepAlive interval](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout), which is 20s by default. It can be overridden when creating a client instance if your LB timeout value is even lower than that by manually changing the `clickhouse_settings.http_headers_progress_interval_ms` value.
+- `compression.response` is now disabled by default in the client configuration options, as it cannot be used with readonly=1 users, and it was not clear from the ClickHouse error message what exact client option was causing the failing query in this case. If you'd like to continue using response compression, you should explicitly enable it in the client configuration.
+- As the client now supports parsing [URL configuration](#url-configuration), you should specify `pathname` as a separate configuration option (as it would be considered as the `database` otherwise).
+- (TypeScript only) `ResultSet` and `Row` are now more strictly typed, according to the format used during the `query` call. See [this section](#advanced-typescript-support-for-query--resultset) for more details.
+- (TypeScript only) Both Node.js and Web versions now uniformly export correct `ClickHouseClient` and `ClickHouseClientConfigOptions` types, specific to each implementation. Exported `ClickHouseClient` now does not have a `Stream` type parameter, as it was unintended to expose it there. NB: you should still use `createClient` factory function provided in the package.
 
-  NB: these settings will be enabled only if the client instance was created without setting `readonly` flag (see below).
+## New features in 1.0.0
 
-- It is now possible to create a client in read-only mode, which will disable default compression and aforementioned ClickHouse HTTP settings. Previously, if you wanted to use the client with a user created with `READONLY = 1` mode, the response compression had to be disabled explicitly.
+### Advanced TypeScript support for `query` + `ResultSet`
 
-Pre 1.0.0:
+Client will now try its best to figure out the shape of the data based on the DataFormat literal specified to the `query` call, as well as which methods are allowed to be called on the `ResultSet`.
+
+Live demo (see the full description below):
+
+[Screencast](https://github.com/ClickHouse/clickhouse-js/assets/3175289/b66afcb2-3a10-4411-af59-51d2754c417e)
+
+Complete reference:
+
+| Format                          | `ResultSet.json<T>()` | `ResultSet.stream<T>()`     | Stream data       | `Row.json<T>()` |
+| ------------------------------- | --------------------- | --------------------------- | ----------------- | --------------- |
+| JSON                            | ResponseJSON\<T\>     | never                       | never             | never           |
+| JSONObjectEachRow               | Record\<string, T\>   | never                       | never             | never           |
+| All other JSON\*EachRow         | Array\<T\>            | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | T               |
+| CSV/TSV/CustomSeparated/Parquet | never                 | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | never           |
+
+By default, `T` (which represents `JSONType`) is still `unknown`. However, considering `JSONObjectsEachRow` example: prior to 1.0.0, you had to specify the entire type hint, including the shape of the data, manually:
 
 ```ts
-const client = createClient({
-  compression: {
-    response: false,
-  },
+type Data = { foo: string }
+
+const resultSet = await client.query({
+  query: 'SELECT * FROM my_table',
+  format: 'JSONObjectsEachRow',
 })
+
+// pre-1.0.0, `resultOld` has type Record<string, Data>
+const resultOld = resultSet.json<Record<string, Data>>()
+// const resultOld = resultSet.json<Data>() // incorrect! The type hint should've been `Record<string, Data>` here.
+
+// 1.0.0, `resultNew` also has type Record<string, Data>; client inferred that it has to be a Record from the format literal.
+const resultNew = resultSet.json<Data>()
 ```
 
-With `send_progress_in_http_headers` and `http_headers_progress_interval_ms` settings now enabled by default, this is no longer sufficient. If you need to create a client instance for a read-only user, consider this instead:
+This is even more handy in case of streaming on the Node.js platform:
 
 ```ts
-const client = createClient({
-  readonly: true,
+const resultSet = await client.query({
+  query: 'SELECT * FROM my_table',
+  format: 'JSONEachRow',
 })
+
+// pre-1.0.0
+// `streamOld` was just a regular Node.js Stream.Readable
+const streamOld = resultSet.stream()
+// `rows` were `any`, needed an explicit type hint
+streamNew.on('data', (rows: Row[]) => {
+  rows.forEach((row) => {
+    // without an explicit type hint to `rows`, calling `forEach` and other array methods resulted in TS compiler errors
+    const t = row.text
+    const j = row.json<Data>() // `j` needed a type hint here, otherwise, it's `unknown`
+  })
+})
+
+// 1.0.0
+// `streamNew` is now StreamReadable<T> (Node.js Stream.Readable with a bit more type hints);
+// type hint for the further `json` calls can be added here (and removed from the `json` calls)
+const streamNew = resultSet.stream<Data>()
+// `rows` are inferred as an Array<Row<Data, "JSONEachRow">> instead of `any`
+streamNew.on('data', (rows) => {
+  // `row` is inferred as Row<Data, "JSONEachRow">
+  rows.forEach((row) => {
+    // no explicit type hints required, you can use `forEach` straight away and TS compiler will be happy
+    const t = row.text
+    const j = row.json() // `j` will be of type Data
+  })
+})
+
+// async iterator now also has type hints
+// similarly to the `on(data)` example above, `rows` are inferred as Array<Row<Data, "JSONEachRow">>
+for await (const rows of streamNew) {
+  // `row` is inferred as Row<Data, "JSONEachRow">
+  rows.forEach((row) => {
+    const t = row.text
+    const j = row.json() // `j` will be of type Data
+  })
+}
 ```
 
-By default, `readonly` is `false`.
+Calling `ResultSet.stream` is not allowed for certain data formats, such as `JSON` and `JSONObjectsEachRow` (unlike `JSONEachRow` and the rest of `JSON*EachRow`, these formats return a single object). In these cases, the client throws an error. However, it was previously not reflected on the type level; now, calling `stream` on these formats will result in a TS compiler error. For example:
 
-NB: this is not necessary if a user has `READONLY = 2` mode as it allows to modify the settings, so the client can be used without an additional `readonly` setting.
+```ts
+const resultSet = await client.query('SELECT * FROM table', {
+  format: 'JSON',
+})
+const stream = resultSet.stream() // `stream` is `never`
+```
 
-See also: [readonly documentation](https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly).
+Calling `ResultSet.json` also does not make sense on `CSV` and similar "raw" formats, and the client throws. Again, now, it is typed properly:
 
-### New features
+```ts
+const resultSet = await client.query('SELECT * FROM table', {
+  format: 'CSV',
+})
+// `json` is `never`; same if you stream CSV, and call `Row.json` - it will be `never`, too.
+const json = resultSet.json()
+```
+
+Currently, there is one known limitation: as the general shape of the data and the methods allowed for calling are inferred from the format literal, there might be situations where it will fail to do so, for example:
+
+```ts
+// assuming that `queryParams` has `JSONObjectsEachRow` format inside
+async function runQuery(
+  queryParams: QueryParams,
+): Promise<Record<string, Data>> {
+  const resultSet = await client.query(queryParams)
+  // type hint here will provide a union of all known shapes instead of a specific one
+  // inferred shapes: Data[] | ResponseJSON<Data> | Record<string, Data>
+  return resultSet.json<Data>()
+}
+```
+
+In this case, as it is _likely_ that you already know the desired format in advance (otherwise, returning a specific shape like `Record<string, Data>` would've been incorrect), consider helping the client a bit:
+
+```ts
+async function runQuery(
+  queryParams: QueryParams,
+): Promise<Record<string, Data>> {
+  const resultSet = await client.query({
+    ...queryParams,
+    format: 'JSONObjectsEachRow',
+  })
+  // TS understands that it is a Record<string, Data> now
+  return resultSet.json<Data>()
+}
+```
+
+If you are interested in more details, see the [related test](./packages/client-node/__tests__/integration/node_query_format_types.test.ts) (featuring a great ESLint plugin [expect-types](https://github.com/JoshuaKGoldberg/eslint-plugin-expect-type)) in the client package.
+
+### URL configuration
 
 - Added `url` configuration parameter. It is intended to replace the deprecated `host`, which was already supposed to be passed as a valid URL.
-- Added `http_headers` configuration parameter as a direct replacement for `additional_headers`. Functionally, it is the same, and the change is purely cosmetic, as we'd like to leave an option to implement TCP connection in the future open.
 - It is now possible to configure most of the client instance parameters with a URL. The URL format is `http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]`. In almost every case, the name of a particular parameter reflects its path in the config options interface, with a few exceptions. The following parameters are supported:
 
-| Parameter                                           | Type                                                              |
-| --------------------------------------------------- | ----------------------------------------------------------------- |
-| `readonly`                                          | boolean. See below [1].                                           |
-| `application_id`                                    | non-empty string.                                                 |
-| `session_id`                                        | non-empty string.                                                 |
-| `request_timeout`                                   | non-negative number.                                              |
-| `max_open_connections`                              | non-negative number, greater than zero.                           |
-| `compression_request`                               | boolean.                                                          |
-| `compression_response`                              | boolean.                                                          |
-| `log_level`                                         | allowed values: `OFF`, `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`. |
-| `keep_alive_enabled`                                | boolean.                                                          |
-| `clickhouse_setting_*` or `ch_*`                    | see below [2].                                                    |
-| `http_header_*`                                     | see below [3].                                                    |
-| (Node.js only) `keep_alive_socket_ttl`              | non-negative number.                                              |
-| (Node.js only) `keep_alive_retry_on_expired_socket` | boolean.                                                          |
+| Parameter                                   | Type                                                              |
+| ------------------------------------------- | ----------------------------------------------------------------- |
+| `pathname`                                  | an arbitrary string.                                              |
+| `application_id`                            | an arbitrary string.                                              |
+| `session_id`                                | an arbitrary string.                                              |
+| `request_timeout`                           | non-negative number.                                              |
+| `max_open_connections`                      | non-negative number, greater than zero.                           |
+| `compression_request`                       | boolean. See below [1].                                           |
+| `compression_response`                      | boolean.                                                          |
+| `log_level`                                 | allowed values: `OFF`, `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`. |
+| `keep_alive_enabled`                        | boolean.                                                          |
+| `clickhouse_setting_*` or `ch_*`            | see below [2].                                                    |
+| `http_header_*`                             | see below [3].                                                    |
+| (Node.js only) `keep_alive_idle_socket_ttl` | non-negative number.                                              |
 
 [1] For booleans, valid values will be `true`/`1` and `false`/`0`.
 
@@ -82,6 +193,8 @@ createClient({
   },
 })
 ```
+
+Note: boolean values for `clickhouse_settings` should be passed as `1`/`0` in the URL.
 
 [3] Similar to [2], but for `http_header` configuration. For example, `?http_header_x-clickhouse-auth=foobar` will be an equivalent of:
 
@@ -101,6 +214,51 @@ Currently not supported via URL:
 - (Node.js only) `tls_ca_cert`, `tls_cert`, `tls_key`.
 
 See also: [URL configuration example](./examples/url_configuration.ts).
+
+### Performance
+
+- (Node.js only) Improved performance when decoding the entire set of rows with _streamable_ JSON formats (such as `JSONEachRow` or `JSONCompactEachRow`) by calling the `ResultSet.json()` method. NB: The actual streaming performance when consuming the `ResultSet.stream()` hasn't changed. Only the `ResultSet.json()` method used a suboptimal stream processing in some instances, and now `ResultSet.json()` just consumes the same stream transformer provided by the `ResultSet.stream()` method (see [#253](https://github.com/ClickHouse/clickhouse-js/pull/253) for more details).
+
+### Miscellaneous
+
+- Added `http_headers` configuration parameter as a direct replacement for `additional_headers`. Functionally, it is the same, and the change is purely cosmetic, as we'd like to leave an option to implement TCP connection in the future open.
+
+## 0.3.1 (Common, Node.js, Web)
+
+### Bug fixes
+
+- Fixed an issue where query parameters containing tabs or newline characters were not encoded properly.
+
+## 0.3.0 (Node.js only)
+
+This release primarily focuses on improving the Keep-Alive mechanism's reliability on the client side.
+
+### New features
+
+- Idle sockets timeout rework; now, the client attaches internal timers to idling sockets, and forcefully removes them from the pool if it considers that a particular socket is idling for too long. The intention of this additional sockets housekeeping is to eliminate "Socket hang-up" errors that could previously still occur on certain configurations. Now, the client does not rely on KeepAlive agent when it comes to removing the idling sockets; in most cases, the server will not close the socket before the client does.
+- There is a new `keep_alive.idle_socket_ttl` configuration parameter. The default value is `2500` (milliseconds), which is considered to be safe, as [ClickHouse versions prior to 23.11 had `keep_alive_timeout` set to 3 seconds by default](https://github.com/ClickHouse/ClickHouse/commit/1685cdcb89fe110b45497c7ff27ce73cc03e82d1), and `keep_alive.idle_socket_ttl` is supposed to be slightly less than that to allow the client to remove the sockets that are about to expire before the server does so.
+- Logging improvements: more internal logs on failing requests; all client methods except ping will log an error on failure now. A failed ping will log a warning, since the underlying error is returned as a part of its result. Client logging still needs to be enabled explicitly by specifying the desired `log.level` config option, as the log level is `OFF` by default. Currently, the client logs the following events, depending on the selected `log.level` value:
+
+  - `TRACE` - low-level information about the Keep-Alive sockets lifecycle.
+  - `DEBUG` - response information (without authorization headers and host info).
+  - `INFO` - still mostly unused, will print the current log level when the client is initialized.
+  - `WARN` - non-fatal errors; failed `ping` request is logged as a warning, as the underlying error is included in the returned result.
+  - `ERROR` - fatal errors from `query`/`insert`/`exec`/`command` methods, such as a failed request.
+
+### Breaking changes
+
+- `keep_alive.retry_on_expired_socket` and `keep_alive.socket_ttl` configuration parameters are removed.
+- The `max_open_connections` configuration parameter is now 10 by default, as we should not rely on the KeepAlive agent's defaults.
+- Fixed the default `request_timeout` configuration value (now it is correctly set to `30_000`, previously `300_000` (milliseconds)).
+
+### Bug fixes
+
+- Fixed a bug with Ping that could lead to an unhandled "Socket hang-up" propagation.
+- Ensure proper `Connection` header value considering Keep-Alive settings. If Keep-Alive is disabled, its value is now forced to ["close"](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Connection#close).
+
+## 0.3.0-beta.1 (Node.js only)
+
+See [0.3.0](#030-nodejs-only).
 
 ## 0.2.10 (Common, Node.js, Web)
 
@@ -317,7 +475,7 @@ await client.exec('CREATE TABLE foo (id String) ENGINE Memory')
 
 // correct: stream does not contain any information and just destroyed
 const { stream } = await client.exec(
-  'CREATE TABLE foo (id String) ENGINE Memory'
+  'CREATE TABLE foo (id String) ENGINE Memory',
 )
 stream.destroy()
 

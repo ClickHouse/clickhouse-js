@@ -5,7 +5,7 @@ describe('[Web] Client', () => {
   let fetchSpy: jasmine.Spy<typeof window.fetch>
   beforeEach(() => {
     fetchSpy = spyOn(window, 'fetch').and.returnValue(
-      Promise.resolve(new Response())
+      Promise.resolve(new Response()),
     )
   })
 
@@ -19,7 +19,6 @@ describe('[Web] Client', () => {
       const fetchParams = await pingAndGetRequestInit(client)
       expect(fetchParams!.headers).toEqual({
         Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-        'Accept-Encoding': 'gzip',
         'Test-Header': 'foobar',
       })
     })
@@ -29,7 +28,6 @@ describe('[Web] Client', () => {
       const fetchParams = await pingAndGetRequestInit(client)
       expect(fetchParams!.headers).toEqual({
         Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-        'Accept-Encoding': 'gzip',
       })
     })
   })

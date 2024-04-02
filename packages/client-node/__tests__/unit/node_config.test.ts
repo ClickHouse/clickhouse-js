@@ -15,10 +15,7 @@ describe('[Node.js] Config implementation details', () => {
     it('should handle known URL params', async () => {
       const url = new URL(
         'http://localhost:8123/?' +
-          [
-            'keep_alive_retry_on_expired_socket=true',
-            'keep_alive_socket_ttl=1000',
-          ].join('&')
+          ['keep_alive_idle_socket_ttl=2500'].join('&'),
       )
       const config: BaseClickHouseClientConfigOptions = {
         keep_alive: {
@@ -29,15 +26,11 @@ describe('[Node.js] Config implementation details', () => {
       expect(res.config).toEqual({
         keep_alive: {
           enabled: false, // kept the value from the initial config
-          retry_on_expired_socket: true,
-          socket_ttl: 1000,
+          idle_socket_ttl: 2500,
         },
       } as unknown as BaseClickHouseClientConfigOptions)
       expect([...res.unknown_params]).toEqual([])
-      expect([...res.handled_params]).toEqual([
-        'keep_alive_retry_on_expired_socket',
-        'keep_alive_socket_ttl',
-      ])
+      expect([...res.handled_params]).toEqual(['keep_alive_idle_socket_ttl'])
     })
 
     it('should indicate that one of the URL parameters is unknown without throwing an error', async () => {
@@ -78,7 +71,7 @@ describe('[Node.js] Config implementation details', () => {
       password: 'qwerty',
       database: 'default',
       clickhouse_settings: {},
-      log_writer: new LogWriter(new TestLogger()),
+      log_writer: new LogWriter(new TestLogger(), 'MakeConnectionTest'),
       keep_alive: { enabled: false },
     }
 
@@ -86,7 +79,7 @@ describe('[Node.js] Config implementation details', () => {
     const fakeConnection = { test: true } as unknown as NodeBaseConnection
     beforeEach(() => {
       createConnectionStub = spyOn(c, 'createConnection').and.returnValue(
-        fakeConnection
+        fakeConnection,
       )
     })
 
@@ -100,9 +93,8 @@ describe('[Node.js] Config implementation details', () => {
         undefined, // TLS
         {
           enabled: true,
-          socket_ttl: 2500,
-          retry_on_expired_socket: false,
-        }
+          idle_socket_ttl: 2500,
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -124,9 +116,8 @@ describe('[Node.js] Config implementation details', () => {
         },
         {
           enabled: true,
-          socket_ttl: 2500,
-          retry_on_expired_socket: false,
-        }
+          idle_socket_ttl: 2500,
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -152,9 +143,8 @@ describe('[Node.js] Config implementation details', () => {
         },
         {
           enabled: true,
-          socket_ttl: 2500,
-          retry_on_expired_socket: false,
-        }
+          idle_socket_ttl: 2500,
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -165,8 +155,7 @@ describe('[Node.js] Config implementation details', () => {
         url: new URL('https://localhost:8123'),
         keep_alive: {
           enabled: false,
-          socket_ttl: 42_000,
-          retry_on_expired_socket: true,
+          idle_socket_ttl: 42_000,
         },
         tls: {
           ca_cert: Buffer.from('my_ca_cert'),
@@ -181,9 +170,8 @@ describe('[Node.js] Config implementation details', () => {
         },
         {
           enabled: false,
-          socket_ttl: 42_000,
-          retry_on_expired_socket: true,
-        }
+          idle_socket_ttl: 42_000,
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)

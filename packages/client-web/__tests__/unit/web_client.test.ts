@@ -6,7 +6,7 @@ describe('[Web] createClient', () => {
     expect(() => createClient({ url: 'foo' })).toThrow(
       jasmine.objectContaining({
         message: jasmine.stringContaining('ClickHouse URL is malformed.'),
-      })
+      }),
     )
   })
 

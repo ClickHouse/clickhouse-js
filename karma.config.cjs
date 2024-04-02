@@ -1,6 +1,6 @@
 const webpackConfig = require('./webpack.dev.js')
 
-const TEST_TIMEOUT_MS = 120_000
+const TEST_TIMEOUT_MS = 300_000
 
 module.exports = function (config) {
   config.set({
@@ -38,7 +38,7 @@ module.exports = function (config) {
         'sourcemap',
       ],
     },
-    reporters: ['progress'],
+    reporters: ['mocha'],
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,

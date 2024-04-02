@@ -5,78 +5,137 @@ export interface LogParams {
   args?: Record<string, unknown>
 }
 export type ErrorLogParams = LogParams & { err: Error }
+export type WarnLogParams = LogParams & { err?: Error }
 export interface Logger {
   trace(params: LogParams): void
   debug(params: LogParams): void
   info(params: LogParams): void
-  warn(params: LogParams): void
+  warn(params: WarnLogParams): void
   error(params: ErrorLogParams): void
 }
 
 export class DefaultLogger implements Logger {
   trace({ module, message, args }: LogParams): void {
-    console.trace(formatMessage({ module, message }), args)
+    const params: unknown[] = [
+      formatMessage({ module, message, level: 'TRACE' }),
+    ]
+    if (args) {
+      params.push('Arguments:', args)
+    }
+    console.debug(...params)
   }
 
   debug({ module, message, args }: LogParams): void {
-    console.debug(formatMessage({ module, message }), args)
+    const params: unknown[] = [
+      formatMessage({ module, message, level: 'DEBUG' }),
+    ]
+    if (args) {
+      params.push('Arguments:', args)
+    }
+    console.debug(...params)
   }
 
   info({ module, message, args }: LogParams): void {
-    console.info(formatMessage({ module, message }), args)
+    const params: unknown[] = [
+      formatMessage({ module, message, level: 'INFO' }),
+    ]
+    if (args) {
+      params.push('Arguments:', args)
+    }
+    console.info(...params)
   }
 
-  warn({ module, message, args }: LogParams): void {
-    console.warn(formatMessage({ module, message }), args)
+  warn({ module, message, args, err }: WarnLogParams): void {
+    const params: unknown[] = [
+      formatMessage({ module, message, level: 'WARN' }),
+    ]
+    if (args) {
+      params.push('Arguments:', args)
+    }
+    if (err) {
+      params.push('Caused by:', err)
+    }
+    console.warn(...params)
   }
 
   error({ module, message, args, err }: ErrorLogParams): void {
-    console.error(formatMessage({ module, message }), args, err)
+    const params: unknown[] = [
+      formatMessage({ module, message, level: 'ERROR' }),
+    ]
+    if (args) {
+      params.push('Arguments:', args)
+    }
+    params.push('Caused by:', err)
+    console.error(...params)
   }
 }
+
+export type LogWriterParams<Method extends keyof Logger> = Omit<
+  Parameters<Logger[Method]>[0],
+  'module'
+> & { module?: string }
+
 export class LogWriter {
   private readonly logLevel: ClickHouseLogLevel
-  constructor(private readonly logger: Logger, logLevel?: ClickHouseLogLevel) {
+  constructor(
+    private readonly logger: Logger,
+    private readonly module: string,
+    logLevel?: ClickHouseLogLevel,
+  ) {
     this.logLevel = logLevel ?? ClickHouseLogLevel.OFF
     this.info({
-      module: 'Logger',
       message: `Log level is set to ${ClickHouseLogLevel[this.logLevel]}`,
     })
   }
 
-  trace(params: LogParams): void {
+  trace(params: LogWriterParams<'trace'>): void {
     if (this.logLevel <= (ClickHouseLogLevel.TRACE as number)) {
-      this.logger.trace(params)
+      this.logger.trace({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 
-  debug(params: LogParams): void {
+  debug(params: LogWriterParams<'debug'>): void {
     if (this.logLevel <= (ClickHouseLogLevel.DEBUG as number)) {
-      this.logger.debug(params)
+      this.logger.debug({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 
-  info(params: LogParams): void {
+  info(params: LogWriterParams<'info'>): void {
     if (this.logLevel <= (ClickHouseLogLevel.INFO as number)) {
-      this.logger.info(params)
+      this.logger.info({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 
-  warn(params: LogParams): void {
+  warn(params: LogWriterParams<'warn'>): void {
     if (this.logLevel <= (ClickHouseLogLevel.WARN as number)) {
-      this.logger.warn(params)
+      this.logger.warn({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 
-  error(params: ErrorLogParams): void {
+  error(params: LogWriterParams<'error'>): void {
     if (this.logLevel <= (ClickHouseLogLevel.ERROR as number)) {
-      this.logger.error(params)
+      this.logger.error({
+        ...params,
+        module: params.module ?? this.module,
+      })
     }
   }
 }
 
 export enum ClickHouseLogLevel {
-  TRACE = 0, // unused at the moment
+  TRACE = 0,
   DEBUG = 1,
   INFO = 2,
   WARN = 3,
@@ -85,11 +144,14 @@ export enum ClickHouseLogLevel {
 }
 
 function formatMessage({
+  level,
   module,
   message,
 }: {
+  level: 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
   module: string
   message: string
 }): string {
-  return `[@clickhouse/client][${module}] ${message}`
+  const ts = new Date().toISOString()
+  return `[${ts}][${level}][@clickhouse/client][${module}] ${message}`
 }

@@ -9,7 +9,7 @@ import { NodeHttpsConnection } from './node_https_connection'
 export function createConnection(
   params: ConnectionParams,
   tls: NodeConnectionParams['tls'],
-  keep_alive: NodeConnectionParams['keep_alive']
+  keep_alive: NodeConnectionParams['keep_alive'],
 ): NodeBaseConnection {
   switch (params.url.protocol) {
     case 'http:':

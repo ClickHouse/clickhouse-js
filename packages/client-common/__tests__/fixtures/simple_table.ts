@@ -7,7 +7,7 @@ import { createTable, TestEnv } from '../utils'
 export function createSimpleTable<Stream = unknown>(
   client: ClickHouseClient<Stream>,
   tableName: string,
-  settings: MergeTreeSettings = {}
+  settings: MergeTreeSettings = {},
 ) {
   return createTable(client, (env) => {
     const filteredSettings = filterSettingsBasedOnEnv(settings, env)
@@ -24,6 +24,7 @@ export function createSimpleTable<Stream = unknown>(
       // ENGINE can be omitted in the cloud statements:
       // it will use ReplicatedMergeTree and will add ON CLUSTER as well
       case TestEnv.Cloud:
+      case TestEnv.CloudSMT:
         return `
           CREATE TABLE ${tableName}
           (id UInt64, name String, sku Array(UInt8))
@@ -53,6 +54,7 @@ export function createSimpleTable<Stream = unknown>(
 function filterSettingsBasedOnEnv(settings: MergeTreeSettings, env: TestEnv) {
   switch (env) {
     case TestEnv.Cloud:
+    case TestEnv.CloudSMT:
       // ClickHouse Cloud does not like this particular one
       // Local cluster, however, does.
       if ('non_replicated_deduplication_window' in settings) {

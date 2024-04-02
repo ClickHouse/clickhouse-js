@@ -6,98 +6,96 @@ import { ClickHouseLogLevel, LogWriter } from './logger'
 import type { BaseResultSet } from './result'
 import type { ClickHouseSettings } from './settings'
 
-/**
- * By default, {@link send_progress_in_http_headers} is enabled, and {@link http_headers_progress_interval_ms} is set to 20s.
- * These settings in combination allow to avoid LB timeout issues in case of long-running queries without data coming in or out,
- * such as `INSERT FROM SELECT` and similar ones, as the connection could be marked as idle by the LB and closed abruptly.
- * 20s is chosen as a safe value, since most LBs will have at least 30s of idle timeout, and AWS LB sends KeepAlive packets every 20s.
- * It can be overridden when creating a client instance if your LB timeout value is even lower than that.
- * See also: https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html#connection-idle-timeout
- */
-const DefaultClickHouseSettings: ClickHouseSettings = {
-  send_progress_in_http_headers: 1,
-  http_headers_progress_interval_ms: '20000',
-}
-
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
-   * A ClickHouse instance URL. Default value: `http://localhost:8123`. */
+   *  A ClickHouse instance URL.
+   *  @default http://localhost:8123 */
   host?: string
-  /** A ClickHouse instance URL. Default value: `http://localhost:8123`. */
+  /** A ClickHouse instance URL.
+   *  @default http://localhost:8123 */
   url?: string | URL
-  /** The request timeout in milliseconds. Default value: `30_000`. */
+  /** An optional pathname to add to the ClickHouse URL after it is parsed by the client.
+   *  For example, if you use a proxy, and your ClickHouse instance can be accessed as http://proxy:8123/clickhouse_server,
+   *  specify `clickhouse_server` here (with or without a leading slash);
+   *  otherwise, if provided directly in the {@link url}, it will be considered as the `database` option.<br/>
+   *  Multiple segments are supported, e.g. `/my_proxy/db`.
+   *  @default empty string */
+  pathname?: string
+  /** The request timeout in milliseconds.
+   *  @default 30_000 */
   request_timeout?: number
-  /** Maximum number of sockets to allow per host. Default value: `Infinity`. */
+  /** Maximum number of sockets to allow per host.
+   *  @default 10 */
   max_open_connections?: number
-  /** Request and response compression settings. Can't be enabled for a user with readonly=1. */
+  /** Request and response compression settings. */
   compression?: {
-    /** `response: true` instructs ClickHouse server to respond with
-     * compressed response body. Default: true; if {@link readonly} is enabled, then false. */
+    /** `response: true` instructs ClickHouse server to respond with compressed response body. <br/>
+     *  This will add `Accept-Encoding: gzip` header in the request and `enable_http_compression=1` ClickHouse HTTP setting.
+     *  <p><b>Warning</b>: Response compression can't be enabled for a user with readonly=1, as ClickHouse will not allow settings modifications for such user.</p>
+     *  @default false */
     response?: boolean
     /** `request: true` enabled compression on the client request body.
-     * Default: false. */
+     *  @default false */
     request?: boolean
   }
   /** The name of the user on whose behalf requests are made.
-   * Default: 'default'. */
+   *  @default default */
   username?: string
-  /** The user password. Default: ''. */
+  /** The user password.
+   *  @default empty string */
   password?: string
   /** The name of the application using the JS client.
-   * Default: empty. */
+   *  @default empty string */
   application?: string
-  /** Database name to use. Default value: `default`. */
+  /** Database name to use.
+   * @default default */
   database?: string
   /** ClickHouse settings to apply to all requests.
-   * Default value: {@link DefaultClickHouseSettings} */
+   *  @default empty object */
   clickhouse_settings?: ClickHouseSettings
   log?: {
     /** A class to instantiate a custom logger implementation.
-     * Default: {@link DefaultLogger} */
+     *  @default see {@link DefaultLogger} */
     LoggerClass?: new () => Logger
-    /** Default: OFF */
+    /** @default set to {@link ClickHouseLogLevel.OFF} */
     level?: ClickHouseLogLevel
   }
   /** ClickHouse Session id to attach to the outgoing requests.
-   * Default: empty. */
+   *  @default empty string */
   session_id?: string
   /** @deprecated since version 1.0.0. Use {@link http_headers} instead. <br/>
-   * Additional HTTP headers to attach to the outgoing requests.
-   * Default: empty. */
+   *  Additional HTTP headers to attach to the outgoing requests.
+   *  @default empty object */
   additional_headers?: Record<string, string>
   /** Additional HTTP headers to attach to the outgoing requests.
-   * Default: empty. */
+   *  @default empty object */
   http_headers?: Record<string, string>
-  /** If the client instance created for a user with `READONLY = 1` mode,
-   * some settings, such as {@link compression}, `send_progress_in_http_headers`,
-   * and `http_headers_progress_interval_ms` can't be modified,
-   * and will be removed from the client configuration.
-   * NB: this is not necessary if a user has `READONLY = 2` mode.
-   * See also: https://clickhouse.com/docs/en/operations/settings/permissions-for-queries#readonly
-   * Default: false */
-  readonly?: boolean
-  /** HTTP Keep-Alive related settings */
+  /** HTTP Keep-Alive related settings. */
   keep_alive?: {
-    /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
+    /** Enable or disable HTTP Keep-Alive mechanism.
+     *  @default true */
     enabled?: boolean
   }
 }
 
 export type MakeConnection<
   Stream,
-  Config = BaseClickHouseClientConfigOptionsWithURL
+  Config = BaseClickHouseClientConfigOptionsWithURL,
 > = (config: Config, params: ConnectionParams) => Connection<Stream>
 
-export type MakeResultSet<Stream> = (
+export type MakeResultSet<Stream> = <
+  Format extends DataFormat,
+  ResultSet extends BaseResultSet<Stream, Format>,
+>(
   stream: Stream,
-  format: DataFormat,
-  query_id: string
-) => BaseResultSet<Stream>
+  format: Format,
+  query_id: string,
+) => ResultSet
 
 export interface ValuesEncoder<Stream> {
   validateInsertValues<T = unknown>(
     values: InsertValues<Stream, T>,
-    format: DataFormat
+    format: DataFormat,
   ): void
 
   /**
@@ -111,7 +109,7 @@ export interface ValuesEncoder<Stream> {
    */
   encodeValues<T = unknown>(
     values: InsertValues<Stream, T>,
-    format: DataFormat
+    format: DataFormat,
   ): string | Stream
 }
 
@@ -126,7 +124,7 @@ export type CloseStream<Stream> = (stream: Stream) => Promise<void>
  */
 export type HandleImplSpecificURLParams = (
   config: BaseClickHouseClientConfigOptions,
-  url: URL
+  url: URL,
 ) => {
   config: BaseClickHouseClientConfigOptions
   // params that were handled in the implementation; used to calculate final "unknown" URL params
@@ -165,7 +163,7 @@ export type BaseClickHouseClientConfigOptionsWithURL = Omit<
 export function prepareConfigWithURL(
   baseConfigOptions: BaseClickHouseClientConfigOptions,
   logger: Logger,
-  handleImplURLParams: HandleImplSpecificURLParams | null
+  handleImplURLParams: HandleImplSpecificURLParams | null,
 ): BaseClickHouseClientConfigOptionsWithURL {
   const baseConfig = { ...baseConfigOptions }
   if (baseConfig.additional_headers !== undefined) {
@@ -190,70 +188,33 @@ export function prepareConfigWithURL(
   }
   const [url, configFromURL] = loadConfigOptionsFromURL(
     configURL,
-    handleImplURLParams
+    handleImplURLParams,
   )
   const config = mergeConfigs(baseConfig, configFromURL, logger)
-  let clickHouseSettings: ClickHouseSettings
-  let compressionSettings: BaseClickHouseClientConfigOptions['compression']
-  // TODO: maybe validate certain settings that cannot be modified with read-only user
-  if (!config.readonly) {
-    clickHouseSettings = {
-      ...DefaultClickHouseSettings,
-      ...config.clickhouse_settings,
-    }
-    compressionSettings = {
-      response: config.compression?.response ?? true,
-      request: config.compression?.request ?? false,
-    }
-  } else {
-    clickHouseSettings = config.clickhouse_settings ?? {}
-    for (const key of Object.keys(DefaultClickHouseSettings)) {
-      if (clickHouseSettings[key] !== undefined) {
-        logger.warn({
-          module: 'Config',
-          message: `ClickHouse setting ${key} is ignored when readonly mode is enabled.`,
-        })
-      }
-      delete clickHouseSettings[key]
-    }
-    if (
-      config.compression?.request === true ||
-      config.compression?.response === true
-    ) {
-      logger.warn({
-        module: 'Config',
-        message:
-          'Compression configuration is ignored when readonly mode is enabled.',
-      })
-    }
-    compressionSettings = {
-      response: false,
-      request: false,
-    }
+  if (config.pathname !== undefined) {
+    url.pathname = config.pathname
   }
   config.url = url
-  config.clickhouse_settings = clickHouseSettings
-  config.compression = compressionSettings
   return config as BaseClickHouseClientConfigOptionsWithURL
 }
 
 export function getConnectionParams(
   config: BaseClickHouseClientConfigOptionsWithURL,
-  logger: Logger
+  logger: Logger,
 ): ConnectionParams {
   return {
     url: config.url,
     application_id: config.application,
     request_timeout: config.request_timeout ?? 30_000,
-    max_open_connections: config.max_open_connections ?? Infinity,
+    max_open_connections: config.max_open_connections ?? 10,
     compression: {
-      decompress_response: config.compression?.response ?? true,
+      decompress_response: config.compression?.response ?? false,
       compress_request: config.compression?.request ?? false,
     },
     username: config.username ?? 'default',
     password: config.password ?? '',
     database: config.database ?? 'default',
-    log_writer: new LogWriter(logger, config.log?.level),
+    log_writer: new LogWriter(logger, 'Connection', config.log?.level),
     keep_alive: { enabled: config.keep_alive?.enabled ?? true },
     clickhouse_settings: config.clickhouse_settings ?? {},
     http_headers: config.http_headers ?? {},
@@ -263,28 +224,45 @@ export function getConnectionParams(
 /**
  * Merge two versions of the config: base (hardcoded) from the instance creation and the URL parsed one.
  * URL config takes priority and overrides the base config parameters.
- * If a value is overridden, then a warning will be logged.
- * NB: currently, merges only the top level keys to simplify the flow.
+ * If a value is overridden, then a warning will be logged (even if the log level is OFF).
  */
 export function mergeConfigs(
   baseConfig: BaseClickHouseClientConfigOptions,
   configFromURL: BaseClickHouseClientConfigOptions,
-  logger: Logger
+  logger: Logger,
 ): BaseClickHouseClientConfigOptions {
-  const config = { ...baseConfig }
-  const keys = Object.keys(
-    configFromURL
-  ) as (keyof BaseClickHouseClientConfigOptions)[]
-  for (const key of keys) {
-    if (config[key] !== undefined) {
-      logger.warn({
-        module: 'Config',
-        message: `"${key}" is overridden by a URL parameter.`,
-      })
+  function deepMerge(
+    base: Record<string, any>,
+    fromURL: Record<string, any>,
+    path: string[] = [],
+  ) {
+    for (const key of Object.keys(fromURL)) {
+      if (typeof fromURL[key] === 'object') {
+        deepMerge(base, fromURL[key], path.concat(key))
+      } else {
+        let baseAtPath: Record<string, any> = base
+        for (const key of path) {
+          if (baseAtPath[key] === undefined) {
+            baseAtPath[key] = {}
+          }
+          baseAtPath = baseAtPath[key]
+        }
+        const baseAtKey = baseAtPath[key]
+        if (baseAtKey !== undefined) {
+          const fullPath = path.concat(key).join('.')
+          logger.warn({
+            module: 'Config',
+            message: `"${fullPath}" is overridden by a URL parameter.`,
+          })
+        }
+        baseAtPath[key] = fromURL[key]
+      }
     }
-    config[key] = configFromURL[key] as any
   }
-  return config
+
+  const config: Record<string, any> = { ...baseConfig }
+  deepMerge(config, configFromURL)
+  return config as BaseClickHouseClientConfigOptions
 }
 
 export function createUrl(configURL: string | URL | undefined): URL {
@@ -297,12 +275,12 @@ export function createUrl(configURL: string | URL | undefined): URL {
     }
   } catch (err) {
     throw new Error(
-      'ClickHouse URL is malformed. Expected format: http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]'
+      'ClickHouse URL is malformed. Expected format: http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]',
     )
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(
-      `ClickHouse URL protocol must be either http or https. Got: ${url.protocol}`
+      `ClickHouse URL protocol must be either http or https. Got: ${url.protocol}`,
     )
   }
   if (url.port === '' || isNaN(Number(url.port))) {
@@ -318,7 +296,7 @@ export function createUrl(configURL: string | URL | undefined): URL {
  */
 export function loadConfigOptionsFromURL(
   url: URL,
-  handleExtraURLParams: HandleImplSpecificURLParams | null
+  handleExtraURLParams: HandleImplSpecificURLParams | null,
 ): [URL, BaseClickHouseClientConfigOptions] {
   let config: BaseClickHouseClientConfigOptions = {}
   if (url.username.trim() !== '') {
@@ -364,11 +342,11 @@ export function loadConfigOptionsFromURL(
       } else {
         // static known parameters
         switch (key) {
-          case 'readonly':
-            config.readonly = booleanConfigURLValue({ key, value })
-            break
           case 'application':
             config.application = value
+            break
+          case 'pathname':
+            config.pathname = value
             break
           case 'session_id':
             config.session_id = value
@@ -441,7 +419,7 @@ export function loadConfigOptionsFromURL(
     }
     if (unknownParams.size > 0) {
       throw new Error(
-        `Unknown URL parameters: ${Array.from(unknownParams).join(', ')}`
+        `Unknown URL parameters: ${Array.from(unknownParams).join(', ')}`,
       )
     }
   }
@@ -461,7 +439,7 @@ export function booleanConfigURLValue({
   if (trimmed === 'true' || trimmed === '1') return true
   if (trimmed === 'false' || trimmed === '0') return false
   throw new Error(
-    `"${key}" has invalid boolean value: ${trimmed}. Expected one of: 0, 1, true, false.`
+    `"${key}" has invalid boolean value: ${trimmed}. Expected one of: 0, 1, true, false.`,
   )
 }
 
@@ -485,7 +463,7 @@ export function numberConfigURLValue({
   }
   if (max !== undefined && number > max) {
     throw new Error(
-      `"${key}" value ${trimmed} is greater than max allowed ${max}`
+      `"${key}" value ${trimmed} is greater than max allowed ${max}`,
     )
   }
   return number
@@ -507,7 +485,7 @@ export function enumConfigURLValue<Enum, Key extends string>({
   if (!values.includes(trimmed)) {
     const expected = values.join(', ')
     throw new Error(
-      `"${key}" has invalid value: ${trimmed}. Expected one of: ${expected}.`
+      `"${key}" has invalid value: ${trimmed}. Expected one of: ${expected}.`,
     )
   }
   return enumObject[trimmed as Key]

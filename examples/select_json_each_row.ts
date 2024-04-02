@@ -8,7 +8,7 @@ void (async () => {
     query: 'SELECT number FROM system.numbers LIMIT 5',
     format: 'JSONEachRow',
   })
-  const result = await rows.json<Array<Data>>()
-  result.map((row: Data) => console.log(row))
+  const result = await rows.json<Data>()
+  result.map((row) => console.log(row))
   await client.close()
 })()

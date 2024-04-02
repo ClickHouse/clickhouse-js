@@ -11,7 +11,7 @@ describe('[Node.js] createClient', () => {
     expect(() => createClient({ url: 'foo' })).toThrow(
       jasmine.objectContaining({
         message: jasmine.stringContaining('ClickHouse URL is malformed.'),
-      })
+      }),
     )
   })
 
@@ -31,19 +31,16 @@ describe('[Node.js] createClient', () => {
     const params: ConnectionParams = {
       url: new URL('https://my.host:8443'),
       request_timeout: 42_000,
-      max_open_connections: Infinity,
+      max_open_connections: 10,
       compression: {
         compress_request: false,
-        decompress_response: true,
+        decompress_response: false,
       },
       username: 'bob',
       password: 'secret',
       database: 'analytics',
-      clickhouse_settings: {
-        send_progress_in_http_headers: 1,
-        http_headers_progress_interval_ms: '20000',
-      },
-      log_writer: new LogWriter(new DefaultLogger()),
+      clickhouse_settings: {},
+      log_writer: new LogWriter(new DefaultLogger(), 'Connection'),
       keep_alive: { enabled: true },
       http_headers: {
         'X-ClickHouse-Auth': 'secret_token',
@@ -66,8 +63,7 @@ describe('[Node.js] createClient', () => {
             'request_timeout=42000',
             'http_header_X-ClickHouse-Auth=secret_token',
             // Node.js specific
-            'keep_alive_retry_on_expired_socket=true',
-            'keep_alive_socket_ttl=1000',
+            'keep_alive_idle_socket_ttl=1500',
           ].join('&'),
       })
       expect(createConnectionStub).toHaveBeenCalledWith(
@@ -75,9 +71,33 @@ describe('[Node.js] createClient', () => {
         undefined, // TLS
         {
           enabled: true,
-          socket_ttl: 1000,
-          retry_on_expired_socket: true,
-        }
+          idle_socket_ttl: 1500,
+        },
+      )
+      expect(createConnectionStub).toHaveBeenCalledTimes(1)
+    })
+
+    it('should parse pathname and db from the URL and create a valid connection', async () => {
+      createClient({
+        url:
+          'https://bob:secret@my.host:8443/analytics?' +
+          [
+            // base config parameters
+            'application=my_app',
+            'pathname=my_proxy',
+            'request_timeout=42000',
+            'http_header_X-ClickHouse-Auth=secret_token',
+            // Node.js specific
+            'keep_alive_idle_socket_ttl=1500',
+          ].join('&'),
+      })
+      expect(createConnectionStub).toHaveBeenCalledWith(
+        { ...params, url: new URL('https://my.host:8443/my_proxy') },
+        undefined, // TLS
+        {
+          enabled: true,
+          idle_socket_ttl: 1500,
+        },
       )
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })

@@ -59,16 +59,7 @@ describe('[Node.js] abort request streaming', () => {
           })
         }
       })
-    // There was a breaking change in Node.js 18.x+ behavior
-    if (
-      process.version.startsWith('v18') ||
-      process.version.startsWith('v20')
-    ) {
-      // FIXME: add proper error message matching (does not work on Node.js 18/20)
-      await expectAsync(selectPromise).toBeRejectedWithError()
-    } else {
-      expect(await selectPromise).toEqual(undefined)
-    }
+    await expectAsync(selectPromise).toBeRejectedWithError()
   })
 
   describe('insert', () => {
@@ -104,7 +95,7 @@ describe('[Node.js] abort request streaming', () => {
             })
           }
           return insertPromise
-        })
+        }),
       )
 
       setTimeout(() => {
@@ -146,7 +137,7 @@ describe('[Node.js] abort request streaming', () => {
       await expectAsync(insertPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
 
@@ -158,11 +149,11 @@ describe('[Node.js] abort request streaming', () => {
         await client.insert({
           table: tableName,
           values: stream,
-        })
+        }),
       ).toEqual(
         jasmine.objectContaining({
           query_id: jasmine.any(String),
-        })
+        }),
       )
     })
 
@@ -182,7 +173,7 @@ describe('[Node.js] abort request streaming', () => {
       await expectAsync(insertPromise).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching('The user aborted a request'),
-        })
+        }),
       )
     })
   })

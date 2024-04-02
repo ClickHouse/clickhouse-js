@@ -62,6 +62,36 @@ describe('select with query binding', () => {
     expect(await rs.text()).toBe('30\n')
   })
 
+  it('handles special characters in a parametrized query', async () => {
+    const rs = await client.query({
+      query: `
+        SELECT
+          'foo_\t_bar'  = {tab: String}             AS has_tab,
+          'foo_\n_bar'  = {newline: String}         AS has_newline,
+          'foo_\r_bar'  = {carriage_return: String} AS has_carriage_return,
+          'foo_\\'_bar' = {single_quote: String}    AS has_single_quote,
+          'foo_\\_bar'  = {backslash: String}       AS has_backslash`,
+      format: 'JSONEachRow',
+      query_params: {
+        tab: 'foo_\t_bar',
+        newline: 'foo_\n_bar',
+        carriage_return: 'foo_\r_bar',
+        single_quote: "foo_'_bar",
+        backslash: 'foo_\\_bar',
+      },
+    })
+
+    expect(await rs.json()).toEqual([
+      {
+        has_tab: 1,
+        has_newline: 1,
+        has_carriage_return: 1,
+        has_single_quote: 1,
+        has_backslash: 1,
+      },
+    ])
+  })
+
   describe('Date(Time)', () => {
     it('handles Date in a parameterized query', async () => {
       const rs = await client.query({
@@ -257,24 +287,24 @@ describe('select with query binding', () => {
             SELECT * FROM system.numbers
             WHERE number > {min_limit: UInt64} LIMIT 3
           `,
-        })
+        }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
           message: jasmine.stringMatching(
             // possible error messages here:
             // (since 23.8+) Substitution `min_limit` is not set.
             // (pre-23.8) Query parameter `min_limit` was not set
-            /^.+?`min_limit`.+?not set.*$/
+            /^.+?`min_limit`.+?not set.*$/,
           ),
           code: '456',
           type: 'UNKNOWN_QUERY_PARAMETER',
-        })
+        }),
       )
     })
   })
 
   describe('NULL parameter binding', () => {
-    const baseQuery: Pick<QueryParams, 'query' | 'format'> = {
+    const baseQuery: QueryParams = {
       query: 'SELECT number FROM numbers(3) WHERE {n:Nullable(String)} IS NULL',
       format: 'CSV',
     }

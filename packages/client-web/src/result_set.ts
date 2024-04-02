@@ -1,26 +1,62 @@
-import type { BaseResultSet, DataFormat, Row } from '@clickhouse/client-common'
-import { decode, validateStreamFormat } from '@clickhouse/client-common'
+import type {
+  BaseResultSet,
+  DataFormat,
+  ResultJSONType,
+  ResultStream,
+  Row,
+} from '@clickhouse/client-common'
+import {
+  isNotStreamableJSONFamily,
+  isStreamableJSONFamily,
+} from '@clickhouse/client-common'
+import { validateStreamFormat } from '@clickhouse/client-common'
 import { getAsText } from './utils'
 
-export class ResultSet implements BaseResultSet<ReadableStream<Row[]>> {
+export class ResultSet<Format extends DataFormat | unknown>
+  implements BaseResultSet<ReadableStream<Row[]>, Format>
+{
   private isAlreadyConsumed = false
   constructor(
     private _stream: ReadableStream,
-    private readonly format: DataFormat,
-    public readonly query_id: string
+    private readonly format: Format,
+    public readonly query_id: string,
   ) {}
 
+  /** See {@link BaseResultSet.text} */
   async text(): Promise<string> {
     this.markAsConsumed()
     return getAsText(this._stream)
   }
 
-  async json<T>(): Promise<T> {
-    const text = await this.text()
-    return decode(text, this.format)
+  /** See {@link BaseResultSet.json} */
+  async json<T>(): Promise<ResultJSONType<T, Format>> {
+    // JSONEachRow, etc.
+    if (isStreamableJSONFamily(this.format as DataFormat)) {
+      const result: T[] = []
+      const reader = this.stream<T>().getReader()
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+        for (const row of value) {
+          result.push(row.json())
+        }
+      }
+      return result as any
+    }
+    // JSON, JSONObjectEachRow, etc.
+    if (isNotStreamableJSONFamily(this.format as DataFormat)) {
+      const text = await getAsText(this._stream)
+      return JSON.parse(text)
+    }
+    // should not be called for CSV, etc.
+    throw new Error(`Cannot decode ${this.format} as JSON`)
   }
 
-  stream(): ReadableStream<Row[]> {
+  /** See {@link BaseResultSet.stream} */
+  stream<T>(): ResultStream<Format, ReadableStream<Row<T, Format>[]>> {
     this.markAsConsumed()
     validateStreamFormat(this.format)
 
@@ -45,7 +81,7 @@ export class ResultSet implements BaseResultSet<ReadableStream<Row[]>> {
             rows.push({
               text,
               json<T>(): T {
-                return decode(text, 'JSON')
+                return JSON.parse(text)
               },
             })
           } else {
@@ -61,11 +97,12 @@ export class ResultSet implements BaseResultSet<ReadableStream<Row[]>> {
       },
     })
 
-    return this._stream.pipeThrough(transform, {
+    const pipeline = this._stream.pipeThrough(transform, {
       preventClose: false,
       preventAbort: false,
       preventCancel: false,
     })
+    return pipeline as any
   }
 
   async close(): Promise<void> {

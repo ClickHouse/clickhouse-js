@@ -28,7 +28,7 @@ describe('query_log', () => {
       const formattedQuery =
         'SELECT * FROM system.numbers LIMIT 144 \nFORMAT JSON'
       await assertQueryLog({ formattedQuery, query_id })
-    }
+    },
   )
 
   whenOnEnv(...testEnvs).it(
@@ -41,7 +41,7 @@ describe('query_log', () => {
         query,
       })
       await assertQueryLog({ formattedQuery: query, query_id })
-    }
+    },
   )
 
   whenOnEnv(...testEnvs).it(
@@ -59,7 +59,7 @@ describe('query_log', () => {
       })
       const formattedQuery = `INSERT INTO ${table} FORMAT JSONObjectEachRow\n`
       await assertQueryLog({ formattedQuery, query_id })
-    }
+    },
   )
 
   async function assertQueryLog({

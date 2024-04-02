@@ -2,6 +2,7 @@
 export {
   type BaseQueryParams,
   type QueryParams,
+  type QueryResult,
   type ExecParams,
   type InsertParams,
   type InsertValues,
@@ -13,12 +14,26 @@ export {
   type PingResult,
 } from './client'
 export { type BaseClickHouseClientConfigOptions } from './config'
-export type { Row, BaseResultSet } from './result'
-export { type DataFormat } from './data_formatter'
+export type {
+  Row,
+  BaseResultSet,
+  ResultJSONType,
+  RowJSONType,
+  ResultStream,
+} from './result'
+export type {
+  DataFormat,
+  RawDataFormat,
+  JSONDataFormat,
+  StreamableDataFormat,
+  StreamableJSONDataFormat,
+  SingleDocumentJSONFormat,
+} from './data_formatter'
 export { ClickHouseError } from './error'
 export {
   ClickHouseLogLevel,
   type ErrorLogParams,
+  type WarnLogParams,
   type Logger,
   type LogParams,
 } from './logger'
@@ -37,9 +52,12 @@ export {
 
 /** For implementations usage only - should not be re-exported */
 export {
+  formatQuerySettings,
+  formatQueryParams,
   encodeJSON,
   isSupportedRawFormat,
-  decode,
+  isStreamableJSONFamily,
+  isNotStreamableJSONFamily,
   validateStreamFormat,
 } from './data_formatter'
 export {
@@ -60,7 +78,7 @@ export {
   transformUrl,
   withHttpSettings,
 } from './utils'
-export { LogWriter, DefaultLogger } from './logger'
+export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
 export { parseError } from './error'
 export type {
   CompressionSettings,
@@ -73,10 +91,7 @@ export type {
   ConnBaseResult,
   ConnInsertParams,
   ConnPingResult,
+  ConnOperation,
 } from './connection'
-export {
-  type RawDataFormat,
-  type JSONDataFormat,
-  formatQuerySettings,
-  formatQueryParams,
-} from './data_formatter'
+export type { QueryParamsWithFormat } from './client'
+export type { IsSame } from './ts_utils'

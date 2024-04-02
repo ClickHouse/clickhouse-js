@@ -63,13 +63,13 @@ describe('[Node.js] TLS connection', () => {
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
         format: 'CSV',
-      })
+      }),
     ).toBeRejectedWith(
       jasmine.objectContaining({
         message: jasmine.stringContaining(
-          'Hostname/IP does not match certificate'
+          'Hostname/IP does not match certificate',
         ),
-      })
+      }),
     )
   })
 
@@ -88,7 +88,7 @@ describe('[Node.js] TLS connection', () => {
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
         format: 'CSV',
-      })
+      }),
     ).toBeRejectedWithError()
   })
 })

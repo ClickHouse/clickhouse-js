@@ -4,14 +4,12 @@ import type {
 } from '@clickhouse/client-common'
 import {
   type BaseClickHouseClientConfigOptions,
-  booleanConfigURLValue,
   type ConnectionParams,
   numberConfigURLValue,
 } from '@clickhouse/client-common'
 import type Stream from 'stream'
 import { createConnection, type TLSParams } from './connection'
 import { ResultSet } from './result_set'
-import { RowBinaryResultSet } from './row_binary_result_set'
 import { NodeValuesEncoder } from './utils'
 
 export type NodeClickHouseClientConfigOptions =
@@ -19,21 +17,14 @@ export type NodeClickHouseClientConfigOptions =
     tls?: BasicTLSOptions | MutualTLSOptions
     /** HTTP Keep-Alive related settings */
     keep_alive?: {
-      /** Enable or disable HTTP Keep-Alive mechanism. Default: true */
+      /** Enable or disable HTTP Keep-Alive mechanism.
+       *  @default true */
       enabled?: boolean
-      /** How long to keep a particular open socket alive
-       * on the client side (in milliseconds).
-       * Should be less than the server setting
-       * (see `keep_alive_timeout` in server's `config.xml`).
-       * Currently, has no effect if {@link retry_on_expired_socket}
-       * is unset or false. Default value: 2500
-       * (based on the default ClickHouse server setting, which is 3000) */
-      socket_ttl?: number
-      /** If the client detects a potentially expired socket based on the
-       * {@link socket_ttl}, this socket will be immediately destroyed
-       * before sending the request, and this request will be retried
-       * with a new socket up to 3 times. Default: false (no retries) */
-      retry_on_expired_socket?: boolean
+      /** For how long keep a particular idle socket alive on the client side (in milliseconds).
+       *  It is supposed to be a fair bit less that the ClickHouse server KeepAlive timeout,
+       *  which is by default 3000 ms for pre-23.11 versions.
+       *  @default 2500 */
+      idle_socket_ttl?: number
     }
   }
 
@@ -59,19 +50,11 @@ export const NodeConfigImpl: Required<
       urlSearchParamsKeys.forEach((key) => {
         const value = url.searchParams.get(key) as string
         switch (key) {
-          case 'keep_alive_retry_on_expired_socket':
+          case 'keep_alive_idle_socket_ttl':
             if (nodeConfig.keep_alive === undefined) {
               nodeConfig.keep_alive = {}
             }
-            nodeConfig.keep_alive.retry_on_expired_socket =
-              booleanConfigURLValue({ key, value })
-            handledParams.add(key)
-            break
-          case 'keep_alive_socket_ttl':
-            if (nodeConfig.keep_alive === undefined) {
-              nodeConfig.keep_alive = {}
-            }
-            nodeConfig.keep_alive.socket_ttl = numberConfigURLValue({
+            nodeConfig.keep_alive.idle_socket_ttl = numberConfigURLValue({
               key,
               value,
               min: 0,
@@ -91,7 +74,7 @@ export const NodeConfigImpl: Required<
   },
   make_connection: (
     nodeConfig: NodeClickHouseClientConfigOptions,
-    params: ConnectionParams
+    params: ConnectionParams,
   ) => {
     let tls: TLSParams | undefined = undefined
     if (nodeConfig.tls !== undefined) {
@@ -107,26 +90,19 @@ export const NodeConfigImpl: Required<
         }
       }
     }
+    // normally, it should be already set after processing the config
     const keep_alive = {
       enabled: nodeConfig?.keep_alive?.enabled ?? true,
-      socket_ttl: nodeConfig?.keep_alive?.socket_ttl ?? 2500,
-      retry_on_expired_socket:
-        nodeConfig?.keep_alive?.retry_on_expired_socket ?? false,
+      idle_socket_ttl: nodeConfig?.keep_alive?.idle_socket_ttl ?? 2500,
     }
     return createConnection(params, tls, keep_alive)
   },
   values_encoder: new NodeValuesEncoder(),
-  make_result_set: (
+  make_result_set: ((
     stream: Stream.Readable,
     format: DataFormat,
-    query_id: string
-  ) => {
-    if (format === 'RowBinary') {
-      return new RowBinaryResultSet(stream, format, query_id)
-    } else {
-      return new ResultSet(stream, format, query_id)
-    }
-  },
+    query_id: string,
+  ) => new ResultSet(stream, format, query_id)) as any,
   close_stream: async (stream) => {
     stream.destroy()
   },

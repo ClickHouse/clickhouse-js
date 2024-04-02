@@ -22,7 +22,7 @@ export class NodeHttpsConnection extends NodeBaseConnection {
   protected override buildDefaultHeaders(
     username: string,
     password: string,
-    additional_headers?: Record<string, string>
+    additional_headers?: Record<string, string>,
   ): Http.OutgoingHttpHeaders {
     if (this.params.tls?.type === 'Mutual') {
       return {
@@ -44,6 +44,7 @@ export class NodeHttpsConnection extends NodeBaseConnection {
     return Https.request(params.url, {
       method: params.method,
       agent: this.agent,
+      timeout: this.params.request_timeout,
       headers: withCompressionHeaders({
         headers: this.headers,
         compress_request: params.compress_request,

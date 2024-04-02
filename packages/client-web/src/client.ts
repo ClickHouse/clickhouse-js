@@ -1,34 +1,50 @@
 import type {
-  BaseResultSet,
+  DataFormat,
   InputJSON,
   InputJSONObjectEachRow,
   InsertParams,
   InsertResult,
-  QueryParams,
-  Row,
+  IsSame,
+  QueryParamsWithFormat,
 } from '@clickhouse/client-common'
 import { ClickHouseClient } from '@clickhouse/client-common'
 import type { WebClickHouseClientConfigOptions } from './config'
 import { WebImpl } from './config'
+import type { ResultSet } from './result_set'
 
-export type WebClickHouseClient = Omit<
-  ClickHouseClient<ReadableStream>,
-  'insert' | 'query'
-> & {
-  // restrict ReadableStream as a possible insert value
+/** If the Format is not a literal type, fall back to the default behavior of the ResultSet,
+ *  allowing to call all methods with all data shapes variants,
+ *  and avoiding generated types that include all possible DataFormat literal values. */
+export type QueryResult<Format extends DataFormat> =
+  IsSame<Format, DataFormat> extends true
+    ? ResultSet<unknown>
+    : ResultSet<Format>
+
+export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
+  /** See {@link ClickHouseClient.insert}.
+   *
+   *  ReadableStream is removed from possible insert values
+   *  until it is supported by all major web platforms. */
   insert<T>(
     params: Omit<InsertParams<ReadableStream, T>, 'values'> & {
       values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
-    }
+    },
   ): Promise<InsertResult>
-  // narrow down the return type here for better type-hinting
-  query(params: QueryParams): Promise<BaseResultSet<ReadableStream<Row[]>>>
+}
+
+class WebClickHouseClientImpl extends ClickHouseClient<ReadableStream> {
+  /** See {@link ClickHouseClient.query}. */
+  query<Format extends DataFormat>(
+    params: QueryParamsWithFormat<Format>,
+  ): Promise<QueryResult<Format>> {
+    return super.query(params) as Promise<ResultSet<Format>>
+  }
 }
 
 export function createClient(
-  config?: WebClickHouseClientConfigOptions
+  config?: WebClickHouseClientConfigOptions,
 ): WebClickHouseClient {
-  return new ClickHouseClient<ReadableStream>({
+  return new WebClickHouseClientImpl({
     impl: WebImpl,
     ...(config || {}),
   })
