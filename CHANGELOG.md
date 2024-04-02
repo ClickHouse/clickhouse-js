@@ -1,3 +1,9 @@
+# 1.0.1 (Common, Node.js, Web)
+
+## Bug fixes
+
+- Fixed the regression where the default HTTP/HTTPS port numbers (80/443) could not be used with the URL configuration ([#258](https://github.com/ClickHouse/clickhouse-js/issues/258)).
+
 # 1.0.0 (Common, Node.js, Web)
 
 Formal stable release milestone with a lot of improvements and some [breaking changes](#breaking-changes-in-100).

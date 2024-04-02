@@ -283,9 +283,6 @@ export function createUrl(configURL: string | URL | undefined): URL {
       `ClickHouse URL protocol must be either http or https. Got: ${url.protocol}`,
     )
   }
-  if (url.port === '' || isNaN(Number(url.port))) {
-    throw new Error('ClickHouse URL must contain a valid port number.')
-  }
   return url
 }
 
