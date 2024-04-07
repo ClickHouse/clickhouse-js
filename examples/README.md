@@ -38,6 +38,7 @@ If something is missing, or you found a mistake in one of these examples, please
 - [insert_exclude_columns.ts](insert_exclude_columns.ts) - inserting into specific columns only, or excluding certain columns from the INSERT statement.
 - [insert_from_select.ts](insert_from_select.ts) - `INSERT FROM SELECT` example, using the `command` method instead of the default `insert`.
 - [insert_into_different_db.ts](insert_into_different_db.ts) - inserting data into a table in a different database, regardless of the database provided in the connection settings.
+- [insert_decimals.ts](insert_decimals.ts) - inserting decimal values into ClickHouse using `JSONEachRow` format.
 - [insert_js_dates.ts](insert_js_dates.ts) - an example of inserting objects that contain JS Date into ClickHouse.
 - [insert_file_stream_csv.ts](node/insert_file_stream_csv.ts) - (Node.js only) stream a CSV file into ClickHouse.
 - [insert_file_stream_ndjson.ts](node/insert_file_stream_ndjson.ts) - (Node.js only) stream a NDJSON file into ClickHouse.

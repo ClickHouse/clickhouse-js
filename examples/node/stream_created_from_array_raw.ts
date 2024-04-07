@@ -22,7 +22,7 @@ void (async () => {
   })
   await client.insert({
     table: tableName,
-    // structure should match the desired format, TabSeparated in this example
+    // structure should match the desired format, CSV in this example
     values: Stream.Readable.from(['42,foo\n43,bar'], {
       objectMode: false, // required for "raw" family formats
     }),
