@@ -3,6 +3,7 @@ dist/
 .idea
 node_modules
 benchmarks/leaks/input
+benchmarks/dev
 *.tgz
 .npmrc
 webpack

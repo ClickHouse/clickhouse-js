@@ -33,6 +33,9 @@ const supportedRawFormats = [
   'CustomSeparatedWithNames',
   'CustomSeparatedWithNamesAndTypes',
   'Parquet',
+  // translates to RowBinaryWithNamesAndTypes under the hood (see client/formatQuery);
+  // we expose a shorter name to the user for simplicity.
+  'RowBinary',
 ] as const
 
 /** CSV, TSV, etc. - can be streamed, but cannot be decoded as JSON. */
