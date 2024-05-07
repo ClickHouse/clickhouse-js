@@ -9,11 +9,7 @@ import type {
 } from '@clickhouse/client-common'
 import { type DataFormat, DefaultLogger } from '@clickhouse/client-common'
 import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
-import type {
-  CloseStream,
-  ImplementationDetails,
-  ValuesEncoder,
-} from './config'
+import type { ImplementationDetails, ValuesEncoder } from './config'
 import { getConnectionParams, prepareConfigWithURL } from './config'
 import type { ConnPingResult } from './connection'
 import type { BaseResultSet } from './result'
@@ -119,7 +115,6 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly connection: Connection<Stream>
   private readonly makeResultSet: MakeResultSet<Stream>
   private readonly valuesEncoder: ValuesEncoder<Stream>
-  private readonly closeStream: CloseStream<Stream>
   private readonly sessionId?: string
 
   constructor(
@@ -142,7 +137,6 @@ export class ClickHouseClient<Stream = unknown> {
     )
     this.makeResultSet = config.impl.make_result_set
     this.valuesEncoder = config.impl.values_encoder
-    this.closeStream = config.impl.close_stream
   }
 
   /**
@@ -172,9 +166,11 @@ export class ClickHouseClient<Stream = unknown> {
    * If you are interested in the response data, consider using {@link ClickHouseClient.exec}
    */
   async command(params: CommandParams): Promise<CommandResult> {
-    const { stream, query_id, summary } = await this.exec(params)
-    await this.closeStream(stream)
-    return { query_id, summary }
+    const query = removeTrailingSemi(params.query.trim())
+    return await this.connection.command({
+      query,
+      ...this.withClientQueryParams(params),
+    })
   }
 
   /**

@@ -47,6 +47,7 @@ export interface ConnQueryResult<Stream> extends ConnBaseResult {
 export type ConnInsertResult = ConnBaseResult & WithClickHouseSummary
 export type ConnExecResult<Stream> = ConnQueryResult<Stream> &
   WithClickHouseSummary
+export type ConnCommandResult = ConnBaseResult & WithClickHouseSummary
 
 export type ConnPingResult =
   | {
@@ -54,12 +55,13 @@ export type ConnPingResult =
     }
   | { success: false; error: Error }
 
-export type ConnOperation = 'Ping' | 'Query' | 'Insert' | 'Exec'
+export type ConnOperation = 'Ping' | 'Query' | 'Insert' | 'Exec' | 'Command'
 
 export interface Connection<Stream> {
   ping(): Promise<ConnPingResult>
   close(): Promise<void>
   query(params: ConnBaseQueryParams): Promise<ConnQueryResult<Stream>>
-  exec(params: ConnBaseQueryParams): Promise<ConnExecResult<Stream>>
   insert(params: ConnInsertParams<Stream>): Promise<ConnInsertResult>
+  exec(params: ConnBaseQueryParams): Promise<ConnExecResult<Stream>>
+  command(params: ConnBaseQueryParams): Promise<ConnCommandResult>
 }

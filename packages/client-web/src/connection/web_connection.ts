@@ -16,6 +16,7 @@ import {
   withHttpSettings,
 } from '@clickhouse/client-common'
 import { getAsText } from '../utils'
+import type { ConnCommandResult } from '@clickhouse/client-common/src/connection'
 
 type WebInsertParams<T> = Omit<
   ConnInsertParams<ReadableStream<T>>,
@@ -64,23 +65,19 @@ export class WebConnection implements Connection<ReadableStream> {
   async exec(
     params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<ReadableStream<Uint8Array>>> {
-    const query_id = getQueryId(params.query_id)
-    const searchParams = toSearchParams({
-      database: this.params.database,
-      clickhouse_settings: params.clickhouse_settings,
-      query_params: params.query_params,
-      session_id: params.session_id,
-      query_id,
-    })
-    const response = await this.request({
-      values: params.query,
-      params,
-      searchParams,
-    })
+    const result = await this.runExec(params)
     return {
-      stream: response.body || new ReadableStream<Uint8Array>(),
-      query_id,
+      query_id: result.query_id,
+      stream: result.stream || new ReadableStream<Uint8Array>(),
     }
+  }
+
+  async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
+    const { stream, query_id } = await this.runExec(params)
+    if (stream !== null) {
+      await stream.cancel()
+    }
+    return { query_id }
   }
 
   async insert<T = unknown>(
@@ -208,8 +205,33 @@ export class WebConnection implements Connection<ReadableStream> {
       throw err
     }
   }
+
+  private async runExec(params: ConnBaseQueryParams): Promise<RunExecResult> {
+    const query_id = getQueryId(params.query_id)
+    const searchParams = toSearchParams({
+      database: this.params.database,
+      clickhouse_settings: params.clickhouse_settings,
+      query_params: params.query_params,
+      session_id: params.session_id,
+      query_id,
+    })
+    const response = await this.request({
+      values: params.query,
+      params,
+      searchParams,
+    })
+    return {
+      stream: response.body,
+      query_id,
+    }
+  }
 }
 
 function getQueryId(query_id: string | undefined): string {
   return query_id || crypto.randomUUID()
+}
+
+interface RunExecResult {
+  stream: ReadableStream<Uint8Array> | null
+  query_id: string
 }

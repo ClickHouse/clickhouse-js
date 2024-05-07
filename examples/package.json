@@ -12,7 +12,7 @@
   },
   "scripts": {},
   "dependencies": {
-    "@clickhouse/client": "latest"
+    "@clickhouse/client": "1.0.1"
   },
   "devDependencies": {
     "set-interval-async": "^3.0.3",

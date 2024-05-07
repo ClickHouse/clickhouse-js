@@ -113,8 +113,6 @@ export interface ValuesEncoder<Stream> {
   ): string | Stream
 }
 
-export type CloseStream<Stream> = (stream: Stream) => Promise<void>
-
 /**
  * An implementation might have extra config parameters that we can parse from the connection URL.
  * These are supposed to be processed after we finish parsing the base configuration.
@@ -141,7 +139,6 @@ export interface ImplementationDetails<Stream> {
     make_connection: MakeConnection<Stream>
     make_result_set: MakeResultSet<Stream>
     values_encoder: ValuesEncoder<Stream>
-    close_stream: CloseStream<Stream>
     handle_specific_url_params?: HandleImplSpecificURLParams
   }
 }
