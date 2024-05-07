@@ -27,7 +27,7 @@ import Zlib from 'zlib'
 import { getAsText, getUserAgent, isStream } from '../utils'
 import { decompressResponse, isDecompressionError } from './compression'
 import { drainStream } from './stream'
-import type { ConnCommandResult } from '@clickhouse/client-common/src/connection'
+import type { ConnCommandResult } from '@clickhouse/client-common'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
