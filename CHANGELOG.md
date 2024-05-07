@@ -2,7 +2,7 @@
 
 ## Bug fixes
 
-- The `command` method now drains the response stream properly, as in the previous implementation it could cause the Keep-Alive socket to close after each request.
+- The `command` method now drains the response stream properly, as the previous implementation could cause the Keep-Alive socket to close after each request.
 
 # 1.0.1 (Common, Node.js, Web)
 
