@@ -1,5 +1,6 @@
 import type {
   ConnBaseQueryParams,
+  ConnCommandResult,
   Connection,
   ConnectionParams,
   ConnInsertParams,
@@ -16,7 +17,6 @@ import {
   withHttpSettings,
 } from '@clickhouse/client-common'
 import { getAsText } from '../utils'
-import type { ConnCommandResult } from '@clickhouse/client-common'
 
 type WebInsertParams<T> = Omit<
   ConnInsertParams<ReadableStream<T>>,
