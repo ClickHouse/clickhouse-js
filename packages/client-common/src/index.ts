@@ -91,6 +91,7 @@ export type {
   ConnBaseResult,
   ConnInsertParams,
   ConnPingResult,
+  ConnCommandResult,
   ConnOperation,
 } from './connection'
 export type { QueryParamsWithFormat } from './client'

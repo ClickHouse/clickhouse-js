@@ -1,6 +1,7 @@
 import type {
   ClickHouseSummary,
   ConnBaseQueryParams,
+  ConnCommandResult,
   Connection,
   ConnectionParams,
   ConnExecResult,
@@ -80,6 +81,156 @@ export abstract class NodeBaseConnection
     )
   }
 
+  async ping(): Promise<ConnPingResult> {
+    const abortController = new AbortController()
+    try {
+      const { stream } = await this.request(
+        {
+          method: 'GET',
+          url: transformUrl({ url: this.params.url, pathname: '/ping' }),
+          abort_signal: abortController.signal,
+        },
+        'Ping',
+      )
+      await drainStream(stream)
+      return { success: true }
+    } catch (error) {
+      // it is used to ensure that the outgoing request is terminated,
+      // and we don't get an unhandled error propagation later
+      abortController.abort('Ping failed')
+      // not an error, as this might be semi-expected
+      this.logger.warn({
+        message: this.httpRequestErrorMessage('Ping'),
+        err: error as Error,
+      })
+      return {
+        success: false,
+        error: error as Error, // should NOT be propagated to the user
+      }
+    }
+  }
+
+  async query(
+    params: ConnBaseQueryParams,
+  ): Promise<ConnQueryResult<Stream.Readable>> {
+    const query_id = this.getQueryId(params.query_id)
+    const clickhouse_settings = withHttpSettings(
+      params.clickhouse_settings,
+      this.params.compression.decompress_response,
+    )
+    const searchParams = toSearchParams({
+      database: this.params.database,
+      clickhouse_settings,
+      query_params: params.query_params,
+      session_id: params.session_id,
+      query_id,
+    })
+    const decompressResponse = clickhouse_settings.enable_http_compression === 1
+    const { controller, controllerCleanup } = this.getAbortController(params)
+    try {
+      const { stream } = await this.request(
+        {
+          method: 'POST',
+          url: transformUrl({ url: this.params.url, searchParams }),
+          body: params.query,
+          abort_signal: controller.signal,
+          decompress_response: decompressResponse,
+        },
+        'Query',
+      )
+      return {
+        stream,
+        query_id,
+      }
+    } catch (err) {
+      controller.abort('Query HTTP request failed')
+      this.logRequestError({
+        op: 'Query',
+        query_id: query_id,
+        query_params: params,
+        search_params: searchParams,
+        err: err as Error,
+        extra_args: {
+          decompress_response: decompressResponse,
+          clickhouse_settings,
+        },
+      })
+      throw err // should be propagated to the user
+    } finally {
+      controllerCleanup()
+    }
+  }
+
+  async insert(
+    params: ConnInsertParams<Stream.Readable>,
+  ): Promise<ConnInsertResult> {
+    const query_id = this.getQueryId(params.query_id)
+    const searchParams = toSearchParams({
+      database: this.params.database,
+      clickhouse_settings: params.clickhouse_settings,
+      query_params: params.query_params,
+      query: params.query,
+      session_id: params.session_id,
+      query_id,
+    })
+    const { controller, controllerCleanup } = this.getAbortController(params)
+    try {
+      const { stream, summary } = await this.request(
+        {
+          method: 'POST',
+          url: transformUrl({ url: this.params.url, searchParams }),
+          body: params.values,
+          abort_signal: controller.signal,
+          compress_request: this.params.compression.compress_request,
+          parse_summary: true,
+        },
+        'Insert',
+      )
+      await drainStream(stream)
+      return { query_id, summary }
+    } catch (err) {
+      controller.abort('Insert HTTP request failed')
+      this.logRequestError({
+        op: 'Insert',
+        query_id: query_id,
+        query_params: params,
+        search_params: searchParams,
+        err: err as Error,
+        extra_args: {
+          clickhouse_settings: params.clickhouse_settings ?? {},
+        },
+      })
+      throw err // should be propagated to the user
+    } finally {
+      controllerCleanup()
+    }
+  }
+
+  async exec(
+    params: ConnBaseQueryParams,
+  ): Promise<ConnExecResult<Stream.Readable>> {
+    return this.runExec({
+      ...params,
+      op: 'Exec',
+    })
+  }
+
+  async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
+    const { stream, query_id, summary } = await this.runExec({
+      ...params,
+      op: 'Command',
+    })
+    // ignore the response stream and release the socket immediately
+    await drainStream(stream)
+    return { query_id, summary }
+  }
+
+  async close(): Promise<void> {
+    if (this.agent !== undefined && this.agent.destroy !== undefined) {
+      this.agent.destroy()
+    }
+  }
+
   protected buildDefaultHeaders(
     username: string,
     password: string,
@@ -99,6 +250,145 @@ export abstract class NodeBaseConnection
   protected abstract createClientRequest(
     params: RequestParams,
   ): Http.ClientRequest
+
+  private getQueryId(query_id: string | undefined): string {
+    return query_id || crypto.randomUUID()
+  }
+
+  // a wrapper over the user's Signal to terminate the failed requests
+  private getAbortController(params: ConnBaseQueryParams): {
+    controller: AbortController
+    controllerCleanup: () => void
+  } {
+    const controller = new AbortController()
+    function onAbort() {
+      controller.abort()
+    }
+    params.abort_signal?.addEventListener('abort', onAbort)
+    return {
+      controller,
+      controllerCleanup: () => {
+        params.abort_signal?.removeEventListener('abort', onAbort)
+      },
+    }
+  }
+
+  private logResponse(
+    op: ConnOperation,
+    request: Http.ClientRequest,
+    params: RequestParams,
+    response: Http.IncomingMessage,
+    startTimestamp: number,
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { authorization, host, ...headers } = request.getHeaders()
+    const duration = Date.now() - startTimestamp
+    this.params.log_writer.debug({
+      module: 'HTTP Adapter',
+      message: `${op}: got a response from ClickHouse`,
+      args: {
+        request_method: params.method,
+        request_path: params.url.pathname,
+        request_params: params.url.search,
+        request_headers: headers,
+        response_status: response.statusCode,
+        response_headers: response.headers,
+        response_time_ms: duration,
+      },
+    })
+  }
+
+  private logRequestError({
+    op,
+    err,
+    query_id,
+    query_params,
+    search_params,
+    extra_args,
+  }: LogRequestErrorParams) {
+    this.logger.error({
+      message: this.httpRequestErrorMessage(op),
+      err: err as Error,
+      args: {
+        query: query_params.query,
+        search_params: search_params?.toString() ?? '',
+        with_abort_signal: query_params.abort_signal !== undefined,
+        session_id: query_params.session_id,
+        query_id: query_id,
+        ...extra_args,
+      },
+    })
+  }
+
+  private httpRequestErrorMessage(op: ConnOperation): string {
+    return `${op}: HTTP request error.`
+  }
+
+  private parseSummary(
+    op: ConnOperation,
+    response: Http.IncomingMessage,
+  ): ClickHouseSummary | undefined {
+    const summaryHeader = response.headers['x-clickhouse-summary']
+    if (typeof summaryHeader === 'string') {
+      try {
+        return JSON.parse(summaryHeader)
+      } catch (err) {
+        this.logger.error({
+          message: `${op}: failed to parse X-ClickHouse-Summary header.`,
+          args: {
+            'X-ClickHouse-Summary': summaryHeader,
+          },
+          err: err as Error,
+        })
+      }
+    }
+  }
+
+  private async runExec(
+    params: RunExecParams,
+  ): Promise<ConnExecResult<Stream.Readable>> {
+    const query_id = this.getQueryId(params.query_id)
+    const searchParams = toSearchParams({
+      database: this.params.database,
+      clickhouse_settings: params.clickhouse_settings,
+      query_params: params.query_params,
+      session_id: params.session_id,
+      query_id,
+    })
+    const { controller, controllerCleanup } = this.getAbortController(params)
+    try {
+      const { stream, summary } = await this.request(
+        {
+          method: 'POST',
+          url: transformUrl({ url: this.params.url, searchParams }),
+          body: params.query,
+          abort_signal: controller.signal,
+          parse_summary: true,
+        },
+        params.op,
+      )
+      return {
+        stream,
+        query_id,
+        summary,
+      }
+    } catch (err) {
+      controller.abort(`${params.op} HTTP request failed`)
+      this.logRequestError({
+        op: params.op,
+        query_id: query_id,
+        query_params: params,
+        search_params: searchParams,
+        err: err as Error,
+        extra_args: {
+          clickhouse_settings: params.clickhouse_settings ?? {},
+        },
+      })
+      throw err // should be propagated to the user
+    } finally {
+      controllerCleanup()
+    }
+  }
 
   private async request(
     params: RequestParams,
@@ -277,276 +567,6 @@ export abstract class NodeBaseConnection
       if (!params.body) return request.end()
     })
   }
-
-  async ping(): Promise<ConnPingResult> {
-    const abortController = new AbortController()
-    try {
-      const { stream } = await this.request(
-        {
-          method: 'GET',
-          url: transformUrl({ url: this.params.url, pathname: '/ping' }),
-          abort_signal: abortController.signal,
-        },
-        'Ping',
-      )
-      await drainStream(stream)
-      return { success: true }
-    } catch (error) {
-      // it is used to ensure that the outgoing request is terminated,
-      // and we don't get an unhandled error propagation later
-      abortController.abort('Ping failed')
-      // not an error, as this might be semi-expected
-      this.logger.warn({
-        message: this.httpRequestErrorMessage('Ping'),
-        err: error as Error,
-      })
-      return {
-        success: false,
-        error: error as Error, // should NOT be propagated to the user
-      }
-    }
-  }
-
-  async query(
-    params: ConnBaseQueryParams,
-  ): Promise<ConnQueryResult<Stream.Readable>> {
-    const query_id = this.getQueryId(params.query_id)
-    const clickhouse_settings = withHttpSettings(
-      params.clickhouse_settings,
-      this.params.compression.decompress_response,
-    )
-    const searchParams = toSearchParams({
-      database: this.params.database,
-      clickhouse_settings,
-      query_params: params.query_params,
-      session_id: params.session_id,
-      query_id,
-    })
-    const decompressResponse = clickhouse_settings.enable_http_compression === 1
-    const { controller, controllerCleanup } = this.getAbortController(params)
-    try {
-      const { stream } = await this.request(
-        {
-          method: 'POST',
-          url: transformUrl({ url: this.params.url, searchParams }),
-          body: params.query,
-          abort_signal: controller.signal,
-          decompress_response: decompressResponse,
-        },
-        'Query',
-      )
-      return {
-        stream,
-        query_id,
-      }
-    } catch (err) {
-      controller.abort('Query HTTP request failed')
-      this.logRequestError({
-        op: 'Query',
-        query_id: query_id,
-        query_params: params,
-        search_params: searchParams,
-        err: err as Error,
-        extra_args: {
-          decompress_response: decompressResponse,
-          clickhouse_settings,
-        },
-      })
-      throw err // should be propagated to the user
-    } finally {
-      controllerCleanup()
-    }
-  }
-
-  async exec(
-    params: ConnBaseQueryParams,
-  ): Promise<ConnExecResult<Stream.Readable>> {
-    const query_id = this.getQueryId(params.query_id)
-    const searchParams = toSearchParams({
-      database: this.params.database,
-      clickhouse_settings: params.clickhouse_settings,
-      query_params: params.query_params,
-      session_id: params.session_id,
-      query_id,
-    })
-    const { controller, controllerCleanup } = this.getAbortController(params)
-    try {
-      const { stream, summary } = await this.request(
-        {
-          method: 'POST',
-          url: transformUrl({ url: this.params.url, searchParams }),
-          body: params.query,
-          abort_signal: controller.signal,
-          parse_summary: true,
-        },
-        'Exec',
-      )
-      return {
-        stream,
-        query_id,
-        summary,
-      }
-    } catch (err) {
-      controller.abort('Exec HTTP request failed')
-      this.logRequestError({
-        op: 'Exec',
-        query_id: query_id,
-        query_params: params,
-        search_params: searchParams,
-        err: err as Error,
-        extra_args: {
-          clickhouse_settings: params.clickhouse_settings ?? {},
-        },
-      })
-      throw err // should be propagated to the user
-    } finally {
-      controllerCleanup()
-    }
-  }
-
-  async insert(
-    params: ConnInsertParams<Stream.Readable>,
-  ): Promise<ConnInsertResult> {
-    const query_id = this.getQueryId(params.query_id)
-    const searchParams = toSearchParams({
-      database: this.params.database,
-      clickhouse_settings: params.clickhouse_settings,
-      query_params: params.query_params,
-      query: params.query,
-      session_id: params.session_id,
-      query_id,
-    })
-    const { controller, controllerCleanup } = this.getAbortController(params)
-    try {
-      const { stream, summary } = await this.request(
-        {
-          method: 'POST',
-          url: transformUrl({ url: this.params.url, searchParams }),
-          body: params.values,
-          abort_signal: controller.signal,
-          compress_request: this.params.compression.compress_request,
-          parse_summary: true,
-        },
-        'Insert',
-      )
-      await drainStream(stream)
-      return { query_id, summary }
-    } catch (err) {
-      controller.abort('Insert HTTP request failed')
-      this.logRequestError({
-        op: 'Insert',
-        query_id: query_id,
-        query_params: params,
-        search_params: searchParams,
-        err: err as Error,
-        extra_args: {
-          clickhouse_settings: params.clickhouse_settings ?? {},
-        },
-      })
-      throw err // should be propagated to the user
-    } finally {
-      controllerCleanup()
-    }
-  }
-
-  async close(): Promise<void> {
-    if (this.agent !== undefined && this.agent.destroy !== undefined) {
-      this.agent.destroy()
-    }
-  }
-
-  private getQueryId(query_id: string | undefined): string {
-    return query_id || crypto.randomUUID()
-  }
-
-  // a wrapper over the user's Signal to terminate the failed requests
-  private getAbortController(params: ConnBaseQueryParams): {
-    controller: AbortController
-    controllerCleanup: () => void
-  } {
-    const controller = new AbortController()
-    function onAbort() {
-      controller.abort()
-    }
-    params.abort_signal?.addEventListener('abort', onAbort)
-    return {
-      controller,
-      controllerCleanup: () => {
-        params.abort_signal?.removeEventListener('abort', onAbort)
-      },
-    }
-  }
-
-  private logResponse(
-    op: ConnOperation,
-    request: Http.ClientRequest,
-    params: RequestParams,
-    response: Http.IncomingMessage,
-    startTimestamp: number,
-  ) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { authorization, host, ...headers } = request.getHeaders()
-    const duration = Date.now() - startTimestamp
-    this.params.log_writer.debug({
-      module: 'HTTP Adapter',
-      message: `${op}: got a response from ClickHouse`,
-      args: {
-        request_method: params.method,
-        request_path: params.url.pathname,
-        request_params: params.url.search,
-        request_headers: headers,
-        response_status: response.statusCode,
-        response_headers: response.headers,
-        response_time_ms: duration,
-      },
-    })
-  }
-
-  private logRequestError({
-    op,
-    err,
-    query_id,
-    query_params,
-    search_params,
-    extra_args,
-  }: LogRequestErrorParams) {
-    this.logger.error({
-      message: this.httpRequestErrorMessage(op),
-      err: err as Error,
-      args: {
-        query: query_params.query,
-        search_params: search_params?.toString() ?? '',
-        with_abort_signal: query_params.abort_signal !== undefined,
-        session_id: query_params.session_id,
-        query_id: query_id,
-        ...extra_args,
-      },
-    })
-  }
-
-  private httpRequestErrorMessage(op: ConnOperation): string {
-    return `${op}: HTTP request error.`
-  }
-
-  private parseSummary(
-    op: ConnOperation,
-    response: Http.IncomingMessage,
-  ): ClickHouseSummary | undefined {
-    const summaryHeader = response.headers['x-clickhouse-summary']
-    if (typeof summaryHeader === 'string') {
-      try {
-        return JSON.parse(summaryHeader)
-      } catch (err) {
-        this.logger.error({
-          message: `${op}: failed to parse X-ClickHouse-Summary header.`,
-          args: {
-            'X-ClickHouse-Summary': summaryHeader,
-          },
-          err: err as Error,
-        })
-      }
-    }
-  }
 }
 
 interface RequestResult {
@@ -566,4 +586,8 @@ interface LogRequestErrorParams {
 interface SocketInfo {
   id: string
   idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
+}
+
+type RunExecParams = ConnBaseQueryParams & {
+  op: 'Exec' | 'Command'
 }

@@ -103,7 +103,4 @@ export const NodeConfigImpl: Required<
     format: DataFormat,
     query_id: string,
   ) => new ResultSet(stream, format, query_id)) as any,
-  close_stream: async (stream) => {
-    stream.destroy()
-  },
 }

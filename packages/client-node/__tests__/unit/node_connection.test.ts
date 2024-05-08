@@ -171,6 +171,67 @@ describe('[Node.js] Connection', () => {
       expect(url.search).toContain(`?query_id=${query_id}`)
     })
 
+    it('should generate random query_id for every command request', async () => {
+      const adapter = buildHttpConnection({
+        compression: {
+          decompress_response: false,
+          compress_request: false,
+        },
+      })
+
+      const httpRequestStub = spyOn(Http, 'request')
+
+      const request1 = stubClientRequest()
+      httpRequestStub.and.returnValue(request1)
+
+      const cmdPromise = adapter.command({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+      })
+      emitResponseBody(request1, 'Ok.')
+      const { query_id } = await cmdPromise
+
+      const request2 = stubClientRequest()
+      httpRequestStub.and.returnValue(request2)
+
+      const cmdPromise2 = adapter.command({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+      })
+      emitResponseBody(request2, 'Ok.')
+      const { query_id: query_id2 } = await cmdPromise2
+
+      expect(query_id).not.toEqual(query_id2)
+      const [url1] = httpRequestStub.calls.all()[0].args
+      expect(url1.search).toContain(`?query_id=${query_id}`)
+      const [url2] = httpRequestStub.calls.all()[1].args
+      expect(url2.search).toContain(`?query_id=${query_id2}`)
+    })
+
+    it('should use provided query_id for command', async () => {
+      const adapter = buildHttpConnection({
+        compression: {
+          decompress_response: false,
+          compress_request: false,
+        },
+      })
+
+      const httpRequestStub = spyOn(Http, 'request')
+      const request = stubClientRequest()
+      httpRequestStub.and.returnValue(request)
+
+      const query_id = guid()
+      const cmdPromise = adapter.command({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+        query_id,
+      })
+      emitResponseBody(request, 'Ok.')
+      const { query_id: result_query_id } = await cmdPromise
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const [url] = httpRequestStub.calls.mostRecent().args
+      expect(url.search).toContain(`?query_id=${query_id}`)
+      expect(query_id).toEqual(result_query_id)
+    })
+
     it('should generate random query_id for every insert request', async () => {
       const adapter = buildHttpConnection({
         compression: {
