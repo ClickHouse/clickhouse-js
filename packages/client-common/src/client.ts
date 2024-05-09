@@ -4,6 +4,7 @@ import type {
   Connection,
   ConnExecResult,
   IsSame,
+  LogWriter,
   MakeResultSet,
   WithClickHouseSummary,
 } from '@clickhouse/client-common'
@@ -116,6 +117,7 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly makeResultSet: MakeResultSet<Stream>
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly sessionId?: string
+  private readonly logWriter: LogWriter
 
   constructor(
     config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,
@@ -129,6 +131,7 @@ export class ClickHouseClient<Stream = unknown> {
       config.impl.handle_specific_url_params ?? null,
     )
     const connectionParams = getConnectionParams(configWithURL, logger)
+    this.logWriter = connectionParams.log_writer
     this.clientClickHouseSettings = connectionParams.clickhouse_settings
     this.sessionId = config.session_id
     this.connection = config.impl.make_connection(
@@ -155,7 +158,18 @@ export class ClickHouseClient<Stream = unknown> {
       query,
       ...this.withClientQueryParams(params),
     })
-    return this.makeResultSet(stream, format, query_id)
+    return this.makeResultSet(stream, format, query_id, (err) => {
+      this.logWriter.error({
+        err,
+        module: 'Client',
+        message: 'Error while processing the ResultSet.',
+        args: {
+          session_id: this.sessionId,
+          query,
+          query_id,
+        },
+      })
+    })
   }
 
   /**

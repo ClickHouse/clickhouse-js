@@ -20,7 +20,7 @@ export class DefaultLogger implements Logger {
       formatMessage({ module, message, level: 'TRACE' }),
     ]
     if (args) {
-      params.push('Arguments:', args)
+      params.push('\nArguments:', args)
     }
     console.debug(...params)
   }
@@ -30,7 +30,7 @@ export class DefaultLogger implements Logger {
       formatMessage({ module, message, level: 'DEBUG' }),
     ]
     if (args) {
-      params.push('Arguments:', args)
+      params.push('\nArguments:', args)
     }
     console.debug(...params)
   }
@@ -40,7 +40,7 @@ export class DefaultLogger implements Logger {
       formatMessage({ module, message, level: 'INFO' }),
     ]
     if (args) {
-      params.push('Arguments:', args)
+      params.push('\nArguments:', args)
     }
     console.info(...params)
   }
@@ -50,10 +50,10 @@ export class DefaultLogger implements Logger {
       formatMessage({ module, message, level: 'WARN' }),
     ]
     if (args) {
-      params.push('Arguments:', args)
+      params.push('\nArguments:', args)
     }
     if (err) {
-      params.push('Caused by:', err)
+      params.push('\nCaused by:', err)
     }
     console.warn(...params)
   }
@@ -63,9 +63,9 @@ export class DefaultLogger implements Logger {
       formatMessage({ module, message, level: 'ERROR' }),
     ]
     if (args) {
-      params.push('Arguments:', args)
+      params.push('\nArguments:', args)
     }
-    params.push('Caused by:', err)
+    params.push('\nCaused by:', err)
     console.error(...params)
   }
 }

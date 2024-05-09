@@ -90,6 +90,7 @@ export type MakeResultSet<Stream> = <
   stream: Stream,
   format: Format,
   query_id: string,
+  log_error: (err: Error) => void,
 ) => ResultSet
 
 export interface ValuesEncoder<Stream> {

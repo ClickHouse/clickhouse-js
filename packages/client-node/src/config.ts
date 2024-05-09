@@ -102,5 +102,12 @@ export const NodeConfigImpl: Required<
     stream: Stream.Readable,
     format: DataFormat,
     query_id: string,
-  ) => new ResultSet(stream, format, query_id)) as any,
+    log_error: (err: Error) => void,
+  ) =>
+    ResultSet.instance({
+      stream,
+      format,
+      query_id,
+      log_error,
+    })) as any,
 }

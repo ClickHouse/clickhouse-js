@@ -1,8 +1,16 @@
 # 1.0.2 (Common, Node.js)
 
+Node.js only. No changes in the Web version.
+
 ## Bug fixes
 
-- (Node.js only) The `command` method now drains the response stream properly, as the previous implementation could cause the Keep-Alive socket to close after each request.
+- The `command` method now drains the response stream properly, as the previous implementation could cause the `Keep-Alive` socket to close after each request.
+- Removed an unnecessary error log in the `ResultSet.stream` method if the request was aborted or the result set was closed.
+
+## Improvements
+
+- `ResultSet.stream` logs an error via the `Logger` instance, if the stream emits an error event instead of a simple `console.error` call.
+- Minor adjustments to the `DefaultLogger` log messages formatting.
 
 # 1.0.1 (Common, Node.js, Web)
 
