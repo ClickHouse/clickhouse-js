@@ -4,10 +4,6 @@ import Stream, { Readable } from 'stream'
 import { ResultSet } from '../../src'
 
 describe('[Node.js] ResultSet', () => {
-  const dataStream = Readable.from([
-    Buffer.from('{"foo":"bar"}\n'),
-    Buffer.from('{"qaz":"qux"}\n'),
-  ])
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`
   const expectedJson = [{ foo: 'bar' }, { qaz: 'qux' }]
 
@@ -17,7 +13,7 @@ describe('[Node.js] ResultSet', () => {
   })
 
   it('should consume the response as text only once', async () => {
-    const rs = makeResultSet(dataStream)
+    const rs = makeResultSet(getDataStream())
 
     expect(await rs.text()).toEqual(expectedText)
     await expectAsync(rs.text()).toBeRejectedWith(err)
@@ -25,17 +21,15 @@ describe('[Node.js] ResultSet', () => {
   })
 
   it('should consume the response as JSON only once', async () => {
-    const rs = makeResultSet(dataStream)
-
+    const rs = makeResultSet(getDataStream())
     expect(await rs.json()).toEqual(expectedJson)
     await expectAsync(rs.json()).toBeRejectedWith(err)
     await expectAsync(rs.text()).toBeRejectedWith(err)
   })
 
   it('should consume the response as a stream of Row instances', async () => {
-    const rs = makeResultSet(dataStream)
+    const rs = makeResultSet(getDataStream())
     const stream = rs.stream()
-
     expect(stream.readableEnded).toBeFalsy()
 
     const result: unknown[] = []
@@ -78,5 +72,12 @@ describe('[Node.js] ResultSet', () => {
         console.error(err)
       },
     })
+  }
+
+  function getDataStream() {
+    return Readable.from([
+      Buffer.from('{"foo":"bar"}\n'),
+      Buffer.from('{"qaz":"qux"}\n'),
+    ])
   }
 })
