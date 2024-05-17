@@ -8,6 +8,7 @@ export interface ResponseJSON<T = unknown> {
   meta?: Array<{ name: string; type: string }>
   statistics?: { elapsed: number; rows_read: number; bytes_read: number }
   rows?: number
+  rows_before_limit_at_least?: number
 }
 
 export interface InputJSON<T = unknown> {
