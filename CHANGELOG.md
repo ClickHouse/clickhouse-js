@@ -2,7 +2,13 @@
 
 ## Bug fixes
 
-- (Node.js only) The `command` method now drains the response stream properly, as the previous implementation could cause the Keep-Alive socket to close after each request.
+- The `command` method now drains the response stream properly, as the previous implementation could cause the `Keep-Alive` socket to close after each request.
+- Removed an unnecessary error log in the `ResultSet.stream` method if the request was aborted or the result set was closed ([#263](https://github.com/ClickHouse/clickhouse-js/issues/263)).
+
+## Improvements
+
+- `ResultSet.stream` logs an error via the `Logger` instance, if the stream emits an error event instead of a simple `console.error` call.
+- Minor adjustments to the `DefaultLogger` log messages formatting.
 - Added missing `rows_before_limit_at_least` to the ResponseJSON type ([@0237h](https://github.com/0237h), [#267](https://github.com/ClickHouse/clickhouse-js/issues/267)).
 
 # 1.0.1 (Common, Node.js, Web)

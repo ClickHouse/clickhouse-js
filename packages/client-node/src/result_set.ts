@@ -38,14 +38,27 @@ export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
   ): Stream.Readable
 }
 
+export interface ResultSetOptions<Format extends DataFormat> {
+  stream: Stream.Readable
+  format: Format
+  query_id: string
+  log_error: (error: Error) => void
+}
+
 export class ResultSet<Format extends DataFormat | unknown>
   implements BaseResultSet<Stream.Readable, Format>
 {
+  private readonly log_error: (error: Error) => void
+
   constructor(
     private _stream: Stream.Readable,
     private readonly format: Format,
     public readonly query_id: string,
-  ) {}
+    log_error?: (error: Error) => void,
+  ) {
+    // eslint-disable-next-line no-console
+    this.log_error = log_error ?? ((err: Error) => console.error(err))
+  }
 
   /** See {@link BaseResultSet.text}. */
   async text(): Promise<string> {
@@ -96,6 +109,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     validateStreamFormat(this.format)
 
     let incompleteChunks: Buffer[] = []
+    const logError = this.log_error
     const toRows = new Transform({
       transform(
         chunk: Buffer,
@@ -157,10 +171,12 @@ export class ResultSet<Format extends DataFormat | unknown>
       this._stream,
       toRows,
       function pipelineCb(err) {
-        if (err) {
-          // FIXME: use logger instead
-          // eslint-disable-next-line no-console
-          console.error(err)
+        if (
+          err &&
+          err.name !== 'AbortError' &&
+          err.message !== resultSetClosedMessage
+        ) {
+          logError(err)
         }
       },
     )
@@ -168,8 +184,18 @@ export class ResultSet<Format extends DataFormat | unknown>
   }
 
   close() {
-    this._stream.destroy()
+    this._stream.destroy(new Error(resultSetClosedMessage))
+  }
+
+  static instance<Format extends DataFormat>({
+    stream,
+    format,
+    query_id,
+    log_error,
+  }: ResultSetOptions<Format>): ResultSet<Format> {
+    return new ResultSet(stream, format, query_id, log_error)
   }
 }
 
 const streamAlreadyConsumedMessage = 'Stream has been already consumed'
+const resultSetClosedMessage = 'ResultSet has been closed'

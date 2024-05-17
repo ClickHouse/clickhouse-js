@@ -54,7 +54,14 @@ describe('[Node.js] exec result streaming', () => {
           default_format: format,
         },
       })
-      const rs = new ResultSet(stream, format, query_id)
+      const rs = ResultSet.instance({
+        stream,
+        format,
+        query_id,
+        log_error: (err) => {
+          console.error(err)
+        },
+      })
       expect(await rs.json()).toEqual([{ number: '0' }])
     })
   })

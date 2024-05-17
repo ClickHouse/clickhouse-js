@@ -1,5 +1,6 @@
-import type {
+import {
   ClickHouseClient,
+  ClickHouseLogLevel,
   ErrorLogParams,
   Logger,
   LogParams,
@@ -20,29 +21,25 @@ describe('[Node.js] logger support', () => {
   })
 
   describe('Logger support', () => {
-    const logLevelKey = 'CLICKHOUSE_LOG_LEVEL'
-    let defaultLogLevel: string | undefined
-    beforeEach(() => {
-      defaultLogLevel = process.env[logLevelKey]
-    })
-    afterEach(() => {
-      if (defaultLogLevel === undefined) {
-        delete process.env[logLevelKey]
-      } else {
-        process.env[logLevelKey] = defaultLogLevel
-      }
-    })
-
     it('should use the default logger implementation', async () => {
-      process.env[logLevelKey] = 'DEBUG'
-      client = createTestClient()
-      const consoleSpy = spyOn(console, 'log')
+      const infoSpy = spyOn(console, 'info')
+      client = createTestClient({
+        log: {
+          level: ClickHouseLogLevel.DEBUG,
+        },
+      })
+      expect(infoSpy).toHaveBeenCalledOnceWith(
+        jasmine.stringContaining('Log level is set to DEBUG'),
+      )
+
+      const debugSpy = spyOn(console, 'debug')
       await client.ping()
-      // logs[0] are about current log level
-      expect(consoleSpy).toHaveBeenCalledOnceWith(
-        jasmine.stringContaining('Got a response from ClickHouse'),
+      expect(debugSpy).toHaveBeenCalledOnceWith(
+        jasmine.stringContaining('Ping: got a response from ClickHouse'),
+        jasmine.stringContaining('\nArguments:'),
         jasmine.objectContaining({
           request_headers: {
+            connection: jasmine.stringMatching(/Keep-Alive/i),
             'user-agent': jasmine.any(String),
           },
           request_method: 'GET',
@@ -59,9 +56,9 @@ describe('[Node.js] logger support', () => {
     })
 
     it('should provide a custom logger implementation', async () => {
-      process.env[logLevelKey] = 'DEBUG'
       client = createTestClient({
         log: {
+          level: ClickHouseLogLevel.DEBUG,
           LoggerClass: TestLogger,
         },
       })
@@ -69,7 +66,7 @@ describe('[Node.js] logger support', () => {
       // logs[0] are about current log level
       expect(logs[1]).toEqual(
         jasmine.objectContaining({
-          message: 'Got a response from ClickHouse',
+          message: 'Ping: got a response from ClickHouse',
           args: jasmine.objectContaining({
             request_path: '/ping',
             request_method: 'GET',
@@ -79,10 +76,9 @@ describe('[Node.js] logger support', () => {
     })
 
     it('should provide a custom logger implementation (but logs are disabled)', async () => {
-      process.env[logLevelKey] = 'OFF'
       client = createTestClient({
         log: {
-          // enable: false,
+          // the default level is OFF
           LoggerClass: TestLogger,
         },
       })
