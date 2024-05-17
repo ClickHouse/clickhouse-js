@@ -1,8 +1,9 @@
-# 1.0.2 (Common, Node.js)
+# 1.0.2 (Common, Node.js, Web)
 
 ## Bug fixes
 
 - (Node.js only) The `command` method now drains the response stream properly, as the previous implementation could cause the Keep-Alive socket to close after each request.
+- Added missing `rows_before_limit_at_least` to the ResponseJSON type ([@0237h](https://github.com/0237h), [#267](https://github.com/ClickHouse/clickhouse-js/issues/267)).
 
 # 1.0.1 (Common, Node.js, Web)
 
