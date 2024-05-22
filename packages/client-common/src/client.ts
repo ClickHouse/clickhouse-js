@@ -156,9 +156,10 @@ export class ClickHouseClient<Stream = unknown> {
   ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
+    const queryParams = this.withClientQueryParams(params)
     const { stream, query_id } = await this.connection.query({
       query,
-      ...this.withClientQueryParams(params),
+      ...queryParams,
     })
     return this.makeResultSet(stream, format, query_id, (err) => {
       this.logWriter.error({
@@ -166,7 +167,7 @@ export class ClickHouseClient<Stream = unknown> {
         module: 'Client',
         message: 'Error while processing the ResultSet.',
         args: {
-          session_id: this.sessionId,
+          session_id: queryParams.session_id,
           query,
           query_id,
         },
