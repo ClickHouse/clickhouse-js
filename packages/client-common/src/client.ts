@@ -25,6 +25,8 @@ export interface BaseQueryParams {
   /** A specific `query_id` that will be sent with this request.
    * If it is not set, a random identifier will be generated automatically by the client. */
   query_id?: string
+  /** A specific `session_id` for this query
+   * If it is not set, the client's session_id will be used. */
   session_id?: string
 }
 
@@ -250,7 +252,7 @@ export class ClickHouseClient<Stream = unknown> {
       query_params: params.query_params,
       abort_signal: params.abort_signal,
       query_id: params.query_id,
-      session_id: this.sessionId,
+      session_id: params.session_id ?? this.sessionId,
     }
   }
 }
