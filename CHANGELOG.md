@@ -1,3 +1,9 @@
+# UNRELEASED (Common, Node.js, Web)
+
+## Bug fixes
+
+- Allow overriding `session_id` per query ([@holi0317](https://github.com/Holi0317), [#271](https://github.com/ClickHouse/clickhouse-js/issues/271)).
+
 # 1.0.2 (Common, Node.js, Web)
 
 ## Bug fixes
