@@ -15,6 +15,7 @@ export class NodeHttpsConnection extends NodeBaseConnection {
       ca: params.tls?.ca_cert,
       key: params.tls?.type === 'Mutual' ? params.tls.key : undefined,
       cert: params.tls?.type === 'Mutual' ? params.tls.cert : undefined,
+      socket: params.socket,
     })
     super(params, agent)
   }

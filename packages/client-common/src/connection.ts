@@ -1,6 +1,7 @@
 import type { WithClickHouseSummary } from './clickhouse_types'
 import type { LogWriter } from './logger'
 import type { ClickHouseSettings } from './settings'
+import type internal from 'stream'
 
 export interface ConnectionParams {
   url: URL
@@ -15,6 +16,7 @@ export interface ConnectionParams {
   keep_alive: { enabled: boolean }
   application_id?: string
   http_headers?: Record<string, string>
+  socket?: internal.Duplex
 }
 
 export interface CompressionSettings {

@@ -1,3 +1,4 @@
+import type internal from 'stream'
 import type { InsertValues } from './client'
 import type { Connection, ConnectionParams } from './connection'
 import type { DataFormat } from './data_formatter'
@@ -76,6 +77,9 @@ export interface BaseClickHouseClientConfigOptions {
      *  @default true */
     enabled?: boolean
   }
+  /** Socket connection for https.Agent override - helpful when connecting through a proxy
+   *  @default undefined */
+  socket?: internal.Duplex
 }
 
 export type MakeConnection<
@@ -216,6 +220,7 @@ export function getConnectionParams(
     keep_alive: { enabled: config.keep_alive?.enabled ?? true },
     clickhouse_settings: config.clickhouse_settings ?? {},
     http_headers: config.http_headers ?? {},
+    socket: config.socket ?? undefined,
   }
 }
 
