@@ -19,6 +19,11 @@
   "files": [
     "dist"
   ],
-  "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/node": "^20.12.12"
+  },
+  "dependencies": {
+    "http": "^0.0.1-security",
+    "https": "^1.0.0"
+  }
 }

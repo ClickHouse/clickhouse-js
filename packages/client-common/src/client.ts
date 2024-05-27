@@ -14,6 +14,8 @@ import type { ImplementationDetails, ValuesEncoder } from './config'
 import { getConnectionParams, prepareConfigWithURL } from './config'
 import type { ConnPingResult } from './connection'
 import type { BaseResultSet } from './result'
+import http from 'http'
+import https from 'https'
 
 export interface BaseQueryParams {
   /** ClickHouse's settings that can be applied on query level. */
@@ -118,6 +120,10 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly sessionId?: string
   private readonly logWriter: LogWriter
+  private readonly agent?: {
+    http?: http.Agent,
+    https?: https.Agent,
+  }
 
   constructor(
     config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,
@@ -140,6 +146,7 @@ export class ClickHouseClient<Stream = unknown> {
     )
     this.makeResultSet = config.impl.make_result_set
     this.valuesEncoder = config.impl.values_encoder
+    this.agent = configWithURL.agent
   }
 
   /**

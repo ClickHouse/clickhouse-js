@@ -5,6 +5,8 @@ import type { Logger } from './logger'
 import { ClickHouseLogLevel, LogWriter } from './logger'
 import type { BaseResultSet } from './result'
 import type { ClickHouseSettings } from './settings'
+import http from 'http'
+import https from 'https'
 
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
@@ -75,6 +77,14 @@ export interface BaseClickHouseClientConfigOptions {
     /** Enable or disable HTTP Keep-Alive mechanism.
      *  @default true */
     enabled?: boolean
+  },
+  /**
+   * Agent to use for the HTTP requests.
+   * @default undefined
+   */
+  agent?: {
+    http?: http.Agent
+    https?: https.Agent
   }
 }
 
