@@ -2,6 +2,7 @@ import type {
   BaseClickHouseClientConfigOptions,
   ClickHouseSettings,
   Connection,
+  ConnectionParams,
   ConnExecResult,
   IsSame,
   LogWriter,
@@ -23,9 +24,16 @@ export interface BaseQueryParams {
   /** AbortSignal instance to cancel a request in progress. */
   abort_signal?: AbortSignal
   /** A specific `query_id` that will be sent with this request.
-   * If it is not set, a random identifier will be generated automatically by the client. */
+   *  If it is not set, a random identifier will be generated automatically by the client. */
   query_id?: string
   session_id?: string
+  /** When defined, overrides the username from the {@link BaseClickHouseClientConfigOptions.username} setting.
+   *  @default undefined */
+  username?: string
+  /** Has no effect if the {@link BaseQueryParams.username} value is not set.
+   *  When defined, overrides the password from the {@link BaseClickHouseClientConfigOptions.password} setting.
+   *  @default empty string */
+  password?: string
 }
 
 export interface QueryParams extends BaseQueryParams {
@@ -62,7 +70,7 @@ export type InsertResult = {
    * Indicates whether the INSERT statement was executed on the server.
    * Will be `false` if there was no data to insert.
    * For example: if {@link InsertParams.values} was an empty array,
-   * the client does not any requests to the server, and {@link executed} is false.
+   * the client does not send any requests to the server, and {@link executed} is false.
    */
   executed: boolean
   /**
@@ -113,6 +121,7 @@ export interface InsertParams<Stream = unknown, T = unknown>
 
 export class ClickHouseClient<Stream = unknown> {
   private readonly clientClickHouseSettings: ClickHouseSettings
+  private readonly connectionParams: ConnectionParams
   private readonly connection: Connection<Stream>
   private readonly makeResultSet: MakeResultSet<Stream>
   private readonly valuesEncoder: ValuesEncoder<Stream>
@@ -130,13 +139,13 @@ export class ClickHouseClient<Stream = unknown> {
       logger,
       config.impl.handle_specific_url_params ?? null,
     )
-    const connectionParams = getConnectionParams(configWithURL, logger)
-    this.logWriter = connectionParams.log_writer
-    this.clientClickHouseSettings = connectionParams.clickhouse_settings
+    this.connectionParams = getConnectionParams(configWithURL, logger)
+    this.logWriter = this.connectionParams.log_writer
+    this.clientClickHouseSettings = this.connectionParams.clickhouse_settings
     this.sessionId = config.session_id
     this.connection = config.impl.make_connection(
       configWithURL,
-      connectionParams,
+      this.connectionParams,
     )
     this.makeResultSet = config.impl.make_result_set
     this.valuesEncoder = config.impl.values_encoder
@@ -242,15 +251,26 @@ export class ClickHouseClient<Stream = unknown> {
   }
 
   private withClientQueryParams(params: BaseQueryParams): BaseQueryParams {
+    // if the user provided the override credentials for this query, use it;
+    // otherwise, use the credentials provided during the client creation
+    // NB: password override without the username has no effect.
+    const credentials =
+      params.username !== undefined
+        ? { username: params.username, password: params.password ?? '' }
+        : {
+            username: this.connectionParams.username,
+            password: this.connectionParams.password,
+          }
     return {
       clickhouse_settings: {
         ...this.clientClickHouseSettings,
         ...params.clickhouse_settings,
       },
+      session_id: this.sessionId,
       query_params: params.query_params,
       abort_signal: params.abort_signal,
       query_id: params.query_id,
-      session_id: this.sessionId,
+      ...credentials,
     }
   }
 }

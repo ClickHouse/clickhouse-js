@@ -1,3 +1,4 @@
+import type { BaseQueryParams } from '@clickhouse/client-common'
 import { withCompressionHeaders } from '@clickhouse/client-common'
 import type Http from 'http'
 import Https from 'https'
@@ -19,38 +20,42 @@ export class NodeHttpsConnection extends NodeBaseConnection {
     super(params, agent)
   }
 
-  protected override buildDefaultHeaders(
-    username: string,
-    password: string,
-    additional_headers?: Record<string, string>,
+  protected override buildRequestHeaders(
+    params?: BaseQueryParams,
   ): Http.OutgoingHttpHeaders {
-    if (this.params.tls?.type === 'Mutual') {
-      return {
-        'X-ClickHouse-User': username,
-        'X-ClickHouse-Key': password,
-        'X-ClickHouse-SSL-Certificate-Auth': 'on',
+    // ping does not require authentication; the other methods do.
+    if (params !== undefined) {
+      if (this.params.tls?.type === 'Mutual') {
+        return {
+          'X-ClickHouse-User': params.username,
+          'X-ClickHouse-Key': params.password,
+          'X-ClickHouse-SSL-Certificate-Auth': 'on',
+          ...this.defaultHeaders,
+        }
+      }
+      if (this.params.tls?.type === 'Basic') {
+        return {
+          'X-ClickHouse-User': params.username,
+          'X-ClickHouse-Key': params.password,
+          ...this.defaultHeaders,
+        }
       }
     }
-    if (this.params.tls?.type === 'Basic') {
-      return {
-        'X-ClickHouse-User': username,
-        'X-ClickHouse-Key': password,
-      }
-    }
-    return super.buildDefaultHeaders(username, password, additional_headers)
+    return super.buildRequestHeaders(params)
   }
 
   protected createClientRequest(params: RequestParams): Http.ClientRequest {
+    const headers = withCompressionHeaders({
+      headers: params.headers,
+      compress_request: params.compress_request,
+      decompress_response: params.decompress_response,
+    })
     return Https.request(params.url, {
       method: params.method,
       agent: this.agent,
       timeout: this.params.request_timeout,
-      headers: withCompressionHeaders({
-        headers: this.headers,
-        compress_request: params.compress_request,
-        decompress_response: params.decompress_response,
-      }),
       signal: params.abort_signal,
+      headers,
     })
   }
 }

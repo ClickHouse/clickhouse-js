@@ -16,16 +16,17 @@ export class NodeHttpConnection extends NodeBaseConnection {
   }
 
   protected createClientRequest(params: RequestParams): Http.ClientRequest {
+    const headers = withCompressionHeaders({
+      headers: params.headers,
+      compress_request: params.compress_request,
+      decompress_response: params.decompress_response,
+    })
     return Http.request(params.url, {
       method: params.method,
       agent: this.agent,
       timeout: this.params.request_timeout,
-      headers: withCompressionHeaders({
-        headers: this.headers,
-        compress_request: params.compress_request,
-        decompress_response: params.decompress_response,
-      }),
       signal: params.abort_signal,
+      headers,
     })
   }
 }

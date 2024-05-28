@@ -1,4 +1,5 @@
 import type {
+  BaseQueryParams,
   ClickHouseSummary,
   ConnBaseQueryParams,
   ConnCommandResult,
@@ -52,6 +53,7 @@ export type TLSParams =
 export interface RequestParams {
   method: 'GET' | 'POST'
   url: URL
+  headers: Http.OutgoingHttpHeaders
   body?: string | Stream.Readable
   // provided by the user and wrapped around internally
   abort_signal: AbortSignal
@@ -63,7 +65,9 @@ export interface RequestParams {
 export abstract class NodeBaseConnection
   implements Connection<Stream.Readable>
 {
-  protected readonly headers: Http.OutgoingHttpHeaders
+  protected readonly defaultHeaders: Http.OutgoingHttpHeaders
+  protected readonly additionalHTTPHeaders: Record<string, string>
+
   private readonly logger: LogWriter
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
   private readonly idleSocketTTL: number
@@ -72,13 +76,15 @@ export abstract class NodeBaseConnection
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent,
   ) {
+    this.additionalHTTPHeaders = params.http_headers ?? {}
+    this.defaultHeaders = {
+      // KeepAlive agent for some reason does not set this on its own
+      Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
+      'User-Agent': getUserAgent(this.params.application_id),
+      ...this.additionalHTTPHeaders,
+    }
     this.logger = params.log_writer
     this.idleSocketTTL = params.keep_alive.idle_socket_ttl
-    this.headers = this.buildDefaultHeaders(
-      params.username,
-      params.password,
-      params.http_headers,
-    )
   }
 
   async ping(): Promise<ConnPingResult> {
@@ -89,6 +95,7 @@ export abstract class NodeBaseConnection
           method: 'GET',
           url: transformUrl({ url: this.params.url, pathname: '/ping' }),
           abort_signal: abortController.signal,
+          headers: this.buildRequestHeaders(),
         },
         'Ping',
       )
@@ -135,6 +142,7 @@ export abstract class NodeBaseConnection
           body: params.query,
           abort_signal: controller.signal,
           decompress_response: decompressResponse,
+          headers: this.buildRequestHeaders(params),
         },
         'Query',
       )
@@ -183,6 +191,7 @@ export abstract class NodeBaseConnection
           abort_signal: controller.signal,
           compress_request: this.params.compression.compress_request,
           parse_summary: true,
+          headers: this.buildRequestHeaders(params),
         },
         'Insert',
       )
@@ -231,20 +240,21 @@ export abstract class NodeBaseConnection
     }
   }
 
-  protected buildDefaultHeaders(
-    username: string,
-    password: string,
-    additional_http_headers?: Record<string, string>,
+  protected buildRequestHeaders(
+    params?: BaseQueryParams,
   ): Http.OutgoingHttpHeaders {
-    return {
+    const headers: Http.OutgoingHttpHeaders = {
       // KeepAlive agent for some reason does not set this on its own
       Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
-      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString(
-        'base64',
-      )}`,
       'User-Agent': getUserAgent(this.params.application_id),
-      ...additional_http_headers,
+      ...this.additionalHTTPHeaders,
     }
+    // ping does not require authentication; the other methods do.
+    if (params !== undefined) {
+      headers['Authorization'] =
+        `Basic ${Buffer.from(`${params.username}:${params.password}`).toString('base64')}`
+    }
+    return headers
   }
 
   protected abstract createClientRequest(
@@ -364,6 +374,7 @@ export abstract class NodeBaseConnection
           body: params.query,
           abort_signal: controller.signal,
           parse_summary: true,
+          headers: this.buildRequestHeaders(params),
         },
         params.op,
       )

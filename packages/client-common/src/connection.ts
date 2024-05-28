@@ -29,6 +29,8 @@ export interface ConnBaseQueryParams {
   abort_signal?: AbortSignal
   session_id?: string
   query_id?: string
+  username?: string
+  password?: string
 }
 
 export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
