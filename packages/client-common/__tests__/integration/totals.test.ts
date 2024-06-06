@@ -2,7 +2,7 @@ import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTestClient, guid } from '@test/utils'
 
-fdescribe('Queries with totals', () => {
+describe('Queries with totals', () => {
   let client: ClickHouseClient
   let tableName: string
 
