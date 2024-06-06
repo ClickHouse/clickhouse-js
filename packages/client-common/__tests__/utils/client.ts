@@ -4,7 +4,7 @@ import type {
   ClickHouseClient,
   ClickHouseSettings,
 } from '@clickhouse/client-common'
-import { getFromEnv } from './env'
+import { EnvKeys, getFromEnv } from './env'
 import { guid } from './guid'
 import {
   getClickHouseTestEnvironment,
@@ -55,8 +55,8 @@ export function createTestClient<Stream = unknown>(
   }
   if (isCloudTestEnv()) {
     const cloudConfig: BaseClickHouseClientConfigOptions = {
-      url: `https://${getFromEnv('CLICKHOUSE_CLOUD_HOST')}:8443`,
-      password: getFromEnv('CLICKHOUSE_CLOUD_PASSWORD'),
+      url: `https://${getFromEnv(EnvKeys.host)}:8443`,
+      password: getFromEnv(EnvKeys.password),
       database: databaseName,
       ...logging,
       ...config,
