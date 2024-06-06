@@ -26,8 +26,9 @@ export interface BaseQueryParams {
   /** A specific `query_id` that will be sent with this request.
    *  If it is not set, a random identifier will be generated automatically by the client. */
   query_id?: string
-  /** A specific `session_id` for this query
-   * If it is not set, the client's session_id will be used. */
+  /** A specific ClickHouse Session id for this query.
+   *  If it is not set, {@link BaseClickHouseClientConfigOptions.session_id} will be used.
+   *  @default undefined (no override) */
   session_id?: string
   /** When defined, overrides the credentials from the {@link BaseClickHouseClientConfigOptions.username}
    *  and {@link BaseClickHouseClientConfigOptions.password} settings for this particular request.
@@ -259,7 +260,6 @@ export class ClickHouseClient<Stream = unknown> {
         ...this.clientClickHouseSettings,
         ...params.clickhouse_settings,
       },
-      session_id: this.sessionId,
       query_params: params.query_params,
       abort_signal: params.abort_signal,
       query_id: params.query_id,
