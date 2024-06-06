@@ -61,7 +61,7 @@ export interface BaseClickHouseClientConfigOptions {
     level?: ClickHouseLogLevel
   }
   /** ClickHouse Session id to attach to the outgoing requests.
-   *  @default empty string */
+   *  @default empty string (no session) */
   session_id?: string
   /** @deprecated since version 1.0.0. Use {@link http_headers} instead. <br/>
    *  Additional HTTP headers to attach to the outgoing requests.

@@ -3,6 +3,7 @@
 ## New features
 
 - Added an option to override the credentials for a particular `query`/`command`/`exec`/`insert` request via the `BaseQueryParams.auth` setting; when set, the credentials will be taken from there instead of the username/password provided during the client instantiation ([#278](https://github.com/ClickHouse/clickhouse-js/issues/278)).
+- Added an option to override the `session_id` for a particular `query`/`command`/`exec`/`insert` request via the `BaseQueryParams.session_id` setting; when set, it will be used instead of the session id provided during the client instantiation ([@holi0317](https://github.com/Holi0317), [#271](https://github.com/ClickHouse/clickhouse-js/issues/271)).
 
 ## Bug fixes
 
