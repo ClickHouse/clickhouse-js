@@ -1,3 +1,9 @@
+# 1.1.0 (Common, Node.js, Web)
+
+## New features
+
+- Added an option to override the credentials for a particular `query`/`command`/`exec`/`insert` request via the `BaseQueryParams.auth` setting; when set, the credentials will be taken from there instead of the username/password provided during the client instantiation.
+
 # 1.0.2 (Common, Node.js, Web)
 
 ## Bug fixes

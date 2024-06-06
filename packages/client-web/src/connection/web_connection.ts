@@ -168,7 +168,13 @@ export class WebConnection implements Connection<ReadableStream> {
 
     try {
       const headers = withCompressionHeaders({
-        headers: this.defaultHeaders,
+        headers:
+          params?.auth !== undefined
+            ? {
+                ...this.defaultHeaders,
+                Authorization: `Basic ${btoa(`${params.auth.username}:${params.auth.password}`)}`,
+              }
+            : this.defaultHeaders,
         compress_request: false,
         decompress_response: this.params.compression.decompress_response,
       })
