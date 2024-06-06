@@ -1,6 +1,9 @@
 {
-  "spec_dir": "packages/client-node/__tests__",
-  "spec_files": ["integration/*.test.ts"],
+  "spec_dir": "packages/",
+  "spec_files": [
+    "client-node/__tests__/integration/*.test.ts",
+    "client-common/__tests__/integration/*.test.ts"
+  ],
   "env": {
     "failSpecWithNoExpectations": true,
     "stopSpecOnExpectationFailure": true,

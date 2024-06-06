@@ -26,6 +26,9 @@ export interface BaseQueryParams {
   /** A specific `query_id` that will be sent with this request.
    *  If it is not set, a random identifier will be generated automatically by the client. */
   query_id?: string
+  /** A specific ClickHouse Session id for this query.
+   *  If it is not set, {@link BaseClickHouseClientConfigOptions.session_id} will be used.
+   *  @default undefined (no override) */
   session_id?: string
   /** When defined, overrides the credentials from the {@link BaseClickHouseClientConfigOptions.username}
    *  and {@link BaseClickHouseClientConfigOptions.password} settings for this particular request.
@@ -163,9 +166,10 @@ export class ClickHouseClient<Stream = unknown> {
   ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? 'JSON'
     const query = formatQuery(params.query, format)
+    const queryParams = this.withClientQueryParams(params)
     const { stream, query_id } = await this.connection.query({
       query,
-      ...this.withClientQueryParams(params),
+      ...queryParams,
     })
     return this.makeResultSet(stream, format, query_id, (err) => {
       this.logWriter.error({
@@ -173,7 +177,7 @@ export class ClickHouseClient<Stream = unknown> {
         module: 'Client',
         message: 'Error while processing the ResultSet.',
         args: {
-          session_id: this.sessionId,
+          session_id: queryParams.session_id,
           query,
           query_id,
         },
@@ -256,10 +260,10 @@ export class ClickHouseClient<Stream = unknown> {
         ...this.clientClickHouseSettings,
         ...params.clickhouse_settings,
       },
-      session_id: this.sessionId,
       query_params: params.query_params,
       abort_signal: params.abort_signal,
       query_id: params.query_id,
+      session_id: params.session_id ?? this.sessionId,
       auth: params.auth,
     }
   }
