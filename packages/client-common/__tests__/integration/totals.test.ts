@@ -48,15 +48,16 @@ fdescribe('Queries with totals', () => {
     })
 
     const rs2 = await client.query({
-      query: `SELECT name, count(*) AS count FROM ${tableName} GROUP BY name WITH TOTALS ORDER BY name ASC`,
+      query: `SELECT 1 :: Int16 AS x, name, count(*) AS count FROM ${tableName} GROUP BY name WITH TOTALS ORDER BY name ASC`,
       format: 'JSON',
     })
     const result2 = await rs2.json()
     expect(result2.data).toEqual([
-      { name: 'foo', count: '3' },
-      { name: 'hello', count: '2' },
+      { x: 1, name: 'foo', count: '3' },
+      { x: 1, name: 'hello', count: '2' },
     ])
     expect(result2.totals).toEqual({
+      x: 1,
       name: '',
       count: '5',
     })
