@@ -23,22 +23,23 @@ export class NodeHttpsConnection extends NodeBaseConnection {
   protected override buildRequestHeaders(
     params?: BaseQueryParams,
   ): Http.OutgoingHttpHeaders {
-    // ping does not require authentication; the other methods do.
-    if (params !== undefined) {
-      if (this.params.tls?.type === 'Mutual') {
-        return {
-          'X-ClickHouse-User': params.username,
-          'X-ClickHouse-Key': params.password,
-          'X-ClickHouse-SSL-Certificate-Auth': 'on',
-          ...this.defaultHeaders,
-        }
+    if (this.params.tls !== undefined) {
+      const headers: Http.OutgoingHttpHeaders = {
+        ...this.defaultHeaders,
+        'X-ClickHouse-User': params?.auth?.username ?? this.params.username,
+        'X-ClickHouse-Key': params?.auth?.password ?? this.params.password,
       }
-      if (this.params.tls?.type === 'Basic') {
-        return {
-          'X-ClickHouse-User': params.username,
-          'X-ClickHouse-Key': params.password,
-          ...this.defaultHeaders,
-        }
+      const tlsType = this.params.tls.type
+      switch (tlsType) {
+        case 'Basic':
+          return headers
+        case 'Mutual':
+          return {
+            ...headers,
+            'X-ClickHouse-SSL-Certificate-Auth': 'on',
+          }
+        default:
+          throw new Error(`Unknown TLS type: ${tlsType}`)
       }
     }
     return super.buildRequestHeaders(params)

@@ -134,9 +134,6 @@ export class MyTestHttpConnection extends NodeBaseConnection {
     return {} as any
   }
   public getDefaultHeaders() {
-    return this.buildRequestHeaders({
-      username: 'default',
-      password: '',
-    })
+    return this.buildRequestHeaders()
   }
 }

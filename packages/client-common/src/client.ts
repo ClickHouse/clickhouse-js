@@ -27,13 +27,13 @@ export interface BaseQueryParams {
    *  If it is not set, a random identifier will be generated automatically by the client. */
   query_id?: string
   session_id?: string
-  /** When defined, overrides the username from the {@link BaseClickHouseClientConfigOptions.username} setting.
-   *  @default undefined */
-  username?: string
-  /** Has no effect if the {@link BaseQueryParams.username} value is not set.
-   *  When defined, overrides the password from the {@link BaseClickHouseClientConfigOptions.password} setting.
-   *  @default empty string */
-  password?: string
+  /** When defined, overrides the credentials from the {@link BaseClickHouseClientConfigOptions.username}
+   *  and {@link BaseClickHouseClientConfigOptions.password} settings for this particular request.
+   *  @default undefined (no override) */
+  auth?: {
+    username: string
+    password: string
+  }
 }
 
 export interface QueryParams extends BaseQueryParams {
@@ -251,16 +251,6 @@ export class ClickHouseClient<Stream = unknown> {
   }
 
   private withClientQueryParams(params: BaseQueryParams): BaseQueryParams {
-    // if the user provided the override credentials for this query, use it;
-    // otherwise, use the credentials provided during the client creation
-    // NB: password override without the username has no effect.
-    const credentials =
-      params.username !== undefined
-        ? { username: params.username, password: params.password ?? '' }
-        : {
-            username: this.connectionParams.username,
-            password: this.connectionParams.password,
-          }
     return {
       clickhouse_settings: {
         ...this.clientClickHouseSettings,
@@ -270,7 +260,7 @@ export class ClickHouseClient<Stream = unknown> {
       query_params: params.query_params,
       abort_signal: params.abort_signal,
       query_id: params.query_id,
-      ...credentials,
+      auth: params.auth,
     }
   }
 }

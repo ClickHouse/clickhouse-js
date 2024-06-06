@@ -65,6 +65,7 @@ export interface RequestParams {
 export abstract class NodeBaseConnection
   implements Connection<Stream.Readable>
 {
+  protected readonly defaultAuthHeader: string
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders
   protected readonly additionalHTTPHeaders: Record<string, string>
 
@@ -77,11 +78,14 @@ export abstract class NodeBaseConnection
     protected readonly agent: Http.Agent,
   ) {
     this.additionalHTTPHeaders = params.http_headers ?? {}
+    this.defaultAuthHeader = `Basic ${Buffer.from(
+      `${params.username}:${params.password}`,
+    ).toString('base64')}`
     this.defaultHeaders = {
+      ...this.additionalHTTPHeaders,
       // KeepAlive agent for some reason does not set this on its own
       Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
       'User-Agent': getUserAgent(this.params.application_id),
-      ...this.additionalHTTPHeaders,
     }
     this.logger = params.log_writer
     this.idleSocketTTL = params.keep_alive.idle_socket_ttl
@@ -243,18 +247,13 @@ export abstract class NodeBaseConnection
   protected buildRequestHeaders(
     params?: BaseQueryParams,
   ): Http.OutgoingHttpHeaders {
-    const headers: Http.OutgoingHttpHeaders = {
-      // KeepAlive agent for some reason does not set this on its own
-      Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
-      'User-Agent': getUserAgent(this.params.application_id),
-      ...this.additionalHTTPHeaders,
+    return {
+      ...this.defaultHeaders,
+      Authorization:
+        params?.auth !== undefined
+          ? `Basic ${Buffer.from(`${params.auth.username}:${params.auth.password}`).toString('base64')}`
+          : this.defaultAuthHeader,
     }
-    // ping does not require authentication; the other methods do.
-    if (params !== undefined) {
-      headers['Authorization'] =
-        `Basic ${Buffer.from(`${params.username}:${params.password}`).toString('base64')}`
-    }
-    return headers
   }
 
   protected abstract createClientRequest(
