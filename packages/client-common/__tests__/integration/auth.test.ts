@@ -29,7 +29,7 @@ describe('authentication', () => {
     )
   })
 
-  describe('auth override', () => {
+  describe('request auth override', () => {
     let defaultClient: ClickHouseClient
     beforeAll(() => {
       defaultClient = createTestClient()
