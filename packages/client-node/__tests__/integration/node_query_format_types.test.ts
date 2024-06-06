@@ -600,7 +600,7 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       const rs = await runQuery('JSON')
 
       // All possible JSON variants are now allowed
-      // $ExpectType unknown[] | Record<string, unknown> | ResponseJSON<unknown>
+      // FIXME: this line produces a ESLint error due to a different order (which is insignificant). -$ExpectType unknown[] | Record<string, unknown> | ResponseJSON<unknown>
       await rs.json() // IDE error here, different type order
       // $ExpectType Data[] | ResponseJSON<Data> | Record<string, Data>
       await rs.json<Data>()

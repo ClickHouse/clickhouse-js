@@ -1,7 +1,8 @@
-# UNRELEASED (Common, Node.js, Web)
+# 1.1.0 (Common, Node.js, Web)
 
-## Bug fixes
+## New features
 
+- Added an option to override the credentials for a particular `query`/`command`/`exec`/`insert` request via the `BaseQueryParams.auth` setting; when set, the credentials will be taken from there instead of the username/password provided during the client instantiation.
 - Allow overriding `session_id` per query ([@holi0317](https://github.com/Holi0317), [#271](https://github.com/ClickHouse/clickhouse-js/issues/271)).
 
 # 1.0.2 (Common, Node.js, Web)

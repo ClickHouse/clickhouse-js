@@ -20,7 +20,7 @@ describe('[Node.js] TLS connection', () => {
 
   it('should work with basic TLS', async () => {
     client = createClient({
-      host: 'https://server.clickhouseconnect.test:8443',
+      url: 'https://server.clickhouseconnect.test:8443',
       tls: {
         ca_cert,
       },
@@ -34,7 +34,7 @@ describe('[Node.js] TLS connection', () => {
 
   it('should work with mutual TLS', async () => {
     client = createClient({
-      host: 'https://server.clickhouseconnect.test:8443',
+      url: 'https://server.clickhouseconnect.test:8443',
       username: 'cert_user',
       tls: {
         ca_cert,
@@ -51,7 +51,7 @@ describe('[Node.js] TLS connection', () => {
 
   it('should fail when hostname does not match', async () => {
     client = createClient({
-      host: 'https://localhost:8443',
+      url: 'https://localhost:8443',
       username: 'cert_user',
       tls: {
         ca_cert,
@@ -75,7 +75,7 @@ describe('[Node.js] TLS connection', () => {
 
   it('should fail with invalid certificates', async () => {
     client = createClient({
-      host: 'https://server.clickhouseconnect.test:8443',
+      url: 'https://server.clickhouseconnect.test:8443',
       username: 'cert_user',
       tls: {
         ca_cert,
@@ -90,5 +90,50 @@ describe('[Node.js] TLS connection', () => {
         format: 'CSV',
       }),
     ).toBeRejectedWithError()
+  })
+
+  // query only; the rest of the methods are tested in the auth.test.ts in the common package
+  describe('request auth override', () => {
+    it('should override the credentials with basic TLS', async () => {
+      client = createClient({
+        url: 'https://server.clickhouseconnect.test:8443',
+        username: 'gibberish',
+        password: 'gibberish',
+        tls: {
+          ca_cert,
+        },
+      })
+      const resultSet = await client.query({
+        query: 'SELECT number FROM system.numbers LIMIT 3',
+        format: 'CSV',
+        auth: {
+          username: 'default',
+          password: '',
+        },
+      })
+      expect(await resultSet.text()).toEqual('0\n1\n2\n')
+    })
+
+    it('should override the credentials with mutual TLS', async () => {
+      client = createClient({
+        url: 'https://server.clickhouseconnect.test:8443',
+        username: 'gibberish',
+        password: 'gibberish',
+        tls: {
+          ca_cert,
+          cert,
+          key,
+        },
+      })
+      const resultSet = await client.query({
+        query: 'SELECT number FROM system.numbers LIMIT 3',
+        format: 'CSV',
+        auth: {
+          username: 'cert_user',
+          password: '',
+        },
+      })
+      expect(await resultSet.text()).toEqual('0\n1\n2\n')
+    })
   })
 })
