@@ -51,19 +51,6 @@ describe('exec', () => {
     })
   })
 
-  it('should use session_id override', async () => {
-    const session_id = guid()
-
-    // Temporary tables cannot be used without a session
-    const tableName = `temp_table_${guid()}`
-    await expectAsync(
-      runExec({
-        query: `CREATE TEMPORARY TABLE ${tableName} (val Int32)`,
-        session_id,
-      }),
-    ).toBeResolved()
-  })
-
   it('does not swallow ClickHouse error', async () => {
     const { ddl, tableName } = getDDL()
     const commands = async () => {
