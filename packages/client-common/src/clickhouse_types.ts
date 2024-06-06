@@ -1,7 +1,7 @@
 export interface ResponseJSON<T = unknown> {
   data: Array<T>
   query_id?: string
-  totals?: Record<string, number>
+  totals?: T
   extremes?: Record<string, any>
   // # Supported only by responses in JSON, XML.
   // # Otherwise, it can be read from x-clickhouse-summary header
