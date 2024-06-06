@@ -2,7 +2,11 @@
 
 ## New features
 
-- Added an option to override the credentials for a particular `query`/`command`/`exec`/`insert` request via the `BaseQueryParams.auth` setting; when set, the credentials will be taken from there instead of the username/password provided during the client instantiation.
+- Added an option to override the credentials for a particular `query`/`command`/`exec`/`insert` request via the `BaseQueryParams.auth` setting; when set, the credentials will be taken from there instead of the username/password provided during the client instantiation ([#278](https://github.com/ClickHouse/clickhouse-js/issues/278)).
+
+## Bug fixes
+
+- Fixed the incorrect `ResponseJSON<T>.totals` TypeScript type. Now it correctly matches the shape of the data (`T`, default = `unknown`) instead of the former `Record<string, number>` definition ([#274](https://github.com/ClickHouse/clickhouse-js/issues/274)).
 
 # 1.0.2 (Common, Node.js, Web)
 

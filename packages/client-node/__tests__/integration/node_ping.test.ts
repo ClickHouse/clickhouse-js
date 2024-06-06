@@ -8,7 +8,7 @@ describe('[Node.js] ping', () => {
   })
   it('does not swallow a client error', async () => {
     client = createTestClient({
-      host: 'http://localhost:3333',
+      url: 'http://localhost:3333',
     })
 
     const result = await client.ping()
