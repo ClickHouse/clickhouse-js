@@ -1,6 +1,8 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 import * as fs from 'fs'
+import Http from 'http'
+import https from 'node:https'
 import type Stream from 'stream'
 import { createClient } from '../../src'
 
@@ -134,6 +136,37 @@ describe('[Node.js] TLS connection', () => {
         },
       })
       expect(await resultSet.text()).toEqual('0\n1\n2\n')
+    })
+
+    describe('Custom HTTPS agent', () => {
+      let httpRequestStub: jasmine.Spy<typeof Http.request>
+      beforeEach(() => {
+        httpRequestStub = spyOn(Http, 'request').and.callThrough()
+      })
+
+      it('should work with a custom HTTPS agent', async () => {
+        const agent = new https.Agent({
+          maxFreeSockets: 5,
+          ca: ca_cert,
+        })
+        const client = createClient({
+          url: 'https://server.clickhouseconnect.test:8443',
+          http_agent: agent,
+          http_headers: {
+            'X-ClickHouse-User': 'default',
+            'X-ClickHouse-Key': '',
+          },
+          set_basic_auth_header: false,
+        })
+        const rs = await client.query({
+          query: 'SELECT 144 AS result',
+          format: 'JSONEachRow',
+        })
+        expect(await rs.json()).toEqual([{ result: 144 }])
+        expect(httpRequestStub).toHaveBeenCalledTimes(1)
+        const callArgs = httpRequestStub.calls.mostRecent().args
+        expect(callArgs[1].agent).toBe(agent)
+      })
     })
   })
 })

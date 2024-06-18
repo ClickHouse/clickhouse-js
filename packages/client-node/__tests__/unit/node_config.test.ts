@@ -5,9 +5,13 @@ import type {
 import { LogWriter } from '@clickhouse/client-common'
 import { TestLogger } from '@test/utils'
 import { Buffer } from 'buffer'
+import http from 'http'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { NodeConfigImpl } from '../../src/config'
-import type { NodeBaseConnection } from '../../src/connection'
+import type {
+  CreateConnectionParams,
+  NodeBaseConnection,
+} from '../../src/connection'
 import * as c from '../../src/connection/create_connection'
 
 describe('[Node.js] Config implementation details', () => {
@@ -88,14 +92,16 @@ describe('[Node.js] Config implementation details', () => {
         url: new URL('http://localhost:8123'),
       }
       const res = NodeConfigImpl.make_connection(nodeConfig as any, params)
-      expect(createConnectionStub).toHaveBeenCalledWith(
-        params,
-        undefined, // TLS
-        {
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: undefined,
+        keep_alive: {
           enabled: true,
           idle_socket_ttl: 2500,
         },
-      )
+        http_agent: undefined,
+        set_basic_auth_header: true,
+      } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
     })
@@ -108,17 +114,19 @@ describe('[Node.js] Config implementation details', () => {
         },
       }
       const res = NodeConfigImpl.make_connection(nodeConfig as any, params)
-      expect(createConnectionStub).toHaveBeenCalledWith(
-        params,
-        {
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: {
           type: 'Basic',
           ca_cert: Buffer.from('my_ca_cert'),
         },
-        {
+        keep_alive: {
           enabled: true,
           idle_socket_ttl: 2500,
         },
-      )
+        http_agent: undefined,
+        set_basic_auth_header: true,
+      } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
     })
@@ -133,19 +141,21 @@ describe('[Node.js] Config implementation details', () => {
         },
       }
       const res = NodeConfigImpl.make_connection(nodeConfig as any, params)
-      expect(createConnectionStub).toHaveBeenCalledWith(
-        params,
-        {
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: {
           type: 'Mutual',
           ca_cert: Buffer.from('my_ca_cert'),
           cert: Buffer.from('my_cert'),
           key: Buffer.from('my_key'),
         },
-        {
+        keep_alive: {
           enabled: true,
           idle_socket_ttl: 2500,
         },
-      )
+        http_agent: undefined,
+        set_basic_auth_header: true,
+      } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
     })
@@ -162,17 +172,47 @@ describe('[Node.js] Config implementation details', () => {
         },
       }
       const res = NodeConfigImpl.make_connection(nodeConfig as any, params)
-      expect(createConnectionStub).toHaveBeenCalledWith(
-        params,
-        {
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: {
           type: 'Basic',
           ca_cert: Buffer.from('my_ca_cert'),
         },
-        {
+        keep_alive: {
           enabled: false,
           idle_socket_ttl: 42_000,
         },
-      )
+        http_agent: undefined,
+        set_basic_auth_header: true,
+      } satisfies CreateConnectionParams)
+      expect(createConnectionStub).toHaveBeenCalledTimes(1)
+      expect(res).toEqual(fakeConnection)
+    })
+
+    it('should create a connection with a custom agent and disabled auth header', async () => {
+      const agent = new http.Agent({
+        keepAlive: true,
+        maxSockets: 2,
+      })
+      const nodeConfig: NodeClickHouseClientConfigOptions = {
+        url: new URL('https://localhost:8123'),
+        keep_alive: {
+          enabled: true,
+        },
+        set_basic_auth_header: false,
+        http_agent: agent,
+      }
+      const res = NodeConfigImpl.make_connection(nodeConfig as any, params)
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: undefined,
+        keep_alive: {
+          enabled: true,
+          idle_socket_ttl: 2500,
+        },
+        http_agent: agent,
+        set_basic_auth_header: false,
+      } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
     })

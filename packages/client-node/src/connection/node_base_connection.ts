@@ -21,8 +21,10 @@ import {
   withHttpSettings,
 } from '@clickhouse/client-common'
 import crypto from 'crypto'
+import type http from 'http'
 import type Http from 'http'
 import type * as net from 'net'
+import type https from 'node:https'
 import Stream from 'stream'
 import type { URLSearchParams } from 'url'
 import Zlib from 'zlib'
@@ -32,6 +34,8 @@ import { drainStream } from './stream'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
+  http_agent?: http.Agent | https.Agent
+  set_basic_auth_header: boolean
   keep_alive: {
     enabled: boolean
     idle_socket_ttl: number
@@ -247,12 +251,18 @@ export abstract class NodeBaseConnection
   protected buildRequestHeaders(
     params?: BaseQueryParams,
   ): Http.OutgoingHttpHeaders {
-    return {
-      ...this.defaultHeaders,
-      Authorization:
-        params?.auth !== undefined
-          ? `Basic ${Buffer.from(`${params.auth.username}:${params.auth.password}`).toString('base64')}`
-          : this.defaultAuthHeader,
+    if (this.params.set_basic_auth_header) {
+      return {
+        ...this.defaultHeaders,
+        Authorization:
+          params?.auth !== undefined
+            ? `Basic ${Buffer.from(`${params.auth.username}:${params.auth.password}`).toString('base64')}`
+            : this.defaultAuthHeader,
+      }
+    } else {
+      return {
+        ...this.defaultHeaders,
+      }
     }
   }
 
@@ -479,7 +489,10 @@ export abstract class NodeBaseConnection
       }
 
       const onSocket = (socket: net.Socket) => {
-        if (this.params.keep_alive.enabled) {
+        if (
+          this.params.keep_alive.enabled &&
+          this.params.keep_alive.idle_socket_ttl > 0
+        ) {
           const socketInfo = this.knownSockets.get(socket)
           // It is the first time we encounter this socket,
           // so it doesn't have the idle timeout handler attached to it

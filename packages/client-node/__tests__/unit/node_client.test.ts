@@ -4,6 +4,7 @@ import type {
 } from '@clickhouse/client-common'
 import { DefaultLogger, LogWriter } from '@clickhouse/client-common'
 import { createClient } from '../../src'
+import type { CreateConnectionParams } from '../../src/connection'
 import * as c from '../../src/connection/create_connection'
 
 describe('[Node.js] createClient', () => {
@@ -66,14 +67,16 @@ describe('[Node.js] createClient', () => {
             'keep_alive_idle_socket_ttl=1500',
           ].join('&'),
       })
-      expect(createConnectionStub).toHaveBeenCalledWith(
-        params,
-        undefined, // TLS
-        {
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: undefined,
+        keep_alive: {
           enabled: true,
           idle_socket_ttl: 1500,
         },
-      )
+        set_basic_auth_header: true,
+        http_agent: undefined,
+      } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
 
@@ -91,14 +94,19 @@ describe('[Node.js] createClient', () => {
             'keep_alive_idle_socket_ttl=1500',
           ].join('&'),
       })
-      expect(createConnectionStub).toHaveBeenCalledWith(
-        { ...params, url: new URL('https://my.host:8443/my_proxy') },
-        undefined, // TLS
-        {
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: {
+          ...params,
+          url: new URL('https://my.host:8443/my_proxy'),
+        },
+        tls: undefined,
+        keep_alive: {
           enabled: true,
           idle_socket_ttl: 1500,
         },
-      )
+        set_basic_auth_header: true,
+        http_agent: undefined,
+      } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
   })

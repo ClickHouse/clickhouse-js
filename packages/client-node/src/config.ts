@@ -7,6 +7,8 @@ import {
   type ConnectionParams,
   numberConfigURLValue,
 } from '@clickhouse/client-common'
+import type http from 'http'
+import type https from 'node:https'
 import type Stream from 'stream'
 import { createConnection, type TLSParams } from './connection'
 import { ResultSet } from './result_set'
@@ -22,10 +24,18 @@ export type NodeClickHouseClientConfigOptions =
       enabled?: boolean
       /** For how long keep a particular idle socket alive on the client side (in milliseconds).
        *  It is supposed to be a fair bit less that the ClickHouse server KeepAlive timeout,
-       *  which is by default 3000 ms for pre-23.11 versions.
+       *  which is by default 3000 ms for pre-23.11 versions. <br/>
+       *  When set to `0`, the idle socket management feature is disabled.
        *  @default 2500 */
       idle_socket_ttl?: number
     }
+    /** Custom HTTP agent to use for the outgoing HTTP(s) requests.
+     *  If set, {@link BaseClickHouseClientConfigOptions.max_open_connections}, {@link tls} and {@link keep_alive}
+     *  options have no effect, as it is part of the default underlying agent configuration. */
+    http_agent?: http.Agent | https.Agent
+    /** Enable or disable the `Authorization` header with basic auth for the outgoing HTTP(s) requests.
+     *  @default true (enabled) */
+    set_basic_auth_header?: boolean
   }
 
 interface BasicTLSOptions {
@@ -95,7 +105,13 @@ export const NodeConfigImpl: Required<
       enabled: nodeConfig?.keep_alive?.enabled ?? true,
       idle_socket_ttl: nodeConfig?.keep_alive?.idle_socket_ttl ?? 2500,
     }
-    return createConnection(params, tls, keep_alive)
+    return createConnection({
+      connection_params: params,
+      set_basic_auth_header: nodeConfig.set_basic_auth_header ?? true,
+      http_agent: nodeConfig.http_agent,
+      keep_alive,
+      tls,
+    })
   },
   values_encoder: new NodeValuesEncoder(),
   make_result_set: ((
