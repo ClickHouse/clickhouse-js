@@ -31,9 +31,12 @@ export type NodeClickHouseClientConfigOptions =
     }
     /** Custom HTTP agent to use for the outgoing HTTP(s) requests.
      *  If set, {@link BaseClickHouseClientConfigOptions.max_open_connections}, {@link tls} and {@link keep_alive}
-     *  options have no effect, as it is part of the default underlying agent configuration. */
+     *  options have no effect, as it is part of the default underlying agent configuration.
+     *  @experimental - unstable API, might be a subject to change in the future; please provide your feedback in the repository.
+     *  @default undefined */
     http_agent?: http.Agent | https.Agent
     /** Enable or disable the `Authorization` header with basic auth for the outgoing HTTP(s) requests.
+     *  @experimental - unstable API, might be a subject to change in the future; please provide your feedback in the repository.
      *  @default true (enabled) */
     set_basic_auth_header?: boolean
   }

@@ -2,11 +2,11 @@
 
 ## New features
 
-- Added an option to provide a custom HTTP Agent in the client configuration via the `http_agent` option ([#283](https://github.com/ClickHouse/clickhouse-js/issues/283), related: [#278](https://github.com/ClickHouse/clickhouse-js/issues/278)). The following conditions apply if a custom HTTP Agent is provided:
+- (Experimental) Added an option to provide a custom HTTP Agent in the client configuration via the `http_agent` option ([#283](https://github.com/ClickHouse/clickhouse-js/issues/283), related: [#278](https://github.com/ClickHouse/clickhouse-js/issues/278)). The following conditions apply if a custom HTTP Agent is provided:
   - The `max_open_connections` and `tls` options will have _no effect_ and will be ignored by the client, as it is a part of the underlying HTTP Agent configuration.
   - `keep_alive.enabled` will only regulate the default value of the `Connection` header (`true` -> `Connection: keep-alive`, `false` -> `Connection: close`).
   - While the idle socket management will still work, it is now possible to disable it completely by setting the `keep_alive.idle_socket_ttl` value to `0`.
-- Added a new client configuration option: `set_basic_auth_header`, which disables the `Authorization` header that is set by the client by default for every outgoing HTTP request. One of the possible scenarios when it is necessary to disable this header is when a custom HTTPS agent is used, and the server requires TLS authorization. For example:
+- (Experimental) Added a new client configuration option: `set_basic_auth_header`, which disables the `Authorization` header that is set by the client by default for every outgoing HTTP request. One of the possible scenarios when it is necessary to disable this header is when a custom HTTPS agent is used, and the server requires TLS authorization. For example:
 
   ```ts
   const agent = new https.Agent({
@@ -26,6 +26,8 @@
   ```
 
 NB: It is currently not possible to set the `set_basic_auth_header` option via the URL params.
+
+If you have feedback on these experimental features, please let us know by creating [an issue](https://github.com/ClickHouse/clickhouse-js/issues) in the repository.
 
 # 1.1.0 (Common, Node.js, Web)
 

@@ -1,3 +1,4 @@
+import { TestEnv, whenOnEnv } from '@test/utils'
 import http from 'http'
 import Http from 'http'
 import { createClient } from '../../src'
@@ -9,20 +10,24 @@ describe('[Node.js] custom HTTP agent', () => {
     httpRequestStub = spyOn(Http, 'request').and.callThrough()
   })
 
-  it('should use provided http agent instead of the default one', async () => {
-    const agent = new http.Agent({
-      maxFreeSockets: 5,
-    })
-    const client = createClient({
-      http_agent: agent,
-    })
-    const rs = await client.query({
-      query: 'SELECT 42 AS result',
-      format: 'JSONEachRow',
-    })
-    expect(await rs.json()).toEqual([{ result: 42 }])
-    expect(httpRequestStub).toHaveBeenCalledTimes(1)
-    const callArgs = httpRequestStub.calls.mostRecent().args
-    expect(callArgs[1].agent).toBe(agent)
-  })
+  // disabled with Cloud as it uses a simple HTTP agent
+  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
+    'should use provided http agent instead of the default one',
+    async () => {
+      const agent = new http.Agent({
+        maxFreeSockets: 5,
+      })
+      const client = createClient({
+        http_agent: agent,
+      })
+      const rs = await client.query({
+        query: 'SELECT 42 AS result',
+        format: 'JSONEachRow',
+      })
+      expect(await rs.json()).toEqual([{ result: 42 }])
+      expect(httpRequestStub).toHaveBeenCalledTimes(1)
+      const callArgs = httpRequestStub.calls.mostRecent().args
+      expect(callArgs[1].agent).toBe(agent)
+    },
+  )
 })
