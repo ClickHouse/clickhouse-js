@@ -21,10 +21,9 @@ import {
   withHttpSettings,
 } from '@clickhouse/client-common'
 import crypto from 'crypto'
-import type http from 'http'
 import type Http from 'http'
 import type * as net from 'net'
-import type https from 'node:https'
+import type Https from 'node:https'
 import Stream from 'stream'
 import type { URLSearchParams } from 'url'
 import Zlib from 'zlib'
@@ -34,7 +33,7 @@ import { drainStream } from './stream'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
-  http_agent?: http.Agent | https.Agent
+  http_agent?: Http.Agent | Https.Agent
   set_basic_auth_header: boolean
   keep_alive: {
     enabled: boolean
