@@ -113,6 +113,7 @@ export function buildHttpConnection(config: Partial<NodeConnectionParams>) {
       enabled: false,
       idle_socket_ttl: 2500,
     },
+    set_basic_auth_header: true,
     ...config,
   })
 }
@@ -126,6 +127,7 @@ export class MyTestHttpConnection extends NodeBaseConnection {
         keep_alive: {
           enabled: false,
         },
+        set_basic_auth_header: true,
       } as NodeConnectionParams,
       {} as Http.Agent,
     )
