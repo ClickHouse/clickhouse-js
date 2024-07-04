@@ -28,6 +28,12 @@ export type {
   StreamableDataFormat,
   StreamableJSONDataFormat,
   SingleDocumentJSONFormat,
+  SupportedJSONFormats,
+  SupportedRawFormats,
+  StreamableFormats,
+  StreamableJSONFormats,
+  SingleDocumentJSONFormats,
+  RecordsJSONFormats,
 } from './data_formatter'
 export { ClickHouseError } from './error'
 export {
