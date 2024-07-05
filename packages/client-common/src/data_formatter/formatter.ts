@@ -1,4 +1,4 @@
-const streamableJSONFormats = [
+export const StreamableJSONFormats = [
   'JSONEachRow',
   'JSONStringsEachRow',
   'JSONCompactEachRow',
@@ -8,20 +8,20 @@ const streamableJSONFormats = [
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
 ] as const
-const recordsJSONFormats = ['JSONObjectEachRow'] as const
-const singleDocumentJSONFormats = [
+export const RecordsJSONFormats = ['JSONObjectEachRow'] as const
+export const SingleDocumentJSONFormats = [
   'JSON',
   'JSONStrings',
   'JSONCompact',
   'JSONCompactStrings',
   'JSONColumnsWithMetadata',
 ] as const
-const supportedJSONFormats = [
-  ...recordsJSONFormats,
-  ...singleDocumentJSONFormats,
-  ...streamableJSONFormats,
+export const SupportedJSONFormats = [
+  ...RecordsJSONFormats,
+  ...SingleDocumentJSONFormats,
+  ...StreamableJSONFormats,
 ] as const
-const supportedRawFormats = [
+export const SupportedRawFormats = [
   'CSV',
   'CSVWithNames',
   'CSVWithNamesAndTypes',
@@ -34,20 +34,24 @@ const supportedRawFormats = [
   'CustomSeparatedWithNamesAndTypes',
   'Parquet',
 ] as const
+export const StreamableFormats = [
+  ...StreamableJSONFormats,
+  ...SupportedRawFormats,
+] as const
 
 /** CSV, TSV, etc. - can be streamed, but cannot be decoded as JSON. */
-export type RawDataFormat = (typeof supportedRawFormats)[number]
+export type RawDataFormat = (typeof SupportedRawFormats)[number]
 
 /** Each row is returned as a separate JSON object or an array, and these formats can be streamed. */
-export type StreamableJSONDataFormat = (typeof streamableJSONFormats)[number]
+export type StreamableJSONDataFormat = (typeof StreamableJSONFormats)[number]
 
 /** Returned as a single {@link ResponseJSON} object, cannot be streamed. */
 export type SingleDocumentJSONFormat =
-  (typeof singleDocumentJSONFormats)[number]
+  (typeof SingleDocumentJSONFormats)[number]
 
 /** Returned as a single object { row_1: T, row_2: T, ...} <br/>
  *  (i.e. Record<string, T>), cannot be streamed. */
-export type RecordsJSONFormat = (typeof recordsJSONFormats)[number]
+export type RecordsJSONFormat = (typeof RecordsJSONFormats)[number]
 
 /** All allowed JSON formats, whether streamable or not. */
 export type JSONDataFormat =
@@ -66,39 +70,34 @@ export type JSONDataFormat =
  *  @see https://clickhouse.com/docs/en/interfaces/formats */
 export type DataFormat = JSONDataFormat | RawDataFormat
 
-const streamableFormat = [
-  ...streamableJSONFormats,
-  ...supportedRawFormats,
-] as const
-
 /** All data formats that can be streamed, whether it can be decoded as JSON or not. */
-export type StreamableDataFormat = (typeof streamableFormat)[number]
+export type StreamableDataFormat = (typeof StreamableFormats)[number]
 
 export function isNotStreamableJSONFamily(
   format: DataFormat,
 ): format is SingleDocumentJSONFormat {
   return (
-    (singleDocumentJSONFormats as readonly string[]).includes(format) ||
-    (recordsJSONFormats as readonly string[]).includes(format)
+    (SingleDocumentJSONFormats as readonly string[]).includes(format) ||
+    (RecordsJSONFormats as readonly string[]).includes(format)
   )
 }
 
 export function isStreamableJSONFamily(
   format: DataFormat,
 ): format is StreamableJSONDataFormat {
-  return (streamableJSONFormats as readonly string[]).includes(format)
+  return (StreamableJSONFormats as readonly string[]).includes(format)
 }
 
 export function isSupportedRawFormat(dataFormat: DataFormat) {
-  return (supportedRawFormats as readonly string[]).includes(dataFormat)
+  return (SupportedRawFormats as readonly string[]).includes(dataFormat)
 }
 
 export function validateStreamFormat(
   format: any,
 ): format is StreamableDataFormat {
-  if (!streamableFormat.includes(format)) {
+  if (!StreamableFormats.includes(format)) {
     throw new Error(
-      `${format} format is not streamable. Streamable formats: ${streamableFormat.join(
+      `${format} format is not streamable. Streamable formats: ${StreamableFormats.join(
         ',',
       )}`,
     )
@@ -113,7 +112,7 @@ export function validateStreamFormat(
  * @returns string
  */
 export function encodeJSON(value: any, format: DataFormat): string {
-  if ((supportedJSONFormats as readonly string[]).includes(format)) {
+  if ((SupportedJSONFormats as readonly string[]).includes(format)) {
     return JSON.stringify(value) + '\n'
   }
   throw new Error(

@@ -39,4 +39,10 @@ export {
   ClickHouseError,
   ClickHouseLogLevel,
   SettingsMap,
+  SupportedJSONFormats,
+  SupportedRawFormats,
+  StreamableFormats,
+  StreamableJSONFormats,
+  SingleDocumentJSONFormats,
+  RecordsJSONFormats,
 } from '@clickhouse/client-common'
