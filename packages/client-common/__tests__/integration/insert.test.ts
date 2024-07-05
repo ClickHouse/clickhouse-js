@@ -42,10 +42,12 @@ describe('insert', () => {
     expect(validateUUID(result.query_id)).toBeTruthy()
     expect(result.executed).toBeTruthy()
 
+    // Surprisingly, SMT Cloud instances have a different Content-Type here.
+    // Expected 'text/tab-separated-values; charset=UTF-8' to equal 'text/plain; charset=UTF-8'
     expect(
       result.response_headers['Content-Type'] ??
         result.response_headers['content-type'],
-    ).toEqual('text/plain; charset=UTF-8')
+    ).toEqual(jasmine.stringMatching(/text\/.+?; charset=UTF-8/))
   })
 
   it('should use provide query_id', async () => {
