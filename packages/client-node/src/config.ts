@@ -1,6 +1,7 @@
 import type {
   DataFormat,
   ImplementationDetails,
+  ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
   type BaseClickHouseClientConfigOptions,
@@ -122,11 +123,13 @@ export const NodeConfigImpl: Required<
     format: DataFormat,
     query_id: string,
     log_error: (err: Error) => void,
+    response_headers: ResponseHeaders,
   ) =>
     ResultSet.instance({
       stream,
       format,
       query_id,
       log_error,
+      response_headers,
     })) as any,
 }

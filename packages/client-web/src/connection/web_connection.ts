@@ -7,6 +7,7 @@ import type {
   ConnInsertResult,
   ConnPingResult,
   ConnQueryResult,
+  ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
   isSuccessfulResponse,
@@ -59,6 +60,7 @@ export class WebConnection implements Connection<ReadableStream> {
     return {
       query_id,
       stream: response.body || new ReadableStream<Uint8Array>(),
+      response_headers: getResponseHeaders(response),
     }
   }
 
@@ -69,15 +71,16 @@ export class WebConnection implements Connection<ReadableStream> {
     return {
       query_id: result.query_id,
       stream: result.stream || new ReadableStream<Uint8Array>(),
+      response_headers: result.response_headers,
     }
   }
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
-    const { stream, query_id } = await this.runExec(params)
+    const { stream, query_id, response_headers } = await this.runExec(params)
     if (stream !== null) {
       await stream.cancel()
     }
-    return { query_id }
+    return { query_id, response_headers }
   }
 
   async insert<T = unknown>(
@@ -92,16 +95,17 @@ export class WebConnection implements Connection<ReadableStream> {
       session_id: params.session_id,
       query_id,
     })
-    const res = await this.request({
+    const response = await this.request({
       values: params.values,
       params,
       searchParams,
     })
-    if (res.body !== null) {
-      await res.text() // drain the response (it's empty anyway)
+    if (response.body !== null) {
+      await response.text() // drain the response (it's empty anyway)
     }
     return {
       query_id,
+      response_headers: getResponseHeaders(response),
     }
   }
 
@@ -228,6 +232,7 @@ export class WebConnection implements Connection<ReadableStream> {
     })
     return {
       stream: response.body,
+      response_headers: getResponseHeaders(response),
       query_id,
     }
   }
@@ -237,7 +242,16 @@ function getQueryId(query_id: string | undefined): string {
   return query_id || crypto.randomUUID()
 }
 
+function getResponseHeaders(response: Response): ResponseHeaders {
+  const headers: ResponseHeaders = {}
+  response.headers.forEach((value, key) => {
+    headers[key] = value
+  })
+  return headers
+}
+
 interface RunExecResult {
   stream: ReadableStream<Uint8Array> | null
   query_id: string
+  response_headers: ResponseHeaders
 }

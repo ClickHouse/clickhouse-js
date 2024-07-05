@@ -16,7 +16,7 @@ describe('insert', () => {
     await client.close()
   })
 
-  it('inserts values using JSON format', async () => {
+  it('inserts values using JSON format and get the response headers', async () => {
     const result = await client.insert({
       table: tableName,
       values: {
@@ -41,6 +41,11 @@ describe('insert', () => {
     await assertJsonValues(client, tableName)
     expect(validateUUID(result.query_id)).toBeTruthy()
     expect(result.executed).toBeTruthy()
+
+    expect(
+      result.response_headers['Content-Type'] ??
+        result.response_headers['content-type'],
+    ).toEqual('text/plain; charset=UTF-8')
   })
 
   it('should use provide query_id', async () => {

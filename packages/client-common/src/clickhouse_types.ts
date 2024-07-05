@@ -29,6 +29,12 @@ export interface ClickHouseSummary {
   elapsed_ns: string
 }
 
+export type ResponseHeaders = Record<string, string | string[] | undefined>
+
 export interface WithClickHouseSummary {
   summary?: ClickHouseSummary
+}
+
+export interface WithResponseHeaders {
+  response_headers: ResponseHeaders
 }

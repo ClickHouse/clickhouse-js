@@ -1,3 +1,4 @@
+import type { ResponseHeaders } from './clickhouse_types'
 import type { InsertValues } from './client'
 import type { Connection, ConnectionParams } from './connection'
 import type { DataFormat } from './data_formatter'
@@ -91,6 +92,7 @@ export type MakeResultSet<Stream> = <
   format: Format,
   query_id: string,
   log_error: (err: Error) => void,
+  response_headers: ResponseHeaders,
 ) => ResultSet
 
 export interface ValuesEncoder<Stream> {

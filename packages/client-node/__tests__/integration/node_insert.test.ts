@@ -57,6 +57,7 @@ describe('[Node.js] insert', () => {
       expect(result).toEqual({
         executed: false,
         query_id: '',
+        response_headers: {},
       })
     })
   })

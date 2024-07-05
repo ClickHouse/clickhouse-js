@@ -1,3 +1,31 @@
+# 1.3.0 (Common, Node.js, Web)
+
+## New features
+
+- It is now possible to get the entire response headers object from the `query`/`insert`/`command`/`exec` methods. With `query`, you can access the `ResultSet.response_headers` property; other methods (`insert`/`command`/`exec`) return it as parts of their response objects as well.
+  For example:
+
+  ```ts
+  const rs = await client.query({
+    query: 'SELECT * FROM system.numbers LIMIT 1',
+    format: 'JSONEachRow',
+  })
+  console.log(rs.response_headers['content-type'])
+  ```
+
+  This will print: `application/x-ndjson; charset=UTF-8`. It can be used in a similar way with the other methods.
+
+## Improvements
+
+- Re-exported several constants from the `@clickhouse/client-common` package for convenience:
+
+  - `SupportedJSONFormats`
+  - `SupportedRawFormats`
+  - `StreamableFormats`
+  - `StreamableJSONFormats`
+  - `SingleDocumentJSONFormats`
+  - `RecordsJSONFormats`
+
 # 1.2.0 (Node.js)
 
 ## New features

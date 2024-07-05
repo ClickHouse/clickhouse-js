@@ -1,4 +1,7 @@
-import type { WithClickHouseSummary } from './clickhouse_types'
+import type {
+  WithClickHouseSummary,
+  WithResponseHeaders,
+} from './clickhouse_types'
 import type { LogWriter } from './logger'
 import type { ClickHouseSettings } from './settings'
 
@@ -36,7 +39,7 @@ export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
   values: string | Stream
 }
 
-export interface ConnBaseResult {
+export interface ConnBaseResult extends WithResponseHeaders {
   query_id: string
 }
 

@@ -9,7 +9,7 @@ import {
   validateUUID,
 } from '../utils'
 
-describe('exec', () => {
+describe('exec and command', () => {
   let client: ClickHouseClient
   beforeEach(() => {
     client = createTestClient()
@@ -70,6 +70,29 @@ describe('exec', () => {
         ),
       }),
     )
+  })
+
+  it('should get the response headers with command', async () => {
+    // does not actually return anything, but still sends us the headers
+    const result = await client.command({
+      query: 'SELECT 42 FORMAT TSV',
+    })
+
+    expect(
+      result.response_headers['Content-Type'] ??
+        result.response_headers['content-type'],
+    ).toEqual('text/tab-separated-values; charset=UTF-8')
+  })
+
+  it('should get the response headers with exec', async () => {
+    const result = await client.exec({
+      query: 'SELECT 42 FORMAT CSV',
+    })
+
+    expect(
+      result.response_headers['Content-Type'] ??
+        result.response_headers['content-type'],
+    ).toEqual('text/csv; charset=UTF-8; header=absent')
   })
 
   it('can specify a parameterized query', async () => {

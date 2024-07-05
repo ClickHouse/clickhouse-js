@@ -45,10 +45,12 @@ export {
 } from './logger'
 export type {
   ClickHouseSummary,
-  WithClickHouseSummary,
-  ResponseJSON,
   InputJSON,
   InputJSONObjectEachRow,
+  ResponseJSON,
+  ResponseHeaders,
+  WithClickHouseSummary,
+  WithResponseHeaders,
 } from './clickhouse_types'
 export {
   type ClickHouseSettings,

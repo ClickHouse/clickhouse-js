@@ -61,6 +61,7 @@ describe('[Node.js] exec result streaming', () => {
         log_error: (err) => {
           console.error(err)
         },
+        response_headers: {},
       })
       expect(await rs.json()).toEqual([{ number: '0' }])
     })

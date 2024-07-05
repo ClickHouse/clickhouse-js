@@ -71,6 +71,7 @@ describe('[Node.js] ResultSet', () => {
       log_error: (err) => {
         console.error(err)
       },
+      response_headers: {},
     })
   }
 

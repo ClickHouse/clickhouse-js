@@ -3,6 +3,7 @@ import type {
   ConnectionParams,
   DataFormat,
   ImplementationDetails,
+  ResponseHeaders,
 } from '@clickhouse/client-common'
 import { WebConnection } from './connection'
 import { ResultSet } from './result_set'
@@ -16,6 +17,8 @@ export const WebImpl: ImplementationDetails<ReadableStream>['impl'] = {
     stream: ReadableStream,
     format: DataFormat,
     query_id: string,
-  ) => new ResultSet(stream, format, query_id)) as any,
+    _log_error: (err: Error) => void,
+    response_headers: ResponseHeaders,
+  ) => new ResultSet(stream, format, query_id, response_headers)) as any,
   values_encoder: new WebValuesEncoder(),
 }
