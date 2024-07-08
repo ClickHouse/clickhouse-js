@@ -12,6 +12,7 @@ import type {
   ConnPingResult,
   ConnQueryResult,
   LogWriter,
+  ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
   isSuccessfulResponse,
@@ -142,7 +143,7 @@ export abstract class NodeBaseConnection
     const decompressResponse = clickhouse_settings.enable_http_compression === 1
     const { controller, controllerCleanup } = this.getAbortController(params)
     try {
-      const { stream } = await this.request(
+      const { stream, response_headers } = await this.request(
         {
           method: 'POST',
           url: transformUrl({ url: this.params.url, searchParams }),
@@ -156,6 +157,7 @@ export abstract class NodeBaseConnection
       return {
         stream,
         query_id,
+        response_headers,
       }
     } catch (err) {
       controller.abort('Query HTTP request failed')
@@ -190,7 +192,7 @@ export abstract class NodeBaseConnection
     })
     const { controller, controllerCleanup } = this.getAbortController(params)
     try {
-      const { stream, summary } = await this.request(
+      const { stream, summary, response_headers } = await this.request(
         {
           method: 'POST',
           url: transformUrl({ url: this.params.url, searchParams }),
@@ -203,7 +205,7 @@ export abstract class NodeBaseConnection
         'Insert',
       )
       await drainStream(stream)
-      return { query_id, summary }
+      return { query_id, summary, response_headers }
     } catch (err) {
       controller.abort('Insert HTTP request failed')
       this.logRequestError({
@@ -232,13 +234,13 @@ export abstract class NodeBaseConnection
   }
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
-    const { stream, query_id, summary } = await this.runExec({
+    const { stream, query_id, summary, response_headers } = await this.runExec({
       ...params,
       op: 'Command',
     })
     // ignore the response stream and release the socket immediately
     await drainStream(stream)
-    return { query_id, summary }
+    return { query_id, summary, response_headers }
   }
 
   async close(): Promise<void> {
@@ -375,7 +377,7 @@ export abstract class NodeBaseConnection
     })
     const { controller, controllerCleanup } = this.getAbortController(params)
     try {
-      const { stream, summary } = await this.request(
+      const { stream, summary, response_headers } = await this.request(
         {
           method: 'POST',
           url: transformUrl({ url: this.params.url, searchParams }),
@@ -390,6 +392,7 @@ export abstract class NodeBaseConnection
         stream,
         query_id,
         summary,
+        response_headers,
       }
     } catch (err) {
       controller.abort(`${params.op} HTTP request failed`)
@@ -437,6 +440,7 @@ export abstract class NodeBaseConnection
             summary: params.parse_summary
               ? this.parseSummary(op, _response)
               : undefined,
+            response_headers: { ..._response.headers },
           })
         } else {
           reject(parseError(await getAsText(decompressionResult.response)))
@@ -593,6 +597,7 @@ export abstract class NodeBaseConnection
 
 interface RequestResult {
   stream: Stream.Readable
+  response_headers: ResponseHeaders
   summary?: ClickHouseSummary
 }
 

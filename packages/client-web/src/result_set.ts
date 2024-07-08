@@ -1,6 +1,7 @@
 import type {
   BaseResultSet,
   DataFormat,
+  ResponseHeaders,
   ResultJSONType,
   ResultStream,
   Row,
@@ -15,12 +16,18 @@ import { getAsText } from './utils'
 export class ResultSet<Format extends DataFormat | unknown>
   implements BaseResultSet<ReadableStream<Row[]>, Format>
 {
+  public readonly response_headers: ResponseHeaders
   private isAlreadyConsumed = false
+
   constructor(
     private _stream: ReadableStream,
     private readonly format: Format,
     public readonly query_id: string,
-  ) {}
+    _response_headers?: ResponseHeaders,
+  ) {
+    this.response_headers =
+      _response_headers !== undefined ? Object.freeze(_response_headers) : {}
+  }
 
   /** See {@link BaseResultSet.text} */
   async text(): Promise<string> {

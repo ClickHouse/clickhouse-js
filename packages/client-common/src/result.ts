@@ -1,4 +1,4 @@
-import type { ResponseJSON } from './clickhouse_types'
+import type { ResponseHeaders, ResponseJSON } from './clickhouse_types'
 import type {
   DataFormat,
   RawDataFormat,
@@ -133,4 +133,7 @@ export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
 
   /** ClickHouse server QueryID. */
   query_id: string
+
+  /** Response headers. */
+  response_headers: ResponseHeaders
 }

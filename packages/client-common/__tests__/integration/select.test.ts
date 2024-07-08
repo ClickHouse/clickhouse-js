@@ -176,6 +176,18 @@ describe('select', () => {
     expect(results.sort((a, b) => a - b)).toEqual([1, 3, 6, 10, 15])
   })
 
+  it('should get the response headers', async () => {
+    const rs = await client.query({
+      query: 'SELECT * FROM system.numbers LIMIT 1',
+      format: 'JSONEachRow',
+    })
+
+    expect(
+      rs.response_headers['Content-Type'] ??
+        rs.response_headers['content-type'],
+    ).toEqual('application/x-ndjson; charset=UTF-8')
+  })
+
   describe('trailing semi', () => {
     it('should allow queries with trailing semicolon', async () => {
       const numbers = await client.query({

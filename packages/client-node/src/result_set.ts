@@ -1,6 +1,7 @@
 import type {
   BaseResultSet,
   DataFormat,
+  ResponseHeaders,
   ResultJSONType,
   ResultStream,
   Row,
@@ -43,11 +44,13 @@ export interface ResultSetOptions<Format extends DataFormat> {
   format: Format
   query_id: string
   log_error: (error: Error) => void
+  response_headers: ResponseHeaders
 }
 
 export class ResultSet<Format extends DataFormat | unknown>
   implements BaseResultSet<Stream.Readable, Format>
 {
+  public readonly response_headers: ResponseHeaders
   private readonly log_error: (error: Error) => void
 
   constructor(
@@ -55,9 +58,12 @@ export class ResultSet<Format extends DataFormat | unknown>
     private readonly format: Format,
     public readonly query_id: string,
     log_error?: (error: Error) => void,
+    _response_headers?: ResponseHeaders,
   ) {
     // eslint-disable-next-line no-console
     this.log_error = log_error ?? ((err: Error) => console.error(err))
+    this.response_headers =
+      _response_headers !== undefined ? Object.freeze(_response_headers) : {}
   }
 
   /** See {@link BaseResultSet.text}. */
@@ -183,6 +189,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     return pipeline as any
   }
 
+  /** See {@link BaseResultSet.close}. */
   close() {
     this._stream.destroy(new Error(resultSetClosedMessage))
   }
@@ -192,8 +199,9 @@ export class ResultSet<Format extends DataFormat | unknown>
     format,
     query_id,
     log_error,
+    response_headers,
   }: ResultSetOptions<Format>): ResultSet<Format> {
-    return new ResultSet(stream, format, query_id, log_error)
+    return new ResultSet(stream, format, query_id, log_error, response_headers)
   }
 }
 
