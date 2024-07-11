@@ -61,9 +61,21 @@ export type QueryResult<Stream, Format extends DataFormat> =
     ? BaseResultSet<Stream, unknown>
     : BaseResultSet<Stream, Format>
 
-export interface ExecParams extends BaseQueryParams {
-  /** Statement to execute. */
+export type ExecParams = BaseQueryParams & {
+  /** Statement to execute (including the FORMAT clause). By default, the query will be sent in the request body;
+   *  If {@link ExecParamsWithValues.values} are defined, the query is sent as a request parameter,
+   *  and the values are sent in the request body instead. */
   query: string
+}
+export type ExecParamsWithValues<Stream> = ExecParams & {
+  /** If you have a custom INSERT statement to run with `exec`,
+   *  the data from this stream will be inserted.
+   *
+   *  NB: the data in the stream is expected to be serialized accordingly to the FORMAT clause
+   *  used in {@link ExecParams.query} in this case.
+   *
+   *  @see https://clickhouse.com/docs/en/interfaces/formats */
+  values: Stream
 }
 
 export type CommandParams = ExecParams
@@ -214,10 +226,14 @@ export class ClickHouseClient<Stream = unknown> {
    * but format clause is not applicable. The caller of this method is expected to consume the stream,
    * otherwise, the request will eventually be timed out.
    */
-  async exec(params: ExecParams): Promise<ExecResult<Stream>> {
+  async exec(
+    params: ExecParams | ExecParamsWithValues<Stream>,
+  ): Promise<ExecResult<Stream>> {
     const query = removeTrailingSemi(params.query.trim())
+    const values = 'values' in params ? params.values : undefined
     return await this.connection.exec({
       query,
+      values,
       ...this.withClientQueryParams(params),
     })
   }

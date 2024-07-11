@@ -1,10 +1,12 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
-import type Stream from 'stream'
+import { guid } from '@test/utils'
+import { createSimpleTable } from '@test/fixtures/simple_table'
+import Stream from 'stream'
 import { getAsText } from '../../src/utils'
-import { ResultSet } from '../../src'
+import { drainStream, ResultSet } from '../../src'
 
-describe('[Node.js] exec result streaming', () => {
+describe('[Node.js] exec', () => {
   let client: ClickHouseClient<Stream.Readable>
   beforeEach(() => {
     client = createTestClient()
@@ -65,5 +67,102 @@ describe('[Node.js] exec result streaming', () => {
       })
       expect(await rs.json()).toEqual([{ number: '0' }])
     })
+  })
+
+  describe('custom insert streaming with exec', () => {
+    let tableName: string
+    beforeEach(async () => {
+      tableName = `test_node_exec_insert_stream_${guid()}`
+      await createSimpleTable(client, tableName)
+    })
+
+    it('should send an insert stream', async () => {
+      const stream = Stream.Readable.from(['42,foobar,"[1,2]"'], {
+        objectMode: false,
+      })
+      const execResult = await client.exec({
+        query: `INSERT INTO ${tableName} FORMAT CSV`,
+        values: stream,
+      })
+      // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
+      await drainStream(execResult.stream)
+      await checkInsertedValues([
+        {
+          id: '42',
+          name: 'foobar',
+          sku: [1, 2],
+        },
+      ])
+    })
+
+    it('should not fail with an empty stream', async () => {
+      const stream = new Stream.Readable({
+        read() {
+          // required
+        },
+        objectMode: false,
+      })
+      const execPromise = client.exec({
+        query: `INSERT INTO ${tableName} FORMAT CSV`,
+        values: stream,
+      })
+      // close the empty stream after the request is sent
+      stream.push(null)
+      // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
+      const execResult = await execPromise
+      await drainStream(execResult.stream)
+      await checkInsertedValues([])
+    })
+
+    it('should not fail with an already closed stream', async () => {
+      const stream = new Stream.Readable({
+        read() {
+          // required
+        },
+        objectMode: false,
+      })
+      stream.push('42,foobar,"[1,2]"\n')
+      // close the stream with some values
+      stream.push(null)
+      const execResult = await client.exec({
+        query: `INSERT INTO ${tableName} FORMAT CSV`,
+        values: stream,
+      })
+      // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
+      await drainStream(execResult.stream)
+      await checkInsertedValues([
+        {
+          id: '42',
+          name: 'foobar',
+          sku: [1, 2],
+        },
+      ])
+    })
+
+    it('should not fail with an empty and already closed stream', async () => {
+      const stream = new Stream.Readable({
+        read() {
+          // required
+        },
+        objectMode: false,
+      })
+      // close the empty stream immediately
+      stream.push(null)
+      const execResult = await client.exec({
+        query: `INSERT INTO ${tableName} FORMAT CSV`,
+        values: stream,
+      })
+      // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
+      await drainStream(execResult.stream)
+      await checkInsertedValues([])
+    })
+
+    async function checkInsertedValues<T = unknown>(expected: Array<T>) {
+      const rs = await client.query({
+        query: `SELECT * FROM ${tableName}`,
+        format: 'JSONEachRow',
+      })
+      expect(await rs.json()).toEqual(expected)
+    }
   })
 })
