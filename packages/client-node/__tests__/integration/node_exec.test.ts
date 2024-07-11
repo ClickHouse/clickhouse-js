@@ -6,7 +6,7 @@ import Stream from 'stream'
 import { getAsText } from '../../src/utils'
 import { drainStream, ResultSet } from '../../src'
 
-fdescribe('[Node.js] exec', () => {
+describe('[Node.js] exec', () => {
   let client: ClickHouseClient<Stream.Readable>
   beforeEach(() => {
     client = createTestClient()

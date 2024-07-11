@@ -1,3 +1,9 @@
+# 1.4.0 (Node.js)
+
+## New features
+
+- (Node.js only) The `exec` method now accepts an optional `values` parameter, which allows you to pass the request body as a `Stream.Readable`. This can be useful in case of custom insert streaming with arbitrary ClickHouse data formats (which might not be explicitly supported and allowed by the client in the `insert` method yet). NB: in this case, you are expected to serialize the data in the stream in the required input format yourself.
+
 # 1.3.0 (Common, Node.js, Web)
 
 ## New features
