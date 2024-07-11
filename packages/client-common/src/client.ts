@@ -62,14 +62,19 @@ export type QueryResult<Stream, Format extends DataFormat> =
     : BaseResultSet<Stream, Format>
 
 export type ExecParams = BaseQueryParams & {
-  /** Statement to execute. By default, the query will be sent in the request body;
+  /** Statement to execute (including the FORMAT clause). By default, the query will be sent in the request body;
    *  If {@link ExecParamsWithValues.values} are defined, the query is sent as a request parameter,
    *  and the values are sent in the request body instead. */
   query: string
 }
 export type ExecParamsWithValues<Stream> = ExecParams & {
   /** If you have a custom INSERT statement to run with `exec`,
-   *  the data from this stream will be inserted. */
+   *  the data from this stream will be inserted.
+   *
+   *  NB: the data in the stream is expected to be serialized accordingly to the FORMAT clause
+   *  used in {@link ExecParams.query} in this case.
+   *
+   *  @see https://clickhouse.com/docs/en/interfaces/formats */
   values: Stream
 }
 
