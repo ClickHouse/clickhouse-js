@@ -1,5 +1,7 @@
 import type {
   DataFormat,
+  ExecParams,
+  ExecResult,
   InputJSON,
   InputJSONObjectEachRow,
   InsertParams,
@@ -20,7 +22,10 @@ export type QueryResult<Format extends DataFormat> =
     ? ResultSet<unknown>
     : ResultSet<Format>
 
-export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
+export type WebClickHouseClient = Omit<
+  WebClickHouseClientImpl,
+  'insert' | 'exec'
+> & {
   /** See {@link ClickHouseClient.insert}.
    *
    *  ReadableStream is removed from possible insert values
@@ -30,6 +35,10 @@ export type WebClickHouseClient = Omit<WebClickHouseClientImpl, 'insert'> & {
       values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
     },
   ): Promise<InsertResult>
+  /** See {@link ClickHouseClient.exec}.
+   *
+   *  Custom values are currently not supported in the web versions. */
+  exec(params: ExecParams): Promise<ExecResult<ReadableStream>>
 }
 
 class WebClickHouseClientImpl extends ClickHouseClient<ReadableStream> {

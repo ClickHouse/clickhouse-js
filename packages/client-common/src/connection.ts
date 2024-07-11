@@ -39,6 +39,10 @@ export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
   values: string | Stream
 }
 
+export interface ConnExecParams<Stream> extends ConnBaseQueryParams {
+  values?: Stream
+}
+
 export interface ConnBaseResult extends WithResponseHeaders {
   query_id: string
 }
@@ -66,6 +70,6 @@ export interface Connection<Stream> {
   close(): Promise<void>
   query(params: ConnBaseQueryParams): Promise<ConnQueryResult<Stream>>
   insert(params: ConnInsertParams<Stream>): Promise<ConnInsertResult>
-  exec(params: ConnBaseQueryParams): Promise<ConnExecResult<Stream>>
+  exec(params: ConnExecParams<Stream>): Promise<ConnExecResult<Stream>>
   command(params: ConnBaseQueryParams): Promise<ConnCommandResult>
 }

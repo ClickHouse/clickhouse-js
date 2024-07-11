@@ -1,10 +1,12 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
-import type Stream from 'stream'
+import { guid } from '@test/utils'
+import { createSimpleTable } from '@test/fixtures/simple_table'
+import Stream from 'stream'
 import { getAsText } from '../../src/utils'
-import { ResultSet } from '../../src'
+import { drainStream, ResultSet } from '../../src'
 
-describe('[Node.js] exec result streaming', () => {
+fdescribe('[Node.js] exec', () => {
   let client: ClickHouseClient<Stream.Readable>
   beforeEach(() => {
     client = createTestClient()
@@ -64,6 +66,35 @@ describe('[Node.js] exec result streaming', () => {
         response_headers: {},
       })
       expect(await rs.json()).toEqual([{ number: '0' }])
+    })
+  })
+
+  describe('custom insert streaming with exec', () => {
+    it('should send an insert stream', async () => {
+      const tableName = `test_node_exec_insert_stream_${guid()}`
+      await createSimpleTable(client, tableName)
+
+      const stream = Stream.Readable.from(['42,foobar,"[1,2]"'], {
+        objectMode: false,
+      })
+      const execResult = await client.exec({
+        query: `INSERT INTO ${tableName} FORMAT CSV`,
+        values: stream,
+      })
+      // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
+      await drainStream(execResult.stream)
+
+      const rs = await client.query({
+        query: `SELECT * FROM ${tableName}`,
+        format: 'JSONEachRow',
+      })
+      expect(await rs.json()).toEqual([
+        {
+          id: '42',
+          name: 'foobar',
+          sku: [1, 2],
+        },
+      ])
     })
   })
 })

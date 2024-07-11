@@ -93,6 +93,7 @@ export type {
   Connection,
   ConnectionParams,
   ConnInsertResult,
+  ConnExecParams,
   ConnExecResult,
   ConnQueryResult,
   ConnBaseQueryParams,

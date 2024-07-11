@@ -5,6 +5,7 @@ import type {
   ConnCommandResult,
   Connection,
   ConnectionParams,
+  ConnExecParams,
   ConnExecResult,
   ConnInsertParams,
   ConnInsertResult,
@@ -225,7 +226,7 @@ export abstract class NodeBaseConnection
   }
 
   async exec(
-    params: ConnBaseQueryParams,
+    params: ConnExecParams<Stream.Readable>,
   ): Promise<ConnExecResult<Stream.Readable>> {
     return this.runExec({
       ...params,
@@ -368,20 +369,23 @@ export abstract class NodeBaseConnection
     params: RunExecParams,
   ): Promise<ConnExecResult<Stream.Readable>> {
     const query_id = this.getQueryId(params.query_id)
-    const searchParams = toSearchParams({
+    const sendQueryInParams = params.values !== undefined
+    const toSearchParamsOptions = {
+      query: sendQueryInParams ? params.query : undefined,
       database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
       session_id: params.session_id,
       query_id,
-    })
+    }
+    const searchParams = toSearchParams(toSearchParamsOptions)
     const { controller, controllerCleanup } = this.getAbortController(params)
     try {
       const { stream, summary, response_headers } = await this.request(
         {
           method: 'POST',
           url: transformUrl({ url: this.params.url, searchParams }),
-          body: params.query,
+          body: sendQueryInParams ? params.values : params.query,
           abort_signal: controller.signal,
           parse_summary: true,
           headers: this.buildRequestHeaders(params),
@@ -617,4 +621,5 @@ interface SocketInfo {
 
 type RunExecParams = ConnBaseQueryParams & {
   op: 'Exec' | 'Command'
+  values?: ConnExecParams<Stream.Readable>['values']
 }
