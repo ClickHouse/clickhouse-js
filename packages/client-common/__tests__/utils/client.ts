@@ -13,7 +13,7 @@ import {
 } from './test_env'
 import { TestLogger } from './test_logger'
 
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 300_000
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 400_000
 
 let databaseName: string
 beforeAll(async () => {
@@ -24,7 +24,7 @@ beforeAll(async () => {
   )
   if (isCloudTestEnv() && databaseName === undefined) {
     const cloudInitClient = createTestClient({
-      request_timeout: 30_000,
+      request_timeout: 10_000,
     })
     await wakeUpPing(cloudInitClient)
     databaseName = await createRandomDatabase(cloudInitClient)
