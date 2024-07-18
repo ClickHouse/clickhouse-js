@@ -227,7 +227,12 @@ jobs:
       - name: Set service name for push
         if: github.event_name == 'push'
         working-directory: .github/cloud/
-        run: echo "TF_VAR_service_name=clickhouse-js $(git rev-parse --short HEAD) $(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+        run: echo "TF_VAR_service_name=clickhouse-js (push) $(git rev-parse --short HEAD) $(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+
+      - name: Set service name for workflow dispatch
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: .github/cloud/
+        run: echo "TF_VAR_service_name=clickhouse-js (dispatch) $(git rev-parse --short HEAD) $(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
 
       - name: Terraform Apply
         working-directory: .github/cloud/
@@ -240,9 +245,11 @@ jobs:
           TF_VAR_service_password: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
           TF_VAR_api_url: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_API_URL }}
 
-      - name: Output Host
+      - name: Output Host and Service Name
         working-directory: .github/cloud/
-        run: echo "CLICKHOUSE_HOST=$(terraform output -raw CLICKHOUSE_HOST)" >> $GITHUB_OUTPUT
+        run: |
+          echo "clickhouse_host=https://$(terraform output -raw CLICKHOUSE_HOST):8443" >> $GITHUB_OUTPUT
+          echo "clickhouse_service_name=$TF_VAR_service_name" >> $GITHUB_OUTPUT
 
   node-integration-tests-cloud:
     #    needs: node-unit-tests
@@ -267,7 +274,7 @@ jobs:
 
       - name: Run integration tests
         env:
-          CLICKHOUSE_CLOUD_HOST: ${{ needs.setup-cloud.outputs.CLICKHOUSE_HOST }}
+          CLICKHOUSE_CLOUD_HOST: ${{ needs.setup-cloud.outputs.clickhouse-host }}
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}
         run: |
           npm run test:node:integration:cloud_smt
@@ -309,6 +316,7 @@ jobs:
           TF_VAR_token_secret: ${{ secrets.INTEGRATIONS_TEAM_TESTS_TOKEN_SECRET }}
           TF_VAR_service_password: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
           TF_VAR_api_url: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_API_URL }}
+          TF_VAR_service_name: ${{ needs.setup-cloud.outputs.clickhouse-service-name }}
 #  web-integration-tests-cloud-smt:
 #    needs: node-unit-tests
 #    runs-on: ubuntu-latest
