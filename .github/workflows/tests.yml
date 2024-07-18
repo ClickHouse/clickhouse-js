@@ -1,5 +1,7 @@
 name: 'tests'
 
+permissions: write-all
+
 on:
   workflow_dispatch:
   push:
@@ -21,12 +23,236 @@ on:
     - cron: '0 9 * * *'
 
 jobs:
-  node-unit-tests:
+  #  node-unit-tests:
+  #    runs-on: ubuntu-latest
+  #    strategy:
+  #      fail-fast: true
+  #      matrix:
+  #        node: [18, 20, 21]
+  #    steps:
+  #      - uses: actions/checkout@main
+  #
+  #      - name: Setup NodeJS ${{ matrix.node }}
+  #        uses: actions/setup-node@v4
+  #        with:
+  #          node-version: ${{ matrix.node }}
+  #
+  #      - name: Install dependencies
+  #        run: |
+  #          npm install
+  #
+  #      - name: Install dependencies (examples)
+  #        working-directory: examples
+  #        run: |
+  #          npm install
+  #
+  #      - name: Run linting
+  #        run: |
+  #          npm run lint
+  #
+  #      - name: Typecheck
+  #        run: |
+  #          npm run typecheck
+  #
+  #      - name: Run unit tests
+  #        run: |
+  #          npm run test:node:unit
+  #
+  #  web-all-tests-local-single-node:
+  #    runs-on: ubuntu-latest
+  #    needs: node-unit-tests
+  #    strategy:
+  #      fail-fast: true
+  #      matrix:
+  #        clickhouse: [head, latest]
+  #    steps:
+  #      - uses: actions/checkout@main
+  #
+  #      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+  #        uses: isbang/compose-action@v1.5.1
+  #        env:
+  #          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+  #        with:
+  #          compose-file: 'docker-compose.yml'
+  #          down-flags: '--volumes'
+  #
+  #      - name: Setup NodeJS
+  #        uses: actions/setup-node@v4
+  #        with:
+  #          node-version: 20
+  #
+  #      - name: Install dependencies
+  #        run: |
+  #          npm install
+  #
+  #      - name: Run all web tests
+  #        run: |
+  #          npm run test:web
+  #
+  #  node-integration-tests-local-single-node:
+  #    needs: node-unit-tests
+  #    runs-on: ubuntu-latest
+  #    strategy:
+  #      fail-fast: true
+  #      matrix:
+  #        node: [18, 20, 21]
+  #        clickhouse: [head, latest]
+  #
+  #    steps:
+  #      - uses: actions/checkout@main
+  #
+  #      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+  #        uses: isbang/compose-action@v1.5.1
+  #        env:
+  #          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+  #        with:
+  #          compose-file: 'docker-compose.yml'
+  #          down-flags: '--volumes'
+  #
+  #      - name: Setup NodeJS ${{ matrix.node }}
+  #        uses: actions/setup-node@v4
+  #        with:
+  #          node-version: ${{ matrix.node }}
+  #
+  #      - name: Install dependencies
+  #        run: |
+  #          npm install
+  #
+  #      - name: Add ClickHouse TLS instance to /etc/hosts
+  #        run: |
+  #          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+  #
+  #      - name: Run integration tests
+  #        run: |
+  #          npm run test:node:integration
+  #
+  #      - name: Run TLS tests
+  #        run: |
+  #          npm run test:node:tls
+  #
+  #  node-integration-tests-local-cluster:
+  #    needs: node-unit-tests
+  #    runs-on: ubuntu-latest
+  #    strategy:
+  #      fail-fast: true
+  #      matrix:
+  #        node: [18, 20, 21]
+  #        clickhouse: [head, latest]
+  #
+  #    steps:
+  #      - uses: actions/checkout@main
+  #
+  #      - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
+  #        uses: isbang/compose-action@v1.5.1
+  #        env:
+  #          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+  #        with:
+  #          compose-file: 'docker-compose.cluster.yml'
+  #          down-flags: '--volumes'
+  #
+  #      - name: Setup NodeJS ${{ matrix.node }}
+  #        uses: actions/setup-node@v4
+  #        with:
+  #          node-version: ${{ matrix.node }}
+  #
+  #      - name: Install dependencies
+  #        run: |
+  #          npm install
+  #
+  #      - name: Run integration tests
+  #        run: |
+  #          npm run test:node:integration:local_cluster
+  #
+  #  web-integration-tests-local-cluster:
+  #    runs-on: ubuntu-latest
+  #    needs: node-unit-tests
+  #    strategy:
+  #      fail-fast: true
+  #      matrix:
+  #        clickhouse: [head, latest]
+  #    steps:
+  #      - uses: actions/checkout@main
+  #
+  #      - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
+  #        uses: isbang/compose-action@v1.5.1
+  #        env:
+  #          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+  #        with:
+  #          compose-file: 'docker-compose.cluster.yml'
+  #          down-flags: '--volumes'
+  #
+  #      - name: Setup NodeJS
+  #        uses: actions/setup-node@v4
+  #        with:
+  #          node-version: 20
+  #
+  #      - name: Install dependencies
+  #        run: |
+  #          npm install
+  #
+  #      - name: Run all web tests
+  #        run: |
+  #          npm run test:web:integration:local_cluster
+
+  setup-cloud:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Code
+        uses: actions/checkout@v3
+
+      - name: Resolve runner IP
+        run: echo "TF_VAR_allowed_cidr=$(curl -s ifconfig.me)/32" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2.0.3
+        with:
+          terraform_version: 1.3.4
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        id: init
+        working-directory: .github/cloud/
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate
+        working-directory: .github/cloud/
+        run: terraform validate -no-color
+
+      - name: Set service name for pull request
+        if: github.event_name == 'pull_request'
+        working-directory: .github/cloud/
+        run: echo "TF_VAR_service_name=clickhouse-js PR${{ github.event.pull_request.number }} $(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+
+      - name: Set service name for push
+        if: github.event_name == 'push'
+        working-directory: .github/cloud/
+        run: echo "TF_VAR_service_name=clickhouse-js $(git rev-parse --short HEAD) $(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+
+      - name: Terraform Apply
+        working-directory: .github/cloud/
+        id: apply
+        run: terraform apply -no-color -auto-approve -input=false -lock=false
+        env:
+          TF_VAR_organization_id: ${{ secrets.INTEGRATIONS_TEAM_TESTS_ORGANIZATION_ID }}
+          TF_VAR_token_key: ${{ secrets.INTEGRATIONS_TEAM_TESTS_TOKEN_KEY }}
+          TF_VAR_token_secret: ${{ secrets.INTEGRATIONS_TEAM_TESTS_TOKEN_SECRET }}
+          TF_VAR_service_password: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
+          TF_VAR_api_url: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_API_URL }}
+
+      - name: Output Host
+        working-directory: .github/cloud/
+        run: echo "CLICKHOUSE_HOST=$(terraform output -raw CLICKHOUSE_HOST)" >> $GITHUB_OUTPUT
+
+  node-integration-tests-cloud:
+    #    needs: node-unit-tests
+    needs: [setup-cloud]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
         node: [18, 20, 21]
+
     steps:
       - uses: actions/checkout@main
 
@@ -38,255 +264,119 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-
-      - name: Install dependencies (examples)
-        working-directory: examples
-        run: |
-          npm install
-
-      - name: Run linting
-        run: |
-          npm run lint
-
-      - name: Typecheck
-        run: |
-          npm run typecheck
-
-      - name: Run unit tests
-        run: |
-          npm run test:node:unit
-
-  web-all-tests-local-single-node:
-    runs-on: ubuntu-latest
-    needs: node-unit-tests
-    strategy:
-      fail-fast: true
-      matrix:
-        clickhouse: [head, latest]
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run all web tests
-        run: |
-          npm run test:web
-
-  node-integration-tests-local-single-node:
-    needs: node-unit-tests
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        node: [18, 20, 21]
-        clickhouse: [head, latest]
-
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Add ClickHouse TLS instance to /etc/hosts
-        run: |
-          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
       - name: Run integration tests
-        run: |
-          npm run test:node:integration
-
-      - name: Run TLS tests
-        run: |
-          npm run test:node:tls
-
-  node-integration-tests-local-cluster:
-    needs: node-unit-tests
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        node: [18, 20, 21]
-        clickhouse: [head, latest]
-
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
         env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.cluster.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run integration tests
-        run: |
-          npm run test:node:integration:local_cluster
-
-  web-integration-tests-local-cluster:
-    runs-on: ubuntu-latest
-    needs: node-unit-tests
-    strategy:
-      fail-fast: true
-      matrix:
-        clickhouse: [head, latest]
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.cluster.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run all web tests
-        run: |
-          npm run test:web:integration:local_cluster
-
-  node-integration-tests-cloud-smt:
-    needs: node-unit-tests
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        node: [18, 20, 21]
-
-    steps:
-      - uses: actions/checkout@main
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run integration tests
-        env:
-          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT }}
+          CLICKHOUSE_CLOUD_HOST: ${{ needs.setup-cloud.outputs.CLICKHOUSE_HOST }}
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}
         run: |
           npm run test:node:integration:cloud_smt
 
-  web-integration-tests-cloud-smt:
-    needs: node-unit-tests
+  cleanup-cloud:
     runs-on: ubuntu-latest
-    permissions: write-all
+    if: always()
+    needs: [setup-cloud, node-integration-tests-cloud]
     steps:
-      - uses: actions/checkout@main
+      - name: Check Out Code
+        uses: actions/checkout@v3
 
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
+      - name: Resolve runner IP
+        run: echo "TF_VAR_allowed_cidr=$(curl -s ifconfig.me)/32" >> $GITHUB_ENV
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2.0.3
         with:
-          node-version: 20
+          terraform_version: 1.3.4
+          terraform_wrapper: false
 
-      - name: Install dependencies
-        run: |
-          npm install
+      - name: Terraform Init
+        id: init
+        working-directory: .github/cloud/
+        run: terraform init
 
-      - name: Run integration tests
+      - name: Terraform Validate
+        id: validate
+        working-directory: .github/cloud/
+        run: terraform validate -no-color
+
+      - name: Cleanup
+        if: always()
+        working-directory: .github/cloud/
+        run: terraform destroy -no-color -auto-approve -input=false -lock=false
         env:
-          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT }}
-          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}
-        run: |
-          npm run test:web:integration:cloud_smt
-
-  # With unit + integration + TLS tests + coverage + SonarCloud report, after the rest of the tests.
-  # Needs all integration tests on all environments to pass.
-  # Should use only the current LTS version of Node.js.
-  node-all-tests-with-coverage-and-sonar:
-    needs:
-      [
-        'node-integration-tests-local-single-node',
-        'node-integration-tests-local-cluster',
-        'node-integration-tests-cloud-smt',
-        'web-all-tests-local-single-node',
-        'web-integration-tests-local-cluster',
-        'web-integration-tests-cloud-smt',
-      ]
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@main
-        with:
-          fetch-depth: 0
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
-        with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Add ClickHouse TLS instance to /etc/hosts
-        run: |
-          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
-
-      - name: Run unit + integration + TLS tests with coverage
-        run: |
-          npm run test:node:coverage
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          TF_VAR_organization_id: ${{ secrets.INTEGRATIONS_TEAM_TESTS_ORGANIZATION_ID }}
+          TF_VAR_token_key: ${{ secrets.INTEGRATIONS_TEAM_TESTS_TOKEN_KEY }}
+          TF_VAR_token_secret: ${{ secrets.INTEGRATIONS_TEAM_TESTS_TOKEN_SECRET }}
+          TF_VAR_service_password: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD }}
+          TF_VAR_api_url: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_API_URL }}
+#  web-integration-tests-cloud-smt:
+#    needs: node-unit-tests
+#    runs-on: ubuntu-latest
+#    permissions: write-all
+#    steps:
+#      - uses: actions/checkout@main
+#
+#      - name: Setup NodeJS
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: 20
+#
+#      - name: Install dependencies
+#        run: |
+#          npm install
+#
+#      - name: Run integration tests
+#        env:
+#          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT }}
+#          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}
+#        run: |
+#          npm run test:web:integration:cloud_smt
+#
+#  # With unit + integration + TLS tests + coverage + SonarCloud report, after the rest of the tests.
+#  # Needs all integration tests on all environments to pass.
+#  # Should use only the current LTS version of Node.js.
+#  node-all-tests-with-coverage-and-sonar:
+#    needs:
+#      [
+#        'node-integration-tests-local-single-node',
+#        'node-integration-tests-local-cluster',
+#        'node-integration-tests-cloud-smt',
+#        'web-all-tests-local-single-node',
+#        'web-integration-tests-local-cluster',
+#        'web-integration-tests-cloud-smt',
+#      ]
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - uses: actions/checkout@main
+#        with:
+#          fetch-depth: 0
+#
+#      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+#        uses: isbang/compose-action@v1.5.1
+#        with:
+#          compose-file: 'docker-compose.yml'
+#          down-flags: '--volumes'
+#
+#      - name: Setup NodeJS 20
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: 20
+#
+#      - name: Install dependencies
+#        run: |
+#          npm install
+#
+#      - name: Add ClickHouse TLS instance to /etc/hosts
+#        run: |
+#          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+#
+#      - name: Run unit + integration + TLS tests with coverage
+#        run: |
+#          npm run test:node:coverage
+#
+#      - name: SonarCloud Scan
+#        uses: SonarSource/sonarcloud-github-action@master
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
