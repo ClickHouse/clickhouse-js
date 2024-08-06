@@ -1,3 +1,9 @@
+# 1.5.0 (Node.js, Web)
+
+## New features
+
+- `ClickHouseClient` is now exported as a value from packages, allowing to a better integration in dependency injection frameworks which rely on IoC.
+
 # 1.4.0 (Node.js)
 
 ## New features
