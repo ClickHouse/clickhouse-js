@@ -1,7 +1,7 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
-describe('[Web] abort request streaming', () => {
+describe('[Web] abort request', () => {
   let client: ClickHouseClient<ReadableStream>
 
   beforeEach(() => {
@@ -10,6 +10,23 @@ describe('[Web] abort request streaming', () => {
 
   afterEach(async () => {
     await client.close()
+  })
+
+  // a slightly different assertion vs the same Node.js test
+  it('cancels a select query before it is sent', async () => {
+    const controller = new AbortController()
+    const selectPromise = client.query({
+      query: 'SELECT sleep(3)',
+      format: 'CSV',
+      abort_signal: controller.signal,
+    })
+    controller.abort()
+
+    await expectAsync(selectPromise).toBeRejectedWith(
+      jasmine.objectContaining({
+        message: jasmine.stringMatching('The user aborted a request'),
+      }),
+    )
   })
 
   it('cancels a select query while reading response', async () => {

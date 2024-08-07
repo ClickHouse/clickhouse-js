@@ -13,22 +13,6 @@ describe('abort request', () => {
   })
 
   describe('select', () => {
-    it('cancels a select query before it is sent', async () => {
-      const controller = new AbortController()
-      const selectPromise = client.query({
-        query: 'SELECT sleep(3)',
-        format: 'CSV',
-        abort_signal: controller.signal,
-      })
-      controller.abort()
-
-      await expectAsync(selectPromise).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringMatching('The user aborted a request'),
-        }),
-      )
-    })
-
     it('cancels a select query after it is sent', async () => {
       const controller = new AbortController()
       const selectPromise = client.query({

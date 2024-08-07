@@ -13,10 +13,15 @@ import {
 } from '../utils/http_stubs'
 
 describe('Node.js Connection compression', () => {
+  let httpRequestStub: jasmine.Spy<typeof Http.request>
+  beforeEach(() => {
+    httpRequestStub = spyOn(Http, 'request')
+  })
+
   describe('response decompression', () => {
     it('hints ClickHouse server to send a gzip compressed response if compress_request: true', async () => {
       const request = stubClientRequest()
-      const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
+      httpRequestStub.and.returnValue(request)
 
       const adapter = buildHttpConnection({
         compression: {
@@ -41,7 +46,8 @@ describe('Node.js Connection compression', () => {
 
     it('does not send a compression algorithm hint if compress_request: false', async () => {
       const request = stubClientRequest()
-      const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
+      httpRequestStub.and.returnValue(request)
+
       const adapter = buildHttpConnection({
         compression: {
           decompress_response: false,
@@ -54,7 +60,7 @@ describe('Node.js Connection compression', () => {
       })
 
       const responseBody = 'foobar'
-      emitResponseBody(request, responseBody)
+      await emitResponseBody(request, responseBody)
 
       const queryResult = await selectPromise
       await assertConnQueryResult(queryResult, responseBody)
@@ -66,7 +72,8 @@ describe('Node.js Connection compression', () => {
 
     it('uses request-specific settings over config settings', async () => {
       const request = stubClientRequest()
-      const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
+      httpRequestStub.and.returnValue(request)
+
       const adapter = buildHttpConnection({
         compression: {
           decompress_response: false,
@@ -94,7 +101,8 @@ describe('Node.js Connection compression', () => {
 
     it('decompresses a gzip response', async () => {
       const request = stubClientRequest()
-      spyOn(Http, 'request').and.returnValue(request)
+      httpRequestStub.and.returnValue(request)
+
       const adapter = buildHttpConnection({
         compression: {
           decompress_response: true,
@@ -115,7 +123,7 @@ describe('Node.js Connection compression', () => {
 
     it('throws on an unexpected encoding', async () => {
       const request = stubClientRequest()
-      spyOn(Http, 'request').and.returnValue(request)
+      httpRequestStub.and.returnValue(request)
       const adapter = buildHttpConnection({
         compression: {
           decompress_response: true,
@@ -138,7 +146,7 @@ describe('Node.js Connection compression', () => {
 
     it('provides decompression error to a stream consumer', async () => {
       const request = stubClientRequest()
-      spyOn(Http, 'request').and.returnValue(request)
+      httpRequestStub.and.returnValue(request)
       const adapter = buildHttpConnection({
         compression: {
           decompress_response: true,
@@ -151,6 +159,7 @@ describe('Node.js Connection compression', () => {
       })
 
       // No GZIP encoding for the body here
+      await sleep(0)
       request.emit(
         'response',
         buildIncomingMessage({
@@ -196,13 +205,12 @@ describe('Node.js Connection compression', () => {
           next()
         },
         final() {
-          Zlib.unzip(chunks, (err, result) => {
+          Zlib.unzip(chunks, (_err, result) => {
             finalResult = result
           })
         },
       }) as ClientRequest
-
-      const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
+      httpRequestStub.and.returnValue(request)
 
       void adapter.insert({
         query: 'INSERT INTO insert_compression_table',
@@ -210,9 +218,10 @@ describe('Node.js Connection compression', () => {
       })
 
       // trigger stream pipeline
+      await sleep(0)
       request.emit('socket', socketStub)
-
       await sleep(100)
+
       expect(finalResult!.toString('utf8')).toEqual(values)
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const calledWith = httpRequestStub.calls.mostRecent().args[1]

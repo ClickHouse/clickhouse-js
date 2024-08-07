@@ -52,7 +52,7 @@ describe('[Node.js] Connection', () => {
         query: 'SELECT * FROM system.numbers LIMIT 5',
       })
       const responseBody1 = 'foobar'
-      emitResponseBody(request1, responseBody1)
+      await emitResponseBody(request1, responseBody1)
       const queryResult1 = await selectPromise1
 
       const request2 = stubClientRequest()
@@ -62,7 +62,7 @@ describe('[Node.js] Connection', () => {
         query: 'SELECT * FROM system.numbers LIMIT 5',
       })
       const responseBody2 = 'qaz'
-      emitResponseBody(request2, responseBody2)
+      await emitResponseBody(request2, responseBody2)
       const queryResult2 = await selectPromise2
 
       await assertConnQueryResult(queryResult1, responseBody1)
@@ -93,7 +93,7 @@ describe('[Node.js] Connection', () => {
         query_id,
       })
       const responseBody = 'foobar'
-      emitResponseBody(request, responseBody)
+      await emitResponseBody(request, responseBody)
       const { stream } = await selectPromise
       expect(await getAsText(stream)).toBe(responseBody)
 
@@ -119,7 +119,7 @@ describe('[Node.js] Connection', () => {
         query: 'SELECT * FROM system.numbers LIMIT 5',
       })
       const responseBody1 = 'foobar'
-      emitResponseBody(request1, responseBody1)
+      await emitResponseBody(request1, responseBody1)
       const queryResult1 = await execPromise1
 
       const request2 = stubClientRequest()
@@ -129,7 +129,7 @@ describe('[Node.js] Connection', () => {
         query: 'SELECT * FROM system.numbers LIMIT 5',
       })
       const responseBody2 = 'qaz'
-      emitResponseBody(request2, responseBody2)
+      await emitResponseBody(request2, responseBody2)
       const queryResult2 = await execPromise2
 
       await assertConnQueryResult(queryResult1, responseBody1)
@@ -162,7 +162,7 @@ describe('[Node.js] Connection', () => {
         query_id,
       })
       const responseBody = 'foobar'
-      emitResponseBody(request, responseBody)
+      await emitResponseBody(request, responseBody)
       const { stream } = await execPromise
       expect(await getAsText(stream)).toBe(responseBody)
 
@@ -187,7 +187,7 @@ describe('[Node.js] Connection', () => {
       const cmdPromise = adapter.command({
         query: 'SELECT * FROM system.numbers LIMIT 5',
       })
-      emitResponseBody(request1, 'Ok.')
+      await emitResponseBody(request1, 'Ok.')
       const { query_id } = await cmdPromise
 
       const request2 = stubClientRequest()
@@ -196,7 +196,7 @@ describe('[Node.js] Connection', () => {
       const cmdPromise2 = adapter.command({
         query: 'SELECT * FROM system.numbers LIMIT 5',
       })
-      emitResponseBody(request2, 'Ok.')
+      await emitResponseBody(request2, 'Ok.')
       const { query_id: query_id2 } = await cmdPromise2
 
       expect(query_id).not.toEqual(query_id2)
@@ -223,7 +223,7 @@ describe('[Node.js] Connection', () => {
         query: 'SELECT * FROM system.numbers LIMIT 5',
         query_id,
       })
-      emitResponseBody(request, 'Ok.')
+      await emitResponseBody(request, 'Ok.')
       const { query_id: result_query_id } = await cmdPromise
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
@@ -250,7 +250,7 @@ describe('[Node.js] Connection', () => {
         values: 'foobar',
       })
       const responseBody1 = 'foobar'
-      emitResponseBody(request1, responseBody1)
+      await emitResponseBody(request1, responseBody1)
       const { query_id: queryId1 } = await insertPromise1
 
       const request2 = stubClientRequest()
@@ -261,7 +261,7 @@ describe('[Node.js] Connection', () => {
         values: 'foobar',
       })
       const responseBody2 = 'qaz'
-      emitResponseBody(request2, responseBody2)
+      await emitResponseBody(request2, responseBody2)
       const { query_id: queryId2 } = await insertPromise2
 
       assertQueryId(queryId1)
@@ -293,7 +293,7 @@ describe('[Node.js] Connection', () => {
         query_id,
       })
       const responseBody = 'foobar'
-      emitResponseBody(request, responseBody)
+      await emitResponseBody(request, responseBody)
       await insertPromise
 
       const [url] = httpRequestStub.calls.mostRecent().args

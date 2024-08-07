@@ -9,7 +9,7 @@ import * as c from '../../src/connection/create_connection'
 
 describe('[Node.js] createClient', () => {
   it('throws on incorrect "url" config value', () => {
-    expect(() => createClient({ url: 'foo' })).toThrow(
+    expect(() => createClient({ url: 'foobar' })).toThrow(
       jasmine.objectContaining({
         message: jasmine.stringContaining('ClickHouse URL is malformed.'),
       }),
