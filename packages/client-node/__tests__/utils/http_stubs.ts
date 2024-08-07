@@ -1,5 +1,5 @@
 import { LogWriter } from '@clickhouse/client-common'
-import { TestLogger } from '@test/utils'
+import { sleep, TestLogger } from '@test/utils'
 import { randomUUID } from '@test/utils/guid'
 import type Http from 'http'
 import type { ClientRequest } from 'http'
@@ -63,10 +63,11 @@ export function stubClientRequest(): ClientRequest {
   return request
 }
 
-export function emitResponseBody(
+export async function emitResponseBody(
   request: Http.ClientRequest,
   body: string | Buffer | undefined,
 ) {
+  await sleep(0)
   request.emit(
     'response',
     buildIncomingMessage({

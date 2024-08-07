@@ -144,7 +144,7 @@ describe('[Node.js] Client', () => {
     const selectPromise = client.query({
       query: 'SELECT * FROM system.numbers LIMIT 5',
     })
-    emitResponseBody(clientRequest, 'hi')
+    await emitResponseBody(clientRequest, 'hi')
     await selectPromise
   }
 

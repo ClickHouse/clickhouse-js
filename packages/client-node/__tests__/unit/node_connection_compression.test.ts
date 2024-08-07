@@ -54,7 +54,7 @@ describe('Node.js Connection compression', () => {
       })
 
       const responseBody = 'foobar'
-      emitResponseBody(request, responseBody)
+      await emitResponseBody(request, responseBody)
 
       const queryResult = await selectPromise
       await assertConnQueryResult(queryResult, responseBody)

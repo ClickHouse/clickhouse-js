@@ -5,7 +5,7 @@ import { createTestClient, guid } from '@test/utils'
 import type Stream from 'stream'
 import { makeObjectStream } from '../utils/stream'
 
-describe('[Node.js] abort request streaming', () => {
+describe('[Node.js] abort request', () => {
   let client: ClickHouseClient<Stream.Readable>
 
   beforeEach(() => {
@@ -14,6 +14,23 @@ describe('[Node.js] abort request streaming', () => {
 
   afterEach(async () => {
     await client.close()
+  })
+
+  it('cancels a select query before it is sent', async () => {
+    const controller = new AbortController()
+    const selectPromise = client.query({
+      query: 'SELECT sleep(3)',
+      format: 'CSV',
+      abort_signal: controller.signal,
+    })
+    controller.abort()
+
+    await expectAsync(selectPromise).toBeRejectedWith(
+      jasmine.objectContaining({
+        // this happens even before we instantiate the request and its listeners, so that is just a plain AbortError
+        name: 'AbortError',
+      }),
+    )
   })
 
   it('cancels a select query while reading response', async () => {
@@ -136,7 +153,8 @@ describe('[Node.js] abort request streaming', () => {
 
       await expectAsync(insertPromise).toBeRejectedWith(
         jasmine.objectContaining({
-          message: jasmine.stringMatching('The user aborted a request'),
+          // this happens even before we instantiate the request and its listeners, so that is just a plain AbortError
+          name: 'AbortError',
         }),
       )
     })
