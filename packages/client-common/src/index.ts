@@ -80,10 +80,11 @@ export {
   numberConfigURLValue,
 } from './config'
 export {
-  withCompressionHeaders,
   isSuccessfulResponse,
+  sleep,
   toSearchParams,
   transformUrl,
+  withCompressionHeaders,
   withHttpSettings,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'

@@ -15,6 +15,7 @@ import type {
   LogWriter,
   ResponseHeaders,
 } from '@clickhouse/client-common'
+import { sleep } from '@clickhouse/client-common'
 import {
   isSuccessfulResponse,
   parseError,
@@ -420,6 +421,9 @@ export abstract class NodeBaseConnection
     params: RequestParams,
     op: ConnOperation,
   ): Promise<RequestResult> {
+    // allows the event loop to process the idle socket timers, if the CPU load is high
+    // otherwise, we can occasionally get an expired socket, see https://github.com/ClickHouse/clickhouse-js/issues/294
+    await sleep(0)
     return new Promise((resolve, reject) => {
       const start = Date.now()
       const request = this.createClientRequest(params)
