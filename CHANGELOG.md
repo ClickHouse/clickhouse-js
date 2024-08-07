@@ -1,8 +1,12 @@
-# 1.5.0 (Node.js, Web)
+# 1.4.1 (Node.js, Web)
 
-## New features
+## Improvements
 
-- `ClickHouseClient` is now exported as a value from packages, allowing to a better integration in dependency injection frameworks which rely on IoC.
+- `ClickHouseClient` is now exported as a value from `@clickhouse/client` and `@clickhouse/client-web` packages, allowing for better integration in dependency injection frameworks that rely on IoC (e.g., [Nest.js](https://github.com/nestjs/nest), [tsyringe](https://github.com/microsoft/tsyringe)) ([@mathieu-bour](https://github.com/mathieu-bour), [#292](https://github.com/ClickHouse/clickhouse-js/issues/292)).
+
+## Bug fixes
+
+- Fixed a potential socket hang up issue that could happen under 100% CPU load ([#294](https://github.com/ClickHouse/clickhouse-js/issues/294)).
 
 # 1.4.0 (Node.js)
 
