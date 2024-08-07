@@ -1,6 +1,6 @@
-export type {
+export {
   WebClickHouseClient as ClickHouseClient,
-  QueryResult,
+  type QueryResult,
 } from './client'
 export { createClient } from './client'
 export { type WebClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
