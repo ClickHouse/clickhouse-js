@@ -81,6 +81,7 @@ export async function emitCompressedBody(
   body: string | Buffer,
   encoding = 'gzip',
 ) {
+  await sleep(0)
   const compressedBody = await gzip(body)
   request.emit(
     'response',
