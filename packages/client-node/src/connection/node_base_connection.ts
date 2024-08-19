@@ -144,7 +144,8 @@ export abstract class NodeBaseConnection
     })
     const { controller, controllerCleanup } = this.getAbortController(params)
     // allows to enforce the compression via the settings even if the client instance has it disabled
-    const decompressResponse = clickhouse_settings.enable_http_compression === 1
+    const enableResponseCompression =
+      clickhouse_settings.enable_http_compression === 1
     try {
       const { stream, response_headers } = await this.request(
         {
@@ -152,7 +153,7 @@ export abstract class NodeBaseConnection
           url: transformUrl({ url: this.params.url, searchParams }),
           body: params.query,
           abort_signal: controller.signal,
-          enable_response_compression: decompressResponse,
+          enable_response_compression: enableResponseCompression,
           headers: this.buildRequestHeaders(params),
         },
         'Query',
@@ -171,7 +172,7 @@ export abstract class NodeBaseConnection
         search_params: searchParams,
         err: err as Error,
         extra_args: {
-          decompress_response: decompressResponse,
+          decompress_response: enableResponseCompression,
           clickhouse_settings,
         },
       })
