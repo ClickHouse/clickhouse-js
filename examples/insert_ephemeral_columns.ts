@@ -9,9 +9,9 @@ void (async () => {
     query: `
       CREATE OR REPLACE TABLE ${tableName}
       (
-        id          UInt64,
-        message     String DEFAULT message_raw,
-        message_raw String EPHEMERAL
+        id              UInt64,
+        message         String DEFAULT message_default,
+        message_default String EPHEMERAL
       )
       ENGINE MergeTree()
       ORDER BY (id)
@@ -23,17 +23,17 @@ void (async () => {
     values: [
       {
         id: '42',
-        message_raw: 'foo',
+        message_default: 'foo',
       },
       {
         id: '144',
-        message_raw: 'bar',
+        message_default: 'bar',
       },
     ],
     format: 'JSONEachRow',
     // The name of the ephemeral column has to be specified here
     // to trigger the default values logic for the rest of the columns
-    columns: ['message_raw'],
+    columns: ['id', 'message_default'],
   })
 
   const rows = await client.query({
