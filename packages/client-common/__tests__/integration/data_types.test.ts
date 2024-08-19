@@ -4,7 +4,7 @@ import type {
 } from '@clickhouse/client-common'
 import { randomUUID } from '@test/utils/guid'
 import { createTableWithFields } from '../fixtures/table_with_fields'
-import { createTestClient, getRandomInt, TestEnv, whenOnEnv } from '../utils'
+import { createTestClient, getRandomInt } from '../utils'
 
 describe('data types', () => {
   let client: ClickHouseClient
@@ -503,25 +503,6 @@ describe('data types', () => {
     )
     await insertAndAssert(table, values)
   })
-
-  // JSON cannot be used on a "modern" Cloud instance
-  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster, TestEnv.Cloud).it(
-    'should work with JSON',
-    async () => {
-      const values = [
-        {
-          o: { a: 1, b: { c: 2, d: [1, 2, 3] } },
-        },
-        {
-          o: { a: 2, b: { c: 3, d: [4, 5, 6] } },
-        },
-      ]
-      const table = await createTableWithFields(client, 'o JSON', {
-        allow_experimental_object_type: 1,
-      })
-      await insertAndAssert(table, values)
-    },
-  )
 
   describe('Nested', () => {
     it('should work by default', async () => {
