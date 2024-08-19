@@ -1,3 +1,9 @@
+# 1.5.0 (Node.js)
+
+## New features
+
+- It is now possible to disable the automatic decompression of the response stream with the `exec` method. See `ExecParams.decompress_response_stream` for more details. ([#298](https://github.com/ClickHouse/clickhouse-js/issues/298)).
+
 # 1.4.1 (Node.js, Web)
 
 ## Improvements
