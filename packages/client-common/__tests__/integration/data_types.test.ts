@@ -516,7 +516,7 @@ describe('data types', () => {
           o: { a: 2, b: { c: 3, d: [4, 5, 6] } },
         },
       ]
-      const table = await createTableWithFields(client, 'o JSON', {
+      const table = await createTableWithFields(client, `o Object('json')`, {
         allow_experimental_object_type: 1,
       })
       await insertAndAssert(table, values)

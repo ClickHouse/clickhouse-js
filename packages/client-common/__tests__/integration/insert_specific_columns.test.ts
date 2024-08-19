@@ -1,97 +1,44 @@
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
-import { createTestClient, TestEnv, whenOnEnv } from '../utils'
+import { createTestClient, guid } from '../utils'
+import { createSimpleTable } from '../fixtures/simple_table'
 
-// allow_experimental_object_type is not permitted on a modern Cloud instance
-whenOnEnv(
-  TestEnv.LocalSingleNode,
-  TestEnv.LocalCluster,
-  TestEnv.Cloud,
-).describe('Insert with specific columns', () => {
+describe('Insert with specific columns', () => {
   let client: ClickHouseClient
   let table: string
 
   beforeEach(async () => {
-    client = createTestClient({
-      clickhouse_settings: {
-        allow_experimental_object_type: 1,
-      },
-    })
+    client = createTestClient()
   })
   afterEach(async () => {
     await client.close()
   })
 
-  // Inspired by https://github.com/ClickHouse/clickhouse-js/issues/217
-  // Specifying a particular insert column is especially useful with ephemeral types
   describe('list of columns', () => {
     beforeEach(async () => {
-      // `message_raw` will be used as a source for default values here
-      table = await createTableWithFields(
-        client,
-        `
-        event_type  LowCardinality(String) DEFAULT JSONExtractString(message_raw, 'type'),
-        repo_name   LowCardinality(String) DEFAULT JSONExtractString(message_raw, 'repo', 'name'),
-        message     JSON                   DEFAULT message_raw,
-        message_raw String                 EPHEMERAL
-      `, // `id UInt32` will be added as well
-      )
+      table = `insert_specific_columns_${guid()}`
+      await createSimpleTable(client, table)
     })
+
+    const row = {
+      id: '42',
+      name: 'foo',
+      sku: [144],
+    }
 
     it('should work with a single column', async () => {
       await client.insert({
         table,
-        values: [
-          {
-            message_raw: {
-              type: 'MyEventType',
-              repo: {
-                name: 'foo',
-              },
-            },
-          },
-          {
-            message_raw: {
-              type: 'SomeOtherType',
-              repo: {
-                name: 'bar',
-              },
-            },
-          },
-        ],
+        values: [{ id: 42 }],
         format: 'JSONEachRow',
-        columns: ['message_raw'],
+        columns: ['id'],
       })
-
-      const result = await client
-        .query({
-          query: `SELECT * FROM ${table} ORDER BY repo_name DESC`,
-          format: 'JSONEachRow',
-        })
-        .then((r) => r.json())
-
+      const result = await select()
       expect(result).toEqual([
         {
-          id: 0, // defaults for everything are taken from `message_raw`
-          event_type: 'MyEventType',
-          repo_name: 'foo',
-          message: {
-            type: 'MyEventType',
-            repo: {
-              name: 'foo',
-            },
-          },
-        },
-        {
-          id: 0,
-          event_type: 'SomeOtherType',
-          repo_name: 'bar',
-          message: {
-            type: 'SomeOtherType',
-            repo: {
-              name: 'bar',
-            },
-          },
+          id: '42',
+          name: '',
+          sku: [],
         },
       ])
     })
@@ -101,119 +48,41 @@ whenOnEnv(
         table,
         values: [
           {
-            id: 42,
-            message_raw: {
-              type: 'MyEventType',
-              repo: {
-                name: 'foo',
-              },
-            },
-          },
-          {
-            id: 144,
-            message_raw: {
-              type: 'SomeOtherType',
-              repo: {
-                name: 'bar',
-              },
-            },
+            id: '42',
+            name: 'foo',
           },
         ],
         format: 'JSONEachRow',
-        columns: ['id', 'message_raw'],
+        columns: ['id', 'name'],
       })
-
-      const result = await client
-        .query({
-          query: `SELECT * FROM ${table} ORDER BY id`,
-          format: 'JSONEachRow',
-        })
-        .then((r) => r.json())
-
+      const result = await select()
       expect(result).toEqual([
         {
-          id: 42, // all defaults except `id` are taken from `message_raw`
-          event_type: 'MyEventType',
-          repo_name: 'foo',
-          message: {
-            type: 'MyEventType',
-            repo: {
-              name: 'foo',
-            },
-          },
-        },
-        {
-          id: 144,
-          event_type: 'SomeOtherType',
-          repo_name: 'bar',
-          message: {
-            type: 'SomeOtherType',
-            repo: {
-              name: 'bar',
-            },
-          },
+          id: '42',
+          name: 'foo',
+          sku: [],
         },
       ])
     })
 
-    // In this case, `message_raw` will be ignored, as expected
     it('should work when all the columns are specified', async () => {
-      const value1 = {
-        id: 42,
-        event_type: 'MyEventType',
-        repo_name: 'foo',
-        message: { foo: 'bar' },
-      }
-      const value2 = {
-        id: 42,
-        event_type: 'MyEventType',
-        repo_name: 'foo',
-        message: { foo: 'bar' },
-      }
       await client.insert({
         table,
-        values: [
-          { ...value1, message_raw: '{ "i": 42 }' },
-          { ...value2, message_raw: '{ "j": 255 }' },
-        ],
+        values: [row],
         format: 'JSONEachRow',
-        columns: ['id', 'event_type', 'repo_name', 'message', 'message_raw'],
+        columns: ['id', 'name', 'sku'],
       })
-
-      const result = await client
-        .query({
-          query: `SELECT * FROM ${table} ORDER BY id`,
-          format: 'JSONEachRow',
-        })
-        .then((r) => r.json())
-
-      expect(result).toEqual([value1, value2])
+      const result = await select()
+      expect(result).toEqual([row])
     })
 
     it('should fail when an unknown column is specified', async () => {
       await expectAsync(
         client.insert({
           table,
-          values: [
-            {
-              message_raw: {
-                type: 'MyEventType',
-                repo: {
-                  name: 'foo',
-                },
-              },
-            },
-            {
-              message_raw: {
-                type: 'SomeOtherType',
-                repo: {
-                  name: 'bar',
-                },
-              },
-            },
-          ],
+          values: [row],
           format: 'JSONEachRow',
-          columns: ['foobar', 'message_raw'],
+          columns: ['foobar', 'id'],
         }),
       ).toBeRejectedWith(
         jasmine.objectContaining({
@@ -223,8 +92,6 @@ whenOnEnv(
     })
   })
 
-  // This is impossible to test with ephemeral columns (need to send at least `message_raw`),
-  // so for this corner case the tests are simplified. Essentially, just a fallback to the "normal" insert behavior.
   describe('list of columns corner cases', () => {
     beforeEach(async () => {
       table = await createTableWithFields(
@@ -249,7 +116,9 @@ whenOnEnv(
 
       const result = await client
         .query({
-          query: `SELECT * FROM ${table} ORDER BY id`,
+          query: `SELECT *
+                  FROM ${table}
+                  ORDER BY id`,
           format: 'JSONEachRow',
         })
         .then((r) => r.json())
@@ -258,8 +127,6 @@ whenOnEnv(
     })
   })
 
-  // TODO: For some reason, ephemeral columns don't work well with EXCEPT (even from the CLI) - to be investigated.
-  //  Thus, the tests for this case are simplified.
   describe('list of excluded columns', () => {
     beforeEach(async () => {
       table = await createTableWithFields(
@@ -283,7 +150,9 @@ whenOnEnv(
 
       const result = await client
         .query({
-          query: `SELECT * FROM ${table} ORDER BY id`,
+          query: `SELECT *
+                  FROM ${table}
+                  ORDER BY id`,
           format: 'JSONEachRow',
         })
         .then((r) => r.json())
@@ -306,7 +175,9 @@ whenOnEnv(
 
       const result = await client
         .query({
-          query: `SELECT * FROM ${table} ORDER BY s DESC`,
+          query: `SELECT *
+                  FROM ${table}
+                  ORDER BY s DESC`,
           format: 'JSONEachRow',
         })
         .then((r) => r.json())
@@ -334,7 +205,8 @@ whenOnEnv(
 
       const result = await client
         .query({
-          query: `SELECT * FROM ${table}`,
+          query: `SELECT *
+                  FROM ${table}`,
           format: 'JSONEachRow',
         })
         .then((r) => r.json())
@@ -354,7 +226,8 @@ whenOnEnv(
 
       const result = await client
         .query({
-          query: `SELECT * FROM ${table}`,
+          query: `SELECT *
+                  FROM ${table}`,
           format: 'JSONEachRow',
         })
         .then((r) => r.json())
@@ -381,7 +254,8 @@ whenOnEnv(
 
       const result = await client
         .query({
-          query: `SELECT * FROM ${table}`,
+          query: `SELECT *
+                  FROM ${table}`,
           format: 'JSONEachRow',
         })
         .then((r) => r.json())
@@ -389,4 +263,14 @@ whenOnEnv(
       expect(result).toEqual(values)
     })
   })
+
+  async function select() {
+    const rs = await client.query({
+      query: `SELECT *
+              FROM ${table}
+              ORDER BY id ASC`,
+      format: 'JSONEachRow',
+    })
+    return rs.json<{ id: string; name: string; sku: number[] }>()
+  }
 })
