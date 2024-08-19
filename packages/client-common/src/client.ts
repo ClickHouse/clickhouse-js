@@ -66,10 +66,17 @@ export type ExecParams = BaseQueryParams & {
    *  If {@link ExecParamsWithValues.values} are defined, the query is sent as a request parameter,
    *  and the values are sent in the request body instead. */
   query: string
+  /** If set to `false`, the client _will not_ decompress the response stream, even if the response compression
+   *  was requested by the client via the {@link BaseClickHouseClientConfigOptions.compression.response } setting.
+   *  This could be useful if the response stream is passed to another application as-is,
+   *  and the decompression is handled there.
+   *  @note 1) Node.js only. This setting will have no effect on the Web version.
+   *  @note 2) In case of an error, the stream will be decompressed anyway, regardless of this setting.
+   *  @default true */
+  decompress_response_stream?: boolean
 }
 export type ExecParamsWithValues<Stream> = ExecParams & {
-  /** If you have a custom INSERT statement to run with `exec`,
-   *  the data from this stream will be inserted.
+  /** If you have a custom INSERT statement to run with `exec`, the data from this stream will be inserted.
    *
    *  NB: the data in the stream is expected to be serialized accordingly to the FORMAT clause
    *  used in {@link ExecParams.query} in this case.
@@ -170,11 +177,12 @@ export class ClickHouseClient<Stream = unknown> {
   }
 
   /**
-   * Used for most statements that can have a response, such as SELECT.
-   * FORMAT clause should be specified separately via {@link QueryParams.format} (default is JSON)
-   * Consider using {@link ClickHouseClient.insert} for data insertion,
-   * or {@link ClickHouseClient.command} for DDLs.
+   * Used for most statements that can have a response, such as `SELECT`.
+   * FORMAT clause should be specified separately via {@link QueryParams.format} (default is `JSON`).
+   * Consider using {@link ClickHouseClient.insert} for data insertion, or {@link ClickHouseClient.command} for DDLs.
    * Returns an implementation of {@link BaseResultSet}.
+   *
+   * See {@link DataFormat} for the formats supported by the client.
    */
   async query<Format extends DataFormat = 'JSON'>(
     params: QueryParamsWithFormat<Format>,
@@ -211,7 +219,9 @@ export class ClickHouseClient<Stream = unknown> {
    * when the format clause is not applicable, or when you are not interested in the response at all.
    * Response stream is destroyed immediately as we do not expect useful information there.
    * Examples of such statements are DDLs or custom inserts.
-   * If you are interested in the response data, consider using {@link ClickHouseClient.exec}
+   *
+   * @note if you have a custom query that does not work with {@link ClickHouseClient.query},
+   * and you are interested in the response data, consider using {@link ClickHouseClient.exec}.
    */
   async command(params: CommandParams): Promise<CommandResult> {
     const query = removeTrailingSemi(params.query.trim())
@@ -222,18 +232,23 @@ export class ClickHouseClient<Stream = unknown> {
   }
 
   /**
-   * Similar to {@link ClickHouseClient.command}, but for the cases where the output is expected,
-   * but format clause is not applicable. The caller of this method is expected to consume the stream,
-   * otherwise, the request will eventually be timed out.
+   * Similar to {@link ClickHouseClient.command}, but for the cases where the output _is expected_,
+   * but format clause is not applicable. The caller of this method _must_ consume the stream,
+   * as the underlying socket will not be released until then, and the request will eventually be timed out.
+   *
+   * @note it is not intended to use this method to execute the DDLs, such as `CREATE TABLE` or similar;
+   * use {@link ClickHouseClient.command} instead.
    */
   async exec(
     params: ExecParams | ExecParamsWithValues<Stream>,
   ): Promise<ExecResult<Stream>> {
     const query = removeTrailingSemi(params.query.trim())
     const values = 'values' in params ? params.values : undefined
+    const decompress_response_stream = params.decompress_response_stream ?? true
     return await this.connection.exec({
       query,
       values,
+      decompress_response_stream,
       ...this.withClientQueryParams(params),
     })
   }
@@ -242,8 +257,10 @@ export class ClickHouseClient<Stream = unknown> {
    * The primary method for data insertion. It is recommended to avoid arrays in case of large inserts
    * to reduce application memory consumption and consider streaming for most of such use cases.
    * As the insert operation does not provide any output, the response stream is immediately destroyed.
-   * In case of a custom insert operation, such as, for example, INSERT FROM SELECT,
-   * consider using {@link ClickHouseClient.command}, passing the entire raw query there (including FORMAT clause).
+   *
+   * @note in case of a custom insert operation (e.g., `INSERT FROM SELECT`),
+   * consider using {@link ClickHouseClient.command}, passing the entire raw query there
+   * (including the `FORMAT` clause).
    */
   async insert<T>(params: InsertParams<Stream, T>): Promise<InsertResult> {
     if (Array.isArray(params.values) && params.values.length === 0) {

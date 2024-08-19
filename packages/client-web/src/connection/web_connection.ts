@@ -31,10 +31,14 @@ export type WebConnectionParams = ConnectionParams
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
   constructor(private readonly params: WebConnectionParams) {
-    this.defaultHeaders = {
-      Authorization: `Basic ${btoa(`${params.username}:${params.password}`)}`,
-      ...params?.http_headers,
-    }
+    this.defaultHeaders = withCompressionHeaders({
+      headers: {
+        Authorization: `Basic ${btoa(`${params.username}:${params.password}`)}`,
+        ...params?.http_headers,
+      },
+      enable_request_compression: params.compression.compress_request,
+      enable_response_compression: params.compression.decompress_response,
+    })
   }
 
   async query(
@@ -171,23 +175,19 @@ export class WebConnection implements Connection<ReadableStream> {
     }
 
     try {
-      const headers = withCompressionHeaders({
-        headers:
-          params?.auth !== undefined
-            ? {
-                ...this.defaultHeaders,
-                Authorization: `Basic ${btoa(`${params.auth.username}:${params.auth.password}`)}`,
-              }
-            : this.defaultHeaders,
-        compress_request: false,
-        decompress_response: this.params.compression.decompress_response,
-      })
+      const headers =
+        params?.auth !== undefined
+          ? {
+              ...this.defaultHeaders,
+              Authorization: `Basic ${btoa(`${params.auth.username}:${params.auth.password}`)}`,
+            }
+          : this.defaultHeaders
       const response = await fetch(url, {
         body: values,
-        headers,
         keepalive: this.params.keep_alive.enabled,
         method: method ?? 'POST',
         signal: abortController.signal,
+        headers,
       })
       clearTimeout(timeout)
       if (isSuccessfulResponse(response.status)) {

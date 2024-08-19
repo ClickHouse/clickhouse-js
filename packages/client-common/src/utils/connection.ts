@@ -5,17 +5,17 @@ export type HttpHeaders = Record<string, HttpHeader | undefined>
 
 export function withCompressionHeaders({
   headers,
-  compress_request,
-  decompress_response,
+  enable_request_compression,
+  enable_response_compression,
 }: {
   headers: HttpHeaders
-  compress_request: boolean | undefined
-  decompress_response: boolean | undefined
+  enable_request_compression: boolean | undefined
+  enable_response_compression: boolean | undefined
 }): Record<string, string> {
   return {
     ...headers,
-    ...(decompress_response ? { 'Accept-Encoding': 'gzip' } : {}),
-    ...(compress_request ? { 'Content-Encoding': 'gzip' } : {}),
+    ...(enable_response_compression ? { 'Accept-Encoding': 'gzip' } : {}),
+    ...(enable_request_compression ? { 'Content-Encoding': 'gzip' } : {}),
   }
 }
 
