@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [18, 20, 21]
+        node: [18, 20, 22]
     steps:
       - uses: actions/checkout@main
 
@@ -93,7 +93,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [18, 20, 21]
+        node: [18, 20, 22]
         clickhouse: [head, latest]
 
     steps:
@@ -134,7 +134,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [18, 20, 21]
+        node: [18, 20, 22]
         clickhouse: [head, latest]
 
     steps:
@@ -192,13 +192,28 @@ jobs:
         run: |
           npm run test:web:integration:local_cluster
 
+  wake-up-cloud:
+    needs:
+      - node-unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Wake up the cloud instance
+        run: |
+          curl \
+            --user "default:${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}" \
+            --connect-timeout 60 \
+            --max-time 300 \
+            --data-binary "SELECT 1" \
+            "https://${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT }}:8443"
+
   node-integration-tests-cloud-smt:
-    needs: node-unit-tests
+    needs: wake-up-cloud
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        node: [18, 20, 21]
+        node: [18, 20, 22]
 
     steps:
       - uses: actions/checkout@main
@@ -220,7 +235,7 @@ jobs:
           npm run test:node:integration:cloud_smt
 
   web-integration-tests-cloud-smt:
-    needs: node-unit-tests
+    needs: wake-up-cloud
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
