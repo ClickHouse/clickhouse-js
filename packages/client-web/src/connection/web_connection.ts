@@ -179,8 +179,9 @@ export class WebConnection implements Connection<ReadableStream> {
                 Authorization: `Basic ${btoa(`${params.auth.username}:${params.auth.password}`)}`,
               }
             : this.defaultHeaders,
-        compress_request: false,
-        decompress_response: this.params.compression.decompress_response,
+        enable_request_compression: false,
+        enable_response_compression:
+          this.params.compression.decompress_response,
       })
       const response = await fetch(url, {
         body: values,

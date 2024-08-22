@@ -15,10 +15,10 @@ import type {
   LogWriter,
   ResponseHeaders,
 } from '@clickhouse/client-common'
-import { sleep } from '@clickhouse/client-common'
 import {
   isSuccessfulResponse,
   parseError,
+  sleep,
   toSearchParams,
   transformUrl,
   withHttpSettings,
@@ -63,8 +63,10 @@ export interface RequestParams {
   body?: string | Stream.Readable
   // provided by the user and wrapped around internally
   abort_signal: AbortSignal
-  decompress_response?: boolean
-  compress_request?: boolean
+  enable_response_compression?: boolean
+  enable_request_compression?: boolean
+  // if there are compression headers, attempt to decompress it
+  try_decompress_response_stream?: boolean
   parse_summary?: boolean
 }
 
@@ -73,7 +75,6 @@ export abstract class NodeBaseConnection
 {
   protected readonly defaultAuthHeader: string
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders
-  protected readonly additionalHTTPHeaders: Record<string, string>
 
   private readonly logger: LogWriter
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
@@ -83,12 +84,11 @@ export abstract class NodeBaseConnection
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent,
   ) {
-    this.additionalHTTPHeaders = params.http_headers ?? {}
     this.defaultAuthHeader = `Basic ${Buffer.from(
       `${params.username}:${params.password}`,
     ).toString('base64')}`
     this.defaultHeaders = {
-      ...this.additionalHTTPHeaders,
+      ...(params.http_headers ?? {}),
       // KeepAlive agent for some reason does not set this on its own
       Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
       'User-Agent': getUserAgent(this.params.application_id),
@@ -137,13 +137,15 @@ export abstract class NodeBaseConnection
     )
     const searchParams = toSearchParams({
       database: this.params.database,
-      clickhouse_settings,
       query_params: params.query_params,
       session_id: params.session_id,
+      clickhouse_settings,
       query_id,
     })
-    const decompressResponse = clickhouse_settings.enable_http_compression === 1
     const { controller, controllerCleanup } = this.getAbortController(params)
+    // allows to enforce the compression via the settings even if the client instance has it disabled
+    const enableResponseCompression =
+      clickhouse_settings.enable_http_compression === 1
     try {
       const { stream, response_headers } = await this.request(
         {
@@ -151,7 +153,7 @@ export abstract class NodeBaseConnection
           url: transformUrl({ url: this.params.url, searchParams }),
           body: params.query,
           abort_signal: controller.signal,
-          decompress_response: decompressResponse,
+          enable_response_compression: enableResponseCompression,
           headers: this.buildRequestHeaders(params),
         },
         'Query',
@@ -170,7 +172,7 @@ export abstract class NodeBaseConnection
         search_params: searchParams,
         err: err as Error,
         extra_args: {
-          decompress_response: decompressResponse,
+          decompress_response: enableResponseCompression,
           clickhouse_settings,
         },
       })
@@ -200,7 +202,7 @@ export abstract class NodeBaseConnection
           url: transformUrl({ url: this.params.url, searchParams }),
           body: params.values,
           abort_signal: controller.signal,
-          compress_request: this.params.compression.compress_request,
+          enable_request_compression: this.params.compression.compress_request,
           parse_summary: true,
           headers: this.buildRequestHeaders(params),
         },
@@ -371,16 +373,28 @@ export abstract class NodeBaseConnection
   ): Promise<ConnExecResult<Stream.Readable>> {
     const query_id = this.getQueryId(params.query_id)
     const sendQueryInParams = params.values !== undefined
+    const clickhouse_settings = withHttpSettings(
+      params.clickhouse_settings,
+      this.params.compression.decompress_response,
+    )
     const toSearchParamsOptions = {
       query: sendQueryInParams ? params.query : undefined,
       database: this.params.database,
-      clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
       session_id: params.session_id,
+      clickhouse_settings,
       query_id,
     }
     const searchParams = toSearchParams(toSearchParamsOptions)
     const { controller, controllerCleanup } = this.getAbortController(params)
+    const tryDecompressResponseStream =
+      params.op === 'Exec'
+        ? // allows to disable stream decompression for the `Exec` operation only
+          params.decompress_response_stream ??
+          this.params.compression.decompress_response
+        : // there is nothing useful in the response stream for the `Command` operation,
+          // and it is immediately destroyed; never decompress it
+          false
     try {
       const { stream, summary, response_headers } = await this.request(
         {
@@ -389,6 +403,10 @@ export abstract class NodeBaseConnection
           body: sendQueryInParams ? params.values : params.query,
           abort_signal: controller.signal,
           parse_summary: true,
+          enable_request_compression: this.params.compression.compress_request,
+          enable_response_compression:
+            this.params.compression.decompress_response,
+          try_decompress_response_stream: tryDecompressResponseStream,
           headers: this.buildRequestHeaders(params),
         },
         params.op,
@@ -438,20 +456,30 @@ export abstract class NodeBaseConnection
       ): Promise<void> => {
         this.logResponse(op, request, params, _response, start)
 
-        const decompressionResult = decompressResponse(_response)
-        if (isDecompressionError(decompressionResult)) {
-          return reject(decompressionResult.error)
+        let responseStream: Stream.Readable
+        const tryDecompressResponseStream =
+          params.try_decompress_response_stream ?? true
+        // even if the stream decompression is disabled, we have to decompress it in case of an error
+        const isFailedResponse = !isSuccessfulResponse(_response.statusCode)
+        if (tryDecompressResponseStream || isFailedResponse) {
+          const decompressionResult = decompressResponse(_response)
+          if (isDecompressionError(decompressionResult)) {
+            return reject(decompressionResult.error)
+          }
+          responseStream = decompressionResult.response
+        } else {
+          responseStream = _response
         }
-        if (isSuccessfulResponse(_response.statusCode)) {
+        if (isFailedResponse) {
+          reject(parseError(await getAsText(responseStream)))
+        } else {
           return resolve({
-            stream: decompressionResult.response,
+            stream: responseStream,
             summary: params.parse_summary
               ? this.parseSummary(op, _response)
               : undefined,
             response_headers: { ..._response.headers },
           })
-        } else {
-          reject(parseError(await getAsText(decompressionResult.response)))
         }
       }
 
@@ -492,7 +520,7 @@ export abstract class NodeBaseConnection
           }
         }
 
-        if (params.compress_request) {
+        if (params.enable_request_compression) {
           Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback)
         } else {
           Stream.pipeline(bodyStream, request, callback)
@@ -626,4 +654,5 @@ interface SocketInfo {
 type RunExecParams = ConnBaseQueryParams & {
   op: 'Exec' | 'Command'
   values?: ConnExecParams<Stream.Readable>['values']
+  decompress_response_stream?: boolean
 }

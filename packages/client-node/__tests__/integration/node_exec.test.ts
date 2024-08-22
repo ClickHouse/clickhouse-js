@@ -1,10 +1,10 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
-import { guid } from '@test/utils'
 import { createSimpleTable } from '@test/fixtures/simple_table'
+import { createTestClient, guid } from '@test/utils'
 import Stream from 'stream'
-import { getAsText } from '../../src/utils'
+import Zlib from 'zlib'
 import { drainStream, ResultSet } from '../../src'
+import { getAsText } from '../../src/utils'
 
 describe('[Node.js] exec', () => {
   let client: ClickHouseClient<Stream.Readable>
@@ -163,6 +163,46 @@ describe('[Node.js] exec', () => {
         format: 'JSONEachRow',
       })
       expect(await rs.json()).toEqual(expected)
+    }
+  })
+
+  describe('disabled stream decompression', () => {
+    beforeEach(() => {
+      client = createTestClient({
+        compression: {
+          response: true,
+        },
+      })
+    })
+
+    it('should get a compressed response stream without decompressing it', async () => {
+      const result = await client.exec({
+        query: 'SELECT 42 AS result FORMAT JSONEachRow',
+        decompress_response_stream: false,
+      })
+      const text = await getAsText(decompress(result.stream))
+      expect(text).toEqual('{"result":42}\n')
+    })
+
+    it('should force decompress in case of an error', async () => {
+      await expectAsync(
+        client.exec({
+          query: 'invalid',
+          decompress_response_stream: false,
+        }),
+      ).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Syntax error'),
+        }),
+      )
+    })
+
+    function decompress(stream: Stream.Readable) {
+      return Stream.pipeline(stream, Zlib.createGunzip(), (err) => {
+        if (err) {
+          console.error(err)
+        }
+      })
     }
   })
 })
