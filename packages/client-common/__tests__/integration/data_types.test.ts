@@ -551,7 +551,7 @@ describe('data types', () => {
   )
 
   // New experimental Dynamic type
-  // https://clickhouse.com/docs/en/sql-reference/data-types/variant
+  // https://clickhouse.com/docs/en/sql-reference/data-types/dynamic
   whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
     'should work with Dynamic',
     async () => {
