@@ -129,7 +129,9 @@ describe('data types', () => {
     })
     const result = await client
       .query({
-        query: `SELECT * FROM ${table} ORDER BY id ASC`,
+        query: `SELECT *
+                FROM ${table}
+                ORDER BY id ASC`,
         format: 'TabSeparated',
       })
       .then((r) => r.text())
@@ -238,7 +240,9 @@ describe('data types', () => {
     await insertData(table, values)
     const result = await client
       .query({
-        query: `SELECT CAST(e1, 'Int8') AS e1, CAST(e2, 'Int8') AS e2 FROM ${table} ORDER BY id ASC`,
+        query: `SELECT CAST(e1, 'Int8') AS e1, CAST(e2, 'Int8') AS e2
+                FROM ${table}
+                ORDER BY id ASC`,
         format: 'JSONEachRow',
       })
       .then((r) => r.json())
@@ -426,7 +430,8 @@ describe('data types', () => {
     expect(
       await client
         .query({
-          query: `SELECT sum(distance) FROM ${table}`,
+          query: `SELECT sum(distance)
+                  FROM ${table}`,
           format: 'TabSeparated',
         })
         .then((r) => r.text()),
@@ -434,7 +439,8 @@ describe('data types', () => {
     expect(
       await client
         .query({
-          query: `SELECT max(distance) FROM ${table}`,
+          query: `SELECT max(distance)
+                  FROM ${table}`,
           format: 'TabSeparated',
         })
         .then((r) => r.text()),
@@ -442,7 +448,8 @@ describe('data types', () => {
     expect(
       await client
         .query({
-          query: `SELECT uniqExact(distance) FROM ${table}`,
+          query: `SELECT uniqExact(distance)
+                  FROM ${table}`,
           format: 'TabSeparated',
         })
         .then((r) => r.text()),
@@ -504,9 +511,10 @@ describe('data types', () => {
     await insertAndAssert(table, values)
   })
 
-  // JSON cannot be used on a "modern" Cloud instance
-  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster, TestEnv.Cloud).it(
-    'should work with JSON',
+  // New experimental JSON type
+  // https://clickhouse.com/docs/en/sql-reference/data-types/newjson
+  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
+    'should work with (new) JSON',
     async () => {
       const values = [
         {
@@ -516,8 +524,40 @@ describe('data types', () => {
           o: { a: 2, b: { c: 3, d: [4, 5, 6] } },
         },
       ]
-      const table = await createTableWithFields(client, `o Object('json')`, {
-        allow_experimental_object_type: 1,
+      const table = await createTableWithFields(client, `o JSON`, {
+        allow_experimental_json_type: 1,
+      })
+      await insertAndAssert(table, values, {
+        output_format_json_quote_64bit_integers: 0,
+      })
+    },
+  )
+
+  // New experimental Variant type
+  // https://clickhouse.com/docs/en/sql-reference/data-types/variant
+  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
+    'should work with Variant',
+    async () => {
+      const values = [{ var: 'foo' }, { var: 42 }]
+      const table = await createTableWithFields(
+        client,
+        `var Variant(String, Int32)`,
+        {
+          allow_experimental_variant_type: 1,
+        },
+      )
+      await insertAndAssert(table, values)
+    },
+  )
+
+  // New experimental Dynamic type
+  // https://clickhouse.com/docs/en/sql-reference/data-types/variant
+  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
+    'should work with Dynamic',
+    async () => {
+      const values = [{ dyn: 'foo' }, { dyn: { bar: 'qux' } }]
+      const table = await createTableWithFields(client, `dyn Dynamic`, {
+        allow_experimental_dynamic_type: 1,
       })
       await insertAndAssert(table, values)
     },
@@ -655,7 +695,9 @@ describe('data types', () => {
       })
       const result = await client
         .query({
-          query: `SELECT n.id, n.name, n.createdAt, n.roles FROM ${table} ORDER BY id ASC`,
+          query: `SELECT n.id, n.name, n.createdAt, n.roles
+                  FROM ${table}
+                  ORDER BY id ASC`,
           format: 'JSONEachRow',
         })
         .then((r) => r.json())
@@ -683,25 +725,36 @@ describe('data types', () => {
   ) {
     const values = data.map((v, i) => ({ ...v, id: i + 1 }))
     await client.insert({
+      format: 'JSONEachRow',
       table,
       values,
-      format: 'JSONEachRow',
       clickhouse_settings,
     })
   }
 
-  async function assertData<T>(table: string, data: T[]) {
+  async function assertData<T>(
+    table: string,
+    data: T[],
+    clickhouse_settings: ClickHouseSettings = {},
+  ) {
     const result = await client
       .query({
-        query: `SELECT * EXCEPT (id) FROM ${table} ORDER BY id ASC`,
+        query: `SELECT * EXCEPT (id)
+                FROM ${table}
+                ORDER BY id ASC`,
         format: 'JSONEachRow',
+        clickhouse_settings,
       })
       .then((r) => r.json())
     expect(result).toEqual(data)
   }
 
-  async function insertAndAssert<T>(table: string, data: T[]) {
-    await insertData(table, data)
-    await assertData(table, data)
+  async function insertAndAssert<T>(
+    table: string,
+    data: T[],
+    clickhouse_settings: ClickHouseSettings = {},
+  ) {
+    await insertData(table, data, clickhouse_settings)
+    await assertData(table, data, clickhouse_settings)
   }
 })

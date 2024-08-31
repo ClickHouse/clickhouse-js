@@ -58,6 +58,10 @@ If something is missing, or you found a mistake in one of these examples, please
 - [select_streaming_json_each_row_for_await.ts](node/select_streaming_json_each_row_for_await.ts) - (Node.js only) similar to [select_streaming_json_each_row.ts](node/select_streaming_json_each_row.ts), but using the `for await` loop syntax.
 - [select_streaming_text_line_by_line.ts](node/select_streaming_text_line_by_line.ts) - (Node.js only) streaming text formats from ClickHouse and processing it line by line. In this example, CSV format is used.
 
+#### Data types
+
+- [dynamic_variant_json.ts](./dynamic_variant_json.ts) - using experimental [Dynamic](https://clickhouse.com/docs/en/sql-reference/data-types/dynamic)/[Variant](https://clickhouse.com/docs/en/sql-reference/data-types/variant)/[JSON](https://clickhouse.com/docs/en/sql-reference/data-types/newjson) data types with [JSONEachRow](https://clickhouse.com/docs/en/interfaces/formats#jsoneachrow) format.
+
 #### Special cases
 
 - [default_format_setting.ts](default_format_setting.ts) - sending queries using `exec` method without a `FORMAT` clause; the default format will be set from the client settings.
