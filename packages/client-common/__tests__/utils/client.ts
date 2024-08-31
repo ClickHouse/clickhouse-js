@@ -58,6 +58,7 @@ export function createTestClient<Stream = unknown>(
       url: `https://${getFromEnv(EnvKeys.host)}:8443`,
       password: getFromEnv(EnvKeys.password),
       database: databaseName,
+      request_timeout: 60_000,
       ...logging,
       ...config,
       clickhouse_settings: clickHouseSettings,
