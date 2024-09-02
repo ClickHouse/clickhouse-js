@@ -27,6 +27,8 @@ export interface ClickHouseSummary {
   result_rows: string
   result_bytes: string
   elapsed_ns: string
+  /** Available only after ClickHouse 24.9 */
+  real_time_microseconds?: string
 }
 
 export type ResponseHeaders = Record<string, string | string[] | undefined>

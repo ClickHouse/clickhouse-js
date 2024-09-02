@@ -42,9 +42,12 @@ whenOnEnv(
         elapsed_ns: jasmine.any(String),
       }),
     )
+    assertRealTimeMicroseconds(insertSummary)
 
     const { summary: execSummary } = await client.exec({
-      query: `INSERT INTO ${tableName} SELECT * FROM ${tableName}`,
+      query: `INSERT INTO ${tableName}
+              SELECT *
+              FROM ${tableName}`,
     })
     expect(execSummary).toEqual(
       jasmine.objectContaining({
@@ -58,11 +61,14 @@ whenOnEnv(
         elapsed_ns: jasmine.any(String),
       }),
     )
+    assertRealTimeMicroseconds(execSummary)
   })
 
   it('should provide summary for command', async () => {
     const { summary } = await client.command({
-      query: `INSERT INTO ${tableName} VALUES (144, 'Hello', [2, 4]), (255, 'World', [3, 5])`,
+      query: `INSERT INTO ${tableName}
+              VALUES (144, 'Hello', [2, 4]),
+                     (255, 'World', [3, 5])`,
       clickhouse_settings: {
         wait_end_of_query: 1,
       },
@@ -79,5 +85,14 @@ whenOnEnv(
         elapsed_ns: jasmine.any(String),
       }),
     )
+    assertRealTimeMicroseconds(summary)
   })
+
+  function assertRealTimeMicroseconds(summary: any) {
+    // FIXME: remove this condition after 24.9 is released
+    if (process.env['CLICKHOUSE_VERSION'] === 'head') {
+      expect(summary.real_time_microseconds).toBeDefined()
+      expect(summary.real_time_microseconds).toMatch(/^\d+$/)
+    }
+  }
 })
