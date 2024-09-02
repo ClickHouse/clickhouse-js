@@ -1,3 +1,9 @@
+# Unreleased
+
+## New features
+
+- Added optional `real_time_microseconds` field to the `ClickHouseSummary` interface (see https://github.com/ClickHouse/ClickHouse/pull/69032)
+
 # 1.5.0 (Node.js)
 
 ## New features
