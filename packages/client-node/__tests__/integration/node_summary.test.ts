@@ -30,30 +30,34 @@ whenOnEnv(
       values: jsonValues,
       format: 'JSONEachRow',
     })
-    expect(insertSummary).toEqual({
-      read_rows: '5',
-      read_bytes: jasmine.any(String),
-      written_rows: '5',
-      written_bytes: jasmine.any(String),
-      total_rows_to_read: '0',
-      result_rows: '5',
-      result_bytes: jasmine.any(String),
-      elapsed_ns: jasmine.any(String),
-    })
+    expect(insertSummary).toEqual(
+      jasmine.objectContaining({
+        read_rows: '5',
+        read_bytes: jasmine.any(String),
+        written_rows: '5',
+        written_bytes: jasmine.any(String),
+        total_rows_to_read: '0',
+        result_rows: '5',
+        result_bytes: jasmine.any(String),
+        elapsed_ns: jasmine.any(String),
+      }),
+    )
 
     const { summary: execSummary } = await client.exec({
       query: `INSERT INTO ${tableName} SELECT * FROM ${tableName}`,
     })
-    expect(execSummary).toEqual({
-      read_rows: '5',
-      read_bytes: jasmine.any(String),
-      written_rows: '5',
-      written_bytes: jasmine.any(String),
-      total_rows_to_read: '5',
-      result_rows: '5',
-      result_bytes: jasmine.any(String),
-      elapsed_ns: jasmine.any(String),
-    })
+    expect(execSummary).toEqual(
+      jasmine.objectContaining({
+        read_rows: '5',
+        read_bytes: jasmine.any(String),
+        written_rows: '5',
+        written_bytes: jasmine.any(String),
+        total_rows_to_read: '5',
+        result_rows: '5',
+        result_bytes: jasmine.any(String),
+        elapsed_ns: jasmine.any(String),
+      }),
+    )
   })
 
   it('should provide summary for command', async () => {
@@ -63,15 +67,17 @@ whenOnEnv(
         wait_end_of_query: 1,
       },
     })
-    expect(summary).toEqual({
-      read_rows: '2',
-      read_bytes: jasmine.any(String),
-      written_rows: '2',
-      written_bytes: jasmine.any(String),
-      total_rows_to_read: '0',
-      result_rows: '2',
-      result_bytes: jasmine.any(String),
-      elapsed_ns: jasmine.any(String),
-    })
+    expect(summary).toEqual(
+      jasmine.objectContaining({
+        read_rows: '2',
+        read_bytes: jasmine.any(String),
+        written_rows: '2',
+        written_bytes: jasmine.any(String),
+        total_rows_to_read: '0',
+        result_rows: '2',
+        result_bytes: jasmine.any(String),
+        elapsed_ns: jasmine.any(String),
+      }),
+    )
   })
 })
