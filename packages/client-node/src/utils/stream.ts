@@ -8,13 +8,9 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
   let text = ''
 
   const textDecoder = new TextDecoder()
-  await new Promise((resolve, reject) => {
-    stream.on('data', (chunk) => {
-      text += textDecoder.decode(chunk, { stream: true })
-    })
-    stream.on('end', resolve)
-    stream.on('error', reject)
-  })
+  for await (const chunk of stream) {
+    text += textDecoder.decode(chunk, { stream: true })
+  }
 
   // flush
   const last = textDecoder.decode()
