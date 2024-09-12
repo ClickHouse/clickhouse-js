@@ -1,8 +1,12 @@
-# Unreleased
+# 1.6.0 (Common, Node.js, Web)
 
 ## New features
 
 - Added optional `real_time_microseconds` field to the `ClickHouseSummary` interface (see https://github.com/ClickHouse/ClickHouse/pull/69032)
+
+## Bug fixes
+
+- Fixed unhandled exceptions produced when calling `ResultSet.json` if the response data was not in fact a valid JSON. ([#311](https://github.com/ClickHouse/clickhouse-js/pull/311))
 
 # 1.5.0 (Node.js)
 

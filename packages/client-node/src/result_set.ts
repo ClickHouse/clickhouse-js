@@ -82,16 +82,12 @@ export class ResultSet<Format extends DataFormat | unknown>
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
       const result: T[] = []
-      await new Promise((resolve, reject) => {
-        const stream = this.stream<T>()
-        stream.on('data', (rows: Row[]) => {
-          for (const row of rows) {
-            result.push(row.json())
-          }
-        })
-        stream.on('end', resolve)
-        stream.on('error', reject)
-      })
+      const stream = this.stream<T>()
+      for await (const rows of stream) {
+        for (const row of rows) {
+          result.push(row.json())
+        }
+      }
       return result as any
     }
     // JSON, JSONObjectEachRow, etc.

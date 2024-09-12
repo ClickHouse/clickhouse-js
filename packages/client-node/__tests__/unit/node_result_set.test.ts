@@ -1,4 +1,4 @@
-import type { Row } from '@clickhouse/client-common'
+import type { DataFormat, Row } from '@clickhouse/client-common'
 import { guid } from '@test/utils'
 import Stream, { Readable } from 'stream'
 import { ResultSet } from '../../src'
@@ -63,10 +63,81 @@ describe('[Node.js] ResultSet', () => {
     expect(row.json()).toEqual({ foo: 'bar' })
   })
 
-  function makeResultSet(stream: Stream.Readable) {
+  describe('unhandled exceptions with streamable JSON formats', () => {
+    const logAndQuit = (err: Error | unknown, prefix: string) => {
+      console.error(prefix, err)
+      process.exit(1)
+    }
+    const uncaughtExceptionListener = (err: Error) =>
+      logAndQuit(err, 'uncaughtException:')
+    const unhandledRejectionListener = (err: unknown) =>
+      logAndQuit(err, 'unhandledRejection:')
+
+    const invalidJSON = 'invalid":"foo"}\n'
+
+    beforeAll(() => {
+      process.on('uncaughtException', uncaughtExceptionListener)
+      process.on('unhandledRejection', unhandledRejectionListener)
+    })
+    afterAll(() => {
+      process.off('uncaughtException', uncaughtExceptionListener)
+      process.off('unhandledRejection', unhandledRejectionListener)
+    })
+
+    describe('Streamable JSON formats - JSONEachRow', () => {
+      it('should not be produced (ResultSet.text)', async () => {
+        const rs = makeResultSet(
+          Stream.Readable.from([Buffer.from(invalidJSON)]),
+        )
+        const text = await rs.text()
+        expect(text).toEqual(invalidJSON)
+      })
+
+      it('should not be produced (ResultSet.json)', async () => {
+        const rs = makeResultSet(
+          Stream.Readable.from([Buffer.from(invalidJSON)]),
+        )
+        const jsonPromise = rs.json()
+        await expectAsync(jsonPromise).toBeRejectedWith(
+          jasmine.objectContaining({
+            name: 'SyntaxError',
+          }),
+        )
+      })
+    })
+
+    describe('Non-streamable JSON formats - JSON', () => {
+      it('should not be produced (ResultSet.text)', async () => {
+        const rs = makeResultSet(
+          Stream.Readable.from([Buffer.from(invalidJSON)]),
+          'JSON',
+        )
+        const text = await rs.text()
+        expect(text).toEqual(invalidJSON)
+      })
+
+      it('should not be produced (ResultSet.json)', async () => {
+        const rs = makeResultSet(
+          Stream.Readable.from([Buffer.from(invalidJSON)]),
+          'JSON',
+        )
+        const jsonPromise = rs.json()
+        await expectAsync(jsonPromise).toBeRejectedWith(
+          jasmine.objectContaining({
+            name: 'SyntaxError',
+          }),
+        )
+      })
+    })
+  })
+
+  function makeResultSet(
+    stream: Stream.Readable,
+    format: DataFormat = 'JSONEachRow',
+  ) {
     return ResultSet.instance({
       stream,
-      format: 'JSONEachRow',
+      format,
       query_id: guid(),
       log_error: (err) => {
         console.error(err)
