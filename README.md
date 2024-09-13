@@ -19,6 +19,8 @@
 <img src="https://sonarcloud.io/api/project_badges/measure?project=ClickHouse_clickhouse-js&metric=alert_status">
 
 <img src="https://sonarcloud.io/api/project_badges/measure?project=ClickHouse_clickhouse-js&metric=coverage">
+
+<img src="https://api.scorecard.dev/projects/github.com/ClickHouse/clickhouse-js/badge">
 </p>
 
 ## About
