@@ -71,7 +71,7 @@ export type {
   ParsedColumnMap,
   ParsedColumnType,
 } from './parse'
-export { parseColumnType } from './parse'
+export { SimpleColumnTypes, parseColumnType } from './parse'
 
 /** For implementations usage only - should not be re-exported */
 export {

@@ -59,4 +59,5 @@ export {
   type ParsedColumnMap,
   type ParsedColumnType,
   parseColumnType,
+  SimpleColumnTypes,
 } from '@clickhouse/client-common'

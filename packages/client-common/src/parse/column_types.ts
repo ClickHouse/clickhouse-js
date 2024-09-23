@@ -75,10 +75,10 @@ export interface ParsedColumnEnum {
 }
 
 /** Int size for Decimal depends on the Precision
- *  * 32 bits  for precision <  10 (JS number)
- *  * 64 bits  for precision <  19 (JS BigInt)
- *  * 128 bits for precision <  39 (JS BigInt)
- *  * 256 bits for precision >= 39 (JS BigInt)
+ *  * 32 bits  for precision <  10
+ *  * 64 bits  for precision <  19
+ *  * 128 bits for precision <  39
+ *  * 256 bits for precision >= 39
  */
 export interface DecimalParams {
   precision: number
@@ -163,6 +163,17 @@ export type ParsedColumnType =
   | ParsedColumnTuple
   | ParsedColumnMap
 
+/**
+ * @experimental - incomplete, unstable API;
+ * originally intended to be used for RowBinary/Native header parsing internally.
+ * Currently unsupported source types:
+ * * Geo
+ * * (Simple)AggregateFunction
+ * * Nested
+ * * Old/new JSON
+ * * Dynamic
+ * * Variant
+ */
 export function parseColumnType(sourceType: string): ParsedColumnType {
   let columnType = sourceType
   let isNullable = false
