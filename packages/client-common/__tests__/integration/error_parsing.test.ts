@@ -14,9 +14,10 @@ describe('ClickHouse server errors parsing', () => {
     // Possible error messages here:
     // (since 24.3+, Cloud SMT): Unknown expression identifier 'number' in scope SELECT number AS FR
     // (since 23.8+, Cloud RMT): Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number'
+    // (since 24.9+): Unknown expression identifier `number` in scope SELECT number AS FR
     const errorMessagePattern =
       `((?:Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number')|` +
-      `(?:Unknown expression identifier 'number' in scope SELECT number AS FR))`
+      `(?:Unknown expression identifier ('|\`)number('|\`) in scope SELECT number AS FR))`
     await expectAsync(
       client.query({
         query: 'SELECT number FR',
@@ -37,7 +38,7 @@ describe('ClickHouse server errors parsing', () => {
     const dbName = getTestDatabaseName()
     const errorMessagePattern =
       `((?:^Table ${dbName}.unknown_table does not exist.*)|` +
-      `(?:Unknown table expression identifier 'unknown_table' in scope))`
+      `(?:Unknown table expression identifier ('|\`)unknown_table('|\`) in scope))`
     await expectAsync(
       client.query({
         query: 'SELECT * FROM unknown_table',

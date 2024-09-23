@@ -1,3 +1,59 @@
+# 1.7.0 (Common, Node.js, Web)
+
+- (Experimental) Exposed the `parseColumnType` function that takes a string representation of a ClickHouse type (e.g., `FixedString(16)`, `Nullable(Int32)`, etc.) and returns an AST-like object that represents the type. For example:
+
+  ```ts
+  for (const type of [
+    'Int32',
+    'Array(Nullable(String))',
+    `Map(Int32, DateTime64(9, 'UTC'))`,
+  ]) {
+    console.log(`##### Source ClickHouse type: ${type}`)
+    console.log(parseColumnType(type))
+  }
+  ```
+
+  The above code will output:
+
+  ```
+  ##### Source ClickHouse type: Int32
+  { type: 'Simple', columnType: 'Int32', sourceType: 'Int32' }
+  ##### Source ClickHouse type: Array(Nullable(String))
+  {
+    type: 'Array',
+    value: {
+      type: 'Nullable',
+      sourceType: 'Nullable(String)',
+      value: { type: 'Simple', columnType: 'String', sourceType: 'String' }
+    },
+    dimensions: 1,
+    sourceType: 'Array(Nullable(String))'
+  }
+  ##### Source ClickHouse type: Map(Int32, DateTime64(9, 'UTC'))
+  {
+    type: 'Map',
+    key: { type: 'Simple', columnType: 'Int32', sourceType: 'Int32' },
+    value: {
+      type: 'DateTime64',
+      timezone: 'UTC',
+      precision: 9,
+      sourceType: "DateTime64(9, 'UTC')"
+    },
+    sourceType: "Map(Int32, DateTime64(9, 'UTC'))"
+  }
+  ```
+
+  While the original intention was to use this function internally for `Native`/`RowBinaryWithNamesAndTypes` data formats headers parsing, it can be useful for other purposes as well (e.g., interfaces generation, or custom JSON serializers).
+
+  NB: currently unsupported source types to parse:
+
+  - Geo
+  - (Simple)AggregateFunction
+  - Nested
+  - Old/new experimental JSON
+  - Dynamic
+  - Variant
+
 # 1.6.0 (Common, Node.js, Web)
 
 ## New features
