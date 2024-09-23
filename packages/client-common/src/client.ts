@@ -31,6 +31,10 @@ export interface BaseQueryParams {
    *  If it is not set, {@link BaseClickHouseClientConfigOptions.session_id} will be used.
    *  @default undefined (no override) */
   session_id?: string
+  /** A specific list of roles to use for this query.
+   *  If it is not set, {@link BaseClickHouseClientConfigOptions.roles} will be used.
+   *  @default undefined (no override) */
+  role?: string | Array<string>
   /** When defined, overrides the credentials from the {@link BaseClickHouseClientConfigOptions.username}
    *  and {@link BaseClickHouseClientConfigOptions.password} settings for this particular request.
    *  @default undefined (no override) */
@@ -151,6 +155,7 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly makeResultSet: MakeResultSet<Stream>
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly sessionId?: string
+  private readonly role?: string | Array<string>
   private readonly logWriter: LogWriter
 
   constructor(
@@ -168,6 +173,7 @@ export class ClickHouseClient<Stream = unknown> {
     this.logWriter = this.connectionParams.log_writer
     this.clientClickHouseSettings = this.connectionParams.clickhouse_settings
     this.sessionId = config.session_id
+    this.role = config.role
     this.connection = config.impl.make_connection(
       configWithURL,
       this.connectionParams,
@@ -205,6 +211,7 @@ export class ClickHouseClient<Stream = unknown> {
           message: 'Error while processing the ResultSet.',
           args: {
             session_id: queryParams.session_id,
+            role: queryParams.role,
             query,
             query_id,
           },
@@ -306,6 +313,7 @@ export class ClickHouseClient<Stream = unknown> {
       abort_signal: params.abort_signal,
       query_id: params.query_id,
       session_id: params.session_id ?? this.sessionId,
+      role: params.role ?? this.role,
       auth: params.auth,
     }
   }

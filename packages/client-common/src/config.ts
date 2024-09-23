@@ -64,6 +64,9 @@ export interface BaseClickHouseClientConfigOptions {
   /** ClickHouse Session id to attach to the outgoing requests.
    *  @default empty string (no session) */
   session_id?: string
+  /** ClickHouse role name(s) to attach to the outgoing requests.
+   *  @default undefined string (no roles) */
+  role?: string | Array<string>
   /** @deprecated since version 1.0.0. Use {@link http_headers} instead. <br/>
    *  Additional HTTP headers to attach to the outgoing requests.
    *  @default empty object */
