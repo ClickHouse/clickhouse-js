@@ -1,5 +1,6 @@
 name: 'tests'
 
+permissions: {}
 on:
   workflow_dispatch:
   push:
@@ -222,7 +223,6 @@ jobs:
   web-integration-tests-cloud-smt:
     needs: node-unit-tests
     runs-on: ubuntu-latest
-    permissions: write-all
     steps:
       - uses: actions/checkout@main
 
