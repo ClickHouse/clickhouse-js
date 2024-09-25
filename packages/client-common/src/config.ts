@@ -276,6 +276,7 @@ export function createUrl(configURL: string | URL | undefined): URL {
   } catch (err) {
     throw new Error(
       'ClickHouse URL is malformed. Expected format: http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]',
+      { cause: err },
     )
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
