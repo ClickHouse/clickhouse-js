@@ -7,6 +7,7 @@ export const StreamableJSONFormats = [
   'JSONCompactEachRowWithNamesAndTypes',
   'JSONCompactStringsEachRowWithNames',
   'JSONCompactStringsEachRowWithNamesAndTypes',
+  'JSONEachRowWithProgress',
 ] as const
 export const RecordsJSONFormats = ['JSONObjectEachRow'] as const
 export const SingleDocumentJSONFormats = [
