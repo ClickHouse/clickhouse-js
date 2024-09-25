@@ -71,7 +71,7 @@
     "karma-webpack": "^5.0.1",
     "lint-staged": "^15.2.2",
     "nyc": "^15.1.0",
-    "parquet-wasm": "0.6.0-beta.2",
+    "parquet-wasm": "0.6.1",
     "prettier": "3.2.5",
     "sinon": "^17.0.1",
     "source-map-support": "^0.5.21",
