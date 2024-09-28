@@ -67,7 +67,7 @@ If something is missing, or you found a mistake in one of these examples, please
 - [default_format_setting.ts](default_format_setting.ts) - sending queries using `exec` method without a `FORMAT` clause; the default format will be set from the client settings.
 - [session_id_and_temporary_tables.ts](session_id_and_temporary_tables.ts) - creating a temporary table, which requires a session_id to be passed to the server.
 - [session_level_commands.ts](session_level_commands.ts) - using SET commands, memorized for the specific session_id.
-- [role.ts](role.ts) - using one more more roles, without explicit `USE` commands or session IDs
+- [role.ts](role.ts) - using one or more roles without explicit `USE` commands or session IDs
 
 ## How to run
 

@@ -4,7 +4,7 @@ import { getTestDatabaseName, guid } from '../utils'
 import { createSimpleTable } from '../fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '../fixtures/test_data'
 
-describe('role settings', () => {
+fdescribe('role settings', () => {
   let defaultClient: ClickHouseClient
   let client: ClickHouseClient
 

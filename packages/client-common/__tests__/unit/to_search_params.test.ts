@@ -96,6 +96,22 @@ describe('toSearchParams', () => {
       ['wait_end_of_query', '1'],
     ])
   })
+
+  it('should set a single role', async () => {
+    const query = 'SELECT * FROM system.query_log'
+    const params = toSearchParams({
+      database: 'some_db',
+      query,
+      query_id: 'my-query-id',
+      role: 'single-role',
+    })!
+    const result = toSortedArray(params)
+    expect(result).toEqual([
+      ['database', 'some_db'],
+      ['query', 'SELECT * FROM system.query_log'],
+      ['role', 'single-role'],
+    ])
+  })
 })
 
 function toSortedArray(params: URLSearchParams): [string, string][] {

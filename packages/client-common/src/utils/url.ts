@@ -80,11 +80,13 @@ export function toSearchParams({
     params.set('session_id', session_id)
   }
 
-  if (role && typeof role === 'string') {
-    params.set('role', role)
-  } else if (role && Array.isArray(role)) {
-    for (const r of role) {
-      params.append('role', r)
+  if (role) {
+    if (typeof role === 'string') {
+      params.set('role', role)
+    } else if (Array.isArray(role)) {
+      for (const r of role) {
+        params.append('role', r)
+      }
     }
   }
 
