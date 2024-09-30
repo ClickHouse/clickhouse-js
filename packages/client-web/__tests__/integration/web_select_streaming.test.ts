@@ -1,7 +1,6 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
-import { fakerRU } from '@faker-js/faker'
-import { createTableWithFields } from '@test/fixtures/table_with_fields'
 import { createTestClient } from '@test/utils'
+import { genLargeStringsDataset } from '@test/utils/datasets'
 
 describe('[Web] SELECT streaming', () => {
   let client: ClickHouseClient<ReadableStream<Row[]>>
@@ -206,40 +205,9 @@ describe('[Web] SELECT streaming', () => {
   // Here we generate a large enough dataset to break into multiple chunks while streaming,
   // effectively testing the implementation of incomplete rows handling
   describe('should correctly process multiple chunks', () => {
-    async function generateData({
-      rows,
-      words,
-    }: {
-      rows: number
-      words: number
-    }): Promise<{
-      table: string
-      values: { id: number; sentence: string; timestamp: string }[]
-    }> {
-      const table = await createTableWithFields(
-        client as ClickHouseClient,
-        `sentence String, timestamp String`,
-      )
-      const values = [...new Array(rows)].map((_, id) => ({
-        id,
-        // it seems that it is easier to trigger an incorrect behavior with non-ASCII symbols
-        sentence: fakerRU.lorem.sentence(words),
-        timestamp: new Date().toISOString(),
-      }))
-      await client.insert({
-        table,
-        values,
-        format: 'JSONEachRow',
-      })
-      return {
-        table,
-        values,
-      }
-    }
-
     describe('large amount of rows', () => {
       it('should work with .json()', async () => {
-        const { table, values } = await generateData({
+        const { table, values } = await genLargeStringsDataset(client, {
           rows: 10000,
           words: 10,
         })
@@ -253,7 +221,7 @@ describe('[Web] SELECT streaming', () => {
       })
 
       it('should work with .stream()', async () => {
-        const { table, values } = await generateData({
+        const { table, values } = await genLargeStringsDataset(client, {
           rows: 10000,
           words: 10,
         })
@@ -264,19 +232,14 @@ describe('[Web] SELECT streaming', () => {
           })
           .then((r) => r.stream())
 
-        const result = []
-        for await (const rows of stream) {
-          for (const row of rows) {
-            result.push(await row.json())
-          }
-        }
+        const result = await rowsJsonValues(stream)
         expect(result).toEqual(values)
       })
     })
 
     describe("rows that don't fit into a single chunk", () => {
       it('should work with .json()', async () => {
-        const { table, values } = await generateData({
+        const { table, values } = await genLargeStringsDataset(client, {
           rows: 5,
           words: 10000,
         })
@@ -290,7 +253,7 @@ describe('[Web] SELECT streaming', () => {
       })
 
       it('should work with .stream()', async () => {
-        const { table, values } = await generateData({
+        const { table, values } = await genLargeStringsDataset(client, {
           rows: 5,
           words: 10000,
         })
@@ -301,12 +264,7 @@ describe('[Web] SELECT streaming', () => {
           })
           .then((r) => r.stream())
 
-        const result = []
-        for await (const rows of stream) {
-          for (const row of rows) {
-            result.push(await row.json())
-          }
-        }
+        const result = await rowsJsonValues(stream)
         expect(result).toEqual(values)
       })
     })
