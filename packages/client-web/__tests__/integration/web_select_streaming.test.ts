@@ -1,4 +1,6 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
+import { fakerRU } from '@faker-js/faker'
+import { createTableWithFields } from '@test/fixtures/table_with_fields'
 import { createTestClient } from '@test/utils'
 
 describe('[Web] SELECT streaming', () => {
@@ -197,6 +199,116 @@ describe('[Web] SELECT streaming', () => {
         ['3'],
         ['4'],
       ])
+    })
+  })
+
+  // See https://github.com/ClickHouse/clickhouse-js/issues/171 for more details
+  // Here we generate a large enough dataset to break into multiple chunks while streaming,
+  // effectively testing the implementation of incomplete rows handling
+  describe('should correctly process multiple chunks', () => {
+    async function generateData({
+      rows,
+      words,
+    }: {
+      rows: number
+      words: number
+    }): Promise<{
+      table: string
+      values: { id: number; sentence: string; timestamp: string }[]
+    }> {
+      const table = await createTableWithFields(
+        client as ClickHouseClient,
+        `sentence String, timestamp String`,
+      )
+      const values = [...new Array(rows)].map((_, id) => ({
+        id,
+        // it seems that it is easier to trigger an incorrect behavior with non-ASCII symbols
+        sentence: fakerRU.lorem.sentence(words),
+        timestamp: new Date().toISOString(),
+      }))
+      await client.insert({
+        table,
+        values,
+        format: 'JSONEachRow',
+      })
+      return {
+        table,
+        values,
+      }
+    }
+
+    describe('large amount of rows', () => {
+      it('should work with .json()', async () => {
+        const { table, values } = await generateData({
+          rows: 10000,
+          words: 10,
+        })
+        const result = await client
+          .query({
+            query: `SELECT * FROM ${table} ORDER BY id ASC`,
+            format: 'JSONEachRow',
+          })
+          .then((r) => r.json())
+        expect(result).toEqual(values)
+      })
+
+      it('should work with .stream()', async () => {
+        const { table, values } = await generateData({
+          rows: 10000,
+          words: 10,
+        })
+        const stream = await client
+          .query({
+            query: `SELECT * FROM ${table} ORDER BY id ASC`,
+            format: 'JSONEachRow',
+          })
+          .then((r) => r.stream())
+
+        const result = []
+        for await (const rows of stream) {
+          for (const row of rows) {
+            result.push(await row.json())
+          }
+        }
+        expect(result).toEqual(values)
+      })
+    })
+
+    describe("rows that don't fit into a single chunk", () => {
+      it('should work with .json()', async () => {
+        const { table, values } = await generateData({
+          rows: 5,
+          words: 10000,
+        })
+        const result = await client
+          .query({
+            query: `SELECT * FROM ${table} ORDER BY id ASC`,
+            format: 'JSONEachRow',
+          })
+          .then((r) => r.json())
+        expect(result).toEqual(values)
+      })
+
+      it('should work with .stream()', async () => {
+        const { table, values } = await generateData({
+          rows: 5,
+          words: 10000,
+        })
+        const stream = await client
+          .query({
+            query: `SELECT * FROM ${table} ORDER BY id ASC`,
+            format: 'JSONEachRow',
+          })
+          .then((r) => r.stream())
+
+        const result = []
+        for await (const rows of stream) {
+          for (const row of rows) {
+            result.push(await row.json())
+          }
+        }
+        expect(result).toEqual(values)
+      })
     })
   })
 })
