@@ -64,6 +64,7 @@ export function createTestClient<Stream = unknown>(
       clickhouse_settings: clickHouseSettings,
     }
     if (process.env.browser) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       return require('../../../client-web/src/client').createClient(cloudConfig)
     } else {
       // props to https://stackoverflow.com/a/41063795/4575540
@@ -80,6 +81,7 @@ export function createTestClient<Stream = unknown>(
       clickhouse_settings: clickHouseSettings,
     }
     if (process.env.browser) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       return require('../../../client-web/src/client').createClient(localConfig) // eslint-disable-line @typescript-eslint/no-var-requires
     } else {
       // @ts-expect-error
