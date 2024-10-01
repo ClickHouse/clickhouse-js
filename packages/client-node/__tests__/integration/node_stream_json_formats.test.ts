@@ -1,5 +1,4 @@
-import { type ClickHouseClient, isProgressRow } from '@clickhouse/client-common'
-import type { Progress } from '@clickhouse/client-common/src/clickhouse_types'
+import { type ClickHouseClient, isProgress } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient, guid } from '@test/utils'
@@ -233,8 +232,6 @@ describe('[Node.js] stream JSON formats', () => {
   })
 
   describe('JSONEachRowWithProgress', () => {
-    type Row = { row: { number: string } }
-
     it('should work', async () => {
       const limit = 2
       const expectedProgressRowsCount = 4
@@ -245,9 +242,9 @@ describe('[Node.js] stream JSON formats', () => {
           max_block_size: '1', // reduce the block size, so the progress is reported more frequently
         },
       })
-      const rows = await rs.json<Row | Progress>()
+      const rows = await rs.json<{ number: 'string' }>()
       expect(rows.length).toEqual(limit + expectedProgressRowsCount)
-      expect(rows.filter((r) => !isProgressRow(r))).toEqual([
+      expect(rows.filter((r) => !isProgress(r)) as unknown[]).toEqual([
         { row: { number: '0' } },
         { row: { number: '1' } },
       ])

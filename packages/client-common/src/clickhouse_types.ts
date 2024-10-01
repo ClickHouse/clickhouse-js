@@ -48,7 +48,7 @@ export interface Progress {
 
 /** Type guard to use with JSONEachRowWithProgress, checking if the emitted row is a progress row.
  *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
-export function isProgressRow(row: unknown): row is Progress {
+export function isProgress(row: unknown): row is Progress {
   return (
     row !== null &&
     typeof row === 'object' &&

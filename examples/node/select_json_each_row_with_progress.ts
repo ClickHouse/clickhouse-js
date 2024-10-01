@@ -1,9 +1,10 @@
-import { createClient, isProgressRow, type Progress } from '@clickhouse/client'
+import { createClient } from '@clickhouse/client'
+import { isProgress } from '@clickhouse/client-common'
 
-/** See the format spec - https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
-type Row = {
-  row: { number: string }
-}
+/** See the format spec - https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress
+ *  When JSONEachRowWithProgress format is used in TypeScript,
+ *  the ResultSet should infer the final row type as `{ row: Data } | Progress`. */
+type Data = { number: string }
 
 void (async () => {
   const client = createClient()
@@ -15,15 +16,18 @@ void (async () => {
   let totalRows = 0
   let totalProgressRows = 0
 
-  const stream = rs.stream<Row | Progress>()
+  const stream = rs.stream<Data>()
   for await (const rows of stream) {
     for (const row of rows) {
       const decodedRow = row.json()
-      if (isProgressRow(decodedRow)) {
+      if (isProgress(decodedRow)) {
         console.log('Got a progress row:', decodedRow)
         totalProgressRows++
       } else {
         totalRows++
+        if (totalRows % 100 === 0) {
+          console.log('Sample row:', decodedRow)
+        }
       }
     }
   }

@@ -1,4 +1,4 @@
-import { isProgressRow } from '@clickhouse/client-common'
+import { isProgress } from '@clickhouse/client-common'
 
 describe('ClickHouse types', () => {
   it('should check if a row is progress row', async () => {
@@ -14,14 +14,14 @@ describe('ClickHouse types', () => {
         elapsed_ns: '1',
       },
     }
-    expect(isProgressRow(row)).toBeTruthy()
-    expect(isProgressRow({})).toBeFalsy()
+    expect(isProgress(row)).toBeTruthy()
+    expect(isProgress({})).toBeFalsy()
     expect(
-      isProgressRow({
+      isProgress({
         ...row,
         extra: 'extra',
       }),
     ).toBeFalsy()
-    expect(isProgressRow(null)).toBeFalsy()
+    expect(isProgress(null)).toBeFalsy()
   })
 })
