@@ -1,5 +1,5 @@
 import { type ClickHouseClient, isProgressRow } from '@clickhouse/client-common'
-import { Progress } from '@clickhouse/client-common/src/clickhouse_types'
+import type { Progress } from '@clickhouse/client-common/src/clickhouse_types'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient, guid } from '@test/utils'

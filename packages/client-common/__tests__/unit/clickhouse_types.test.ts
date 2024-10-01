@@ -16,10 +16,12 @@ describe('ClickHouse types', () => {
     }
     expect(isProgressRow(row)).toBeTruthy()
     expect(isProgressRow({})).toBeFalsy()
-    expect(isProgressRow({
-      ...row,
-      extra: 'extra',
-    })).toBeFalsy()
+    expect(
+      isProgressRow({
+        ...row,
+        extra: 'extra',
+      }),
+    ).toBeFalsy()
     expect(isProgressRow(null)).toBeFalsy()
   })
 })
