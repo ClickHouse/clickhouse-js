@@ -1,4 +1,5 @@
-import type { ClickHouseClient, Row } from '@clickhouse/client-common'
+import type { ClickHouseClient, Progress, Row } from '@clickhouse/client-common'
+import { isProgressRow } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
 describe('[Web] SELECT streaming', () => {
@@ -114,6 +115,25 @@ describe('[Web] SELECT streaming', () => {
         { number: '2' },
         { number: '3' },
         { number: '4' },
+      ])
+    })
+
+    it('should return objects in JSONEachRowWithProgress format', async () => {
+      type Row = { row: { number: string } }
+      const limit = 2
+      const expectedProgressRowsCount = 4
+      const rs = await client.query({
+        query: `SELECT * FROM system.numbers LIMIT ${limit}`,
+        format: 'JSONEachRowWithProgress',
+        clickhouse_settings: {
+          max_block_size: '1', // reduce the block size, so the progress is reported more frequently
+        },
+      })
+      const rows = await rs.json<Row | Progress>()
+      expect(rows.length).toEqual(limit + expectedProgressRowsCount)
+      expect(rows.filter((r) => !isProgressRow(r))).toEqual([
+        { row: { number: '0' } },
+        { row: { number: '1' } },
       ])
     })
 

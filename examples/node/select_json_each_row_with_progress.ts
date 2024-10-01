@@ -4,7 +4,6 @@ import { createClient, isProgressRow, type Progress } from '@clickhouse/client'
 type Row = {
   row: { number: string }
 }
-type Data = Row | Progress
 
 void (async () => {
   const client = createClient()
@@ -16,7 +15,7 @@ void (async () => {
   let totalRows = 0
   let totalProgressRows = 0
 
-  const stream = rs.stream<Data>()
+  const stream = rs.stream<Row | Progress>()
   for await (const rows of stream) {
     for (const row of rows) {
       const decodedRow = row.json()
