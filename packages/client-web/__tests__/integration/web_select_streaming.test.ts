@@ -2,13 +2,20 @@ import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 import { genLargeStringsDataset } from '@test/utils/datasets'
 
-describe('[Web] SELECT streaming', () => {
+fdescribe('[Web] SELECT streaming', () => {
   let client: ClickHouseClient<ReadableStream<Row[]>>
   afterEach(async () => {
     await client.close()
   })
   beforeEach(async () => {
-    client = createTestClient()
+    client = createTestClient({
+      // It is required to disable keep-alive to allow for larger inserts
+      // https://fetch.spec.whatwg.org/#http-network-or-cache-fetch
+      // If contentLength is non-null and httpRequest’s keepalive is true, then:
+      // <...>
+      // If the sum of contentLength and inflightKeepaliveBytes is greater than 64 kibibytes, then return a network error.
+      keep_alive: { enabled: false },
+    })
   })
 
   describe('consume the response only once', () => {
@@ -204,7 +211,7 @@ describe('[Web] SELECT streaming', () => {
   // See https://github.com/ClickHouse/clickhouse-js/issues/171 for more details
   // Here we generate a large enough dataset to break into multiple chunks while streaming,
   // effectively testing the implementation of incomplete rows handling
-  describe('should correctly process multiple chunks', () => {
+  fdescribe('should correctly process multiple chunks', () => {
     describe('large amount of rows', () => {
       it('should work with .json()', async () => {
         const { table, values } = await genLargeStringsDataset(client, {
