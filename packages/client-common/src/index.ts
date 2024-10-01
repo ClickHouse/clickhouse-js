@@ -51,7 +51,9 @@ export type {
   ResponseHeaders,
   WithClickHouseSummary,
   WithResponseHeaders,
+  Progress,
 } from './clickhouse_types'
+export { isProgressRow } from './clickhouse_types'
 export {
   type ClickHouseSettings,
   type MergeTreeSettings,

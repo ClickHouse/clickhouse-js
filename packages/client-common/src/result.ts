@@ -1,8 +1,4 @@
-import type {
-  ClickHouseSummary,
-  ResponseHeaders,
-  ResponseJSON,
-} from './clickhouse_types'
+import type { ResponseHeaders, ResponseJSON } from './clickhouse_types'
 import type {
   DataFormat,
   RawDataFormat,
@@ -11,8 +7,6 @@ import type {
   StreamableDataFormat,
   StreamableJSONDataFormat,
 } from './data_formatter'
-
-export type RowOrProgress<T> = T | { progress: ClickHouseSummary }
 
 export type ResultStream<Format extends DataFormat | unknown, Stream> =
   // JSON*EachRow (except JSONObjectEachRow), CSV, TSV etc.
@@ -28,35 +22,29 @@ export type ResultStream<Format extends DataFormat | unknown, Stream> =
           Stream
 
 export type ResultJSONType<T, F extends DataFormat | unknown> =
-  // Emits either a row (T) or a progress object
-  F extends 'JSONEachRowWithProgress'
-    ? RowOrProgress<T>[]
-    : // JSON*EachRow formats except JSONObjectEachRow
-      F extends StreamableJSONDataFormat
-      ? T[]
-      : // JSON formats with known layout { data, meta, statistics, ... }
-        F extends SingleDocumentJSONFormat
-        ? ResponseJSON<T>
-        : // JSON formats represented as a Record<string, T>
-          F extends RecordsJSONFormat
-          ? Record<string, T>
-          : // CSV, TSV etc. - cannot be represented as JSON
-            F extends RawDataFormat
-            ? never
-            : // happens only when Format could not be inferred from a literal
-              T[] | RowOrProgress<T>[] | Record<string, T> | ResponseJSON<T>
+  // JSON*EachRow formats except JSONObjectEachRow
+  F extends StreamableJSONDataFormat
+    ? T[]
+    : // JSON formats with known layout { data, meta, statistics, ... }
+      F extends SingleDocumentJSONFormat
+      ? ResponseJSON<T>
+      : // JSON formats represented as a Record<string, T>
+        F extends RecordsJSONFormat
+        ? Record<string, T>
+        : // CSV, TSV etc. - cannot be represented as JSON
+          F extends RawDataFormat
+          ? never
+          : // happens only when Format could not be inferred from a literal
+            T[] | Record<string, T> | ResponseJSON<T>
 
 export type RowJSONType<T, F extends DataFormat | unknown> =
-  // Emits either a row (T) or a progress object
-  F extends 'JSONEachRowWithProgress'
-    ? RowOrProgress<T>
-    : // JSON*EachRow formats
-      F extends StreamableJSONDataFormat
-      ? T
-      : // CSV, TSV, non-streamable JSON formats - cannot be streamed as JSON
-        F extends RawDataFormat | SingleDocumentJSONFormat | RecordsJSONFormat
-        ? never
-        : T // happens only when Format could not be inferred from a literal
+  // JSON*EachRow formats
+  F extends StreamableJSONDataFormat
+    ? T
+    : // CSV, TSV, non-streamable JSON formats - cannot be streamed as JSON
+      F extends RawDataFormat | SingleDocumentJSONFormat | RecordsJSONFormat
+      ? never
+      : T // happens only when Format could not be inferred from a literal
 
 export interface Row<
   JSONType = unknown,

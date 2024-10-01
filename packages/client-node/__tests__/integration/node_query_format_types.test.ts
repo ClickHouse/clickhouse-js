@@ -1,12 +1,10 @@
-import { RowOrProgress } from '@clickhouse/client-common/src/result'
-import type { ResultSet } from '../../src'
 import type {
   ClickHouseClient as BaseClickHouseClient,
   DataFormat,
 } from '@clickhouse/client-common'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
 import { guid } from '@test/utils'
-import type { ClickHouseClient } from '../../src'
+import type { ClickHouseClient, ResultSet } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
 
 // Ignored and used only as a source for ESLint checks with $ExpectType
@@ -131,107 +129,6 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
             // $ExpectType Data
             row.json()
             // $ExpectType Data
-            row.json<Data>()
-            // $ExpectType string
-            row.text
-          },
-        )
-      }
-    })
-
-    it('should infer types for JSONEachRowWithProgress', async () => {
-      // $ExpectType ResultSet<"JSONEachRowWithProgress">
-      const rs = await client.query({
-        query,
-        format: 'JSONEachRowWithProgress',
-      })
-      // $ExpectType RowOrProgress<T>[]
-      let a = await rs.json()
-      // $ExpectType ({ progress: ClickHouseSummary; } | Data)[]
-      await rs.json<Data>()
-      // $ExpectType string
-      await rs.text()
-      // $ExpectType StreamReadable<Row<unknown, "JSONEachRowWithProgress">[]>
-      const stream = rs.stream()
-
-      // stream + on('data')
-      await new Promise((resolve, reject) => {
-        stream
-          .on(
-            'data',
-            // $ExpectType (rows: Row<unknown, "JSONEachRowWithProgress">[]) => void
-            (rows) => {
-              rows.forEach(
-                // $ExpectType (row: Row<unknown, "JSONEachRowWithProgress">) => void
-                (row) => {
-                  // $ExpectType unknown
-                  row.json()
-                  // $ExpectType { progress: ClickHouseSummary; } | Data
-                  row.json<Data>()
-                  // $ExpectType string
-                  row.text
-                },
-              )
-            },
-          )
-          .on('end', resolve)
-          .on('error', reject)
-      })
-
-      // stream + async iterator
-      for await (const _rows of stream) {
-        // $ExpectType Row<unknown, "JSONEachRowWithProgress">[]
-        const rows = _rows
-        rows.length // avoid unused variable warning (rows reassigned for type assertion)
-        rows.forEach(
-          // $ExpectType (row: Row<unknown, "JSONEachRowWithProgress">) => void
-          (row) => {
-            // $ExpectType unknown
-            row.json()
-            // $ExpectType { progress: ClickHouseSummary; } | Data
-            row.json<Data>()
-            // $ExpectType string
-            row.text
-          },
-        )
-      }
-
-      // stream + T hint + on('data')
-      const streamTyped = rs.stream<Data>()
-      await new Promise((resolve, reject) => {
-        streamTyped
-          .on(
-            'data',
-            // $ExpectType (rows: Row<Data, "JSONEachRowWithProgress">[]) => void
-            (rows) => {
-              rows.forEach(
-                // $ExpectType (row: Row<Data, "JSONEachRowWithProgress">) => void
-                (row) => {
-                  // $ExpectType { progress: ClickHouseSummary; } | Data
-                  row.json()
-                  // $ExpectType { progress: ClickHouseSummary; } | Data
-                  row.json<Data>()
-                  // $ExpectType string
-                  row.text
-                },
-              )
-            },
-          )
-          .on('end', resolve)
-          .on('error', reject)
-      })
-
-      // stream + T hint + async iterator
-      for await (const _rows of streamTyped) {
-        // $ExpectType Row<Data, "JSONEachRowWithProgress">[]
-        const rows = _rows
-        rows.length // avoid unused variable warning (rows reassigned for type assertion)
-        rows.forEach(
-          // $ExpectType (row: Row<Data, "JSONEachRowWithProgress">) => void
-          (row) => {
-            // $ExpectType { progress: ClickHouseSummary; } | Data
-            row.json()
-            // $ExpectType { progress: ClickHouseSummary; } | Data
             row.json<Data>()
             // $ExpectType string
             row.text
@@ -704,7 +601,7 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
       // All possible JSON variants are now allowed
       // FIXME: this line produces a ESLint error due to a different order (which is insignificant). -$ExpectType unknown[] | Record<string, unknown> | ResponseJSON<unknown>
       await rs.json() // IDE error here, different type order
-      // $ExpectType Data[] | ResponseJSON<Data> | Record<string, Data> | ({ progress: ClickHouseSummary; } | Data)[]
+      // $ExpectType Data[] | ResponseJSON<Data> | Record<string, Data>
       await rs.json<Data>()
       // $ExpectType string
       await rs.text()
