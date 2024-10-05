@@ -1,5 +1,6 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
+import { genLargeStringsDataset } from '@test/utils/datasets'
 
 describe('[Web] SELECT streaming', () => {
   let client: ClickHouseClient<ReadableStream<Row[]>>
@@ -7,7 +8,14 @@ describe('[Web] SELECT streaming', () => {
     await client.close()
   })
   beforeEach(async () => {
-    client = createTestClient()
+    client = createTestClient({
+      // It is required to disable keep-alive to allow for larger inserts
+      // https://fetch.spec.whatwg.org/#http-network-or-cache-fetch
+      // If contentLength is non-null and httpRequest’s keepalive is true, then:
+      // <...>
+      // If the sum of contentLength and inflightKeepaliveBytes is greater than 64 kibibytes, then return a network error.
+      keep_alive: { enabled: false },
+    })
   })
 
   describe('consume the response only once', () => {
@@ -197,6 +205,75 @@ describe('[Web] SELECT streaming', () => {
         ['3'],
         ['4'],
       ])
+    })
+  })
+
+  // See https://github.com/ClickHouse/clickhouse-js/issues/171 for more details
+  // Here we generate a large enough dataset to break into multiple chunks while streaming,
+  // effectively testing the implementation of incomplete rows handling
+  describe('should correctly process multiple chunks', () => {
+    describe('large amount of rows', () => {
+      it('should work with .json()', async () => {
+        const { table, values } = await genLargeStringsDataset(client, {
+          rows: 10000,
+          words: 10,
+        })
+        const result = await client
+          .query({
+            query: `SELECT * FROM ${table} ORDER BY id ASC`,
+            format: 'JSONEachRow',
+          })
+          .then((r) => r.json())
+        expect(result).toEqual(values)
+      })
+
+      it('should work with .stream()', async () => {
+        const { table, values } = await genLargeStringsDataset(client, {
+          rows: 10000,
+          words: 10,
+        })
+        const stream = await client
+          .query({
+            query: `SELECT * FROM ${table} ORDER BY id ASC`,
+            format: 'JSONEachRow',
+          })
+          .then((r) => r.stream())
+
+        const result = await rowsJsonValues(stream)
+        expect(result).toEqual(values)
+      })
+    })
+
+    describe("rows that don't fit into a single chunk", () => {
+      it('should work with .json()', async () => {
+        const { table, values } = await genLargeStringsDataset(client, {
+          rows: 5,
+          words: 10000,
+        })
+        const result = await client
+          .query({
+            query: `SELECT * FROM ${table} ORDER BY id ASC`,
+            format: 'JSONEachRow',
+          })
+          .then((r) => r.json())
+        expect(result).toEqual(values)
+      })
+
+      it('should work with .stream()', async () => {
+        const { table, values } = await genLargeStringsDataset(client, {
+          rows: 5,
+          words: 10000,
+        })
+        const stream = await client
+          .query({
+            query: `SELECT * FROM ${table} ORDER BY id ASC`,
+            format: 'JSONEachRow',
+          })
+          .then((r) => r.stream())
+
+        const result = await rowsJsonValues(stream)
+        expect(result).toEqual(values)
+      })
     })
   })
 })
