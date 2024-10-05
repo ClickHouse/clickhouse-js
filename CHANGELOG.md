@@ -1,5 +1,11 @@
 # 1.7.0 (Common, Node.js, Web)
 
+## Bug fixes
+
+- (Web only) Fixed an issue where streaming large datasets could provide corrupted results. See [#333](https://github.com/ClickHouse/clickhouse-js/pull/333) (PR) for more details.
+
+## New features
+
 - (Experimental) Exposed the `parseColumnType` function that takes a string representation of a ClickHouse type (e.g., `FixedString(16)`, `Nullable(Int32)`, etc.) and returns an AST-like object that represents the type. For example:
 
   ```ts

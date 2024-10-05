@@ -9,9 +9,11 @@ import type {
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
+  validateStreamFormat,
 } from '@clickhouse/client-common'
-import { validateStreamFormat } from '@clickhouse/client-common'
 import { getAsText } from './utils'
+
+const NEWLINE = 0x0a as const
 
 export class ResultSet<Format extends DataFormat | unknown>
   implements BaseResultSet<ReadableStream<Row[]>, Format>
@@ -67,40 +69,67 @@ export class ResultSet<Format extends DataFormat | unknown>
     this.markAsConsumed()
     validateStreamFormat(this.format)
 
-    let decodedChunk = ''
+    let incompleteChunks: Uint8Array[] = []
+    let totalIncompleteLength = 0
     const decoder = new TextDecoder('utf-8')
     const transform = new TransformStream({
       start() {
         //
       },
-      transform: (chunk, controller) => {
+      transform: (chunk: Uint8Array, controller) => {
         if (chunk === null) {
           controller.terminate()
         }
-        decodedChunk += decoder.decode(chunk)
         const rows: Row[] = []
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const idx = decodedChunk.indexOf('\n')
-          if (idx !== -1) {
-            const text = decodedChunk.slice(0, idx)
-            decodedChunk = decodedChunk.slice(idx + 1)
+        let idx: number
+        let lastIdx = 0
+        do {
+          // an unescaped newline character denotes the end of a row
+          idx = chunk.indexOf(NEWLINE, lastIdx)
+          // there is no complete row in the rest of the current chunk
+          if (idx === -1) {
+            // to be processed during the next transform iteration
+            const incompleteChunk = chunk.slice(lastIdx)
+            incompleteChunks.push(incompleteChunk)
+            totalIncompleteLength += incompleteChunk.length
+            // send the extracted rows to the consumer, if any
+            if (rows.length > 0) {
+              controller.enqueue(rows)
+            }
+          } else {
+            let text: string
+            if (incompleteChunks.length > 0) {
+              const completeRowBytes = new Uint8Array(
+                totalIncompleteLength + idx,
+              )
+
+              // using the incomplete chunks from the previous iterations
+              let offset = 0
+              incompleteChunks.forEach((incompleteChunk) => {
+                completeRowBytes.set(incompleteChunk, offset)
+                offset += incompleteChunk.length
+              })
+              // finalize the row with the current chunk slice that ends with a newline
+              const finalChunk = chunk.slice(0, idx)
+              completeRowBytes.set(finalChunk, offset)
+
+              // reset the incomplete chunks
+              incompleteChunks = []
+              totalIncompleteLength = 0
+
+              text = decoder.decode(completeRowBytes)
+            } else {
+              text = decoder.decode(chunk.slice(lastIdx, idx))
+            }
             rows.push({
               text,
               json<T>(): T {
                 return JSON.parse(text)
               },
             })
-          } else {
-            if (rows.length) {
-              controller.enqueue(rows)
-            }
-            break
+            lastIdx = idx + 1 // skipping newline character
           }
-        }
-      },
-      flush() {
-        decodedChunk = ''
+        } while (idx !== -1)
       },
     })
 
