@@ -16,6 +16,7 @@ export {
 export { type BaseClickHouseClientConfigOptions } from './config'
 export type {
   Row,
+  RowOrProgress,
   BaseResultSet,
   ResultJSONType,
   RowJSONType,
@@ -51,7 +52,9 @@ export type {
   ResponseHeaders,
   WithClickHouseSummary,
   WithResponseHeaders,
+  ProgressRow,
 } from './clickhouse_types'
+export { isProgressRow } from './clickhouse_types'
 export {
   type ClickHouseSettings,
   type MergeTreeSettings,

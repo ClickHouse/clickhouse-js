@@ -57,6 +57,7 @@ If something is missing, or you found a mistake in one of these examples, please
 - [select_streaming_json_each_row.ts](node/select_streaming_json_each_row.ts) - (Node.js only) streaming JSON\* formats from ClickHouse and processing it with `on('data')` event.
 - [select_streaming_json_each_row_for_await.ts](node/select_streaming_json_each_row_for_await.ts) - (Node.js only) similar to [select_streaming_json_each_row.ts](node/select_streaming_json_each_row.ts), but using the `for await` loop syntax.
 - [select_streaming_text_line_by_line.ts](node/select_streaming_text_line_by_line.ts) - (Node.js only) streaming text formats from ClickHouse and processing it line by line. In this example, CSV format is used.
+- [select_json_each_row_with_progress.ts](node/select_json_each_row_with_progress.ts) - streaming using `JSONEachRowWithProgress` format, checking for the progress rows in the stream.
 
 #### Data types
 

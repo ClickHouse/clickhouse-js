@@ -50,7 +50,7 @@ export class ResultSet<Format extends DataFormat | unknown>
           break
         }
         for (const row of value) {
-          result.push(row.json())
+          result.push(row.json() as T)
         }
       }
       return result as any
