@@ -81,68 +81,55 @@ export class ResultSet<Format extends DataFormat | unknown>
           controller.terminate()
         }
         const rows: Row[] = []
+        let idx: number
         let lastIdx = 0
-        // first pass on the current chunk - an unescaped newline character denotes the end of a row
-        let idx = chunk.indexOf(NEWLINE)
-        if (idx === -1) {
-          // row does not end in the current chunk
-          incompleteChunks.push(chunk)
-          totalIncompleteLength += chunk.length
-        } else {
-          let text: string
-          if (incompleteChunks.length > 0) {
-            const completeRowBytes = new Uint8Array(totalIncompleteLength + idx)
-
-            // using the incomplete chunks from the previous iterations
-            let offset = 0
-            incompleteChunks.forEach((incompleteChunk) => {
-              completeRowBytes.set(incompleteChunk, offset)
-              offset += incompleteChunk.length
-            })
-            // finalize the row with the current chunk slice that ends with a newline
-            const finalChunk = chunk.slice(0, idx)
-            completeRowBytes.set(finalChunk, offset)
-
-            // reset the incomplete chunks
-            incompleteChunks = []
-            totalIncompleteLength = 0
-
-            text = decoder.decode(completeRowBytes)
-          } else {
-            text = decoder.decode(chunk.slice(0, idx))
-          }
-          rows.push({
-            text,
-            json<T>(): T {
-              return JSON.parse(text)
-            },
-          })
-          lastIdx = idx + 1 // skipping newline character
-
-          // done with the first row in the current chunk
-          // --
-          // maybe there are more rows in the current chunk
-          do {
-            idx = chunk.indexOf(NEWLINE, lastIdx)
-            if (idx === -1) {
-              // to be processed during the first pass for the next chunk
-              const incompleteChunk = chunk.slice(lastIdx)
-              incompleteChunks.push(incompleteChunk)
-              totalIncompleteLength += incompleteChunk.length
-              // send the extracted rows to the consumer
+        do {
+          // an unescaped newline character denotes the end of a row
+          idx = chunk.indexOf(NEWLINE, lastIdx)
+          // there is no complete row in the rest of the current chunk
+          if (idx === -1) {
+            // to be processed during the next transform iteration
+            const incompleteChunk = chunk.slice(lastIdx)
+            incompleteChunks.push(incompleteChunk)
+            totalIncompleteLength += incompleteChunk.length
+            // send the extracted rows to the consumer, if any
+            if (rows.length > 0) {
               controller.enqueue(rows)
-            } else {
-              const text = decoder.decode(chunk.slice(lastIdx, idx))
-              rows.push({
-                text,
-                json<T>(): T {
-                  return JSON.parse(text)
-                },
-              })
             }
+          } else {
+            let text: string
+            if (incompleteChunks.length > 0) {
+              const completeRowBytes = new Uint8Array(
+                totalIncompleteLength + idx,
+              )
+
+              // using the incomplete chunks from the previous iterations
+              let offset = 0
+              incompleteChunks.forEach((incompleteChunk) => {
+                completeRowBytes.set(incompleteChunk, offset)
+                offset += incompleteChunk.length
+              })
+              // finalize the row with the current chunk slice that ends with a newline
+              const finalChunk = chunk.slice(0, idx)
+              completeRowBytes.set(finalChunk, offset)
+
+              // reset the incomplete chunks
+              incompleteChunks = []
+              totalIncompleteLength = 0
+
+              text = decoder.decode(completeRowBytes)
+            } else {
+              text = decoder.decode(chunk.slice(lastIdx, idx))
+            }
+            rows.push({
+              text,
+              json<T>(): T {
+                return JSON.parse(text)
+              },
+            })
             lastIdx = idx + 1 // skipping newline character
-          } while (idx !== -1)
-        }
+          }
+        } while (idx !== -1)
       },
     })
 
