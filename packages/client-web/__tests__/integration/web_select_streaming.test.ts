@@ -1,5 +1,5 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
-import { isProgress } from '@clickhouse/client-common'
+import { isProgressRow } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
 describe('[Web] SELECT streaming', () => {
@@ -130,7 +130,7 @@ describe('[Web] SELECT streaming', () => {
       })
       const rows = await rs.json<{ number: string }>()
       expect(rows.length).toEqual(limit + expectedProgressRowsCount)
-      expect(rows.filter((r) => !isProgress(r)) as unknown[]).toEqual([
+      expect(rows.filter((r) => !isProgressRow(r)) as unknown[]).toEqual([
         { row: { number: '0' } },
         { row: { number: '1' } },
       ])

@@ -52,9 +52,9 @@ export type {
   ResponseHeaders,
   WithClickHouseSummary,
   WithResponseHeaders,
-  Progress,
+  ProgressRow,
 } from './clickhouse_types'
-export { isProgress } from './clickhouse_types'
+export { isProgressRow } from './clickhouse_types'
 export {
   type ClickHouseSettings,
   type MergeTreeSettings,

@@ -1,5 +1,5 @@
 import type {
-  Progress,
+  ProgressRow,
   ResponseHeaders,
   ResponseJSON,
 } from './clickhouse_types'
@@ -12,7 +12,7 @@ import type {
   StreamableJSONDataFormat,
 } from './data_formatter'
 
-export type RowOrProgress<T> = { row: T } | Progress
+export type RowOrProgress<T> = { row: T } | ProgressRow
 
 export type ResultStream<Format extends DataFormat | unknown, Stream> =
   // JSON*EachRow (except JSONObjectEachRow), CSV, TSV etc.

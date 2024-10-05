@@ -59,7 +59,7 @@ export {
   type ParsedColumnType,
   parseColumnType,
   SimpleColumnTypes,
-  type Progress,
-  isProgress,
+  type ProgressRow,
+  isProgressRow,
   type RowOrProgress,
 } from '@clickhouse/client-common'

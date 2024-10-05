@@ -42,13 +42,13 @@ export interface WithResponseHeaders {
 }
 
 /** X-ClickHouse-Summary response header and progress rows from JSONEachRowWithProgress share the same structure */
-export interface Progress {
+export interface ProgressRow {
   progress: ClickHouseSummary
 }
 
 /** Type guard to use with JSONEachRowWithProgress, checking if the emitted row is a progress row.
  *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
-export function isProgress(row: unknown): row is Progress {
+export function isProgressRow(row: unknown): row is ProgressRow {
   return (
     row !== null &&
     typeof row === 'object' &&
