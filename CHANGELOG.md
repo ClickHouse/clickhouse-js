@@ -6,6 +6,7 @@
 
 ## New features
 
+- Added `JSONEachRowWithProgress` format support, `ProgressRow` interface, and `isProgressRow` type guard. See [this Node.js example](./examples/node/select_json_each_row_with_progress.ts) for more details. It should work similarly with the Web version.
 - (Experimental) Exposed the `parseColumnType` function that takes a string representation of a ClickHouse type (e.g., `FixedString(16)`, `Nullable(Int32)`, etc.) and returns an AST-like object that represents the type. For example:
 
   ```ts
