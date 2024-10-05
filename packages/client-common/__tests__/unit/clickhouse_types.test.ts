@@ -23,5 +23,7 @@ describe('ClickHouse types', () => {
       }),
     ).toBeFalsy()
     expect(isProgressRow(null)).toBeFalsy()
+    expect(isProgressRow(42)).toBeFalsy()
+    expect(isProgressRow({ foo: 'bar' })).toBeFalsy()
   })
 })
