@@ -141,6 +141,7 @@ export abstract class NodeBaseConnection
       session_id: params.session_id,
       clickhouse_settings,
       query_id,
+      role: params.role,
     })
     const { controller, controllerCleanup } = this.getAbortController(params)
     // allows to enforce the compression via the settings even if the client instance has it disabled
@@ -192,6 +193,7 @@ export abstract class NodeBaseConnection
       query_params: params.query_params,
       query: params.query,
       session_id: params.session_id,
+      role: params.role,
       query_id,
     })
     const { controller, controllerCleanup } = this.getAbortController(params)
@@ -382,6 +384,7 @@ export abstract class NodeBaseConnection
       database: this.params.database,
       query_params: params.query_params,
       session_id: params.session_id,
+      role: params.role,
       clickhouse_settings,
       query_id,
     }

@@ -37,6 +37,7 @@ type ToSearchParamsOptions = {
   query?: string
   session_id?: string
   query_id: string
+  role?: string | Array<string>
 }
 
 // TODO validate max length of the resulting query
@@ -48,6 +49,7 @@ export function toSearchParams({
   clickhouse_settings,
   session_id,
   query_id,
+  role,
 }: ToSearchParamsOptions): URLSearchParams {
   const params = new URLSearchParams()
   params.set('query_id', query_id)
@@ -76,6 +78,16 @@ export function toSearchParams({
 
   if (session_id) {
     params.set('session_id', session_id)
+  }
+
+  if (role) {
+    if (typeof role === 'string') {
+      params.set('role', role)
+    } else if (Array.isArray(role)) {
+      for (const r of role) {
+        params.append('role', r)
+      }
+    }
   }
 
   return params
