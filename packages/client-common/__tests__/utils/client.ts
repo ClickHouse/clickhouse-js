@@ -24,9 +24,9 @@ beforeAll(async () => {
   )
   if (isCloudTestEnv() && databaseName === undefined) {
     const cloudInitClient = createTestClient({
-      request_timeout: 10_000,
+      request_timeout: 5_000,
     })
-    await wakeUpPing(cloudInitClient)
+    await wakeUpQuery(cloudInitClient)
     databaseName = await createRandomDatabase(cloudInitClient)
     await cloudInitClient.close()
   }
@@ -136,24 +136,34 @@ export function getTestDatabaseName(): string {
 }
 
 const MaxPingRetries = 30
-export async function wakeUpPing(client: ClickHouseClient): Promise<void> {
+export async function wakeUpQuery(client: ClickHouseClient): Promise<void> {
   let attempts = 1
   let lastError: Error | unknown
   let isAwake = false
   while (attempts <= MaxPingRetries) {
-    const result = await client.ping()
-    isAwake = result.success
-    if (result.success) {
+    try {
+      const rs = await client.query({
+        query: 'SELECT number FROM system.numbers LIMIT 1',
+        format: 'JSONEachRow',
+        clickhouse_settings: {
+          wait_end_of_query: 1,
+        },
+      })
+      console.log('Got a successful wake-up response:', await rs.json())
+      isAwake = true
       break
+    } catch (e) {
+      console.error(
+        `Service is still waking up, query attempts so far: ${attempts}. Cause:`,
+        e,
+      )
+      lastError = e
+      attempts++
     }
-    console.warn(
-      `Service is still waking up, ping attempts so far: ${attempts}. Cause:`,
-      result.error,
-    )
-    lastError = result.error
-    attempts++
   }
-  if (!isAwake) {
+  if (isAwake) {
+    console.log(`Service is awake after ${attempts} attempts`)
+  } else {
     console.error(
       `Failed to wake up the service after ${MaxPingRetries} attempts, exiting. Last error:`,
       lastError,
@@ -161,5 +171,4 @@ export async function wakeUpPing(client: ClickHouseClient): Promise<void> {
     await client.close()
     process.exit(1)
   }
-  console.log(`Service is awake after ${attempts} attempts`)
 }
