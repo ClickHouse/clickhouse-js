@@ -50,6 +50,7 @@ export class WebConnection implements Connection<ReadableStream> {
       clickhouse_settings,
       query_params: params.query_params,
       session_id: params.session_id,
+      role: params.role,
       query_id,
     })
     const response = await this.request({
@@ -93,6 +94,7 @@ export class WebConnection implements Connection<ReadableStream> {
       query_params: params.query_params,
       query: params.query,
       session_id: params.session_id,
+      role: params.role,
       query_id,
     })
     const response = await this.request({
@@ -224,6 +226,7 @@ export class WebConnection implements Connection<ReadableStream> {
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
       session_id: params.session_id,
+      role: params.role,
       query_id,
     })
     const response = await this.request({
