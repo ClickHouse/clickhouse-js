@@ -101,15 +101,26 @@ export async function createRandomDatabase(
     maybeOnCluster = ` ON CLUSTER '{cluster}'`
   }
   const ddl = `CREATE DATABASE IF NOT EXISTS ${databaseName}${maybeOnCluster}`
-  console.log(`\nCreating database ${databaseName} with DDL:\n${ddl}`)
-  await client.command({
-    query: ddl,
-    clickhouse_settings: {
-      wait_end_of_query: 1,
-    },
-  })
-  console.log(`\nCreated database ${databaseName}`)
-  return databaseName
+  const startTime = Date.now()
+  try {
+    console.log(`\nCreating database ${databaseName} with DDL:\n${ddl}`)
+    await client.command({
+      query: ddl,
+      clickhouse_settings: {
+        wait_end_of_query: 1,
+      },
+    })
+    console.log(
+      `\nCreated database ${databaseName} after ${Date.now() - startTime} ms`,
+    )
+    return databaseName
+  } catch (e) {
+    console.error(
+      `Failed to create database ${databaseName} after ${Date.now() - startTime} ms`,
+      e,
+    )
+    process.exit(1)
+  }
 }
 
 export async function createTable<Stream = unknown>(
