@@ -161,4 +161,5 @@ export async function wakeUpPing(client: ClickHouseClient): Promise<void> {
     await client.close()
     process.exit(1)
   }
+  console.log(`Service is awake after ${attempts} attempts`)
 }
