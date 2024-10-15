@@ -101,6 +101,7 @@ export async function createRandomDatabase(
     maybeOnCluster = ` ON CLUSTER '{cluster}'`
   }
   const ddl = `CREATE DATABASE IF NOT EXISTS ${databaseName}${maybeOnCluster}`
+  console.log(`\nCreating database ${databaseName} with DDL:\n${ddl}`)
   await client.command({
     query: ddl,
     clickhouse_settings: {
