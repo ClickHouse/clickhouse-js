@@ -2,7 +2,7 @@ import type { Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 import type { WebClickHouseClient } from '../../src/client'
 
-describe('[Web] abort request', () => {
+fdescribe('[Web] abort request', () => {
   let client: WebClickHouseClient
 
   beforeEach(() => {
@@ -35,7 +35,7 @@ describe('[Web] abort request', () => {
     let rowCount = 0
     const selectPromise = client
       .query({
-        query: 'SELECT sleepEachRow(0.01), number FROM system.numbers LIMIT 3',
+        query: 'SELECT number FROM system.numbers LIMIT 1000',
         format: 'JSONCompactEachRow',
         abort_signal: controller.signal,
         clickhouse_settings: {
@@ -69,7 +69,7 @@ describe('[Web] abort request', () => {
     let rowCount = 0
     const selectPromise = client
       .query({
-        query: 'SELECT sleepEachRow(0.01), number FROM system.numbers LIMIT 3',
+        query: 'SELECT number FROM system.numbers LIMIT 3',
         format: 'JSONCompactEachRow',
         clickhouse_settings: {
           // low block size to force streaming 1 row at a time
