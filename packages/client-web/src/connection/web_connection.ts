@@ -18,6 +18,7 @@ import {
   withHttpSettings,
 } from '@clickhouse/client-common'
 import { getAsText } from '../utils'
+import crypto from 'crypto'
 
 type WebInsertParams<T> = Omit<
   ConnInsertParams<ReadableStream<T>>,
