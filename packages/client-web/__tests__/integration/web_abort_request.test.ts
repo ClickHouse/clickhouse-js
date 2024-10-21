@@ -31,23 +31,27 @@ describe('[Web] abort request', () => {
 
   it('cancels a select query while reading response', async () => {
     const controller = new AbortController()
+    let rowCount = 0
     const selectPromise = client
       .query({
-        query: 'SELECT * from system.numbers LIMIT 100000',
+        query: 'SELECT sleepEachRow(0.01), number FROM system.numbers LIMIT 3',
         format: 'JSONCompactEachRow',
         abort_signal: controller.signal,
+        clickhouse_settings: {
+          // low block size to force streaming 1 row at a time
+          max_block_size: '1',
+        },
       })
       .then(async (rs) => {
         const reader = rs.stream().getReader()
         while (true) {
           const { done, value: rows } = await reader.read()
           if (done) break
-          ;(rows as Row[]).forEach((row: Row) => {
-            const [number] = row.json<[string]>()
-            // abort when reach number 3
-            if (number === '3') {
+          ;(rows as Row[]).forEach(() => {
+            if (rowCount >= 1) {
               controller.abort()
             }
+            rowCount++
           })
         }
       })
