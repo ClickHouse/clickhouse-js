@@ -1,17 +1,21 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
+import { isCloudTestEnv } from '@test/utils/test_env'
 import { createReadOnlyUser } from '../fixtures/read_only_user'
 import { createSimpleTable } from '../fixtures/simple_table'
 import { createTestClient, getTestDatabaseName, guid } from '../utils'
 
 describe('read only user', () => {
+  let defaultClient: ClickHouseClient
   let client: ClickHouseClient
   let tableName: string
+  let userName: string
 
   beforeAll(async () => {
     const database = getTestDatabaseName()
-    const defaultClient = createTestClient()
+    defaultClient = createTestClient()
 
-    const { username, password } = await createReadOnlyUser(defaultClient)
+    const credentials = await createReadOnlyUser(defaultClient)
+    userName = credentials.username
 
     // Populate some test table to select from
     tableName = `read_only_user_data_${guid()}`
@@ -20,13 +24,12 @@ describe('read only user', () => {
       table: tableName,
       values: [[42, 'hello', [0, 1]]],
     })
-    await defaultClient.close()
 
     // Create a client that connects read only user to the test database
     client = createTestClient({
-      username,
-      password,
       database,
+      username: credentials.username,
+      password: credentials.password,
       clickhouse_settings: {
         // readonly user cannot adjust settings. reset the default ones set by fixtures.
         // might be fixed by https://github.com/ClickHouse/ClickHouse/issues/40244
@@ -37,7 +40,13 @@ describe('read only user', () => {
   })
 
   afterAll(async () => {
+    if (isCloudTestEnv()) {
+      await defaultClient.command({
+        query: `DROP USER IF EXISTS ${userName}`,
+      })
+    }
     await client.close()
+    await defaultClient.close()
   })
 
   it('should select some data without issues', async () => {
