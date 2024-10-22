@@ -2,7 +2,7 @@ import type { Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 import type { WebClickHouseClient } from '../../src/client'
 
-fdescribe('[Web] abort request', () => {
+describe('[Web] abort request', () => {
   let client: WebClickHouseClient
 
   beforeEach(() => {
@@ -35,7 +35,7 @@ fdescribe('[Web] abort request', () => {
     let rowCount = 0
     const selectPromise = client
       .query({
-        query: 'SELECT number FROM system.numbers LIMIT 1000',
+        query: 'SELECT number FROM system.numbers LIMIT 10000',
         format: 'JSONCompactEachRow',
         abort_signal: controller.signal,
         clickhouse_settings: {
