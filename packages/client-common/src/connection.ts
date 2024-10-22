@@ -33,6 +33,7 @@ export interface ConnBaseQueryParams {
   session_id?: string
   query_id?: string
   auth?: { username: string; password: string }
+  role?: string | Array<string>
 }
 
 export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
