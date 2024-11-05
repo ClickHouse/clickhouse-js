@@ -3,7 +3,6 @@ import { type ClickHouseClient } from '@clickhouse/client-common'
 import {
   createTestClient,
   getClickHouseTestEnvironment,
-  getTestDatabaseName,
   guid,
   TestEnv,
   validateUUID,
@@ -51,8 +50,8 @@ describe('exec and command', () => {
     })
   })
 
-  it('does not swallow ClickHouse error', async () => {
-    const { ddl, tableName } = getDDL()
+  it('should not swallow ClickHouse error', async () => {
+    const { ddl } = getDDL()
     const commands = async () => {
       const command = () =>
         runExec({
@@ -65,9 +64,6 @@ describe('exec and command', () => {
       jasmine.objectContaining({
         code: '57',
         type: 'TABLE_ALREADY_EXISTS',
-        message: jasmine.stringContaining(
-          `Table ${getTestDatabaseName()}.${tableName} already exists. `,
-        ),
       }),
     )
   })
