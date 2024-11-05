@@ -41,7 +41,7 @@ export function isSuccessfulResponse(
     statusCode &&
       200 <= statusCode &&
       statusCode < 300 &&
-      !headers['X-ClickHouse-Exception-Code'],
+      !headers['x-clickhouse-exception-code'],
   )
 }
 
