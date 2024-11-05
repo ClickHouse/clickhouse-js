@@ -100,8 +100,8 @@ describe('toSearchParams', () => {
   it('should set a single role', async () => {
     const query = 'SELECT * FROM system.query_log'
     const params = toSearchParams({
-      database: 'some_db',
       query,
+      database: 'some_db',
       query_id: 'my-query-id',
       role: 'single-role',
     })!
@@ -109,6 +109,7 @@ describe('toSearchParams', () => {
     expect(result).toEqual([
       ['database', 'some_db'],
       ['query', 'SELECT * FROM system.query_log'],
+      ['query_id', 'my-query-id'],
       ['role', 'single-role'],
     ])
   })
