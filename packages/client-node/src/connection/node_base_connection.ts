@@ -460,7 +460,10 @@ export abstract class NodeBaseConnection
         const tryDecompressResponseStream =
           params.try_decompress_response_stream ?? true
         // even if the stream decompression is disabled, we have to decompress it in case of an error
-        const isFailedResponse = !isSuccessfulResponse(_response.statusCode)
+        const isFailedResponse = !isSuccessfulResponse(
+          _response.statusCode,
+          _response.headers,
+        )
         if (tryDecompressResponseStream || isFailedResponse) {
           const decompressionResult = decompressResponse(_response)
           if (isDecompressionError(decompressionResult)) {
