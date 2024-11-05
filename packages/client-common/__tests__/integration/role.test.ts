@@ -1,10 +1,10 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, TestEnv, whenOnEnv } from '@test/utils'
-import { getTestDatabaseName, guid } from '../utils'
 import { createSimpleTable } from '../fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '../fixtures/test_data'
+import { getTestDatabaseName, guid } from '../utils'
 
-describe('role settings', () => {
+whenOnEnv(TestEnv.LocalSingleNode).describe('role settings', () => {
   let defaultClient: ClickHouseClient
   let client: ClickHouseClient
 
@@ -62,71 +62,59 @@ describe('role settings', () => {
       return jsonResults[0].roles
     }
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should use a single role from the client configuration',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName1,
-        })
+    it('should use a single role from the client configuration', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName1,
+      })
 
-        const actualRoles = await queryCurrentRoles()
-        expect(actualRoles).toEqual([roleName1])
-      },
-    )
+      const actualRoles = await queryCurrentRoles()
+      expect(actualRoles).toEqual([roleName1])
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should use multiple roles from the client configuration',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: [roleName1, roleName2],
-        })
+    it('should use multiple roles from the client configuration', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: [roleName1, roleName2],
+      })
 
-        const actualRoles = await queryCurrentRoles()
-        expect(actualRoles.length).toBe(2)
-        expect(actualRoles).toContain(roleName1)
-        expect(actualRoles).toContain(roleName2)
-      },
-    )
+      const actualRoles = await queryCurrentRoles()
+      expect(actualRoles.length).toBe(2)
+      expect(actualRoles).toContain(roleName1)
+      expect(actualRoles).toContain(roleName2)
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should use single role from the query options',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: [roleName1, roleName2],
-        })
+    it('should use single role from the query options', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: [roleName1, roleName2],
+      })
 
-        const actualRoles = await queryCurrentRoles(roleName2)
-        expect(actualRoles).toEqual([roleName2])
-      },
-    )
+      const actualRoles = await queryCurrentRoles(roleName2)
+      expect(actualRoles).toEqual([roleName2])
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should use multiple roles from the query options',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-        })
+    it('should use multiple roles from the query options', async () => {
+      client = createTestClient({
+        username,
+        password,
+      })
 
-        const actualRoles = await queryCurrentRoles([roleName1, roleName2])
-        expect(actualRoles.length).toBe(2)
-        expect(actualRoles).toContain(roleName1)
-        expect(actualRoles).toContain(roleName2)
-      },
-    )
+      const actualRoles = await queryCurrentRoles([roleName1, roleName2])
+      expect(actualRoles.length).toBe(2)
+      expect(actualRoles).toContain(roleName1)
+      expect(actualRoles).toContain(roleName2)
+    })
   })
 
   describe('for inserts', () => {
     let tableName: string
 
     beforeEach(async () => {
-      tableName = `insert_test_${guid()}`
+      tableName = `role_insert_test_${guid()}`
       await createSimpleTable(defaultClient, tableName)
     })
 
@@ -139,106 +127,88 @@ describe('role settings', () => {
       })
     }
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should successfully insert when client specifies a role that is allowed to insert',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName1,
-        })
+    it('should successfully insert when client specifies a role that is allowed to insert', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName1,
+      })
 
-        await tryInsert()
-        await assertJsonValues(defaultClient, tableName)
-      },
-    )
+      await tryInsert()
+      await assertJsonValues(defaultClient, tableName)
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should successfully insert when client specifies multiple roles and at least one is allowed to insert',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: [roleName1, roleName2],
-        })
+    it('should successfully insert when client specifies multiple roles and at least one is allowed to insert', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: [roleName1, roleName2],
+      })
 
-        await tryInsert()
-        await assertJsonValues(defaultClient, tableName)
-      },
-    )
+      await tryInsert()
+      await assertJsonValues(defaultClient, tableName)
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should fail to insert when client specifies a role that is not allowed to insert',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName2,
-        })
+    it('should fail to insert when client specifies a role that is not allowed to insert', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName2,
+      })
 
-        await expectAsync(tryInsert()).toBeRejectedWith(
-          jasmine.objectContaining({
-            message: jasmine.stringContaining('Not enough privileges'),
-            code: '497',
-            type: 'ACCESS_DENIED',
-          }),
-        )
-      },
-    )
+      await expectAsync(tryInsert()).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Not enough privileges'),
+          code: '497',
+          type: 'ACCESS_DENIED',
+        }),
+      )
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should successfully insert when insert specifies a role that is allowed to insert',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName2,
-        })
+    it('should successfully insert when insert specifies a role that is allowed to insert', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName2,
+      })
 
-        await tryInsert(roleName1)
-        await assertJsonValues(defaultClient, tableName)
-      },
-    )
+      await tryInsert(roleName1)
+      await assertJsonValues(defaultClient, tableName)
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should successfully insert when insert specifies multiple roles and at least one is allowed to insert',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName2,
-        })
+    it('should successfully insert when insert specifies multiple roles and at least one is allowed to insert', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName2,
+      })
 
-        await tryInsert([roleName1, roleName2])
-        await assertJsonValues(defaultClient, tableName)
-      },
-    )
+      await tryInsert([roleName1, roleName2])
+      await assertJsonValues(defaultClient, tableName)
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should fail to insert when insert specifies a role that is not allowed to insert',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName1,
-        })
+    it('should fail to insert when insert specifies a role that is not allowed to insert', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName1,
+      })
 
-        await expectAsync(tryInsert(roleName2)).toBeRejectedWith(
-          jasmine.objectContaining({
-            message: jasmine.stringContaining('Not enough privileges'),
-            code: '497',
-            type: 'ACCESS_DENIED',
-          }),
-        )
-      },
-    )
+      await expectAsync(tryInsert(roleName2)).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Not enough privileges'),
+          code: '497',
+          type: 'ACCESS_DENIED',
+        }),
+      )
+    })
   })
 
   describe('for commands', () => {
     let tableName: string
 
     beforeEach(async () => {
-      tableName = `command_role_test_${guid()}`
+      tableName = `role_command_test_${guid()}`
     })
 
     async function tryCreateTable(role?: string | Array<string>) {
@@ -262,98 +232,80 @@ describe('role settings', () => {
       expect(data[0].name).toBe(tableName)
     }
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should successfully create a table when client specifies a role that is allowed to create tables',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName1,
-        })
+    it('should successfully create a table when client specifies a role that is allowed to create tables', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName1,
+      })
 
-        await tryCreateTable()
-        await checkCreatedTable(tableName)
-      },
-    )
+      await tryCreateTable()
+      await checkCreatedTable(tableName)
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should successfully create table when client specifies multiple roles and at least one is allowed to create tables',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: [roleName1, roleName2],
-        })
+    it('should successfully create table when client specifies multiple roles and at least one is allowed to create tables', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: [roleName1, roleName2],
+      })
 
-        await tryCreateTable()
-        await checkCreatedTable(tableName)
-      },
-    )
+      await tryCreateTable()
+      await checkCreatedTable(tableName)
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should fail to create a table when client specifies a role that is not allowed to create tables',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName2,
-        })
+    it('should fail to create a table when client specifies a role that is not allowed to create tables', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName2,
+      })
 
-        await expectAsync(tryCreateTable()).toBeRejectedWith(
-          jasmine.objectContaining({
-            message: jasmine.stringContaining('Not enough privileges'),
-            code: '497',
-            type: 'ACCESS_DENIED',
-          }),
-        )
-      },
-    )
+      await expectAsync(tryCreateTable()).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Not enough privileges'),
+          code: '497',
+          type: 'ACCESS_DENIED',
+        }),
+      )
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should successfully create table when command specifies a role that is allowed to create tables',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName2,
-        })
+    it('should successfully create table when command specifies a role that is allowed to create tables', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName2,
+      })
 
-        await tryCreateTable(roleName1)
-        await checkCreatedTable(tableName)
-      },
-    )
+      await tryCreateTable(roleName1)
+      await checkCreatedTable(tableName)
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should successfully create table when command specifies multiple roles and at least one is allowed to create tables',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName2,
-        })
+    it('should successfully create table when command specifies multiple roles and at least one is allowed to create tables', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName2,
+      })
 
-        await tryCreateTable([roleName1, roleName2])
-        await checkCreatedTable(tableName)
-      },
-    )
+      await tryCreateTable([roleName1, roleName2])
+      await checkCreatedTable(tableName)
+    })
 
-    whenOnEnv(TestEnv.LocalSingleNode).it(
-      'should fail to create table when command specifies a role that is not allowed to create tables',
-      async () => {
-        client = createTestClient({
-          username,
-          password,
-          role: roleName1,
-        })
+    it('should fail to create table when command specifies a role that is not allowed to create tables', async () => {
+      client = createTestClient({
+        username,
+        password,
+        role: roleName1,
+      })
 
-        await expectAsync(tryCreateTable(roleName2)).toBeRejectedWith(
-          jasmine.objectContaining({
-            message: jasmine.stringContaining('Not enough privileges'),
-            code: '497',
-            type: 'ACCESS_DENIED',
-          }),
-        )
-      },
-    )
+      await expectAsync(tryCreateTable(roleName2)).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Not enough privileges'),
+          code: '497',
+          type: 'ACCESS_DENIED',
+        }),
+      )
+    })
   })
 })

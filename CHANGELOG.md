@@ -1,3 +1,9 @@
+# 1.8.0 (Common, Node.js, Web)
+
+## New features
+
+- Added support for specifying roles via request query parameters. See [this example](examples/role.ts) for more details. ([@pulpdrew](https://github.com/pulpdrew), [#328](https://github.com/ClickHouse/clickhouse-js/pull/328))
+
 # 1.7.0 (Common, Node.js, Web)
 
 ## Bug fixes
