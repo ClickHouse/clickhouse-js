@@ -16,6 +16,7 @@ export {
 export { type BaseClickHouseClientConfigOptions } from './config'
 export type {
   Row,
+  RowOrProgress,
   BaseResultSet,
   ResultJSONType,
   RowJSONType,
@@ -51,12 +52,29 @@ export type {
   ResponseHeaders,
   WithClickHouseSummary,
   WithResponseHeaders,
+  ProgressRow,
 } from './clickhouse_types'
+export { isProgressRow } from './clickhouse_types'
 export {
   type ClickHouseSettings,
   type MergeTreeSettings,
   SettingsMap,
 } from './settings'
+export type {
+  SimpleColumnType,
+  ParsedColumnSimple,
+  ParsedColumnEnum,
+  ParsedColumnFixedString,
+  ParsedColumnNullable,
+  ParsedColumnDecimal,
+  ParsedColumnDateTime,
+  ParsedColumnDateTime64,
+  ParsedColumnArray,
+  ParsedColumnTuple,
+  ParsedColumnMap,
+  ParsedColumnType,
+} from './parse'
+export { SimpleColumnTypes, parseColumnType } from './parse'
 
 /** For implementations usage only - should not be re-exported */
 export {

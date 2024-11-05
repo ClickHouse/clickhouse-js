@@ -1,5 +1,6 @@
 name: 'tests'
 
+permissions: {}
 on:
   workflow_dispatch:
   push:
@@ -67,7 +68,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
+        uses: isbang/compose-action@v2.0.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -100,7 +101,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
+        uses: isbang/compose-action@v2.0.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -141,7 +142,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
+        uses: isbang/compose-action@v2.0.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -172,7 +173,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
+        uses: isbang/compose-action@v2.0.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -222,7 +223,6 @@ jobs:
   web-integration-tests-cloud-smt:
     needs: node-unit-tests
     runs-on: ubuntu-latest
-    permissions: write-all
     steps:
       - uses: actions/checkout@main
 
@@ -263,7 +263,7 @@ jobs:
           fetch-depth: 0
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v1.5.1
+        uses: isbang/compose-action@v2.0.2
         with:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'

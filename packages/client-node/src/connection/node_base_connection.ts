@@ -393,8 +393,8 @@ export abstract class NodeBaseConnection
     const tryDecompressResponseStream =
       params.op === 'Exec'
         ? // allows to disable stream decompression for the `Exec` operation only
-          params.decompress_response_stream ??
-          this.params.compression.decompress_response
+          (params.decompress_response_stream ??
+          this.params.compression.decompress_response)
         : // there is nothing useful in the response stream for the `Command` operation,
           // and it is immediately destroyed; never decompress it
           false

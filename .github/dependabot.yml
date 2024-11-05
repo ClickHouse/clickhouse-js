@@ -1,0 +1,19 @@
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+version: 2
+updates:
+  - package-ecosystem: 'github-actions'
+    directory: '.github/workflows'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    groups:
+      workflows:
+        dependency-type: 'development'
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    groups:
+      dev-dependencies:
+        dependency-type: 'development'

@@ -1,12 +1,13 @@
-import type { ResultSet } from '../../src'
 import type {
   ClickHouseClient as BaseClickHouseClient,
   DataFormat,
 } from '@clickhouse/client-common'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
 import { guid } from '@test/utils'
-import type { ClickHouseClient } from '../../src'
+import type { ClickHouseClient, ResultSet } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
+
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 
 // Ignored and used only as a source for ESLint checks with $ExpectType
 // See also: https://www.npmjs.com/package/eslint-plugin-expect-type

@@ -7,7 +7,6 @@ describe('abort request', () => {
   beforeEach(() => {
     client = createTestClient()
   })
-
   afterEach(async () => {
     await client.close()
   })

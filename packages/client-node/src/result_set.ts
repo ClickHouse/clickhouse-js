@@ -85,7 +85,7 @@ export class ResultSet<Format extends DataFormat | unknown>
       const stream = this.stream<T>()
       for await (const rows of stream) {
         for (const row of rows) {
-          result.push(row.json())
+          result.push(row.json() as T)
         }
       }
       return result as any
