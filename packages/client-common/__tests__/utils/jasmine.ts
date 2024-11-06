@@ -8,9 +8,17 @@ export const whenOnEnv = (...envs: TestEnv[]) => {
       envs.includes(currentEnv)
         ? it(...args)
         : logItAndSkip(currentEnv, ...args),
+    fit: (...args: Parameters<typeof it>) =>
+      envs.includes(currentEnv)
+        ? fit(...args)
+        : logItAndSkip(currentEnv, ...args),
     describe: (...args: Parameters<typeof describe>) =>
       envs.includes(currentEnv)
         ? describe(...args)
+        : logDescribeAndSkip(currentEnv, ...args),
+    fdescribe: (...args: Parameters<typeof describe>) =>
+      envs.includes(currentEnv)
+        ? fdescribe(...args)
         : logDescribeAndSkip(currentEnv, ...args),
   }
 }

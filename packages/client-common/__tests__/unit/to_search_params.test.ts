@@ -78,6 +78,7 @@ describe('toSearchParams', () => {
         qaz: 'qux',
       },
       session_id: 'my-session-id',
+      role: ['my-role-1', 'my-role-2'],
       query_id: 'my-query-id',
       query,
     })!
@@ -89,8 +90,27 @@ describe('toSearchParams', () => {
       ['param_qaz', 'qux'],
       ['query', 'SELECT * FROM system.query_log'],
       ['query_id', 'my-query-id'],
+      ['role', 'my-role-1'],
+      ['role', 'my-role-2'],
       ['session_id', 'my-session-id'],
       ['wait_end_of_query', '1'],
+    ])
+  })
+
+  it('should set a single role', async () => {
+    const query = 'SELECT * FROM system.query_log'
+    const params = toSearchParams({
+      query,
+      database: 'some_db',
+      query_id: 'my-query-id',
+      role: 'single-role',
+    })!
+    const result = toSortedArray(params)
+    expect(result).toEqual([
+      ['database', 'some_db'],
+      ['query', 'SELECT * FROM system.query_log'],
+      ['query_id', 'my-query-id'],
+      ['role', 'single-role'],
     ])
   })
 })
