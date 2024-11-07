@@ -36,3 +36,18 @@ export function withHttpSettings(
 export function isSuccessfulResponse(statusCode?: number): boolean {
   return Boolean(statusCode && 200 <= statusCode && statusCode < 300)
 }
+
+export function isJWTAuth(auth: unknown): auth is { access_token: string } {
+  return auth !== null && typeof auth === 'object' && 'access_token' in auth
+}
+
+export function isCredentialsAuth(
+  auth: unknown,
+): auth is { username: string; password: string } {
+  return (
+    auth !== null &&
+    typeof auth === 'object' &&
+    'username' in auth &&
+    'password' in auth
+  )
+}

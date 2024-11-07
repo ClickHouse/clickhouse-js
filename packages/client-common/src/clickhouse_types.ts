@@ -46,6 +46,25 @@ export interface ProgressRow {
   progress: ClickHouseSummary
 }
 
+export type InsertValues<Stream, T = unknown> =
+  | ReadonlyArray<T>
+  | Stream
+  | InputJSON<T>
+  | InputJSONObjectEachRow<T>
+
+export type NonEmptyArray<T> = [T, ...T[]]
+
+export interface CredentialsAuth {
+  username?: string
+  password?: string
+}
+
+export interface JWTAuth {
+  access_token: string
+}
+
+export type Auth = CredentialsAuth | JWTAuth
+
 /** Type guard to use with JSONEachRowWithProgress, checking if the emitted row is a progress row.
  *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
 export function isProgressRow(row: unknown): row is ProgressRow {

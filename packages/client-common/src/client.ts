@@ -11,7 +11,7 @@ import type {
   WithResponseHeaders,
 } from '@clickhouse/client-common'
 import { type DataFormat, DefaultLogger } from '@clickhouse/client-common'
-import type { InputJSON, InputJSONObjectEachRow } from './clickhouse_types'
+import type { InsertValues, NonEmptyArray } from './clickhouse_types'
 import type { ImplementationDetails, ValuesEncoder } from './config'
 import { getConnectionParams, prepareConfigWithURL } from './config'
 import type { ConnPingResult } from './connection'
@@ -35,13 +35,14 @@ export interface BaseQueryParams {
    *  If it is not set, {@link BaseClickHouseClientConfigOptions.roles} will be used.
    *  @default undefined (no override) */
   role?: string | Array<string>
-  /** When defined, overrides the credentials from the {@link BaseClickHouseClientConfigOptions.username}
-   *  and {@link BaseClickHouseClientConfigOptions.password} settings for this particular request.
+  /** When defined, overrides {@link BaseClickHouseClientConfigOptions.auth} for this particular request.
    *  @default undefined (no override) */
-  auth?: {
-    username: string
-    password: string
-  }
+  auth?:
+    | {
+        username: string
+        password: string
+      }
+    | { access_token: string }
 }
 
 export interface QueryParams extends BaseQueryParams {
@@ -111,14 +112,6 @@ export type InsertResult = {
 
 export type ExecResult<Stream> = ConnExecResult<Stream>
 export type PingResult = ConnPingResult
-
-export type InsertValues<Stream, T = unknown> =
-  | ReadonlyArray<T>
-  | Stream
-  | InputJSON<T>
-  | InputJSONObjectEachRow<T>
-
-type NonEmptyArray<T> = [T, ...T[]]
 
 /** {@link except} field contains a non-empty list of columns to exclude when generating `(* EXCEPT (...))` clause */
 export interface InsertColumnsExcept {

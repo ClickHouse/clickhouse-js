@@ -1,5 +1,9 @@
-import type { ResponseHeaders } from './clickhouse_types'
-import type { InsertValues } from './client'
+import type {
+  Auth,
+  CredentialsAuth,
+  InsertValues,
+  ResponseHeaders,
+} from './clickhouse_types'
 import type { Connection, ConnectionParams } from './connection'
 import type { DataFormat } from './data_formatter'
 import type { Logger } from './logger'
@@ -39,12 +43,15 @@ export interface BaseClickHouseClientConfigOptions {
      *  @default false */
     request?: boolean
   }
-  /** The name of the user on whose behalf requests are made.
+  /** @deprecated Use {@link auth} object instead.
+   *  The name of the user on whose behalf requests are made.
    *  @default default */
   username?: string
-  /** The user password.
+  /** @deprecated Use {@link auth} object instead.
+   *  The user password.
    *  @default empty string */
   password?: string
+  auth?: Auth
   /** The name of the application using the JS client.
    *  @default empty string */
   application?: string
@@ -178,6 +185,19 @@ export function prepareConfigWithURL(
     baseConfig.http_headers = baseConfig.additional_headers
     delete baseConfig.additional_headers
   }
+  if (baseConfig.username !== undefined || baseConfig.password !== undefined) {
+    logger.warn({
+      module: 'Config',
+      message:
+        '"username" and "password" are deprecated. Use "auth" object instead.',
+    })
+    baseConfig.auth = {
+      username: baseConfig.username,
+      password: baseConfig.password,
+    }
+    delete baseConfig.username
+    delete baseConfig.password
+  }
   let configURL
   if (baseConfig.host !== undefined) {
     logger.warn({
@@ -205,7 +225,26 @@ export function getConnectionParams(
   config: BaseClickHouseClientConfigOptionsWithURL,
   logger: Logger,
 ): ConnectionParams {
+  let auth: ConnectionParams['auth']
+  if (config.auth !== undefined) {
+    if ('access_token' in config.auth) {
+      auth = { access_token: config.auth.access_token, type: 'JWT' }
+    } else {
+      auth = {
+        username: config.auth.username ?? 'default',
+        password: config.auth.password ?? '',
+        type: 'Credentials',
+      }
+    }
+  } else {
+    auth = {
+      username: 'default',
+      password: '',
+      type: 'Credentials',
+    }
+  }
   return {
+    auth,
     url: config.url,
     application_id: config.application,
     request_timeout: config.request_timeout ?? 30_000,
@@ -214,8 +253,6 @@ export function getConnectionParams(
       decompress_response: config.compression?.response ?? false,
       compress_request: config.compression?.request ?? false,
     },
-    username: config.username ?? 'default',
-    password: config.password ?? '',
     database: config.database ?? 'default',
     log_writer: new LogWriter(logger, 'Connection', config.log?.level),
     keep_alive: { enabled: config.keep_alive?.enabled ?? true },
@@ -300,12 +337,16 @@ export function loadConfigOptionsFromURL(
   handleExtraURLParams: HandleImplSpecificURLParams | null,
 ): [URL, BaseClickHouseClientConfigOptions] {
   let config: BaseClickHouseClientConfigOptions = {}
+  const auth: CredentialsAuth = {}
   if (url.username.trim() !== '') {
-    config.username = url.username
+    auth.username = url.username
   }
   // no trim for password
   if (url.password !== '') {
-    config.password = url.password
+    auth.password = url.password
+  }
+  if (Object.keys(auth).length > 0) {
+    config.auth = auth
   }
   if (url.pathname.trim().length > 1) {
     config.database = url.pathname.slice(1)
@@ -396,6 +437,9 @@ export function loadConfigOptionsFromURL(
               config.keep_alive = {}
             }
             config.keep_alive.enabled = booleanConfigURLValue({ key, value })
+            break
+          case 'access_token':
+            config.auth = { access_token: value }
             break
           default:
             paramWasProcessed = false

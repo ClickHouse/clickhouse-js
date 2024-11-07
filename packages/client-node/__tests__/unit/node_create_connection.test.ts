@@ -16,24 +16,32 @@ describe('[Node.js] createConnection', () => {
   }
   const tlsParams: NodeConnectionParams['tls'] = undefined
 
+  const defaultConnectionParams = {
+    url: new URL('http://localhost'),
+    auth: {
+      username: 'default',
+      password: 'password',
+      type: 'Credentials',
+    },
+  } as ConnectionParams
+
   it('should create an instance of HTTP adapter', async () => {
+    const adapter = createConnection({
+      connection_params: defaultConnectionParams,
+      tls: tlsParams,
+      keep_alive: keepAliveParams,
+      http_agent: undefined,
+      set_basic_auth_header: true,
+    })
     expect(adapter).toBeInstanceOf(NodeHttpConnection)
-  })
-  const adapter = createConnection({
-    connection_params: {
-      url: new URL('http://localhost'),
-    } as ConnectionParams,
-    tls: tlsParams,
-    keep_alive: keepAliveParams,
-    http_agent: undefined,
-    set_basic_auth_header: true,
   })
 
   it('should create an instance of HTTPS adapter', async () => {
     const adapter = createConnection({
       connection_params: {
+        ...defaultConnectionParams,
         url: new URL('https://localhost'),
-      } as ConnectionParams,
+      },
       tls: tlsParams,
       keep_alive: keepAliveParams,
       http_agent: undefined,
@@ -46,8 +54,9 @@ describe('[Node.js] createConnection', () => {
     expect(() =>
       createConnection({
         connection_params: {
+          ...defaultConnectionParams,
           url: new URL('tcp://localhost'),
-        } as ConnectionParams,
+        },
         tls: tlsParams,
         keep_alive: keepAliveParams,
         http_agent: undefined,
@@ -59,9 +68,7 @@ describe('[Node.js] createConnection', () => {
   describe('Custom HTTP agent', () => {
     it('should create an instance with a custom HTTP agent', async () => {
       const adapter = createConnection({
-        connection_params: {
-          url: new URL('https://localhost'),
-        } as ConnectionParams,
+        connection_params: defaultConnectionParams,
         tls: tlsParams,
         keep_alive: keepAliveParams,
         http_agent: new http.Agent({
@@ -75,9 +82,7 @@ describe('[Node.js] createConnection', () => {
 
     it('should create an instance with a custom HTTPS agent', async () => {
       const adapter = createConnection({
-        connection_params: {
-          url: new URL('https://localhost'),
-        } as ConnectionParams,
+        connection_params: defaultConnectionParams,
         tls: tlsParams,
         keep_alive: keepAliveParams,
         http_agent: new https.Agent({
