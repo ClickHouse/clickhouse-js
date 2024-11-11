@@ -140,7 +140,7 @@ describe('[Node.js] TLS connection', () => {
       expect(await resultSet.text()).toEqual('0\n1\n2\n')
     })
 
-    fdescribe('Custom HTTPS agent', () => {
+    describe('Custom HTTPS agent', () => {
       it('should work with a custom HTTPS agent', async () => {
         const httpsRequestStub = spyOn(Https, 'request').and.callThrough()
         const agent = new https.Agent({
