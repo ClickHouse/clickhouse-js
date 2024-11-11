@@ -1,3 +1,9 @@
+# 1.8.1 (Node.js)
+
+## Bug fixes
+
+- When a custom HTTP agent is used, the HTTP or HTTPS request implementation is now correctly chosen based on the HTTP Agent instance type. ([#352](https://github.com/ClickHouse/clickhouse-js/issues/352))
+
 # 1.8.0 (Common, Node.js, Web)
 
 ## New features
