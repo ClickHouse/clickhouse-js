@@ -5,6 +5,8 @@ import Http from 'http'
 import https from 'node:https'
 import type Stream from 'stream'
 import { createClient } from '../../src'
+import Https from 'https'
+import http from 'http'
 
 describe('[Node.js] TLS connection', () => {
   let client: ClickHouseClient<Stream.Readable>
@@ -139,12 +141,8 @@ describe('[Node.js] TLS connection', () => {
     })
 
     describe('Custom HTTPS agent', () => {
-      let httpRequestStub: jasmine.Spy<typeof Http.request>
-      beforeEach(() => {
-        httpRequestStub = spyOn(Http, 'request').and.callThrough()
-      })
-
       it('should work with a custom HTTPS agent', async () => {
+        const httpsRequestStub = spyOn(Https, 'request').and.callThrough()
         const agent = new https.Agent({
           maxFreeSockets: 5,
           ca: ca_cert,
@@ -157,6 +155,26 @@ describe('[Node.js] TLS connection', () => {
             'X-ClickHouse-Key': '',
           },
           set_basic_auth_header: false,
+        })
+        const rs = await client.query({
+          query: 'SELECT 144 AS result',
+          format: 'JSONEachRow',
+        })
+        expect(await rs.json()).toEqual([{ result: 144 }])
+        expect(httpsRequestStub).toHaveBeenCalledTimes(1)
+        const callArgs = httpsRequestStub.calls.mostRecent().args
+        expect(callArgs[1].agent).toBe(agent)
+      })
+
+      // does not really belong to the TLS test; keep it here for consistency
+      it('should work with a custom HTTP agent', async () => {
+        const httpRequestStub = spyOn(Http, 'request').and.callThrough()
+        const agent = new http.Agent({
+          maxFreeSockets: 5,
+        })
+        const client = createClient({
+          url: 'http://localhost:8123',
+          http_agent: agent,
         })
         const rs = await client.query({
           query: 'SELECT 144 AS result',
