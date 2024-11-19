@@ -619,6 +619,8 @@ interface ClickHouseServerSettings {
   input_format_json_read_numbers_as_strings?: Bool
   /** Allow to parse JSON objects as strings in JSON input formats */
   input_format_json_read_objects_as_strings?: Bool
+  /** Throw an exception if JSON string contains bad escape sequence. If disabled, bad escape sequences will remain as is in the data. Default value - true. */
+  input_format_json_throw_on_bad_escape_sequence?: Bool
   /** Try to infer numbers from string fields while schema inference */
   input_format_json_try_infer_numbers_from_strings?: Bool
   /** For JSON/JSONCompact/JSONColumnsWithMetadata input formats this controls whether format parser should check if data types from input metadata match data types of the corresponding columns from the table */
