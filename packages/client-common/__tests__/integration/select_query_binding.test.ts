@@ -1,4 +1,5 @@
 import type { QueryParams } from '@clickhouse/client-common'
+import { TupleParam } from '@clickhouse/client-common'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '../utils'
 
@@ -88,6 +89,85 @@ describe('select with query binding', () => {
         has_carriage_return: 1,
         has_single_quote: 1,
         has_backslash: 1,
+      },
+    ])
+  })
+
+  it('handles tuples in a parametrized query', async () => {
+    const rs = await client.query({
+      query: 'SELECT {var: Tuple(Int32, String, String, String)} AS result',
+      format: 'JSONEachRow',
+      query_params: {
+        var: new TupleParam([42, 'foo', "foo_'_bar", 'foo_\t_bar']),
+      },
+    })
+    expect(await rs.json()).toEqual([
+      {
+        result: [42, 'foo', "foo_'_bar", 'foo_\t_bar'],
+      },
+    ])
+  })
+
+  it('handles arrays of tuples in a parametrized query', async () => {
+    const rs = await client.query({
+      query:
+        'SELECT {var: Array(Tuple(Int32, String, String, String))} AS result',
+      format: 'JSONEachRow',
+      query_params: {
+        var: [new TupleParam([42, 'foo', "foo_'_bar", 'foo_\t_bar'])],
+      },
+    })
+    expect(await rs.json()).toEqual([
+      {
+        result: [[42, 'foo', "foo_'_bar", 'foo_\t_bar']],
+      },
+    ])
+  })
+
+  it('handles maps with tuples in a parametrized query', async () => {
+    const rs = await client.query({
+      query:
+        'SELECT {var: Map(Int32, Tuple(Int32, String, String, String))} AS result',
+      format: 'JSONEachRow',
+      query_params: {
+        var: new Map([
+          [42, new TupleParam([144, 'foo', "foo_'_bar", 'foo_\t_bar'])],
+        ]),
+      },
+    })
+    expect(await rs.json()).toEqual([
+      {
+        result: {
+          42: [144, 'foo', "foo_'_bar", 'foo_\t_bar'],
+        },
+      },
+    ])
+  })
+
+  it('handles maps with nested arrays in a parametrized query', async () => {
+    const rs = await client.query({
+      query: 'SELECT {var: Map(Int32, Array(Array(Int32)))} AS result',
+      format: 'JSONEachRow',
+      query_params: {
+        var: new Map([
+          [
+            42,
+            [
+              [1, 2, 3],
+              [4, 5],
+            ],
+          ],
+        ]),
+      },
+    })
+    expect(await rs.json()).toEqual([
+      {
+        result: {
+          42: [
+            [1, 2, 3],
+            [4, 5],
+          ],
+        },
       },
     ])
   })
@@ -201,7 +281,7 @@ describe('select with query binding', () => {
     expect(response).toBe('"co\'nca\'t"\n')
   })
 
-  it('handles an object a parameterized query', async () => {
+  it('handles an object as a map a parameterized query', async () => {
     const rs = await client.query({
       query: 'SELECT mapKeys({obj: Map(String, UInt32)})',
       format: 'CSV',
@@ -235,6 +315,7 @@ describe('select with query binding', () => {
         bar = 1,
         qaz = 2,
       }
+
       const rs = await client.query({
         query:
           'SELECT * FROM system.numbers WHERE number = {filter: Int64} LIMIT 1',
@@ -253,6 +334,7 @@ describe('select with query binding', () => {
         foo = 'foo',
         bar = 'bar',
       }
+
       const rs = await client.query({
         query: 'SELECT concat({str1: String},{str2: String})',
         format: 'TabSeparated',
@@ -284,8 +366,10 @@ describe('select with query binding', () => {
       await expectAsync(
         client.query({
           query: `
-            SELECT * FROM system.numbers
-            WHERE number > {min_limit: UInt64} LIMIT 3
+            SELECT *
+            FROM system.numbers
+            WHERE number > {min_limit: UInt64}
+            LIMIT 3
           `,
         }),
       ).toBeRejectedWith(
