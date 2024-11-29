@@ -54,9 +54,9 @@ export type {
   WithResponseHeaders,
   ProgressRow,
   InsertValues,
-  Auth,
-  JWTAuth,
-  CredentialsAuth,
+  ClickHouseAuth,
+  ClickHouseJWTAuth,
+  ClickHouseCredentialsAuth,
 } from './clickhouse_types'
 export { isProgressRow } from './clickhouse_types'
 export {

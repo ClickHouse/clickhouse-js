@@ -1,6 +1,6 @@
 import type {
-  Auth,
-  CredentialsAuth,
+  ClickHouseAuth,
+  ClickHouseCredentialsAuth,
   InsertValues,
   ResponseHeaders,
 } from './clickhouse_types'
@@ -51,7 +51,10 @@ export interface BaseClickHouseClientConfigOptions {
    *  The user password.
    *  @default empty string */
   password?: string
-  auth?: Auth
+  /** Username + password or a JWT token to authenticate with ClickHouse.
+   *  JWT token authentication is supported in ClickHouse Cloud only.
+   *  @default username: `default`, password: empty string */
+  auth?: ClickHouseAuth
   /** The name of the application using the JS client.
    *  @default empty string */
   application?: string
@@ -337,7 +340,7 @@ export function loadConfigOptionsFromURL(
   handleExtraURLParams: HandleImplSpecificURLParams | null,
 ): [URL, BaseClickHouseClientConfigOptions] {
   let config: BaseClickHouseClientConfigOptions = {}
-  const auth: CredentialsAuth = {}
+  const auth: ClickHouseCredentialsAuth = {}
   if (url.username.trim() !== '') {
     auth.username = url.username
   }

@@ -100,8 +100,6 @@ describe('authentication', () => {
   // FIXME
   xdescribe('JWT auth', () => {
     let jwtClient: ClickHouseClient
-    const accessToken = getFromEnv(EnvKeys.jwt_access_token)
-
     afterEach(async () => {
       await jwtClient.close()
     })
@@ -110,7 +108,7 @@ describe('authentication', () => {
       jwtClient = createTestClient({
         url: `https://${getFromEnv(EnvKeys.host)}:8443`,
         auth: {
-          access_token: accessToken,
+          access_token: getFromEnv(EnvKeys.jwt_access_token),
         },
       })
       const rs = await jwtClient.query({
@@ -132,7 +130,7 @@ describe('authentication', () => {
         query: 'SELECT 42 AS result',
         format: 'JSONEachRow',
         auth: {
-          access_token: accessToken,
+          access_token: getFromEnv(EnvKeys.jwt_access_token),
         },
       })
       expect(await rs.json()).toEqual([{ result: 42 }])

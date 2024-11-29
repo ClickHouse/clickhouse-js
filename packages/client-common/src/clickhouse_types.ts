@@ -54,16 +54,17 @@ export type InsertValues<Stream, T = unknown> =
 
 export type NonEmptyArray<T> = [T, ...T[]]
 
-export interface CredentialsAuth {
+export interface ClickHouseCredentialsAuth {
   username?: string
   password?: string
 }
 
-export interface JWTAuth {
+/** Supported in ClickHouse Cloud only */
+export interface ClickHouseJWTAuth {
   access_token: string
 }
 
-export type Auth = CredentialsAuth | JWTAuth
+export type ClickHouseAuth = ClickHouseCredentialsAuth | ClickHouseJWTAuth
 
 /** Type guard to use with JSONEachRowWithProgress, checking if the emitted row is a progress row.
  *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
