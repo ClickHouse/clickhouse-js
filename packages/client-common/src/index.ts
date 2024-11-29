@@ -35,6 +35,7 @@ export type {
   SingleDocumentJSONFormats,
   RecordsJSONFormats,
 } from './data_formatter'
+export { TupleParam } from './data_formatter'
 export { ClickHouseError } from './error'
 export {
   ClickHouseLogLevel,

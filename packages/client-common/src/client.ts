@@ -32,7 +32,7 @@ export interface BaseQueryParams {
    *  @default undefined (no override) */
   session_id?: string
   /** A specific list of roles to use for this query.
-   *  If it is not set, {@link BaseClickHouseClientConfigOptions.roles} will be used.
+   *  If it is not set, {@link BaseClickHouseClientConfigOptions.role} will be used.
    *  @default undefined (no override) */
   role?: string | Array<string>
   /** When defined, overrides {@link BaseClickHouseClientConfigOptions.auth} for this particular request.

@@ -1,3 +1,7 @@
+export class TupleParam {
+  constructor(public readonly values: any[]) {}
+}
+
 export function formatQueryParams(
   value: any,
   wrapStringInQuotes = false,
@@ -36,8 +40,7 @@ export function formatQueryParams(
   }
 
   if (Array.isArray(value)) {
-    const formatted = value.map((v) => formatQueryParams(v, true))
-    return `[${formatted.join(',')}]`
+    return `[${value.map((v) => formatQueryParams(v, true)).join(',')}]`
   }
 
   if (value instanceof Date) {
@@ -51,6 +54,21 @@ export function formatQueryParams(
       : `${unixTimestamp}.${milliseconds.toString().padStart(3, '0')}`
   }
 
+  if (value instanceof TupleParam) {
+    return `(${value.values.map((v) => formatQueryParams(v, true)).join(',')})`
+  }
+
+  if (value instanceof Map) {
+    const formatted: string[] = []
+    for (const [key, val] of value) {
+      formatted.push(
+        `${formatQueryParams(key, true)}:${formatQueryParams(val, true)}`,
+      )
+    }
+    return `{${formatted.join(',')}}`
+  }
+
+  // This is only useful for simple maps where the keys are strings
   if (typeof value === 'object') {
     const formatted: string[] = []
     for (const [key, val] of Object.entries(value)) {

@@ -66,4 +66,5 @@ export {
   type Auth,
   type JWTAuth,
   type CredentialsAuth,
+  TupleParam,
 } from '@clickhouse/client-common'
