@@ -63,4 +63,5 @@ export {
   type ProgressRow,
   isProgressRow,
   type RowOrProgress,
+  TupleParam,
 } from '@clickhouse/client-common'
