@@ -71,8 +71,11 @@ describe('[Node.js] Config implementation details', () => {
         compress_request: true,
         decompress_response: true,
       },
-      username: 'alice',
-      password: 'qwerty',
+      auth: {
+        username: 'alice',
+        password: 'qwerty',
+        type: 'Credentials',
+      },
       database: 'default',
       clickhouse_settings: {},
       log_writer: new LogWriter(new TestLogger(), 'MakeConnectionTest'),

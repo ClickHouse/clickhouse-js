@@ -62,5 +62,8 @@ export {
   type ProgressRow,
   isProgressRow,
   type RowOrProgress,
+  type ClickHouseAuth,
+  type ClickHouseJWTAuth,
+  type ClickHouseCredentialsAuth,
   TupleParam,
 } from '@clickhouse/client-common'
