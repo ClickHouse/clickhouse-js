@@ -474,7 +474,11 @@ export abstract class NodeBaseConnection
           responseStream = _response
         }
         if (isFailedResponse) {
-          reject(parseError(await getAsText(responseStream)))
+          try {
+            reject(parseError(await getAsText(responseStream)))
+          } catch (err) {
+            reject(err)
+          }
         } else {
           return resolve({
             stream: responseStream,
