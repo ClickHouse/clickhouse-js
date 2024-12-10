@@ -1,3 +1,7 @@
+# 1.9.1 (Node.js only)
+
+- Fixed an uncaught exception that could happen in case of malformed ClickHouse response when response compression is enabled ([#363](https://github.com/ClickHouse/clickhouse-js/issues/363))
+
 # 1.9.0 (Common, Node.js, Web)
 
 ## New features
