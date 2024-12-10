@@ -2,6 +2,7 @@ export const EnvKeys = {
   host: 'CLICKHOUSE_CLOUD_HOST',
   username: 'CLICKHOUSE_CLOUD_USERNAME',
   password: 'CLICKHOUSE_CLOUD_PASSWORD',
+  jwt_access_token: 'CLICKHOUSE_JWT_ACCESS_TOKEN',
 }
 
 export function getFromEnv(key: string): string {

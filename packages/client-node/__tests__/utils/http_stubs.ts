@@ -105,8 +105,7 @@ export function buildHttpConnection(config: Partial<NodeConnectionParams>) {
     },
     max_open_connections: 10,
 
-    username: 'default',
-    password: '',
+    auth: { username: 'default', password: '', type: 'Credentials' },
     database: 'default',
     clickhouse_settings: {},
 
@@ -130,6 +129,11 @@ export class MyTestHttpConnection extends NodeBaseConnection {
           enabled: false,
         },
         set_basic_auth_header: true,
+        auth: {
+          username: 'default',
+          password: '',
+          type: 'Credentials',
+        },
       } as NodeConnectionParams,
       {} as Http.Agent,
     )

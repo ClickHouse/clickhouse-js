@@ -15,6 +15,7 @@ import type {
   LogWriter,
   ResponseHeaders,
 } from '@clickhouse/client-common'
+import { isCredentialsAuth, isJWTAuth } from '@clickhouse/client-common'
 import {
   isSuccessfulResponse,
   parseError,
@@ -84,9 +85,15 @@ export abstract class NodeBaseConnection
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent,
   ) {
-    this.defaultAuthHeader = `Basic ${Buffer.from(
-      `${params.username}:${params.password}`,
-    ).toString('base64')}`
+    if (params.auth.type === 'Credentials') {
+      this.defaultAuthHeader = `Basic ${Buffer.from(
+        `${params.auth.username}:${params.auth.password}`,
+      ).toString('base64')}`
+    } else if (params.auth.type === 'JWT') {
+      this.defaultAuthHeader = `Bearer ${params.auth.access_token}`
+    } else {
+      throw new Error(`Unknown auth type: ${(params.auth as any).type}`)
+    }
     this.defaultHeaders = {
       ...(params.http_headers ?? {}),
       // KeepAlive agent for some reason does not set this on its own
@@ -258,18 +265,27 @@ export abstract class NodeBaseConnection
   protected buildRequestHeaders(
     params?: BaseQueryParams,
   ): Http.OutgoingHttpHeaders {
+    if (isJWTAuth(params?.auth)) {
+      return {
+        ...this.defaultHeaders,
+        Authorization: `Bearer ${params.auth.access_token}`,
+      }
+    }
     if (this.params.set_basic_auth_header) {
-      return {
-        ...this.defaultHeaders,
-        Authorization:
-          params?.auth !== undefined
-            ? `Basic ${Buffer.from(`${params.auth.username}:${params.auth.password}`).toString('base64')}`
-            : this.defaultAuthHeader,
+      if (isCredentialsAuth(params?.auth)) {
+        return {
+          ...this.defaultHeaders,
+          Authorization: `Basic ${Buffer.from(`${params.auth.username}:${params.auth.password}`).toString('base64')}`,
+        }
+      } else {
+        return {
+          ...this.defaultHeaders,
+          Authorization: this.defaultAuthHeader,
+        }
       }
-    } else {
-      return {
-        ...this.defaultHeaders,
-      }
+    }
+    return {
+      ...this.defaultHeaders,
     }
   }
 
