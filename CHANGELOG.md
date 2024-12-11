@@ -1,3 +1,18 @@
+# 1.9.1 (Node.js only)
+
+- Fixed an uncaught exception that could happen in case of malformed ClickHouse response when response compression is enabled ([#363](https://github.com/ClickHouse/clickhouse-js/issues/363))
+
+# 1.9.0 (Common, Node.js, Web)
+
+## New features
+
+- Added `input_format_json_throw_on_bad_escape_sequence` to the `ClickhouseSettings` type. ([#355](https://github.com/ClickHouse/clickhouse-js/pull/355), [@emmanuel-bonin](https://github.com/emmanuel-bonin))
+- The client now exports `TupleParam` wrapper class, allowing tuples to be properly used as query parameters. Added support for JS Map as a query parameter. ([#359](https://github.com/ClickHouse/clickhouse-js/pull/359))
+
+## Improvements
+
+- The client will throw a more informative error if the buffered response is larger than the max allowed string length in V8, which is `2**29 - 24` bytes. ([#357](https://github.com/ClickHouse/clickhouse-js/pull/357))
+
 # 1.8.1 (Node.js)
 
 ## Bug fixes

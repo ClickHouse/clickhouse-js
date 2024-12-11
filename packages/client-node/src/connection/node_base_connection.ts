@@ -481,7 +481,7 @@ export abstract class NodeBaseConnection
         // even if the stream decompression is disabled, we have to decompress it in case of an error
         const isFailedResponse = !isSuccessfulResponse(_response.statusCode)
         if (tryDecompressResponseStream || isFailedResponse) {
-          const decompressionResult = decompressResponse(_response)
+          const decompressionResult = decompressResponse(_response, this.logger)
           if (isDecompressionError(decompressionResult)) {
             return reject(decompressionResult.error)
           }
@@ -490,7 +490,13 @@ export abstract class NodeBaseConnection
           responseStream = _response
         }
         if (isFailedResponse) {
-          reject(parseError(await getAsText(responseStream)))
+          try {
+            const errorMessage = await getAsText(responseStream)
+            reject(parseError(errorMessage))
+          } catch (err) {
+            // If the ClickHouse response is malformed
+            reject(err)
+          }
         } else {
           return resolve({
             stream: responseStream,
