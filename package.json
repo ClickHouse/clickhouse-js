@@ -40,12 +40,14 @@
     "test:web:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:web",
     "test:web:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:web",
     "test:web:integration:cloud_smt": "CLICKHOUSE_TEST_ENVIRONMENT=cloud_smt npm run test:web",
+    "test:web:integration:cloud_smt:jwt": "CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN=`ts-node .scripts/generate_cloud_jwt.ts` karma start karma.config.jwt.cjs",
     "prepare": "husky"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.0.2",
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
     "@types/jasmine": "^5.1.4",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.7.0",
     "@types/sinon": "^17.0.3",
     "@types/split2": "^4.2.3",
@@ -61,6 +63,7 @@
     "jasmine": "^5.3.0",
     "jasmine-core": "^5.3.0",
     "jasmine-expect": "^5.0.0",
+    "jsonwebtoken": "^9.0.2",
     "karma": "^6.4.4",
     "karma-chrome-launcher": "^3.2.0",
     "karma-firefox-launcher": "^2.1.3",

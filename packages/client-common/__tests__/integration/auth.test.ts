@@ -1,6 +1,6 @@
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { EnvKeys, getAuthFromEnv, getFromEnv } from '@test/utils/env'
+import { getAuthFromEnv } from '@test/utils/env'
 import { createTestClient, guid } from '../utils'
 
 describe('authentication', () => {
@@ -94,46 +94,6 @@ describe('authentication', () => {
         result += textDecoder.decode(chunk, { stream: true })
       }
       expect(result).toEqual('42,144\n')
-    })
-  })
-
-  // FIXME
-  xdescribe('JWT auth', () => {
-    let jwtClient: ClickHouseClient
-    afterEach(async () => {
-      await jwtClient.close()
-    })
-
-    it('should work with client configuration', async () => {
-      jwtClient = createTestClient({
-        url: `https://${getFromEnv(EnvKeys.host)}:8443`,
-        auth: {
-          access_token: getFromEnv(EnvKeys.jwt_access_token),
-        },
-      })
-      const rs = await jwtClient.query({
-        query: 'SELECT 42 AS result',
-        format: 'JSONEachRow',
-      })
-      expect(await rs.json()).toEqual([{ result: 42 }])
-    })
-
-    it('should override the client instance auth', async () => {
-      jwtClient = createTestClient({
-        url: `https://${getFromEnv(EnvKeys.host)}:8443`,
-        auth: {
-          username: 'gibberish',
-          password: 'gibberish',
-        },
-      })
-      const rs = await jwtClient.query({
-        query: 'SELECT 42 AS result',
-        format: 'JSONEachRow',
-        auth: {
-          access_token: getFromEnv(EnvKeys.jwt_access_token),
-        },
-      })
-      expect(await rs.json()).toEqual([{ result: 42 }])
     })
   })
 })
