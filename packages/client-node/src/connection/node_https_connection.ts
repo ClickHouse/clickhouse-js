@@ -1,4 +1,7 @@
-import type { BaseQueryParams } from '@clickhouse/client-common'
+import {
+  type BaseQueryParams,
+  isCredentialsAuth,
+} from '@clickhouse/client-common'
 import { withCompressionHeaders } from '@clickhouse/client-common'
 import type Http from 'http'
 import Https from 'https'
@@ -24,10 +27,24 @@ export class NodeHttpsConnection extends NodeBaseConnection {
     params?: BaseQueryParams,
   ): Http.OutgoingHttpHeaders {
     if (this.params.tls !== undefined) {
-      const headers: Http.OutgoingHttpHeaders = {
-        ...this.defaultHeaders,
-        'X-ClickHouse-User': params?.auth?.username ?? this.params.username,
-        'X-ClickHouse-Key': params?.auth?.password ?? this.params.password,
+      if (this.params.auth.type === 'JWT') {
+        throw new Error(
+          'JWT auth is not supported with HTTPS connection using custom certificates',
+        )
+      }
+      let headers: Http.OutgoingHttpHeaders
+      if (isCredentialsAuth(params?.auth)) {
+        headers = {
+          ...this.defaultHeaders,
+          'X-ClickHouse-User': params.auth.username,
+          'X-ClickHouse-Key': params.auth.password,
+        }
+      } else {
+        headers = {
+          ...this.defaultHeaders,
+          'X-ClickHouse-User': this.params.auth.username,
+          'X-ClickHouse-Key': this.params.auth.password,
+        }
       }
       const tlsType = this.params.tls.type
       switch (tlsType) {

@@ -4,20 +4,22 @@ import { getAuthFromEnv } from '@test/utils/env'
 import { createTestClient, guid } from '../utils'
 
 describe('authentication', () => {
-  let client: ClickHouseClient
+  let invalidAuthClient: ClickHouseClient
   beforeEach(() => {
-    client = createTestClient({
-      username: 'gibberish',
-      password: 'gibberish',
+    invalidAuthClient = createTestClient({
+      auth: {
+        username: 'gibberish',
+        password: 'gibberish',
+      },
     })
   })
   afterEach(async () => {
-    await client.close()
+    await invalidAuthClient.close()
   })
 
   it('provides authentication error details', async () => {
     await expectAsync(
-      client.query({
+      invalidAuthClient.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
       }),
     ).toBeRejectedWith(
@@ -51,13 +53,13 @@ describe('authentication', () => {
     it('should with with insert and select', async () => {
       tableName = `simple_table_${guid()}`
       await createSimpleTable(defaultClient, tableName)
-      await client.insert({
+      await invalidAuthClient.insert({
         table: tableName,
         format: 'JSONEachRow',
         values,
         auth,
       })
-      const rs = await client.query({
+      const rs = await invalidAuthClient.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONEachRow',
         auth,
@@ -68,11 +70,11 @@ describe('authentication', () => {
     it('should work with command and select', async () => {
       tableName = `simple_table_${guid()}`
       await createSimpleTable(defaultClient, tableName)
-      await client.command({
+      await invalidAuthClient.command({
         query: `INSERT INTO ${tableName} VALUES (1, 'foo', [3, 4])`,
         auth,
       })
-      const rs = await client.query({
+      const rs = await invalidAuthClient.query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: 'JSONEachRow',
         auth,
@@ -81,7 +83,7 @@ describe('authentication', () => {
     })
 
     it('should work with exec', async () => {
-      const { stream } = await client.exec({
+      const { stream } = await invalidAuthClient.exec({
         query: 'SELECT 42, 144 FORMAT CSV',
         auth,
       })

@@ -5,7 +5,6 @@ export {
   type QueryResult,
   type ExecParams,
   type InsertParams,
-  type InsertValues,
   ClickHouseClient,
   type CommandParams,
   type CommandResult,
@@ -54,6 +53,10 @@ export type {
   WithClickHouseSummary,
   WithResponseHeaders,
   ProgressRow,
+  InsertValues,
+  ClickHouseAuth,
+  ClickHouseJWTAuth,
+  ClickHouseCredentialsAuth,
 } from './clickhouse_types'
 export { isProgressRow } from './clickhouse_types'
 export {
@@ -105,6 +108,8 @@ export {
   transformUrl,
   withCompressionHeaders,
   withHttpSettings,
+  isCredentialsAuth,
+  isJWTAuth,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
 export { parseError } from './error'

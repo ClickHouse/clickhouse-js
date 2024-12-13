@@ -56,7 +56,7 @@ export function createTestClient<Stream = unknown>(
   if (isCloudTestEnv()) {
     const cloudConfig: BaseClickHouseClientConfigOptions = {
       url: `https://${getFromEnv(EnvKeys.host)}:8443`,
-      password: getFromEnv(EnvKeys.password),
+      auth: { password: getFromEnv(EnvKeys.password) },
       database: databaseName,
       request_timeout: 60_000,
       ...logging,

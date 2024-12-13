@@ -5,19 +5,22 @@ import type {
 import type { LogWriter } from './logger'
 import type { ClickHouseSettings } from './settings'
 
+export type ConnectionAuth =
+  | { username: string; password: string; type: 'Credentials' }
+  | { access_token: string; type: 'JWT' }
+
 export interface ConnectionParams {
   url: URL
   request_timeout: number
   max_open_connections: number
   compression: CompressionSettings
-  username: string
-  password: string
   database: string
   clickhouse_settings: ClickHouseSettings
   log_writer: LogWriter
   keep_alive: { enabled: boolean }
   application_id?: string
   http_headers?: Record<string, string>
+  auth: ConnectionAuth
 }
 
 export interface CompressionSettings {
@@ -32,7 +35,7 @@ export interface ConnBaseQueryParams {
   abort_signal?: AbortSignal
   session_id?: string
   query_id?: string
-  auth?: { username: string; password: string }
+  auth?: { username: string; password: string } | { access_token: string }
   role?: string | Array<string>
 }
 

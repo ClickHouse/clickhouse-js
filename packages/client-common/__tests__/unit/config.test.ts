@@ -96,8 +96,7 @@ describe('config', () => {
           pathname: '/my_proxy',
           request_timeout: 42_000,
           max_open_connections: 144,
-          username: 'bob',
-          password: 'secret',
+          auth: { username: 'bob', password: 'secret' },
           database: 'analytics',
           http_headers: {
             'X-CLICKHOUSE-AUTH': 'secret_header',
@@ -124,8 +123,10 @@ describe('config', () => {
         pathname: '/my_proxy',
         request_timeout: 42_000,
         max_open_connections: 144,
-        username: 'bob',
-        password: 'secret',
+        auth: {
+          username: 'bob',
+          password: 'secret',
+        },
         database: 'analytics',
         http_headers: {
           'X-CLICKHOUSE-AUTH': 'secret_header',
@@ -178,6 +179,60 @@ describe('config', () => {
       }) // should not be modified
     })
 
+    it('should be able to use the deprecated username parameter', async () => {
+      const deprecated: BaseClickHouseClientConfigOptions = {
+        username: 'bob',
+      }
+      const res = prepareConfigWithURL(deprecated, logger, null)
+      expect(res).toEqual({
+        ...defaultConfig,
+        auth: {
+          username: 'bob',
+          // to be "normalized" later by `getConnectionParams`
+          password: undefined,
+        },
+      })
+      expect(deprecated).toEqual({
+        username: 'bob',
+      }) // should not be modified
+    })
+
+    it('should be able to use the deprecated password parameter', async () => {
+      const deprecated: BaseClickHouseClientConfigOptions = {
+        password: 'secret',
+      }
+      const res = prepareConfigWithURL(deprecated, logger, null)
+      expect(res).toEqual({
+        ...defaultConfig,
+        auth: {
+          username: undefined,
+          password: 'secret',
+        },
+      })
+      expect(deprecated).toEqual({
+        password: 'secret',
+      }) // should not be modified
+    })
+
+    it('should be able to use both deprecated username and password parameters', async () => {
+      const deprecated: BaseClickHouseClientConfigOptions = {
+        username: 'bob',
+        password: 'secret',
+      }
+      const res = prepareConfigWithURL(deprecated, logger, null)
+      expect(res).toEqual({
+        ...defaultConfig,
+        auth: {
+          username: 'bob',
+          password: 'secret',
+        },
+      })
+      expect(deprecated).toEqual({
+        username: 'bob',
+        password: 'secret',
+      }) // should not be modified
+    })
+
     // tested more thoroughly in the loadConfigOptionsFromURL section;
     // this is just a validation that everything works together
     it('should use settings from the URL', async () => {
@@ -202,8 +257,10 @@ describe('config', () => {
       expect(res).toEqual({
         ...defaultConfig,
         url: new URL('https://my.host:8443/'),
-        username: 'bob',
-        password: 'secret',
+        auth: {
+          username: 'bob',
+          password: 'secret',
+        },
         database: 'analytics',
         application: 'my_app',
         impl_specific_setting: 42,
@@ -298,6 +355,42 @@ describe('config', () => {
       })
     })
 
+    describe('Credentials vs JWT auth parsing', () => {
+      it('should correctly get JWT access_token from the URL', async () => {
+        const url = new URL(
+          'https://my.host:8443/analytics?' +
+            ['application=my_app', 'access_token=jwt_secret'].join('&'),
+        )
+        const res = prepareConfigWithURL({ url }, logger, null)
+        expect(res).toEqual({
+          ...defaultConfig,
+          url: new URL('https://my.host:8443'),
+          database: 'analytics',
+          application: 'my_app',
+          auth: {
+            access_token: 'jwt_secret',
+          },
+        } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+      })
+
+      it('should correctly override credentials auth with JWT if both are present', async () => {
+        const url = new URL(
+          'https://bob:secret@my.host:8443/analytics?' +
+            ['application=my_app', 'access_token=jwt_secret'].join('&'),
+        )
+        const res = prepareConfigWithURL({ url }, logger, null)
+        expect(res).toEqual({
+          ...defaultConfig,
+          url: new URL('https://my.host:8443'),
+          database: 'analytics',
+          application: 'my_app',
+          auth: {
+            access_token: 'jwt_secret',
+          },
+        } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+      })
+    })
+
     // more detailed tests are in the createUrl section
     it('should throw when the URL is not valid', async () => {
       expect(() => prepareConfigWithURL({ url: 'foo' }, logger, null)).toThrow(
@@ -324,8 +417,11 @@ describe('config', () => {
           decompress_response: false,
           compress_request: false,
         },
-        username: 'default',
-        password: '',
+        auth: {
+          username: 'default',
+          password: '',
+          type: 'Credentials',
+        },
         database: 'default',
         clickhouse_settings: {},
         log_writer: jasmine.any(LogWriter),
@@ -345,8 +441,10 @@ describe('config', () => {
             request: true,
             response: false,
           },
-          username: 'bob',
-          password: 'secret',
+          auth: {
+            username: 'bob',
+            password: 'secret',
+          },
           database: 'analytics',
           clickhouse_settings: {
             async_insert: 1,
@@ -367,8 +465,11 @@ describe('config', () => {
           compress_request: true,
           decompress_response: false,
         },
-        username: 'bob',
-        password: 'secret',
+        auth: {
+          username: 'bob',
+          password: 'secret',
+          type: 'Credentials',
+        },
         database: 'analytics',
         clickhouse_settings: {
           async_insert: 1,
@@ -391,8 +492,10 @@ describe('config', () => {
     it('should leave the base config as-is when there is nothing from the URL', async () => {
       const base: BaseClickHouseClientConfigOptions = {
         url: 'http://localhost:8123',
-        username: 'bob',
-        password: 'secret',
+        auth: {
+          username: 'bob',
+          password: 'secret',
+        },
       }
       expect(mergeConfigs(base, {}, logger)).toEqual(base)
     })
@@ -400,17 +503,21 @@ describe('config', () => {
     it('should take URL values first, then base config for the rest', async () => {
       const base: BaseClickHouseClientConfigOptions = {
         url: 'https://my.host:8124',
-        username: 'bob',
-        password: 'secret',
+        auth: {
+          username: 'bob',
+          password: 'secret',
+        },
       }
       const fromURL: BaseClickHouseClientConfigOptions = {
-        password: 'secret_from_url!',
+        auth: { password: 'secret_from_url!' },
       }
       const res = mergeConfigs(base, fromURL, logger)
       expect(res).toEqual({
         url: 'https://my.host:8124',
-        username: 'bob',
-        password: 'secret_from_url!',
+        auth: {
+          username: 'bob',
+          password: 'secret_from_url!',
+        },
       })
     })
 
@@ -419,14 +526,12 @@ describe('config', () => {
         url: 'https://my.host:8124',
       }
       const fromURL: BaseClickHouseClientConfigOptions = {
-        username: 'bob',
-        password: 'secret',
+        auth: { username: 'bob', password: 'secret' },
       }
       const res = mergeConfigs(base, fromURL, logger)
       expect(res).toEqual({
         url: 'https://my.host:8124',
-        username: 'bob',
-        password: 'secret',
+        auth: { username: 'bob', password: 'secret' },
       })
     })
 
@@ -434,14 +539,12 @@ describe('config', () => {
     it('should only take the URL values when there is nothing in the base config', async () => {
       const fromURL: BaseClickHouseClientConfigOptions = {
         url: 'https://my.host:8443',
-        username: 'bob',
-        password: 'secret',
+        auth: { username: 'bob', password: 'secret' },
       }
       const res = mergeConfigs({}, fromURL, logger)
       expect(res).toEqual({
         url: 'https://my.host:8443',
-        username: 'bob',
-        password: 'secret',
+        auth: { username: 'bob', password: 'secret' },
       })
     })
 
@@ -645,8 +748,7 @@ describe('config', () => {
       const res = loadConfigOptionsFromURL(url, null)
       expect(res[0].toString()).toEqual('https://my.host:8124/') // pathname will be attached later.
       expect(res[1]).toEqual({
-        username: 'bob',
-        password: 'secret',
+        auth: { username: 'bob', password: 'secret' },
         database: 'analytics',
         application: 'my_app',
         pathname: '/my_proxy',
@@ -676,8 +778,7 @@ describe('config', () => {
       const res = loadConfigOptionsFromURL(url, null)
       expect(res[0].toString()).toEqual('http://localhost:8124/')
       expect(res[1]).toEqual({
-        username: 'bob',
-        password: 'secret',
+        auth: { username: 'bob', password: 'secret' },
         database: 'analytics',
       })
     })
@@ -819,8 +920,7 @@ describe('config', () => {
       const res = loadConfigOptionsFromURL(url, handler)
       expect(res[0].toString()).toEqual('https://my.host:8124/')
       expect(res[1]).toEqual({
-        username: 'bob',
-        password: 'secret',
+        auth: { username: 'bob', password: 'secret' },
         database: 'analytics',
         application: 'my_app',
         session_id: 'sticky',
@@ -870,8 +970,7 @@ describe('config', () => {
       const res = loadConfigOptionsFromURL(url, handler)
       expect(res[0].toString()).toEqual('https://my.host:8124/')
       expect(res[1]).toEqual({
-        username: 'bob',
-        password: 'secret',
+        auth: { username: 'bob', password: 'secret' },
         database: 'analytics',
         application: 'my_app',
         session_id: 'sticky',
