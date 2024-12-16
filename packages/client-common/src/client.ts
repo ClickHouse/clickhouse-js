@@ -190,8 +190,8 @@ export class ClickHouseClient<Stream = unknown> {
     const query = formatQuery(params.query, format)
     const queryParams = this.withClientQueryParams(params)
     const { stream, query_id, response_headers } = await this.connection.query({
-      query,
       ...queryParams,
+      query,
     })
     return this.makeResultSet(
       stream,
@@ -298,6 +298,7 @@ export class ClickHouseClient<Stream = unknown> {
 
   private withClientQueryParams(params: BaseQueryParams): BaseQueryParams {
     return {
+      ...params,
       clickhouse_settings: {
         ...this.clientClickHouseSettings,
         ...params.clickhouse_settings,

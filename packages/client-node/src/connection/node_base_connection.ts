@@ -24,6 +24,9 @@ import {
   transformUrl,
   withHttpSettings,
 } from '@clickhouse/client-common'
+import { type ConnQueryParams } from '@clickhouse/client-common/src/connection'
+import { type ToSearchParamsOptions } from '@clickhouse/client-common/src/utils'
+import { Buffer } from 'buffer'
 import crypto from 'crypto'
 import type Http from 'http'
 import type * as net from 'net'
@@ -69,6 +72,14 @@ export interface RequestParams {
   // if there are compression headers, attempt to decompress it
   try_decompress_response_stream?: boolean
   parse_summary?: boolean
+  // for external multipart/form-data
+  external?: {
+    fields_form_data: Array<Buffer>
+    file_boundaries: {
+      start: Buffer
+      end: Buffer
+    }
+  }
 }
 
 export abstract class NodeBaseConnection
@@ -134,42 +145,117 @@ export abstract class NodeBaseConnection
     }
   }
 
+  private makeFormBoundary() {
+    return '----CHJS-Boundary-' + crypto.randomUUID()
+  }
+
+  private makeFormField({
+    boundary,
+    name,
+    value,
+  }: {
+    name: string
+    value: string
+    boundary: string
+  }) {
+    return Buffer.from(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="${name}"\r\n\r\n` +
+        `${value}\r\n`,
+    )
+  }
+
   async query(
-    params: ConnBaseQueryParams,
+    params: ConnQueryParams<Stream.Readable>,
   ): Promise<ConnQueryResult<Stream.Readable>> {
     const query_id = this.getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
       this.params.compression.decompress_response,
     )
-    const searchParams = toSearchParams({
+    const toSearchParamsOptions: ToSearchParamsOptions = {
       database: this.params.database,
       query_params: params.query_params,
       session_id: params.session_id,
+      role: params.role,
       clickhouse_settings,
       query_id,
-      role: params.role,
-    })
+    }
     const { controller, controllerCleanup } = this.getAbortController(params)
     // allows to enforce the compression via the settings even if the client instance has it disabled
     const enableResponseCompression =
       clickhouse_settings.enable_http_compression === 1
     try {
-      const { stream, response_headers } = await this.request(
-        {
-          method: 'POST',
-          url: transformUrl({ url: this.params.url, searchParams }),
-          body: params.query,
-          abort_signal: controller.signal,
-          enable_response_compression: enableResponseCompression,
-          headers: this.buildRequestHeaders(params),
-        },
-        'Query',
-      )
-      return {
-        stream,
-        query_id,
-        response_headers,
+      const requestParams: Omit<RequestParams, 'body' | 'headers' | 'url'> = {
+        method: 'POST',
+        abort_signal: controller.signal,
+        enable_response_compression: enableResponseCompression,
+      }
+      if (params.external === undefined) {
+        const { stream, response_headers } = await this.request(
+          {
+            ...requestParams,
+            url: transformUrl({
+              url: this.params.url,
+              searchParams: toSearchParams(toSearchParamsOptions),
+            }),
+            body: params.query,
+            headers: this.buildRequestHeaders(params),
+          },
+          'Query',
+        )
+        return {
+          stream,
+          query_id,
+          response_headers,
+        }
+      } else {
+        const boundary = this.makeFormBoundary()
+        const { stream, response_headers } = await this.request(
+          {
+            ...requestParams,
+            url: transformUrl({
+              url: this.params.url,
+              searchParams: toSearchParams({
+                ...toSearchParamsOptions,
+                query: params.query,
+              }),
+            }),
+            body: params.external.data,
+            headers: {
+              ...this.buildRequestHeaders(params),
+              'Content-Type': `multipart/form-data; boundary=${boundary}`,
+            },
+            external: {
+              fields_form_data: [
+                this.makeFormField({
+                  boundary,
+                  name: `${params.external.name}_structure`,
+                  value: params.external.structure,
+                }),
+                this.makeFormField({
+                  boundary,
+                  name: `${params.external.name}_format`,
+                  value: params.external.format,
+                }),
+              ],
+              file_boundaries: {
+                start: Buffer.from(
+                  `--${boundary}\r\n` +
+                    `Content-Disposition: form-data; name="${params.external.name}"; filename="${params.external.name}"\r\n` +
+                    `Content-Type: application/octet-stream\r\n\r\n`,
+                ),
+                end: Buffer.from(`\r\n--${boundary}--\r\n`),
+              },
+            },
+          },
+          'Query',
+        )
+        return {
+          stream,
+          query_id,
+          response_headers,
+        }
       }
     } catch (err) {
       controller.abort('Query HTTP request failed')
@@ -177,7 +263,7 @@ export abstract class NodeBaseConnection
         op: 'Query',
         query_id: query_id,
         query_params: params,
-        search_params: searchParams,
+        search_params: undefined, // FIXME
         err: err as Error,
         extra_args: {
           decompress_response: enableResponseCompression,
@@ -548,7 +634,20 @@ export abstract class NodeBaseConnection
         if (params.enable_request_compression) {
           Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback)
         } else {
-          Stream.pipeline(bodyStream, request, callback)
+          if (params.external !== undefined) {
+            for (const field of params.external.fields_form_data) {
+              request.write(field)
+            }
+            request.write(params.external.file_boundaries.start)
+            bodyStream.pipe(request, { end: false })
+            // Stream.pipeline(bodyStream, request, callback)
+            bodyStream.on('end', () => {
+              request.write(params.external!.file_boundaries.end)
+              request.end()
+            })
+          } else {
+            Stream.pipeline(bodyStream, request, callback)
+          }
         }
       }
 

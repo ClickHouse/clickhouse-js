@@ -9,6 +9,14 @@ export type ConnectionAuth =
   | { username: string; password: string; type: 'Credentials' }
   | { access_token: string; type: 'JWT' }
 
+/** See https://clickhouse.com/docs/en/engines/table-engines/special/external-data */
+export type ConnectionExternal<Stream> = {
+  name: string
+  data: Stream
+  format: string
+  structure: string
+}
+
 export interface ConnectionParams {
   url: URL
   request_timeout: number
@@ -37,6 +45,10 @@ export interface ConnBaseQueryParams {
   query_id?: string
   auth?: { username: string; password: string } | { access_token: string }
   role?: string | Array<string>
+}
+
+export interface ConnQueryParams<Stream> extends ConnBaseQueryParams {
+  external?: ConnectionExternal<Stream>
 }
 
 export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
@@ -73,7 +85,7 @@ export type ConnOperation = 'Ping' | 'Query' | 'Insert' | 'Exec' | 'Command'
 export interface Connection<Stream> {
   ping(): Promise<ConnPingResult>
   close(): Promise<void>
-  query(params: ConnBaseQueryParams): Promise<ConnQueryResult<Stream>>
+  query(params: ConnQueryParams<Stream>): Promise<ConnQueryResult<Stream>>
   insert(params: ConnInsertParams<Stream>): Promise<ConnInsertResult>
   exec(params: ConnExecParams<Stream>): Promise<ConnExecResult<Stream>>
   command(params: ConnBaseQueryParams): Promise<ConnCommandResult>

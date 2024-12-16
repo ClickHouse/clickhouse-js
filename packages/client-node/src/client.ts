@@ -17,10 +17,21 @@ export type QueryResult<Format extends DataFormat> =
     ? ResultSet<unknown>
     : ResultSet<Format>
 
+export type ExternalData = {
+  name: string
+  data: Stream.Readable
+  format: string
+  structure: string
+}
+
+export interface WithExternalData {
+  external?: ExternalData
+}
+
 export class NodeClickHouseClient extends ClickHouseClient<Stream.Readable> {
   /** See {@link ClickHouseClient.query}. */
   query<Format extends DataFormat = 'JSON'>(
-    params: QueryParamsWithFormat<Format>,
+    params: QueryParamsWithFormat<Format> & WithExternalData,
   ): Promise<QueryResult<Format>> {
     return super.query(params) as Promise<ResultSet<Format>>
   }

@@ -30,7 +30,7 @@ export function transformUrl({
   return newUrl
 }
 
-type ToSearchParamsOptions = {
+export interface ToSearchParamsOptions {
   database: string
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
