@@ -39,13 +39,16 @@ export interface BaseClickHouseClientConfigOptions {
     request?: boolean
   }
   /** The name of the user on whose behalf requests are made.
+   *  Should not be set if {@link access_token} is provided.
    *  @default default */
   username?: string
   /** The user password.
+   *  Should not be set if {@link access_token} is provided.
    *  @default empty string */
   password?: string
   /** A JWT access token to authenticate with ClickHouse.
    *  JWT token authentication is supported in ClickHouse Cloud only.
+   *  Should not be set if {@link username} or {@link password} are provided.
    *  @default empty */
   access_token?: string
   /** The name of the application using the JS client.
