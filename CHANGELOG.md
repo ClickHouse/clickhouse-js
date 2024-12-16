@@ -1,4 +1,25 @@
+# 1.10.0 (Common, Node.js, Web)
+
+## New features
+
+- Added support for JWT authentication (ClickHouse Cloud feature) in both Node.js and Web API packages. JWT token can be set via `access_token` client configuration option.
+
+  ```ts
+  const client = createClient({
+    // ...
+    access_token: '<JWT access token>',
+  })
+  ```
+
+  Access token can also be configured via the URL params, e.g., `https://host:port?access_token=...`.
+
+  It is also possible to override the access token for a particular request (see `BaseQueryParams.auth` for more details).
+
+  NB: do not mix access token and username/password credentials in the configuration; the client will throw an error if both are set.
+
 # 1.9.1 (Node.js only)
+
+## Bug fixes
 
 - Fixed an uncaught exception that could happen in case of malformed ClickHouse response when response compression is enabled ([#363](https://github.com/ClickHouse/clickhouse-js/issues/363))
 

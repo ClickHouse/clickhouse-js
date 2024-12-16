@@ -19,9 +19,7 @@ whenOnEnv(TestEnv.CloudSMT).describe('[Node.js] JWT auth', () => {
   it('should work with client configuration', async () => {
     jwtClient = createTestClient({
       url,
-      auth: {
-        access_token: jwt,
-      },
+      access_token: jwt,
     })
     const rs = await jwtClient.query({
       query: 'SELECT 42 AS result',
@@ -33,10 +31,8 @@ whenOnEnv(TestEnv.CloudSMT).describe('[Node.js] JWT auth', () => {
   it('should override the client instance auth', async () => {
     jwtClient = createTestClient({
       url,
-      auth: {
-        username: 'gibberish',
-        password: 'gibberish',
-      },
+      username: 'gibberish',
+      password: 'gibberish',
     })
     const rs = await jwtClient.query({
       query: 'SELECT 42 AS result',

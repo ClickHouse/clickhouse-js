@@ -1,9 +1,4 @@
-import type {
-  ClickHouseAuth,
-  ClickHouseCredentialsAuth,
-  InsertValues,
-  ResponseHeaders,
-} from './clickhouse_types'
+import type { InsertValues, ResponseHeaders } from './clickhouse_types'
 import type { Connection, ConnectionParams } from './connection'
 import type { DataFormat } from './data_formatter'
 import type { Logger } from './logger'
@@ -43,18 +38,16 @@ export interface BaseClickHouseClientConfigOptions {
      *  @default false */
     request?: boolean
   }
-  /** @deprecated Use {@link auth} object instead.
-   *  The name of the user on whose behalf requests are made.
+  /** The name of the user on whose behalf requests are made.
    *  @default default */
   username?: string
-  /** @deprecated Use {@link auth} object instead.
-   *  The user password.
+  /** The user password.
    *  @default empty string */
   password?: string
-  /** Username + password or a JWT token to authenticate with ClickHouse.
+  /** A JWT access token to authenticate with ClickHouse.
    *  JWT token authentication is supported in ClickHouse Cloud only.
-   *  @default username: `default`, password: empty string */
-  auth?: ClickHouseAuth
+   *  @default empty */
+  access_token?: string
   /** The name of the application using the JS client.
    *  @default empty string */
   application?: string
@@ -188,19 +181,6 @@ export function prepareConfigWithURL(
     baseConfig.http_headers = baseConfig.additional_headers
     delete baseConfig.additional_headers
   }
-  if (baseConfig.username !== undefined || baseConfig.password !== undefined) {
-    logger.warn({
-      module: 'Config',
-      message:
-        '"username" and "password" are deprecated. Use "auth" object instead.',
-    })
-    baseConfig.auth = {
-      username: baseConfig.username,
-      password: baseConfig.password,
-    }
-    delete baseConfig.username
-    delete baseConfig.password
-  }
   let configURL
   if (baseConfig.host !== undefined) {
     logger.warn({
@@ -229,20 +209,17 @@ export function getConnectionParams(
   logger: Logger,
 ): ConnectionParams {
   let auth: ConnectionParams['auth']
-  if (config.auth !== undefined) {
-    if ('access_token' in config.auth) {
-      auth = { access_token: config.auth.access_token, type: 'JWT' }
-    } else {
-      auth = {
-        username: config.auth.username ?? 'default',
-        password: config.auth.password ?? '',
-        type: 'Credentials',
-      }
+  if (config.access_token !== undefined) {
+    if (config.username !== undefined || config.password !== undefined) {
+      throw new Error(
+        'Both access token and username/password are provided in the configuration. Please use only one authentication method.',
+      )
     }
+    auth = { access_token: config.access_token, type: 'JWT' }
   } else {
     auth = {
-      username: 'default',
-      password: '',
+      username: config.username ?? 'default',
+      password: config.password ?? '',
       type: 'Credentials',
     }
   }
@@ -340,16 +317,12 @@ export function loadConfigOptionsFromURL(
   handleExtraURLParams: HandleImplSpecificURLParams | null,
 ): [URL, BaseClickHouseClientConfigOptions] {
   let config: BaseClickHouseClientConfigOptions = {}
-  const auth: ClickHouseCredentialsAuth = {}
   if (url.username.trim() !== '') {
-    auth.username = url.username
+    config.username = url.username
   }
   // no trim for password
   if (url.password !== '') {
-    auth.password = url.password
-  }
-  if (Object.keys(auth).length > 0) {
-    config.auth = auth
+    config.password = url.password
   }
   if (url.pathname.trim().length > 1) {
     config.database = url.pathname.slice(1)
@@ -442,7 +415,7 @@ export function loadConfigOptionsFromURL(
             config.keep_alive.enabled = booleanConfigURLValue({ key, value })
             break
           case 'access_token':
-            config.auth = { access_token: value }
+            config.access_token = value
             break
           default:
             paramWasProcessed = false

@@ -21,9 +21,7 @@ describe('[Web] JWT auth', () => {
   it('should work with client configuration', async () => {
     client = createTestClient({
       url,
-      auth: {
-        access_token: jwt,
-      },
+      access_token: jwt,
     })
     const rs = await client.query({
       query: 'SELECT 42 AS result',
@@ -35,10 +33,8 @@ describe('[Web] JWT auth', () => {
   it('should override the client instance auth', async () => {
     client = createTestClient({
       url,
-      auth: {
-        username: 'gibberish',
-        password: 'gibberish',
-      },
+      username: 'gibberish',
+      password: 'gibberish',
     })
     const rs = await client.query({
       query: 'SELECT 42 AS result',
