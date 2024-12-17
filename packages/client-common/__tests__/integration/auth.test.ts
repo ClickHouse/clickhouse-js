@@ -7,10 +7,8 @@ describe('authentication', () => {
   let invalidAuthClient: ClickHouseClient
   beforeEach(() => {
     invalidAuthClient = createTestClient({
-      auth: {
-        username: 'gibberish',
-        password: 'gibberish',
-      },
+      username: 'gibberish',
+      password: 'gibberish',
     })
   })
   afterEach(async () => {

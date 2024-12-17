@@ -1,10 +1,11 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient, TestEnv, whenOnEnv } from '@test/utils'
+import { TestEnv, whenOnEnv } from '@test/utils'
 import { EnvKeys, getFromEnv } from '@test/utils/env'
+import { createClient } from '../../src'
+import type { NodeClickHouseClient } from '../../src/client'
 import { makeJWT } from '../utils/jwt'
 
 whenOnEnv(TestEnv.CloudSMT).describe('[Node.js] JWT auth', () => {
-  let jwtClient: ClickHouseClient
+  let jwtClient: NodeClickHouseClient
   let url: string
   let jwt: string
 
@@ -17,11 +18,9 @@ whenOnEnv(TestEnv.CloudSMT).describe('[Node.js] JWT auth', () => {
   })
 
   it('should work with client configuration', async () => {
-    jwtClient = createTestClient({
+    jwtClient = createClient({
       url,
-      auth: {
-        access_token: jwt,
-      },
+      access_token: jwt,
     })
     const rs = await jwtClient.query({
       query: 'SELECT 42 AS result',
@@ -31,12 +30,10 @@ whenOnEnv(TestEnv.CloudSMT).describe('[Node.js] JWT auth', () => {
   })
 
   it('should override the client instance auth', async () => {
-    jwtClient = createTestClient({
+    jwtClient = createClient({
       url,
-      auth: {
-        username: 'gibberish',
-        password: 'gibberish',
-      },
+      username: 'gibberish',
+      password: 'gibberish',
     })
     const rs = await jwtClient.query({
       query: 'SELECT 42 AS result',

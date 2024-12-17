@@ -1,12 +1,12 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
 import { EnvKeys, getFromEnv } from '@test/utils/env'
+import { createClient } from '../../src'
+import type { WebClickHouseClient } from '../../src/client'
 
 /** Cannot use the jsonwebtoken library to generate the token: it is Node.js only.
  *  The access token should be generated externally before running the test,
  *  and set as the CLICKHOUSE_JWT_ACCESS_TOKEN environment variable */
 describe('[Web] JWT auth', () => {
-  let client: ClickHouseClient
+  let client: WebClickHouseClient
   let url: string
   let jwt: string
 
@@ -19,11 +19,9 @@ describe('[Web] JWT auth', () => {
   })
 
   it('should work with client configuration', async () => {
-    client = createTestClient({
+    client = createClient({
       url,
-      auth: {
-        access_token: jwt,
-      },
+      access_token: jwt,
     })
     const rs = await client.query({
       query: 'SELECT 42 AS result',
@@ -33,12 +31,10 @@ describe('[Web] JWT auth', () => {
   })
 
   it('should override the client instance auth', async () => {
-    client = createTestClient({
+    client = createClient({
       url,
-      auth: {
-        username: 'gibberish',
-        password: 'gibberish',
-      },
+      username: 'gibberish',
+      password: 'gibberish',
     })
     const rs = await client.query({
       query: 'SELECT 42 AS result',
