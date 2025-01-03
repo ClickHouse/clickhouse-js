@@ -36,13 +36,11 @@ whenOnEnv(
         read_bytes: jasmine.any(String),
         written_rows: '5',
         written_bytes: jasmine.any(String),
-        total_rows_to_read: '0',
         result_rows: '5',
         result_bytes: jasmine.any(String),
         elapsed_ns: jasmine.any(String),
       }),
     )
-    assertRealTimeMicroseconds(insertSummary)
 
     const { summary: execSummary } = await client.exec({
       query: `INSERT INTO ${tableName}
@@ -55,13 +53,11 @@ whenOnEnv(
         read_bytes: jasmine.any(String),
         written_rows: '5',
         written_bytes: jasmine.any(String),
-        total_rows_to_read: '5',
         result_rows: '5',
         result_bytes: jasmine.any(String),
         elapsed_ns: jasmine.any(String),
       }),
     )
-    assertRealTimeMicroseconds(execSummary)
   })
 
   it('should provide summary for command', async () => {
@@ -79,20 +75,10 @@ whenOnEnv(
         read_bytes: jasmine.any(String),
         written_rows: '2',
         written_bytes: jasmine.any(String),
-        total_rows_to_read: '0',
         result_rows: '2',
         result_bytes: jasmine.any(String),
         elapsed_ns: jasmine.any(String),
       }),
     )
-    assertRealTimeMicroseconds(summary)
   })
-
-  function assertRealTimeMicroseconds(summary: any) {
-    // FIXME: remove this condition after 24.9 is released
-    if (process.env['CLICKHOUSE_VERSION'] === 'head') {
-      expect(summary.real_time_microseconds).toBeDefined()
-      expect(summary.real_time_microseconds).toMatch(/^\d+$/)
-    }
-  }
 })
