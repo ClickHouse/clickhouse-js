@@ -1581,9 +1581,24 @@ interface ClickHouseServerSettings {
   zstd_window_log_max?: Int64
 }
 
+/** @see https://clickhouse.com/docs/en/interfaces/http */
 interface ClickHouseHTTPSettings {
+  /** Ensures that the entire response is buffered.
+   *  In this case, the data that is not stored in memory will be buffered in a temporary server file.
+   *  This could help prevent errors that might occur during the streaming of SELECT queries.
+   *  Additionally, this is useful when executing DDLs on clustered environments,
+   *  as the client will receive the response only when the DDL is applied on all nodes of the cluster. */
   wait_end_of_query: Bool
+  /** Format to use if a SELECT query is executed without a FORMAT clause.
+   *  Only useful for the {@link ClickHouseClient.exec} method,
+   *  as {@link ClickHouseClient.query} method always attaches this clause. */
   default_format: DataFormat
+  /** By default, the session is terminated after 60 seconds of inactivity
+   *  This is regulated by the `default_session_timeout` server setting. */
+  session_timeout: UInt64
+  /** To check the session status, you can use this setting.
+   *  If a session is expired or cannot be found, server returns `SESSION_NOT_FOUND` with error code 372. */
+  session_check: Bool
 }
 
 export type ClickHouseSettings = Partial<ClickHouseServerSettings> &
