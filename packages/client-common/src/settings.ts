@@ -1596,8 +1596,11 @@ interface ClickHouseHTTPSettings {
   /** By default, the session is terminated after 60 seconds of inactivity
    *  This is regulated by the `default_session_timeout` server setting. */
   session_timeout: UInt64
-  /** To check the session status, you can use this setting.
-   *  If a session is expired or cannot be found, server returns `SESSION_NOT_FOUND` with error code 372. */
+  /** You can use this setting to check the session status before executing the query.
+   *  If a session is expired or cannot be found, the server returns `SESSION_NOT_FOUND` with error code 372. 
+   *  NB: the session mechanism is only reliable when you connect directly to a particular ClickHouse server node. 
+   *  Due to each particular session not being shared across the cluster, sessions won't work well in a multi-node environment with a load balancer, 
+   *  as there will be no guarantee that each consequent request will be received on the same node. */
   session_check: Bool
 }
 
