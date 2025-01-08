@@ -234,7 +234,18 @@ describe('[Node.js] stream JSON formats', () => {
   describe('JSONEachRowWithProgress', () => {
     it('should work', async () => {
       const limit = 2
-      const expectedProgressRowsCount = 4
+      /*
+        The layout after 25.1 for two rows with max_block_size=1 looks like:
+        [
+          {"progress":{"read_rows":"0","read_bytes":"0","written_rows":"0","written_bytes":"0","total_rows_to_read":"0"}},
+          {"progress":{"read_rows":"1","read_bytes":"8","written_rows":"0","written_bytes":"0","total_rows_to_read":"0"}},
+          {"row":{"number":"0"}},
+          {"progress":{"read_rows":"2","read_bytes":"16","written_rows":"0","written_bytes":"0","total_rows_to_read":"0"}},
+          {"row":{"number":"1"}}
+        ]
+        See also: https://github.com/ClickHouse/ClickHouse/pull/73834
+      */
+      const expectedProgressRowsCount = 3
       const rs = await client.query({
         query: `SELECT number FROM system.numbers LIMIT ${limit}`,
         format: 'JSONEachRowWithProgress',
@@ -243,7 +254,14 @@ describe('[Node.js] stream JSON formats', () => {
         },
       })
       const rows = await rs.json<{ number: 'string' }>()
-      expect(rows.length).toEqual(limit + expectedProgressRowsCount)
+      // 25.1+
+      expect(rows.length).toBeGreaterThanOrEqual(
+        limit + expectedProgressRowsCount,
+      )
+      // 24.12 (had one more progress row emitted)
+      expect(rows.length).toBeLessThanOrEqual(
+        limit + expectedProgressRowsCount + 1,
+      )
       expect(rows.filter((r) => !isProgressRow(r)) as unknown[]).toEqual([
         { row: { number: '0' } },
         { row: { number: '1' } },
