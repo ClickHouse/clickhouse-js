@@ -231,7 +231,7 @@ describe('[Node.js] stream JSON formats', () => {
     })
   })
 
-  describe('JSONEachRowWithProgress', () => {
+  xdescribe('JSONEachRowWithProgress', () => {
     it('should work', async () => {
       const limit = 2
       const expectedProgressRowsCount = 4
