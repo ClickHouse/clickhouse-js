@@ -95,15 +95,16 @@ describe('select with query binding', () => {
 
   it('handles tuples in a parametrized query', async () => {
     const rs = await client.query({
-      query: 'SELECT {var: Tuple(Int32, String, String, String)} AS result',
+      query:
+        'SELECT {var: Tuple(Int32, String, String, String, Nullable(String))} AS result',
       format: 'JSONEachRow',
       query_params: {
-        var: new TupleParam([42, 'foo', "foo_'_bar", 'foo_\t_bar']),
+        var: new TupleParam([42, 'foo', "foo_'_bar", 'foo_\t_bar', null]),
       },
     })
     expect(await rs.json()).toEqual([
       {
-        result: [42, 'foo', "foo_'_bar", 'foo_\t_bar'],
+        result: [42, 'foo', "foo_'_bar", 'foo_\t_bar', null],
       },
     ])
   })
@@ -111,15 +112,15 @@ describe('select with query binding', () => {
   it('handles arrays of tuples in a parametrized query', async () => {
     const rs = await client.query({
       query:
-        'SELECT {var: Array(Tuple(Int32, String, String, String))} AS result',
+        'SELECT {var: Array(Tuple(Int32, String, String, String, Nullable(String)))} AS result',
       format: 'JSONEachRow',
       query_params: {
-        var: [new TupleParam([42, 'foo', "foo_'_bar", 'foo_\t_bar'])],
+        var: [new TupleParam([42, 'foo', "foo_'_bar", 'foo_\t_bar', null])],
       },
     })
     expect(await rs.json()).toEqual([
       {
-        result: [[42, 'foo', "foo_'_bar", 'foo_\t_bar']],
+        result: [[42, 'foo', "foo_'_bar", 'foo_\t_bar', null]],
       },
     ])
   })
@@ -167,6 +168,35 @@ describe('select with query binding', () => {
             [1, 2, 3],
             [4, 5],
           ],
+        },
+      },
+    ])
+  })
+
+  it('handles maps with nullable values in a parametrized query', async () => {
+    const rs = await client.query({
+      query: `
+        SELECT {var1: Map(Int32, Nullable(String))} AS var1,
+               {var2: Map(String, Nullable(Int32))}  AS var2
+      `,
+      format: 'JSONEachRow',
+      query_params: {
+        var1: new Map([
+          [42, 'foo'],
+          [144, null],
+        ]),
+        var2: { foo: 42, bar: null },
+      },
+    })
+    expect(await rs.json()).toEqual([
+      {
+        var1: {
+          42: 'foo',
+          144: null,
+        },
+        var2: {
+          foo: 42,
+          bar: null,
         },
       },
     ])
@@ -241,16 +271,17 @@ describe('select with query binding', () => {
 
   it('handles an array of strings in a parameterized query', async () => {
     const rs = await client.query({
-      query: 'SELECT arrayConcat({arr1: Array(String)}, {arr2: Array(String)})',
+      query:
+        'SELECT arrayConcat({arr1: Array(String)}, {arr2: Array(Nullable(String))})',
       format: 'CSV',
       query_params: {
         arr1: ['1', '2'],
-        arr2: ['3', '4'],
+        arr2: ['3', null],
       },
     })
 
     const response = await rs.text()
-    expect(response).toBe(`"['1','2','3','4']"\n`)
+    expect(response).toBe(`"['1','2','3',NULL]"\n`)
   })
 
   it('handles an array of numbers in a parameterized query', async () => {
