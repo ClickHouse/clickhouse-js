@@ -40,7 +40,7 @@
     "test:web:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:web",
     "test:web:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:web",
     "test:web:integration:cloud_smt": "CLICKHOUSE_TEST_ENVIRONMENT=cloud_smt npm run test:web",
-    "test:web:integration:cloud_smt:jwt": "CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN=`ts-node .scripts/generate_cloud_jwt.ts` karma start karma.config.jwt.cjs",
+    "test:web:integration:cloud_smt:jwt": "karma start karma.config.jwt.cjs",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -2,7 +2,6 @@ import { TestEnv, whenOnEnv } from '@test/utils'
 import { EnvKeys, getFromEnv } from '@test/utils/env'
 import { createClient } from '../../src'
 import type { NodeClickHouseClient } from '../../src/client'
-import { makeJWT } from '../utils/jwt'
 
 whenOnEnv(TestEnv.CloudSMT).describe('[Node.js] JWT auth', () => {
   let jwtClient: NodeClickHouseClient
@@ -11,7 +10,7 @@ whenOnEnv(TestEnv.CloudSMT).describe('[Node.js] JWT auth', () => {
 
   beforeAll(() => {
     url = `https://${getFromEnv(EnvKeys.host)}:8443`
-    jwt = makeJWT()
+    jwt = getFromEnv(EnvKeys.jwt_secret)
   })
   afterEach(async () => {
     await jwtClient.close()
