@@ -1,3 +1,13 @@
+# 1.10.1 (Common, Node.js, Web)
+
+## Bug fixes
+
+- Fixed `NULL` parameter binding with `Tuple`, `Array`, and `Map` types. ([#374](https://github.com/ClickHouse/clickhouse-js/issues/374))
+
+## Improvements
+
+- `ClickHouseSettings` typings now include `session_timeout` and `session_check` settings. ([#370](https://github.com/ClickHouse/clickhouse-js/issues/370))
+
 # 1.10.0 (Common, Node.js, Web)
 
 ## New features
