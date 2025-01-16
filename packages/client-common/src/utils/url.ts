@@ -56,7 +56,7 @@ export function toSearchParams({
 
   if (query_params !== undefined) {
     for (const [key, value] of Object.entries(query_params)) {
-      const formattedParam = formatQueryParams(value)
+      const formattedParam = formatQueryParams({ value })
       params.set(`param_${key}`, formattedParam)
     }
   }

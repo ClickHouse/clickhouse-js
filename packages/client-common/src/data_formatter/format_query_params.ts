@@ -2,11 +2,15 @@ export class TupleParam {
   constructor(public readonly values: any[]) {}
 }
 
-export function formatQueryParams(
-  value: any,
-  wrapStringInQuotes = false,
-): string {
-  if (value === null || value === undefined) return '\\N'
+export function formatQueryParams({
+  value,
+  wrapStringInQuotes,
+  printNullAsKeyword,
+}: FormatQueryParamsOptions): string {
+  if (value === null || value === undefined) {
+    if (printNullAsKeyword) return 'NULL'
+    return '\\N'
+  }
   if (Number.isNaN(value)) return 'nan'
   if (value === Number.POSITIVE_INFINITY) return '+inf'
   if (value === Number.NEGATIVE_INFINITY) return '-inf'
@@ -40,7 +44,15 @@ export function formatQueryParams(
   }
 
   if (Array.isArray(value)) {
-    return `[${value.map((v) => formatQueryParams(v, true)).join(',')}]`
+    return `[${value
+      .map((v) =>
+        formatQueryParams({
+          value: v,
+          wrapStringInQuotes: true,
+          printNullAsKeyword: true,
+        }),
+      )
+      .join(',')}]`
   }
 
   if (value instanceof Date) {
@@ -54,32 +66,57 @@ export function formatQueryParams(
       : `${unixTimestamp}.${milliseconds.toString().padStart(3, '0')}`
   }
 
+  // (42,'foo',NULL)
   if (value instanceof TupleParam) {
-    return `(${value.values.map((v) => formatQueryParams(v, true)).join(',')})`
+    return `(${value.values
+      .map((v) =>
+        formatQueryParams({
+          value: v,
+          wrapStringInQuotes: true,
+          printNullAsKeyword: true,
+        }),
+      )
+      .join(',')})`
   }
 
   if (value instanceof Map) {
-    const formatted: string[] = []
-    for (const [key, val] of value) {
-      formatted.push(
-        `${formatQueryParams(key, true)}:${formatQueryParams(val, true)}`,
-      )
-    }
-    return `{${formatted.join(',')}}`
+    return formatObjectLikeParam(value.entries())
   }
 
   // This is only useful for simple maps where the keys are strings
   if (typeof value === 'object') {
-    const formatted: string[] = []
-    for (const [key, val] of Object.entries(value)) {
-      formatted.push(
-        `${formatQueryParams(key, true)}:${formatQueryParams(val, true)}`,
-      )
-    }
-    return `{${formatted.join(',')}}`
+    return formatObjectLikeParam(Object.entries(value))
   }
 
   throw new Error(`Unsupported value in query parameters: [${value}].`)
+}
+
+// {'key1':'value1',42:'value2'}
+function formatObjectLikeParam(
+  entries: [unknown, unknown][] | MapIterator<[unknown, unknown]>,
+): string {
+  const formatted: string[] = []
+  for (const [key, val] of entries) {
+    formatted.push(
+      `${formatQueryParams({
+        value: key,
+        wrapStringInQuotes: true,
+        printNullAsKeyword: true,
+      })}:${formatQueryParams({
+        value: val,
+        wrapStringInQuotes: true,
+        printNullAsKeyword: true,
+      })}`,
+    )
+  }
+  return `{${formatted.join(',')}}`
+}
+
+interface FormatQueryParamsOptions {
+  value: any
+  wrapStringInQuotes?: boolean
+  // For tuples/arrays, it is required to print NULL instead of \N
+  printNullAsKeyword?: boolean
 }
 
 const TabASCII = 9
