@@ -10,7 +10,7 @@ whenOnEnv(TestEnv.CloudSMT).describe('[Node.js] JWT auth', () => {
 
   beforeAll(() => {
     url = `https://${getFromEnv(EnvKeys.host)}:8443`
-    jwt = getFromEnv(EnvKeys.jwt_secret)
+    jwt = getFromEnv(EnvKeys.jwt_access_token)
   })
   afterEach(async () => {
     await jwtClient.close()
