@@ -7,8 +7,10 @@ import type {
   Row,
 } from '@clickhouse/client-common'
 import {
+  ClickHouseError,
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
+  parseError,
   validateStreamFormat,
 } from '@clickhouse/client-common'
 import { Buffer } from 'buffer'
@@ -111,6 +113,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     validateStreamFormat(this.format)
 
     let incompleteChunks: Buffer[] = []
+    let lastRowText = ''
     const logError = this.log_error
     const toRows = new Transform({
       transform(
@@ -134,6 +137,7 @@ export class ResultSet<Format extends DataFormat | unknown>
           } else {
             text = chunk.subarray(0, idx).toString()
           }
+          lastRowText = text
           rows.push({
             text,
             json<T>(): T {
@@ -147,6 +151,7 @@ export class ResultSet<Format extends DataFormat | unknown>
             idx = chunk.indexOf(NEWLINE, lastIdx)
             if (idx !== -1) {
               const text = chunk.subarray(lastIdx, idx).toString()
+              lastRowText = text
               rows.push({
                 text,
                 json<T>(): T {
@@ -164,6 +169,15 @@ export class ResultSet<Format extends DataFormat | unknown>
           incompleteChunks.push(chunk) // this chunk does not contain a full row
         }
         callback()
+      },
+      // Will be triggered if ClickHouse terminates the connection with an error while streaming
+      destroy(err: Error | null, callback: (error?: Error | null) => void) {
+        const maybeLastRowErr = parseError(lastRowText)
+        if (maybeLastRowErr instanceof ClickHouseError) {
+          callback(maybeLastRowErr)
+        } else {
+          callback(err)
+        }
       },
       autoDestroy: true,
       objectMode: true,
