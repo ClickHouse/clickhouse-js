@@ -3,10 +3,10 @@ import {
   type ClickHouseSettings,
 } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
-import { StreamableDataFormat } from '../../src'
-import { NodeClickHouseClient } from '../../src/client'
+import type { StreamableDataFormat } from '../../src'
+import type { NodeClickHouseClient } from '../../src/client'
 
-fdescribe('[Node.js] Errors during streaming', () => {
+describe('[Node.js] Errors during streaming', () => {
   let client: NodeClickHouseClient
   beforeAll(() => {
     client = createTestClient() as NodeClickHouseClient
@@ -30,7 +30,7 @@ fdescribe('[Node.js] Errors during streaming', () => {
     assertStreamFailure(rowsCount, err)
   })
 
-  fit('should work with JSONEachRow', async () => {
+  it('should work with JSONEachRow', async () => {
     let err: unknown
     let rowsCount = 0
     try {
