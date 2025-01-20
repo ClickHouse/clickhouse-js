@@ -160,8 +160,8 @@ export class ResultSet<Format extends DataFormat | unknown>
               // to be processed during the first pass for the next chunk
               incompleteChunks.push(chunk.subarray(lastIdx))
               // error reporting goes like this:
-              // __exception__\r\n // - the row before the last one
-              // Code: X. DB::Exception: ...\n // - the very last row
+              // __exception__\r\n              // - the row before the last one
+              // Code: X. DB::Exception: ...\n  // - the very last row
               // we are not going to push these rows downstream
               if (
                 rows.length > 1 &&
