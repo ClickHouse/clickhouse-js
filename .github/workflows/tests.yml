@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.0.2
+        uses: isbang/compose-action@v2.1.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.0.2
+        uses: isbang/compose-action@v2.1.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.0.2
+        uses: isbang/compose-action@v2.1.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -173,7 +173,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.0.2
+        uses: isbang/compose-action@v2.1.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -272,7 +272,7 @@ jobs:
           fetch-depth: 0
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.0.2
+        uses: isbang/compose-action@v2.1.0
         with:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
