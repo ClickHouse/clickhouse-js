@@ -7,8 +7,10 @@ import type {
   Row,
 } from '@clickhouse/client-common'
 import {
+  ClickHouseError,
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
+  parseError,
   validateStreamFormat,
 } from '@clickhouse/client-common'
 import { Buffer } from 'buffer'
@@ -111,6 +113,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     validateStreamFormat(this.format)
 
     let incompleteChunks: Buffer[] = []
+    let errorRowText: string | undefined
     const logError = this.log_error
     const toRows = new Transform({
       transform(
@@ -156,7 +159,22 @@ export class ResultSet<Format extends DataFormat | unknown>
             } else {
               // to be processed during the first pass for the next chunk
               incompleteChunks.push(chunk.subarray(lastIdx))
-              this.push(rows)
+              // error reporting goes like this:
+              // __exception__\r\n              // - the row before the last one
+              // Code: X. DB::Exception: ...\n  // - the very last row
+              // we are not going to push these rows downstream
+              if (
+                rows.length > 1 &&
+                rows[rows.length - 2].text === errorHeaderMessage
+              ) {
+                errorRowText = rows[rows.length - 1].text
+                // push the remaining rows before the error
+                if (rows.length > 2) {
+                  this.push(rows.slice(0, -2))
+                }
+              } else {
+                this.push(rows)
+              }
             }
             lastIdx = idx + 1 // skipping newline character
           } while (idx !== -1)
@@ -164,6 +182,19 @@ export class ResultSet<Format extends DataFormat | unknown>
           incompleteChunks.push(chunk) // this chunk does not contain a full row
         }
         callback()
+      },
+      // will be triggered if ClickHouse terminates the connection with an error while streaming
+      destroy(err: Error | null, callback: (error?: Error | null) => void) {
+        if (errorRowText !== undefined) {
+          const maybeLastRowErr = parseError(errorRowText)
+          if (maybeLastRowErr instanceof ClickHouseError) {
+            callback(maybeLastRowErr)
+          }
+        } else if (err !== null) {
+          callback(err)
+        } else {
+          callback()
+        }
       },
       autoDestroy: true,
       objectMode: true,
@@ -203,3 +234,4 @@ export class ResultSet<Format extends DataFormat | unknown>
 
 const streamAlreadyConsumedMessage = 'Stream has been already consumed'
 const resultSetClosedMessage = 'ResultSet has been closed'
+const errorHeaderMessage = `__exception__\r`
