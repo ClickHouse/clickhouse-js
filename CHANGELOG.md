@@ -1,3 +1,8 @@
+# 1.10.2
+
+## Improvements
+- Added `opentelemetry_headers` option to the client configuration. ([#394](https://github.com/ClickHouse/clickhouse-js/issues/374))
+
 # 1.10.1 (Common, Node.js, Web)
 
 ## Bug fixes
