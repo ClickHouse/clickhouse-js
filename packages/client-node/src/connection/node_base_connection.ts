@@ -265,27 +265,37 @@ export abstract class NodeBaseConnection
   protected buildRequestHeaders(
     params?: BaseQueryParams,
   ): Http.OutgoingHttpHeaders {
+    const headers = { ...this.defaultHeaders }
+
+    if (params?.opentelemetry_headers?.traceparent) {
+      headers['traceparent'] = params.opentelemetry_headers.traceparent
+    }
+
+    if (params?.opentelemetry_headers?.tracestate) {
+      headers['tracestate'] = params.opentelemetry_headers.tracestate
+    }
+
     if (isJWTAuth(params?.auth)) {
       return {
-        ...this.defaultHeaders,
+        ...headers,
         Authorization: `Bearer ${params.auth.access_token}`,
       }
     }
     if (this.params.set_basic_auth_header) {
       if (isCredentialsAuth(params?.auth)) {
         return {
-          ...this.defaultHeaders,
+          ...headers,
           Authorization: `Basic ${Buffer.from(`${params.auth.username}:${params.auth.password}`).toString('base64')}`,
         }
       } else {
         return {
-          ...this.defaultHeaders,
+          ...headers,
           Authorization: this.defaultAuthHeader,
         }
       }
     }
     return {
-      ...this.defaultHeaders,
+      ...headers,
     }
   }
 

@@ -37,6 +37,10 @@ export interface ConnBaseQueryParams {
   query_id?: string
   auth?: { username: string; password: string } | { access_token: string }
   role?: string | Array<string>
+  opentelemetry_headers?: {
+    traceparent?: string
+    tracestate?: string
+  }
 }
 
 export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
