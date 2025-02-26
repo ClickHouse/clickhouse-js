@@ -300,4 +300,37 @@ describe('[Node.js] Connection', () => {
       expect(url.search).toContain(`?query_id=${query_id}`)
     })
   })
+
+  describe('opentelemetry_headers', () => {
+    it('should set the traceparent and tracestate on request', async () => {
+      const adapter = buildHttpConnection({
+        compression: {
+          decompress_response: false,
+          compress_request: false,
+        },
+      })
+
+      const httpRequestStub = spyOn(Http, 'request')
+
+      const request1 = stubClientRequest()
+      httpRequestStub.and.returnValue(request1)
+
+      const traceparent =
+        '00-12345678901234567890123456789012-1234567890123456-01'
+
+      const tracestate = 'rojo=00f067aa0ba902b7'
+
+      const cmdPromise = adapter.command({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+        opentelemetry_headers: { traceparent, tracestate },
+      })
+      await emitResponseBody(request1, 'Ok.')
+      await cmdPromise
+
+      const headers = httpRequestStub.calls.argsFor(0)[1].headers!
+
+      expect(headers['traceparent']).toBe(traceparent)
+      expect(headers['tracestate']).toBe(tracestate)
+    })
+  })
 })
