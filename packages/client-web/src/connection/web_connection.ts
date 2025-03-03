@@ -32,7 +32,13 @@ export type WebConnectionParams = ConnectionParams
 
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
-  constructor(private readonly params: WebConnectionParams) {
+  constructor(
+    private readonly params: WebConnectionParams,
+    private readonly fetch?: (
+      url: string,
+      init: RequestInit,
+    ) => Promise<Response>,
+  ) {
     if (params.auth.type === 'JWT') {
       this.defaultHeaders = {
         Authorization: `Bearer ${params.auth.access_token}`,
@@ -197,6 +203,7 @@ export class WebConnection implements Connection<ReadableStream> {
         enable_response_compression:
           this.params.compression.decompress_response,
       })
+      const fetch = this.fetch ?? globalThis.fetch
       const response = await fetch(url, {
         body: values,
         headers,
