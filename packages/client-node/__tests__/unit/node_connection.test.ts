@@ -1,3 +1,4 @@
+import type { QueryParams } from '@clickhouse/client-common'
 import { guid } from '@test/utils'
 import Http from 'http'
 import { getAsText } from '../../src/utils'
@@ -301,36 +302,85 @@ describe('[Node.js] Connection', () => {
     })
   })
 
-  describe('opentelemetry_headers', () => {
-    it('should set the traceparent and tracestate on request', async () => {
-      const adapter = buildHttpConnection({
-        compression: {
-          decompress_response: false,
-          compress_request: false,
-        },
-      })
+  it('should set custom HTTP headers for a particular request', async () => {
+    const connection = buildHttpConnection({
+      compression: {
+        decompress_response: false,
+        compress_request: false,
+      },
+    })
 
-      const httpRequestStub = spyOn(Http, 'request')
+    const httpRequestStub = spyOn(Http, 'request')
 
-      const request1 = stubClientRequest()
-      httpRequestStub.and.returnValue(request1)
+    const traceparent =
+      '00-12345678901234567890123456789012-1234567890123456-01'
+    const tracestate = 'rojo=00f067aa0ba902b7'
 
-      const traceparent =
-        '00-12345678901234567890123456789012-1234567890123456-01'
-
-      const tracestate = 'rojo=00f067aa0ba902b7'
-
-      const cmdPromise = adapter.command({
-        query: 'SELECT * FROM system.numbers LIMIT 5',
-        opentelemetry_headers: { traceparent, tracestate },
-      })
-      await emitResponseBody(request1, 'Ok.')
-      await cmdPromise
-
-      const headers = httpRequestStub.calls.argsFor(0)[1].headers!
-
+    const assertHeaders = (i: number, op: string) => {
+      const headers = httpRequestStub.calls.argsFor(i)[1].headers!
       expect(headers['traceparent']).toBe(traceparent)
       expect(headers['tracestate']).toBe(tracestate)
+      expect(headers['op']).toBe(op)
+      // Connection + User-Agent should be enforced on the connection level
+      expect(headers['User-Agent']).toContain('clickhouse-js/')
+      // keep-alive is disabled in this test => close
+      expect(headers['Connection']).toContain('close')
+    }
+
+    const getQueryParamsWithCustomHeaders: (op: string) => QueryParams = (
+      op,
+    ) => {
+      return {
+        query: 'whatever',
+        http_headers: {
+          op,
+          traceparent,
+          tracestate,
+          // Should not be overridden
+          'User-Agent': 'foo',
+          Connection: 'bar',
+        },
+      }
+    }
+
+    // Query
+    const queryRequest = stubClientRequest()
+    httpRequestStub.and.returnValue(queryRequest)
+    const queryPromise = connection.query(
+      getQueryParamsWithCustomHeaders('query'),
+    )
+    await emitResponseBody(queryRequest, 'Ok.')
+    await queryPromise
+    assertHeaders(0, 'query')
+
+    // Command
+    const cmdRequest = stubClientRequest()
+    httpRequestStub.and.returnValue(cmdRequest)
+    const cmdPromise = connection.command(
+      getQueryParamsWithCustomHeaders('command'),
+    )
+    await emitResponseBody(cmdRequest, 'Ok.')
+    await cmdPromise
+    assertHeaders(1, 'command')
+
+    // Exec
+    const execRequest = stubClientRequest()
+    httpRequestStub.and.returnValue(execRequest)
+    const execPromise = connection.exec(getQueryParamsWithCustomHeaders('exec'))
+    await emitResponseBody(execRequest, 'Ok.')
+    const { stream } = await execPromise
+    stream.destroy()
+    assertHeaders(2, 'exec')
+
+    // Insert
+    const insertRequest = stubClientRequest()
+    httpRequestStub.and.returnValue(insertRequest)
+    const insertPromise = connection.insert({
+      ...getQueryParamsWithCustomHeaders('insert'),
+      values: 'foobar\n',
     })
+    await emitResponseBody(insertRequest, 'Ok.')
+    await insertPromise
+    assertHeaders(3, 'insert')
   })
 })

@@ -1,5 +1,5 @@
+import { getHeadersTestParams } from '@test/utils/parametrized'
 import { createClient } from '../../src'
-import type { WebClickHouseClient } from '../../src/client'
 
 describe('[Web] Client', () => {
   let fetchSpy: jasmine.Spy<typeof window.fetch>
@@ -16,46 +16,85 @@ describe('[Web] Client', () => {
           'Test-Header': 'foobar',
         },
       })
-      const fetchParams = await pingAndGetRequestInit(client)
+      await client.ping()
+      const fetchParams = getFetchRequestInit()
       expect(fetchParams!.headers).toEqual({
-        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
+        ...defaultHeaders,
         'Test-Header': 'foobar',
       })
     })
 
     it('should work with no additional HTTP headers provided', async () => {
       const client = createClient({})
-      const fetchParams = await pingAndGetRequestInit(client)
-      expect(fetchParams!.headers).toEqual({
-        Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
+      await client.ping()
+      const fetchParams = getFetchRequestInit()
+      expect(fetchParams!.headers).toEqual(defaultHeaders)
+    })
+
+    it('should work with additional HTTP headers on the method level', async () => {
+      const client = createClient({
+        http_headers: {
+          FromInstance: 'foo',
+        },
       })
+
+      let fetchCalls = 1
+      const testParams = getHeadersTestParams(client)
+      for (const param of testParams) {
+        await param.methodCall({ FromMethod: 'bar' })
+        expect(getFetchRequestInit(fetchCalls++).headers)
+          .withContext(
+            `${param.methodName}: merges custom HTTP headers from both method and instance`,
+          )
+          .toEqual({
+            ...defaultHeaders,
+            FromInstance: 'foo',
+            FromMethod: 'bar',
+          })
+
+        await param.methodCall({ FromInstance: 'bar' })
+        expect(getFetchRequestInit(fetchCalls++).headers)
+          .withContext(
+            `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
+          )
+          .toEqual({
+            ...defaultHeaders,
+            FromInstance: 'bar',
+          })
+      }
     })
   })
 
   describe('KeepAlive setting', () => {
     it('should be enabled by default', async () => {
       const client = createClient()
-      const fetchParams = await pingAndGetRequestInit(client)
+      await client.ping()
+      const fetchParams = getFetchRequestInit()
       expect(fetchParams.keepalive).toBeTruthy()
     })
 
     it('should be possible to disable it', async () => {
       const client = createClient({ keep_alive: { enabled: false } })
-      const fetchParams = await pingAndGetRequestInit(client)
+      await client.ping()
+      const fetchParams = getFetchRequestInit()
       expect(fetchParams!.keepalive).toBeFalsy()
     })
 
     it('should be enabled with an explicit setting', async () => {
       const client = createClient({ keep_alive: { enabled: true } })
-      const fetchParams = await pingAndGetRequestInit(client)
+      await client.ping()
+      const fetchParams = getFetchRequestInit()
       expect(fetchParams.keepalive).toBeTruthy()
     })
   })
 
-  async function pingAndGetRequestInit(client: WebClickHouseClient) {
-    await client.ping()
-    expect(fetchSpy).toHaveBeenCalledTimes(1)
-    const [, fetchParams] = fetchSpy.calls.mostRecent().args
-    return fetchParams!
+  function getFetchRequestInit(fetchSpyCalledTimes: number = 1) {
+    expect(fetchSpy).toHaveBeenCalledTimes(fetchSpyCalledTimes)
+    const [, requestInit] = fetchSpy.calls.mostRecent().args
+    return requestInit!
+  }
+
+  const defaultHeaders = {
+    Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
   }
 })

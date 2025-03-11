@@ -1,7 +1,8 @@
-# 1.10.2
+# 1.11.0 (Common, Node.js, Web)
 
-## Improvements
-- Added `opentelemetry_headers` option to the client configuration. ([#394](https://github.com/ClickHouse/clickhouse-js/issues/374))
+## New features
+
+- It is now possible to provide custom HTTP headers when calling the `query`/`insert`/`command`/`exec` methods using the `http_headers` option. NB: `http_headers` specified this way will override `http_headers` set on the client instance level. ([#394](https://github.com/ClickHouse/clickhouse-js/issues/374), [@DylanRJohnston](https://github.com/DylanRJohnston))
 
 # 1.10.1 (Common, Node.js, Web)
 

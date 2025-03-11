@@ -1,5 +1,4 @@
 import type {
-  BaseQueryParams,
   ClickHouseSummary,
   ConnBaseQueryParams,
   ConnCommandResult,
@@ -15,8 +14,9 @@ import type {
   LogWriter,
   ResponseHeaders,
 } from '@clickhouse/client-common'
-import { isCredentialsAuth, isJWTAuth } from '@clickhouse/client-common'
 import {
+  isCredentialsAuth,
+  isJWTAuth,
   isSuccessfulResponse,
   parseError,
   sleep,
@@ -95,8 +95,7 @@ export abstract class NodeBaseConnection
       throw new Error(`Unknown auth type: ${(params.auth as any).type}`)
     }
     this.defaultHeaders = {
-      ...(params.http_headers ?? {}),
-      // KeepAlive agent for some reason does not set this on its own
+      // Node.js HTTP agent, for some reason, does not set this on its own when KeepAlive is enabled
       Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
       'User-Agent': getUserAgent(this.params.application_id),
     }
@@ -262,19 +261,25 @@ export abstract class NodeBaseConnection
     }
   }
 
-  protected buildRequestHeaders(
-    params?: BaseQueryParams,
+  protected defaultHeadersWithOverride(
+    params?: ConnBaseQueryParams,
   ): Http.OutgoingHttpHeaders {
-    const headers = { ...this.defaultHeaders }
-
-    if (params?.opentelemetry_headers?.traceparent) {
-      headers['traceparent'] = params.opentelemetry_headers.traceparent
+    return {
+      // Custom HTTP headers from the client configuration
+      ...(this.params.http_headers ?? {}),
+      // Custom HTTP headers for this particular request; it will override the client configuration with the same keys
+      ...(params?.http_headers ?? {}),
+      // Includes the `Connection` + `User-Agent` headers which we do not allow to override
+      // An appropriate `Authorization` header might be added later
+      // It is not always required - see the TLS headers in `node_https_connection.ts`
+      ...this.defaultHeaders,
     }
+  }
 
-    if (params?.opentelemetry_headers?.tracestate) {
-      headers['tracestate'] = params.opentelemetry_headers.tracestate
-    }
-
+  protected buildRequestHeaders(
+    params?: ConnBaseQueryParams,
+  ): Http.OutgoingHttpHeaders {
+    const headers = this.defaultHeadersWithOverride(params)
     if (isJWTAuth(params?.auth)) {
       return {
         ...headers,
