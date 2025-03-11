@@ -34,7 +34,6 @@ export type WebConnectionParams = ConnectionParams & {
 
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
-  private readonly fetchFn: typeof fetch
   constructor(private readonly params: WebConnectionParams) {
     if (params.auth.type === 'JWT') {
       this.defaultHeaders = {
@@ -49,7 +48,6 @@ export class WebConnection implements Connection<ReadableStream> {
     } else {
       throw new Error(`Unknown auth type: ${(params.auth as any).type}`)
     }
-    this.fetchFn = params.fetch ?? fetch
   }
 
   async query(
@@ -202,7 +200,9 @@ export class WebConnection implements Connection<ReadableStream> {
           this.params.compression.decompress_response,
       })
 
-      const response = await this.fetchFn(url, {
+      // avoiding "fetch called on an object that does not implement interface Window" error
+      const fetchFn = this.params.fetch ?? fetch
+      const response = await fetchFn(url, {
         body: values,
         headers,
         keepalive: this.params.keep_alive.enabled,
