@@ -43,6 +43,10 @@ export interface BaseQueryParams {
         password: string
       }
     | { access_token: string }
+  /** Additional HTTP headers to attach to this particular request.
+   *  Overrides the headers set in {@link BaseClickHouseClientConfigOptions.http_headers}.
+   *  @default empty object */
+  http_headers?: Record<string, string>
 }
 
 export interface QueryParams extends BaseQueryParams {
@@ -308,6 +312,7 @@ export class ClickHouseClient<Stream = unknown> {
       session_id: params.session_id ?? this.sessionId,
       role: params.role ?? this.role,
       auth: params.auth,
+      http_headers: params.http_headers,
     }
   }
 }

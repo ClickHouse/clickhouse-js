@@ -1,8 +1,8 @@
 import {
-  type BaseQueryParams,
+  type ConnBaseQueryParams,
   isCredentialsAuth,
+  withCompressionHeaders,
 } from '@clickhouse/client-common'
-import { withCompressionHeaders } from '@clickhouse/client-common'
 import type Http from 'http'
 import Https from 'https'
 import type {
@@ -24,7 +24,7 @@ export class NodeHttpsConnection extends NodeBaseConnection {
   }
 
   protected override buildRequestHeaders(
-    params?: BaseQueryParams,
+    params?: ConnBaseQueryParams,
   ): Http.OutgoingHttpHeaders {
     if (this.params.tls !== undefined) {
       if (this.params.auth.type === 'JWT') {
@@ -35,13 +35,13 @@ export class NodeHttpsConnection extends NodeBaseConnection {
       let headers: Http.OutgoingHttpHeaders
       if (isCredentialsAuth(params?.auth)) {
         headers = {
-          ...this.defaultHeaders,
+          ...this.defaultHeadersWithOverride(params),
           'X-ClickHouse-User': params.auth.username,
           'X-ClickHouse-Key': params.auth.password,
         }
       } else {
         headers = {
-          ...this.defaultHeaders,
+          ...this.defaultHeadersWithOverride(params),
           'X-ClickHouse-User': this.params.auth.username,
           'X-ClickHouse-Key': this.params.auth.password,
         }
