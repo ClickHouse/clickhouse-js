@@ -11,14 +11,18 @@ import { WebValuesEncoder } from './utils'
 
 export type WebClickHouseClientConfigOptions =
   BaseClickHouseClientConfigOptions & {
-    fetch?: (url: string, init: RequestInit) => Promise<Response>
+    fetch?: typeof fetch
   }
 
 export const WebImpl: ImplementationDetails<ReadableStream>['impl'] = {
   make_connection: (
     config: WebClickHouseClientConfigOptions,
     params: ConnectionParams,
-  ) => new WebConnection(params, config.fetch),
+  ) =>
+    new WebConnection({
+      ...params,
+      fetch: config.fetch,
+    }),
   make_result_set: ((
     stream: ReadableStream,
     format: DataFormat,

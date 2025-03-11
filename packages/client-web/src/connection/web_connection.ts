@@ -28,17 +28,14 @@ type WebInsertParams<T> = Omit<
   values: string
 }
 
-export type WebConnectionParams = ConnectionParams
+export type WebConnectionParams = ConnectionParams & {
+  fetch?: typeof fetch
+}
 
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultHeaders: Record<string, string>
-  constructor(
-    private readonly params: WebConnectionParams,
-    private readonly fetch?: (
-      url: string,
-      init: RequestInit,
-    ) => Promise<Response>,
-  ) {
+  private readonly fetchFn: typeof fetch
+  constructor(private readonly params: WebConnectionParams) {
     if (params.auth.type === 'JWT') {
       this.defaultHeaders = {
         Authorization: `Bearer ${params.auth.access_token}`,
@@ -52,6 +49,7 @@ export class WebConnection implements Connection<ReadableStream> {
     } else {
       throw new Error(`Unknown auth type: ${(params.auth as any).type}`)
     }
+    this.fetchFn = params.fetch ?? globalThis.fetch
   }
 
   async query(
@@ -203,8 +201,8 @@ export class WebConnection implements Connection<ReadableStream> {
         enable_response_compression:
           this.params.compression.decompress_response,
       })
-      const fetch = this.fetch ?? globalThis.fetch
-      const response = await fetch(url, {
+
+      const response = await this.fetchFn(url, {
         body: values,
         headers,
         keepalive: this.params.keep_alive.enabled,
