@@ -52,6 +52,21 @@ describe('[Web] Client', () => {
     })
   })
 
+  describe('Custom fetch', () => {
+    it('should use a custom fetch instance', async () => {
+      let customFetchWasCalled = false
+      const customFetch: typeof fetch = (input, init) => {
+        customFetchWasCalled = true
+        return globalThis.fetch(input, init)
+      }
+      const client = createClient({
+        fetch: customFetch,
+      })
+      await pingAndGetRequestInit(client)
+      expect(customFetchWasCalled).toBeTruthy()
+    })
+  })
+
   async function pingAndGetRequestInit(client: WebClickHouseClient) {
     await client.ping()
     expect(fetchSpy).toHaveBeenCalledTimes(1)
