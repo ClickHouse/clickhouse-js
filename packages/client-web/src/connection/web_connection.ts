@@ -49,7 +49,7 @@ export class WebConnection implements Connection<ReadableStream> {
     } else {
       throw new Error(`Unknown auth type: ${(params.auth as any).type}`)
     }
-    this.fetchFn = params.fetch ?? globalThis.fetch
+    this.fetchFn = params.fetch ?? fetch
   }
 
   async query(
