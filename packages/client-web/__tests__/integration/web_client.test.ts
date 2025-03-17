@@ -14,6 +14,7 @@ describe('[Web] Client', () => {
       const client = createClient({
         http_headers: {
           'Test-Header': 'foobar',
+          Authorization: 'should-be-overridden-by-client-anyway',
         },
       })
       await client.ping()
@@ -35,6 +36,7 @@ describe('[Web] Client', () => {
       const client = createClient({
         http_headers: {
           FromInstance: 'foo',
+          Authorization: 'should-be-overridden-by-client-anyway',
         },
       })
 

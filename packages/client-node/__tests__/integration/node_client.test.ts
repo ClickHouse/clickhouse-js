@@ -47,6 +47,7 @@ describe('[Node.js] Client', () => {
       const client = createClient({
         http_headers: {
           'Test-Header': 'foobar',
+          Authorization: 'should-be-overridden-by-client-anyway',
         },
       })
       await query(client)
@@ -74,6 +75,7 @@ describe('[Node.js] Client', () => {
       const client = createClient({
         http_headers: {
           FromInstance: 'foo',
+          Authorization: 'should-be-overridden-by-client-anyway',
         },
       })
 
