@@ -90,6 +90,21 @@ describe('[Web] Client', () => {
     })
   })
 
+  describe('Custom fetch', () => {
+    it('should use a custom fetch instance', async () => {
+      let customFetchWasCalled = false
+      const customFetch: typeof fetch = (input, init) => {
+        customFetchWasCalled = true
+        return globalThis.fetch(input, init)
+      }
+      const client = createClient({
+        fetch: customFetch,
+      })
+      await client.ping()
+      expect(customFetchWasCalled).toBeTruthy()
+    })
+  })
+
   function getFetchRequestInit(fetchSpyCalledTimes: number = 1) {
     expect(fetchSpy).toHaveBeenCalledTimes(fetchSpyCalledTimes)
     const [, requestInit] = fetchSpy.calls.mostRecent().args

@@ -28,7 +28,9 @@ type WebInsertParams<T> = Omit<
   values: string
 }
 
-export type WebConnectionParams = ConnectionParams
+export type WebConnectionParams = ConnectionParams & {
+  fetch?: typeof fetch
+}
 
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultAuthHeader: string
@@ -185,7 +187,10 @@ export class WebConnection implements Connection<ReadableStream> {
         enable_response_compression:
           this.params.compression.decompress_response,
       })
-      const response = await fetch(url, {
+
+      // avoiding "fetch called on an object that does not implement interface Window" error
+      const fetchFn = this.params.fetch ?? fetch
+      const response = await fetchFn(url, {
         body: values,
         headers,
         keepalive: this.params.keep_alive.enabled,
