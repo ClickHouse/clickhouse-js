@@ -19,7 +19,7 @@
     "importHelpers": false,
     "outDir": "out",
     "lib": ["esnext", "dom"],
-    "types": ["node", "jest", "jasmine"],
+    "types": ["node", "jasmine"],
     "baseUrl": "./",
     "paths": {
       "@clickhouse/client-common": ["packages/client-common/src/index.ts"]

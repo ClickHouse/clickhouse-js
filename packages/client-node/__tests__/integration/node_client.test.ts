@@ -1,3 +1,4 @@
+import { getHeadersTestParams } from '@test/utils/parametrized'
 import Http from 'http'
 import type { ClickHouseClient } from '../../src'
 import { createClient } from '../../src'
@@ -46,6 +47,7 @@ describe('[Node.js] Client', () => {
       const client = createClient({
         http_headers: {
           'Test-Header': 'foobar',
+          Authorization: 'should-be-overridden-by-client-anyway',
         },
       })
       await query(client)
@@ -67,6 +69,46 @@ describe('[Node.js] Client', () => {
       const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
       expect(callOptions.headers).toEqual(defaultHeaders)
       assertSearchParams(callURL)
+    })
+
+    it('should work with additional HTTP headers on the method level', async () => {
+      const client = createClient({
+        http_headers: {
+          FromInstance: 'foo',
+          Authorization: 'should-be-overridden-by-client-anyway',
+        },
+      })
+
+      async function withEmit(method: () => Promise<unknown>) {
+        const promise = method()
+        await emitResponseBody(clientRequest, 'hi')
+        await promise
+      }
+
+      let requestCalls = 1
+      const testParams = getHeadersTestParams(client)
+      for (const param of testParams) {
+        await withEmit(() => param.methodCall({ FromMethod: 'bar' }))
+        expect(getRequestHeaders(requestCalls++))
+          .withContext(
+            `${param.methodName}: merges custom HTTP headers from both method and instance`,
+          )
+          .toEqual({
+            ...defaultHeaders,
+            FromInstance: 'foo',
+            FromMethod: 'bar',
+          })
+
+        await withEmit(() => param.methodCall({ FromInstance: 'bar' }))
+        expect(getRequestHeaders(requestCalls++))
+          .withContext(
+            `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
+          )
+          .toEqual({
+            ...defaultHeaders,
+            FromInstance: 'bar',
+          })
+      }
     })
   })
 
@@ -152,6 +194,12 @@ describe('[Node.js] Client', () => {
     const searchParams = new URL(callURL).searchParams
     expect(searchParams.get('query_id')).not.toBeNull()
     expect(searchParams.size).toEqual(1) // only query_id by default
+  }
+
+  function getRequestHeaders(httpRequestStubCalledTimes = 1) {
+    expect(httpRequestStub).toHaveBeenCalledTimes(httpRequestStubCalledTimes)
+    const [, callOptions] = httpRequestStub.calls.mostRecent().args
+    return callOptions.headers
   }
 
   const defaultHeaders: Record<

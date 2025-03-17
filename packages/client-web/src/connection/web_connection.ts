@@ -33,18 +33,12 @@ export type WebConnectionParams = ConnectionParams & {
 }
 
 export class WebConnection implements Connection<ReadableStream> {
-  private readonly defaultHeaders: Record<string, string>
+  private readonly defaultAuthHeader: string
   constructor(private readonly params: WebConnectionParams) {
     if (params.auth.type === 'JWT') {
-      this.defaultHeaders = {
-        Authorization: `Bearer ${params.auth.access_token}`,
-        ...params?.http_headers,
-      }
+      this.defaultAuthHeader = `Bearer ${params.auth.access_token}`
     } else if (params.auth.type === 'Credentials') {
-      this.defaultHeaders = {
-        Authorization: `Basic ${btoa(`${params.auth.username}:${params.auth.password}`)}`,
-        ...params?.http_headers,
-      }
+      this.defaultAuthHeader = `Basic ${btoa(`${params.auth.username}:${params.auth.password}`)}`
     } else {
       throw new Error(`Unknown auth type: ${(params.auth as any).type}`)
     }
@@ -186,15 +180,9 @@ export class WebConnection implements Connection<ReadableStream> {
     }
 
     try {
-      const authHeaderOverride = getAuthHeaderOverride(params?.auth)
       const headers = withCompressionHeaders({
-        headers:
-          authHeaderOverride !== undefined
-            ? {
-                ...this.defaultHeaders,
-                Authorization: authHeaderOverride,
-              }
-            : this.defaultHeaders,
+        headers: this.defaultHeadersWithOverride(params),
+        // It is not currently working as expected in all major browsers
         enable_request_compression: false,
         enable_response_compression:
           this.params.compression.decompress_response,
@@ -257,6 +245,26 @@ export class WebConnection implements Connection<ReadableStream> {
       query_id,
     }
   }
+
+  private defaultHeadersWithOverride(
+    params?: ConnBaseQueryParams,
+  ): Record<string, string> {
+    let authHeader: string
+    if (isJWTAuth(params?.auth)) {
+      authHeader = `Bearer ${params?.auth.access_token}`
+    } else if (isCredentialsAuth(params?.auth)) {
+      authHeader = `Basic ${btoa(`${params?.auth.username}:${params?.auth.password}`)}`
+    } else {
+      authHeader = this.defaultAuthHeader
+    }
+    return {
+      // Custom HTTP headers from the client configuration
+      ...(this.params.http_headers ?? {}),
+      // Custom HTTP headers for this particular request; it will override the client configuration with the same keys
+      ...(params?.http_headers ?? {}),
+      Authorization: authHeader,
+    }
+  }
 }
 
 function getQueryId(query_id: string | undefined): string {
@@ -269,15 +277,6 @@ function getResponseHeaders(response: Response): ResponseHeaders {
     headers[key] = value
   })
   return headers
-}
-
-function getAuthHeaderOverride(auth: ConnBaseQueryParams['auth']) {
-  if (isJWTAuth(auth)) {
-    return `Bearer ${auth.access_token}`
-  }
-  if (isCredentialsAuth(auth)) {
-    return `Basic ${btoa(`${auth.username}:${auth.password}`)}`
-  }
 }
 
 interface RunExecResult {

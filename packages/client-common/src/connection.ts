@@ -37,6 +37,7 @@ export interface ConnBaseQueryParams {
   query_id?: string
   auth?: { username: string; password: string } | { access_token: string }
   role?: string | Array<string>
+  http_headers?: Record<string, string>
 }
 
 export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
