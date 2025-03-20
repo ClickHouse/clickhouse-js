@@ -3,8 +3,15 @@ import { constants } from 'buffer'
 
 const { MAX_STRING_LENGTH } = constants
 
-export function isStream(obj: any): obj is Stream.Readable {
-  return obj !== null && typeof obj.pipe === 'function'
+export function isStream(obj: unknown): obj is Stream.Readable {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'pipe' in obj &&
+    typeof obj.pipe === 'function' &&
+    'on' in obj &&
+    typeof obj.on === 'function'
+  )
 }
 
 export async function getAsText(stream: Stream.Readable): Promise<string> {
