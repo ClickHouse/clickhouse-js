@@ -9,3 +9,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@main
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Install TypeScript and ts-node
+        run: |
+          npm install -g typescript ts-node
+
+      - name: Build Common package
+        run: |
+          ts-node .build/build_and_prepare.ts common && npm pack
+
+      - name: Build Node.js package
+        run: |
+          ts-node .build/build_and_prepare.ts node && npm pack
+
+      - name: Build Web package
+        run: |
+          ts-node .build/build_and_prepare.ts web && npm pack
+
+      - name: Rename artifacts
+        run: |
+          export CLIENT_VERSION=$(cat package.json | jq -r '.version')
+          mv clickhouse-client-${CLIENT_VERSION}.tgz clickhouse-client.tgz
+          mv clickhouse-client-common-${CLIENT_VERSION}.tgz clickhouse-client-common.tgz
+          mv clickhouse-client-web-${CLIENT_VERSION}.tgz clickhouse-client-web.tgz
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clickhouse-js-packages
+          path: clickhouse-client*.tgz
