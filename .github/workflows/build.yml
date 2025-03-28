@@ -1,0 +1,11 @@
+name: 'build'
+
+permissions: {}
+on:
+  workflow_dispatch:
+
+jobs:
+  build-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
