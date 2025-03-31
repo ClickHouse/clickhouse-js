@@ -1583,6 +1583,7 @@ interface ClickHouseServerSettings {
 
 /** @see https://clickhouse.com/docs/en/interfaces/http */
 interface ClickHouseHTTPSettings {
+  http_write_exception_in_output_format: Bool
   /** Ensures that the entire response is buffered.
    *  In this case, the data that is not stored in memory will be buffered in a temporary server file.
    *  This could help prevent errors that might occur during the streaming of SELECT queries.
