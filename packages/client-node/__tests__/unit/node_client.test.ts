@@ -108,5 +108,39 @@ describe('[Node.js] createClient', () => {
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
+
+    it('should parse username and password with special characters', async () => {
+      const username = '! $'
+      const password = '(#%%@) '
+      const auth = `${encodeURIComponent(username)}:${encodeURIComponent(password)}`
+      createClient({
+        url:
+          `https://${auth}@my.host:8443/analytics?` +
+          [
+            // base config parameters
+            'application=my_app',
+            'pathname=my_proxy',
+            'request_timeout=42000',
+            'http_header_X-ClickHouse-Auth=secret_token',
+            // Node.js specific
+            'keep_alive_idle_socket_ttl=1500',
+          ].join('&'),
+      })
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: {
+          ...params,
+          url: new URL('https://my.host:8443/my_proxy'),
+          auth: { username, password, type: 'Credentials' },
+        },
+        tls: undefined,
+        keep_alive: {
+          enabled: true,
+          idle_socket_ttl: 1500,
+        },
+        set_basic_auth_header: true,
+        http_agent: undefined,
+      } satisfies CreateConnectionParams)
+      expect(createConnectionStub).toHaveBeenCalledTimes(1)
+    })
   })
 })

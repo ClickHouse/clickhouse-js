@@ -320,12 +320,12 @@ export function loadConfigOptionsFromURL(
   handleExtraURLParams: HandleImplSpecificURLParams | null,
 ): [URL, BaseClickHouseClientConfigOptions] {
   let config: BaseClickHouseClientConfigOptions = {}
-  if (url.username.trim() !== '') {
-    config.username = url.username
+  // trim is not needed, cause space is not allowed in the URL basic auth and should be encoded as %20
+  if (url.username !== '') {
+    config.username = decodeURIComponent(url.username)
   }
-  // no trim for password
   if (url.password !== '') {
-    config.password = url.password
+    config.password = decodeURIComponent(url.password)
   }
   if (url.pathname.trim().length > 1) {
     config.database = url.pathname.slice(1)
