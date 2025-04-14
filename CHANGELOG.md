@@ -1,3 +1,13 @@
+# 1.11.1 (Common, Node.js, Web)
+
+## Bug fixes
+
+- Fixed an issue with URLEncoded special characters in the URL configuration for username or password. ([#407](https://github.com/ClickHouse/clickhouse-js/issues/407))
+
+## Improvements
+
+- Added support for streaming on 32-bit platforms. ([#403](https://github.com/ClickHouse/clickhouse-js/pull/403), [shevchenkonik](https://github.com/shevchenkonik))
+
 # 1.11.0 (Common, Node.js, Web)
 
 ## New features
