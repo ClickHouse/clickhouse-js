@@ -116,4 +116,7 @@
       <path>users.xml</path>
     </users_xml>
   </user_directories>
+
+  <!-- Avoid SERVER_OVERLOADED running many parallel tests after 25.5+ -->
+  <os_cpu_busy_time_threshold>1000000000000000000</os_cpu_busy_time_threshold>
 </clickhouse>
