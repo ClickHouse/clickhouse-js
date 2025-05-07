@@ -18,7 +18,9 @@ describe('[Node.js] Client', () => {
       await query(client)
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const calledWith = httpRequestStub.calls.mostRecent().args[1]
-      expect(calledWith.headers!['Connection']).toEqual('keep-alive')
+      expect(
+        (calledWith.headers as Record<string, string>)['Connection'],
+      ).toEqual('keep-alive')
     })
 
     it('should set "close" when KeepAlive is disabled', async () => {
@@ -28,7 +30,9 @@ describe('[Node.js] Client', () => {
       await query(client)
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const calledWith = httpRequestStub.calls.mostRecent().args[1]
-      expect(calledWith.headers!['Connection']).toEqual('close')
+      expect(
+        (calledWith.headers as Record<string, string>)['Connection'],
+      ).toEqual('close')
     })
 
     it('should set "keep-alive" when KeepAlive is explicitly enabled', async () => {
@@ -38,7 +42,9 @@ describe('[Node.js] Client', () => {
       await query(client)
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const calledWith = httpRequestStub.calls.mostRecent().args[1]
-      expect(calledWith.headers!['Connection']).toEqual('keep-alive')
+      expect(
+        (calledWith.headers as Record<string, string>)['Connection'],
+      ).toEqual('keep-alive')
     })
   })
 
