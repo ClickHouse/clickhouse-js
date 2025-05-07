@@ -41,7 +41,9 @@ describe('Node.js Connection compression', () => {
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const calledWith = httpRequestStub.calls.mostRecent().args[1]
-      expect(calledWith.headers!['Accept-Encoding']).toBe('gzip')
+      expect(
+        (calledWith.headers as Record<string, string>)['Accept-Encoding'],
+      ).toBe('gzip')
     })
 
     it('does not send a compression algorithm hint if compress_request: false', async () => {
@@ -67,7 +69,11 @@ describe('Node.js Connection compression', () => {
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const calledWith = httpRequestStub.calls.mostRecent().args[1]
-      expect(calledWith.headers!['Accept-Encoding']).toBeUndefined()
+      expect(
+        (calledWith.headers as Record<string, string | undefined>)[
+          'Accept-Encoding'
+        ],
+      ).toBe(undefined)
     })
 
     it('uses request-specific settings over config settings', async () => {
@@ -96,7 +102,9 @@ describe('Node.js Connection compression', () => {
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const calledWith = httpRequestStub.calls.mostRecent().args[1]
-      expect(calledWith.headers!['Accept-Encoding']).toBe('gzip')
+      expect(
+        (calledWith.headers as Record<string, string>)['Accept-Encoding'],
+      ).toBe('gzip')
     })
 
     it('decompresses a gzip response', async () => {
@@ -225,7 +233,9 @@ describe('Node.js Connection compression', () => {
       expect(finalResult!.toString('utf8')).toEqual(values)
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
       const calledWith = httpRequestStub.calls.mostRecent().args[1]
-      expect(calledWith.headers!['Content-Encoding']).toBe('gzip')
+      expect(
+        (calledWith.headers as Record<string, string>)['Content-Encoding'],
+      ).toBe('gzip')
     })
   })
 })

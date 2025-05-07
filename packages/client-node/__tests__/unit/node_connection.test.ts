@@ -317,7 +317,8 @@ describe('[Node.js] Connection', () => {
     const tracestate = 'rojo=00f067aa0ba902b7'
 
     const assertHeaders = (i: number, op: string) => {
-      const headers = httpRequestStub.calls.argsFor(i)[1].headers!
+      const callArgs = httpRequestStub.calls.argsFor(i)[1]
+      const headers = callArgs.headers as Record<string, string>
       expect(headers['traceparent']).toBe(traceparent)
       expect(headers['tracestate']).toBe(tracestate)
       expect(headers['op']).toBe(op)
