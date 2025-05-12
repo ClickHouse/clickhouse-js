@@ -72,7 +72,7 @@
     "karma-sourcemap-loader": "^0.4.0",
     "karma-typescript": "^5.5.4",
     "karma-webpack": "^5.0.1",
-    "lint-staged": "^15.2.10",
+    "lint-staged": "^16.0.0",
     "nyc": "^17.1.0",
     "parquet-wasm": "0.6.1",
     "prettier": "3.5.3",
