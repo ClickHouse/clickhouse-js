@@ -761,6 +761,8 @@ interface ClickHouseServerSettings {
   legacy_column_name_of_tuple_literal?: Bool
   /** Limit on read rows from the most 'end' result for select query, default 0 means no limit length */
   limit?: UInt64
+  /** Controls the synchronicity of lightweight DELETE operations. It determines whether a DELETE statement will wait for the operation to complete before returning to the client. */
+  lightweight_deletes_sync?: UInt64
   /** The heartbeat interval in seconds to indicate live query is alive. */
   live_view_heartbeat_interval?: Seconds
   /** Which replicas (among healthy replicas) to preferably send a query to (on the first attempt) for distributed processing. */
