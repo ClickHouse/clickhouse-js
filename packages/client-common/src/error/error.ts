@@ -42,23 +42,12 @@ export function getCurrentStackTrace(): string {
 
   if (!stack) return ''
 
-  let foundNewLines = 0
-  let idx = 0
-
   // Skip the first three lines of the stack trace, containing useless information
   // - Text `Error`
   // - Info about this function call
   // - Info about the originator of this function call, e.g., `request`
-  while (foundNewLines < 3) {
-    idx = stack.indexOf('\n', idx + 1)
-    if (idx === -1) {
-      return ''
-    } else {
-      foundNewLines++
-    }
-  }
-
-  return stack.substring(idx + 1)
+  // Additionally, the original stack trace is, in fact, reversed.
+  return stack.split('\n').slice(3).reverse().join('\n')
 }
 
 export function addStackTrace<E extends Error>(err: E, stackTrace: string): E {
