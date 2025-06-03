@@ -80,7 +80,7 @@ export type {
 } from './parse'
 export { SimpleColumnTypes, parseColumnType } from './parse'
 
-/** For implementations usage only - should not be re-exported */
+/** For implementation usage only - should not be re-exported */
 export {
   formatQuerySettings,
   formatQueryParams,
@@ -112,7 +112,7 @@ export {
   isJWTAuth,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
-export { parseError } from './error'
+export { parseError, getCurrentStackTrace, addStackTrace } from './error'
 export type {
   CompressionSettings,
   Connection,
