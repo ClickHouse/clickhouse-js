@@ -15,6 +15,8 @@ import type {
   ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
+  enhanceStackTrace,
+  getCurrentStackTrace,
   isCredentialsAuth,
   isJWTAuth,
   isSuccessfulResponse,
@@ -39,6 +41,7 @@ export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
   http_agent?: Http.Agent | Https.Agent
   set_basic_auth_header: boolean
+  capture_enhanced_stack_trace: boolean
   keep_alive: {
     enabled: boolean
     idle_socket_ttl: number
@@ -119,7 +122,7 @@ export abstract class NodeBaseConnection
       return { success: true }
     } catch (error) {
       // it is used to ensure that the outgoing request is terminated,
-      // and we don't get an unhandled error propagation later
+      // and we don't get unhandled error propagation later
       abortController.abort('Ping failed')
       // not an error, as this might be semi-expected
       this.logger.warn({
@@ -150,7 +153,7 @@ export abstract class NodeBaseConnection
       role: params.role,
     })
     const { controller, controllerCleanup } = this.getAbortController(params)
-    // allows to enforce the compression via the settings even if the client instance has it disabled
+    // allows enforcing the compression via the settings even if the client instance has it disabled
     const enableResponseCompression =
       clickhouse_settings.enable_http_compression === 1
     try {
@@ -423,7 +426,7 @@ export abstract class NodeBaseConnection
     const { controller, controllerCleanup } = this.getAbortController(params)
     const tryDecompressResponseStream =
       params.op === 'Exec'
-        ? // allows to disable stream decompression for the `Exec` operation only
+        ? // allows disabling stream decompression for the `Exec` operation only
           (params.decompress_response_stream ??
           this.params.compression.decompress_response)
         : // there is nothing useful in the response stream for the `Command` operation,
@@ -476,12 +479,17 @@ export abstract class NodeBaseConnection
     // allows the event loop to process the idle socket timers, if the CPU load is high
     // otherwise, we can occasionally get an expired socket, see https://github.com/ClickHouse/clickhouse-js/issues/294
     await sleep(0)
+    const currentStackTrace = this.params.capture_enhanced_stack_trace
+      ? getCurrentStackTrace()
+      : undefined
+    const logger = this.logger
     return new Promise((resolve, reject) => {
       const start = Date.now()
       const request = this.createClientRequest(params)
 
-      function onError(err: Error): void {
+      function onError(e: Error): void {
         removeRequestListeners()
+        const err = enhanceStackTrace(e, currentStackTrace)
         reject(err)
       }
 
@@ -498,7 +506,11 @@ export abstract class NodeBaseConnection
         if (tryDecompressResponseStream || isFailedResponse) {
           const decompressionResult = decompressResponse(_response, this.logger)
           if (isDecompressionError(decompressionResult)) {
-            return reject(decompressionResult.error)
+            const err = enhanceStackTrace(
+              decompressionResult.error,
+              currentStackTrace,
+            )
+            return reject(err)
           }
           responseStream = decompressionResult.response
         } else {
@@ -507,9 +519,14 @@ export abstract class NodeBaseConnection
         if (isFailedResponse) {
           try {
             const errorMessage = await getAsText(responseStream)
-            reject(parseError(errorMessage))
-          } catch (err) {
+            const err = enhanceStackTrace(
+              parseError(errorMessage),
+              currentStackTrace,
+            )
+            reject(err)
+          } catch (e) {
             // If the ClickHouse response is malformed
+            const err = enhanceStackTrace(e as Error, currentStackTrace)
             reject(err)
           }
         } else {
@@ -533,7 +550,11 @@ export abstract class NodeBaseConnection
            * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
            * */
         })
-        reject(new Error('The user aborted a request.'))
+        const err = enhanceStackTrace(
+          new Error('The user aborted a request.'),
+          currentStackTrace,
+        )
+        reject(err)
       }
 
       function onClose(): void {
@@ -553,9 +574,10 @@ export abstract class NodeBaseConnection
           ? params.body
           : Stream.Readable.from([params.body])
 
-        const callback = (err: NodeJS.ErrnoException | null): void => {
-          if (err) {
+        const callback = (e: NodeJS.ErrnoException | null): void => {
+          if (e) {
             removeRequestListeners()
+            const err = enhanceStackTrace(e, currentStackTrace)
             reject(err)
           }
         }
@@ -568,79 +590,97 @@ export abstract class NodeBaseConnection
       }
 
       const onSocket = (socket: net.Socket) => {
-        if (
-          this.params.keep_alive.enabled &&
-          this.params.keep_alive.idle_socket_ttl > 0
-        ) {
-          const socketInfo = this.knownSockets.get(socket)
-          // It is the first time we encounter this socket,
-          // so it doesn't have the idle timeout handler attached to it
-          if (socketInfo === undefined) {
-            const socketId = crypto.randomUUID()
-            this.logger.trace({
-              message: `Using a fresh socket ${socketId}, setting up a new 'free' listener`,
-            })
-            this.knownSockets.set(socket, {
-              id: socketId,
-              idle_timeout_handle: undefined,
-            })
-            // When the request is complete and the socket is released,
-            // make sure that the socket is removed after `idleSocketTTL`.
-            socket.on('free', () => {
+        try {
+          if (
+            this.params.keep_alive.enabled &&
+            this.params.keep_alive.idle_socket_ttl > 0
+          ) {
+            const socketInfo = this.knownSockets.get(socket)
+            // It is the first time we've encountered this socket,
+            // so it doesn't have the idle timeout handler attached to it
+            if (socketInfo === undefined) {
+              const socketId = crypto.randomUUID()
               this.logger.trace({
-                message: `Socket ${socketId} was released`,
+                message: `Using a fresh socket ${socketId}, setting up a new 'free' listener`,
               })
-              // Avoiding the built-in socket.timeout() method usage here,
-              // as we don't want to clash with the actual request timeout.
-              const idleTimeoutHandle = setTimeout(() => {
-                this.logger.trace({
-                  message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
-                })
-                this.knownSockets.delete(socket)
-                socket.destroy()
-              }, this.idleSocketTTL).unref()
               this.knownSockets.set(socket, {
                 id: socketId,
-                idle_timeout_handle: idleTimeoutHandle,
+                idle_timeout_handle: undefined,
               })
-            })
+              // When the request is complete and the socket is released,
+              // make sure that the socket is removed after `idleSocketTTL`.
+              socket.on('free', () => {
+                this.logger.trace({
+                  message: `Socket ${socketId} was released`,
+                })
+                // Avoiding the built-in socket.timeout() method usage here,
+                // as we don't want to clash with the actual request timeout.
+                const idleTimeoutHandle = setTimeout(() => {
+                  this.logger.trace({
+                    message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
+                  })
+                  this.knownSockets.delete(socket)
+                  socket.destroy()
+                }, this.idleSocketTTL).unref()
+                this.knownSockets.set(socket, {
+                  id: socketId,
+                  idle_timeout_handle: idleTimeoutHandle,
+                })
+              })
 
-            const cleanup = () => {
-              const maybeSocketInfo = this.knownSockets.get(socket)
-              // clean up a possibly dangling idle timeout handle (preventing leaks)
-              if (maybeSocketInfo?.idle_timeout_handle) {
-                clearTimeout(maybeSocketInfo.idle_timeout_handle)
+              const cleanup = () => {
+                const maybeSocketInfo = this.knownSockets.get(socket)
+                // clean up a possibly dangling idle timeout handle (preventing leaks)
+                if (maybeSocketInfo?.idle_timeout_handle) {
+                  clearTimeout(maybeSocketInfo.idle_timeout_handle)
+                }
+                this.logger.trace({
+                  message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
+                })
               }
+              socket.once('end', cleanup)
+              socket.once('close', cleanup)
+            } else {
+              clearTimeout(socketInfo.idle_timeout_handle)
               this.logger.trace({
-                message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
+                message: `Reusing socket ${socketInfo.id}`,
+              })
+              this.knownSockets.set(socket, {
+                ...socketInfo,
+                idle_timeout_handle: undefined,
               })
             }
-            socket.once('end', cleanup)
-            socket.once('close', cleanup)
-          } else {
-            clearTimeout(socketInfo.idle_timeout_handle)
-            this.logger.trace({
-              message: `Reusing socket ${socketInfo.id}`,
-            })
-            this.knownSockets.set(socket, {
-              ...socketInfo,
-              idle_timeout_handle: undefined,
-            })
           }
+        } catch (e) {
+          logger.error({
+            message: 'An error occurred while housekeeping the idle sockets',
+            err: e as Error,
+          })
         }
 
         // Socket is "prepared" with idle handlers, continue with our request
         pipeStream()
 
         // This is for request timeout only. Surprisingly, it is not always enough to set in the HTTP request.
-        // The socket won't be actually destroyed, and it will be returned to the pool.
+        // The socket won't be destroyed, and it will be returned to the pool.
         socket.setTimeout(this.params.request_timeout, onTimeout)
       }
 
       function onTimeout(): void {
+        const err = enhanceStackTrace(
+          new Error('Timeout error.'),
+          currentStackTrace,
+        )
         removeRequestListeners()
-        request.destroy()
-        reject(new Error('Timeout error.'))
+        try {
+          request.destroy()
+        } catch (e) {
+          logger.error({
+            message: 'An error occurred while destroying the request',
+            err: e as Error,
+          })
+        }
+        reject(err)
       }
 
       function removeRequestListeners(): void {
@@ -663,10 +703,21 @@ export abstract class NodeBaseConnection
       request.on('close', onClose)
 
       if (params.abort_signal !== undefined) {
-        params.abort_signal.addEventListener('abort', onAbort, { once: true })
+        params.abort_signal.addEventListener('abort', onAbort, {
+          once: true,
+        })
       }
 
-      if (!params.body) return request.end()
+      if (!params.body) {
+        try {
+          return request.end()
+        } catch (e) {
+          this.logger.error({
+            message: 'An error occurred while ending the request without body',
+            err: e as Error,
+          })
+        }
+      }
     })
   }
 }

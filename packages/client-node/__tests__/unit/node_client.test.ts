@@ -75,6 +75,7 @@ describe('[Node.js] createClient', () => {
         },
         set_basic_auth_header: true,
         http_agent: undefined,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
@@ -105,6 +106,7 @@ describe('[Node.js] createClient', () => {
         },
         set_basic_auth_header: true,
         http_agent: undefined,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
@@ -139,6 +141,7 @@ describe('[Node.js] createClient', () => {
         },
         set_basic_auth_header: true,
         http_agent: undefined,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })

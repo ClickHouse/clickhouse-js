@@ -1,4 +1,9 @@
-import { ClickHouseError, parseError } from '@clickhouse/client-common'
+import {
+  ClickHouseError,
+  enhanceStackTrace,
+  getCurrentStackTrace,
+  parseError,
+} from '@clickhouse/client-common'
 
 describe('parseError', () => {
   it('parses a single line error', () => {
@@ -74,6 +79,43 @@ describe('parseError', () => {
       expect(error.message).toBe(
         'creation of LZ4 compression context failed. LZ4F version: 1.9.3 ',
       )
+    })
+  })
+
+  describe('getCurrentStackTrace', () => {
+    it('should trim the stack trace as expected', async () => {
+      const currentStack = getCurrentStackTrace()
+      expect(currentStack.split('\n').length).toBeGreaterThanOrEqual(3)
+      expect(currentStack).not.toContain(getCurrentStackTrace.name)
+      expect(currentStack).not.toContain('Error:')
+      expect(currentStack).not.toContain('UserContext')
+      expect(currentStack).not.toContain('error.test.ts')
+    })
+  })
+
+  describe('enhanceStackTrace', () => {
+    it('should no-op on an empty error or stack trace', async () => {
+      const err = new Error('test error')
+      err.stack = undefined
+
+      const result1 = enhanceStackTrace(err, 'ignored')
+      expect(result1.stack).toBeUndefined()
+      expect(result1.message).toBe('test error')
+
+      err.stack = ''
+      const result2 = enhanceStackTrace(err, 'ignored')
+      expect(result2.stack).toBe('')
+      expect(result2.message).toBe('test error')
+    })
+
+    it('should enhance the stack trace of an error', () => {
+      const err = new Error('test error')
+      err.stack = 'foo\n'
+      const stackTrace = 'bar\n'
+      const enhancedError = enhanceStackTrace(err, stackTrace)
+
+      expect(enhancedError.stack).toContain(`foo\nbar\n`)
+      expect(enhancedError.message).toBe('test error')
     })
   })
 

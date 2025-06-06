@@ -15,6 +15,7 @@ export interface CreateConnectionParams {
   keep_alive: NodeConnectionParams['keep_alive']
   http_agent: http.Agent | https.Agent | undefined
   set_basic_auth_header: boolean
+  capture_enhanced_stack_trace: boolean
 }
 
 export function createConnection({
@@ -23,11 +24,13 @@ export function createConnection({
   keep_alive,
   http_agent,
   set_basic_auth_header,
+  capture_enhanced_stack_trace,
 }: CreateConnectionParams): NodeBaseConnection {
   if (http_agent !== undefined) {
     return new NodeCustomAgentConnection({
       ...connection_params,
       set_basic_auth_header,
+      capture_enhanced_stack_trace,
       keep_alive, // only used to enforce proper KeepAlive headers
       http_agent,
     })
@@ -37,12 +40,14 @@ export function createConnection({
       return new NodeHttpConnection({
         ...connection_params,
         set_basic_auth_header,
+        capture_enhanced_stack_trace,
         keep_alive,
       })
     case 'https:':
       return new NodeHttpsConnection({
         ...connection_params,
         set_basic_auth_header,
+        capture_enhanced_stack_trace,
         keep_alive,
         tls,
       })

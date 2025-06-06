@@ -32,6 +32,7 @@ describe('[Node.js] createConnection', () => {
       keep_alive: keepAliveParams,
       http_agent: undefined,
       set_basic_auth_header: true,
+      capture_enhanced_stack_trace: false,
     })
     expect(adapter).toBeInstanceOf(NodeHttpConnection)
   })
@@ -46,6 +47,7 @@ describe('[Node.js] createConnection', () => {
       keep_alive: keepAliveParams,
       http_agent: undefined,
       set_basic_auth_header: true,
+      capture_enhanced_stack_trace: false,
     })
     expect(adapter).toBeInstanceOf(NodeHttpsConnection)
   })
@@ -61,6 +63,7 @@ describe('[Node.js] createConnection', () => {
         keep_alive: keepAliveParams,
         http_agent: undefined,
         set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
       }),
     ).toThrowError('Only HTTP and HTTPS protocols are supported')
   })
@@ -76,6 +79,7 @@ describe('[Node.js] createConnection', () => {
           maxSockets: 2,
         }),
         set_basic_auth_header: false,
+        capture_enhanced_stack_trace: false,
       })
       expect(adapter).toBeInstanceOf(NodeCustomAgentConnection)
     })
@@ -90,6 +94,7 @@ describe('[Node.js] createConnection', () => {
           maxSockets: 2,
         }),
         set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
       })
       expect(adapter).toBeInstanceOf(NodeCustomAgentConnection)
     })
