@@ -1,10 +1,11 @@
 # 1.11.2 (Common, Node.js)
 
-A minor release to allow further investigation regarding uncaught error issues with [#410](https://github.com/ClickHouse/clickhouse-js/issues/410).
+A minor release to allow further investigation regarding uncaught error issues with [#410].
 
-## Improvements
+## Improvements (Node.js)
 
-- Added enhanced stack traces and a few more try-catch blocks in the transport layer [#427](https://github.com/ClickHouse/clickhouse-js/pull/427).
+- Added a new configuration option: `capture_enhanced_stack_trace`; see the JS doc in the Node.js client package. Note that it is disabled by default due to a possible performance impact. ([#427])
+- Added more try-catch blocks to the Node.js connection layer. ([#427])
 
 [#410]: https://github.com/ClickHouse/clickhouse-js/pull/410
 [#427]: https://github.com/ClickHouse/clickhouse-js/pull/427
