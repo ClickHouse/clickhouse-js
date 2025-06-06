@@ -112,7 +112,7 @@ export {
   isJWTAuth,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
-export { parseError, getCurrentStackTrace, addStackTrace } from './error'
+export { parseError, getCurrentStackTrace, enhanceStackTrace } from './error'
 export type {
   CompressionSettings,
   Connection,

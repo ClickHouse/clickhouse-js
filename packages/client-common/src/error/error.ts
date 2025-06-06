@@ -34,12 +34,10 @@ export function parseError(input: string | Error): ClickHouseError | Error {
   }
 }
 
+/** Captures the current stack trace from the sync context before going async.
+ *  It is necessary since the majority of the stack trace is lost when an async callback is called. */
 export function getCurrentStackTrace(): string {
-  const originalStackTraceLimit = Error.stackTraceLimit
-  Error.stackTraceLimit = 100
   const stack = new Error().stack
-  Error.stackTraceLimit = originalStackTraceLimit
-
   if (!stack) return ''
 
   // Skip the first three lines of the stack trace, containing useless information
@@ -50,8 +48,14 @@ export function getCurrentStackTrace(): string {
   return stack.split('\n').slice(3).reverse().join('\n')
 }
 
-export function addStackTrace<E extends Error>(err: E, stackTrace: string): E {
-  if (err.stack) {
+/** Having the stack trace produced by the {@link getCurrentStackTrace} function,
+ *  add it to an arbitrary error stack trace. No-op if there is no additional stack trace to add.
+ *  It could happen if this feature was disabled due to its performance overhead. */
+export function enhanceStackTrace<E extends Error>(
+  err: E,
+  stackTrace: string | undefined,
+): E {
+  if (err.stack && stackTrace) {
     const firstNewlineIndex = err.stack.indexOf('\n')
     const firstLine = err.stack.substring(0, firstNewlineIndex)
     const errStack = err.stack.substring(firstNewlineIndex + 1)

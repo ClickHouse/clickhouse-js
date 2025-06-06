@@ -1,3 +1,14 @@
+# 1.11.2 (Common, Node.js)
+
+A minor release to allow further investigation regarding uncaught error issues with [#410](https://github.com/ClickHouse/clickhouse-js/issues/410).
+
+## Improvements
+
+- Added enhanced stack traces and a few more try-catch blocks in the transport layer [#427](https://github.com/ClickHouse/clickhouse-js/pull/427).
+
+[#410]: https://github.com/ClickHouse/clickhouse-js/pull/410
+[#427]: https://github.com/ClickHouse/clickhouse-js/pull/427
+
 # 1.11.1 (Common, Node.js, Web)
 
 ## Bug fixes

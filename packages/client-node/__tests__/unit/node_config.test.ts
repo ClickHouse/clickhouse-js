@@ -104,6 +104,7 @@ describe('[Node.js] Config implementation details', () => {
         },
         http_agent: undefined,
         set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -129,6 +130,7 @@ describe('[Node.js] Config implementation details', () => {
         },
         http_agent: undefined,
         set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -158,6 +160,7 @@ describe('[Node.js] Config implementation details', () => {
         },
         http_agent: undefined,
         set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -187,6 +190,7 @@ describe('[Node.js] Config implementation details', () => {
         },
         http_agent: undefined,
         set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -215,6 +219,28 @@ describe('[Node.js] Config implementation details', () => {
         },
         http_agent: agent,
         set_basic_auth_header: false,
+        capture_enhanced_stack_trace: false,
+      } satisfies CreateConnectionParams)
+      expect(createConnectionStub).toHaveBeenCalledTimes(1)
+      expect(res).toEqual(fakeConnection)
+    })
+
+    it('should create a connection with enhanced stack traces option', async () => {
+      const nodeConfig: NodeClickHouseClientConfigOptions = {
+        url: new URL('https://localhost:8123'),
+        capture_enhanced_stack_trace: true,
+      }
+      const res = NodeConfigImpl.make_connection(nodeConfig as any, params)
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: undefined,
+        keep_alive: {
+          enabled: true,
+          idle_socket_ttl: 2500,
+        },
+        http_agent: undefined,
+        set_basic_auth_header: true,
+        capture_enhanced_stack_trace: true,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)

@@ -15,7 +15,7 @@ import type {
   ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
-  addStackTrace,
+  enhanceStackTrace,
   getCurrentStackTrace,
   isCredentialsAuth,
   isJWTAuth,
@@ -41,6 +41,7 @@ export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
   http_agent?: Http.Agent | Https.Agent
   set_basic_auth_header: boolean
+  capture_enhanced_stack_trace: boolean
   keep_alive: {
     enabled: boolean
     idle_socket_ttl: number
@@ -478,7 +479,9 @@ export abstract class NodeBaseConnection
     // allows the event loop to process the idle socket timers, if the CPU load is high
     // otherwise, we can occasionally get an expired socket, see https://github.com/ClickHouse/clickhouse-js/issues/294
     await sleep(0)
-    const stackTrace = getCurrentStackTrace()
+    const currentStackTrace = this.params.capture_enhanced_stack_trace
+      ? getCurrentStackTrace()
+      : undefined
     const logger = this.logger
     return new Promise((resolve, reject) => {
       const start = Date.now()
@@ -486,7 +489,7 @@ export abstract class NodeBaseConnection
 
       function onError(e: Error): void {
         removeRequestListeners()
-        const err = addStackTrace(e, stackTrace)
+        const err = enhanceStackTrace(e, currentStackTrace)
         reject(err)
       }
 
@@ -503,7 +506,10 @@ export abstract class NodeBaseConnection
         if (tryDecompressResponseStream || isFailedResponse) {
           const decompressionResult = decompressResponse(_response, this.logger)
           if (isDecompressionError(decompressionResult)) {
-            const err = addStackTrace(decompressionResult.error, stackTrace)
+            const err = enhanceStackTrace(
+              decompressionResult.error,
+              currentStackTrace,
+            )
             return reject(err)
           }
           responseStream = decompressionResult.response
@@ -513,11 +519,14 @@ export abstract class NodeBaseConnection
         if (isFailedResponse) {
           try {
             const errorMessage = await getAsText(responseStream)
-            const err = addStackTrace(parseError(errorMessage), stackTrace)
+            const err = enhanceStackTrace(
+              parseError(errorMessage),
+              currentStackTrace,
+            )
             reject(err)
           } catch (e) {
             // If the ClickHouse response is malformed
-            const err = addStackTrace(e as Error, stackTrace)
+            const err = enhanceStackTrace(e as Error, currentStackTrace)
             reject(err)
           }
         } else {
@@ -541,9 +550,9 @@ export abstract class NodeBaseConnection
            * see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
            * */
         })
-        const err = addStackTrace(
+        const err = enhanceStackTrace(
           new Error('The user aborted a request.'),
-          stackTrace,
+          currentStackTrace,
         )
         reject(err)
       }
@@ -568,7 +577,7 @@ export abstract class NodeBaseConnection
         const callback = (e: NodeJS.ErrnoException | null): void => {
           if (e) {
             removeRequestListeners()
-            const err = addStackTrace(e, stackTrace)
+            const err = enhanceStackTrace(e, currentStackTrace)
             reject(err)
           }
         }
@@ -658,7 +667,10 @@ export abstract class NodeBaseConnection
       }
 
       function onTimeout(): void {
-        const err = addStackTrace(new Error('Timeout error.'), stackTrace)
+        const err = enhanceStackTrace(
+          new Error('Timeout error.'),
+          currentStackTrace,
+        )
         removeRequestListeners()
         try {
           request.destroy()

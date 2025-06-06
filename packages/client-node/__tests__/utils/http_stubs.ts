@@ -115,6 +115,7 @@ export function buildHttpConnection(config: Partial<NodeConnectionParams>) {
       idle_socket_ttl: 2500,
     },
     set_basic_auth_header: true,
+    capture_enhanced_stack_trace: false,
     ...config,
   })
 }
