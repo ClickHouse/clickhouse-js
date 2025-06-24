@@ -21,7 +21,7 @@ const NEWLINE = 0x0a as const
 /** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
  * Everything else is an exact copy from stream.d.ts */
 export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
-  [Symbol.asyncIterator](): AsyncIterableIterator<T>
+  [Symbol.asyncIterator](): NodeJS.AsyncIterator<T>
   on(event: 'data', listener: (chunk: T) => void): Stream.Readable
   on(event: 'close', listener: () => void): Stream.Readable
   on(event: 'drain', listener: () => void): Stream.Readable
