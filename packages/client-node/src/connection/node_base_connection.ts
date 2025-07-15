@@ -642,8 +642,11 @@ export abstract class NodeBaseConnection
                   message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
                 })
                 if (!responseStream.readableEnded) {
-                  this.logger.error({
-                    message: `${op}: socket was closed or ended before the response was fully read. This can potentially result in an uncaught ECONNRESET error! Consider fully consuming, draining, or destroying the response stream`,
+                  this.logger.warn({
+                    message:
+                      `${op}: socket was closed or ended before the response was fully read. ` +
+                      'This can potentially result in an uncaught ECONNRESET error! ' +
+                      'Consider fully consuming, draining, or destroying the response stream.',
                     args: {
                       query: params.query,
                       query_id:
