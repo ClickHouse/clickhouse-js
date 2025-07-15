@@ -38,6 +38,7 @@ export {
   type BaseResultSet,
   type PingResult,
   ClickHouseError,
+  parseError,
   ClickHouseLogLevel,
   SettingsMap,
   SupportedJSONFormats,

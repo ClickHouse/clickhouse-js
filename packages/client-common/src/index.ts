@@ -36,7 +36,7 @@ export type {
   RecordsJSONFormats,
 } from './data_formatter'
 export { TupleParam } from './data_formatter'
-export { ClickHouseError } from './error'
+export { ClickHouseError, parseError } from './error'
 export {
   ClickHouseLogLevel,
   type ErrorLogParams,
@@ -112,7 +112,7 @@ export {
   isJWTAuth,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
-export { parseError, getCurrentStackTrace, enhanceStackTrace } from './error'
+export { getCurrentStackTrace, enhanceStackTrace } from './error'
 export type {
   CompressionSettings,
   Connection,

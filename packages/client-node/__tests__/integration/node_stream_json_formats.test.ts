@@ -1,4 +1,4 @@
-import { type ClickHouseClient, isProgressRow } from '@clickhouse/client-common'
+import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient, guid } from '@test/utils'
@@ -231,22 +231,144 @@ describe('[Node.js] stream JSON formats', () => {
     })
   })
 
-  xdescribe('JSONEachRowWithProgress', () => {
-    it('should work', async () => {
-      const limit = 2
-      const expectedProgressRowsCount = 4
+  describe('JSONEachRowWithProgress', () => {
+    it('works with progress rows', async () => {
       const rs = await client.query({
-        query: `SELECT number FROM system.numbers LIMIT ${limit}`,
+        query: 'SELECT sleep(0.1) AS foo FROM numbers(2)',
         format: 'JSONEachRowWithProgress',
         clickhouse_settings: {
-          max_block_size: '1', // reduce the block size, so the progress is reported more frequently
+          // triggers more progress rows, as it is emitted after each block
+          max_block_size: '1',
         },
       })
-      const rows = await rs.json<{ number: 'string' }>()
-      expect(rows.length).toEqual(limit + expectedProgressRowsCount)
-      expect(rows.filter((r) => !isProgressRow(r)) as unknown[]).toEqual([
-        { row: { number: '0' } },
-        { row: { number: '1' } },
+      const rows = await rs.json()
+      console.dir(rows, {
+        depth: null,
+      })
+      expect(rows).toEqual([
+        {
+          progress: {
+            read_rows: '1',
+            read_bytes: '8',
+            total_rows_to_read: '2',
+            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+          },
+        },
+        { meta: [{ name: 'foo', type: 'UInt8' }] },
+        { row: { foo: 0 } },
+        {
+          progress: {
+            read_rows: '2',
+            read_bytes: '16',
+            total_rows_to_read: '2',
+            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+          },
+        },
+        { row: { foo: 0 } },
+      ])
+    })
+
+    // See https://github.com/ClickHouse/ClickHouse/pull/74181/files#diff-9be59e5a502cccf360c8f2b0419115cfa2513def8f964f7c24459cfa0e877578
+    it('works with special events', async () => {
+      const rs = await client.query({
+        query: `SELECT (123 + number * 456) % 100 AS k, count() AS c, sum(number) AS s FROM numbers(100) GROUP BY ALL WITH TOTALS ORDER BY ALL LIMIT 10`,
+        format: 'JSONEachRowWithProgress',
+        clickhouse_settings: {
+          rows_before_aggregation: 1,
+          extremes: 1,
+        },
+      })
+      const rows = await rs.json<{ k: number; c: string; s: string }>()
+      console.dir(rows, {
+        depth: null,
+      })
+      expect(rows).toEqual([
+        {
+          progress: {
+            read_rows: '100',
+            read_bytes: '800',
+            total_rows_to_read: '100',
+            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+          },
+        },
+        {
+          meta: [
+            { name: 'k', type: 'UInt8' },
+            { name: 'c', type: 'UInt64' },
+            { name: 's', type: 'UInt64' },
+          ],
+        },
+        { row: { k: 3, c: '4', s: '170' } },
+        { row: { k: 7, c: '4', s: '206' } },
+        { row: { k: 11, c: '4', s: '242' } },
+        { row: { k: 15, c: '4', s: '178' } },
+        { row: { k: 19, c: '4', s: '214' } },
+        { row: { k: 23, c: '4', s: '150' } },
+        { row: { k: 27, c: '4', s: '186' } },
+        { row: { k: 31, c: '4', s: '222' } },
+        { row: { k: 35, c: '4', s: '158' } },
+        { row: { k: 39, c: '4', s: '194' } },
+        { totals: { k: 0, c: '100', s: '4950' } },
+        { min: { k: 3, c: '4', s: '150' } },
+        { max: { k: 39, c: '4', s: '242' } },
+        { rows_before_limit_at_least: 25 },
+        { rows_before_aggregation: 100 },
+      ])
+    })
+
+    it('works with exceptions', async () => {
+      const rs = await client.query({
+        query: `SELECT number, throwIf(number = 3, 'boom') AS foo FROM system.numbers`,
+        format: 'JSONEachRowWithProgress',
+        clickhouse_settings: {
+          max_block_size: '1',
+        },
+      })
+      const rows = await rs.json()
+      console.dir(rows, {
+        depth: null,
+      })
+      expect(rows).toEqual([
+        {
+          progress: {
+            read_rows: '1',
+            read_bytes: '8',
+            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+          },
+        },
+        {
+          meta: [
+            { name: 'number', type: 'UInt64' },
+            { name: 'foo', type: 'UInt8' },
+          ],
+        },
+        { row: { number: '0', foo: 0 } },
+        {
+          progress: {
+            read_rows: '2',
+            read_bytes: '16',
+            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+          },
+        },
+        { row: { number: '1', foo: 0 } },
+        {
+          progress: {
+            read_rows: '3',
+            read_bytes: '24',
+            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+          },
+        },
+        { row: { number: '2', foo: 0 } },
+        {
+          progress: {
+            read_rows: '4',
+            read_bytes: '32',
+            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+          },
+        },
+        {
+          exception: jasmine.stringContaining('Code: 395. DB::Exception: boom'),
+        },
       ])
     })
   })
