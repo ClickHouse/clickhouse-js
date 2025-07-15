@@ -78,7 +78,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: |
@@ -183,7 +183,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: |
@@ -230,7 +230,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: |
@@ -253,7 +253,7 @@ jobs:
 
   # With unit + integration + TLS tests + coverage + SonarCloud report, after the rest of the tests.
   # Needs all integration tests on all environments to pass.
-  # Should use only the current LTS version of Node.js.
+  # It should use only the current LTS version of Node.js.
   node-all-tests-with-coverage-and-sonar:
     needs:
       [
@@ -277,10 +277,10 @@ jobs:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
-      - name: Setup NodeJS 20
+      - name: Setup NodeJS 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: |
@@ -294,8 +294,9 @@ jobs:
         run: |
           npm run test:node:coverage
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v5.2.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
