@@ -62,6 +62,8 @@ export {
   SimpleColumnTypes,
   type ProgressRow,
   isProgressRow,
+  isRow,
+  isException,
   type RowOrProgress,
   type ClickHouseAuth,
   type ClickHouseJWTAuth,

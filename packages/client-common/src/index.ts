@@ -58,7 +58,7 @@ export type {
   ClickHouseJWTAuth,
   ClickHouseCredentialsAuth,
 } from './clickhouse_types'
-export { isProgressRow } from './clickhouse_types'
+export { isProgressRow, isRow, isException } from './clickhouse_types'
 export {
   type ClickHouseSettings,
   type MergeTreeSettings,
