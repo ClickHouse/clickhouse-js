@@ -4,7 +4,7 @@ export interface LogParams {
   message: string
   args?: Record<string, unknown>
 }
-export type ErrorLogParams = LogParams & { err: Error }
+export type ErrorLogParams = LogParams & { err?: Error }
 export type WarnLogParams = LogParams & { err?: Error }
 export interface Logger {
   trace(params: LogParams): void
@@ -65,7 +65,9 @@ export class DefaultLogger implements Logger {
     if (args) {
       params.push('\nArguments:', args)
     }
-    params.push('\nCaused by:', err)
+    if (err) {
+      params.push('\nCaused by:', err)
+    }
     console.error(...params)
   }
 }

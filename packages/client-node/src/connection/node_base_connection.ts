@@ -72,6 +72,7 @@ export interface RequestParams {
   // if there are compression headers, attempt to decompress it
   try_decompress_response_stream?: boolean
   parse_summary?: boolean
+  query: string
 }
 
 export abstract class NodeBaseConnection
@@ -115,6 +116,7 @@ export abstract class NodeBaseConnection
           url: transformUrl({ url: this.params.url, pathname: '/ping' }),
           abort_signal: abortController.signal,
           headers: this.buildRequestHeaders(),
+          query: 'ping',
         },
         'Ping',
       )
@@ -157,7 +159,7 @@ export abstract class NodeBaseConnection
     const enableResponseCompression =
       clickhouse_settings.enable_http_compression === 1
     try {
-      const { stream, response_headers } = await this.request(
+      const { response_headers, stream } = await this.request(
         {
           method: 'POST',
           url: transformUrl({ url: this.params.url, searchParams }),
@@ -165,13 +167,14 @@ export abstract class NodeBaseConnection
           abort_signal: controller.signal,
           enable_response_compression: enableResponseCompression,
           headers: this.buildRequestHeaders(params),
+          query: params.query,
         },
         'Query',
       )
       return {
         stream,
-        query_id,
         response_headers,
+        query_id,
       }
     } catch (err) {
       controller.abort('Query HTTP request failed')
@@ -216,6 +219,7 @@ export abstract class NodeBaseConnection
           enable_request_compression: this.params.compression.compress_request,
           parse_summary: true,
           headers: this.buildRequestHeaders(params),
+          query: params.query,
         },
         'Insert',
       )
@@ -445,6 +449,7 @@ export abstract class NodeBaseConnection
             this.params.compression.decompress_response,
           try_decompress_response_stream: tryDecompressResponseStream,
           headers: this.buildRequestHeaders(params),
+          query: params.query,
         },
         params.op,
       )
@@ -493,12 +498,11 @@ export abstract class NodeBaseConnection
         reject(err)
       }
 
+      let responseStream: Stream.Readable
       const onResponse = async (
         _response: Http.IncomingMessage,
       ): Promise<void> => {
         this.logResponse(op, request, params, _response, start)
-
-        let responseStream: Stream.Readable
         const tryDecompressResponseStream =
           params.try_decompress_response_stream ?? true
         // even if the stream decompression is disabled, we have to decompress it in case of an error
@@ -637,6 +641,16 @@ export abstract class NodeBaseConnection
                 this.logger.trace({
                   message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
                 })
+                if (!responseStream.readableEnded) {
+                  this.logger.error({
+                    message: `${op}: socket was closed or ended before the response was fully read. This can potentially result in an uncaught ECONNRESET error! Consider fully consuming, draining, or destroying the response stream`,
+                    args: {
+                      query: params.query,
+                      query_id:
+                        params.url.searchParams.get('query_id') ?? 'unknown',
+                    },
+                  })
+                }
               }
               socket.once('end', cleanup)
               socket.once('close', cleanup)
