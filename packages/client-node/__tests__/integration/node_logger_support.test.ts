@@ -43,11 +43,15 @@ describe('[Node.js] logger support', () => {
             'user-agent': jasmine.any(String),
           },
           request_method: 'GET',
-          request_params: '',
-          request_path: '/ping',
+          // query_id is a UUID
+          // query is URL-encoded `SELECT 'ping'`
+          request_params: jasmine.stringMatching(
+            /\?query_id=[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}&query=SELECT\+%27ping%27/i,
+          ),
+          request_path: '/',
           response_headers: jasmine.objectContaining({
             connection: jasmine.stringMatching(/Keep-Alive/i),
-            'content-type': 'text/html; charset=UTF-8',
+            'content-type': 'text/tab-separated-values; charset=UTF-8',
             'transfer-encoding': 'chunked',
           }),
           response_status: 200,
@@ -63,12 +67,12 @@ describe('[Node.js] logger support', () => {
         },
       })
       await client.ping()
-      // logs[0] are about current log level
+      // logs[0] are about the current log level
       expect(logs[1]).toEqual(
         jasmine.objectContaining({
           message: 'Ping: got a response from ClickHouse',
           args: jasmine.objectContaining({
-            request_path: '/ping',
+            request_path: '/',
             request_method: 'GET',
           }),
         }),
