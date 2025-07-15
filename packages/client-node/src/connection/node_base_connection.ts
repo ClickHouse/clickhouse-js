@@ -641,7 +641,7 @@ export abstract class NodeBaseConnection
                 this.logger.trace({
                   message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
                 })
-                if (!responseStream.readableEnded) {
+                if (responseStream && !responseStream.readableEnded) {
                   this.logger.warn({
                     message:
                       `${op}: socket was closed or ended before the response was fully read. ` +
