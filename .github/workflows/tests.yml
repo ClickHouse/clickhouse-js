@@ -251,10 +251,10 @@ jobs:
         run: |
           npm run test:web:integration:cloud_smt:jwt
 
-  # With unit + integration + TLS tests + coverage + SonarCloud report, after the rest of the tests.
+  # With unit + integration + TLS tests + coverage + Codecov.io upload, after the rest of the tests.
   # Needs all integration tests on all environments to pass.
   # It should use only the current LTS version of Node.js.
-  node-all-tests-with-coverage-and-sonar:
+  node-all-tests-codecov-upload:
     needs:
       [
         'node-integration-tests-local-single-node',
