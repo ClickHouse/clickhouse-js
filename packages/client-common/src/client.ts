@@ -131,7 +131,7 @@ export interface InsertParams<Stream = unknown, T = unknown>
   /** Format of the dataset to insert. Default: `JSONCompactEachRow` */
   format?: DataFormat
   /**
-   * Allows to specify which columns the data will be inserted into.
+   * Allows specifying which columns the data will be inserted into.
    * Accepts either an array of strings (column names) or an object of {@link InsertColumnsExcept} type.
    * Examples of generated queries:
    *

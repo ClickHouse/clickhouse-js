@@ -41,10 +41,25 @@ export interface WithResponseHeaders {
   response_headers: ResponseHeaders
 }
 
-/** X-ClickHouse-Summary response header and progress rows from JSONEachRowWithProgress share the same structure */
-export interface ProgressRow {
-  progress: ClickHouseSummary
+export interface ClickHouseProgress {
+  read_rows: string
+  read_bytes: string
+  elapsed_ns: string
+  total_rows_to_read?: string
 }
+
+export interface ProgressRow {
+  progress: ClickHouseProgress
+}
+
+export type SpecialEventRow<T> =
+  | { meta: Array<{ name: string; type: string }> }
+  | { totals: T }
+  | { min: T }
+  | { max: T }
+  | { rows_before_limit_at_least: number | string }
+  | { rows_before_aggregation: number | string }
+  | { exception: string }
 
 export type InsertValues<Stream, T = unknown> =
   | ReadonlyArray<T>
@@ -66,13 +81,35 @@ export interface ClickHouseJWTAuth {
 
 export type ClickHouseAuth = ClickHouseCredentialsAuth | ClickHouseJWTAuth
 
-/** Type guard to use with JSONEachRowWithProgress, checking if the emitted row is a progress row.
+/** Type guard to use with `JSONEachRowWithProgress`, checking if the emitted row is a progress row.
  *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
 export function isProgressRow(row: unknown): row is ProgressRow {
   return (
     row !== null &&
     typeof row === 'object' &&
     'progress' in row &&
+    Object.keys(row).length === 1
+  )
+}
+
+/** Type guard to use with `JSONEachRowWithProgress`, checking if the emitted row is a row with data.
+ *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
+export function isRow<T>(row: unknown): row is { row: T } {
+  return (
+    row !== null &&
+    typeof row === 'object' &&
+    'row' in row &&
+    Object.keys(row).length === 1
+  )
+}
+
+/** Type guard to use with `JSONEachRowWithProgress`, checking if the row contains an exception.
+ *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
+export function isException(row: unknown): row is { exception: string } {
+  return (
+    row !== null &&
+    typeof row === 'object' &&
+    'exception' in row &&
     Object.keys(row).length === 1
   )
 }
