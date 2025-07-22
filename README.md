@@ -16,9 +16,9 @@
 <img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml/badge.svg?branch=main">
 </a>
 
-<img src="https://sonarcloud.io/api/project_badges/measure?project=ClickHouse_clickhouse-js&metric=alert_status">
-
-<img src="https://sonarcloud.io/api/project_badges/measure?project=ClickHouse_clickhouse-js&metric=coverage">
+<a href="https://codecov.io/gh/ClickHouse/clickhouse-js">
+<img src="https://codecov.io/gh/ClickHouse/clickhouse-js/graph/badge.svg?token=B832WB00WJ">
+</a>
 
 <img src="https://api.scorecard.dev/projects/github.com/ClickHouse/clickhouse-js/badge">
 </p>

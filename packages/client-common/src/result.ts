@@ -2,6 +2,7 @@ import type {
   ProgressRow,
   ResponseHeaders,
   ResponseJSON,
+  SpecialEventRow,
 } from './clickhouse_types'
 import type {
   DataFormat,
@@ -12,7 +13,7 @@ import type {
   StreamableJSONDataFormat,
 } from './data_formatter'
 
-export type RowOrProgress<T> = { row: T } | ProgressRow
+export type RowOrProgress<T> = { row: T } | ProgressRow | SpecialEventRow<T>
 
 export type ResultStream<Format extends DataFormat | unknown, Stream> =
   // JSON*EachRow (except JSONObjectEachRow), CSV, TSV etc.
@@ -24,7 +25,7 @@ export type ResultStream<Format extends DataFormat | unknown, Stream> =
       : // JSON formats represented as a Record<string, T>
         Format extends RecordsJSONFormat
         ? never
-        : // If we fail to infer the literal type, allow to obtain the stream
+        : // If we fail to infer the literal type, allow getting the stream
           Stream
 
 export type ResultJSONType<T, F extends DataFormat | unknown> =
@@ -40,7 +41,7 @@ export type ResultJSONType<T, F extends DataFormat | unknown> =
         : // JSON formats represented as a Record<string, T>
           F extends RecordsJSONFormat
           ? Record<string, T>
-          : // CSV, TSV etc. - cannot be represented as JSON
+          : // CSV, TSV, etc. - cannot be represented as JSON
             F extends RawDataFormat
             ? never
             : // happens only when Format could not be inferred from a literal
@@ -93,7 +94,7 @@ export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
    *
    * The method should throw if the underlying stream was already consumed
    * by calling the other methods, or if it is called for non-JSON formats,
-   * such as CSV, TSV etc.
+   * such as CSV, TSV, etc.
    */
   json<T = unknown>(): Promise<ResultJSONType<T, Format>>
 
