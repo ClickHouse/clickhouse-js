@@ -123,7 +123,12 @@ export class WebConnection implements Connection<ReadableStream> {
     // so we are using a simple SELECT as a workaround
     try {
       const response = await this.request({
-        body: `SELECT 'ping'`,
+        body: null,
+        searchParams: toSearchParams({
+          database: undefined,
+          query: `SELECT 'ping'`,
+          query_id: getQueryId(undefined),
+        }),
         method: 'GET',
       })
       if (response.body !== null) {

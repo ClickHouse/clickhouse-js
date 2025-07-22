@@ -112,7 +112,7 @@ export abstract class NodeBaseConnection
     const abortController = new AbortController()
     try {
       const searchParams = toSearchParams({
-        database: this.params.database,
+        database: undefined,
         query: PingQuery,
         query_id,
       })
@@ -136,6 +136,9 @@ export abstract class NodeBaseConnection
       this.logger.warn({
         message: this.httpRequestErrorMessage('Ping'),
         err: error as Error,
+        args: {
+          query_id,
+        },
       })
       return {
         success: false,

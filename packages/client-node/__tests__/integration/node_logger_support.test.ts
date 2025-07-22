@@ -46,7 +46,7 @@ describe('[Node.js] logger support', () => {
           // query_id is a UUID
           // query is URL-encoded `SELECT 'ping'`
           request_params: jasmine.stringMatching(
-            /\?query_id=[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}&query=SELECT\+%27ping%27/i,
+            /\?query_id=[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}&.*?query=SELECT\+%27ping%27/i,
           ),
           request_path: '/',
           response_headers: jasmine.objectContaining({

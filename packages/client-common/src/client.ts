@@ -102,7 +102,7 @@ export type InsertResult = {
   /**
    * Indicates whether the INSERT statement was executed on the server.
    * Will be `false` if there was no data to insert.
-   * For example: if {@link InsertParams.values} was an empty array,
+   * For example, if {@link InsertParams.values} was an empty array,
    * the client does not send any requests to the server, and {@link executed} is false.
    */
   executed: boolean
@@ -131,7 +131,7 @@ export interface InsertParams<Stream = unknown, T = unknown>
   /** Format of the dataset to insert. Default: `JSONCompactEachRow` */
   format?: DataFormat
   /**
-   * Allows to specify which columns the data will be inserted into.
+   * Allows specifying which columns the data will be inserted into.
    * Accepts either an array of strings (column names) or an object of {@link InsertColumnsExcept} type.
    * Examples of generated queries:
    *
@@ -221,7 +221,7 @@ export class ClickHouseClient<Stream = unknown> {
   /**
    * It should be used for statements that do not have any output,
    * when the format clause is not applicable, or when you are not interested in the response at all.
-   * Response stream is destroyed immediately as we do not expect useful information there.
+   * The response stream is destroyed immediately as we do not expect useful information there.
    * Examples of such statements are DDLs or custom inserts.
    *
    * @note if you have a custom query that does not work with {@link ClickHouseClient.query},

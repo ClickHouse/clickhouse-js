@@ -19,7 +19,7 @@ void (async () => {
 
 async function existingHostPing() {
   const client = createClient({
-    host: process.env['CLICKHOUSE_HOST'], // defaults to 'http://localhost:8123'
+    url: process.env['CLICKHOUSE_URL'], // defaults to 'http://localhost:8123'
     password: process.env['CLICKHOUSE_PASSWORD'], // defaults to an empty string
   })
   const pingResult = await client.ping()
@@ -36,7 +36,7 @@ async function existingHostPing() {
 
 async function nonExistingHostPing() {
   const client = createClient({
-    host: 'http://localhost:8100', // non-existing host
+    url: 'http://localhost:8100', // non-existing host
     request_timeout: 50, // low request_timeout to speed up the example
   })
   // Ping does not throw an error; instead, { success: false; error: Error } is returned.
@@ -56,7 +56,7 @@ async function nonExistingHostPing() {
 async function timeoutPing() {
   const server = startSlowHTTPServer()
   const client = createClient({
-    host: 'http://localhost:18123',
+    url: 'http://localhost:18123',
     request_timeout: 50, // low request_timeout to speed up the example
   })
   // Ping does not throw an error; instead, { success: false; error: Error } is returned.
