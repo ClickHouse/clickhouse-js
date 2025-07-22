@@ -1613,6 +1613,16 @@ export type ClickHouseSettings = Partial<ClickHouseServerSettings> &
   Record<string, number | string | boolean | SettingsMap | undefined>
 
 export interface MergeTreeSettings {
+  /** Since ClickHouse 24.1 */
+  allow_experimental_variant_type: Bool
+  /** Since ClickHouse 24.5 */
+  allow_experimental_dynamic_type: Bool
+  /** Since ClickHouse 24.8 */
+  allow_experimental_json_type: Bool
+  /** Since ClickHouse 25.3 */
+  enable_json_type: Bool
+  /** Since ClickHouse 25.6 */
+  enable_time_time64_type: Bool
   /** Allow floating point as partition key */
   allow_floating_point_partition_key?: Bool
   /** Allow Nullable types as primary keys. */
