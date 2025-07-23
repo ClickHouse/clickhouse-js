@@ -115,7 +115,6 @@ export type InsertResult = {
   WithResponseHeaders
 
 export type ExecResult<Stream> = ConnExecResult<Stream>
-export type PingResult = ConnPingResult
 
 /** {@link except} field contains a non-empty list of columns to exclude when generating `(* EXCEPT (...))` clause */
 export interface InsertColumnsExcept {
@@ -144,6 +143,19 @@ export interface InsertParams<Stream = unknown, T = unknown>
    * See also: https://clickhouse.com/docs/en/sql-reference/statements/insert-into */
   columns?: NonEmptyArray<string> | InsertColumnsExcept
 }
+
+/** Parameters for the health-check request - using the built-in `/ping` endpoint. */
+export type PingParamsWithEndpoint = { select: false } & Pick<
+  BaseQueryParams,
+  'abort_signal' | 'http_headers'
+>
+/** Parameters for the health-check request - using a SELECT query. */
+export type PingParamsWithSelectQuery = { select: true } & Omit<
+  BaseQueryParams,
+  'query_params'
+>
+export type PingParams = PingParamsWithEndpoint | PingParamsWithSelectQuery
+export type PingResult = ConnPingResult
 
 export class ClickHouseClient<Stream = unknown> {
   private readonly clientClickHouseSettings: ClickHouseSettings
@@ -284,11 +296,16 @@ export class ClickHouseClient<Stream = unknown> {
   }
 
   /**
-   * Health-check request. It does not throw if an error occurs -
-   * the error is returned inside the result object.
+   * A health-check request. It does not throw if an error occurs - the error is returned inside the result object.
+   *
+   * By default, Node.js version uses the built-in `/ping` endpoint, which does not verify credentials.
+   * Optionally, it can be switched to a `SELECT` query (see {@link PingParamsWithSelectQuery}).
+   * In that case, the server will verify the credentials.
+   *
+   * **NOTE**: Since the `/ping` endpoint does not support CORS, the Web version always uses a `SELECT` query.
    */
-  async ping(): Promise<PingResult> {
-    return await this.connection.ping()
+  async ping(params?: PingParams): Promise<PingResult> {
+    return await this.connection.ping(params ?? { select: false })
   }
 
   /**
