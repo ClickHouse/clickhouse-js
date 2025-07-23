@@ -63,6 +63,7 @@ If something is missing, or you found a mistake in one of these examples, please
 #### Data types
 
 - [dynamic_variant_json.ts](./dynamic_variant_json.ts) - using experimental [Dynamic](https://clickhouse.com/docs/en/sql-reference/data-types/dynamic)/[Variant](https://clickhouse.com/docs/en/sql-reference/data-types/variant)/[JSON](https://clickhouse.com/docs/en/sql-reference/data-types/newjson) data types with [JSONEachRow](https://clickhouse.com/docs/en/interfaces/formats#jsoneachrow) format.
+- [time_time64.ts](./time_time64.ts) - using [Time](https://clickhouse.com/docs/en/sql-reference/data-types/time) and [Time64](https://clickhouse.com/docs/en/sql-reference/data-types/time64) data types with [JSONEachRow](https://clickhouse.com/docs/en/interfaces/formats#jsoneachrow) format (ClickHouse 25.6+).
 
 #### Special cases
 
