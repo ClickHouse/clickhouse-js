@@ -22,7 +22,7 @@
 [#444]: https://github.com/ClickHouse/clickhouse-js/pull/444
 [#445]: https://github.com/ClickHouse/clickhouse-js/pull/445
 [looskie]: https://github.com/looskie
-[ClickHouse 25.1]: https://github.com/ClickHouse/ClickHouse/pull/74181\
+[ClickHouse 25.1]: https://github.com/ClickHouse/ClickHouse/pull/74181
 [JSONEachRowWithProgress example]: https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/select_json_each_row_with_progress.ts
 [Codecov]: https://codecov.io/gh/ClickHouse/clickhouse-js
 
