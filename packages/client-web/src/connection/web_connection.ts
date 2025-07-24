@@ -61,7 +61,7 @@ export class WebConnection implements Connection<ReadableStream> {
       query_id,
     })
     const response = await this.request({
-      values: params.query,
+      body: params.query,
       params,
       searchParams,
     })
@@ -105,7 +105,7 @@ export class WebConnection implements Connection<ReadableStream> {
       query_id,
     })
     const response = await this.request({
-      values: params.values,
+      body: params.values,
       params,
       searchParams,
     })
@@ -123,7 +123,13 @@ export class WebConnection implements Connection<ReadableStream> {
     // so we are using a simple SELECT as a workaround
     try {
       const response = await this.request({
-        values: 'SELECT 1 FORMAT CSV',
+        body: null,
+        searchParams: toSearchParams({
+          database: undefined,
+          query: `SELECT 'ping'`,
+          query_id: getQueryId(undefined),
+        }),
+        method: 'GET',
       })
       if (response.body !== null) {
         await response.body.cancel()
@@ -145,13 +151,13 @@ export class WebConnection implements Connection<ReadableStream> {
   }
 
   private async request({
-    values,
+    body,
     params,
     searchParams,
     pathname,
     method,
   }: {
-    values: string | null
+    body: string | null
     params?: ConnBaseQueryParams
     searchParams?: URLSearchParams
     pathname?: string
@@ -191,7 +197,7 @@ export class WebConnection implements Connection<ReadableStream> {
       // avoiding "fetch called on an object that does not implement interface Window" error
       const fetchFn = this.params.fetch ?? fetch
       const response = await fetchFn(url, {
-        body: values,
+        body,
         headers,
         keepalive: this.params.keep_alive.enabled,
         method: method ?? 'POST',
@@ -235,7 +241,7 @@ export class WebConnection implements Connection<ReadableStream> {
       query_id,
     })
     const response = await this.request({
-      values: params.query,
+      body: params.query,
       params,
       searchParams,
     })

@@ -26,6 +26,7 @@ import {
   transformUrl,
   withHttpSettings,
 } from '@clickhouse/client-common'
+import { type ConnPingParams } from '@clickhouse/client-common'
 import crypto from 'crypto'
 import type Http from 'http'
 import type * as net from 'net'
@@ -107,34 +108,59 @@ export abstract class NodeBaseConnection
     this.idleSocketTTL = params.keep_alive.idle_socket_ttl
   }
 
-  async ping(): Promise<ConnPingResult> {
-    const abortController = new AbortController()
+  async ping(params: ConnPingParams): Promise<ConnPingResult> {
+    const query_id = this.getQueryId(params.query_id)
+    const { controller, controllerCleanup } = this.getAbortController(params)
+    let result: RequestResult
     try {
-      const { stream } = await this.request(
-        {
-          method: 'GET',
-          url: transformUrl({ url: this.params.url, pathname: '/ping' }),
-          abort_signal: abortController.signal,
-          headers: this.buildRequestHeaders(),
-          query: 'ping',
-        },
-        'Ping',
-      )
-      await drainStream(stream)
+      if (params.select) {
+        const searchParams = toSearchParams({
+          database: undefined,
+          query: PingQuery,
+          query_id,
+        })
+        result = await this.request(
+          {
+            method: 'GET',
+            url: transformUrl({ url: this.params.url, searchParams }),
+            query: PingQuery,
+            abort_signal: controller.signal,
+            headers: this.buildRequestHeaders(),
+          },
+          'Ping',
+        )
+      } else {
+        result = await this.request(
+          {
+            method: 'GET',
+            url: transformUrl({ url: this.params.url, pathname: '/ping' }),
+            abort_signal: controller.signal,
+            headers: this.buildRequestHeaders(),
+            query: 'ping',
+          },
+          'Ping',
+        )
+      }
+      await drainStream(result.stream)
       return { success: true }
     } catch (error) {
       // it is used to ensure that the outgoing request is terminated,
       // and we don't get unhandled error propagation later
-      abortController.abort('Ping failed')
+      controller.abort('Ping failed')
       // not an error, as this might be semi-expected
       this.logger.warn({
         message: this.httpRequestErrorMessage('Ping'),
         err: error as Error,
+        args: {
+          query_id,
+        },
       })
       return {
         success: false,
         error: error as Error, // should NOT be propagated to the user
       }
+    } finally {
+      controllerCleanup()
     }
   }
 
@@ -320,7 +346,7 @@ export abstract class NodeBaseConnection
   }
 
   // a wrapper over the user's Signal to terminate the failed requests
-  private getAbortController(params: ConnBaseQueryParams): {
+  private getAbortController(params: { abort_signal?: AbortSignal }): {
     controller: AbortController
     controllerCleanup: () => void
   } {
@@ -764,3 +790,5 @@ type RunExecParams = ConnBaseQueryParams & {
   values?: ConnExecParams<Stream.Readable>['values']
   decompress_response_stream?: boolean
 }
+
+const PingQuery = `SELECT 'ping'`

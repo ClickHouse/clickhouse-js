@@ -31,7 +31,7 @@ export function transformUrl({
 }
 
 type ToSearchParamsOptions = {
-  database: string
+  database: string | undefined
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
   query?: string
@@ -69,7 +69,7 @@ export function toSearchParams({
     }
   }
 
-  if (database !== 'default') {
+  if (database !== undefined && database !== 'default') {
     params.set('database', database)
   }
 

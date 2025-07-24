@@ -11,6 +11,9 @@ export {
   type ExecResult,
   type InsertResult,
   type PingResult,
+  type PingParams,
+  type PingParamsWithSelectQuery,
+  type PingParamsWithEndpoint,
 } from './client'
 export { type BaseClickHouseClientConfigOptions } from './config'
 export type {
@@ -127,6 +130,7 @@ export type {
   ConnPingResult,
   ConnCommandResult,
   ConnOperation,
+  ConnPingParams,
 } from './connection'
 export type { QueryParamsWithFormat } from './client'
 export type { IsSame } from './ts_utils'
