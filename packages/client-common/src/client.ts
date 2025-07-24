@@ -144,12 +144,16 @@ export interface InsertParams<Stream = unknown, T = unknown>
   columns?: NonEmptyArray<string> | InsertColumnsExcept
 }
 
-/** Parameters for the health-check request - using the built-in `/ping` endpoint. */
+/** Parameters for the health-check request - using the built-in `/ping` endpoint.
+ *  This is the default behavior for the Node.js version. */
 export type PingParamsWithEndpoint = { select: false } & Pick<
   BaseQueryParams,
   'abort_signal' | 'http_headers'
 >
-/** Parameters for the health-check request - using a SELECT query. */
+/** Parameters for the health-check request - using a SELECT query.
+ *  This is the default behavior for the Web version, as the `/ping` endpoint does not support CORS.
+ *  Most of the standard `query` method params, e.g., `query_id`, `abort_signal`, `http_headers`, etc. will work,
+ *  except for `query_params`, which does not make sense to allow in this method. */
 export type PingParamsWithSelectQuery = { select: true } & Omit<
   BaseQueryParams,
   'query_params'
