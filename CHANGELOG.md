@@ -1,3 +1,31 @@
+# 1.12.0
+
+## Types
+
+- Add missing `allow_experimental_join_condition` to `ClickHouseSettings` typing. ([#430], [looskie])
+- Fixed `JSONEachRowWithProgress` TypeScript flow after the breaking changes in [ClickHouse 25.1]. `RowOrProgress<T>` now has an additional variant: `SpecialEventRow<T>`. The library now additionally exports the `parseError` method, and newly added `isRow` / `isException` type guards. See the updated [JSONEachRowWithProgress example] ([#443])
+- Added missing `allow_experimental_variant_type` (24.1+), `allow_experimental_dynamic_type` (24.5+), `allow_experimental_json_type` (24.8+), `enable_json_type` (25.3+), `enable_time_time64_type` (25.6+) to `ClickHouseSettings` typing. ([#445])
+
+## Improvements
+
+- Add a warning on a socket closed without fully consuming the stream (e.g., when using `query` or `exec` method). ([#441])
+- (Node.js only) An option to use a simple SELECT query for ping checks instead of `/ping` endpoint. See the new optional argument to the `ClickHouseClient.ping` method and `PingParams` typings. Note that the Web version always used a SELECT query by default, as the `/ping` endpoint does not support CORS, and that cannot be changed. ([#442])
+
+## Other
+
+- The project now uses [Codecov] instead of SonarCloud for code coverage reports. ([#444])
+
+[#430]: https://github.com/ClickHouse/clickhouse-js/pull/430
+[#441]: https://github.com/ClickHouse/clickhouse-js/pull/441
+[#442]: https://github.com/ClickHouse/clickhouse-js/pull/442
+[#443]: https://github.com/ClickHouse/clickhouse-js/pull/443
+[#444]: https://github.com/ClickHouse/clickhouse-js/pull/444
+[#445]: https://github.com/ClickHouse/clickhouse-js/pull/445
+[looskie]: https://github.com/looskie
+[ClickHouse 25.1]: https://github.com/ClickHouse/ClickHouse/pull/74181
+[JSONEachRowWithProgress example]: https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/select_json_each_row_with_progress.ts
+[Codecov]: https://codecov.io/gh/ClickHouse/clickhouse-js
+
 # 1.11.2 (Common, Node.js)
 
 A minor release to allow further investigation regarding uncaught error issues with [#410].
