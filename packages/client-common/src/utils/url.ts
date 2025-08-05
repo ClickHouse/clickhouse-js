@@ -51,45 +51,44 @@ export function toSearchParams({
   query_id,
   role,
 }: ToSearchParamsOptions): URLSearchParams {
-  const params = new URLSearchParams()
-  params.set('query_id', query_id)
+  const entries: [string, string][] = [['query_id', query_id]]
 
   if (query_params !== undefined) {
     for (const [key, value] of Object.entries(query_params)) {
       const formattedParam = formatQueryParams({ value })
-      params.set(`param_${key}`, formattedParam)
+      entries.push([`param_${key}`, formattedParam])
     }
   }
 
   if (clickhouse_settings !== undefined) {
     for (const [key, value] of Object.entries(clickhouse_settings)) {
       if (value !== undefined) {
-        params.set(key, formatQuerySettings(value))
+        entries.push([key, formatQuerySettings(value)])
       }
     }
   }
 
   if (database !== undefined && database !== 'default') {
-    params.set('database', database)
+    entries.push(['database', database])
   }
 
   if (query) {
-    params.set('query', query)
+    entries.push(['query', query])
   }
 
   if (session_id) {
-    params.set('session_id', session_id)
+    entries.push(['session_id', session_id])
   }
 
   if (role) {
     if (typeof role === 'string') {
-      params.set('role', role)
+      entries.push(['role', role])
     } else if (Array.isArray(role)) {
       for (const r of role) {
-        params.append('role', r)
+        entries.push(['role', r])
       }
     }
   }
 
-  return params
+  return new URLSearchParams(entries)
 }
