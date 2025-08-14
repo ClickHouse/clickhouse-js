@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [18, 20, 22]
+        node: [20, 22, 24]
     steps:
       - uses: actions/checkout@main
 
@@ -78,7 +78,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install dependencies
         run: |
@@ -94,7 +94,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [18, 20, 22]
+        node: [20, 22, 24]
         clickhouse: [head, latest]
 
     steps:
@@ -135,7 +135,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [18, 20, 22]
+        node: [20, 22, 24]
         clickhouse: [head, latest]
 
     steps:
@@ -183,7 +183,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install dependencies
         run: |
@@ -199,7 +199,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [18, 20, 22]
+        node: [20, 22, 24]
 
     steps:
       - uses: actions/checkout@main
@@ -230,7 +230,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install dependencies
         run: |
@@ -280,7 +280,7 @@ jobs:
       - name: Setup NodeJS 22
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install dependencies
         run: |
