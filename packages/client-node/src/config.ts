@@ -11,7 +11,7 @@ import {
 import type http from 'http'
 import type https from 'node:https'
 import type Stream from 'stream'
-import { createConnection, type TLSParams } from './connection'
+import { NodeConnectionFactory, type TLSParams } from './connection'
 import { ResultSet } from './result_set'
 import { NodeValuesEncoder } from './utils'
 
@@ -20,7 +20,7 @@ export type NodeClickHouseClientConfigOptions =
     tls?: BasicTLSOptions | MutualTLSOptions
     /** HTTP Keep-Alive related settings */
     keep_alive?: {
-      /** Enable or disable HTTP Keep-Alive mechanism.
+      /** Enable or disable the HTTP Keep-Alive mechanism.
        *  @default true */
       enabled?: boolean
       /** For how long keep a particular idle socket alive on the client side (in milliseconds).
@@ -33,13 +33,25 @@ export type NodeClickHouseClientConfigOptions =
     /** Custom HTTP agent to use for the outgoing HTTP(s) requests.
      *  If set, {@link BaseClickHouseClientConfigOptions.max_open_connections}, {@link tls} and {@link keep_alive}
      *  options have no effect, as it is part of the default underlying agent configuration.
-     *  @experimental - unstable API, might be a subject to change in the future; please provide your feedback in the repository.
+     *  @experimental - unstable API; it might be a subject to change in the future;
+     *                  please provide your feedback in the repository.
      *  @default undefined */
     http_agent?: http.Agent | https.Agent
     /** Enable or disable the `Authorization` header with basic auth for the outgoing HTTP(s) requests.
-     *  @experimental - unstable API, might be a subject to change in the future; please provide your feedback in the repository.
+     *  @experimental - unstable API; it might be a subject to change in the future;
+     *                  please provide your feedback in the repository.
      *  @default true (enabled) */
     set_basic_auth_header?: boolean
+    /** You could try enabling this option if you encounter an error with an unclear or truncated stack trace;
+     *  as it might happen due to the way the Node.js handles the stack traces in the async code.
+     *  Note that it might have a noticeable performance impact due to
+     *  capturing the full stack trace on each client method call.
+     *  It could also be necessary to override `Error.stackTraceLimit` and increase it
+     *  to a higher value, or even to `Infinity`, as the default value Node.js is just `10`.
+     *  @experimental - unstable API; it might be a subject to change in the future;
+     *                  please provide your feedback in the repository.
+     *  @default false (disabled) */
+    capture_enhanced_stack_trace?: boolean
   }
 
 interface BasicTLSOptions {
@@ -109,9 +121,11 @@ export const NodeConfigImpl: Required<
       enabled: nodeConfig?.keep_alive?.enabled ?? true,
       idle_socket_ttl: nodeConfig?.keep_alive?.idle_socket_ttl ?? 2500,
     }
-    return createConnection({
+    return NodeConnectionFactory.create({
       connection_params: params,
       set_basic_auth_header: nodeConfig.set_basic_auth_header ?? true,
+      capture_enhanced_stack_trace:
+        nodeConfig.capture_enhanced_stack_trace ?? false,
       http_agent: nodeConfig.http_agent,
       keep_alive,
       tls,

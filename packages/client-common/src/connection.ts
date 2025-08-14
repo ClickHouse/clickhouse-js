@@ -40,6 +40,11 @@ export interface ConnBaseQueryParams {
   http_headers?: Record<string, string>
 }
 
+export type ConnPingParams = { select: boolean } & Omit<
+  ConnBaseQueryParams,
+  'query' | 'query_params'
+>
+
 export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
   values: string | Stream
 }
@@ -72,10 +77,10 @@ export type ConnPingResult =
 export type ConnOperation = 'Ping' | 'Query' | 'Insert' | 'Exec' | 'Command'
 
 export interface Connection<Stream> {
-  ping(): Promise<ConnPingResult>
-  close(): Promise<void>
+  ping(params: ConnPingParams): Promise<ConnPingResult>
   query(params: ConnBaseQueryParams): Promise<ConnQueryResult<Stream>>
   insert(params: ConnInsertParams<Stream>): Promise<ConnInsertResult>
-  exec(params: ConnExecParams<Stream>): Promise<ConnExecResult<Stream>>
   command(params: ConnBaseQueryParams): Promise<ConnCommandResult>
+  exec(params: ConnExecParams<Stream>): Promise<ConnExecResult<Stream>>
+  close(): Promise<void>
 }

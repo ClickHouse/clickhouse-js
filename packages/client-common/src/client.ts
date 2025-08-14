@@ -102,7 +102,7 @@ export type InsertResult = {
   /**
    * Indicates whether the INSERT statement was executed on the server.
    * Will be `false` if there was no data to insert.
-   * For example: if {@link InsertParams.values} was an empty array,
+   * For example, if {@link InsertParams.values} was an empty array,
    * the client does not send any requests to the server, and {@link executed} is false.
    */
   executed: boolean
@@ -115,7 +115,6 @@ export type InsertResult = {
   WithResponseHeaders
 
 export type ExecResult<Stream> = ConnExecResult<Stream>
-export type PingResult = ConnPingResult
 
 /** {@link except} field contains a non-empty list of columns to exclude when generating `(* EXCEPT (...))` clause */
 export interface InsertColumnsExcept {
@@ -131,7 +130,7 @@ export interface InsertParams<Stream = unknown, T = unknown>
   /** Format of the dataset to insert. Default: `JSONCompactEachRow` */
   format?: DataFormat
   /**
-   * Allows to specify which columns the data will be inserted into.
+   * Allows specifying which columns the data will be inserted into.
    * Accepts either an array of strings (column names) or an object of {@link InsertColumnsExcept} type.
    * Examples of generated queries:
    *
@@ -144,6 +143,23 @@ export interface InsertParams<Stream = unknown, T = unknown>
    * See also: https://clickhouse.com/docs/en/sql-reference/statements/insert-into */
   columns?: NonEmptyArray<string> | InsertColumnsExcept
 }
+
+/** Parameters for the health-check request - using the built-in `/ping` endpoint.
+ *  This is the default behavior for the Node.js version. */
+export type PingParamsWithEndpoint = { select: false } & Pick<
+  BaseQueryParams,
+  'abort_signal' | 'http_headers'
+>
+/** Parameters for the health-check request - using a SELECT query.
+ *  This is the default behavior for the Web version, as the `/ping` endpoint does not support CORS.
+ *  Most of the standard `query` method params, e.g., `query_id`, `abort_signal`, `http_headers`, etc. will work,
+ *  except for `query_params`, which does not make sense to allow in this method. */
+export type PingParamsWithSelectQuery = { select: true } & Omit<
+  BaseQueryParams,
+  'query_params'
+>
+export type PingParams = PingParamsWithEndpoint | PingParamsWithSelectQuery
+export type PingResult = ConnPingResult
 
 export class ClickHouseClient<Stream = unknown> {
   private readonly clientClickHouseSettings: ClickHouseSettings
@@ -221,7 +237,7 @@ export class ClickHouseClient<Stream = unknown> {
   /**
    * It should be used for statements that do not have any output,
    * when the format clause is not applicable, or when you are not interested in the response at all.
-   * Response stream is destroyed immediately as we do not expect useful information there.
+   * The response stream is destroyed immediately as we do not expect useful information there.
    * Examples of such statements are DDLs or custom inserts.
    *
    * @note if you have a custom query that does not work with {@link ClickHouseClient.query},
@@ -284,11 +300,16 @@ export class ClickHouseClient<Stream = unknown> {
   }
 
   /**
-   * Health-check request. It does not throw if an error occurs -
-   * the error is returned inside the result object.
+   * A health-check request. It does not throw if an error occurs - the error is returned inside the result object.
+   *
+   * By default, Node.js version uses the built-in `/ping` endpoint, which does not verify credentials.
+   * Optionally, it can be switched to a `SELECT` query (see {@link PingParamsWithSelectQuery}).
+   * In that case, the server will verify the credentials.
+   *
+   * **NOTE**: Since the `/ping` endpoint does not support CORS, the Web version always uses a `SELECT` query.
    */
-  async ping(): Promise<PingResult> {
-    return await this.connection.ping()
+  async ping(params?: PingParams): Promise<PingResult> {
+    return await this.connection.ping(params ?? { select: false })
   }
 
   /**

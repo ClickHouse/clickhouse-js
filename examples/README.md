@@ -43,6 +43,7 @@ If something is missing, or you found a mistake in one of these examples, please
 - [insert_file_stream_csv.ts](node/insert_file_stream_csv.ts) - (Node.js only) stream a CSV file into ClickHouse.
 - [insert_file_stream_ndjson.ts](node/insert_file_stream_ndjson.ts) - (Node.js only) stream a NDJSON file into ClickHouse.
 - [insert_file_stream_parquet.ts](node/insert_file_stream_parquet.ts) - (Node.js only) stream a Parquet file into ClickHouse.
+- [insert_arbitrary_format_stream.ts](node/insert_arbitrary_format_stream.ts) - (Node.js only) stream in arbitrary format into ClickHouse. In this case, the input format is [AVRO](https://clickhouse.com/docs/interfaces/formats/Avro), inserting the data from an Avro data file generated ad-hoc.
 - [stream_created_from_array_raw.ts](node/stream_created_from_array_raw.ts) - (Node.js only) converting the string input into a stream and sending it to ClickHouse; in this scenario, the base input is a CSV string.
 - [insert_values_and_functions.ts](insert_values_and_functions.ts) - generating an `INSERT INTO ... VALUES` statement that uses a combination of values and function calls.
 - [insert_ephemeral_columns.ts](insert_ephemeral_columns.ts) - inserting data into a table that has [ephemeral columns](https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral).
@@ -62,6 +63,7 @@ If something is missing, or you found a mistake in one of these examples, please
 #### Data types
 
 - [dynamic_variant_json.ts](./dynamic_variant_json.ts) - using experimental [Dynamic](https://clickhouse.com/docs/en/sql-reference/data-types/dynamic)/[Variant](https://clickhouse.com/docs/en/sql-reference/data-types/variant)/[JSON](https://clickhouse.com/docs/en/sql-reference/data-types/newjson) data types with [JSONEachRow](https://clickhouse.com/docs/en/interfaces/formats#jsoneachrow) format.
+- [time_time64.ts](./time_time64.ts) - using [Time](https://clickhouse.com/docs/en/sql-reference/data-types/time) and [Time64](https://clickhouse.com/docs/en/sql-reference/data-types/time64) data types with [JSONEachRow](https://clickhouse.com/docs/en/interfaces/formats#jsoneachrow) format (ClickHouse 25.6+).
 
 #### Special cases
 

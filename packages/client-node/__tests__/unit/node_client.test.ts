@@ -4,8 +4,10 @@ import type {
 } from '@clickhouse/client-common'
 import { DefaultLogger, LogWriter } from '@clickhouse/client-common'
 import { createClient } from '../../src'
-import type { CreateConnectionParams } from '../../src/connection'
-import * as c from '../../src/connection/create_connection'
+import {
+  type CreateConnectionParams,
+  NodeConnectionFactory,
+} from '../../src/connection'
 
 describe('[Node.js] createClient', () => {
   it('throws on incorrect "url" config value', () => {
@@ -50,7 +52,10 @@ describe('[Node.js] createClient', () => {
 
     let createConnectionStub: jasmine.Spy
     beforeEach(() => {
-      createConnectionStub = spyOn(c, 'createConnection').and.callThrough()
+      createConnectionStub = spyOn(
+        NodeConnectionFactory,
+        'create',
+      ).and.callThrough()
     })
 
     it('should parse URL parameters and create a valid connection', async () => {
@@ -75,6 +80,7 @@ describe('[Node.js] createClient', () => {
         },
         set_basic_auth_header: true,
         http_agent: undefined,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
@@ -105,6 +111,7 @@ describe('[Node.js] createClient', () => {
         },
         set_basic_auth_header: true,
         http_agent: undefined,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
@@ -139,6 +146,7 @@ describe('[Node.js] createClient', () => {
         },
         set_basic_auth_header: true,
         http_agent: undefined,
+        capture_enhanced_stack_trace: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })

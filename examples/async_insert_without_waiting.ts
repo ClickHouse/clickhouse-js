@@ -11,7 +11,7 @@ import { EventEmitter } from 'events'
 // See https://clickhouse.com/docs/en/optimize/asynchronous-inserts
 void (async () => {
   const client = createClient({
-    host: process.env['CLICKHOUSE_HOST'], // defaults to 'http://localhost:8123'
+    url: process.env['CLICKHOUSE_URL'], // defaults to 'http://localhost:8123'
     password: process.env['CLICKHOUSE_PASSWORD'], // defaults to an empty string
     max_open_connections: 10,
     clickhouse_settings: {

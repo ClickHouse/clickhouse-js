@@ -77,6 +77,18 @@ interface ClickHouseServerSettings {
   allow_experimental_undrop_table_query?: Bool
   /** Enable WINDOW VIEW. Not mature enough. */
   allow_experimental_window_view?: Bool
+  /** Support join with inequal conditions which involve columns from both left and right table. e.g. t1.y < t2.y. */
+  allow_experimental_join_condition?: Bool
+  /** Since ClickHouse 24.1 */
+  allow_experimental_variant_type?: Bool
+  /** Since ClickHouse 24.5 */
+  allow_experimental_dynamic_type?: Bool
+  /** Since ClickHouse 24.8 */
+  allow_experimental_json_type?: Bool
+  /** Since ClickHouse 25.3 */
+  enable_json_type?: Bool
+  /** Since ClickHouse 25.6 */
+  enable_time_time64_type?: Bool
   /** Allow functions that use Hyperscan library. Disable to avoid potentially long compilation times and excessive resource usage. */
   allow_hyperscan?: Bool
   /** Allow functions for introspection of ELF and DWARF for query profiling. These functions are slow and may impose security considerations. */
@@ -761,6 +773,8 @@ interface ClickHouseServerSettings {
   legacy_column_name_of_tuple_literal?: Bool
   /** Limit on read rows from the most 'end' result for select query, default 0 means no limit length */
   limit?: UInt64
+  /** Controls the synchronicity of lightweight DELETE operations. It determines whether a DELETE statement will wait for the operation to complete before returning to the client. */
+  lightweight_deletes_sync?: UInt64
   /** The heartbeat interval in seconds to indicate live query is alive. */
   live_view_heartbeat_interval?: Seconds
   /** Which replicas (among healthy replicas) to preferably send a query to (on the first attempt) for distributed processing. */

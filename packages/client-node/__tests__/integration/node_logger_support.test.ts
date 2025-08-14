@@ -63,7 +63,7 @@ describe('[Node.js] logger support', () => {
         },
       })
       await client.ping()
-      // logs[0] are about current log level
+      // logs[0] are about the current log level
       expect(logs[1]).toEqual(
         jasmine.objectContaining({
           message: 'Ping: got a response from ClickHouse',

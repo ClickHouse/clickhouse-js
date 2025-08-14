@@ -11,6 +11,9 @@ export {
   type ExecResult,
   type InsertResult,
   type PingResult,
+  type PingParams,
+  type PingParamsWithSelectQuery,
+  type PingParamsWithEndpoint,
 } from './client'
 export { type BaseClickHouseClientConfigOptions } from './config'
 export type {
@@ -36,7 +39,7 @@ export type {
   RecordsJSONFormats,
 } from './data_formatter'
 export { TupleParam } from './data_formatter'
-export { ClickHouseError } from './error'
+export { ClickHouseError, parseError } from './error'
 export {
   ClickHouseLogLevel,
   type ErrorLogParams,
@@ -58,7 +61,7 @@ export type {
   ClickHouseJWTAuth,
   ClickHouseCredentialsAuth,
 } from './clickhouse_types'
-export { isProgressRow } from './clickhouse_types'
+export { isProgressRow, isRow, isException } from './clickhouse_types'
 export {
   type ClickHouseSettings,
   type MergeTreeSettings,
@@ -80,7 +83,7 @@ export type {
 } from './parse'
 export { SimpleColumnTypes, parseColumnType } from './parse'
 
-/** For implementations usage only - should not be re-exported */
+/** For implementation usage only - should not be re-exported */
 export {
   formatQuerySettings,
   formatQueryParams,
@@ -112,7 +115,7 @@ export {
   isJWTAuth,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
-export { parseError } from './error'
+export { getCurrentStackTrace, enhanceStackTrace } from './error'
 export type {
   CompressionSettings,
   Connection,
@@ -127,6 +130,7 @@ export type {
   ConnPingResult,
   ConnCommandResult,
   ConnOperation,
+  ConnPingParams,
 } from './connection'
 export type { QueryParamsWithFormat } from './client'
 export type { IsSame } from './ts_utils'
