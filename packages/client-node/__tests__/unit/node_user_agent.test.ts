@@ -1,14 +1,13 @@
 import sinon from 'sinon'
 import { getUserAgent } from '../../src/utils'
-import * as version from '../../src/version'
+import { Runtime } from '../../src/utils/runtime'
 
 describe('[Node.js] User-Agent', () => {
   const sandbox = sinon.createSandbox()
   beforeEach(() => {
-    // Jasmine's spyOn won't work here: 'platform' property is not configurable
-    sandbox.stub(process, 'platform').value('freebsd')
-    sandbox.stub(process, 'version').value('v16.144')
-    sandbox.stub(version, 'default').value('0.0.42')
+    sandbox.stub(Runtime, 'package').value('0.0.42')
+    sandbox.stub(Runtime, 'node').value('v16.144')
+    sandbox.stub(Runtime, 'os').value('freebsd')
   })
 
   it('should generate a user agent without app id', async () => {
