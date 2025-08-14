@@ -11,7 +11,7 @@ import {
 import type http from 'http'
 import type https from 'node:https'
 import type Stream from 'stream'
-import { createConnection, type TLSParams } from './connection'
+import { NodeConnectionFactory, type TLSParams } from './connection'
 import { ResultSet } from './result_set'
 import { NodeValuesEncoder } from './utils'
 
@@ -121,7 +121,7 @@ export const NodeConfigImpl: Required<
       enabled: nodeConfig?.keep_alive?.enabled ?? true,
       idle_socket_ttl: nodeConfig?.keep_alive?.idle_socket_ttl ?? 2500,
     }
-    return createConnection({
+    return NodeConnectionFactory.create({
       connection_params: params,
       set_basic_auth_header: nodeConfig.set_basic_auth_header ?? true,
       capture_enhanced_stack_trace:
