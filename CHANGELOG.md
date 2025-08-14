@@ -1,3 +1,16 @@
+# 1.12.1
+
+## Improvements
+
+- Improved performance of `toSearchParams`. ([#449], [twk])
+
+## Other
+
+- Added Node.js 24.x to the CI matrix. Node.js 18.x was removed from the CI due to [EOL](https://endoflife.date/nodejs).
+
+[#449]: https://github.com/ClickHouse/clickhouse-js/pull/449
+[twk]: https://github.com/twk
+
 # 1.12.0
 
 ## Types
