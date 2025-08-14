@@ -2,14 +2,14 @@ import type { ConnectionParams } from '@clickhouse/client-common'
 import http from 'http'
 import https from 'node:https'
 import {
-  createConnection,
+  NodeConnectionFactory,
   type NodeConnectionParams,
   NodeHttpConnection,
   NodeHttpsConnection,
 } from '../../src/connection'
 import { NodeCustomAgentConnection } from '../../src/connection/node_custom_agent_connection'
 
-describe('[Node.js] createConnection', () => {
+describe('[Node.js] NodeConnectionFactory', () => {
   const keepAliveParams: NodeConnectionParams['keep_alive'] = {
     enabled: true,
     idle_socket_ttl: 2500,
@@ -26,7 +26,7 @@ describe('[Node.js] createConnection', () => {
   } as ConnectionParams
 
   it('should create an instance of HTTP adapter', async () => {
-    const adapter = createConnection({
+    const adapter = NodeConnectionFactory.create({
       connection_params: defaultConnectionParams,
       tls: tlsParams,
       keep_alive: keepAliveParams,
@@ -38,7 +38,7 @@ describe('[Node.js] createConnection', () => {
   })
 
   it('should create an instance of HTTPS adapter', async () => {
-    const adapter = createConnection({
+    const adapter = NodeConnectionFactory.create({
       connection_params: {
         ...defaultConnectionParams,
         url: new URL('https://localhost'),
@@ -54,7 +54,7 @@ describe('[Node.js] createConnection', () => {
 
   it('should throw if the supplied protocol is unknown', async () => {
     expect(() =>
-      createConnection({
+      NodeConnectionFactory.create({
         connection_params: {
           ...defaultConnectionParams,
           url: new URL('tcp://localhost'),
@@ -70,7 +70,7 @@ describe('[Node.js] createConnection', () => {
 
   describe('Custom HTTP agent', () => {
     it('should create an instance with a custom HTTP agent', async () => {
-      const adapter = createConnection({
+      const adapter = NodeConnectionFactory.create({
         connection_params: defaultConnectionParams,
         tls: tlsParams,
         keep_alive: keepAliveParams,
@@ -85,7 +85,7 @@ describe('[Node.js] createConnection', () => {
     })
 
     it('should create an instance with a custom HTTPS agent', async () => {
-      const adapter = createConnection({
+      const adapter = NodeConnectionFactory.create({
         connection_params: defaultConnectionParams,
         tls: tlsParams,
         keep_alive: keepAliveParams,

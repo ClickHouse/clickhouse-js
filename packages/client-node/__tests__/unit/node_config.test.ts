@@ -8,11 +8,11 @@ import { Buffer } from 'buffer'
 import http from 'http'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { NodeConfigImpl } from '../../src/config'
-import type {
-  CreateConnectionParams,
-  NodeBaseConnection,
+import {
+  type CreateConnectionParams,
+  type NodeBaseConnection,
+  NodeConnectionFactory,
 } from '../../src/connection'
-import * as c from '../../src/connection/create_connection'
 
 describe('[Node.js] Config implementation details', () => {
   describe('HandleImplSpecificURLParams', () => {
@@ -85,9 +85,10 @@ describe('[Node.js] Config implementation details', () => {
     let createConnectionStub: jasmine.Spy
     const fakeConnection = { test: true } as unknown as NodeBaseConnection
     beforeEach(() => {
-      createConnectionStub = spyOn(c, 'createConnection').and.returnValue(
-        fakeConnection,
-      )
+      createConnectionStub = spyOn(
+        NodeConnectionFactory,
+        'create',
+      ).and.returnValue(fakeConnection)
     })
 
     it('should create a connection with default KeepAlive settings', async () => {
