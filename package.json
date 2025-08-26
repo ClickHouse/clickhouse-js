@@ -44,7 +44,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@faker-js/faker": "^9.9.0",
+    "@faker-js/faker": "^10.0.0",
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
     "@types/jasmine": "^5.1.8",
     "@types/jsonwebtoken": "^9.0.10",
