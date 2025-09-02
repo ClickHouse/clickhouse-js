@@ -53,12 +53,10 @@ describe('read only user', () => {
   it('should select some data without issues', async () => {
     const result = await client
       .query({
-        query: `SELECT * FROM ${tableName}`,
+        query: `SELECT name, sku FROM ${tableName}`,
       })
       .then((r) => r.json())
-    // 42 is not a string here due to output_format_json_quote_64bit_integers set to 0 in 25.8+ by default
-    // and we specifically unset 1 that is used for all other tests in utils/client.ts due to readonly=2
-    expect(result.data).toEqual([{ id: 42, name: 'hello', sku: [0, 1] }])
+    expect(result.data).toEqual([{ name: 'hello', sku: [0, 1] }])
   })
 
   it('should fail to create a table', async () => {

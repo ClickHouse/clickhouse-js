@@ -37,10 +37,8 @@ export function createTestClient<Stream = unknown>(
 ): ClickHouseClient<Stream> {
   const env = getClickHouseTestEnvironment()
   const clickHouseSettings: ClickHouseSettings = {
-    // it is not quoted by default since 25.8
-    // output_format_json_quote_64bit_floats: 1,
+    // (U)Int64 are not quoted by default since 25.8
     output_format_json_quote_64bit_integers: 1,
-    // output_format_json_quote_64bit_decimals: 1,
   }
   if (env === TestEnv.LocalCluster) {
     clickHouseSettings.insert_quorum = '2'
