@@ -3,7 +3,7 @@ import { EnvKeys, getFromEnv } from '@test/utils/env'
 import { createClient } from '../../src'
 import type { NodeClickHouseClient } from '../../src/client'
 
-whenOnEnv(TestEnv.CloudSMT).describe('[Node.js] JWT auth', () => {
+whenOnEnv(TestEnv.Cloud).describe('[Node.js] JWT auth', () => {
   let jwtClient: NodeClickHouseClient
   let url: string
   let jwt: string
