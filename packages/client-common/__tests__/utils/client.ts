@@ -36,13 +36,13 @@ export function createTestClient<Stream = unknown>(
   config: BaseClickHouseClientConfigOptions = {},
 ): ClickHouseClient<Stream> {
   const env = getClickHouseTestEnvironment()
-  const clickHouseSettings: ClickHouseSettings = {}
+  const clickHouseSettings: ClickHouseSettings = {
+    // (U)Int64 are not quoted by default since 25.8
+    output_format_json_quote_64bit_integers: 1,
+  }
   if (env === TestEnv.LocalCluster) {
     clickHouseSettings.insert_quorum = '2'
   } else if (env === TestEnv.Cloud) {
-    clickHouseSettings.insert_quorum = '3'
-    clickHouseSettings.database_replicated_enforce_synchronous_settings = 1
-  } else if (env === TestEnv.CloudSMT) {
     clickHouseSettings.select_sequential_consistency = '1'
   }
   // Allow to override `insert_quorum` if necessary

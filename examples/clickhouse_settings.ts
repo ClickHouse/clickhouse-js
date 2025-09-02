@@ -22,7 +22,8 @@ void (async () => {
      * {@link ClickHouseClient.command},
      * or {@link ClickHouseClient.exec} operation.*/
     clickhouse_settings: {
-      output_format_json_quote_64bit_integers: 0,
+      // default is 0 since 25.8
+      output_format_json_quote_64bit_integers: 1,
     },
   })
   console.info(await rows.json())

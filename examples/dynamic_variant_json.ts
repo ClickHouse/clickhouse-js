@@ -3,12 +3,18 @@ import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 void (async () => {
   const tableName = `chjs_dynamic_variant_json`
   const client = createClient({
+    // Since 25.3, all these types are no longer experimental and are enabled by default
+    // However, if you are using an older version of ClickHouse, you might need these settings
+    // to be able to create tables with such columns.
     clickhouse_settings: {
-      // Since ClickHouse 24.1
+      // Variant was introduced in ClickHouse 24.1
+      // https://clickhouse.com/docs/sql-reference/data-types/variant
       allow_experimental_variant_type: 1,
-      // Since ClickHouse 24.5
+      // Dynamic was introduced in ClickHouse 24.5
+      // https://clickhouse.com/docs/sql-reference/data-types/dynamic
       allow_experimental_dynamic_type: 1,
-      // Since ClickHouse 24.8
+      // (New) JSON was introduced in ClickHouse 24.8
+      // https://clickhouse.com/docs/sql-reference/data-types/newjson
       allow_experimental_json_type: 1,
     },
   })
@@ -38,9 +44,9 @@ void (async () => {
     {
       id: 2,
       var: 'str',
-      // defaults to Int64; will be represented as a string in JSON* family formats
-      // this behavior can be changed with `output_format_json_quote_64bit_integers` setting (default is 1).
-      // see https://clickhouse.com/docs/en/operations/settings/formats#output_format_json_quote_64bit_integers
+      // A number will default to Int64; it could be also represented as a string in JSON* family formats
+      // using `output_format_json_quote_64bit_integers` setting (default is 0 since CH 25.8).
+      // See https://clickhouse.com/docs/en/operations/settings/formats#output_format_json_quote_64bit_integers
       dynamic: 144,
       json: {
         bar: 10,

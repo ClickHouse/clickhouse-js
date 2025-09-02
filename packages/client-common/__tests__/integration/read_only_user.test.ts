@@ -35,6 +35,7 @@ describe('read only user', () => {
         // might be fixed by https://github.com/ClickHouse/ClickHouse/issues/40244
         insert_quorum: undefined,
         database_replicated_enforce_synchronous_settings: undefined,
+        output_format_json_quote_64bit_integers: undefined,
       },
     })
   })
@@ -52,10 +53,10 @@ describe('read only user', () => {
   it('should select some data without issues', async () => {
     const result = await client
       .query({
-        query: `SELECT * FROM ${tableName}`,
+        query: `SELECT name, sku FROM ${tableName}`,
       })
       .then((r) => r.json())
-    expect(result.data).toEqual([{ id: '42', name: 'hello', sku: [0, 1] }])
+    expect(result.data).toEqual([{ name: 'hello', sku: [0, 1] }])
   })
 
   it('should fail to create a table', async () => {

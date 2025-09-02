@@ -1,6 +1,10 @@
 import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 import * as crypto from 'crypto' // required for Node.js only
 
+// Note that session will work as expected ONLY if you are accessing the Node directly.
+// If there is a load-balancer in front of ClickHouse nodes, the requests might end up on different nodes,
+// and the session will not be preserved. As a workaround for ClickHouse Cloud, you could try replica-aware routing.
+// See https://clickhouse.com/docs/manage/replica-aware-routing.
 void (async () => {
   const client = createClient({
     // with session_id defined, SET and other session commands
