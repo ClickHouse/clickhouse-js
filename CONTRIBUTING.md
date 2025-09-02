@@ -35,6 +35,14 @@ See [tls.test.ts](packages/client-node/__tests__/tls/tls.test.ts) for more detai
 sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 ```
 
+### IDE setup
+
+#### WebStorm
+
+- Open settings
+- Navigate to "Languages & Frameworks" -> "Typescript"
+- Copy and paste `--project tsconfig.dev.json` into the options field to enable proper path resolution in tests
+
 ## Style Guide
 
 We use an automatic code formatting with `prettier` and `eslint`, both should be installed after running `npm i`.

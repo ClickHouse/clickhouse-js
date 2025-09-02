@@ -35,6 +35,7 @@ describe('read only user', () => {
         // might be fixed by https://github.com/ClickHouse/ClickHouse/issues/40244
         insert_quorum: undefined,
         database_replicated_enforce_synchronous_settings: undefined,
+        output_format_json_quote_64bit_integers: undefined,
       },
     })
   })
@@ -55,7 +56,9 @@ describe('read only user', () => {
         query: `SELECT * FROM ${tableName}`,
       })
       .then((r) => r.json())
-    expect(result.data).toEqual([{ id: '42', name: 'hello', sku: [0, 1] }])
+    // 42 is not a string here due to output_format_json_quote_64bit_integers set to 0 in 25.8+ by default
+    // and we specifically unset 1 that is used for all other tests in utils/client.ts due to readonly=2
+    expect(result.data).toEqual([{ id: 42, name: 'hello', sku: [0, 1] }])
   })
 
   it('should fail to create a table', async () => {
