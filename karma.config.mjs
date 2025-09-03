@@ -1,21 +1,39 @@
-const webpackConfig = require('./webpack.dev.js')
+import webpackConfig from './webpack.dev.mjs'
 
 const TEST_TIMEOUT_MS = 400_000
 
-module.exports = function (config) {
+export default function (config) {
   config.set({
     // base path that will be used to resolve all patterns (e.g. files, exclude)
     basePath: '',
     frameworks: ['webpack', 'jasmine'],
     // list of files / patterns to load in the browser
-    files: ['packages/client-web/__tests__/jwt/*.test.ts'],
+    files: [
+      'packages/client-common/__tests__/unit/*.test.ts',
+      'packages/client-common/__tests__/utils/*.ts',
+      'packages/client-common/__tests__/integration/*.test.ts',
+      'packages/client-web/__tests__/integration/*.test.ts',
+      'packages/client-web/__tests__/unit/*.test.ts',
+    ],
     exclude: [],
     webpack: webpackConfig,
     preprocessors: {
       'packages/client-common/**/*.ts': ['webpack', 'sourcemap'],
       'packages/client-web/**/*.ts': ['webpack', 'sourcemap'],
-      'packages/client-common/__tests__/jwt/*.ts': ['webpack', 'sourcemap'],
+      'packages/client-common/__tests__/unit/*.test.ts': [
+        'webpack',
+        'sourcemap',
+      ],
+      'packages/client-common/__tests__/integration/*.ts': [
+        'webpack',
+        'sourcemap',
+      ],
       'packages/client-common/__tests__/utils/*.ts': ['webpack', 'sourcemap'],
+      'packages/client-web/__tests__/unit/*.test.ts': ['webpack', 'sourcemap'],
+      'packages/client-web/__tests__/integration/*.ts': [
+        'webpack',
+        'sourcemap',
+      ],
     },
     reporters: ['mocha'],
     port: 9876,

@@ -19,6 +19,7 @@ export interface CreateConnectionParams {
 }
 
 /** A factory for easier mocking after Node.js 22.18 */
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class NodeConnectionFactory {
   static create({
     connection_params,

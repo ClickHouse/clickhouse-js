@@ -1,7 +1,7 @@
 import type { ClickHouseSettings } from '@clickhouse/client'
 import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
-type Data = {
+interface Data {
   id: string
   timestamp: number
   email: string

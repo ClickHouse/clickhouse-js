@@ -36,7 +36,7 @@ export interface ConnBaseQueryParams {
   session_id?: string
   query_id?: string
   auth?: { username: string; password: string } | { access_token: string }
-  role?: string | Array<string>
+  role?: string | string[]
   http_headers?: Record<string, string>
 }
 

@@ -1,9 +1,13 @@
-const { merge } = require('webpack-merge')
-const common = require('./webpack.common.js')
-const webpack = require('webpack')
-const path = require('path')
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin')
-module.exports = merge(common, {
+import { merge } from 'webpack-merge'
+import common from './webpack.common.mjs'
+import webpack from 'webpack'
+import path from 'path'
+import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin'
+import { fileURLToPath } from 'url'
+
+const dirname = path.dirname(fileURLToPath(import.meta.url))
+
+export default merge(common, {
   mode: 'development',
   devtool: 'inline-source-map',
   devServer: {
@@ -16,7 +20,8 @@ module.exports = merge(common, {
         CLICKHOUSE_TEST_ENVIRONMENT: process.env.CLICKHOUSE_TEST_ENVIRONMENT,
         CLICKHOUSE_CLOUD_HOST: process.env.CLICKHOUSE_CLOUD_HOST,
         CLICKHOUSE_CLOUD_PASSWORD: process.env.CLICKHOUSE_CLOUD_PASSWORD,
-        CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: process.env.CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN,
+        CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN:
+          process.env.CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN,
       }),
     }),
   ],
@@ -28,9 +33,9 @@ module.exports = merge(common, {
           {
             loader: 'ts-loader',
             options: {
-              transpileOnly: true
-            }
-          }
+              transpileOnly: true,
+            },
+          },
         ],
         exclude: [/node_modules/, /\*\*\/client-node/],
       },
@@ -49,7 +54,7 @@ module.exports = merge(common, {
     ],
   },
   output: {
-    path: path.resolve(__dirname, './webpack'),
+    path: path.resolve(dirname, './webpack'),
     // filename: 'browser.js',
     libraryTarget: 'umd',
     globalObject: 'this',

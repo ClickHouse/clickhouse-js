@@ -27,7 +27,7 @@ describe('[Node.js] streaming e2e', () => {
     await client.close()
   })
 
-  const expected: Array<Array<string | number[]>> = [
+  const expected: (string | number[])[][] = [
     ['0', 'a', [1, 2]],
     ['1', 'b', [3, 4]],
     ['2', 'c', [5, 6]],

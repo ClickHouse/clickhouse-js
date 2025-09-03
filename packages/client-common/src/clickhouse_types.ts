@@ -1,11 +1,11 @@
 export interface ResponseJSON<T = unknown> {
-  data: Array<T>
+  data: T[]
   query_id?: string
   totals?: T
   extremes?: Record<string, any>
   // # Supported only by responses in JSON, XML.
   // # Otherwise, it can be read from x-clickhouse-summary header
-  meta?: Array<{ name: string; type: string }>
+  meta?: { name: string; type: string }[]
   statistics?: { elapsed: number; rows_read: number; bytes_read: number }
   rows?: number
   rows_before_limit_at_least?: number
@@ -53,7 +53,7 @@ export interface ProgressRow {
 }
 
 export type SpecialEventRow<T> =
-  | { meta: Array<{ name: string; type: string }> }
+  | { meta: { name: string; type: string }[] }
   | { totals: T }
   | { min: T }
   | { max: T }
@@ -62,7 +62,7 @@ export type SpecialEventRow<T> =
   | { exception: string }
 
 export type InsertValues<Stream, T = unknown> =
-  | ReadonlyArray<T>
+  | readonly T[]
   | Stream
   | InputJSON<T>
   | InputJSONObjectEachRow<T>

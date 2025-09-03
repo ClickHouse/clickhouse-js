@@ -130,7 +130,7 @@ describe('abort request', () => {
 
 async function assertActiveQueries(
   client: ClickHouseClient,
-  assertQueries: (queries: Array<{ query: string }>) => boolean,
+  assertQueries: (queries: { query: string }[]) => boolean,
 ) {
   let isRunning = true
   while (isRunning) {

@@ -157,7 +157,7 @@ describe('[Node.js] exec', () => {
       await checkInsertedValues([])
     })
 
-    async function checkInsertedValues<T = unknown>(expected: Array<T>) {
+    async function checkInsertedValues<T = unknown>(expected: T[]) {
       const rs = await client.query({
         query: `SELECT * FROM ${tableName}`,
         format: 'JSONEachRow',

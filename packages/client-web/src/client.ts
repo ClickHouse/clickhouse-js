@@ -32,7 +32,7 @@ export type WebClickHouseClient = Omit<
    *  until it is supported by all major web platforms. */
   insert<T>(
     params: Omit<InsertParams<ReadableStream, T>, 'values'> & {
-      values: ReadonlyArray<T> | InputJSON<T> | InputJSONObjectEachRow<T>
+      values: readonly T[] | InputJSON<T> | InputJSONObjectEachRow<T>
     },
   ): Promise<InsertResult>
   /** See {@link ClickHouseClient.exec}.

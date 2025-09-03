@@ -23,16 +23,20 @@ const NEWLINE = 0x0a as const
 export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
   [Symbol.asyncIterator](): NodeJS.AsyncIterator<T>
   on(event: 'data', listener: (chunk: T) => void): Stream.Readable
-  on(event: 'close', listener: () => void): Stream.Readable
-  on(event: 'drain', listener: () => void): Stream.Readable
-  on(event: 'end', listener: () => void): Stream.Readable
+  on(
+    event:
+      | 'close'
+      | 'drain'
+      | 'end'
+      | 'finish'
+      | 'pause'
+      | 'readable'
+      | 'resume'
+      | 'unpipe',
+    listener: () => void,
+  ): Stream.Readable
   on(event: 'error', listener: (err: Error) => void): Stream.Readable
-  on(event: 'finish', listener: () => void): Stream.Readable
-  on(event: 'pause', listener: () => void): Stream.Readable
   on(event: 'pipe', listener: (src: Readable) => void): Stream.Readable
-  on(event: 'readable', listener: () => void): Stream.Readable
-  on(event: 'resume', listener: () => void): Stream.Readable
-  on(event: 'unpipe', listener: (src: Readable) => void): Stream.Readable
   on(
     event: string | symbol,
     listener: (...args: any[]) => void,

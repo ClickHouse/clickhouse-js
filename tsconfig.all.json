@@ -4,10 +4,12 @@
     "./packages/**/*.ts",
     "__tests__/**/*.ts",
     ".build/**/*.ts",
+    ".scripts/**/*.ts",
     "examples/**/*.ts",
     "benchmarks/**/*.ts"
   ],
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noUnusedLocals": false,

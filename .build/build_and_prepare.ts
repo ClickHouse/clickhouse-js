@@ -1,7 +1,8 @@
 import { execSync } from 'child_process'
 import fs from 'fs'
 import * as process from 'process'
-;(() => {
+
+void (async () => {
   const [pkg] = process.argv.slice(2)
   if (!pkg) {
     console.error(`Expected package name as an argument`)
@@ -22,14 +23,16 @@ import * as process from 'process'
 
   fs.copyFileSync(`./packages/${packageName}/package.json`, './package.json')
 
-  const packageJson = require('../package.json')
-  const version = require(`../packages/${packageName}/src/version.ts`).default
+  const packageJson = await import('../package.json').then((m) => m.default)
+  const version = (await import(`../packages/${packageName}/src/version.ts`))
+    .default
   console.log(`Current ${packageName} package version is: ${version}`)
   packageJson.version = version
 
-  if (packageJson['dependencies']['@clickhouse/client-common']) {
-    const commonVersion =
-      require(`../packages/client-common/src/version.ts`).default
+  if (packageJson.dependencies['@clickhouse/client-common']) {
+    const commonVersion = (
+      await import('../packages/client-common/src/version.ts')
+    ).default
     console.log(`Updating client-common dependency to ${commonVersion}`)
     packageJson['dependencies']['@clickhouse/client-common'] = commonVersion
   }
@@ -48,7 +51,7 @@ import * as process from 'process'
     fs.writeFileSync(
       './package.json',
       JSON.stringify(packageJson, null, 2) + '\n',
-      'utf-8'
+      'utf-8',
     )
   } catch (err) {
     console.error(err)

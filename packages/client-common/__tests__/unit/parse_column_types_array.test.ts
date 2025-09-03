@@ -8,7 +8,7 @@ import { parseArrayType } from '../../src/parse'
 
 describe('Columns types parser - Array', () => {
   it('should parse Array with a simple value type', async () => {
-    type TestArgs = {
+    interface TestArgs {
       columnType: string
       valueType: SimpleColumnType
       dimensions: number
@@ -61,7 +61,7 @@ describe('Columns types parser - Array', () => {
   })
 
   it('should parse Array with Nullable', async () => {
-    type TestArgs = {
+    interface TestArgs {
       columnType: string
       valueType: SimpleColumnType
       dimensions: number
@@ -102,7 +102,7 @@ describe('Columns types parser - Array', () => {
   })
 
   it('should parse Array with Enum value type', async () => {
-    type TestArgs = {
+    interface TestArgs {
       value: ParsedColumnEnum
       dimensions: number
       columnType: string
@@ -172,7 +172,7 @@ describe('Columns types parser - Array', () => {
   })
 
   it('should parse Array of DateTime', async () => {
-    type TestArgs = {
+    interface TestArgs {
       value: ParsedColumnDateTime
       dimensions: number
       columnType: string
@@ -222,7 +222,7 @@ describe('Columns types parser - Array', () => {
   })
 
   it('should parse Array of DateTime64', async () => {
-    type TestArgs = {
+    interface TestArgs {
       value: ParsedColumnDateTime64
       dimensions: number
       columnType: string

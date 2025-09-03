@@ -30,14 +30,14 @@ export function transformUrl({
   return newUrl
 }
 
-type ToSearchParamsOptions = {
+interface ToSearchParamsOptions {
   database: string | undefined
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
   query?: string
   session_id?: string
   query_id: string
-  role?: string | Array<string>
+  role?: string | string[]
 }
 
 // TODO validate max length of the resulting query

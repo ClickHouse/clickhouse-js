@@ -154,7 +154,7 @@ describe('[Node.js] Logger/LogWriter', () => {
     expect(infoSpy).toHaveBeenCalledTimes(1)
   }
 
-  function checkLog(spy: jasmine.Spy, level: LogLevel, callNumber: number = 0) {
+  function checkLog(spy: jasmine.Spy, level: LogLevel, callNumber = 0) {
     expect(spy.calls.all()[callNumber].args).toEqual([
       jasmine.stringContaining(
         `[${level}][@clickhouse/client][${module}] ${message}`,
@@ -178,7 +178,6 @@ describe('[Node.js] Logger/LogWriter', () => {
 
   function logEveryLogLevel(logWriter: LogWriter) {
     for (const level of ['trace', 'debug', 'info', 'warn']) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       logWriter[level]({
         message,

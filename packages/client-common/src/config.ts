@@ -72,7 +72,7 @@ export interface BaseClickHouseClientConfigOptions {
   session_id?: string
   /** ClickHouse role name(s) to attach to the outgoing requests.
    *  @default undefined string (no roles) */
-  role?: string | Array<string>
+  role?: string | string[]
   /** @deprecated since version 1.0.0. Use {@link http_headers} instead. <br/>
    *  Additional HTTP headers to attach to the outgoing requests.
    *  @default empty object */
@@ -500,9 +500,7 @@ export function enumConfigURLValue<Enum, Key extends string>({
 }: {
   key: string
   value: string
-  enumObject: {
-    [k in Key]: Enum
-  }
+  enumObject: Record<Key, Enum>
 }): Enum {
   const values = Object.keys(enumObject).filter((item) => isNaN(Number(item)))
   const trimmed = value.trim()

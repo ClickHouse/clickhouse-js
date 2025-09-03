@@ -44,7 +44,7 @@ describe('Node.js socket handling', () => {
 
     // ping first, then 2 operations in all possible combinations - repeat every combination several times
     it('should work with all operations permutations', async () => {
-      const allOps: Array<{ opName: string; fn: () => Promise<unknown> }> = [
+      const allOps: { opName: string; fn: () => Promise<unknown> }[] = [
         { fn: select, opName: 'query' },
         { fn: insert, opName: 'insert' },
         { fn: exec, opName: 'exec' },

@@ -630,4 +630,8 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
   })
 })
 
-type Data = { id: number; name: string; sku: number[] }
+interface Data {
+  id: number
+  name: string
+  sku: number[]
+}
