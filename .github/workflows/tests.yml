@@ -193,7 +193,7 @@ jobs:
         run: |
           npm run test:web:integration:local_cluster
 
-  node-integration-tests-cloud-smt:
+  node-integration-tests-cloud:
     needs: node-unit-tests
     runs-on: ubuntu-latest
     strategy:
@@ -219,9 +219,9 @@ jobs:
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}
           CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43 }}
         run: |
-          npm run test:node:integration:cloud_smt
+          npm run test:node:integration:cloud
 
-  web-integration-tests-cloud-smt:
+  web-integration-tests-cloud:
     needs: node-unit-tests
     runs-on: ubuntu-latest
     steps:
@@ -241,7 +241,7 @@ jobs:
           CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT }}
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}
         run: |
-          npm run test:web:integration:cloud_smt
+          npm run test:web:integration:cloud
 
       - name: Run JWT auth integration tests
         env:
@@ -249,7 +249,7 @@ jobs:
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT }}
           CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43 }}
         run: |
-          npm run test:web:integration:cloud_smt:jwt
+          npm run test:web:integration:cloud:jwt
 
   # With unit + integration + TLS tests + coverage + Codecov.io upload, after the rest of the tests.
   # Needs all integration tests on all environments to pass.
@@ -259,10 +259,10 @@ jobs:
       [
         'node-integration-tests-local-single-node',
         'node-integration-tests-local-cluster',
-        'node-integration-tests-cloud-smt',
+        'node-integration-tests-cloud',
         'web-all-tests-local-single-node',
         'web-integration-tests-local-cluster',
-        'web-integration-tests-cloud-smt',
+        'web-integration-tests-cloud',
       ]
     runs-on: ubuntu-latest
 
