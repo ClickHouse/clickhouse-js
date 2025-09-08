@@ -83,7 +83,7 @@
     "tsconfig-paths": "^4.2.0",
     "tsconfig-paths-webpack-plugin": "^4.2.0",
     "typescript": "^5.9.2",
-    "uuid": "^11.1.0",
+    "uuid": "^12.0.0",
     "webpack": "^5.101.1",
     "webpack-cli": "^6.0.1",
     "webpack-merge": "^6.0.1"
