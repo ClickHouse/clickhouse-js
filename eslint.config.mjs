@@ -1,25 +1,25 @@
-import tseslint from 'typescript-eslint'
 import js from '@eslint/js'
+import { defineConfig } from 'eslint/config'
 import pluginPrettier from 'eslint-plugin-prettier'
 import pluginExpectType from 'eslint-plugin-expect-type/configs/recommended'
 import globals from 'globals'
+import tseslint from 'typescript-eslint'
 
-export default tseslint.config(
-  // Enable type-aware linting without listing individual tsconfig files
-  {
-    languageOptions: {
-      parserOptions: {
-        projectService: {
-          defaultProject: './tsconfig.all.json',
-        },
-      },
-    },
-  },
+export default defineConfig(
   // Base ESLint recommended rules
   js.configs.recommended,
   // TypeScript-ESLint recommended rules with type checking
-  tseslint.configs.strict,
-  tseslint.configs.stylistic,
+  ...tseslint.configs.strict,
+  ...tseslint.configs.stylistic,
+  // Enable type-aware linting for TypeScript files only
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        project: './tsconfig.all.json',
+      },
+    },
+  },
   // Project-wide rules and plugins
   {
     plugins: {
