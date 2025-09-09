@@ -9,7 +9,6 @@
     "benchmarks/**/*.ts"
   ],
   "compilerOptions": {
-    "allowImportingTsExtensions": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noUnusedLocals": false,

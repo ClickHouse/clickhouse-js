@@ -22,18 +22,9 @@
     "types": ["node", "jasmine"],
     "baseUrl": "./",
     "paths": {
-      "@clickhouse/client-common": ["packages/client-common/src/index.ts"],
-      "@test/*": ["packages/client-common/__tests__/*"]
+      "@clickhouse/client-common": ["packages/client-common/src/index.ts"]
     }
   },
   "exclude": ["node_modules"],
-  "include": [
-    "./packages/**/src/**/*.ts",
-    "./packages/**/__tests__/**/*.ts",
-    ".build/**/*.ts",
-    ".scripts/**/*.ts",
-    "examples/**/*.ts",
-    "benchmarks/**/*.ts",
-    "__tests__/**/*.ts"
-  ]
+  "include": ["./packages/**/src/**/*.ts"]
 }
