@@ -16,7 +16,7 @@ import { getAsText } from './utils'
 const NEWLINE = 0x0a as const
 
 export class ResultSet<Format extends DataFormat | unknown>
-  implements BaseResultSet<ReadableStream<Row[]>, Format>
+  implements BaseResultSet<ReadableStream<Array<Row>>, Format>
 {
   public readonly response_headers: ResponseHeaders
   private isAlreadyConsumed = false
@@ -41,7 +41,7 @@ export class ResultSet<Format extends DataFormat | unknown>
   async json<T>(): Promise<ResultJSONType<T, Format>> {
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
-      const result: T[] = []
+      const result: Array<T> = []
       const reader = this.stream<T>().getReader()
 
       while (true) {
@@ -65,11 +65,11 @@ export class ResultSet<Format extends DataFormat | unknown>
   }
 
   /** See {@link BaseResultSet.stream} */
-  stream<T>(): ResultStream<Format, ReadableStream<Row<T, Format>[]>> {
+  stream<T>(): ResultStream<Format, ReadableStream<Array<Row<T, Format>>>> {
     this.markAsConsumed()
     validateStreamFormat(this.format)
 
-    let incompleteChunks: Uint8Array[] = []
+    let incompleteChunks: Array<Uint8Array> = []
     let totalIncompleteLength = 0
     const decoder = new TextDecoder('utf-8')
     const transform = new TransformStream({
@@ -80,7 +80,7 @@ export class ResultSet<Format extends DataFormat | unknown>
         if (chunk === null) {
           controller.terminate()
         }
-        const rows: Row[] = []
+        const rows: Array<Row> = []
         let idx: number
         let lastIdx = 0
         do {

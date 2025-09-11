@@ -1,6 +1,6 @@
 import type { ClickHouseSettings } from '../settings'
 
-export type HttpHeader = number | string | string[]
+export type HttpHeader = number | string | Array<string>
 export type HttpHeaders = Record<string, HttpHeader | undefined>
 
 export function withCompressionHeaders({

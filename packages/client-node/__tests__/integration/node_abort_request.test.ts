@@ -94,7 +94,7 @@ describe('[Node.js] abort request', () => {
       }
 
       const controller = new AbortController()
-      const streams: Stream.Readable[] = Array(jsonValues.length)
+      const streams: Array<Stream.Readable> = Array(jsonValues.length)
       const insertStreamPromises = Promise.all(
         jsonValues.map((value, i) => {
           const stream = makeObjectStream()

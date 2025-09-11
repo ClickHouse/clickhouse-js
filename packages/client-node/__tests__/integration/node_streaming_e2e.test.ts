@@ -27,7 +27,7 @@ describe('[Node.js] streaming e2e', () => {
     await client.close()
   })
 
-  const expected: (string | number[])[][] = [
+  const expected: Array<Array<string | Array<number>>> = [
     ['0', 'a', [1, 2]],
     ['1', 'b', [3, 4]],
     ['2', 'c', [5, 6]],
@@ -51,7 +51,7 @@ describe('[Node.js] streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    const actual: unknown[] = []
+    const actual: Array<unknown> = []
     for await (const rows of rs.stream()) {
       rows.forEach((row: Row) => {
         actual.push(row.json())
@@ -84,7 +84,7 @@ describe('[Node.js] streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    const actual: unknown[] = []
+    const actual: Array<unknown> = []
     for await (const rows of rs.stream()) {
       rows.forEach((row: Row) => {
         actual.push(row.json())
@@ -100,7 +100,7 @@ describe('[Node.js] streaming e2e', () => {
       })
       .then((r) => r.stream)
 
-    const parquetChunks: Buffer[] = []
+    const parquetChunks: Array<Buffer> = []
     for await (const chunk of stream) {
       parquetChunks.push(chunk)
     }
@@ -111,7 +111,7 @@ describe('[Node.js] streaming e2e', () => {
     expect(table.schema.toString()).toEqual(
       'Schema<{ 0: id: Uint64, 1: name: Utf8, 2: sku: List<Uint8> }>',
     )
-    const actualParquetData: unknown[] = []
+    const actualParquetData: Array<unknown> = []
     table.toArray().map((v) => {
       const row: Record<string, unknown> = {}
       row['id'] = v.id
@@ -138,7 +138,7 @@ describe('[Node.js] streaming e2e', () => {
       format: 'JSONCompactEachRow',
     })
 
-    const actual: unknown[] = []
+    const actual: Array<unknown> = []
     for await (const rows of rs.stream()) {
       rows.forEach((row: Row) => {
         actual.push(row.json())

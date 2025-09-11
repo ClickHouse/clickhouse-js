@@ -32,7 +32,7 @@ void (async () => {
     format: 'JSONEachRow', // or JSONCompactEachRow, JSONStringsEachRow, etc.
   })
   const stream = rows.stream()
-  stream.on('data', (rows: Row[]) => {
+  stream.on('data', (rows: Array<Row>) => {
     rows.forEach((row: Row) => {
       console.log(row.json()) // or `row.text` to avoid parsing JSON
     })

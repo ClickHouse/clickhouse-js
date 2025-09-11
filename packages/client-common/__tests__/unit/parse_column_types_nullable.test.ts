@@ -9,7 +9,7 @@ import { asNullableType } from '../../src/parse'
 
 describe('Columns types parser - Nullable', () => {
   it('should wrap a simple type', async () => {
-    const args: [ParsedColumnSimple, string][] = [
+    const args: Array<[ParsedColumnSimple, string]> = [
       [
         { type: 'Simple', columnType: 'String', sourceType: 'String' },
         'Nullable(String)',
@@ -49,7 +49,7 @@ describe('Columns types parser - Nullable', () => {
       144: 'bar',
       500: 'qaz',
     }
-    const args: [ParsedColumnEnum, string][] = [
+    const args: Array<[ParsedColumnEnum, string]> = [
       [
         {
           type: 'Enum',
@@ -82,7 +82,7 @@ describe('Columns types parser - Nullable', () => {
   })
 
   it('should wrap a Decimal', async () => {
-    const args: [ParsedColumnDecimal, string][] = [
+    const args: Array<[ParsedColumnDecimal, string]> = [
       [
         {
           type: 'Decimal',
@@ -131,7 +131,7 @@ describe('Columns types parser - Nullable', () => {
   })
 
   it('should wrap a DateTime', async () => {
-    const args: [ParsedColumnDateTime, string][] = [
+    const args: Array<[ParsedColumnDateTime, string]> = [
       [
         { type: 'DateTime', timezone: null, sourceType: 'DateTime' },
         'Nullable(DateTime)',
@@ -168,7 +168,7 @@ describe('Columns types parser - Nullable', () => {
   })
 
   it('should wrap a DateTime64', async () => {
-    const args: [ParsedColumnDateTime64, string][] = [
+    const args: Array<[ParsedColumnDateTime64, string]> = [
       [
         {
           type: 'DateTime64',

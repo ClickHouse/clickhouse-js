@@ -113,7 +113,7 @@ describe('[Node.js] stream raw formats', () => {
     })
 
     it('can insert multiple TSV streams at once', async () => {
-      const streams: Stream.Readable[] = Array(jsonValues.length)
+      const streams: Array<Stream.Readable> = Array(jsonValues.length)
       const insertStreamPromises = Promise.all(
         jsonValues.map(({ id, name, sku }, i) => {
           const stream = makeRawStream()
@@ -236,7 +236,7 @@ describe('[Node.js] stream raw formats', () => {
     })
 
     it('can insert multiple CSV streams at once', async () => {
-      const streams: Stream.Readable[] = Array(jsonValues.length)
+      const streams: Array<Stream.Readable> = Array(jsonValues.length)
       const insertStreamPromises = Promise.all(
         jsonValues.map(({ id, name, sku }, i) => {
           const stream = makeRawStream()
@@ -332,7 +332,7 @@ describe('[Node.js] stream raw formats', () => {
     })
 
     it('can insert multiple custom-separated streams at once', async () => {
-      const streams: Stream.Readable[] = Array(jsonValues.length)
+      const streams: Array<Stream.Readable> = Array(jsonValues.length)
       const insertStreamPromises = Promise.all(
         jsonValues.map(({ id, name, sku }, i) => {
           const stream = makeRawStream()

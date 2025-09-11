@@ -31,7 +31,7 @@ describe('[Web] ResultSet', () => {
     const rs = makeResultSet()
     const stream = rs.stream()
 
-    const result: unknown[] = []
+    const result: Array<unknown> = []
     const reader = stream.getReader()
     while (true) {
       const { done, value } = await reader.read()
@@ -59,7 +59,7 @@ describe('[Web] ResultSet', () => {
       guid(),
     )
 
-    const allRows: Row[] = []
+    const allRows: Array<Row> = []
     const reader = rs.stream().getReader()
     while (true) {
       const { done, value } = await reader.read()

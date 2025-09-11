@@ -32,7 +32,7 @@ describe('[Node.js] ResultSet', () => {
     const stream = rs.stream()
     expect(stream.readableEnded).toBeFalsy()
 
-    const result: unknown[] = []
+    const result: Array<unknown> = []
     for await (const rows of stream) {
       rows.forEach((row: Row) => {
         result.push(row.json())
@@ -51,7 +51,7 @@ describe('[Node.js] ResultSet', () => {
     const rs = makeResultSet(
       Stream.Readable.from([Buffer.from('{"foo":"bar"}\n')]),
     )
-    const allRows: Row[] = []
+    const allRows: Array<Row> = []
     for await (const rows of rs.stream()) {
       allRows.push(...rows)
     }

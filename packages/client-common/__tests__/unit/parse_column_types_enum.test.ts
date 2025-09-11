@@ -21,7 +21,7 @@ describe('Columns types parser - Enum', () => {
   })
 
   it('should throw when the type is not a valid enum', async () => {
-    const args: [string][] = [
+    const args: Array<[string]> = [
       ['Enum'], // should be either 8 or 16
       ['Enum32'],
       ['Enum64'],
@@ -36,7 +36,10 @@ describe('Columns types parser - Enum', () => {
   })
 
   it('should throw when the values are not valid', async () => {
-    const args: [string][] = [["Enum8('a' = x)"], ["Enum16('foo' = 'bar')"]]
+    const args: Array<[string]> = [
+      ["Enum8('a' = x)"],
+      ["Enum16('foo' = 'bar')"],
+    ]
     args.forEach(([columnType]) => {
       expect(() => parseEnumType({ columnType, sourceType: columnType }))
         .withContext(`Expected ${columnType} to throw`)
@@ -45,7 +48,7 @@ describe('Columns types parser - Enum', () => {
   })
 
   it('should throw on duplicate indices', async () => {
-    const args: [string][] = [
+    const args: Array<[string]> = [
       ["Enum8('a' = 0, 'b' = 0)"],
       ["Enum8('a' = 0, 'b' = 1, 'c' = 1)"],
     ]
@@ -57,7 +60,7 @@ describe('Columns types parser - Enum', () => {
   })
 
   it('should throw on duplicate names', async () => {
-    const args: [string][] = [
+    const args: Array<[string]> = [
       ["Enum8('a' = 0, 'a' = 1)"],
       ["Enum8('a' = 0, 'b' = 1, 'b' = 2)"],
     ]
@@ -70,14 +73,16 @@ describe('Columns types parser - Enum', () => {
 
   it('should throw when Enum has no values to parse', async () => {
     // The minimal allowed Enum definition is Enum8('' = 0), i.e. 6 chars inside.
-    const allEnumTypeArgs: string[][] = enumTypes.map(([enumType]) => [
-      `${enumType}()`,
-      `${enumType}(')`,
-      `${enumType}('')`,
-      `${enumType}('' )`,
-      `${enumType}('' =)`,
-      `${enumType}('' = )`,
-    ])
+    const allEnumTypeArgs: Array<Array<string>> = enumTypes.map(
+      ([enumType]) => [
+        `${enumType}()`,
+        `${enumType}(')`,
+        `${enumType}('')`,
+        `${enumType}('' )`,
+        `${enumType}('' =)`,
+        `${enumType}('' = )`,
+      ],
+    )
     allEnumTypeArgs.forEach((args) =>
       args.forEach((columnType) => {
         expect(() => parseEnumType({ columnType, sourceType: columnType }))

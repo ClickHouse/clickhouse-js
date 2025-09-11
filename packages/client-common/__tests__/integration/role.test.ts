@@ -51,14 +51,14 @@ whenOnEnv(TestEnv.LocalSingleNode).describe('role settings', () => {
   })
 
   describe('for queries', () => {
-    async function queryCurrentRoles(role?: string | string[]) {
+    async function queryCurrentRoles(role?: string | Array<string>) {
       const rs = await client.query({
         query: 'select currentRoles() as roles',
         format: 'JSONEachRow',
         role,
       })
 
-      const jsonResults = (await rs.json()) as { roles: string[] }[]
+      const jsonResults = (await rs.json()) as Array<{ roles: Array<string> }>
       return jsonResults[0].roles
     }
 
@@ -118,7 +118,7 @@ whenOnEnv(TestEnv.LocalSingleNode).describe('role settings', () => {
       await createSimpleTable(defaultClient, tableName)
     })
 
-    async function tryInsert(role?: string | string[]) {
+    async function tryInsert(role?: string | Array<string>) {
       await client.insert({
         table: tableName,
         values: jsonValues,
@@ -211,7 +211,7 @@ whenOnEnv(TestEnv.LocalSingleNode).describe('role settings', () => {
       tableName = `role_command_test_${guid()}`
     })
 
-    async function tryCreateTable(role?: string | string[]) {
+    async function tryCreateTable(role?: string | Array<string>) {
       const query = `
         CREATE TABLE ${tableName}
         (id UInt64, name String, sku Array(UInt8), timestamp DateTime)

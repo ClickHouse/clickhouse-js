@@ -31,7 +31,7 @@ void (async () => {
     format: 'CSV', // or TabSeparated, CustomSeparated, etc.
   })
   const stream = rows.stream()
-  stream.on('data', (rows: Row[]) => {
+  stream.on('data', (rows: Array<Row>) => {
     rows.forEach((row: Row) => {
       console.log(row.text)
     })

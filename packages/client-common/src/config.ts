@@ -72,7 +72,7 @@ export interface BaseClickHouseClientConfigOptions {
   session_id?: string
   /** ClickHouse role name(s) to attach to the outgoing requests.
    *  @default undefined string (no roles) */
-  role?: string | string[]
+  role?: string | Array<string>
   /** @deprecated since version 1.0.0. Use {@link http_headers} instead. <br/>
    *  Additional HTTP headers to attach to the outgoing requests.
    *  @default empty object */
@@ -257,7 +257,7 @@ export function mergeConfigs(
   function deepMerge(
     base: Record<string, any>,
     fromURL: Record<string, any>,
-    path: string[] = [],
+    path: Array<string> = [],
   ) {
     for (const key of Object.keys(fromURL)) {
       if (typeof fromURL[key] === 'object') {

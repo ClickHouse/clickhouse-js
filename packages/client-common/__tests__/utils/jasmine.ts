@@ -1,7 +1,7 @@
 import type { TestEnv } from './test_env'
 import { getClickHouseTestEnvironment } from './test_env'
 
-export const whenOnEnv = (...envs: TestEnv[]) => {
+export const whenOnEnv = (...envs: Array<TestEnv>) => {
   const currentEnv = getClickHouseTestEnvironment()
   return {
     it: (...args: Parameters<typeof it>) =>

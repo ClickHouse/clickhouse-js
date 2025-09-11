@@ -10,7 +10,7 @@ import { parseTupleType } from '../../src/parse'
 
 describe('Columns types parser - Tuple', () => {
   it('should parse Tuple with simple types', async () => {
-    const args: TestArgs[] = [
+    const args: Array<TestArgs> = [
       {
         sourceType: 'Tuple(String, UInt8)',
         expected: {
@@ -45,7 +45,7 @@ describe('Columns types parser - Tuple', () => {
   })
 
   it('should parse Tuple with Decimals', async () => {
-    const args: TestArgs[] = [
+    const args: Array<TestArgs> = [
       {
         sourceType: 'Tuple(Decimal(7, 2), Decimal(18, 4))',
         expected: {
@@ -77,7 +77,7 @@ describe('Columns types parser - Tuple', () => {
   })
 
   it('should parse Tuple with Enums', async () => {
-    const args: TestArgs[] = parsedEnumTestArgs.map((enumElement) => {
+    const args: Array<TestArgs> = parsedEnumTestArgs.map((enumElement) => {
       // e.g. Tuple(String, Enum8('a' = 1))
       const sourceType = `Tuple(${stringElement.sourceType}, ${enumElement.sourceType})`
       return {

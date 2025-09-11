@@ -13,7 +13,7 @@ export async function genLargeStringsDataset<Stream = unknown>(
   },
 ): Promise<{
   table: string
-  values: { id: number; sentence: string; timestamp: string }[]
+  values: Array<{ id: number; sentence: string; timestamp: string }>
 }> {
   const table = await createTableWithFields(
     client as ClickHouseClient,

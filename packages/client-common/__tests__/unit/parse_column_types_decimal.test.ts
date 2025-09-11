@@ -9,7 +9,7 @@ describe('Columns types parser - Decimal', () => {
   }
 
   it('should parse Decimal', async () => {
-    const args: TestArgs[] = [
+    const args: Array<TestArgs> = [
       {
         sourceType: 'Decimal(7, 2)',
         precision: 7,
@@ -50,7 +50,7 @@ describe('Columns types parser - Decimal', () => {
   })
 
   it('should throw on invalid Decimal type', async () => {
-    const args: [string][] = [
+    const args: Array<[string]> = [
       ['Decimal'],
       ['Decimal('],
       ['Decimal()'],
@@ -67,7 +67,7 @@ describe('Columns types parser - Decimal', () => {
   })
 
   it('should throw on invalid Decimal precision', async () => {
-    const args: [string][] = [
+    const args: Array<[string]> = [
       ['Decimal(0, 0)'],
       ['Decimal(x, 0)'],
       [`Decimal(', ')`],
@@ -81,7 +81,7 @@ describe('Columns types parser - Decimal', () => {
   })
 
   it('should throw on invalid Decimal scale', async () => {
-    const args: [string][] = [
+    const args: Array<[string]> = [
       ['Decimal(1, 2)'], // scale should be less than precision
       ['Decimal(1, x)'],
       [`Decimal(42, ,)`],

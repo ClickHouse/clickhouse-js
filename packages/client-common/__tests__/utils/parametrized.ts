@@ -8,8 +8,8 @@ interface TestParam {
 
 export function getHeadersTestParams<Stream>(
   client: Pick<ClickHouseClient<Stream>, TestParam['methodName']>,
-): TestParam[] {
-  const testParams: TestParam[] = baseClientMethod.map((methodName) => ({
+): Array<TestParam> {
+  const testParams: Array<TestParam> = baseClientMethod.map((methodName) => ({
     methodName,
     methodCall: (http_headers) =>
       client[methodName]({

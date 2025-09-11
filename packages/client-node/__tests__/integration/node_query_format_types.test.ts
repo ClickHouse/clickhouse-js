@@ -633,5 +633,5 @@ xdescribe('[Node.js] Query and ResultSet types', () => {
 interface Data {
   id: number
   name: string
-  sku: number[]
+  sku: Array<number>
 }

@@ -4,7 +4,7 @@ import { createTestClient } from '@test/utils'
 import { genLargeStringsDataset } from '@test/utils/datasets'
 
 describe('[Web] SELECT streaming', () => {
-  let client: ClickHouseClient<ReadableStream<Row[]>>
+  let client: ClickHouseClient<ReadableStream<Array<Row>>>
   afterEach(async () => {
     await client.close()
   })
@@ -138,7 +138,7 @@ describe('[Web] SELECT streaming', () => {
       })
       const rows = await rs.json<{ number: string }>()
       expect(rows.length).toEqual(limit + expectedProgressRowsCount)
-      expect(rows.filter((r) => !isProgressRow(r)) as unknown[]).toEqual([
+      expect(rows.filter((r) => !isProgressRow(r)) as Array<unknown>).toEqual([
         { row: { number: '0' } },
         { row: { number: '1' } },
       ])
@@ -298,9 +298,9 @@ describe('[Web] SELECT streaming', () => {
 })
 
 async function rowsJsonValues<T = unknown>(
-  stream: ReadableStream<Row[]>,
-): Promise<T[]> {
-  const result: T[] = []
+  stream: ReadableStream<Array<Row>>,
+): Promise<Array<T>> {
+  const result: Array<T> = []
   const reader = stream.getReader()
   while (true) {
     const { done, value } = await reader.read()
@@ -312,8 +312,10 @@ async function rowsJsonValues<T = unknown>(
   return result
 }
 
-async function rowsText(stream: ReadableStream<Row[]>): Promise<string[]> {
-  const result: string[] = []
+async function rowsText(
+  stream: ReadableStream<Array<Row>>,
+): Promise<Array<string>> {
+  const result: Array<string> = []
   const reader = stream.getReader()
   while (true) {
     const { done, value } = await reader.read()

@@ -47,7 +47,7 @@ void (async () => {
   // This emitter is just a simulation for the sake of this example.
   let rowsInserted = 0
   const listener = new EventEmitter()
-  const asyncInsertOnData = async (rows: Row[]) => {
+  const asyncInsertOnData = async (rows: Array<Row>) => {
     const start = +new Date()
     // Each individual insert operation will be resolved as soon as the request itself was processed on the server.
     // The data will be batched on the server side. Insert will not wait for an ack about a successfully written batch.

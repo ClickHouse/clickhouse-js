@@ -1,5 +1,9 @@
 // adjusted from https://stackoverflow.com/a/64414875/4575540
-export function permutations<T>(args: T[], n: number, prefix: T[] = []): T[][] {
+export function permutations<T>(
+  args: Array<T>,
+  n: number,
+  prefix: Array<T> = [],
+): Array<Array<T>> {
   if (n === 0) {
     return [prefix]
   }

@@ -13,7 +13,7 @@ describe('Columns types parser - Array', () => {
       valueType: SimpleColumnType
       dimensions: number
     }
-    const args: TestArgs[] = [
+    const args: Array<TestArgs> = [
       {
         columnType: 'Array(String)',
         valueType: 'String',
@@ -66,7 +66,7 @@ describe('Columns types parser - Array', () => {
       valueType: SimpleColumnType
       dimensions: number
     }
-    const args: TestArgs[] = [
+    const args: Array<TestArgs> = [
       {
         columnType: 'Array(Nullable(String))',
         valueType: 'String',
@@ -114,7 +114,7 @@ describe('Columns types parser - Array', () => {
       144: 'bar',
       500: 'qaz',
     }
-    const args: TestArgs[] = [
+    const args: Array<TestArgs> = [
       {
         value: {
           type: 'Enum',
@@ -177,7 +177,7 @@ describe('Columns types parser - Array', () => {
       dimensions: number
       columnType: string
     }
-    const args: TestArgs[] = [
+    const args: Array<TestArgs> = [
       {
         value: {
           type: 'DateTime',
@@ -227,7 +227,7 @@ describe('Columns types parser - Array', () => {
       dimensions: number
       columnType: string
     }
-    const args: TestArgs[] = [
+    const args: Array<TestArgs> = [
       {
         value: {
           type: 'DateTime64',

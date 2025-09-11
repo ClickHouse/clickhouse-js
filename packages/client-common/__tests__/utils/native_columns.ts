@@ -1,11 +1,11 @@
 import type { ParsedColumnEnum } from '../../src/parse'
 
-export const enumTypes: ['Enum8' | 'Enum16', 8 | 16][] = [
+export const enumTypes: Array<['Enum8' | 'Enum16', 8 | 16]> = [
   ['Enum8', 8],
   ['Enum16', 16],
 ]
 
-export const parsedEnumTestArgs: ParsedColumnEnum[] = enumTypes.flatMap(
+export const parsedEnumTestArgs: Array<ParsedColumnEnum> = enumTypes.flatMap(
   ([enumType, intSize]) => [
     {
       type: 'Enum',

@@ -1,19 +1,19 @@
 export interface ResponseJSON<T = unknown> {
-  data: T[]
+  data: Array<T>
   query_id?: string
   totals?: T
   extremes?: Record<string, any>
   // # Supported only by responses in JSON, XML.
   // # Otherwise, it can be read from x-clickhouse-summary header
-  meta?: { name: string; type: string }[]
+  meta?: Array<{ name: string; type: string }>
   statistics?: { elapsed: number; rows_read: number; bytes_read: number }
   rows?: number
   rows_before_limit_at_least?: number
 }
 
 export interface InputJSON<T = unknown> {
-  meta: { name: string; type: string }[]
-  data: T[]
+  meta: Array<{ name: string; type: string }>
+  data: Array<T>
 }
 
 export type InputJSONObjectEachRow<T = unknown> = Record<string, T>
@@ -31,7 +31,7 @@ export interface ClickHouseSummary {
   real_time_microseconds?: string
 }
 
-export type ResponseHeaders = Record<string, string | string[] | undefined>
+export type ResponseHeaders = Record<string, string | Array<string> | undefined>
 
 export interface WithClickHouseSummary {
   summary?: ClickHouseSummary
@@ -53,7 +53,7 @@ export interface ProgressRow {
 }
 
 export type SpecialEventRow<T> =
-  | { meta: { name: string; type: string }[] }
+  | { meta: Array<{ name: string; type: string }> }
   | { totals: T }
   | { min: T }
   | { max: T }
@@ -62,12 +62,12 @@ export type SpecialEventRow<T> =
   | { exception: string }
 
 export type InsertValues<Stream, T = unknown> =
-  | readonly T[]
+  | ReadonlyArray<T>
   | Stream
   | InputJSON<T>
   | InputJSONObjectEachRow<T>
 
-export type NonEmptyArray<T> = [T, ...T[]]
+export type NonEmptyArray<T> = [T, ...Array<T>]
 
 export interface ClickHouseCredentialsAuth {
   username?: string

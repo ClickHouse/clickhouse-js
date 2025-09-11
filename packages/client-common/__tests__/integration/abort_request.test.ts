@@ -95,7 +95,7 @@ describe('abort request', () => {
 
     it('should cancel of the select queries while keeping the others', async () => {
       const controller = new AbortController()
-      const results: number[] = []
+      const results: Array<number> = []
 
       const selectPromises = Promise.all(
         [...Array(5)].map((_, i) => {
@@ -130,7 +130,7 @@ describe('abort request', () => {
 
 async function assertActiveQueries(
   client: ClickHouseClient,
-  assertQueries: (queries: { query: string }[]) => boolean,
+  assertQueries: (queries: Array<{ query: string }>) => boolean,
 ) {
   let isRunning = true
   while (isRunning) {

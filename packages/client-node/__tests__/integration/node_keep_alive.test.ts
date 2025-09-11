@@ -69,7 +69,7 @@ xdescribe('[Node.js] Keep Alive', () => {
         query: `SELECT * FROM system.numbers LIMIT ${1 + n}`,
         format: 'JSONEachRow',
       })
-      return (await rs.json<unknown[]>()).length
+      return (await rs.json<Array<unknown>>()).length
     }
   })
 

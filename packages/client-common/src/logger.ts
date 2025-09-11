@@ -16,7 +16,7 @@ export interface Logger {
 
 export class DefaultLogger implements Logger {
   trace({ module, message, args }: LogParams): void {
-    const params: unknown[] = [
+    const params: Array<unknown> = [
       formatMessage({ module, message, level: 'TRACE' }),
     ]
     if (args) {
@@ -26,7 +26,7 @@ export class DefaultLogger implements Logger {
   }
 
   debug({ module, message, args }: LogParams): void {
-    const params: unknown[] = [
+    const params: Array<unknown> = [
       formatMessage({ module, message, level: 'DEBUG' }),
     ]
     if (args) {
@@ -36,7 +36,7 @@ export class DefaultLogger implements Logger {
   }
 
   info({ module, message, args }: LogParams): void {
-    const params: unknown[] = [
+    const params: Array<unknown> = [
       formatMessage({ module, message, level: 'INFO' }),
     ]
     if (args) {
@@ -46,7 +46,7 @@ export class DefaultLogger implements Logger {
   }
 
   warn({ module, message, args, err }: WarnLogParams): void {
-    const params: unknown[] = [
+    const params: Array<unknown> = [
       formatMessage({ module, message, level: 'WARN' }),
     ]
     if (args) {
@@ -59,7 +59,7 @@ export class DefaultLogger implements Logger {
   }
 
   error({ module, message, args, err }: ErrorLogParams): void {
-    const params: unknown[] = [
+    const params: Array<unknown> = [
       formatMessage({ module, message, level: 'ERROR' }),
     ]
     if (args) {

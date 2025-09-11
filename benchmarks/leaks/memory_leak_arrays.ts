@@ -67,7 +67,7 @@ const program = async () => {
   process.exit(0)
 }
 
-function makeRows(): Row[] {
+function makeRows(): Array<Row> {
   const batch = new Array(BATCH_SIZE)
   for (let i = 0; i < BATCH_SIZE; i++) {
     const data: Row['data'] = randomArray(randomInt(5, 10), randomStr)
@@ -87,8 +87,8 @@ function makeRows(): Row[] {
 
 interface Row {
   id: number
-  data: string[]
-  data2: Record<string, string[]>
+  data: Array<string>
+  data2: Record<string, Array<string>>
 }
 
 attachExceptionHandlers()

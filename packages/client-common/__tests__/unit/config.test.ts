@@ -624,7 +624,7 @@ describe('config', () => {
             nested: {
               setting: number
             }
-            this_is_not_overridden?: number[]
+            this_is_not_overridden?: Array<number>
           }
         }
       }
@@ -1001,7 +1001,7 @@ describe('config', () => {
     const key = 'foo'
 
     it('should be parsed with booleanConfigURLValue', async () => {
-      const args: [string, boolean][] = [
+      const args: Array<[string, boolean]> = [
         ['true', true],
         [' true ', true],
         ['false', false],
@@ -1022,7 +1022,7 @@ describe('config', () => {
     })
 
     it('should be parsed with numberConfigURLValue', async () => {
-      const args: [string, number][] = [
+      const args: Array<[string, number]> = [
         ['0', 0],
         [' 0 ', 0],
         ['1', 1],
@@ -1072,7 +1072,7 @@ describe('config', () => {
     })
 
     it('should be parsed with enumConfigURLValue', async () => {
-      const args: [string, ClickHouseLogLevel][] = [
+      const args: Array<[string, ClickHouseLogLevel]> = [
         ['TRACE', ClickHouseLogLevel.TRACE],
         [' TRACE ', ClickHouseLogLevel.TRACE],
         ['DEBUG', ClickHouseLogLevel.DEBUG],

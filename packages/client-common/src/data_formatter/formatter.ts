@@ -78,19 +78,19 @@ export function isNotStreamableJSONFamily(
   format: DataFormat,
 ): format is SingleDocumentJSONFormat {
   return (
-    (SingleDocumentJSONFormats as readonly string[]).includes(format) ||
-    (RecordsJSONFormats as readonly string[]).includes(format)
+    (SingleDocumentJSONFormats as ReadonlyArray<string>).includes(format) ||
+    (RecordsJSONFormats as ReadonlyArray<string>).includes(format)
   )
 }
 
 export function isStreamableJSONFamily(
   format: DataFormat,
 ): format is StreamableJSONDataFormat {
-  return (StreamableJSONFormats as readonly string[]).includes(format)
+  return (StreamableJSONFormats as ReadonlyArray<string>).includes(format)
 }
 
 export function isSupportedRawFormat(dataFormat: DataFormat) {
-  return (SupportedRawFormats as readonly string[]).includes(dataFormat)
+  return (SupportedRawFormats as ReadonlyArray<string>).includes(dataFormat)
 }
 
 export function validateStreamFormat(
@@ -113,7 +113,7 @@ export function validateStreamFormat(
  * @returns string
  */
 export function encodeJSON(value: any, format: DataFormat): string {
-  if ((SupportedJSONFormats as readonly string[]).includes(format)) {
+  if ((SupportedJSONFormats as ReadonlyArray<string>).includes(format)) {
     return JSON.stringify(value) + '\n'
   }
   throw new Error(

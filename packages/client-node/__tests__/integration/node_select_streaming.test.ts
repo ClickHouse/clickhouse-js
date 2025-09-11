@@ -233,8 +233,8 @@ describe('[Node.js] SELECT streaming', () => {
   })
 })
 
-async function rowsValues(stream: Stream.Readable): Promise<any[]> {
-  const result: any[] = []
+async function rowsValues(stream: Stream.Readable): Promise<Array<any>> {
+  const result: Array<any> = []
   for await (const rows of stream) {
     rows.forEach((row: Row) => {
       result.push(row.json())
@@ -243,8 +243,8 @@ async function rowsValues(stream: Stream.Readable): Promise<any[]> {
   return result
 }
 
-async function rowsText(stream: Stream.Readable): Promise<string[]> {
-  const result: string[] = []
+async function rowsText(stream: Stream.Readable): Promise<Array<string>> {
+  const result: Array<string> = []
   for await (const rows of stream) {
     rows.forEach((row: Row) => {
       result.push(row.text)

@@ -34,7 +34,7 @@ export interface BaseQueryParams {
   /** A specific list of roles to use for this query.
    *  If it is not set, {@link BaseClickHouseClientConfigOptions.role} will be used.
    *  @default undefined (no override) */
-  role?: string | string[]
+  role?: string | Array<string>
   /** When defined, overrides {@link BaseClickHouseClientConfigOptions.auth} for this particular request.
    *  @default undefined (no override) */
   auth?:
@@ -168,7 +168,7 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly makeResultSet: MakeResultSet<Stream>
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly sessionId?: string
-  private readonly role?: string | string[]
+  private readonly role?: string | Array<string>
   private readonly logWriter: LogWriter
 
   constructor(

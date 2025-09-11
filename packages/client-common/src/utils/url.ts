@@ -37,7 +37,7 @@ interface ToSearchParamsOptions {
   query?: string
   session_id?: string
   query_id: string
-  role?: string | string[]
+  role?: string | Array<string>
 }
 
 // TODO validate max length of the resulting query
@@ -51,7 +51,7 @@ export function toSearchParams({
   query_id,
   role,
 }: ToSearchParamsOptions): URLSearchParams {
-  const entries: [string, string][] = [['query_id', query_id]]
+  const entries: Array<[string, string]> = [['query_id', query_id]]
 
   if (query_params !== undefined) {
     for (const [key, value] of Object.entries(query_params)) {
