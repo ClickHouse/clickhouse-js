@@ -51,7 +51,7 @@ export function toSearchParams({
   query_id,
   role,
 }: ToSearchParamsOptions): URLSearchParams {
-  const entries: Array<[string, string]> = [['query_id', query_id]]
+  const entries: [string, string][] = [['query_id', query_id]]
 
   if (query_params !== undefined) {
     for (const [key, value] of Object.entries(query_params)) {

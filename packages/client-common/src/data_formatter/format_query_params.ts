@@ -1,5 +1,5 @@
 export class TupleParam {
-  constructor(public readonly values: Array<any>) {}
+  constructor(public readonly values: any[]) {}
 }
 
 export function formatQueryParams({
@@ -93,9 +93,9 @@ export function formatQueryParams({
 
 // {'key1':'value1',42:'value2'}
 function formatObjectLikeParam(
-  entries: Array<[unknown, unknown]> | MapIterator<[unknown, unknown]>,
+  entries: [unknown, unknown][] | MapIterator<[unknown, unknown]>,
 ): string {
-  const formatted: Array<string> = []
+  const formatted: string[] = []
   for (const [key, val] of entries) {
     formatted.push(
       `${formatQueryParams({

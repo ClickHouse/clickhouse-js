@@ -34,7 +34,7 @@ export default defineConfig(
       // Keep some rules relaxed until addressed in dedicated PRs
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/consistent-type-imports': 'warn',
-      '@typescript-eslint/array-type': ['error', { default: 'generic' }],
+      '@typescript-eslint/array-type': 'off',
     },
   },
   // Test files overrides

@@ -9,11 +9,11 @@ import { createTestClient } from '@test/utils'
 
 describe('[Node.js] logger support', () => {
   let client: ClickHouseClient
-  let logs: Array<{
+  let logs: {
     message: string
     err?: Error
     args?: Record<string, unknown>
-  }> = []
+  }[] = []
 
   afterEach(async () => {
     await client.close()

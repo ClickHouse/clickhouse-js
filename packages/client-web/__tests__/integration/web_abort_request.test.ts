@@ -48,7 +48,7 @@ describe('[Web] abort request', () => {
         while (true) {
           const { done, value: rows } = await reader.read()
           if (done) break
-          ;(rows as Array<Row>).forEach(() => {
+          ;(rows as Row[]).forEach(() => {
             if (rowCount >= 1) {
               controller.abort()
             }
@@ -81,7 +81,7 @@ describe('[Web] abort request', () => {
         while (true) {
           const { done, value: rows } = await reader.read()
           if (done) break
-          for (const row of rows as Array<Row>) {
+          for (const row of rows as Row[]) {
             row.json()
             if (rowCount >= 1) {
               await rs.stream().cancel()

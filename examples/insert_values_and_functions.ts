@@ -62,7 +62,7 @@ void (async () => {
     format: 'JSONEachRow',
   })
   console.info(`Sample inserted rows:`)
-  const sampleRows = await sampleResultSet.json<Array<Data>>()
+  const sampleRows = await sampleResultSet.json<Data[]>()
   sampleRows.forEach((row) => {
     console.info(row)
   })
@@ -71,7 +71,7 @@ void (async () => {
   await client.close()
 })()
 
-function getRows(n: number): Array<Data> {
+function getRows(n: number): Data[] {
   const now = Date.now() // UNIX timestamp in milliseconds
   return [...new Array(n)].map((_, i) => ({
     id: Buffer.from(i.toString(10)).toString('hex'),

@@ -96,6 +96,6 @@ export function randomStr() {
   return Math.random().toString(36).slice(2)
 }
 
-export function randomArray<T>(size: number, generator: () => T): Array<T> {
+export function randomArray<T>(size: number, generator: () => T): T[] {
   return [...Array(size).keys()].map(() => generator())
 }

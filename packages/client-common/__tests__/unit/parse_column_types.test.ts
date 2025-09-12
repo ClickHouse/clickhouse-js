@@ -3,7 +3,7 @@ import { parseFixedStringType } from '../../src/parse'
 describe('Columns types parser', () => {
   describe('FixedString', () => {
     it('should parse FixedString', async () => {
-      const args: Array<[string, number]> = [
+      const args: [string, number][] = [
         ['FixedString(1)', 1],
         ['FixedString(42)', 42],
         ['FixedString(100)', 100],
@@ -23,7 +23,7 @@ describe('Columns types parser', () => {
     })
 
     it('should throw on invalid FixedString type', async () => {
-      const args: Array<[string]> = [
+      const args: [string][] = [
         ['FixedString'],
         ['FixedString('],
         ['FixedString()'],
@@ -39,7 +39,7 @@ describe('Columns types parser', () => {
     })
 
     it('should throw on invalid FixedString size', async () => {
-      const args: Array<[string]> = [
+      const args: [string][] = [
         ['FixedString(0)'],
         ['FixedString(x)'],
         [`FixedString(')`],

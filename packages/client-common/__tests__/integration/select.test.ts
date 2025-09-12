@@ -161,7 +161,7 @@ describe('select', () => {
   })
 
   it('can send multiple simultaneous requests', async () => {
-    const results: Array<number> = []
+    const results: number[] = []
     await Promise.all(
       [...Array(5)].map((_, i) =>
         client

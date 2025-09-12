@@ -5,7 +5,7 @@ import { createNodeTestClient } from '../utils/node_client'
 
 describe('[Node.js] max_open_connections config', () => {
   let client: ClickHouseClient
-  let results: Array<number> = []
+  let results: number[] = []
 
   afterEach(async () => {
     await client.close()

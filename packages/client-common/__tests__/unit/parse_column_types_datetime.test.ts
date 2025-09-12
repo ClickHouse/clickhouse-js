@@ -3,7 +3,7 @@ import { parseDateTime64Type, parseDateTimeType } from '../../src/parse'
 describe('Columns types parser - DateTime and DateTime64', () => {
   describe('DateTime', () => {
     it('should parse DateTime', async () => {
-      const args: Array<[string, string | null]> = [
+      const args: [string, string | null][] = [
         ['DateTime', null],
         [`DateTime('GB')`, 'GB'],
         [`DateTime('UTC')`, 'UTC'],
@@ -19,7 +19,7 @@ describe('Columns types parser - DateTime and DateTime64', () => {
 
     it('should throw on invalid DateTime', async () => {
       // DateTime('GB') has the least amount of chars allowed for a valid DateTime type.
-      const args: Array<[string]> = [
+      const args: [string][] = [
         ['DateTime()'],
         [`DateTime(')`],
         [`DateTime('')`],
@@ -38,7 +38,7 @@ describe('Columns types parser - DateTime and DateTime64', () => {
     const precisionRange = [...Array(10).keys()] // 0..9
 
     it('should parse DateTime64 without timezone', async () => {
-      const args: Array<[string, number]> = precisionRange.map((precision) => [
+      const args: [string, number][] = precisionRange.map((precision) => [
         `DateTime64(${precision})`,
         precision,
       ])
@@ -61,12 +61,13 @@ describe('Columns types parser - DateTime and DateTime64', () => {
     })
 
     it('should parse DateTime64 with timezone', async () => {
-      const allPrecisionArgs: Array<Array<[string, number, string]>> =
-        precisionRange.map((precision) => [
+      const allPrecisionArgs: [string, number, string][][] = precisionRange.map(
+        (precision) => [
           [`DateTime64(${precision}, 'GB')`, precision, 'GB'],
           [`DateTime64(${precision}, 'UTC')`, precision, 'UTC'],
           [`DateTime64(${precision}, 'Etc/GMT-5')`, precision, 'Etc/GMT-5'],
-        ])
+        ],
+      )
       allPrecisionArgs.forEach((args) =>
         args.forEach(([columnType, precision, timezone]) => {
           const result = parseDateTime64Type({

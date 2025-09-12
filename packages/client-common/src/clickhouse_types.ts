@@ -12,8 +12,8 @@ export interface ResponseJSON<T = unknown> {
 }
 
 export interface InputJSON<T = unknown> {
-  meta: Array<{ name: string; type: string }>
-  data: Array<T>
+  meta: { name: string; type: string }[]
+  data: T[]
 }
 
 export type InputJSONObjectEachRow<T = unknown> = Record<string, T>
@@ -31,7 +31,7 @@ export interface ClickHouseSummary {
   real_time_microseconds?: string
 }
 
-export type ResponseHeaders = Record<string, string | Array<string> | undefined>
+export type ResponseHeaders = Record<string, string | string[] | undefined>
 
 export interface WithClickHouseSummary {
   summary?: ClickHouseSummary
@@ -67,7 +67,7 @@ export type InsertValues<Stream, T = unknown> =
   | InputJSON<T>
   | InputJSONObjectEachRow<T>
 
-export type NonEmptyArray<T> = [T, ...Array<T>]
+export type NonEmptyArray<T> = [T, ...T[]]
 
 export interface ClickHouseCredentialsAuth {
   username?: string

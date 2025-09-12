@@ -95,7 +95,7 @@ describe('abort request', () => {
 
     it('should cancel of the select queries while keeping the others', async () => {
       const controller = new AbortController()
-      const results: Array<number> = []
+      const results: number[] = []
 
       const selectPromises = Promise.all(
         [...Array(5)].map((_, i) => {

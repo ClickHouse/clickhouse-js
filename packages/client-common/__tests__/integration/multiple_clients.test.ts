@@ -5,7 +5,7 @@ import { createTestClient, guid } from '../utils'
 const CLIENTS_COUNT = 5
 
 describe('multiple clients', () => {
-  const clients: Array<ClickHouseClient> = Array(CLIENTS_COUNT)
+  const clients: ClickHouseClient[] = Array(CLIENTS_COUNT)
 
   beforeEach(() => {
     for (let i = 0; i < CLIENTS_COUNT; i++) {
@@ -20,7 +20,7 @@ describe('multiple clients', () => {
   })
 
   it('should send multiple parallel selects', async () => {
-    const results: Array<number> = []
+    const results: number[] = []
     await Promise.all(
       clients.map((client, i) =>
         client

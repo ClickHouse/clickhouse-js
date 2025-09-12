@@ -147,7 +147,7 @@ export interface ParsedColumnMap {
 export interface ParsedColumnTuple {
   type: 'Tuple'
   /** Element types are arbitrary, including Map, Array, and Tuple. */
-  elements: Array<ParsedColumnType>
+  elements: ParsedColumnType[]
   sourceType: string
 }
 
@@ -185,7 +185,7 @@ export function parseColumnType(sourceType: string): ParsedColumnType {
     isNullable = true
   }
   let result: ParsedColumnType
-  if ((SimpleColumnTypes as unknown as Array<string>).includes(columnType)) {
+  if ((SimpleColumnTypes as unknown as string[]).includes(columnType)) {
     result = {
       type: 'Simple',
       columnType: columnType as SimpleColumnType,
@@ -311,8 +311,8 @@ export function parseEnumType({
     })
   }
 
-  const names: Array<string> = []
-  const indices: Array<number> = []
+  const names: string[] = []
+  const indices: number[] = []
   let parsingName = true // false when parsing the index
   let charEscaped = false // we should ignore escaped ticks
   let startIndex = 1 // Skip the first '
@@ -638,8 +638,8 @@ export function asNullableType(
 export function getElementsTypes(
   { columnType, sourceType }: ParseColumnTypeParams,
   minElements: number,
-): Array<string> {
-  const elements: Array<string> = []
+): string[] {
+  const elements: string[] = []
   /** Consider the element type parsed once we reach a comma outside of parens AND after an unescaped tick.
    *  The most complicated cases are values names in the self-defined Enum types:
    *  * `Tuple(Enum8('f\'()' = 1))`  ->  `f\'()`

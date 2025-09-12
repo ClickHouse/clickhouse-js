@@ -58,7 +58,7 @@ whenOnEnv(TestEnv.LocalSingleNode).describe('role settings', () => {
         role,
       })
 
-      const jsonResults = (await rs.json()) as Array<{ roles: Array<string> }>
+      const jsonResults = (await rs.json()) as { roles: string[] }[]
       return jsonResults[0].roles
     }
 

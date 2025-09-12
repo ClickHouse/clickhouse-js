@@ -39,7 +39,7 @@ export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
   on(event: 'pipe', listener: (src: Readable) => void): Stream.Readable
   on(
     event: string | symbol,
-    listener: (...args: Array<any>) => void,
+    listener: (...args: any[]) => void,
   ): Stream.Readable
 }
 
@@ -85,7 +85,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     }
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
-      const result: Array<T> = []
+      const result: T[] = []
       const stream = this.stream<T>()
       for await (const rows of stream) {
         for (const row of rows) {
@@ -104,7 +104,7 @@ export class ResultSet<Format extends DataFormat | unknown>
   }
 
   /** See {@link BaseResultSet.stream}. */
-  stream<T>(): ResultStream<Format, StreamReadable<Array<Row<T, Format>>>> {
+  stream<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
     // If the underlying stream has already ended by calling `text` or `json`,
     // Stream.pipeline will create a new empty stream
     // but without "readableEnded" flag set to true
@@ -114,7 +114,7 @@ export class ResultSet<Format extends DataFormat | unknown>
 
     validateStreamFormat(this.format)
 
-    let incompleteChunks: Array<Buffer> = []
+    let incompleteChunks: Buffer[] = []
     const logError = this.log_error
     const toRows = new Transform({
       transform(
@@ -122,7 +122,7 @@ export class ResultSet<Format extends DataFormat | unknown>
         _encoding: BufferEncoding,
         callback: TransformCallback,
       ) {
-        const rows: Array<Row> = []
+        const rows: Row[] = []
         let lastIdx = 0
         // first pass on the current chunk
         // using the incomplete row from the previous chunks

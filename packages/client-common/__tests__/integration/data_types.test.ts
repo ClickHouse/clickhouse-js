@@ -677,7 +677,7 @@ describe('data types', () => {
     })
 
     async function insertAndAssertNestedValues(
-      values: Array<unknown>,
+      values: unknown[],
       createTableSettings: ClickHouseSettings,
       insertSettings: ClickHouseSettings,
     ) {
@@ -720,7 +720,7 @@ describe('data types', () => {
 
   async function insertData<T>(
     table: string,
-    data: Array<T>,
+    data: T[],
     clickhouse_settings?: ClickHouseSettings,
   ) {
     const values = data.map((v, i) => ({ ...v, id: i + 1 }))
@@ -734,7 +734,7 @@ describe('data types', () => {
 
   async function assertData<T>(
     table: string,
-    data: Array<T>,
+    data: T[],
     clickhouse_settings: ClickHouseSettings = {},
   ) {
     const result = await client
@@ -751,7 +751,7 @@ describe('data types', () => {
 
   async function insertAndAssert<T>(
     table: string,
-    data: Array<T>,
+    data: T[],
     clickhouse_settings: ClickHouseSettings = {},
   ) {
     await insertData(table, data, clickhouse_settings)

@@ -111,7 +111,7 @@ describe('Insert with specific columns', () => {
         values,
         format: 'JSONEachRow',
         // Prohibited by the type system, but the client can be used from the JS
-        columns: [] as unknown as [string, ...Array<string>],
+        columns: [] as unknown as [string, ...string[]],
       })
 
       const result = await client
@@ -199,7 +199,7 @@ describe('Insert with specific columns', () => {
         format: 'JSONEachRow',
         columns: {
           // Prohibited by the type system, but the client can be used from the JS
-          except: [] as unknown as [string, ...Array<string>],
+          except: [] as unknown as [string, ...string[]],
         },
       })
 
@@ -271,6 +271,6 @@ describe('Insert with specific columns', () => {
               ORDER BY id ASC`,
       format: 'JSONEachRow',
     })
-    return rs.json<{ id: string; name: string; sku: Array<number> }>()
+    return rs.json<{ id: string; name: string; sku: number[] }>()
   }
 })

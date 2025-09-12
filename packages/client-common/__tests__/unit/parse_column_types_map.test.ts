@@ -3,7 +3,7 @@ import { parseMapType } from '../../src/parse'
 
 describe('Columns types parser - Map', () => {
   it('should parse Map with simple types', async () => {
-    const args: Array<[ParsedColumnMap, string]> = [
+    const args: [ParsedColumnMap, string][] = [
       [
         {
           type: 'Map',

@@ -31,10 +31,10 @@ export type ResultStream<Format extends DataFormat | unknown, Stream> =
 export type ResultJSONType<T, F extends DataFormat | unknown> =
   // Emits either a { row: T } or an object with progress
   F extends 'JSONEachRowWithProgress'
-    ? Array<RowOrProgress<T>>
+    ? RowOrProgress<T>[]
     : // JSON*EachRow formats except JSONObjectEachRow
       F extends StreamableJSONDataFormat
-      ? Array<T>
+      ? T[]
       : // JSON formats with known layout { data, meta, statistics, ... }
         F extends SingleDocumentJSONFormat
         ? ResponseJSON<T>
@@ -45,7 +45,7 @@ export type ResultJSONType<T, F extends DataFormat | unknown> =
             F extends RawDataFormat
             ? never
             : // happens only when Format could not be inferred from a literal
-              Array<T> | Record<string, T> | ResponseJSON<T>
+              T[] | Record<string, T> | ResponseJSON<T>
 
 export type RowJSONType<T, F extends DataFormat | unknown> =
   // Emits either a { row: T } or an object with progress

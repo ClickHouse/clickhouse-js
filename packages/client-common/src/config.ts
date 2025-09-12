@@ -257,7 +257,7 @@ export function mergeConfigs(
   function deepMerge(
     base: Record<string, any>,
     fromURL: Record<string, any>,
-    path: Array<string> = [],
+    path: string[] = [],
   ) {
     for (const key of Object.keys(fromURL)) {
       if (typeof fromURL[key] === 'object') {
