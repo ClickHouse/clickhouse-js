@@ -82,7 +82,7 @@ export function createTestClient<Stream = unknown>(
     }
     if (process.env.browser) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('../../../client-web/src/client').createClient(localConfig) // eslint-disable-line @typescript-eslint/no-var-requires
+      return require('../../../client-web/src/client').createClient(localConfig)
     } else {
       // @ts-expect-error
       return eval('require')('../../../client-node/src/client').createClient(

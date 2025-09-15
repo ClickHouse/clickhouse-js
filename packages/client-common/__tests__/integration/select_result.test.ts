@@ -33,7 +33,9 @@ describe('Select ResultSet', () => {
   })
 
   describe('json() method', () => {
-    type Data = { number: string }
+    interface Data {
+      number: string
+    }
 
     it('should have correct fields in the response for JSON format', async () => {
       const rs = await client.query({

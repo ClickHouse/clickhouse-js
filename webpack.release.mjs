@@ -1,9 +1,13 @@
-const { merge } = require('webpack-merge')
-const common = require('./webpack.common.js')
-const path = require('path')
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin')
-const TerserPlugin = require('terser-webpack-plugin')
-module.exports = merge(common, {
+import { merge } from 'webpack-merge'
+import common from './webpack.common.mjs'
+import path from 'path'
+import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin'
+import TerserPlugin from 'terser-webpack-plugin'
+import { fileURLToPath } from 'url'
+
+const dirname = path.dirname(fileURLToPath(import.meta.url))
+
+export default merge(common, {
   mode: 'development',
   devtool: 'source-map',
   module: {
@@ -33,18 +37,20 @@ module.exports = merge(common, {
   output: {
     library: 'ClickHouse',
     filename: 'client-web.min.js',
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(dirname, 'dist'),
     clean: true,
   },
   optimization: {
     minimize: true,
-    minimizer: [new TerserPlugin({
-      extractComments: false,
-      terserOptions: {
-        format: {
-          comments: false,
-        }
-      }
-    })]
-  }
+    minimizer: [
+      new TerserPlugin({
+        extractComments: false,
+        terserOptions: {
+          format: {
+            comments: false,
+          },
+        },
+      }),
+    ],
+  },
 })

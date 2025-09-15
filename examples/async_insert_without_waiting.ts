@@ -37,7 +37,10 @@ void (async () => {
     `,
   })
 
-  type Row = { id: number; name: string }
+  interface Row {
+    id: number
+    name: string
+  }
 
   // Assume we have an event listener in our application that periodically receives incoming data,
   // that we would like to have inserted into ClickHouse.

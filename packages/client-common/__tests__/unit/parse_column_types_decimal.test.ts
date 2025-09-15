@@ -1,7 +1,7 @@
 import { parseDecimalType } from '../../src/parse'
 
 describe('Columns types parser - Decimal', () => {
-  type TestArgs = {
+  interface TestArgs {
     sourceType: string
     precision: number
     scale: number

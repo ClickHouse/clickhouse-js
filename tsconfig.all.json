@@ -4,6 +4,7 @@
     "./packages/**/*.ts",
     "__tests__/**/*.ts",
     ".build/**/*.ts",
+    ".scripts/**/*.ts",
     "examples/**/*.ts",
     "benchmarks/**/*.ts"
   ],

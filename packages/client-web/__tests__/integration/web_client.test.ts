@@ -105,7 +105,7 @@ describe('[Web] Client', () => {
     })
   })
 
-  function getFetchRequestInit(fetchSpyCalledTimes: number = 1) {
+  function getFetchRequestInit(fetchSpyCalledTimes = 1) {
     expect(fetchSpy).toHaveBeenCalledTimes(fetchSpyCalledTimes)
     const [, requestInit] = fetchSpy.calls.mostRecent().args
     return requestInit!

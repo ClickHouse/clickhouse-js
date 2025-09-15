@@ -75,7 +75,7 @@ describe('Test env variables parsing', () => {
       previousValue = process.env[key]
     })
     beforeEach(() => {
-      delete process.env[key]
+      Reflect.deleteProperty(process.env, key)
     })
     afterAll(() => {
       process.env[key] = previousValue

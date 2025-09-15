@@ -1,6 +1,8 @@
 import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
-type Data = { number: string }
+interface Data {
+  number: string
+}
 
 void (async () => {
   const client = createClient()

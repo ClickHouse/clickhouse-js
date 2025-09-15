@@ -43,7 +43,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     if (isStreamableJSONFamily(this.format as DataFormat)) {
       const result: T[] = []
       const reader = this.stream<T>().getReader()
-      // eslint-disable-next-line no-constant-condition
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) {

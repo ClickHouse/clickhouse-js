@@ -212,7 +212,7 @@ async function checkQueryExists(
   return result.length > 0 && result[0].exists !== 0
 }
 
-type QueryLogInfo = {
+interface QueryLogInfo {
   type:
     | 'QueryStart'
     | 'QueryFinish'

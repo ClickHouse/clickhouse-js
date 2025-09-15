@@ -500,9 +500,7 @@ export function enumConfigURLValue<Enum, Key extends string>({
 }: {
   key: string
   value: string
-  enumObject: {
-    [k in Key]: Enum
-  }
+  enumObject: Record<Key, Enum>
 }): Enum {
   const values = Object.keys(enumObject).filter((item) => isNaN(Number(item)))
   const trimmed = value.trim()

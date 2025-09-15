@@ -158,7 +158,7 @@ function joinElements(expected: ParsedColumnTuple) {
   return expected.elements.map((el) => el.sourceType).join(', ')
 }
 
-type TestArgs = {
+interface TestArgs {
   sourceType: string
   expected: ParsedColumnTuple
 }
