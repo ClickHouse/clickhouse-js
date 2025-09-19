@@ -1,7 +1,7 @@
 import { createClient } from '@clickhouse/client'
 import type { Row } from '@clickhouse/client-common'
-import * as Stream from 'stream'
-import { EventEmitter } from 'events'
+import * as Stream from 'node:stream'
+import { EventEmitter } from 'node:events'
 
 interface DataRow {
   id: number
@@ -59,15 +59,15 @@ class BackpressureAwareDataProducer extends Stream.Readable {
       return false
     }
 
-    // Convert data to JSON format for ClickHouse
-    const jsonLine = JSON.stringify({
+    // Convert data to JSON object for ClickHouse
+    const jsonData = {
       id: data.id,
       timestamp: data.timestamp.toISOString(),
       message: data.message,
       value: data.value,
-    })
+    }
 
-    const pushed = super.push(jsonLine)
+    const pushed = this.push(jsonData)
     if (pushed) {
       this.#total++
       if (this.#total % 1000 === 0) {
@@ -79,12 +79,12 @@ class BackpressureAwareDataProducer extends Stream.Readable {
 
   #handleDataSourceEnd() {
     console.log(`Data source ended. Total produced: ${this.#total} rows`)
-    super.push(null)
+    this.push(null)
   }
 
   #handleDataSourceError(error: Error) {
     console.error('Data source error:', error)
-    super.destroy(error)
+    this.destroy(error)
   }
 
   // Called when the stream is ready to accept more data (backpressure resolved)

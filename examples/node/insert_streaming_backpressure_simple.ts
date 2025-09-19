@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client'
-import * as Stream from 'stream'
+import * as Stream from 'node:stream'
 
 interface DataRow {
   id: number
@@ -7,67 +7,75 @@ interface DataRow {
   value: number
 }
 
-class DataStreamWithBackpressure extends Stream.Readable {
-  #dataQueue: DataRow[] = []
-  #isReading = false
-  #hasEnded = false
+class SimpleBackpressureStream extends Stream.Readable {
+  #currentId = 1
+  #maxRecords = 0
+  #intervalId: NodeJS.Timeout | null = null
+  #isPaused = false
 
-  constructor() {
-    super({ objectMode: true, highWaterMark: 10 })
-  }
-
-  addData(data: DataRow): boolean {
-    if (this.#hasEnded) {
-      return false
-    }
-
-    // If we're currently reading, try to push immediately
-    if (this.#isReading && this.#dataQueue.length === 0) {
-      return this.#pushData(data)
-    } else {
-      // Otherwise, queue the data
-      this.#dataQueue.push(data)
-      return true
-    }
-  }
-
-  endStream() {
-    this.#hasEnded = true
-    if (this.#dataQueue.length === 0) {
-      super.push(null)
-    }
+  constructor(maxRecords: number) {
+    super({ objectMode: true, highWaterMark: 5 })
+    this.#maxRecords = maxRecords
   }
 
   _read() {
-    this.#isReading = true
-
-    while (this.#dataQueue.length > 0) {
-      const data = this.#dataQueue.shift()
-
-      if (!data || !this.#pushData(data)) {
-        this.#isReading = false
-        return
-      }
+    if (this.#isPaused) {
+      console.log('Backpressure relieved - resuming data production')
+      this.#isPaused = false
+      this.#startProducing()
     }
-
-    // If all data is processed and stream should end
-    if (this.#hasEnded && this.#dataQueue.length === 0) {
-      super.push(null)
-    }
-
-    this.#isReading = false
   }
 
-  #pushData(data: DataRow): boolean {
-    // Convert to JSON format for ClickHouse
-    const jsonLine = JSON.stringify(data)
-    return super.push(jsonLine)
+  #startProducing() {
+    if (this.#intervalId || this.#currentId > this.#maxRecords) {
+      return
+    }
+
+    this.#intervalId = setInterval(() => {
+      if (this.#currentId > this.#maxRecords) {
+        console.log('All data produced, ending stream')
+        this.push(null) // End the stream
+        this.#stopProducing()
+        return
+      }
+
+      const data: DataRow = {
+        id: this.#currentId++,
+        name: `Name_${this.#currentId - 1}`,
+        value: Math.random() * 1000,
+      }
+      const canContinue = this.push(data)
+
+      if (!canContinue) {
+        // console.log('Backpressure detected - pausing data production')
+        this.#isPaused = true
+        this.#stopProducing()
+      } else if (this.#currentId % 500 === 0) {
+        console.log(`Produced ${this.#currentId - 1} records`)
+      }
+    }, 1)
+  }
+
+  #stopProducing() {
+    if (this.#intervalId) {
+      clearInterval(this.#intervalId)
+      this.#intervalId = null
+    }
+  }
+
+  start() {
+    this.#startProducing()
+  }
+
+  _destroy(error: Error | null, callback: (error?: Error | null) => void) {
+    this.#stopProducing()
+    callback(error)
   }
 }
 
 void (async () => {
-  const client = createClient()
   const tableName = 'simple_streaming_demo'
+  const client = createClient()
 
   // Setup table
   await client.command({
@@ -87,60 +95,33 @@ void (async () => {
     `,
   })
 
-  const dataStream = new DataStreamWithBackpressure()
-  const addDataToStream = () => {
-    const maxRecords = 10000
-    let id = 1
-    let addedCount = 0
+  const maxRecords = 10000
+  console.log('Creating backpressure-aware data stream...')
 
-    const addBatch = () => {
-      // Add a batch of records
-      const batchSize = Math.min(100, maxRecords - addedCount)
-
-      for (let i = 0; i < batchSize; i++) {
-        const success = dataStream.addData({
-          id: id++,
-          name: `Name_${id}`,
-          value: Math.random() * 1000,
-        })
-
-        if (!success) {
-          console.log('Failed to add data - stream ended')
-          return
-        }
-      }
-
-      addedCount += batchSize
-      console.log(`Added batch of ${batchSize} records (total: ${addedCount})`)
-
-      if (addedCount < maxRecords) {
-        // Continue adding data with a small delay
-        setTimeout(addBatch, 10)
-      } else {
-        console.log('Finished adding data, ending stream')
-        dataStream.endStream()
-      }
-    }
-
-    addBatch()
-  }
+  const dataStream = new SimpleBackpressureStream(maxRecords)
 
   try {
-    console.log('Starting streaming insert...')
+    console.log('Starting streaming insert with backpressure demonstration...')
 
-    // Start adding data in the background
-    addDataToStream()
-
-    // Perform the streaming insert
-    await client.insert({
+    const insertPromise = client.insert({
       table: tableName,
       values: dataStream,
       format: 'JSONEachRow',
+      clickhouse_settings: {
+        // Use async inserts to handle streaming data more efficiently
+        async_insert: 1,
+        wait_for_async_insert: 1,
+        async_insert_max_data_size: '10485760', // 10MB
+        async_insert_busy_timeout_ms: 1000,
+      },
     })
+
+    setTimeout(() => dataStream.start(), 100)
+
+    await insertPromise
 
     console.log('Insert completed successfully!')
 
-    // Verify the results
     const result = await client.query({
       query: `SELECT count() as total FROM ${tableName}`,
       format: 'JSONEachRow',
