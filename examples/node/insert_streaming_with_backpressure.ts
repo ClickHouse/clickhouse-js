@@ -158,7 +158,7 @@ class SimulatedDataSource extends EventEmitter {
       const data: DataRow = {
         id,
         timestamp: new Date(),
-        message: `Message ${this.#total} - ${Math.random().toString(36).substring(7)}`,
+        message: `Message ${id} - ${Math.random().toString(36).substring(7)}`,
         value: Math.random() * 1000,
       }
 

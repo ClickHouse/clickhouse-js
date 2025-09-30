@@ -47,7 +47,7 @@ class SimpleBackpressureStream extends Stream.Readable {
       const canContinue = this.push(data)
 
       if (!canContinue) {
-        // console.log('Backpressure detected - pausing data production')
+        console.log('Backpressure detected - pausing data production')
         this.#isPaused = true
         this.#stopProducing()
       } else if (this.#currentId % 500 === 0) {
