@@ -154,8 +154,9 @@ class SimulatedDataSource extends EventEmitter {
 
   #generateBatch(size: number) {
     for (let i = 0; i < size; i++) {
+      const id = this.#total++
       const data: DataRow = {
-        id: this.#total++,
+        id,
         timestamp: new Date(),
         message: `Message ${this.#total} - ${Math.random().toString(36).substring(7)}`,
         value: Math.random() * 1000,
@@ -198,7 +199,7 @@ void (async () => {
 
   await client.command({
     query: `
-      CREATE TABLE ${tableName}
+      CREATE OR REPLACE ${tableName}
       (
         id UInt64,
         timestamp DateTime,
