@@ -1,3 +1,9 @@
+# Unreleased
+
+## Types
+
+- Made `TupleParam` constructor accept a readonly array to permit more usages.
+
 # 1.12.1
 
 ## Improvements
