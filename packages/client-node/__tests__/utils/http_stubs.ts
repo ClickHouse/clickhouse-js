@@ -6,6 +6,7 @@ import type { ClientRequest } from 'http'
 import Stream from 'stream'
 import Util from 'util'
 import Zlib from 'zlib'
+import * as zstd from 'zstd-napi'
 import {
   NodeBaseConnection,
   type NodeConnectionParams,
@@ -82,7 +83,8 @@ export async function emitCompressedBody(
   encoding = 'gzip',
 ) {
   await sleep(0)
-  const compressedBody = await gzip(body)
+  const compressedBody =
+    encoding === 'zstd' ? zstd.compress(Buffer.from(body)) : await gzip(body)
   request.emit(
     'response',
     buildIncomingMessage({

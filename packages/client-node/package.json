@@ -23,6 +23,7 @@
     "dist"
   ],
   "dependencies": {
-    "@clickhouse/client-common": "*"
+    "@clickhouse/client-common": "*",
+    "zstd-napi": "^0.0.12"
   }
 }

@@ -16,6 +16,7 @@ If something is missing, or you found a mistake in one of these examples, please
 - [url_configuration.ts](url_configuration.ts) - client configuration using the URL parameters.
 - [clickhouse_settings.ts](clickhouse_settings.ts) - ClickHouse settings on the client side, both global and per operation.
 - [ping.ts](ping.ts) - sample checks if the server can be reached.
+- [response_compression.ts](response_compression.ts) - enabling compression support (server can respond with gzip or zstd compression).
 - [abort_request.ts](abort_request.ts) - cancelling an outgoing request or a read-only query.
 - [cancel_query.ts](cancel_query.ts) - cancelling a potentially long-running query on the server side.
 - [long_running_queries_timeouts.ts](long_running_queries_timeouts.ts) - avoiding timeout errors for long-running queries (two different approaches).

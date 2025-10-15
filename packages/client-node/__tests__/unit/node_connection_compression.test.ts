@@ -43,7 +43,7 @@ describe('Node.js Connection compression', () => {
       const calledWith = httpRequestStub.calls.mostRecent().args[1]
       expect(
         (calledWith.headers as Record<string, string>)['Accept-Encoding'],
-      ).toBe('gzip')
+      ).toBe('gzip, zstd')
     })
 
     it('does not send a compression algorithm hint if compress_request: false', async () => {
@@ -104,7 +104,7 @@ describe('Node.js Connection compression', () => {
       const calledWith = httpRequestStub.calls.mostRecent().args[1]
       expect(
         (calledWith.headers as Record<string, string>)['Accept-Encoding'],
-      ).toBe('gzip')
+      ).toBe('gzip, zstd')
     })
 
     it('decompresses a gzip response', async () => {
@@ -236,6 +236,30 @@ describe('Node.js Connection compression', () => {
       expect(
         (calledWith.headers as Record<string, string>)['Content-Encoding'],
       ).toBe('gzip')
+    })
+  })
+
+  describe('zstd support', () => {
+    it('decompresses a zstd response', async () => {
+      const request = stubClientRequest()
+      httpRequestStub.and.returnValue(request)
+
+      const adapter = buildHttpConnection({
+        compression: {
+          decompress_response: true,
+          compress_request: false,
+        },
+      })
+
+      const selectPromise = adapter.query({
+        query: 'SELECT * FROM system.numbers LIMIT 5',
+      })
+
+      const responseBody = 'abc'.repeat(1_000)
+      await emitCompressedBody(request, responseBody, 'zstd')
+
+      const queryResult = await selectPromise
+      await assertConnQueryResult(queryResult, responseBody)
     })
   })
 })

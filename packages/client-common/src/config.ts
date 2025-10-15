@@ -30,7 +30,7 @@ export interface BaseClickHouseClientConfigOptions {
   /** Request and response compression settings. */
   compression?: {
     /** `response: true` instructs ClickHouse server to respond with compressed response body. <br/>
-     *  This will add `Accept-Encoding: gzip` header in the request and `enable_http_compression=1` ClickHouse HTTP setting.
+     *  This will add `Accept-Encoding: gzip, zstd` header in the request and `enable_http_compression=1` ClickHouse HTTP setting.
      *  <p><b>Warning</b>: Response compression can't be enabled for a user with readonly=1, as ClickHouse will not allow settings modifications for such user.</p>
      *  @default false */
     response?: boolean

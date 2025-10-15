@@ -14,7 +14,7 @@ export function withCompressionHeaders({
 }): Record<string, string> {
   return {
     ...headers,
-    ...(enable_response_compression ? { 'Accept-Encoding': 'gzip' } : {}),
+    ...(enable_response_compression ? { 'Accept-Encoding': 'gzip, zstd' } : {}),
     ...(enable_request_compression ? { 'Content-Encoding': 'gzip' } : {}),
   }
 }
