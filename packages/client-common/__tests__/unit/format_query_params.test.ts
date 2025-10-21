@@ -1,4 +1,4 @@
-import { formatQueryParams } from '@clickhouse/client-common'
+import { formatQueryParams, TupleParam } from '@clickhouse/client-common'
 
 describe('formatQueryParams', () => {
   it('formats null', () => {
@@ -157,5 +157,77 @@ describe('formatQueryParams', () => {
         },
       }),
     ).toBe("{'name':'custom','id':42,'params':{'refs':[44]}}")
+  })
+
+  it('formats booleans in arrays as TRUE/FALSE', () => {
+    expect(formatQueryParams({ value: [true, false] })).toBe('[TRUE,FALSE]')
+    expect(formatQueryParams({ value: [true] })).toBe('[TRUE]')
+    expect(formatQueryParams({ value: [false] })).toBe('[FALSE]')
+  })
+
+  it('formats booleans in nested arrays as TRUE/FALSE', () => {
+    expect(
+      formatQueryParams({
+        value: [
+          [true, false],
+          [false, true],
+        ],
+      }),
+    ).toBe('[[TRUE,FALSE],[FALSE,TRUE]]')
+    expect(
+      formatQueryParams({
+        value: [[[true]], [[false]]],
+      }),
+    ).toBe('[[[TRUE]],[[FALSE]]]')
+  })
+
+  it('formats booleans in arrays with mixed types', () => {
+    expect(formatQueryParams({ value: [1, true, 'test', false, null] })).toBe(
+      "[1,TRUE,'test',FALSE,NULL]",
+    )
+  })
+
+  it('formats booleans in tuples as TRUE/FALSE', () => {
+    expect(
+      formatQueryParams({
+        value: new TupleParam([true, false]),
+      }),
+    ).toBe('(TRUE,FALSE)')
+    expect(
+      formatQueryParams({
+        value: new TupleParam([1, true, 'test', false]),
+      }),
+    ).toBe("(1,TRUE,'test',FALSE)")
+  })
+
+  it('formats booleans in nested tuples as TRUE/FALSE', () => {
+    expect(
+      formatQueryParams({
+        value: new TupleParam([new TupleParam([true, false]), true]),
+      }),
+    ).toBe('((TRUE,FALSE),TRUE)')
+  })
+
+  it('formats booleans in objects (Maps) as TRUE/FALSE', () => {
+    expect(
+      formatQueryParams({
+        value: {
+          isActive: true,
+          isDeleted: false,
+        },
+      }),
+    ).toBe("{'isActive':TRUE,'isDeleted':FALSE}")
+  })
+
+  it('formats booleans in nested structures', () => {
+    expect(
+      formatQueryParams({
+        value: {
+          name: 'test',
+          flags: [true, false],
+          tuple: new TupleParam([false, true]),
+        },
+      }),
+    ).toBe("{'name':'test','flags':[TRUE,FALSE],'tuple':(FALSE,TRUE)}")
   })
 })

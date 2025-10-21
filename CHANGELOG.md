@@ -1,3 +1,9 @@
+# 1.12.2
+
+## Bug fixes
+
+- Fixed boolean value formatting in query parameters. Boolean values within `Array`, `Tuple`, and `Map` types are now correctly formatted as `TRUE`/`FALSE` instead of `1`/`0` to ensure proper type compatibility with ClickHouse.
+
 # 1.12.1
 
 ## Improvements
@@ -198,7 +204,7 @@ A minor release to allow further investigation regarding uncaught error issues w
 
 ## New features
 
-- Added optional `real_time_microseconds` field to the `ClickHouseSummary` interface (see https://github.com/ClickHouse/ClickHouse/pull/69032)
+- Added optional `real_time_microseconds` field to the `ClickHouseSummary` interface (see <https://github.com/ClickHouse/ClickHouse/pull/69032>)
 
 ## Bug fixes
 
