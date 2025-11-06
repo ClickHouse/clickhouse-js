@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
 
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.3.0
+        uses: isbang/compose-action@v2.4.1
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -76,7 +76,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: 24
 
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.3.0
+        uses: isbang/compose-action@v2.4.1
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -109,7 +109,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
 
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.3.0
+        uses: isbang/compose-action@v2.4.1
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -150,7 +150,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
 
@@ -173,7 +173,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.3.0
+        uses: isbang/compose-action@v2.4.1
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -181,7 +181,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: 24
 
@@ -205,7 +205,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
 
@@ -228,7 +228,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Setup NodeJS
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: 24
 
@@ -272,13 +272,13 @@ jobs:
           fetch-depth: 0
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@v2.3.0
+        uses: isbang/compose-action@v2.4.1
         with:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
       - name: Setup NodeJS 22
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: 24
 
