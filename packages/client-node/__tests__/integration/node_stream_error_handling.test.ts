@@ -1,9 +1,10 @@
+import { requireServerVersionAtLeast } from '@test/utils/jasmine'
 import type { ClickHouseClient, ResultSet } from '../../src'
 import { ClickHouseError } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
 
 // See https://github.com/ClickHouse/ClickHouse/pull/88818
-describe('[Node.js] Stream error handling in 25.11+', () => {
+describe('[Node.js] Stream error handling', () => {
   let client: ClickHouseClient
 
   beforeEach(async () => {
@@ -14,6 +15,8 @@ describe('[Node.js] Stream error handling in 25.11+', () => {
   })
 
   it('with promise listeners', async () => {
+    requireServerVersionAtLeast(25, 11)
+
     let caughtError: ClickHouseError | null = null
 
     try {
@@ -40,6 +43,8 @@ describe('[Node.js] Stream error handling in 25.11+', () => {
   })
 
   it('with async iterators', async () => {
+    requireServerVersionAtLeast(25, 11)
+
     let caughtError: ClickHouseError | null = null
 
     try {
@@ -67,6 +72,7 @@ function queryWithStreamError(
             FROM system.numbers LIMIT 10000000`,
     format: 'JSONEachRow',
     clickhouse_settings: {
+      // enforcing at least a few blocks, so that the response code is 200 OK
       max_block_size: '1',
       http_write_exception_in_output_format: false,
     },

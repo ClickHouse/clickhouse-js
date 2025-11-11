@@ -4,6 +4,7 @@ import type {
   ClickHouseClient,
   ClickHouseSettings,
 } from '@clickhouse/client-common'
+import { cacheServerVersion } from '@test/utils/server_version'
 import { EnvKeys, getFromEnv } from './env'
 import { guid } from './guid'
 import {
@@ -22,14 +23,15 @@ beforeAll(async () => {
       databaseName ?? 'default'
     }`,
   )
+  const initClient = createTestClient({
+    request_timeout: 10_000,
+  })
   if (isCloudTestEnv() && databaseName === undefined) {
-    const cloudInitClient = createTestClient({
-      request_timeout: 10_000,
-    })
-    await wakeUpPing(cloudInitClient)
-    databaseName = await createRandomDatabase(cloudInitClient)
-    await cloudInitClient.close()
+    await wakeUpPing(initClient)
+    databaseName = await createRandomDatabase(initClient)
   }
+  await cacheServerVersion(initClient)
+  await initClient.close()
 })
 
 export function createTestClient<Stream = unknown>(

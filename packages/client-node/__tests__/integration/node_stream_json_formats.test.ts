@@ -2,6 +2,7 @@ import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient, guid } from '@test/utils'
+import { requireServerVersionAtLeast } from '@test/utils/jasmine'
 import Stream from 'stream'
 import { makeObjectStream } from '../utils/stream'
 
@@ -317,6 +318,8 @@ describe('[Node.js] stream JSON formats', () => {
     })
 
     it('works with exceptions', async () => {
+      requireServerVersionAtLeast(25, 11)
+
       const rs = await client.query({
         query: `SELECT number, throwIf(number = 3, 'boom') AS foo FROM system.numbers`,
         format: 'JSONEachRowWithProgress',
