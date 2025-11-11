@@ -324,52 +324,12 @@ describe('[Node.js] stream JSON formats', () => {
           max_block_size: '1',
         },
       })
-      const rows = await rs.json()
-      console.dir(rows, {
-        depth: null,
-      })
-      expect(rows).toEqual([
-        {
-          progress: {
-            read_rows: '1',
-            read_bytes: '8',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
-          },
-        },
-        {
-          meta: [
-            { name: 'number', type: 'UInt64' },
-            { name: 'foo', type: 'UInt8' },
-          ],
-        },
-        { row: { number: '0', foo: 0 } },
-        {
-          progress: {
-            read_rows: '2',
-            read_bytes: '16',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
-          },
-        },
-        { row: { number: '1', foo: 0 } },
-        {
-          progress: {
-            read_rows: '3',
-            read_bytes: '24',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
-          },
-        },
-        { row: { number: '2', foo: 0 } },
-        {
-          progress: {
-            read_rows: '4',
-            read_bytes: '32',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
-          },
-        },
-        {
-          exception: jasmine.stringContaining('Code: 395. DB::Exception: boom'),
-        },
-      ])
+      await expectAsync(rs.json()).toBeRejectedWith(
+        jasmine.objectContaining({
+          code: '395',
+          message: jasmine.stringContaining(`boom: while executing 'FUNCTION throwIf`),
+        })
+      )
     })
   })
 

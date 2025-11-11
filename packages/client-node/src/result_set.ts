@@ -1,6 +1,8 @@
-import type {
+import {
   BaseResultSet,
+  checkErrorInChunkAtIndex,
   DataFormat,
+  EXCEPTION_TAG_HEADER,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
@@ -9,7 +11,6 @@ import type {
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
-  parseError,
   validateStreamFormat,
 } from '@clickhouse/client-common'
 import { Buffer } from 'buffer'
@@ -18,10 +19,6 @@ import Stream, { Transform } from 'stream'
 import { getAsText } from './utils'
 
 const NEWLINE = 0x0a as const
-const CARET_RETURN = 0x0d as const
-
-const EXCEPTION_TAG_HEADER = 'x-clickhouse-exception-tag'
-const EXCEPTION_MARKER = '__exception__'
 
 /** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
  * Everything else is an exact copy from stream.d.ts */
@@ -135,8 +132,6 @@ export class ResultSet<Format extends DataFormat | unknown>
         _encoding: BufferEncoding,
         callback: TransformCallback,
       ) {
-        console.log('Got chunk:', chunk.toString())
-
         const rows: Row[] = []
 
         let idx = -1
@@ -146,38 +141,9 @@ export class ResultSet<Format extends DataFormat | unknown>
           let text: string
           idx = chunk.indexOf(NEWLINE, lastIdx)
 
-          if (
-            idx > 0 &&
-            chunk[idx - 1] === CARET_RETURN &&
-            exceptionMarker !== undefined
-          ) {
-            // See https://github.com/ClickHouse/ClickHouse/pull/88818
-            /**
-             * \r\n__exception__\r\nPU1FNUFH98
-             * Big bam accrued right while reading the data
-             * 45 PU1FNUFH98\r\n__exception__\r\n
-             */
-            const bytesAfterExceptionLength =
-              1 + // space
-              EXCEPTION_MARKER.length + // __exception__
-              2 + // \r\n
-              exceptionMarker.length + // <marker>
-              2 // \r\n
-
-            let lenStartIdx = chunk.length - bytesAfterExceptionLength
-            do {
-              --lenStartIdx
-            } while (chunk[lenStartIdx] !== NEWLINE)
-
-            const exceptionLen = +chunk
-              .subarray(lenStartIdx, -bytesAfterExceptionLength)
-              .toString()
-
-            const exceptionMessage = chunk
-              .subarray(lenStartIdx - exceptionLen, lenStartIdx)
-              .toString()
-
-            throw parseError(exceptionMessage)
+          const maybeErr = checkErrorInChunkAtIndex(chunk, idx, exceptionMarker)
+          if (maybeErr) {
+            return callback(maybeErr)
           }
 
           if (idx !== -1) {
