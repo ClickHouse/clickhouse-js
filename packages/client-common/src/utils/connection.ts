@@ -52,4 +52,4 @@ export function isCredentialsAuth(
   )
 }
 
-export const EXCEPTION_TAG_HEADER = 'x-clickhouse-exception-tag'
+export const EXCEPTION_TAG_HEADER_NAME = 'x-clickhouse-exception-tag'

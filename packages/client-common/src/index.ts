@@ -105,7 +105,7 @@ export {
   numberConfigURLValue,
 } from './config'
 export {
-  EXCEPTION_TAG_HEADER,
+  EXCEPTION_TAG_HEADER_NAME,
   isSuccessfulResponse,
   sleep,
   toSearchParams,

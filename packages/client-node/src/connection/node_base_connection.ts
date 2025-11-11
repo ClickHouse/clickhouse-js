@@ -520,7 +520,6 @@ export abstract class NodeBaseConnection
 
       function onError(e: Error): void {
         removeRequestListeners()
-        console.log('e', e)
         const err = enhanceStackTrace(e, currentStackTrace)
         reject(err)
       }

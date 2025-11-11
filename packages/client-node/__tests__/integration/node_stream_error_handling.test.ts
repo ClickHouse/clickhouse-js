@@ -1,5 +1,5 @@
-import { ClickHouseClient, ClickHouseError, ResultSet } from '../../src'
-import Stream from 'stream'
+import type { ClickHouseClient, ResultSet } from '../../src'
+import { ClickHouseError } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
 
 // See https://github.com/ClickHouse/ClickHouse/pull/88818

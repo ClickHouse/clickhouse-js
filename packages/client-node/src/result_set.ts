@@ -1,12 +1,14 @@
-import {
+import type {
   BaseResultSet,
-  checkErrorInChunkAtIndex,
   DataFormat,
-  EXCEPTION_TAG_HEADER,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
   Row,
+} from '@clickhouse/client-common'
+import {
+  checkErrorInChunkAtIndex,
+  EXCEPTION_TAG_HEADER_NAME,
 } from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
@@ -73,7 +75,7 @@ export class ResultSet<Format extends DataFormat | unknown>
 
     if (_response_headers !== undefined) {
       this.response_headers = Object.freeze(_response_headers)
-      this.exceptionTag = _response_headers[EXCEPTION_TAG_HEADER] as
+      this.exceptionTag = _response_headers[EXCEPTION_TAG_HEADER_NAME] as
         | string
         | undefined
     }

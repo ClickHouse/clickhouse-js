@@ -22,27 +22,24 @@ const CARET_RETURN = 0x0d as const
 export function checkErrorInChunkAtIndex(
   chunk: Uint8Array,
   idx: number,
-  exceptionMarker: string | undefined,
+  exceptionTag: string | undefined,
 ): Error | undefined {
   if (
     idx > 0 &&
     chunk[idx - 1] === CARET_RETURN &&
-    exceptionMarker !== undefined
+    exceptionTag !== undefined
   ) {
-    return tryHandleStreamError(exceptionMarker, chunk)
+    return tryHandleStreamError(exceptionTag, chunk)
   }
 }
 
-function tryHandleStreamError(
-  exceptionMarker: string,
-  chunk: Uint8Array,
-): Error {
+function tryHandleStreamError(exceptionTag: string, chunk: Uint8Array): Error {
   try {
     const bytesAfterExceptionLength =
       1 + // space
       EXCEPTION_MARKER.length + // __exception__
       2 + // \r\n
-      exceptionMarker.length + // <marker>
+      exceptionTag.length + // <value taken from the header>
       2 // \r\n
 
     let lenStartIdx = chunk.length - bytesAfterExceptionLength

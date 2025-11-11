@@ -327,8 +327,10 @@ describe('[Node.js] stream JSON formats', () => {
       await expectAsync(rs.json()).toBeRejectedWith(
         jasmine.objectContaining({
           code: '395',
-          message: jasmine.stringContaining(`boom: while executing 'FUNCTION throwIf`),
-        })
+          message: jasmine.stringContaining(
+            `boom: while executing 'FUNCTION throwIf`,
+          ),
+        }),
       )
     })
   })
