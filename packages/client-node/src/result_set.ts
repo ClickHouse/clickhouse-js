@@ -9,6 +9,7 @@ import type {
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
+  parseError,
   validateStreamFormat,
 } from '@clickhouse/client-common'
 import { Buffer } from 'buffer'
@@ -17,6 +18,10 @@ import Stream, { Transform } from 'stream'
 import { getAsText } from './utils'
 
 const NEWLINE = 0x0a as const
+const CARET_RETURN = 0x0d as const
+
+const EXCEPTION_TAG_HEADER = 'x-clickhouse-exception-tag'
+const EXCEPTION_MARKER = '__exception__'
 
 /** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
  * Everything else is an exact copy from stream.d.ts */
@@ -54,7 +59,9 @@ export interface ResultSetOptions<Format extends DataFormat> {
 export class ResultSet<Format extends DataFormat | unknown>
   implements BaseResultSet<Stream.Readable, Format>
 {
-  public readonly response_headers: ResponseHeaders
+  public readonly response_headers: ResponseHeaders = {}
+
+  private readonly exceptionTag: string | undefined = undefined
   private readonly log_error: (error: Error) => void
 
   constructor(
@@ -66,8 +73,13 @@ export class ResultSet<Format extends DataFormat | unknown>
   ) {
     // eslint-disable-next-line no-console
     this.log_error = log_error ?? ((err: Error) => console.error(err))
-    this.response_headers =
-      _response_headers !== undefined ? Object.freeze(_response_headers) : {}
+
+    if (_response_headers !== undefined) {
+      this.response_headers = Object.freeze(_response_headers)
+      this.exceptionTag = _response_headers[EXCEPTION_TAG_HEADER] as
+        | string
+        | undefined
+    }
   }
 
   /** See {@link BaseResultSet.text}. */
@@ -116,57 +128,82 @@ export class ResultSet<Format extends DataFormat | unknown>
 
     let incompleteChunks: Buffer[] = []
     const logError = this.log_error
+    const exceptionMarker = this.exceptionTag
     const toRows = new Transform({
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
         callback: TransformCallback,
       ) {
+        console.log('Got chunk:', chunk.toString())
+
         const rows: Row[] = []
+
+        let idx = -1
         let lastIdx = 0
-        // first pass on the current chunk
-        // using the incomplete row from the previous chunks
-        let idx = chunk.indexOf(NEWLINE)
-        if (idx !== -1) {
+
+        do {
           let text: string
-          if (incompleteChunks.length > 0) {
-            text = Buffer.concat(
-              [...incompleteChunks, chunk.subarray(0, idx)],
-              incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx,
-            ).toString()
-            incompleteChunks = []
-          } else {
-            text = chunk.subarray(0, idx).toString()
+          idx = chunk.indexOf(NEWLINE, lastIdx)
+
+          if (
+            idx > 0 &&
+            chunk[idx - 1] === CARET_RETURN &&
+            exceptionMarker !== undefined
+          ) {
+            // See https://github.com/ClickHouse/ClickHouse/pull/88818
+            /**
+             * \r\n__exception__\r\nPU1FNUFH98
+             * Big bam accrued right while reading the data
+             * 45 PU1FNUFH98\r\n__exception__\r\n
+             */
+            const bytesAfterExceptionLength =
+              1 + // space
+              EXCEPTION_MARKER.length + // __exception__
+              2 + // \r\n
+              exceptionMarker.length + // <marker>
+              2 // \r\n
+
+            let lenStartIdx = chunk.length - bytesAfterExceptionLength
+            do {
+              --lenStartIdx
+            } while (chunk[lenStartIdx] !== NEWLINE)
+
+            const exceptionLen = +chunk
+              .subarray(lenStartIdx, -bytesAfterExceptionLength)
+              .toString()
+
+            const exceptionMessage = chunk
+              .subarray(lenStartIdx - exceptionLen, lenStartIdx)
+              .toString()
+
+            throw parseError(exceptionMessage)
           }
-          rows.push({
-            text,
-            json<T>(): T {
-              return JSON.parse(text)
-            },
-          })
-          lastIdx = idx + 1 // skipping newline character
-          // consequent passes on the current chunk with at least one row parsed
-          // all previous chunks with incomplete rows were already processed
-          do {
-            idx = chunk.indexOf(NEWLINE, lastIdx)
-            if (idx !== -1) {
-              const text = chunk.subarray(lastIdx, idx).toString()
-              rows.push({
-                text,
-                json<T>(): T {
-                  return JSON.parse(text)
-                },
-              })
+
+          if (idx !== -1) {
+            if (incompleteChunks.length > 0) {
+              text = Buffer.concat(
+                [...incompleteChunks, chunk.subarray(lastIdx, idx)],
+                incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx,
+              ).toString()
+              incompleteChunks = []
             } else {
-              // to be processed during the first pass for the next chunk
-              incompleteChunks.push(chunk.subarray(lastIdx))
+              text = chunk.subarray(lastIdx, idx).toString()
+            }
+            rows.push({
+              text,
+              json<T>(): T {
+                return JSON.parse(text)
+              },
+            })
+            lastIdx = idx + 1 // skipping newline character
+          } else {
+            incompleteChunks.push(chunk.subarray(lastIdx))
+            if (rows.length > 0) {
               this.push(rows)
             }
-            lastIdx = idx + 1 // skipping newline character
-          } while (idx !== -1)
-        } else {
-          incompleteChunks.push(chunk) // this chunk does not contain a full row
-        }
+          }
+        } while (idx !== -1)
         callback()
       },
       autoDestroy: true,
