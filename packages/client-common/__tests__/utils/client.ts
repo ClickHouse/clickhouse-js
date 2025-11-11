@@ -10,6 +10,7 @@ import { guid } from './guid'
 import {
   getClickHouseTestEnvironment,
   isCloudTestEnv,
+  shouldSkipInit,
   TestEnv,
 } from './test_env'
 import { TestLogger } from './test_logger'
@@ -18,6 +19,11 @@ jasmine.DEFAULT_TIMEOUT_INTERVAL = 400_000
 
 let databaseName: string
 beforeAll(async () => {
+  if (shouldSkipInit()) {
+    console.log('\nSkipping test environment initialization')
+    return
+  }
+
   console.log(
     `\nTest environment: ${getClickHouseTestEnvironment()}, database: ${
       databaseName ?? 'default'

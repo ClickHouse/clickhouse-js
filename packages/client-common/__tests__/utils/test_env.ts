@@ -33,3 +33,8 @@ export function isCloudTestEnv(): boolean {
   const env = getClickHouseTestEnvironment()
   return env === TestEnv.Cloud
 }
+
+export function shouldSkipInit(): boolean {
+  const value = process.env['CLICKHOUSE_TEST_SKIP_INIT']
+  return value === '1' || value === 'true'
+}
