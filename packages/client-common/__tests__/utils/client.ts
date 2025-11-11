@@ -10,7 +10,8 @@ import { guid } from './guid'
 import {
   getClickHouseTestEnvironment,
   isCloudTestEnv,
-  shouldSkipInit,
+  PRINT_DDL,
+  SKIP_INIT,
   TestEnv,
 } from './test_env'
 import { TestLogger } from './test_logger'
@@ -19,7 +20,8 @@ jasmine.DEFAULT_TIMEOUT_INTERVAL = 400_000
 
 let databaseName: string
 beforeAll(async () => {
-  if (shouldSkipInit()) {
+  if (SKIP_INIT) {
+    // it will be skipped for unit tests that don't require DB setup
     console.log('\nSkipping test environment initialization')
     return
   }
@@ -136,7 +138,10 @@ export async function createTable<Stream = unknown>(
       ...(clickhouse_settings || {}),
     },
   })
-  console.log(`\nCreated a table using DDL:\n${ddl}`)
+
+  if (PRINT_DDL) {
+    console.info(`\nCreated a table using DDL:\n${ddl}`)
+  }
 }
 
 export function getTestDatabaseName(): string {

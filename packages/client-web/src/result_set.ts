@@ -6,6 +6,7 @@ import type {
   ResultStream,
   Row,
 } from '@clickhouse/client-common'
+import { checkErrorInChunkAtIndex } from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
@@ -19,6 +20,8 @@ export class ResultSet<Format extends DataFormat | unknown>
   implements BaseResultSet<ReadableStream<Row[]>, Format>
 {
   public readonly response_headers: ResponseHeaders
+
+  private readonly exceptionTag: string | undefined = undefined
   private isAlreadyConsumed = false
 
   constructor(
@@ -29,6 +32,9 @@ export class ResultSet<Format extends DataFormat | unknown>
   ) {
     this.response_headers =
       _response_headers !== undefined ? Object.freeze(_response_headers) : {}
+    this.exceptionTag = this.response_headers['x-clickhouse-exception-tag'] as
+      | string
+      | undefined
   }
 
   /** See {@link BaseResultSet.text} */
@@ -71,6 +77,8 @@ export class ResultSet<Format extends DataFormat | unknown>
 
     let incompleteChunks: Uint8Array[] = []
     let totalIncompleteLength = 0
+
+    const exceptionTag = this.exceptionTag
     const decoder = new TextDecoder('utf-8')
     const transform = new TransformStream({
       start() {
@@ -84,31 +92,29 @@ export class ResultSet<Format extends DataFormat | unknown>
         let idx: number
         let lastIdx = 0
         do {
-          // an unescaped newline character denotes the end of a row
+          // an unescaped newline character denotes the end of a row,
+          // or at least the beginning of the exception marker
           idx = chunk.indexOf(NEWLINE, lastIdx)
-          // there is no complete row in the rest of the current chunk
-          if (idx === -1) {
-            // to be processed during the next transform iteration
-            const incompleteChunk = chunk.slice(lastIdx)
-            incompleteChunks.push(incompleteChunk)
-            totalIncompleteLength += incompleteChunk.length
-            // send the extracted rows to the consumer, if any
-            if (rows.length > 0) {
-              controller.enqueue(rows)
+          if (idx !== -1) {
+            let bytesToDecode: Uint8Array
+
+            const maybeErr = checkErrorInChunkAtIndex(chunk, idx, exceptionTag)
+            if (maybeErr) {
+              controller.error(maybeErr)
             }
-          } else {
-            let text: string
+
+            // using the incomplete chunks from the previous iterations
             if (incompleteChunks.length > 0) {
               const completeRowBytes = new Uint8Array(
                 totalIncompleteLength + idx,
               )
 
-              // using the incomplete chunks from the previous iterations
               let offset = 0
               incompleteChunks.forEach((incompleteChunk) => {
                 completeRowBytes.set(incompleteChunk, offset)
                 offset += incompleteChunk.length
               })
+
               // finalize the row with the current chunk slice that ends with a newline
               const finalChunk = chunk.slice(0, idx)
               completeRowBytes.set(finalChunk, offset)
@@ -117,10 +123,12 @@ export class ResultSet<Format extends DataFormat | unknown>
               incompleteChunks = []
               totalIncompleteLength = 0
 
-              text = decoder.decode(completeRowBytes)
+              bytesToDecode = completeRowBytes
             } else {
-              text = decoder.decode(chunk.slice(lastIdx, idx))
+              bytesToDecode = chunk.slice(lastIdx, idx)
             }
+
+            const text = decoder.decode(bytesToDecode)
             rows.push({
               text,
               json<T>(): T {
@@ -128,6 +136,16 @@ export class ResultSet<Format extends DataFormat | unknown>
               },
             })
             lastIdx = idx + 1 // skipping newline character
+          } else {
+            // there is no complete row in the rest of the current chunk
+            // to be processed during the next transform iteration
+            const incompleteChunk = chunk.slice(lastIdx)
+            incompleteChunks.push(incompleteChunk)
+            totalIncompleteLength += incompleteChunk.length
+            // send the extracted rows to the consumer, if any
+            if (rows.length > 0) {
+              controller.enqueue(rows)
+            }
           }
         } while (idx !== -1)
       },

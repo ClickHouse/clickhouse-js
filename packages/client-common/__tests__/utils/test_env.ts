@@ -34,7 +34,9 @@ export function isCloudTestEnv(): boolean {
   return env === TestEnv.Cloud
 }
 
-export function shouldSkipInit(): boolean {
-  const value = process.env['CLICKHOUSE_TEST_SKIP_INIT']
-  return value === '1' || value === 'true'
+function isEnvVarEnabled(key: string): boolean {
+  return process.env[key] === '1'
 }
+
+export const SKIP_INIT = isEnvVarEnabled('CLICKHOUSE_TEST_SKIP_INIT')
+export const PRINT_DDL = isEnvVarEnabled('CLICKHOUSE_TEST_PRINT_DDL')

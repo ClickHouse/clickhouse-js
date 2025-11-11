@@ -32,37 +32,40 @@ describe('[Web] abort request', () => {
 
   it('cancels a select query while reading response', async () => {
     const controller = new AbortController()
-    let rowCount = 0
-    const selectPromise = client
-      .query({
-        query: 'SELECT number FROM system.numbers LIMIT 10000',
-        format: 'JSONCompactEachRow',
-        abort_signal: controller.signal,
-        clickhouse_settings: {
-          // low block size to force streaming 1 row at a time
-          max_block_size: '1',
-        },
-      })
-      .then(async (rs) => {
-        const reader = rs.stream().getReader()
-        while (true) {
-          const { done, value: rows } = await reader.read()
-          if (done) break
-          ;(rows as Row[]).forEach(() => {
-            if (rowCount >= 1) {
-              controller.abort()
-            }
-            rowCount++
-          })
-        }
-      })
 
-    await expectAsync(selectPromise).toBeRejectedWith(
-      jasmine.objectContaining({
-        // Chrome = The user aborted a request; FF = The operation was aborted
-        message: jasmine.stringContaining('aborted'),
-      }),
-    )
+    const rs = await client.query({
+      query: 'SELECT number FROM system.numbers LIMIT 100000',
+      format: 'JSONCompactEachRow',
+      abort_signal: controller.signal,
+      clickhouse_settings: {
+        // low block size to force streaming 1 row at a time
+        max_block_size: '1',
+      },
+    })
+
+    let caughtError: Error | null = null
+    let rowCount = 0
+
+    const reader = rs.stream().getReader()
+    try {
+      while (true) {
+        const { done, value: rows } = await reader.read()
+        if (done) break
+        ;(rows as Row[]).forEach(() => {
+          if (rowCount >= 1) {
+            controller.abort()
+          }
+          rowCount++
+        })
+      }
+    } catch (e) {
+      caughtError = e as Error
+    }
+
+    expect(caughtError).not.toBeNull()
+    expect(caughtError?.message)
+      .withContext(`after fetching ${rowCount} rows`)
+      .toContain('aborted')
   })
 
   it('cancels a select query while reading response by closing response stream', async () => {

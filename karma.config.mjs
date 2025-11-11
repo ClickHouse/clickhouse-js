@@ -36,6 +36,10 @@ export default function (config) {
       ],
     },
     reporters: ['mocha'],
+    mochaReporter: {
+      output: 'minimal',
+      ignoreSkipped: true,
+    },
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,

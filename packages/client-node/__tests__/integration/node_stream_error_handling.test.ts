@@ -1,6 +1,10 @@
+import {
+  assertError,
+  streamErrorQueryParams,
+} from '@test/fixtures/stream_errors'
 import { requireServerVersionAtLeast } from '@test/utils/jasmine'
-import type { ClickHouseClient, ResultSet } from '../../src'
-import { ClickHouseError } from '../../src'
+import type { ClickHouseClient } from '../../src'
+import type { ClickHouseError } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
 
 // See https://github.com/ClickHouse/ClickHouse/pull/88818
@@ -20,7 +24,9 @@ describe('[Node.js] Stream error handling', () => {
     let caughtError: ClickHouseError | null = null
 
     try {
-      const rs = await queryWithStreamError(client)
+      const queryParams = streamErrorQueryParams()
+      const rs = await client.query(queryParams)
+
       await new Promise<void>((resolve, reject) => {
         const stream = rs.stream<{ n: number }>()
         stream.on('data', (rows) => {
@@ -48,7 +54,9 @@ describe('[Node.js] Stream error handling', () => {
     let caughtError: ClickHouseError | null = null
 
     try {
-      const rs = await queryWithStreamError(client)
+      const queryParams = streamErrorQueryParams()
+      const rs = await client.query(queryParams)
+
       const stream = rs.stream()
       for await (const rows of stream) {
         for (const row of rows) {
@@ -62,28 +70,3 @@ describe('[Node.js] Stream error handling', () => {
     assertError(caughtError)
   })
 })
-
-function queryWithStreamError(
-  client: ClickHouseClient,
-): Promise<ResultSet<'JSONEachRow'>> {
-  return client.query({
-    query: `SELECT toInt32(number) AS n,
-                   throwIf(number = 10, 'boom') AS e
-            FROM system.numbers LIMIT 10000000`,
-    format: 'JSONEachRow',
-    clickhouse_settings: {
-      // enforcing at least a few blocks, so that the response code is 200 OK
-      max_block_size: '1',
-      http_write_exception_in_output_format: false,
-    },
-  })
-}
-
-function assertError(err: Error | null) {
-  expect(err).not.toBeNull()
-  expect(err).toBeInstanceOf(ClickHouseError)
-
-  const chErr = err as ClickHouseError
-  expect(chErr.message).toContain(`boom: while executing 'FUNCTION throwIf`)
-  expect(chErr.code).toBe('395')
-}

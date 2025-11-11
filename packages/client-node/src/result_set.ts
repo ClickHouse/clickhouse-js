@@ -127,7 +127,7 @@ export class ResultSet<Format extends DataFormat | unknown>
 
     let incompleteChunks: Buffer[] = []
     const logError = this.log_error
-    const exceptionMarker = this.exceptionTag
+    const exceptionTag = this.exceptionTag
     const toRows = new Transform({
       transform(
         chunk: Buffer,
@@ -138,26 +138,28 @@ export class ResultSet<Format extends DataFormat | unknown>
 
         let idx = -1
         let lastIdx = 0
+        let currentChunkPart: Buffer
 
         do {
-          let text: string
           idx = chunk.indexOf(NEWLINE, lastIdx)
 
-          const maybeErr = checkErrorInChunkAtIndex(chunk, idx, exceptionMarker)
+          const maybeErr = checkErrorInChunkAtIndex(chunk, idx, exceptionTag)
           if (maybeErr) {
             return callback(maybeErr)
           }
 
           if (idx !== -1) {
             if (incompleteChunks.length > 0) {
-              text = Buffer.concat(
+              currentChunkPart = Buffer.concat(
                 [...incompleteChunks, chunk.subarray(lastIdx, idx)],
                 incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx,
-              ).toString()
+              )
               incompleteChunks = []
             } else {
-              text = chunk.subarray(lastIdx, idx).toString()
+              currentChunkPart = chunk.subarray(lastIdx, idx)
             }
+
+            const text = currentChunkPart.toString()
             rows.push({
               text,
               json<T>(): T {
