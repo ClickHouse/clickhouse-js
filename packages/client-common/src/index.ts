@@ -105,6 +105,7 @@ export {
   numberConfigURLValue,
 } from './config'
 export {
+  EXCEPTION_TAG_HEADER_NAME,
   isSuccessfulResponse,
   sleep,
   toSearchParams,
@@ -113,6 +114,7 @@ export {
   withHttpSettings,
   isCredentialsAuth,
   isJWTAuth,
+  checkErrorInChunkAtIndex,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
 export { getCurrentStackTrace, enhanceStackTrace } from './error'

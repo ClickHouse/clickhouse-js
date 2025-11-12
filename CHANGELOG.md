@@ -1,3 +1,11 @@
+# 1.13.0
+
+## New features
+
+- Server-side exceptions that occur in the middle of the HTTP stream are now handled correctly. This requires [ClickHouse 25.11+](https://github.com/ClickHouse/ClickHouse/pull/88818). Previous ClickHouse versions are unaffected by this change. ([#478])
+
+[#478]: https://github.com/ClickHouse/clickhouse-js/pull/478
+
 # 1.12.1
 
 ## Improvements

@@ -79,6 +79,6 @@ export default defineConfig(
   },
   // Ignore build artifacts and externals
   {
-    ignores: ['out', 'dist', 'node_modules', 'webpack'],
+    ignores: ['coverage', 'out', 'dist', 'node_modules', 'webpack'],
   },
 )
