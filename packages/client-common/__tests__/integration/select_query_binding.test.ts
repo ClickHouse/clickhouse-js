@@ -448,4 +448,88 @@ describe('select with query binding', () => {
       expect(response).toBe('0\n1\n2\n')
     })
   })
+
+  describe('Nested boolean types', () => {
+    it('handles boolean in an array', async () => {
+      const params = {
+        foo: [true, false, true],
+        bar: [true, null, false],
+      }
+      const rs = await client.query({
+        query: `
+          SELECT {foo: Array(Boolean)}           AS foo,
+                 {bar: Array(Nullable(Boolean))} AS bar
+        `,
+        format: 'JSONEachRow',
+        query_params: params,
+      })
+
+      const response = await rs.json()
+      expect(response).toEqual([params])
+    })
+
+    it('handles boolean in a tuple', async () => {
+      const foo = [1, true, 'foo']
+      const bar = [null, 42]
+      const params = {
+        foo: new TupleParam(foo),
+        bar: new TupleParam(bar),
+      }
+
+      const rs = await client.query({
+        query: `
+          SELECT {foo: Tuple(Int32, Boolean, String)}   AS foo,
+                 {bar: Tuple(Nullable(Boolean), Int16)} AS bar
+        `,
+        format: 'JSONEachRow',
+        query_params: params,
+      })
+
+      const response = await rs.json()
+      expect(response).toEqual([{ foo, bar }])
+    })
+
+    it('handles boolean in a map', async () => {
+      const foo = { item1: true, item2: false }
+      const bar = { item1: null, item2: true }
+      const params = {
+        foo: new Map(Object.entries(foo)),
+        bar: new Map(Object.entries(bar)),
+      }
+
+      const rs = await client.query({
+        query: `
+          SELECT {foo: Map(String, Boolean)}           AS foo,
+                 {bar: Map(String, Nullable(Boolean))} AS bar
+        `,
+        format: 'JSONEachRow',
+        query_params: params,
+      })
+
+      const response = await rs.json()
+      expect(response).toEqual([{ foo, bar }])
+    })
+
+    it('handles boolean in a mixed nested structure', async () => {
+      const rs = await client.query({
+        query: `
+          SELECT {val: Array(Map(String, Tuple(Int32, Boolean)))} AS result
+        `,
+        format: 'JSONEachRow',
+        query_params: {
+          val: [
+            { item1: new TupleParam([1, true]) },
+            { item2: new TupleParam([2, false]) },
+          ],
+        },
+      })
+
+      const response = await rs.json()
+      expect(response).toEqual([
+        {
+          result: [{ item1: [1, true] }, { item2: [2, false] }],
+        },
+      ])
+    })
+  })
 })
