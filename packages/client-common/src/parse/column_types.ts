@@ -650,8 +650,6 @@ export function getElementsTypes(
   let charEscaped = false
   let lastElementIndex = 0
   for (let i = 0; i < columnType.length; i++) {
-    // prettier-ignore
-    // console.log(i, 'Current char:', columnType[i], 'openParens:', openParens, 'quoteOpen:', quoteOpen, 'charEscaped:', charEscaped)
     if (charEscaped) {
       charEscaped = false
     } else if (columnType.charCodeAt(i) === BackslashASCII) {
@@ -667,7 +665,6 @@ export function getElementsTypes(
         } else if (columnType.charCodeAt(i) === CommaASCII) {
           if (openParens === 0) {
             elements.push(columnType.slice(lastElementIndex, i))
-            // console.log('Pushed element:', elements[elements.length - 1])
             i += 2 // skip ', '
             lastElementIndex = i
           }
@@ -675,9 +672,6 @@ export function getElementsTypes(
       }
     }
   }
-
-  // prettier-ignore
-  // console.log('Final elements:', elements, 'nextElementIndex:', lastElementIndex, 'minElements:', minElements, 'openParens:', openParens)
 
   // Push the remaining part of the type if it seems to be valid (at least all parentheses are closed)
   if (!openParens && lastElementIndex < columnType.length - 1) {

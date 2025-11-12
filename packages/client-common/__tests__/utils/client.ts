@@ -4,11 +4,14 @@ import type {
   ClickHouseClient,
   ClickHouseSettings,
 } from '@clickhouse/client-common'
+import { cacheServerVersion } from '@test/utils/server_version'
 import { EnvKeys, getFromEnv } from './env'
 import { guid } from './guid'
 import {
   getClickHouseTestEnvironment,
   isCloudTestEnv,
+  PRINT_DDL,
+  SKIP_INIT,
   TestEnv,
 } from './test_env'
 import { TestLogger } from './test_logger'
@@ -17,19 +20,26 @@ jasmine.DEFAULT_TIMEOUT_INTERVAL = 400_000
 
 let databaseName: string
 beforeAll(async () => {
+  if (SKIP_INIT) {
+    // it will be skipped for unit tests that don't require DB setup
+    console.log('\nSkipping test environment initialization')
+    return
+  }
+
   console.log(
     `\nTest environment: ${getClickHouseTestEnvironment()}, database: ${
       databaseName ?? 'default'
     }`,
   )
+  const initClient = createTestClient({
+    request_timeout: 10_000,
+  })
   if (isCloudTestEnv() && databaseName === undefined) {
-    const cloudInitClient = createTestClient({
-      request_timeout: 10_000,
-    })
-    await wakeUpPing(cloudInitClient)
-    databaseName = await createRandomDatabase(cloudInitClient)
-    await cloudInitClient.close()
+    await wakeUpPing(initClient)
+    databaseName = await createRandomDatabase(initClient)
   }
+  await cacheServerVersion(initClient)
+  await initClient.close()
 })
 
 export function createTestClient<Stream = unknown>(
@@ -128,7 +138,10 @@ export async function createTable<Stream = unknown>(
       ...(clickhouse_settings || {}),
     },
   })
-  console.log(`\nCreated a table using DDL:\n${ddl}`)
+
+  if (PRINT_DDL) {
+    console.info(`\nCreated a table using DDL:\n${ddl}`)
+  }
 }
 
 export function getTestDatabaseName(): string {

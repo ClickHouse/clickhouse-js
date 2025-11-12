@@ -1,8 +1,16 @@
-# Unreleased
+# 1.13.0
 
-## Types
+## New features
 
-- Made `TupleParam` constructor accept a readonly array to permit more usages.
+- Server-side exceptions that occur in the middle of the HTTP stream are now handled correctly. This requires [ClickHouse 25.11+](https://github.com/ClickHouse/ClickHouse/pull/88818). Previous ClickHouse versions are unaffected by this change. ([#478])
+
+## Improvements
+
+- Made `TupleParam` constructor accept a readonly array to permit more usages. ([#465], [Malien])
+
+[#465]: https://github.com/ClickHouse/clickhouse-js/pull/465
+[#478]: https://github.com/ClickHouse/clickhouse-js/pull/478
+[Malien]: https://github.com/Malien
 
 # 1.12.1
 

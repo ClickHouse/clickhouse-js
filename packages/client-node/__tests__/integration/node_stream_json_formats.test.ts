@@ -2,6 +2,7 @@ import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient, guid } from '@test/utils'
+import { requireServerVersionAtLeast } from '@test/utils/jasmine'
 import Stream from 'stream'
 import { makeObjectStream } from '../utils/stream'
 
@@ -242,9 +243,6 @@ describe('[Node.js] stream JSON formats', () => {
         },
       })
       const rows = await rs.json()
-      console.dir(rows, {
-        depth: null,
-      })
       expect(rows).toEqual([
         {
           progress: {
@@ -279,9 +277,6 @@ describe('[Node.js] stream JSON formats', () => {
         },
       })
       const rows = await rs.json<{ k: number; c: string; s: string }>()
-      console.dir(rows, {
-        depth: null,
-      })
       expect(rows).toEqual([
         {
           progress: {
@@ -317,6 +312,8 @@ describe('[Node.js] stream JSON formats', () => {
     })
 
     it('works with exceptions', async () => {
+      requireServerVersionAtLeast(25, 11)
+
       const rs = await client.query({
         query: `SELECT number, throwIf(number = 3, 'boom') AS foo FROM system.numbers`,
         format: 'JSONEachRowWithProgress',
@@ -324,52 +321,14 @@ describe('[Node.js] stream JSON formats', () => {
           max_block_size: '1',
         },
       })
-      const rows = await rs.json()
-      console.dir(rows, {
-        depth: null,
-      })
-      expect(rows).toEqual([
-        {
-          progress: {
-            read_rows: '1',
-            read_bytes: '8',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
-          },
-        },
-        {
-          meta: [
-            { name: 'number', type: 'UInt64' },
-            { name: 'foo', type: 'UInt8' },
-          ],
-        },
-        { row: { number: '0', foo: 0 } },
-        {
-          progress: {
-            read_rows: '2',
-            read_bytes: '16',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
-          },
-        },
-        { row: { number: '1', foo: 0 } },
-        {
-          progress: {
-            read_rows: '3',
-            read_bytes: '24',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
-          },
-        },
-        { row: { number: '2', foo: 0 } },
-        {
-          progress: {
-            read_rows: '4',
-            read_bytes: '32',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
-          },
-        },
-        {
-          exception: jasmine.stringContaining('Code: 395. DB::Exception: boom'),
-        },
-      ])
+      await expectAsync(rs.json()).toBeRejectedWith(
+        jasmine.objectContaining({
+          code: '395',
+          message: jasmine.stringContaining(
+            `boom: while executing 'FUNCTION throwIf`,
+          ),
+        }),
+      )
     })
   })
 
