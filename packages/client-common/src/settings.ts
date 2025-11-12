@@ -1597,6 +1597,27 @@ interface ClickHouseServerSettings {
 
 /** @see https://clickhouse.com/docs/en/interfaces/http */
 interface ClickHouseHTTPSettings {
+  /** If you specify compress=1, the server will compress the data it sends to you. */
+  compress: Bool
+  /** If you specify decompress=1, the server will decompress the data which you pass in the POST method. */
+  decompress: Bool
+  /** User name. If the user name is not specified, then the default name is used. */
+  user: string
+  /** User password. If the password is not specified, then an empty password is used. */
+  password: string
+  /** The quota_key "key" is passed in the query parameter, and the quota is tracked separately for each key value.
+   *  For example, you can pass a username as the key, so the quota will be counted separately for each username. */
+  quota_key: string
+  /** This is any string that serves as the query identifier.
+   *  If a query from the same user with the same 'query_id' already exists at this time,
+   *  the behaviour depends on the 'replace_running_query' parameter. */
+  query_id: string
+  /** Determines the number of bytes in the result to buffer in the server memory.
+   *  If a result body is larger than this threshold, the buffer is written to the HTTP channel,
+   *  and the remaining data is sent directly to the HTTP channel.
+   *  To ensure that the entire response is buffered, set wait_end_of_query=1.
+   *  In this case, the data that is not stored in memory will be buffered in a temporary server file. */
+  buffer_size: UInt64
   /** Ensures that the entire response is buffered.
    *  In this case, the data that is not stored in memory will be buffered in a temporary server file.
    *  This could help prevent errors that might occur during the streaming of SELECT queries.
@@ -1607,6 +1628,9 @@ interface ClickHouseHTTPSettings {
    *  Only useful for the {@link ClickHouseClient.exec} method,
    *  as {@link ClickHouseClient.query} method always attaches this clause. */
   default_format: DataFormat
+  /** The user defined session identifier.
+   *  It allows to modify settings, create temporary tables and reuse them in subsequent requests. */
+  session_id: string
   /** By default, the session is terminated after 60 seconds of inactivity
    *  This is regulated by the `default_session_timeout` server setting. */
   session_timeout: UInt64
