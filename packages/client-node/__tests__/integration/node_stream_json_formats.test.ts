@@ -243,9 +243,6 @@ describe('[Node.js] stream JSON formats', () => {
         },
       })
       const rows = await rs.json()
-      console.dir(rows, {
-        depth: null,
-      })
       expect(rows).toEqual([
         {
           progress: {
@@ -280,9 +277,6 @@ describe('[Node.js] stream JSON formats', () => {
         },
       })
       const rows = await rs.json<{ k: number; c: string; s: string }>()
-      console.dir(rows, {
-        depth: null,
-      })
       expect(rows).toEqual([
         {
           progress: {

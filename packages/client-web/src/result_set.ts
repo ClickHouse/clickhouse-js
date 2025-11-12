@@ -88,9 +88,12 @@ export class ResultSet<Format extends DataFormat | unknown>
         if (chunk === null) {
           controller.terminate()
         }
+
         const rows: Row[] = []
+
         let idx: number
         let lastIdx = 0
+
         do {
           // an unescaped newline character denotes the end of a row,
           // or at least the beginning of the exception marker
@@ -135,6 +138,7 @@ export class ResultSet<Format extends DataFormat | unknown>
                 return JSON.parse(text)
               },
             })
+
             lastIdx = idx + 1 // skipping newline character
           } else {
             // there is no complete row in the rest of the current chunk
@@ -142,6 +146,7 @@ export class ResultSet<Format extends DataFormat | unknown>
             const incompleteChunk = chunk.slice(lastIdx)
             incompleteChunks.push(incompleteChunk)
             totalIncompleteLength += incompleteChunk.length
+
             // send the extracted rows to the consumer, if any
             if (rows.length > 0) {
               controller.enqueue(rows)

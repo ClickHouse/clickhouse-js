@@ -1,8 +1,13 @@
 import { parseError } from '../error'
 
+const EXCEPTION_MARKER = '__exception__'
+
+const NEWLINE = 0x0a as const
+const CARET_RETURN = 0x0d as const
+
 /**
- * New in 25.11.
- * See https://github.com/ClickHouse/ClickHouse/pull/88818
+ * After 25.11, a newline error character is preceded by a caret return
+ * this is a strong indication that we have an exception in the stream.
  *
  * Example with exception marker `FOOBAR`:
  *
@@ -13,51 +18,60 @@ import { parseError } from '../error'
  * In this case, the exception length is 5 (including the newline character),
  * and the exception message is "boom".
  */
-
-const EXCEPTION_MARKER = '__exception__'
-
-const NEWLINE = 0x0a as const
-const CARET_RETURN = 0x0d as const
-
 export function checkErrorInChunkAtIndex(
   chunk: Uint8Array,
-  idx: number,
+  newLineIdx: number,
   exceptionTag: string | undefined,
 ): Error | undefined {
   if (
-    idx > 0 &&
-    chunk[idx - 1] === CARET_RETURN &&
+    newLineIdx > 0 &&
+    chunk[newLineIdx - 1] === CARET_RETURN &&
     exceptionTag !== undefined
   ) {
-    return tryHandleStreamError(exceptionTag, chunk)
-  }
-}
+    try {
+      const textDecoder = new TextDecoder('utf-8')
 
-function tryHandleStreamError(exceptionTag: string, chunk: Uint8Array): Error {
-  try {
-    const bytesAfterExceptionLength =
-      1 + // space
-      EXCEPTION_MARKER.length + // __exception__
-      2 + // \r\n
-      exceptionTag.length + // <value taken from the header>
-      2 // \r\n
+      const bytesCountAfterErrLenHint =
+        1 + // space
+        EXCEPTION_MARKER.length + // __exception__
+        2 + // \r\n
+        exceptionTag.length + // <value taken from the header>
+        2 // \r\n
 
-    let lenStartIdx = chunk.length - bytesAfterExceptionLength
-    do {
-      --lenStartIdx
-    } while (chunk[lenStartIdx] !== NEWLINE)
+      let errMsgLenStartIdx = chunk.length - bytesCountAfterErrLenHint
+      if (errMsgLenStartIdx < 1) {
+        return new Error(
+          'there was an error in the stream, but the last chunk is malformed',
+        )
+      }
 
-    const exceptionLen = +chunk
-      .subarray(lenStartIdx, -bytesAfterExceptionLength)
-      .toString()
+      do {
+        --errMsgLenStartIdx
+      } while (chunk[errMsgLenStartIdx] !== NEWLINE)
 
-    const exceptionMessage = chunk
-      .subarray(lenStartIdx - exceptionLen, lenStartIdx)
-      .toString()
+      const errMsgLen = parseInt(
+        textDecoder.decode(
+          chunk.subarray(errMsgLenStartIdx, -bytesCountAfterErrLenHint),
+        ),
+      )
 
-    return parseError(exceptionMessage)
-  } catch (err) {
-    // theoretically, it can happen if a proxy cuts the last chunk
-    return err as Error
+      if (isNaN(errMsgLen) || errMsgLen <= 0) {
+        return new Error(
+          'there was an error in the stream; failed to parse the message length',
+        )
+      }
+
+      const errMsg = textDecoder.decode(
+        chunk.subarray(
+          errMsgLenStartIdx - errMsgLen + 1, // skipping the newline character
+          errMsgLenStartIdx,
+        ),
+      )
+
+      return parseError(errMsg)
+    } catch (err) {
+      // theoretically, it can happen if a proxy cuts the last chunk
+      return err as Error
+    }
   }
 }
