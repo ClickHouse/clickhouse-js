@@ -6,7 +6,7 @@
 
 ## Improvements
 
-- Made `TupleParam` constructor accept a readonly array to permit more usages. ([#465], [Malien])
+- `TupleParam` constructor now accepts a readonly array to permit more usages. ([#465], [Malien])
 
 ## Bug fixes
 
