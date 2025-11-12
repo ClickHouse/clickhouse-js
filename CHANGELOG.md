@@ -1,8 +1,22 @@
-# 1.12.2
+# 1.13.0
+
+## New features
+
+- Server-side exceptions that occur in the middle of the HTTP stream are now handled correctly. This requires [ClickHouse 25.11+](https://github.com/ClickHouse/ClickHouse/pull/88818). Previous ClickHouse versions are unaffected by this change. ([#478])
+
+## Improvements
+
+- Made `TupleParam` constructor accept a readonly array to permit more usages. ([#465], [Malien])
 
 ## Bug fixes
 
-- Fixed boolean value formatting in query parameters. Boolean values within `Array`, `Tuple`, and `Map` types are now correctly formatted as `TRUE`/`FALSE` instead of `1`/`0` to ensure proper type compatibility with ClickHouse.
+- Fixed boolean value formatting in query parameters. Boolean values within `Array`, `Tuple`, and `Map` types are now correctly formatted as `TRUE`/`FALSE` instead of `1`/`0` to ensure proper type compatibility with ClickHouse. ([#475], [baseballyama])
+
+[#465]: https://github.com/ClickHouse/clickhouse-js/pull/465
+[#475]: https://github.com/ClickHouse/clickhouse-js/pull/475
+[#478]: https://github.com/ClickHouse/clickhouse-js/pull/478
+[Malien]: https://github.com/Malien
+[baseballyama]: https://github.com/baseballyama
 
 # 1.12.1
 

@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@main
 
       - name: Setup NodeJS
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: 24
 
@@ -43,7 +43,7 @@ jobs:
           mv clickhouse-client-web-${CLIENT_VERSION}.tgz clickhouse-client-web.tgz
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: clickhouse-js-packages
           path: clickhouse-client*.tgz

@@ -1,5 +1,5 @@
 export class TupleParam {
-  constructor(public readonly values: any[]) {}
+  constructor(public readonly values: readonly unknown[]) {}
 }
 
 export function formatQueryParams({
@@ -136,7 +136,7 @@ function formatObjectLikeParam(
 }
 
 interface FormatQueryParamsOptions {
-  value: any
+  value: unknown
   wrapStringInQuotes?: boolean
   // For tuples/arrays, it is required to print NULL instead of \N
   printNullAsKeyword?: boolean

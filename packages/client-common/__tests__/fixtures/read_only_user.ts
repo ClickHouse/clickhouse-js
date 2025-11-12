@@ -1,4 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
+import { PRINT_DDL } from '@test/utils/test_env'
 import {
   getClickHouseTestEnvironment,
   getTestDatabaseName,
@@ -57,6 +58,7 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
         `
       break
   }
+
   for (const query of [createUser, grant]) {
     await client.command({
       query,
@@ -64,11 +66,11 @@ export async function createReadOnlyUser(client: ClickHouseClient) {
         wait_end_of_query: 1,
       },
     })
+
+    if (PRINT_DDL) {
+      console.info(`\nCreated read-only user with DDL:\n${query}`)
+    }
   }
-  console.log(
-    `Created user ${username} with default database ${database} ` +
-      'and restricted access to the system database',
-  )
 
   return {
     username,

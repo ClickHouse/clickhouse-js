@@ -1,7 +1,7 @@
 #version: '3.8'
 services:
   clickhouse:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-25.8-alpine}'
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-25.10-alpine}'
     container_name: 'clickhouse-js-clickhouse-server'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1

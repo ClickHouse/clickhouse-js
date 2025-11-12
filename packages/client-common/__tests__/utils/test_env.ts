@@ -33,3 +33,10 @@ export function isCloudTestEnv(): boolean {
   const env = getClickHouseTestEnvironment()
   return env === TestEnv.Cloud
 }
+
+function isEnvVarEnabled(key: string): boolean {
+  return process.env[key] === '1'
+}
+
+export const SKIP_INIT = isEnvVarEnabled('CLICKHOUSE_TEST_SKIP_INIT')
+export const PRINT_DDL = isEnvVarEnabled('CLICKHOUSE_TEST_PRINT_DDL')

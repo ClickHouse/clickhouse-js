@@ -35,7 +35,7 @@ describe('[Node.js] SELECT streaming', () => {
       // wrap in a func to avoid changing inner "this"
       await assertAlreadyConsumed$(() => rs.json())
       await assertAlreadyConsumed$(() => rs.text())
-      await assertAlreadyConsumed(() => rs.stream())
+      assertAlreadyConsumed(() => rs.stream())
     })
 
     it('should consume a text response only once', async () => {
@@ -47,7 +47,7 @@ describe('[Node.js] SELECT streaming', () => {
       // wrap in a func to avoid changing inner "this"
       await assertAlreadyConsumed$(() => rs.json())
       await assertAlreadyConsumed$(() => rs.text())
-      await assertAlreadyConsumed(() => rs.stream())
+      assertAlreadyConsumed(() => rs.stream())
     })
 
     it('should consume a stream response only once', async () => {
@@ -65,7 +65,7 @@ describe('[Node.js] SELECT streaming', () => {
       // wrap in a func to avoid changing inner "this"
       await assertAlreadyConsumed$(() => rs.json())
       await assertAlreadyConsumed$(() => rs.text())
-      await assertAlreadyConsumed(() => rs.stream())
+      assertAlreadyConsumed(() => rs.stream())
     })
   })
 
