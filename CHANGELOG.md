@@ -8,9 +8,15 @@
 
 - Made `TupleParam` constructor accept a readonly array to permit more usages. ([#465], [Malien])
 
+## Bug fixes
+
+- Fixed boolean value formatting in query parameters. Boolean values within `Array`, `Tuple`, and `Map` types are now correctly formatted as `TRUE`/`FALSE` instead of `1`/`0` to ensure proper type compatibility with ClickHouse. ([#475], [baseballyama])
+
 [#465]: https://github.com/ClickHouse/clickhouse-js/pull/465
+[#475]: https://github.com/ClickHouse/clickhouse-js/pull/475
 [#478]: https://github.com/ClickHouse/clickhouse-js/pull/478
 [Malien]: https://github.com/Malien
+[baseballyama]: https://github.com/baseballyama
 
 # 1.12.1
 
@@ -212,7 +218,7 @@ A minor release to allow further investigation regarding uncaught error issues w
 
 ## New features
 
-- Added optional `real_time_microseconds` field to the `ClickHouseSummary` interface (see https://github.com/ClickHouse/ClickHouse/pull/69032)
+- Added optional `real_time_microseconds` field to the `ClickHouseSummary` interface (see <https://github.com/ClickHouse/ClickHouse/pull/69032>)
 
 ## Bug fixes
 
