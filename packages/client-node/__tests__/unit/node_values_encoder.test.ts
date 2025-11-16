@@ -5,6 +5,7 @@ import type {
 } from '@clickhouse/client-common'
 import Stream from 'stream'
 import { NodeValuesEncoder } from '../../src/utils'
+import * as simdjson from 'simdjson'
 
 describe('[Node.js] ValuesEncoder', () => {
   const rawFormats = [
@@ -46,7 +47,10 @@ describe('[Node.js] ValuesEncoder', () => {
     'JSONCompactStringsEachRowWithNamesAndTypes',
   ]
 
-  const encoder = new NodeValuesEncoder()
+  const encoder = new NodeValuesEncoder({
+    parse: JSON.parse,
+    stringify: JSON.stringify,
+  })
 
   describe('[Node.js] validateInsertValues', () => {
     it('should allow object mode stream for JSON* and raw for Tab* or CSV*', async () => {
@@ -122,22 +126,154 @@ describe('[Node.js] ValuesEncoder', () => {
       }
     })
 
-    it('should encode JSON input', async () => {
-      const values: InputJSON = {
-        meta: [
-          {
-            name: 'name',
-            type: 'string',
-          },
-        ],
-        data: [{ name: 'foo' }, { name: 'bar' }],
+    it('should encode JSON input (with and without custom JSON handling)', async () => {
+      const encoders = [
+        encoder,
+        new NodeValuesEncoder({
+          parse: simdjson.parse,
+          stringify: JSON.stringify, // simdjson doesn't have a stringify handler
+        }),
+      ]
+
+      for (const encoder of encoders) {
+        const values: InputJSON = {
+          meta: [
+            {
+              name: 'name',
+              type: 'string',
+            },
+          ],
+          data: [{ name: 'foo' }, { name: 'bar' }],
+        }
+        const result = encoder.encodeValues(values, 'JSON')
+        let encoded = ''
+        for await (const chunk of result) {
+          encoded += chunk
+        }
+        expect(encoded).toEqual(JSON.stringify(values) + '\n')
       }
-      const result = encoder.encodeValues(values, 'JSON')
+    })
+
+    it('should use custom stringify for JSON streams', async () => {
+      const customEncoder = new NodeValuesEncoder({
+        parse: JSON.parse,
+        stringify: (value) => `custom:${JSON.stringify(value)}`,
+      })
+
+      const values = Stream.Readable.from([{ name: 'foo' }, { name: 'bar' }], {
+        objectMode: true,
+      })
+      const result = customEncoder.encodeValues(values, 'JSON')
       let encoded = ''
       for await (const chunk of result) {
         encoded += chunk
       }
-      expect(encoded).toEqual(JSON.stringify(values) + '\n')
+      expect(encoded).toEqual('custom:{"name":"foo"}\ncustom:{"name":"bar"}\n')
+    })
+
+    it('should use custom stringify for JSON arrays', async () => {
+      const customEncoder = new NodeValuesEncoder({
+        parse: JSON.parse,
+        stringify: (value) => `[${JSON.stringify(value)}]`,
+      })
+
+      const values = [{ id: 1 }, { id: 2 }]
+      const result = customEncoder.encodeValues(values, 'JSONEachRow')
+      let encoded = ''
+      for await (const chunk of result) {
+        encoded += chunk
+      }
+      expect(encoded).toEqual('[{"id":1}]\n[{"id":2}]\n')
+    })
+
+    it('should use custom stringify for InputJSON objects', async () => {
+      const customEncoder = new NodeValuesEncoder({
+        parse: JSON.parse,
+        stringify: (value) => JSON.stringify(value).toUpperCase(),
+      })
+
+      const values: InputJSON = {
+        meta: [{ name: 'id', type: 'UInt32' }],
+        data: [{ id: 1 }],
+      }
+      const result = customEncoder.encodeValues(values, 'JSON')
+      let encoded = ''
+      for await (const chunk of result) {
+        encoded += chunk
+      }
+      expect(encoded).toEqual(JSON.stringify(values).toUpperCase() + '\n')
+    })
+
+    it('should use custom stringify for JSONObjectEachRow', async () => {
+      const customEncoder = new NodeValuesEncoder({
+        parse: JSON.parse,
+        stringify: (value) => `CUSTOM_${JSON.stringify(value)}`,
+      })
+
+      const values: InputJSONObjectEachRow = {
+        row1: { name: 'test1' },
+        row2: { name: 'test2' },
+      }
+      const result = customEncoder.encodeValues(values, 'JSONObjectEachRow')
+      let encoded = ''
+      for await (const chunk of result) {
+        encoded += chunk
+      }
+      expect(encoded).toEqual(`CUSTOM_${JSON.stringify(values)}\n`)
+    })
+
+    it('should handle custom stringify with complex objects', async () => {
+      const customEncoder = new NodeValuesEncoder({
+        parse: JSON.parse,
+        stringify: (value) => {
+          if (
+            typeof value === 'object' &&
+            value !== null &&
+            'timestamp' in value
+          ) {
+            return JSON.stringify({
+              ...value,
+              timestamp: new Date(value.timestamp as string).toISOString(),
+            })
+          }
+          return JSON.stringify(value)
+        },
+      })
+
+      const values = [
+        { id: 1, timestamp: '2024-01-01' },
+        { id: 2, timestamp: '2024-01-02' },
+      ]
+      const result = customEncoder.encodeValues(values, 'JSONEachRow')
+      let encoded = ''
+      for await (const chunk of result) {
+        encoded += chunk
+      }
+      expect(encoded).toContain('"timestamp":"2024-01-01T00:00:00.000Z"')
+      expect(encoded).toContain('"timestamp":"2024-01-02T00:00:00.000Z"')
+    })
+
+    it('should use custom stringify across different json formats', async () => {
+      const customEncoder = new NodeValuesEncoder({
+        parse: JSON.parse,
+        stringify: (value) => `>>>${JSON.stringify(value)}<<<`,
+      })
+
+      const testFormats = [
+        'JSONEachRow',
+        'JSONStringsEachRow',
+        'JSONCompactEachRow',
+      ]
+
+      for (const format of testFormats) {
+        const values = [{ test: 'data' }]
+        const result = customEncoder.encodeValues(values, format as DataFormat)
+        let encoded = ''
+        for await (const chunk of result) {
+          encoded += chunk
+        }
+        expect(encoded).toEqual('>>>{"test":"data"}<<<\n')
+      }
     })
 
     it('should encode JSONObjectEachRow input', async () => {

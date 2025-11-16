@@ -72,7 +72,13 @@ describe('[Node.js] createClient', () => {
           ].join('&'),
       })
       expect(createConnectionStub).toHaveBeenCalledWith({
-        connection_params: params,
+        connection_params: {
+          ...params,
+          json: {
+            parse: JSON.parse,
+            stringify: JSON.stringify,
+          },
+        },
         tls: undefined,
         keep_alive: {
           enabled: true,
@@ -103,6 +109,10 @@ describe('[Node.js] createClient', () => {
         connection_params: {
           ...params,
           url: new URL('https://my.host:8443/my_proxy'),
+          json: {
+            parse: JSON.parse,
+            stringify: JSON.stringify,
+          },
         },
         tls: undefined,
         keep_alive: {
@@ -138,6 +148,10 @@ describe('[Node.js] createClient', () => {
           ...params,
           url: new URL('https://my.host:8443/my_proxy'),
           auth: { username, password, type: 'Credentials' },
+          json: {
+            parse: JSON.parse,
+            stringify: JSON.stringify,
+          },
         },
         tls: undefined,
         keep_alive: {

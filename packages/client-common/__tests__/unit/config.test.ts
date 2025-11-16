@@ -376,6 +376,10 @@ describe('config', () => {
         keep_alive: { enabled: true },
         application_id: undefined,
         http_headers: {},
+        json: {
+          parse: JSON.parse,
+          stringify: JSON.stringify,
+        },
       })
     })
 
@@ -426,6 +430,10 @@ describe('config', () => {
         log_writer: jasmine.any(LogWriter),
         keep_alive: { enabled: false },
         application_id: 'my_app',
+        json: {
+          parse: JSON.parse,
+          stringify: JSON.stringify,
+        },
       })
     })
 
@@ -496,6 +504,10 @@ describe('config', () => {
         keep_alive: { enabled: true },
         application_id: undefined,
         http_headers: {},
+        json: {
+          parse: JSON.parse,
+          stringify: JSON.stringify,
+        },
       })
     })
   })
