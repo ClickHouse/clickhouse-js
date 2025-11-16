@@ -10,11 +10,16 @@ import type {
   WithClickHouseSummary,
   WithResponseHeaders,
 } from '@clickhouse/client-common'
-import { type DataFormat, DefaultLogger } from '@clickhouse/client-common'
+import {
+  type DataFormat,
+  defaultJSONHandling,
+  DefaultLogger,
+} from '@clickhouse/client-common'
 import type { InsertValues, NonEmptyArray } from './clickhouse_types'
 import type { ImplementationDetails, ValuesEncoder } from './config'
 import { getConnectionParams, prepareConfigWithURL } from './config'
 import type { ConnPingResult } from './connection'
+import type { JSONHandling } from './parse/json_handling'
 import type { BaseResultSet } from './result'
 
 export interface BaseQueryParams {
@@ -170,6 +175,7 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly sessionId?: string
   private readonly role?: string | Array<string>
   private readonly logWriter: LogWriter
+  private readonly jsonHandling: JSONHandling
 
   constructor(
     config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,
@@ -192,7 +198,12 @@ export class ClickHouseClient<Stream = unknown> {
       this.connectionParams,
     )
     this.makeResultSet = config.impl.make_result_set
-    this.valuesEncoder = config.impl.values_encoder
+    this.jsonHandling = {
+      ...defaultJSONHandling,
+      ...config.json,
+    }
+
+    this.valuesEncoder = config.impl.values_encoder(this.jsonHandling)
   }
 
   /**
@@ -231,6 +242,7 @@ export class ClickHouseClient<Stream = unknown> {
         })
       },
       response_headers,
+      this.jsonHandling,
     )
   }
 

@@ -1,6 +1,7 @@
 import type {
   DataFormat,
   ImplementationDetails,
+  JSONHandling,
   ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
@@ -131,13 +132,15 @@ export const NodeConfigImpl: Required<
       tls,
     })
   },
-  values_encoder: new NodeValuesEncoder(),
+  values_encoder: (jsonHandling: JSONHandling) =>
+    new NodeValuesEncoder(jsonHandling),
   make_result_set: ((
     stream: Stream.Readable,
     format: DataFormat,
     query_id: string,
     log_error: (err: Error) => void,
     response_headers: ResponseHeaders,
+    jsonHandling: JSONHandling,
   ) =>
     ResultSet.instance({
       stream,
@@ -145,5 +148,6 @@ export const NodeConfigImpl: Required<
       query_id,
       log_error,
       response_headers,
+      jsonHandling,
     })) as any,
 }

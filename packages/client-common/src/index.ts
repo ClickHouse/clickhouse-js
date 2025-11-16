@@ -80,8 +80,13 @@ export type {
   ParsedColumnTuple,
   ParsedColumnMap,
   ParsedColumnType,
+  JSONHandling,
 } from './parse'
-export { SimpleColumnTypes, parseColumnType } from './parse'
+export {
+  SimpleColumnTypes,
+  parseColumnType,
+  defaultJSONHandling,
+} from './parse'
 
 /** For implementation usage only - should not be re-exported */
 export {
