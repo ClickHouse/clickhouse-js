@@ -226,7 +226,7 @@ describe('data types', () => {
       },
     ]
 
-    const valueSerializer = (value: unknown) => {
+    const valueSerializer = (value: unknown): unknown => {
       if (value instanceof Date) {
         return value.getTime()
       }

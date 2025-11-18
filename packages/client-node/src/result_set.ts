@@ -9,6 +9,7 @@ import type {
 } from '@clickhouse/client-common'
 import {
   checkErrorInChunkAtIndex,
+  defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
 } from '@clickhouse/client-common'
 import {
@@ -72,12 +73,12 @@ export class ResultSet<Format extends DataFormat | unknown>
     public readonly query_id: string,
     log_error?: (error: Error) => void,
     _response_headers?: ResponseHeaders,
-    jsonHandling: JSONHandling = {
-      parse: JSON.parse,
-      stringify: JSON.stringify,
-    },
+    jsonHandling?: JSONHandling,
   ) {
-    this.jsonHandling = jsonHandling
+    this.jsonHandling = {
+      ...defaultJSONHandling,
+      ...jsonHandling,
+    }
     // eslint-disable-next-line no-console
     this.log_error = log_error ?? ((err: Error) => console.error(err))
 
