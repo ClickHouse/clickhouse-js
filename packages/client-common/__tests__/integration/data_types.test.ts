@@ -784,9 +784,9 @@ describe('data types', () => {
     })
   }
 
-  async function assertData(
+  async function assertData<T>(
     table: string,
-    data: unknown[],
+    data: T[],
     clickhouse_settings: ClickHouseSettings = {},
   ) {
     const result = await client
