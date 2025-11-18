@@ -55,7 +55,7 @@ export interface ResultSetOptions<Format extends DataFormat> {
   query_id: string
   log_error: (error: Error) => void
   response_headers: ResponseHeaders
-  jsonHandling: JSONHandling
+  jsonHandling?: JSONHandling
 }
 
 export class ResultSet<Format extends DataFormat | unknown>
