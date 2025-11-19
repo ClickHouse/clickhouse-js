@@ -54,6 +54,7 @@ export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
 export interface ConnExecParams<Stream> extends ConnBaseQueryParams {
   values?: Stream
   decompress_response_stream?: boolean
+  ignore_error_response?: boolean
 }
 
 export interface ConnBaseResult extends WithResponseHeaders {
