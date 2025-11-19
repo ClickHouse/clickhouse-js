@@ -1,3 +1,9 @@
+# 1.14.0
+
+## New features
+
+- Added an `ignore_error_response` key to `client.exec`, which allows callers to manually handle errors. ([#483])
+
 # 1.13.0
 
 ## New features
