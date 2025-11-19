@@ -73,7 +73,7 @@ export interface RequestParams {
   enable_request_compression?: boolean
   // if there are compression headers, attempt to decompress it
   try_decompress_response_stream?: boolean
-  // if the response contains an error and contains compression headers, attempt to decompress it
+  // if the response contains an error, ignore it and return the stream as-is
   ignore_error_response?: boolean
   parse_summary?: boolean
   query: string
