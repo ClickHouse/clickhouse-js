@@ -1,6 +1,7 @@
 import type {
   BaseResultSet,
   DataFormat,
+  JSONHandling,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
@@ -23,18 +24,25 @@ export class ResultSet<Format extends DataFormat | unknown>
 
   private readonly exceptionTag: string | undefined = undefined
   private isAlreadyConsumed = false
+  private readonly jsonHandling: JSONHandling
 
   constructor(
     private _stream: ReadableStream,
     private readonly format: Format,
     public readonly query_id: string,
     _response_headers?: ResponseHeaders,
+    jsonHandling: JSONHandling = {
+      parse: JSON.parse,
+      stringify: JSON.stringify,
+    },
   ) {
     this.response_headers =
       _response_headers !== undefined ? Object.freeze(_response_headers) : {}
     this.exceptionTag = this.response_headers['x-clickhouse-exception-tag'] as
       | string
       | undefined
+
+    this.jsonHandling = jsonHandling
   }
 
   /** See {@link BaseResultSet.text} */
@@ -64,7 +72,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
       const text = await getAsText(this._stream)
-      return JSON.parse(text)
+      return this.jsonHandling.parse(text)
     }
     // should not be called for CSV, etc.
     throw new Error(`Cannot decode ${this.format} as JSON`)
@@ -79,6 +87,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     let totalIncompleteLength = 0
 
     const exceptionTag = this.exceptionTag
+    const jsonHandling = this.jsonHandling
     const decoder = new TextDecoder('utf-8')
     const transform = new TransformStream({
       start() {
@@ -135,7 +144,7 @@ export class ResultSet<Format extends DataFormat | unknown>
             rows.push({
               text,
               json<T>(): T {
-                return JSON.parse(text)
+                return jsonHandling.parse(text)
               },
             })
 

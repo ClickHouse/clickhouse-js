@@ -1,3 +1,4 @@
+import type { JSONHandling } from '.'
 import type {
   WithClickHouseSummary,
   WithResponseHeaders,
@@ -21,6 +22,7 @@ export interface ConnectionParams {
   application_id?: string
   http_headers?: Record<string, string>
   auth: ConnectionAuth
+  json?: JSONHandling
 }
 
 export interface CompressionSettings {

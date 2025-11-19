@@ -11,6 +11,7 @@ import type {
   ConnOperation,
   ConnPingResult,
   ConnQueryResult,
+  JSONHandling,
   LogWriter,
   ResponseHeaders,
 } from '@clickhouse/client-common'
@@ -82,6 +83,7 @@ export abstract class NodeBaseConnection
   protected readonly defaultAuthHeader: string
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders
 
+  private readonly jsonHandling: JSONHandling
   private readonly logger: LogWriter
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
   private readonly idleSocketTTL: number
@@ -106,6 +108,10 @@ export abstract class NodeBaseConnection
     }
     this.logger = params.log_writer
     this.idleSocketTTL = params.keep_alive.idle_socket_ttl
+    this.jsonHandling = params.json ?? {
+      parse: JSON.parse,
+      stringify: JSON.stringify,
+    }
   }
 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
@@ -421,7 +427,7 @@ export abstract class NodeBaseConnection
     const summaryHeader = response.headers['x-clickhouse-summary']
     if (typeof summaryHeader === 'string') {
       try {
-        return JSON.parse(summaryHeader)
+        return this.jsonHandling.parse(summaryHeader)
       } catch (err) {
         this.logger.error({
           message: `${op}: failed to parse X-ClickHouse-Summary header.`,

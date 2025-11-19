@@ -1,6 +1,7 @@
 import type {
   BaseResultSet,
   DataFormat,
+  JSONHandling,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
@@ -8,6 +9,7 @@ import type {
 } from '@clickhouse/client-common'
 import {
   checkErrorInChunkAtIndex,
+  defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
 } from '@clickhouse/client-common'
 import {
@@ -53,6 +55,7 @@ export interface ResultSetOptions<Format extends DataFormat> {
   query_id: string
   log_error: (error: Error) => void
   response_headers: ResponseHeaders
+  jsonHandling?: JSONHandling
 }
 
 export class ResultSet<Format extends DataFormat | unknown>
@@ -62,6 +65,7 @@ export class ResultSet<Format extends DataFormat | unknown>
 
   private readonly exceptionTag: string | undefined = undefined
   private readonly log_error: (error: Error) => void
+  private readonly jsonHandling: JSONHandling
 
   constructor(
     private _stream: Stream.Readable,
@@ -69,7 +73,12 @@ export class ResultSet<Format extends DataFormat | unknown>
     public readonly query_id: string,
     log_error?: (error: Error) => void,
     _response_headers?: ResponseHeaders,
+    jsonHandling?: JSONHandling,
   ) {
+    this.jsonHandling = {
+      ...defaultJSONHandling,
+      ...jsonHandling,
+    }
     // eslint-disable-next-line no-console
     this.log_error = log_error ?? ((err: Error) => console.error(err))
 
@@ -108,7 +117,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
       const text = await getAsText(this._stream)
-      return JSON.parse(text)
+      return this.jsonHandling.parse(text)
     }
     // should not be called for CSV, etc.
     throw new Error(`Cannot decode ${this.format} as JSON`)
@@ -128,6 +137,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     let incompleteChunks: Buffer[] = []
     const logError = this.log_error
     const exceptionTag = this.exceptionTag
+    const jsonHandling = this.jsonHandling
     const toRows = new Transform({
       transform(
         chunk: Buffer,
@@ -163,7 +173,7 @@ export class ResultSet<Format extends DataFormat | unknown>
             rows.push({
               text,
               json<T>(): T {
-                return JSON.parse(text)
+                return jsonHandling.parse(text)
               },
             })
             lastIdx = idx + 1 // skipping newline character
@@ -207,8 +217,16 @@ export class ResultSet<Format extends DataFormat | unknown>
     query_id,
     log_error,
     response_headers,
+    jsonHandling,
   }: ResultSetOptions<Format>): ResultSet<Format> {
-    return new ResultSet(stream, format, query_id, log_error, response_headers)
+    return new ResultSet(
+      stream,
+      format,
+      query_id,
+      log_error,
+      response_headers,
+      jsonHandling,
+    )
   }
 }
 

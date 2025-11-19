@@ -1,3 +1,5 @@
+import type { JSONHandling } from '../parse'
+
 export const StreamableJSONFormats = [
   'JSONEachRow',
   'JSONStringsEachRow',
@@ -112,9 +114,13 @@ export function validateStreamFormat(
  * @param format One of the supported JSON formats: https://clickhouse.com/docs/en/interfaces/formats/
  * @returns string
  */
-export function encodeJSON(value: any, format: DataFormat): string {
+export function encodeJSON(
+  value: any,
+  format: DataFormat,
+  stringifyFn: JSONHandling['stringify'],
+): string {
   if ((SupportedJSONFormats as readonly string[]).includes(format)) {
-    return JSON.stringify(value) + '\n'
+    return stringifyFn(value) + '\n'
   }
   throw new Error(
     `The client does not support JSON encoding in [${format}] format.`,
