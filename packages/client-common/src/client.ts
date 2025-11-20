@@ -88,6 +88,15 @@ export type ExecParams = BaseQueryParams & {
    *  @note 2) In case of an error, the stream will be decompressed anyway, regardless of this setting.
    *  @default true */
   decompress_response_stream?: boolean
+  /**
+   * If set to `true`, the client will ignore error responses from the server and return them as-is in the response stream.
+   * This could be useful if you want to handle error responses manually.
+   * @note 1) Node.js only. This setting will have no effect on the Web version.
+   * @note 2) Default behavior is to not ignore error responses, and throw an error when an error response
+   *          is received. This includes decompressing the error response stream if it is compressed.
+   * @default false
+   */
+  ignore_error_response?: boolean
 }
 export type ExecParamsWithValues<Stream> = ExecParams & {
   /** If you have a custom INSERT statement to run with `exec`, the data from this stream will be inserted.
@@ -277,10 +286,12 @@ export class ClickHouseClient<Stream = unknown> {
     const query = removeTrailingSemi(params.query.trim())
     const values = 'values' in params ? params.values : undefined
     const decompress_response_stream = params.decompress_response_stream ?? true
+    const ignore_error_response = params.ignore_error_response ?? false
     return await this.connection.exec({
       query,
       values,
       decompress_response_stream,
+      ignore_error_response,
       ...this.withClientQueryParams(params),
     })
   }

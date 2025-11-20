@@ -196,13 +196,42 @@ describe('[Node.js] exec', () => {
         }),
       )
     })
+  })
 
-    function decompress(stream: Stream.Readable) {
-      return Stream.pipeline(stream, Zlib.createGunzip(), (err) => {
-        if (err) {
-          console.error(err)
-        }
+  describe('ignore error response', () => {
+    beforeEach(() => {
+      client = createTestClient({
+        compression: {
+          response: true,
+        },
       })
-    }
+    })
+
+    it('should get a decompressed response stream if ignore_error_response is true and default decompression config is passed', async () => {
+      const result = await client.exec({
+        query: 'invalid',
+        ignore_error_response: true,
+      })
+      const text = await getAsText(result.stream)
+      expect(text).toContain('Syntax error')
+    })
+
+    it('should get a compressed response stream if ignore_error_response is true and decompression is disabled', async () => {
+      const result = await client.exec({
+        query: 'invalid',
+        decompress_response_stream: false,
+        ignore_error_response: true,
+      })
+      const text = await getAsText(decompress(result.stream))
+      expect(text).toContain('Syntax error')
+    })
   })
 })
+
+function decompress(stream: Stream.Readable) {
+  return Stream.pipeline(stream, Zlib.createGunzip(), (err) => {
+    if (err) {
+      console.error(err)
+    }
+  })
+}

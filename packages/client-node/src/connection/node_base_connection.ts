@@ -73,6 +73,8 @@ export interface RequestParams {
   enable_request_compression?: boolean
   // if there are compression headers, attempt to decompress it
   try_decompress_response_stream?: boolean
+  // if the response contains an error, ignore it and return the stream as-is
+  ignore_error_response?: boolean
   parse_summary?: boolean
   query: string
 }
@@ -468,6 +470,7 @@ export abstract class NodeBaseConnection
         : // there is nothing useful in the response stream for the `Command` operation,
           // and it is immediately destroyed; never decompress it
           false
+    const ignoreErrorResponse = params.ignore_error_response ?? false
     try {
       const { stream, summary, response_headers } = await this.request(
         {
@@ -480,6 +483,7 @@ export abstract class NodeBaseConnection
           enable_response_compression:
             this.params.compression.decompress_response,
           try_decompress_response_stream: tryDecompressResponseStream,
+          ignore_error_response: ignoreErrorResponse,
           headers: this.buildRequestHeaders(params),
           query: params.query,
         },
@@ -537,9 +541,13 @@ export abstract class NodeBaseConnection
         this.logResponse(op, request, params, _response, start)
         const tryDecompressResponseStream =
           params.try_decompress_response_stream ?? true
+        const ignoreErrorResponse = params.ignore_error_response ?? false
         // even if the stream decompression is disabled, we have to decompress it in case of an error
         const isFailedResponse = !isSuccessfulResponse(_response.statusCode)
-        if (tryDecompressResponseStream || isFailedResponse) {
+        if (
+          tryDecompressResponseStream ||
+          (isFailedResponse && !ignoreErrorResponse)
+        ) {
           const decompressionResult = decompressResponse(_response, this.logger)
           if (isDecompressionError(decompressionResult)) {
             const err = enhanceStackTrace(
@@ -552,7 +560,7 @@ export abstract class NodeBaseConnection
         } else {
           responseStream = _response
         }
-        if (isFailedResponse) {
+        if (isFailedResponse && !ignoreErrorResponse) {
           try {
             const errorMessage = await getAsText(responseStream)
             const err = enhanceStackTrace(
@@ -795,6 +803,7 @@ type RunExecParams = ConnBaseQueryParams & {
   op: 'Exec' | 'Command'
   values?: ConnExecParams<Stream.Readable>['values']
   decompress_response_stream?: boolean
+  ignore_error_response?: boolean
 }
 
 const PingQuery = `SELECT 'ping'`
