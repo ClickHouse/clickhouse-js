@@ -2,7 +2,14 @@
 
 ## New features
 
-- Added an `ignore_error_response` key to `client.exec`, which allows callers to manually handle errors. ([#483])
+- It is now possible to specify custom `parse` and `stringify` functions that will be used instead of the standard `JSON.parse` and `JSON.stringify` methods for JSON serialization/deserialization when working with `JSON*` family formats. See `ClickHouseClientConfigOptions.json`, and a new [custom_json_handling] example for more details. ([#481], [looskie])
+- (Node.js only) Added an `ignore_error_response` param to `ClickHouseClient.exec`, which allows callers to manually handle request errors on the application side. ([#483], [Kinzeng])
+
+[#481]: https://github.com/ClickHouse/clickhouse-js/pull/481
+[#483]: https://github.com/ClickHouse/clickhouse-js/pull/483
+[looskie]: https://github.com/looskie
+[Kinzeng]: https://github.com/Kinzeng
+[custom_json_handling]: https://github.com/ClickHouse/clickhouse-js/blob/1.14.0/examples/custom_json_handling.ts
 
 # 1.13.0
 
