@@ -1,5 +1,5 @@
 import { execSync } from 'child_process'
-import fs from 'fs'
+import fs, { readFileSync } from 'fs'
 import * as process from 'process'
 
 void (async () => {
@@ -21,36 +21,34 @@ void (async () => {
     process.exit(1)
   }
 
-  fs.copyFileSync(`./packages/${packageName}/package.json`, './package.json')
+  try {
+    fs.copyFileSync(`./packages/${packageName}/package.json`, './package.json')
 
-  const packageJson = (await import('../package.json').then(
-    (m) => m.default,
-  )) as any
-  const version = (
-    await import(`../packages/${packageName}/src/version` + '.ts')
-  ).default
-  console.log(`Current ${packageName} package version is: ${version}`)
-  packageJson.version = version
+    const packageJson: {
+      version: string
+      dependencies: Record<string, string>
+    } = JSON.parse(readFileSync('./package.json').toString())
 
-  if (packageJson.dependencies['@clickhouse/client-common']) {
-    const commonVersion = (
-      await import('../packages/client-common/src/version' + '.ts')
+    const version = (
+      await import(`../packages/${packageName}/src/version` + '.ts')
     ).default
-    console.log(`Updating client-common dependency to ${commonVersion}`)
-    packageJson['dependencies']['@clickhouse/client-common'] = commonVersion
-  }
+    console.log(`Current ${packageName} package version is: ${version}`)
+    packageJson.version = version
 
-  console.log('Updated package json:')
-  console.log(packageJson)
+    if (packageJson.dependencies['@clickhouse/client-common']) {
+      const commonVersion = (
+        await import('../packages/client-common/src/version' + '.ts')
+      ).default
+      console.log(`Updating client-common dependency to ${commonVersion}`)
+      packageJson['dependencies']['@clickhouse/client-common'] = commonVersion
+    }
 
-  try {
+    console.log('Updated package json:')
+    console.log(packageJson)
+
+    console.log(`Building package ${packageName}...`)
     execSync(`./.scripts/build.sh ${packageName}`, { cwd: process.cwd() })
-  } catch (err) {
-    console.error(err)
-    process.exit(1)
-  }
 
-  try {
     fs.writeFileSync(
       './package.json',
       JSON.stringify(packageJson, null, 2) + '\n',
@@ -60,5 +58,6 @@ void (async () => {
     console.error(err)
     process.exit(1)
   }
+
   process.exit(0)
 })()
