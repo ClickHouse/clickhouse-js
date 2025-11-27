@@ -28,7 +28,6 @@ function formatQueryParamsInternal({
   if (Number.isNaN(value)) return 'nan'
   if (value === Number.POSITIVE_INFINITY) return '+inf'
   if (value === Number.NEGATIVE_INFINITY) return '-inf'
-  
   if (typeof value === 'number' || typeof value === 'bigint') return String(value)
   if (typeof value === 'boolean') {
     if (isInArrayOrTuple) {
