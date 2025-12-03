@@ -1,11 +1,13 @@
 import type {
   BaseResultSet,
   DataFormat,
+  JSONHandling,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
   Row,
 } from '@clickhouse/client-common'
+import { checkErrorInChunkAtIndex } from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
@@ -19,16 +21,28 @@ export class ResultSet<Format extends DataFormat | unknown>
   implements BaseResultSet<ReadableStream<Row[]>, Format>
 {
   public readonly response_headers: ResponseHeaders
+
+  private readonly exceptionTag: string | undefined = undefined
   private isAlreadyConsumed = false
+  private readonly jsonHandling: JSONHandling
 
   constructor(
     private _stream: ReadableStream,
     private readonly format: Format,
     public readonly query_id: string,
     _response_headers?: ResponseHeaders,
+    jsonHandling: JSONHandling = {
+      parse: JSON.parse,
+      stringify: JSON.stringify,
+    },
   ) {
     this.response_headers =
       _response_headers !== undefined ? Object.freeze(_response_headers) : {}
+    this.exceptionTag = this.response_headers['x-clickhouse-exception-tag'] as
+      | string
+      | undefined
+
+    this.jsonHandling = jsonHandling
   }
 
   /** See {@link BaseResultSet.text} */
@@ -58,7 +72,7 @@ export class ResultSet<Format extends DataFormat | unknown>
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
       const text = await getAsText(this._stream)
-      return JSON.parse(text)
+      return this.jsonHandling.parse(text)
     }
     // should not be called for CSV, etc.
     throw new Error(`Cannot decode ${this.format} as JSON`)
@@ -71,6 +85,9 @@ export class ResultSet<Format extends DataFormat | unknown>
 
     let incompleteChunks: Uint8Array[] = []
     let totalIncompleteLength = 0
+
+    const exceptionTag = this.exceptionTag
+    const jsonHandling = this.jsonHandling
     const decoder = new TextDecoder('utf-8')
     const transform = new TransformStream({
       start() {
@@ -80,35 +97,36 @@ export class ResultSet<Format extends DataFormat | unknown>
         if (chunk === null) {
           controller.terminate()
         }
+
         const rows: Row[] = []
+
         let idx: number
         let lastIdx = 0
+
         do {
-          // an unescaped newline character denotes the end of a row
+          // an unescaped newline character denotes the end of a row,
+          // or at least the beginning of the exception marker
           idx = chunk.indexOf(NEWLINE, lastIdx)
-          // there is no complete row in the rest of the current chunk
-          if (idx === -1) {
-            // to be processed during the next transform iteration
-            const incompleteChunk = chunk.slice(lastIdx)
-            incompleteChunks.push(incompleteChunk)
-            totalIncompleteLength += incompleteChunk.length
-            // send the extracted rows to the consumer, if any
-            if (rows.length > 0) {
-              controller.enqueue(rows)
+          if (idx !== -1) {
+            let bytesToDecode: Uint8Array
+
+            const maybeErr = checkErrorInChunkAtIndex(chunk, idx, exceptionTag)
+            if (maybeErr) {
+              controller.error(maybeErr)
             }
-          } else {
-            let text: string
+
+            // using the incomplete chunks from the previous iterations
             if (incompleteChunks.length > 0) {
               const completeRowBytes = new Uint8Array(
                 totalIncompleteLength + idx,
               )
 
-              // using the incomplete chunks from the previous iterations
               let offset = 0
               incompleteChunks.forEach((incompleteChunk) => {
                 completeRowBytes.set(incompleteChunk, offset)
                 offset += incompleteChunk.length
               })
+
               // finalize the row with the current chunk slice that ends with a newline
               const finalChunk = chunk.slice(0, idx)
               completeRowBytes.set(finalChunk, offset)
@@ -117,17 +135,31 @@ export class ResultSet<Format extends DataFormat | unknown>
               incompleteChunks = []
               totalIncompleteLength = 0
 
-              text = decoder.decode(completeRowBytes)
+              bytesToDecode = completeRowBytes
             } else {
-              text = decoder.decode(chunk.slice(lastIdx, idx))
+              bytesToDecode = chunk.slice(lastIdx, idx)
             }
+
+            const text = decoder.decode(bytesToDecode)
             rows.push({
               text,
               json<T>(): T {
-                return JSON.parse(text)
+                return jsonHandling.parse(text)
               },
             })
+
             lastIdx = idx + 1 // skipping newline character
+          } else {
+            // there is no complete row in the rest of the current chunk
+            // to be processed during the next transform iteration
+            const incompleteChunk = chunk.slice(lastIdx)
+            incompleteChunks.push(incompleteChunk)
+            totalIncompleteLength += incompleteChunk.length
+
+            // send the extracted rows to the consumer, if any
+            if (rows.length > 0) {
+              controller.enqueue(rows)
+            }
           }
         } while (idx !== -1)
       },

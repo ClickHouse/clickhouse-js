@@ -22,6 +22,7 @@ If something is missing, or you found a mistake in one of these examples, please
 - [read_only_user.ts](read_only_user.ts) - an example of using the client with a read-only user, with possible read-only user limitations highlights.
 - [basic_tls.ts](node/basic_tls.ts) - (Node.js only) using certificates for basic TLS authentication.
 - [mutual_tls.ts](node/mutual_tls.ts) - (Node.js only) using certificates for mutual TLS authentication.
+- [custom_json_handling.ts](custom_json_handling.ts) - Customize JSON serialization/deserialization by providing a custom `parse` and `stringify` function. This is particularly useful when working with obscure data formats like `bigint`s.
 
 #### Creating tables
 

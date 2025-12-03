@@ -216,6 +216,58 @@ describe('data types', () => {
     })
   })
 
+  it('should work with custom JSON handling (BigInt and Date)', async () => {
+    const TEST_BIGINT = BigInt(25000000000000000)
+    const TEST_DATE = new Date('2023-12-06T10:54:48.123Z')
+    const values = [
+      {
+        big_id: TEST_BIGINT,
+        dt: TEST_DATE,
+      },
+    ]
+
+    const valueSerializer = (value: unknown): unknown => {
+      if (value instanceof Date) {
+        return value.getTime()
+      }
+      if (typeof value === 'bigint') {
+        return value.toString()
+      }
+      if (Array.isArray(value)) {
+        return value.map(valueSerializer)
+      }
+      if (value && typeof value === 'object') {
+        return Object.fromEntries(
+          Object.entries(value).map(([k, v]) => [k, valueSerializer(v)]),
+        )
+      }
+      return value
+    }
+
+    // modify the client to handle BigInt and Date serialization
+    client = createTestClient({
+      json: {
+        parse: JSON.parse,
+        stringify: (obj: unknown) => {
+          const seralized = valueSerializer(obj)
+          return JSON.stringify(seralized)
+        },
+      },
+    })
+
+    const table = await createTableWithFields(
+      client,
+      "big_id UInt64, dt DateTime64(3, 'UTC')",
+    )
+
+    await insertAndAssert(table, values, {}, [
+      {
+        dt: TEST_DATE.toISOString().replace('T', ' ').replace('Z', ''), // clickhouse returns DateTime64 in UTC without timezone info
+        big_id: TEST_BIGINT.toString(), // clickhouse by default returns UInt64 as string to be safe
+      },
+    ])
+  })
+
   it('should work with string enums', async () => {
     const values = [
       { e1: 'Foo', e2: 'Qaz' },
@@ -753,8 +805,9 @@ describe('data types', () => {
     table: string,
     data: T[],
     clickhouse_settings: ClickHouseSettings = {},
+    expectedDataBack?: unknown[],
   ) {
     await insertData(table, data, clickhouse_settings)
-    await assertData(table, data, clickhouse_settings)
+    await assertData(table, expectedDataBack ?? data, clickhouse_settings)
   }
 })

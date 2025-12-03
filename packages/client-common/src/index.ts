@@ -80,8 +80,13 @@ export type {
   ParsedColumnTuple,
   ParsedColumnMap,
   ParsedColumnType,
+  JSONHandling,
 } from './parse'
-export { SimpleColumnTypes, parseColumnType } from './parse'
+export {
+  SimpleColumnTypes,
+  parseColumnType,
+  defaultJSONHandling,
+} from './parse'
 
 /** For implementation usage only - should not be re-exported */
 export {
@@ -105,6 +110,7 @@ export {
   numberConfigURLValue,
 } from './config'
 export {
+  EXCEPTION_TAG_HEADER_NAME,
   isSuccessfulResponse,
   sleep,
   toSearchParams,
@@ -113,6 +119,7 @@ export {
   withHttpSettings,
   isCredentialsAuth,
   isJWTAuth,
+  checkErrorInChunkAtIndex,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
 export { getCurrentStackTrace, enhanceStackTrace } from './error'

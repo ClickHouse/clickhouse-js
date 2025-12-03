@@ -214,28 +214,6 @@ describe('Insert with specific columns', () => {
       expect(result).toEqual(values)
     })
 
-    it('should work when all the columns are excluded', async () => {
-      await client.insert({
-        table,
-        values: [{}, {}],
-        format: 'JSONEachRow',
-        columns: {
-          except: ['id', 's', 'b'],
-        },
-      })
-
-      const result = await client
-        .query({
-          query: `SELECT *
-                  FROM ${table}`,
-          format: 'JSONEachRow',
-        })
-        .then((r) => r.json())
-
-      // While ClickHouse allows that via HTTP, the data won't be actually inserted
-      expect(result).toEqual([])
-    })
-
     // Surprisingly, `EXCEPT some_unknown_column` does not fail, even from the CLI
     it('should still work when an unknown column is specified', async () => {
       const values = [

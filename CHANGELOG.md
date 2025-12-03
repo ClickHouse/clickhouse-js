@@ -1,3 +1,36 @@
+# 1.14.0
+
+## New features
+
+- It is now possible to specify custom `parse` and `stringify` functions that will be used instead of the standard `JSON.parse` and `JSON.stringify` methods for JSON serialization/deserialization when working with `JSON*` family formats. See `ClickHouseClientConfigOptions.json`, and a new [custom_json_handling] example for more details. ([#481], [looskie])
+- (Node.js only) Added an `ignore_error_response` param to `ClickHouseClient.exec`, which allows callers to manually handle request errors on the application side. ([#483], [Kinzeng])
+
+[#481]: https://github.com/ClickHouse/clickhouse-js/pull/481
+[#483]: https://github.com/ClickHouse/clickhouse-js/pull/483
+[looskie]: https://github.com/looskie
+[Kinzeng]: https://github.com/Kinzeng
+[custom_json_handling]: https://github.com/ClickHouse/clickhouse-js/blob/1.14.0/examples/custom_json_handling.ts
+
+# 1.13.0
+
+## New features
+
+- Server-side exceptions that occur in the middle of the HTTP stream are now handled correctly. This requires [ClickHouse 25.11+](https://github.com/ClickHouse/ClickHouse/pull/88818). Previous ClickHouse versions are unaffected by this change. ([#478])
+
+## Improvements
+
+- `TupleParam` constructor now accepts a readonly array to permit more usages. ([#465], [Malien])
+
+## Bug fixes
+
+- Fixed boolean value formatting in query parameters. Boolean values within `Array`, `Tuple`, and `Map` types are now correctly formatted as `TRUE`/`FALSE` instead of `1`/`0` to ensure proper type compatibility with ClickHouse. ([#475], [baseballyama])
+
+[#465]: https://github.com/ClickHouse/clickhouse-js/pull/465
+[#475]: https://github.com/ClickHouse/clickhouse-js/pull/475
+[#478]: https://github.com/ClickHouse/clickhouse-js/pull/478
+[Malien]: https://github.com/Malien
+[baseballyama]: https://github.com/baseballyama
+
 # 1.12.1
 
 ## Improvements
@@ -198,7 +231,7 @@ A minor release to allow further investigation regarding uncaught error issues w
 
 ## New features
 
-- Added optional `real_time_microseconds` field to the `ClickHouseSummary` interface (see https://github.com/ClickHouse/ClickHouse/pull/69032)
+- Added optional `real_time_microseconds` field to the `ClickHouseSummary` interface (see <https://github.com/ClickHouse/ClickHouse/pull/69032>)
 
 ## Bug fixes
 

@@ -3,10 +3,21 @@ import type {
   InsertValues,
   ValuesEncoder,
 } from '@clickhouse/client-common'
-import { encodeJSON } from '@clickhouse/client-common'
+import { encodeJSON, type JSONHandling } from '@clickhouse/client-common'
 import { isStream } from './stream'
 
 export class WebValuesEncoder implements ValuesEncoder<ReadableStream> {
+  private readonly json: JSONHandling
+
+  constructor(
+    jsonHandling: JSONHandling = {
+      parse: JSON.parse,
+      stringify: JSON.stringify,
+    },
+  ) {
+    this.json = jsonHandling
+  }
+
   encodeValues<T = unknown>(
     values: InsertValues<T>,
     format: DataFormat,
@@ -14,11 +25,13 @@ export class WebValuesEncoder implements ValuesEncoder<ReadableStream> {
     throwIfStream(values)
     // JSON* arrays
     if (Array.isArray(values)) {
-      return values.map((value) => encodeJSON(value, format)).join('')
+      return values
+        .map((value) => encodeJSON(value, format, this.json.stringify))
+        .join('')
     }
     // JSON & JSONObjectEachRow format input
     if (typeof values === 'object') {
-      return encodeJSON(values, format)
+      return encodeJSON(values, format, this.json.stringify)
     }
     throw new Error(
       `Cannot encode values of type ${typeof values} with ${format} format`,

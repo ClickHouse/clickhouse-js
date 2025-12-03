@@ -1,3 +1,4 @@
+import type { JSONHandling } from '.'
 import type {
   WithClickHouseSummary,
   WithResponseHeaders,
@@ -21,6 +22,7 @@ export interface ConnectionParams {
   application_id?: string
   http_headers?: Record<string, string>
   auth: ConnectionAuth
+  json?: JSONHandling
 }
 
 export interface CompressionSettings {
@@ -52,6 +54,7 @@ export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
 export interface ConnExecParams<Stream> extends ConnBaseQueryParams {
   values?: Stream
   decompress_response_stream?: boolean
+  ignore_error_response?: boolean
 }
 
 export interface ConnBaseResult extends WithResponseHeaders {

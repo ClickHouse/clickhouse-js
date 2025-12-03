@@ -2,7 +2,9 @@ import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient, guid } from '@test/utils'
+import { requireServerVersionAtLeast } from '@test/utils/jasmine'
 import Stream from 'stream'
+import * as simdjson from 'simdjson'
 import { makeObjectStream } from '../utils/stream'
 
 describe('[Node.js] stream JSON formats', () => {
@@ -242,9 +244,6 @@ describe('[Node.js] stream JSON formats', () => {
         },
       })
       const rows = await rs.json()
-      console.dir(rows, {
-        depth: null,
-      })
       expect(rows).toEqual([
         {
           progress: {
@@ -279,9 +278,6 @@ describe('[Node.js] stream JSON formats', () => {
         },
       })
       const rows = await rs.json<{ k: number; c: string; s: string }>()
-      console.dir(rows, {
-        depth: null,
-      })
       expect(rows).toEqual([
         {
           progress: {
@@ -317,6 +313,8 @@ describe('[Node.js] stream JSON formats', () => {
     })
 
     it('works with exceptions', async () => {
+      requireServerVersionAtLeast(25, 11)
+
       const rs = await client.query({
         query: `SELECT number, throwIf(number = 3, 'boom') AS foo FROM system.numbers`,
         format: 'JSONEachRowWithProgress',
@@ -324,52 +322,233 @@ describe('[Node.js] stream JSON formats', () => {
           max_block_size: '1',
         },
       })
-      const rows = await rs.json()
-      console.dir(rows, {
-        depth: null,
+      await expectAsync(rs.json()).toBeRejectedWith(
+        jasmine.objectContaining({
+          code: '395',
+          message: jasmine.stringContaining(
+            `boom: while executing 'FUNCTION throwIf`,
+          ),
+        }),
+      )
+    })
+
+    describe('custom JSON handling', () => {
+      it('should use custom stringify when inserting with JSONEachRow stream', async () => {
+        let stringifyCalls = 0
+        const customClient = createTestClient({
+          json: {
+            parse: JSON.parse,
+            stringify: (value) => {
+              stringifyCalls++
+              return JSON.stringify(value)
+            },
+          },
+        })
+
+        const stream = makeObjectStream()
+        stream.push({ id: '42', name: 'foo', sku: [0, 1] })
+        stream.push({ id: '43', name: 'bar', sku: [2, 3] })
+        setTimeout(() => stream.push(null), 100)
+
+        await customClient.insert({
+          table: tableName,
+          values: stream,
+          format: 'JSONEachRow',
+        })
+
+        expect(stringifyCalls).toBe(2)
+
+        const result = await customClient.query({
+          query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+          format: 'JSONEachRow',
+        })
+        expect(await result.json()).toEqual([
+          { id: '42', name: 'foo', sku: [0, 1] },
+          { id: '43', name: 'bar', sku: [2, 3] },
+        ])
+
+        await customClient.close()
       })
-      expect(rows).toEqual([
-        {
-          progress: {
-            read_rows: '1',
-            read_bytes: '8',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+
+      it('should use custom stringify when inserting with JSONEachRow array', async () => {
+        let stringifyCalls = 0
+        const customClient = createTestClient({
+          json: {
+            parse: JSON.parse,
+            stringify: (value) => {
+              stringifyCalls++
+              return JSON.stringify(value)
+            },
           },
-        },
-        {
-          meta: [
-            { name: 'number', type: 'UInt64' },
-            { name: 'foo', type: 'UInt8' },
-          ],
-        },
-        { row: { number: '0', foo: 0 } },
-        {
-          progress: {
-            read_rows: '2',
-            read_bytes: '16',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+        })
+
+        const values = [
+          { id: '42', name: 'foo', sku: [0, 1] },
+          { id: '43', name: 'bar', sku: [2, 3] },
+        ]
+
+        await customClient.insert({
+          table: tableName,
+          values,
+          format: 'JSONEachRow',
+        })
+
+        expect(stringifyCalls).toBe(2)
+
+        const result = await customClient.query({
+          query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+          format: 'JSONEachRow',
+        })
+        expect(await result.json()).toEqual(values)
+
+        await customClient.close()
+      })
+
+      it('should use custom parse when querying with JSONEachRow', async () => {
+        let parseCalls = 0
+        const customClient = createTestClient({
+          json: {
+            parse: (text) => {
+              parseCalls++
+              return JSON.parse(text)
+            },
+            stringify: JSON.stringify,
           },
-        },
-        { row: { number: '1', foo: 0 } },
-        {
-          progress: {
-            read_rows: '3',
-            read_bytes: '24',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+        })
+
+        const stream = makeObjectStream()
+        stream.push({ id: '42', name: 'foo', sku: [0, 1] })
+        stream.push({ id: '43', name: 'bar', sku: [2, 3] })
+        setTimeout(() => stream.push(null), 100)
+
+        await customClient.insert({
+          table: tableName,
+          values: stream,
+          format: 'JSONEachRow',
+        })
+
+        parseCalls = 0
+        const result = await customClient.query({
+          query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+          format: 'JSONEachRow',
+        })
+        await result.json()
+
+        expect(parseCalls).toBeGreaterThan(0)
+
+        await customClient.close()
+      })
+
+      it('should work with simdjson parser', async () => {
+        const customClient = createTestClient({
+          json: {
+            parse: simdjson.parse,
+            stringify: JSON.stringify,
           },
-        },
-        { row: { number: '2', foo: 0 } },
-        {
-          progress: {
-            read_rows: '4',
-            read_bytes: '32',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+        })
+
+        const stream = makeObjectStream()
+        stream.push({ id: '42', name: 'foo', sku: [0, 1] })
+        stream.push({ id: '43', name: 'bar', sku: [2, 3] })
+        setTimeout(() => stream.push(null), 100)
+
+        await customClient.insert({
+          table: tableName,
+          values: stream,
+          format: 'JSONEachRow',
+        })
+
+        const result = await customClient.query({
+          query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+          format: 'JSONEachRow',
+        })
+        expect(await result.json()).toEqual([
+          { id: '42', name: 'foo', sku: [0, 1] },
+          { id: '43', name: 'bar', sku: [2, 3] },
+        ])
+
+        await customClient.close()
+      })
+
+      it('should use custom stringify with JSONCompactEachRow', async () => {
+        let stringifyCalls = 0
+        const customClient = createTestClient({
+          json: {
+            parse: JSON.parse,
+            stringify: (value) => {
+              stringifyCalls++
+              return JSON.stringify(value)
+            },
           },
-        },
-        {
-          exception: jasmine.stringContaining('Code: 395. DB::Exception: boom'),
-        },
-      ])
+        })
+
+        const stream = makeObjectStream()
+        stream.push(['42', 'foo', [0, 1]])
+        stream.push(['43', 'bar', [2, 3]])
+        setTimeout(() => stream.push(null), 100)
+
+        await customClient.insert({
+          table: tableName,
+          values: stream,
+          format: 'JSONCompactEachRow',
+        })
+
+        expect(stringifyCalls).toBe(2)
+
+        const result = await customClient.query({
+          query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+          format: 'JSONCompactEachRow',
+        })
+        expect(await result.json()).toEqual([
+          ['42', 'foo', [0, 1]],
+          ['43', 'bar', [2, 3]],
+        ])
+
+        await customClient.close()
+      })
+
+      it('should use custom stringify for data transformation', async () => {
+        const customClient = createTestClient({
+          json: {
+            parse: JSON.parse,
+            stringify: (value) => {
+              if (
+                typeof value === 'object' &&
+                value !== null &&
+                'id' in value
+              ) {
+                return JSON.stringify({
+                  ...value,
+                  id: String(Number(value.id) * 10),
+                })
+              }
+              return JSON.stringify(value)
+            },
+          },
+        })
+
+        const values = [
+          { id: '4', name: 'foo', sku: [0, 1] },
+          { id: '5', name: 'bar', sku: [2, 3] },
+        ]
+
+        await customClient.insert({
+          table: tableName,
+          values,
+          format: 'JSONEachRow',
+        })
+
+        const result = await customClient.query({
+          query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+          format: 'JSONEachRow',
+        })
+        expect(await result.json()).toEqual([
+          { id: '40', name: 'foo', sku: [0, 1] },
+          { id: '50', name: 'bar', sku: [2, 3] },
+        ])
+
+        await customClient.close()
+      })
     })
   })
 

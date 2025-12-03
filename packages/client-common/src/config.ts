@@ -3,6 +3,7 @@ import type { Connection, ConnectionParams } from './connection'
 import type { DataFormat } from './data_formatter'
 import type { Logger } from './logger'
 import { ClickHouseLogLevel, LogWriter } from './logger'
+import { defaultJSONHandling, type JSONHandling } from './parse/json_handling'
 import type { BaseResultSet } from './result'
 import type { ClickHouseSettings } from './settings'
 
@@ -86,6 +87,12 @@ export interface BaseClickHouseClientConfigOptions {
      *  @default true */
     enabled?: boolean
   }
+  /**
+   * Custom parsing when handling with JSON objects
+   *
+   * Defaults to using standard `JSON.parse` and `JSON.stringify`
+   */
+  json?: Partial<JSONHandling>
 }
 
 export type MakeConnection<
@@ -102,7 +109,12 @@ export type MakeResultSet<Stream> = <
   query_id: string,
   log_error: (err: Error) => void,
   response_headers: ResponseHeaders,
+  jsonHandling: JSONHandling,
 ) => ResultSet
+
+export type MakeValuesEncoder<Stream> = (
+  jsonHandling: JSONHandling,
+) => ValuesEncoder<Stream>
 
 export interface ValuesEncoder<Stream> {
   validateInsertValues<T = unknown>(
@@ -150,7 +162,7 @@ export interface ImplementationDetails<Stream> {
   impl: {
     make_connection: MakeConnection<Stream>
     make_result_set: MakeResultSet<Stream>
-    values_encoder: ValuesEncoder<Stream>
+    values_encoder: MakeValuesEncoder<Stream>
     handle_specific_url_params?: HandleImplSpecificURLParams
   }
 }
@@ -241,6 +253,10 @@ export function getConnectionParams(
     keep_alive: { enabled: config.keep_alive?.enabled ?? true },
     clickhouse_settings: config.clickhouse_settings ?? {},
     http_headers: config.http_headers ?? {},
+    json: {
+      ...defaultJSONHandling,
+      ...config.json,
+    },
   }
 }
 

@@ -1,5 +1,5 @@
 export class TupleParam {
-  constructor(public readonly values: any[]) {}
+  constructor(public readonly values: readonly unknown[]) {}
 }
 
 export function formatQueryParams({
@@ -7,6 +7,20 @@ export function formatQueryParams({
   wrapStringInQuotes,
   printNullAsKeyword,
 }: FormatQueryParamsOptions): string {
+  return formatQueryParamsInternal({
+    value,
+    wrapStringInQuotes,
+    printNullAsKeyword,
+    isInArrayOrTuple: false,
+  })
+}
+
+function formatQueryParamsInternal({
+  value,
+  wrapStringInQuotes,
+  printNullAsKeyword,
+  isInArrayOrTuple,
+}: FormatQueryParamsOptions & { isInArrayOrTuple: boolean }): string {
   if (value === null || value === undefined) {
     if (printNullAsKeyword) return 'NULL'
     return '\\N'
@@ -16,7 +30,12 @@ export function formatQueryParams({
   if (value === Number.NEGATIVE_INFINITY) return '-inf'
 
   if (typeof value === 'number') return String(value)
-  if (typeof value === 'boolean') return value ? '1' : '0'
+  if (typeof value === 'boolean') {
+    if (isInArrayOrTuple) {
+      return value ? 'TRUE' : 'FALSE'
+    }
+    return value ? '1' : '0'
+  }
   if (typeof value === 'string') {
     let result = ''
     for (let i = 0; i < value.length; i++) {
@@ -46,10 +65,11 @@ export function formatQueryParams({
   if (Array.isArray(value)) {
     return `[${value
       .map((v) =>
-        formatQueryParams({
+        formatQueryParamsInternal({
           value: v,
           wrapStringInQuotes: true,
           printNullAsKeyword: true,
+          isInArrayOrTuple: true,
         }),
       )
       .join(',')}]`
@@ -70,10 +90,11 @@ export function formatQueryParams({
   if (value instanceof TupleParam) {
     return `(${value.values
       .map((v) =>
-        formatQueryParams({
+        formatQueryParamsInternal({
           value: v,
           wrapStringInQuotes: true,
           printNullAsKeyword: true,
+          isInArrayOrTuple: true,
         }),
       )
       .join(',')})`
@@ -98,14 +119,16 @@ function formatObjectLikeParam(
   const formatted: string[] = []
   for (const [key, val] of entries) {
     formatted.push(
-      `${formatQueryParams({
+      `${formatQueryParamsInternal({
         value: key,
         wrapStringInQuotes: true,
         printNullAsKeyword: true,
-      })}:${formatQueryParams({
+        isInArrayOrTuple: true,
+      })}:${formatQueryParamsInternal({
         value: val,
         wrapStringInQuotes: true,
         printNullAsKeyword: true,
+        isInArrayOrTuple: true,
       })}`,
     )
   }
@@ -113,7 +136,7 @@ function formatObjectLikeParam(
 }
 
 interface FormatQueryParamsOptions {
-  value: any
+  value: unknown
   wrapStringInQuotes?: boolean
   // For tuples/arrays, it is required to print NULL instead of \N
   printNullAsKeyword?: boolean
