@@ -9,7 +9,7 @@ and help us maintain up-to-date documentation.
 
 You have installed:
 
-- a compatible LTS version of Node.js: `v16.x`, `v18.x` or `v20.x`
+- a compatible LTS version of Node.js: `v20.x`, `v22.x` or `v24.x`
 - NPM >= `9.x`
 
 ### Create a fork of the repository and clone it
