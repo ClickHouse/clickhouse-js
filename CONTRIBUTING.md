@@ -218,19 +218,19 @@ We prefer to keep versions the same across the packages, and release all at once
 Common package manual release:
 
 ```bash
-ts-node .build/build_and_prepare.ts common && npm pack && npm publish
+npx tsx .build/build_and_prepare.ts common && npm pack && npm publish
 ```
 
 Node.js client manual release:
 
 ```bash
-ts-node .build/build_and_prepare.ts node && npm pack && npm publish
+npx tsx .build/build_and_prepare.ts node && npm pack && npm publish
 ```
 
 Web client manual release:
 
 ```bash
-ts-node .build/build_and_prepare.ts web && npm pack && npm publish
+npx tsx .build/build_and_prepare.ts web && npm pack && npm publish
 ```
 
 For simplicity, `build_and_prepare.ts` just overrides the root `package.json`,
