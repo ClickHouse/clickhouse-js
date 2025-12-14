@@ -2,6 +2,7 @@ name: 'npm-e2e-test'
 
 permissions: {}
 on:
+  push:
   workflow_dispatch:
   schedule:
     - cron: '0 9 * * *'
