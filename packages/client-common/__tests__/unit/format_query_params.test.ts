@@ -38,6 +38,24 @@ describe('formatQueryParams', () => {
     ).toBe('1')
   })
 
+  it('formats BigInt', () => {
+    expect(
+      formatQueryParams({
+        value: 0n,
+      }),
+    ).toBe('0')
+    expect(
+      formatQueryParams({
+        value: -1n,
+      }),
+    ).toBe('-1')
+    expect(
+      formatQueryParams({
+        value: 123456789012345678901234567890n,
+      }),
+    ).toBe('123456789012345678901234567890')
+  })
+
   it('formats NaN', () => {
     expect(
       formatQueryParams({
