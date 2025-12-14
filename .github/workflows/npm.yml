@@ -2,7 +2,6 @@ name: 'npm'
 
 permissions: {}
 on:
-  push:
   workflow_dispatch:
   schedule:
     - cron: '0 9 * * *'
