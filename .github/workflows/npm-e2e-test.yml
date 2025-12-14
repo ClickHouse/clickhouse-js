@@ -1,0 +1,34 @@
+name: 'npm-e2e-test'
+
+permissions: {}
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * *'
+
+jobs:
+  install-package:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install the latest package version
+        run: |
+          mkdir e2e-test
+          cd e2e-test
+          npm init -y
+          npm install @clickhouse/client
+          cat package.json
+          node <<EOF
+          const { createClient } = require('@clickhouse/client');
+          console.log(createClient({ url: 'http://localhost:8123' }));
+          EOF
