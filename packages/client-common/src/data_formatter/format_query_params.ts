@@ -29,7 +29,8 @@ function formatQueryParamsInternal({
   if (value === Number.POSITIVE_INFINITY) return '+inf'
   if (value === Number.NEGATIVE_INFINITY) return '-inf'
 
-  if (typeof value === 'number' || typeof value === 'bigint') return String(value)
+  if (typeof value === 'number' || typeof value === 'bigint')
+    return String(value)
   if (typeof value === 'boolean') {
     if (isInArrayOrTuple) {
       return value ? 'TRUE' : 'FALSE'
