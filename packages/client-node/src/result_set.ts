@@ -58,9 +58,9 @@ export interface ResultSetOptions<Format extends DataFormat> {
   jsonHandling?: JSONHandling
 }
 
-export class ResultSet<Format extends DataFormat | unknown>
-  implements BaseResultSet<Stream.Readable, Format>
-{
+export class ResultSet<
+  Format extends DataFormat | unknown,
+> implements BaseResultSet<Stream.Readable, Format> {
   public readonly response_headers: ResponseHeaders = {}
 
   private readonly exceptionTag: string | undefined = undefined
