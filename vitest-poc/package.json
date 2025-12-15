@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "test:browser": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -12,6 +13,7 @@
   "type": "commonjs",
   "devDependencies": {
     "@clickhouse/client-common": "^1.14.0",
+    "@vitest/browser-playwright": "^4.0.15",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   }
