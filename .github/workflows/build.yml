@@ -43,7 +43,7 @@ jobs:
           mv clickhouse-client-web-${CLIENT_VERSION}.tgz clickhouse-client-web.tgz
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6.0.0
         with:
           name: clickhouse-js-packages
           path: clickhouse-client*.tgz
