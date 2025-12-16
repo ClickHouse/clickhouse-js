@@ -1,4 +1,4 @@
-import { ClickHouseClient } from '../../src/client'
+import { createTestClient, sleep } from '../utils'
 
 function isAwaitUsingStatementSupported(): boolean {
   try {
@@ -13,29 +13,13 @@ function isAwaitUsingStatementSupported(): boolean {
   }
 }
 
-function mockImpl(): any {
-  return {
-    make_connection: () => {
-      return {} as any
-    },
-    values_encoder: () => {
-      return {} as any
-    },
-  }
-}
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
 describe('client', () => {
   it('closes the client when used with using statement', async () => {
     if (!isAwaitUsingStatementSupported()) {
       pending('using statement is not supported in this environment')
       return
     }
-    const client = new ClickHouseClient({
-      url: 'http://localhost',
-      impl: mockImpl(),
-    })
+    const client = createTestClient()
     let isClosed = false
     spyOn(client, 'close').and.callFake(async () => {
       // Simulate some delay in closing
