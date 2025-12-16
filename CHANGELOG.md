@@ -1,3 +1,11 @@
+# 1.16.0
+
+## New features
+
+- Added support for the new [Disposable API] (a.k.a the `using` keyword) (#500)
+
+[Disposable API]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
+
 # 1.15.0
 
 ## New features
