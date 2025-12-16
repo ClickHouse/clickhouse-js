@@ -1,3 +1,12 @@
+# 1.15.0
+
+## New features
+
+- Added support for [BigInt] values in query parameters. ([#487], @dalechyn)
+
+[#487]: https://github.com/ClickHouse/clickhouse-js/pull/487
+[BigInt]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt
+
 # 1.14.0
 
 ## New features
