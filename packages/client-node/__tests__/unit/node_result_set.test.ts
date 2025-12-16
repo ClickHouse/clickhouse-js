@@ -3,7 +3,6 @@ import { guid } from '@test/utils'
 import Stream, { Readable } from 'stream'
 import { ResultSet } from '../../src'
 import { isUsingStatementSupported } from '../utils/feture_detection'
-import { sleep } from '../utils/sleep'
 
 describe('[Node.js] ResultSet', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`
