@@ -211,6 +211,17 @@ export class ResultSet<Format extends DataFormat | unknown>
     this._stream.destroy(new Error(resultSetClosedMessage))
   }
 
+  /**
+   * Closes the `ResultSet`.
+   *
+   * Automatically called when using `using` statement in supported environments.
+   * @see {@link ResultSet.close}
+   * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
+   */
+  [Symbol.dispose]() {
+    this.close()
+  }
+
   static instance<Format extends DataFormat>({
     stream,
     format,
