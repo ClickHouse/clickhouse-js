@@ -1,6 +1,17 @@
 import { ClickHouseClient } from '../../src/client'
 
-const MAJOR_NODE_VERSION = Number(process.version.split('.', 1)[0].substring(1))
+function isAwaitUsingStatementSupported(): boolean {
+  try {
+    eval(`
+      (async () => {
+          await using c = null;
+      })
+    `)
+    return true
+  } catch {
+    return false
+  }
+}
 
 function mockImpl(): any {
   return {
@@ -17,8 +28,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 describe('client', () => {
   it('closes the client when used with using statement', async () => {
-    if (MAJOR_NODE_VERSION < 24) {
-      pending('using statement is only supported in Node.js v24 and above')
+    if (!isAwaitUsingStatementSupported()) {
+      pending('using statement is not supported in this environment')
       return
     }
     const client = new ClickHouseClient({
@@ -38,7 +49,7 @@ describe('client', () => {
     await eval(`
       (async (value) => {
           await using c = value;
-          // do nothing, just testing the disposal
+          // do nothing, just testing the disposal at the end of the block
       })
     `)(client)
 
