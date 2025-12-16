@@ -175,7 +175,6 @@ describe('[Node.js] createClient', () => {
     }
     const client = createClient()
     let isClosed = false
-    // @ts-expect-error: spyOn() does not see the close() method
     spyOn(client, 'close').and.callFake(async () => {
       // Simulate some delay in closing
       await sleep(0)
