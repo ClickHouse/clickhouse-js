@@ -10,3 +10,16 @@ export function isAwaitUsingStatementSupported(): boolean {
     return false
   }
 }
+
+export function isUsingStatementSupported(): boolean {
+  try {
+    eval(`
+      (() => {
+          using c = null;
+      })
+    `)
+    return true
+  } catch {
+    return false
+  }
+}

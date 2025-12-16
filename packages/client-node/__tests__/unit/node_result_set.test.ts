@@ -2,6 +2,8 @@ import type { DataFormat, Row } from '@clickhouse/client-common'
 import { guid } from '@test/utils'
 import Stream, { Readable } from 'stream'
 import { ResultSet } from '../../src'
+import { isUsingStatementSupported } from '../utils/feture_detection'
+import { sleep } from '../utils/sleep'
 
 describe('[Node.js] ResultSet', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`
@@ -129,6 +131,31 @@ describe('[Node.js] ResultSet', () => {
         )
       })
     })
+  })
+
+  it('closes the ResultSet when used with using statement', async () => {
+    if (!isUsingStatementSupported()) {
+      pending('using statement is not supported in this environment')
+      return
+    }
+    const rs = makeResultSet(getDataStream())
+    let isClosed = false
+    spyOn(rs, 'close').and.callFake(() => {
+      // Simulate some delay in closing
+      isClosed = true
+    })
+
+    // Wrap in eval to allow using statement syntax without
+    // syntax error in older Node.js versions. Might want to
+    // consider using a separate test file for this in the future.
+    await eval(`
+      ((value) => {
+          using c = value;
+          // do nothing, just testing the disposal at the end of the block
+      })
+    `)(rs)
+
+    expect(isClosed).toBeTrue()
   })
 
   function makeResultSet(
