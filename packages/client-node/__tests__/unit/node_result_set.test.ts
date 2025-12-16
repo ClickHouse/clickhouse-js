@@ -2,7 +2,7 @@ import type { DataFormat, Row } from '@clickhouse/client-common'
 import { guid } from '@test/utils'
 import Stream, { Readable } from 'stream'
 import { ResultSet } from '../../src'
-import { isUsingStatementSupported } from '../utils/feture_detection'
+import { isUsingStatementSupported } from '../utils/feature_detection'
 
 describe('[Node.js] ResultSet', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`

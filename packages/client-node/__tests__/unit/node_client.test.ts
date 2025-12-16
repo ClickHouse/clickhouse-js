@@ -9,7 +9,7 @@ import {
   NodeConnectionFactory,
 } from '../../src/connection'
 import { sleep } from '../utils/sleep'
-import { isAwaitUsingStatementSupported } from '../utils/feture_detection'
+import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
 
 describe('[Node.js] createClient', () => {
   it('throws on incorrect "url" config value', () => {
