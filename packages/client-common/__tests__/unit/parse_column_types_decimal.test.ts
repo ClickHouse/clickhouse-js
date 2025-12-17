@@ -38,15 +38,14 @@ describe('Columns types parser - Decimal', () => {
     ]
     args.forEach(({ sourceType, precision, scale, intSize }) => {
       const result = parseDecimalType({ columnType: sourceType, sourceType })
-      expect(result)
-        .withContext(
-          `Expected ${sourceType} to be parsed as a Decimal with precision ${precision}, scale ${scale} and intSize ${intSize}`,
-        )
-        .toEqual({
-          type: 'Decimal',
-          params: { precision, scale, intSize },
-          sourceType,
-        })
+      expect(
+        result,
+        `Expected ${sourceType} to be parsed as a Decimal with precision ${precision}, scale ${scale} and intSize ${intSize}`,
+      ).toEqual({
+        type: 'Decimal',
+        params: { precision, scale, intSize },
+        sourceType,
+      })
     })
   })
 
@@ -61,9 +60,10 @@ describe('Columns types parser - Decimal', () => {
       ['String'],
     ]
     args.forEach(([columnType]) => {
-      expect(() => parseDecimalType({ columnType, sourceType: columnType }))
-        .withContext(`Expected ${columnType} to throw`)
-        .toThrowError('Invalid Decimal type')
+      expect(
+        () => parseDecimalType({ columnType, sourceType: columnType }),
+        `Expected ${columnType} to throw`,
+      ).toThrowError('Invalid Decimal type')
     })
   })
 
@@ -75,9 +75,10 @@ describe('Columns types parser - Decimal', () => {
       [`Decimal(77, 1)`], // max is 76
     ]
     args.forEach(([columnType]) => {
-      expect(() => parseDecimalType({ columnType, sourceType: columnType }))
-        .withContext(`Expected ${columnType} to throw`)
-        .toThrowError('Invalid Decimal precision')
+      expect(
+        () => parseDecimalType({ columnType, sourceType: columnType }),
+        `Expected ${columnType} to throw`,
+      ).toThrowError('Invalid Decimal precision')
     })
   })
 
@@ -89,9 +90,10 @@ describe('Columns types parser - Decimal', () => {
       [`Decimal(42, ')`],
     ]
     args.forEach(([columnType]) => {
-      expect(() => parseDecimalType({ columnType, sourceType: columnType }))
-        .withContext(`Expected ${columnType} to throw`)
-        .toThrowError('Invalid Decimal scale')
+      expect(
+        () => parseDecimalType({ columnType, sourceType: columnType }),
+        `Expected ${columnType} to throw`,
+      ).toThrowError('Invalid Decimal scale')
     })
   })
 

@@ -56,11 +56,10 @@ describe('config', () => {
               logger,
               null,
             ),
-          )
-            .withContext(`${protocol} with valid port ${port} should not throw`)
-            .toEqual({
-              url: new URL(`${protocol}://localhost:${port}/`),
-            })
+            `${protocol} with valid port ${port} should not throw`,
+          ).toEqual({
+            url: new URL(`${protocol}://localhost:${port}/`),
+          })
         }
       }
     })
@@ -69,21 +68,19 @@ describe('config', () => {
       const invalidPorts = ['foo', '65536', '-1']
       for (const protocol of ['http', 'https']) {
         for (const port of invalidPorts) {
-          expect(() =>
-            prepareConfigWithURL(
-              { url: `${protocol}://localhost:${port}` },
-              logger,
-              null,
-            ),
+          expect(
+            () =>
+              prepareConfigWithURL(
+                { url: `${protocol}://localhost:${port}` },
+                logger,
+                null,
+              ),
+            `${protocol} with invalid port ${port} is expected to throw`,
+          ).toThrow(
+            expect.objectContaining({
+              message: expect.stringContaining('ClickHouse URL is malformed'),
+            }),
           )
-            .withContext(
-              `${protocol} with invalid port ${port} is expected to throw`,
-            )
-            .toThrow(
-              expect.objectContaining({
-                message: expect.stringContaining('ClickHouse URL is malformed'),
-              }),
-            )
         }
       }
     })
@@ -228,17 +225,15 @@ describe('config', () => {
               ].join('&'),
           )
           const res = prepareConfigWithURL({ url }, logger, null)
-          expect(res)
-            .withContext(`With pathname (no trailing slash) ${pathname}`)
-            .toEqual({
-              ...defaultConfig,
-              pathname,
-              url: new URL(`http://my_host:8124/${pathname}`),
-              application: 'my_app',
-              database: 'my_db',
-              request_timeout: 42000,
-              max_open_connections: 2,
-            } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+          expect(res, `With pathname (no trailing slash) ${pathname}`).toEqual({
+            ...defaultConfig,
+            pathname,
+            url: new URL(`http://my_host:8124/${pathname}`),
+            application: 'my_app',
+            database: 'my_db',
+            request_timeout: 42000,
+            max_open_connections: 2,
+          } as unknown as BaseClickHouseClientConfigOptionsWithURL)
         })
       })
 
@@ -260,9 +255,8 @@ describe('config', () => {
               ].join('&'),
           )
           const res = prepareConfigWithURL({ url }, logger, null)
-          expect(res)
-            .withContext(`With pathname (leading slash only) ${pathname}`)
-            .toEqual({
+          expect(res, `With pathname (leading slash only) ${pathname}`).toEqual(
+            {
               ...defaultConfig,
               pathname,
               url: new URL('http://my_host:8124' + pathname),
@@ -270,7 +264,8 @@ describe('config', () => {
               database: 'my_db',
               request_timeout: 42000,
               max_open_connections: 2,
-            } as unknown as BaseClickHouseClientConfigOptionsWithURL)
+            } as unknown as BaseClickHouseClientConfigOptionsWithURL,
+          )
         })
       })
 
@@ -1023,9 +1018,10 @@ describe('config', () => {
         [' 0 ', false],
       ]
       args.forEach(([value, expected]) => {
-        expect(booleanConfigURLValue({ key, value }))
-          .withContext(`Expected value "${value}" to be ${expected}`)
-          .toEqual(expected)
+        expect(
+          booleanConfigURLValue({ key, value }),
+          `Expected value "${value}" to be ${expected}`,
+        ).toEqual(expected)
       })
       expect(() => booleanConfigURLValue({ key, value: 'bar' })).toThrowError(
         `"foo" has invalid boolean value: bar. Expected one of: 0, 1, true, false.`,
@@ -1044,9 +1040,10 @@ describe('config', () => {
         [' 1.5 ', 1.5],
       ]
       args.forEach(([value, expected]) => {
-        expect(numberConfigURLValue({ key, value }))
-          .withContext(`Expected value "${value}" to be ${expected}`)
-          .toEqual(expected)
+        expect(
+          numberConfigURLValue({ key, value }),
+          `Expected value "${value}" to be ${expected}`,
+        ).toEqual(expected)
       })
       expect(() => numberConfigURLValue({ key, value: 'bar' })).toThrowError(
         `"foo" has invalid numeric value: bar`,
@@ -1104,9 +1101,8 @@ describe('config', () => {
             value,
             enumObject: ClickHouseLogLevel,
           }),
-        )
-          .withContext(`Expected log level for value "${value}" is ${expected}`)
-          .toEqual(expected)
+          `Expected log level for value "${value}" is ${expected}`,
+        ).toEqual(expected)
       })
       expect(() =>
         enumConfigURLValue({

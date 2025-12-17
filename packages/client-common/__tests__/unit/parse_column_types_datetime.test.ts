@@ -12,9 +12,10 @@ describe('Columns types parser - DateTime and DateTime64', () => {
       ]
       args.forEach(([columnType, timezone]) => {
         const result = parseDateTimeType({ columnType, sourceType: columnType })
-        expect(result)
-          .withContext(`Expected ${columnType} to be parsed as a DateTime`)
-          .toEqual({ type: 'DateTime', sourceType: columnType, timezone })
+        expect(
+          result,
+          `Expected ${columnType} to be parsed as a DateTime`,
+        ).toEqual({ type: 'DateTime', sourceType: columnType, timezone })
       })
     })
 
@@ -28,9 +29,10 @@ describe('Columns types parser - DateTime and DateTime64', () => {
         ['String'],
       ]
       args.forEach(([columnType]) => {
-        expect(() => parseDateTimeType({ columnType, sourceType: columnType }))
-          .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Invalid DateTime type')
+        expect(
+          () => parseDateTimeType({ columnType, sourceType: columnType }),
+          `Expected ${columnType} to throw`,
+        ).toThrowError('Invalid DateTime type')
       })
     })
   })
@@ -48,16 +50,15 @@ describe('Columns types parser - DateTime and DateTime64', () => {
           columnType,
           sourceType: columnType,
         })
-        expect(result)
-          .withContext(
-            `Expected ${columnType} to be parsed as a DateTime64 with precision ${precision}`,
-          )
-          .toEqual({
-            type: 'DateTime64',
-            timezone: null,
-            sourceType: columnType,
-            precision,
-          })
+        expect(
+          result,
+          `Expected ${columnType} to be parsed as a DateTime64 with precision ${precision}`,
+        ).toEqual({
+          type: 'DateTime64',
+          timezone: null,
+          sourceType: columnType,
+          precision,
+        })
       })
     })
 
@@ -75,16 +76,15 @@ describe('Columns types parser - DateTime and DateTime64', () => {
             columnType,
             sourceType: columnType,
           })
-          expect(result)
-            .withContext(
-              `Expected ${columnType} to be parsed as a DateTime64 with precision ${precision} and timezone ${timezone}`,
-            )
-            .toEqual({
-              type: 'DateTime64',
-              sourceType: columnType,
-              timezone,
-              precision,
-            })
+          expect(
+            result,
+            `Expected ${columnType} to be parsed as a DateTime64 with precision ${precision} and timezone ${timezone}`,
+          ).toEqual({
+            type: 'DateTime64',
+            sourceType: columnType,
+            timezone,
+            precision,
+          })
         }),
       )
     })
@@ -92,22 +92,20 @@ describe('Columns types parser - DateTime and DateTime64', () => {
     it('should throw on invalid DateTime64 type', async () => {
       const args = [['DateTime64('], ['DateTime64()'], ['String']]
       args.forEach(([columnType]) => {
-        expect(() =>
-          parseDateTime64Type({ columnType, sourceType: columnType }),
-        )
-          .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Invalid DateTime64 type')
+        expect(
+          () => parseDateTime64Type({ columnType, sourceType: columnType }),
+          `Expected ${columnType} to throw`,
+        ).toThrowError('Invalid DateTime64 type')
       })
     })
 
     it('should throw on invalid DateTime64 precision', async () => {
       const args = [[`DateTime64(')`], [`DateTime64(foo)`]]
       args.forEach(([columnType]) => {
-        expect(() =>
-          parseDateTime64Type({ columnType, sourceType: columnType }),
-        )
-          .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Invalid DateTime64 precision')
+        expect(
+          () => parseDateTime64Type({ columnType, sourceType: columnType }),
+          `Expected ${columnType} to throw`,
+        ).toThrowError('Invalid DateTime64 precision')
       })
     })
   })

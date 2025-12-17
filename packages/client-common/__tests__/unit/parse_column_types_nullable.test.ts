@@ -30,15 +30,14 @@ describe('Columns types parser - Nullable', () => {
     ]
     args.forEach(([value, sourceType]) => {
       const result = asNullableType(value, sourceType)
-      expect(result)
-        .withContext(
-          `Expected ${value.columnType} to be wrapped as ${sourceType}`,
-        )
-        .toEqual({
-          type: 'Nullable',
-          sourceType,
-          value,
-        })
+      expect(
+        result,
+        `Expected ${value.columnType} to be wrapped as ${sourceType}`,
+      ).toEqual({
+        type: 'Nullable',
+        sourceType,
+        value,
+      })
     })
   })
 
@@ -72,13 +71,14 @@ describe('Columns types parser - Nullable', () => {
     ]
     args.forEach(([value, sourceType]) => {
       const result = asNullableType(value, sourceType)
-      expect(result)
-        .withContext(`Expected ${value.type} to be wrapped as ${sourceType}`)
-        .toEqual({
-          type: 'Nullable',
-          sourceType,
-          value,
-        })
+      expect(
+        result,
+        `Expected ${value.type} to be wrapped as ${sourceType}`,
+      ).toEqual({
+        type: 'Nullable',
+        sourceType,
+        value,
+      })
     })
   })
 
@@ -119,15 +119,14 @@ describe('Columns types parser - Nullable', () => {
     ]
     args.forEach(([value, sourceType]) => {
       const result = asNullableType(value, sourceType)
-      expect(result)
-        .withContext(
-          `Expected ${value.sourceType} to be wrapped as ${sourceType}`,
-        )
-        .toEqual({
-          type: 'Nullable',
-          sourceType,
-          value,
-        })
+      expect(
+        result,
+        `Expected ${value.sourceType} to be wrapped as ${sourceType}`,
+      ).toEqual({
+        type: 'Nullable',
+        sourceType,
+        value,
+      })
     })
   })
 
@@ -156,15 +155,14 @@ describe('Columns types parser - Nullable', () => {
     ]
     args.forEach(([value, sourceType]) => {
       const result = asNullableType(value, sourceType)
-      expect(result)
-        .withContext(
-          `Expected ${value.sourceType} to be wrapped as ${sourceType}`,
-        )
-        .toEqual({
-          type: 'Nullable',
-          sourceType,
-          value,
-        })
+      expect(
+        result,
+        `Expected ${value.sourceType} to be wrapped as ${sourceType}`,
+      ).toEqual({
+        type: 'Nullable',
+        sourceType,
+        value,
+      })
     })
   })
 
@@ -218,15 +216,14 @@ describe('Columns types parser - Nullable', () => {
     ]
     args.forEach(([value, sourceType]) => {
       const result = asNullableType(value, sourceType)
-      expect(result)
-        .withContext(
-          `Expected ${value.sourceType} to be wrapped as ${sourceType}`,
-        )
-        .toEqual({
-          type: 'Nullable',
-          sourceType,
-          value,
-        })
+      expect(
+        result,
+        `Expected ${value.sourceType} to be wrapped as ${sourceType}`,
+      ).toEqual({
+        type: 'Nullable',
+        sourceType,
+        value,
+      })
     })
   })
 

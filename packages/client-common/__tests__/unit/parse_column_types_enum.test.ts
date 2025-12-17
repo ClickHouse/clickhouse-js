@@ -9,15 +9,12 @@ describe('Columns types parser - Enum', () => {
         sourceType: expected.sourceType,
         columnType: expected.sourceType,
       })
-      expect(result)
-        .withContext(
-          `Expected ${
-            expected.sourceType
-          } to be parsed as an Enum with intSize ${
-            expected.intSize
-          } and values ${JSON.stringify(expected.values)}`,
-        )
-        .toEqual(expected)
+      expect(
+        result,
+        `Expected ${expected.sourceType} to be parsed as an Enum with intSize ${
+          expected.intSize
+        } and values ${JSON.stringify(expected.values)}`,
+      ).toEqual(expected)
     })
   })
 
@@ -30,18 +27,20 @@ describe('Columns types parser - Enum', () => {
       ['Enum(String)'],
     ]
     args.forEach(([columnType]) => {
-      expect(() => parseEnumType({ columnType, sourceType: columnType }))
-        .withContext(`Expected ${columnType} to throw`)
-        .toThrowError('Expected Enum to be either Enum8 or Enum16')
+      expect(
+        () => parseEnumType({ columnType, sourceType: columnType }),
+        `Expected ${columnType} to throw`,
+      ).toThrowError('Expected Enum to be either Enum8 or Enum16')
     })
   })
 
   it('should throw when the values are not valid', async () => {
     const args: [string][] = [["Enum8('a' = x)"], ["Enum16('foo' = 'bar')"]]
     args.forEach(([columnType]) => {
-      expect(() => parseEnumType({ columnType, sourceType: columnType }))
-        .withContext(`Expected ${columnType} to throw`)
-        .toThrowError('Expected Enum index to be a valid number')
+      expect(
+        () => parseEnumType({ columnType, sourceType: columnType }),
+        `Expected ${columnType} to throw`,
+      ).toThrowError('Expected Enum index to be a valid number')
     })
   })
 
@@ -51,9 +50,10 @@ describe('Columns types parser - Enum', () => {
       ["Enum8('a' = 0, 'b' = 1, 'c' = 1)"],
     ]
     args.forEach(([columnType]) => {
-      expect(() => parseEnumType({ columnType, sourceType: columnType }))
-        .withContext(`Expected ${columnType} to throw`)
-        .toThrowError('Duplicate Enum index')
+      expect(
+        () => parseEnumType({ columnType, sourceType: columnType }),
+        `Expected ${columnType} to throw`,
+      ).toThrowError('Duplicate Enum index')
     })
   })
 
@@ -63,9 +63,10 @@ describe('Columns types parser - Enum', () => {
       ["Enum8('a' = 0, 'b' = 1, 'b' = 2)"],
     ]
     args.forEach(([columnType]) => {
-      expect(() => parseEnumType({ columnType, sourceType: columnType }))
-        .withContext(`Expected ${columnType} to throw`)
-        .toThrowError('Duplicate Enum name')
+      expect(
+        () => parseEnumType({ columnType, sourceType: columnType }),
+        `Expected ${columnType} to throw`,
+      ).toThrowError('Duplicate Enum name')
     })
   })
 
@@ -81,9 +82,10 @@ describe('Columns types parser - Enum', () => {
     ])
     allEnumTypeArgs.forEach((args) =>
       args.forEach((columnType) => {
-        expect(() => parseEnumType({ columnType, sourceType: columnType }))
-          .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Invalid Enum type values')
+        expect(
+          () => parseEnumType({ columnType, sourceType: columnType }),
+          `Expected ${columnType} to throw`,
+        ).toThrowError('Invalid Enum type values')
       }),
     )
   })

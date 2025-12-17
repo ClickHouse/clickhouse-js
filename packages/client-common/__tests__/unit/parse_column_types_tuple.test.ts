@@ -37,11 +37,10 @@ describe('Columns types parser - Tuple', () => {
     ]
     args.forEach(({ expected, sourceType }) => {
       const result = parseTupleType({ columnType: sourceType, sourceType })
-      expect(result)
-        .withContext(
-          `Expected ${sourceType} to have ${joinElements(expected)} elements`,
-        )
-        .toEqual(expected)
+      expect(
+        result,
+        `Expected ${sourceType} to have ${joinElements(expected)} elements`,
+      ).toEqual(expected)
     })
   })
 
@@ -69,11 +68,10 @@ describe('Columns types parser - Tuple', () => {
     ]
     args.forEach(({ expected, sourceType }) => {
       const result = parseTupleType({ columnType: sourceType, sourceType })
-      expect(result)
-        .withContext(
-          `Expected ${sourceType} to have ${joinElements(expected)} elements`,
-        )
-        .toEqual(expected)
+      expect(
+        result,
+        `Expected ${sourceType} to have ${joinElements(expected)} elements`,
+      ).toEqual(expected)
     })
   })
 
@@ -92,11 +90,10 @@ describe('Columns types parser - Tuple', () => {
     })
     args.forEach(({ expected, sourceType }) => {
       const result = parseTupleType({ columnType: sourceType, sourceType })
-      expect(result)
-        .withContext(
-          `Expected ${sourceType} to have ${joinElements(expected)} elements`,
-        )
-        .toEqual(expected)
+      expect(
+        result,
+        `Expected ${sourceType} to have ${joinElements(expected)} elements`,
+      ).toEqual(expected)
     })
   })
 
