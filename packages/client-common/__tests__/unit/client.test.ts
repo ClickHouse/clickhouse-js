@@ -1,3 +1,4 @@
+import { vi, describe, it, expect } from 'vitest'
 import { sleep } from '../utils/sleep'
 import { ClickHouseClient } from '../../src/client'
 

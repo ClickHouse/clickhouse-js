@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { transformUrl } from '@clickhouse/client-common'
 
 describe('transformUrl', () => {

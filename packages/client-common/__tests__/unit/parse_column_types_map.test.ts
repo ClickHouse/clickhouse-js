@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import type { ParsedColumnMap } from '../../src/parse'
 import { parseMapType } from '../../src/parse'
 

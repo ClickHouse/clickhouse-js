@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { parseDecimalType } from '../../src/parse'
 
 describe('Columns types parser - Decimal', () => {

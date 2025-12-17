@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { formatQueryParams, TupleParam } from '@clickhouse/client-common'
 
 describe('formatQueryParams', () => {

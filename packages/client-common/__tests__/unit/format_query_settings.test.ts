@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { formatQuerySettings, SettingsMap } from '@clickhouse/client-common'
 
 describe('formatQuerySettings', () => {

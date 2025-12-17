@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { isException, isProgressRow, isRow } from '@clickhouse/client-common'
 
 describe('ClickHouse types', () => {
