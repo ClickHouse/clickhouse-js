@@ -22,8 +22,36 @@ on:
     - cron: '0 9 * * *'
 
 jobs:
+  common-unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Install dependencies (examples)
+        working-directory: examples
+        run: |
+          npm install
+
+      - name: Run unit tests
+        run: |
+          npm run test:common:unit
+
   node-unit-tests:
     runs-on: ubuntu-latest
+    needs: common-unit-tests
     strategy:
       fail-fast: true
       matrix:
