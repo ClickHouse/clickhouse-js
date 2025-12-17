@@ -12,8 +12,5 @@
       "@test/*": ["packages/client-common/__tests__/*"],
       "@clickhouse/client-common": ["packages/client-common/src/index.ts"]
     }
-  },
-  "ts-node": {
-    "require": ["tsconfig-paths/register"]
   }
 }

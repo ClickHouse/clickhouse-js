@@ -19,21 +19,20 @@ jobs:
         run: |
           npm install
 
-      - name: Install TypeScript and ts-node
+      - name: Install TypeScript
         run: |
-          npm install -g typescript ts-node
+          npm install -g typescript
 
       - name: Build Common package
         run: |
-          ts-node .build/build_and_prepare.ts common && npm pack
+          npx tsx .build/build_and_prepare.ts common && npm pack
 
       - name: Build Node.js package
         run: |
-          ts-node .build/build_and_prepare.ts node && npm pack
-
+          npx tsx .build/build_and_prepare.ts node && npm pack
       - name: Build Web package
         run: |
-          ts-node .build/build_and_prepare.ts web && npm pack
+          npx tsx .build/build_and_prepare.ts web && npm pack
 
       - name: Rename artifacts
         run: |

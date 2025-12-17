@@ -5,7 +5,7 @@
 The goal is to determine whether we have any memory leaks in the client implementation.
 For that, we can have various tests with periodical memory usage logging such as random data or predefined file streaming.
 
-NB: we supposedly avoid using `ts-node` as it adds some runtime overhead.
+NB: we supposedly avoid using `tsx` as it adds some runtime overhead.
 
 Every test requires a local ClickHouse instance running.
 
