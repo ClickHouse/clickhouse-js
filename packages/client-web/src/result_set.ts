@@ -178,6 +178,17 @@ export class ResultSet<Format extends DataFormat | unknown>
     await this._stream.cancel()
   }
 
+  /**
+   * Closes the `ResultSet`.
+   *
+   * Automatically called when using `using` statement in supported environments.
+   * @see {@link ResultSet.close}
+   * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
+   */
+  async [Symbol.asyncDispose]() {
+    await this.close()
+  }
+
   private markAsConsumed() {
     if (this.isAlreadyConsumed) {
       throw new Error(streamAlreadyConsumedMessage)

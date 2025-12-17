@@ -1,6 +1,8 @@
 import type { Row } from '@clickhouse/client-common'
 import { guid } from '@test/utils'
 import { ResultSet } from '../../src'
+import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
+import { sleep } from '../utils/sleep'
 
 describe('[Web] ResultSet', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`
@@ -73,6 +75,32 @@ describe('[Web] ResultSet', () => {
     expect(row.text).toEqual('{"foo":"bar"}')
     expect(row.json()).toEqual({ foo: 'bar' })
     expect(row.json()).toEqual({ foo: 'bar' })
+  })
+
+  it('closes the ResultSet when used with using statement', async () => {
+    if (!isAwaitUsingStatementSupported()) {
+      pending('using statement is not supported in this environment')
+      return
+    }
+    const rs = makeResultSet()
+    let isClosed = false
+    spyOn(rs, 'close').and.callFake(async () => {
+      // Simulate some delay in closing
+      await sleep(0)
+      isClosed = true
+    })
+
+    // Wrap in eval to allow using statement syntax without
+    // syntax error in older Node.js versions. Might want to
+    // consider using a separate test file for this in the future.
+    await eval(`
+      (async (value) => {
+          await using c = value;
+          // do nothing, just testing the disposal at the end of the block
+      })
+    `)(rs)
+
+    expect(isClosed).toBeTrue()
   })
 
   function makeResultSet() {

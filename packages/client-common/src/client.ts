@@ -344,6 +344,17 @@ export class ClickHouseClient<Stream = unknown> {
     return await this.connection.close()
   }
 
+  /**
+   * Closes the client connection.
+   *
+   * Automatically called when using `using` statement in supported environments.
+   * @see {@link ClickHouseClient.close}
+   * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
+   */
+  async [Symbol.asyncDispose]() {
+    await this.close()
+  }
+
   private withClientQueryParams(params: BaseQueryParams): BaseQueryParams {
     return {
       clickhouse_settings: {
