@@ -79,6 +79,13 @@ export default defineConfig(
   },
   // Ignore build artifacts and externals
   {
-    ignores: ['coverage', 'out', 'dist', 'node_modules', 'webpack'],
+    ignores: [
+      'vitest.*.config.ts',
+      'coverage',
+      'out',
+      'dist',
+      'node_modules',
+      'webpack',
+    ],
   },
 )
