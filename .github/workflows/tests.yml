@@ -277,7 +277,7 @@ jobs:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
-      - name: Setup NodeJS 22
+      - name: Setup NodeJS
         uses: actions/setup-node@v6
         with:
           node-version: 24
