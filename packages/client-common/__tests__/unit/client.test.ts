@@ -1,4 +1,4 @@
-import { sleep } from '../utils'
+import { sleep } from '../utils/sleep'
 import { ClickHouseClient } from '../../src/client'
 
 function isAwaitUsingStatementSupported(): boolean {
@@ -36,7 +36,7 @@ describe('client', () => {
       impl: mockImpl(),
     })
     let isClosed = false
-    spyOn(client, 'close').and.callFake(async () => {
+    vi.spyOn(client, 'close').mockImplementation(async () => {
       // Simulate some delay in closing
       await sleep(0)
       isClosed = true
@@ -52,6 +52,6 @@ describe('client', () => {
       })
     `)(client)
 
-    expect(isClosed).toBeTrue()
+    expect(isClosed).toBeTruthy()
   })
 })

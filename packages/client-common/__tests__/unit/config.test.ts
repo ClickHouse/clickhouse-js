@@ -8,7 +8,7 @@ import {
   LogWriter,
   numberConfigURLValue,
 } from '@clickhouse/client-common'
-import { TestLogger } from '@test/utils'
+import { TestLogger } from '@test/utils/test_logger'
 import type { BaseClickHouseClientConfigOptionsWithURL } from '../../src/config'
 import {
   booleanConfigURLValue,
@@ -79,10 +79,8 @@ describe('config', () => {
               `${protocol} with invalid port ${port} is expected to throw`,
             )
             .toThrow(
-              jasmine.objectContaining({
-                message: jasmine.stringContaining(
-                  'ClickHouse URL is malformed',
-                ),
+              expect.objectContaining({
+                message: expect.stringContaining('ClickHouse URL is malformed'),
               }),
             )
         }
@@ -372,7 +370,7 @@ describe('config', () => {
         },
         database: 'default',
         clickhouse_settings: {},
-        log_writer: jasmine.any(LogWriter),
+        log_writer: expect.any(LogWriter),
         keep_alive: { enabled: true },
         application_id: undefined,
         http_headers: {},
@@ -427,7 +425,7 @@ describe('config', () => {
         http_headers: {
           'X-CLICKHOUSE-AUTH': 'secret_header',
         },
-        log_writer: jasmine.any(LogWriter),
+        log_writer: expect.any(LogWriter),
         keep_alive: { enabled: false },
         application_id: 'my_app',
         json: {
@@ -500,7 +498,7 @@ describe('config', () => {
         },
         database: 'default',
         clickhouse_settings: {},
-        log_writer: jasmine.any(LogWriter),
+        log_writer: expect.any(LogWriter),
         keep_alive: { enabled: true },
         application_id: undefined,
         http_headers: {},
@@ -737,13 +735,13 @@ describe('config', () => {
 
     it('should fail when the provided URL is not valid', async () => {
       expect(() => createUrl('foo')).toThrow(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+        expect.objectContaining({
+          message: expect.stringContaining('ClickHouse URL is malformed.'),
         }),
       )
       expect(() => createUrl('http://localhost:foo')).toThrow(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+        expect.objectContaining({
+          message: expect.stringContaining('ClickHouse URL is malformed.'),
         }),
       )
       expect(() => createUrl('tcp://localhost:8443')).toThrowError(
