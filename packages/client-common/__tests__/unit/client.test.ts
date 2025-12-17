@@ -27,32 +27,31 @@ function mockImpl(): any {
 }
 
 describe('client', () => {
-  it('closes the client when used with using statement', async () => {
-    if (!isAwaitUsingStatementSupported()) {
-      pending('using statement is not supported in this environment')
-      return
-    }
-    const client = new ClickHouseClient({
-      url: 'http://localhost',
-      impl: mockImpl(),
-    })
-    let isClosed = false
-    vi.spyOn(client, 'close').mockImplementation(async () => {
-      // Simulate some delay in closing
-      await sleep(0)
-      isClosed = true
-    })
+  it.skipIf(!isAwaitUsingStatementSupported())(
+    'closes the client when used with using statement',
+    async () => {
+      const client = new ClickHouseClient({
+        url: 'http://localhost',
+        impl: mockImpl(),
+      })
+      let isClosed = false
+      vi.spyOn(client, 'close').mockImplementation(async () => {
+        // Simulate some delay in closing
+        await sleep(0)
+        isClosed = true
+      })
 
-    // Wrap in eval to allow using statement syntax without
-    // syntax error in older Node.js versions. Might want to
-    // consider using a separate test file for this in the future.
-    await eval(`
+      // Wrap in eval to allow using statement syntax without
+      // syntax error in older Node.js versions. Might want to
+      // consider using a separate test file for this in the future.
+      await eval(`
       (async (value) => {
           await using c = value;
           // do nothing, just testing the disposal at the end of the block
       })
     `)(client)
 
-    expect(isClosed).toBeTruthy()
-  })
+      expect(isClosed).toBeTruthy()
+    },
+  )
 })
