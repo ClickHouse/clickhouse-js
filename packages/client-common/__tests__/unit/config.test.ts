@@ -336,16 +336,16 @@ describe('config', () => {
     // more detailed tests are in the createUrl section
     it('should throw when the URL is not valid', async () => {
       expect(() => prepareConfigWithURL({ url: 'foo' }, logger, null)).toThrow(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+        expect.objectContaining({
+          message: expect.stringContaining('ClickHouse URL is malformed.'),
         }),
       )
     })
   })
 
   describe('getConnectionParams', () => {
-    const authErrorMatcher = jasmine.objectContaining({
-      message: jasmine.stringContaining(
+    const authErrorMatcher = expect.objectContaining({
+      message: expect.stringContaining(
         'Please use only one authentication method',
       ),
     })

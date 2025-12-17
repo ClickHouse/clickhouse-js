@@ -16,7 +16,9 @@ import {
 } from './test_env'
 import { TestLogger } from './test_logger'
 
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 400_000
+if (typeof jasmine !== 'undefined') {
+  jasmine.DEFAULT_TIMEOUT_INTERVAL = 400_000
+}
 
 let databaseName: string
 beforeAll(async () => {
