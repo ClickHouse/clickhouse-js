@@ -1,4 +1,5 @@
-import { toSearchParams } from '@clickhouse/client-common'
+import { describe, it, expect } from 'vitest'
+import { toSearchParams } from '../../src/index'
 import type { URLSearchParams } from 'url'
 
 describe('toSearchParams', () => {

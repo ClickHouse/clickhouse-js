@@ -64,6 +64,8 @@ as it is compatible with both Node.js and Web (Karma) clients tests.
 Karma is to be replaced, see [#183](https://github.com/ClickHouse/clickhouse-js/issues/183),
 which might allow us to use different test framework.
 
+The test suite is being migrated to Vitest ([PoC](https://github.com/ClickHouse/clickhouse-js/pull/496)).
+
 ### Type checking and linting
 
 Both checks can be run manually:

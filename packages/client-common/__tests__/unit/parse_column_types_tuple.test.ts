@@ -1,4 +1,5 @@
-import { parsedEnumTestArgs } from '@test/utils/native_columns'
+import { describe, it, expect } from 'vitest'
+import { parsedEnumTestArgs } from '../utils/native_columns'
 import type {
   ParsedColumnDateTime,
   ParsedColumnDateTime64,
@@ -36,11 +37,10 @@ describe('Columns types parser - Tuple', () => {
     ]
     args.forEach(({ expected, sourceType }) => {
       const result = parseTupleType({ columnType: sourceType, sourceType })
-      expect(result)
-        .withContext(
-          `Expected ${sourceType} to have ${joinElements(expected)} elements`,
-        )
-        .toEqual(expected)
+      expect(
+        result,
+        `Expected ${sourceType} to have ${joinElements(expected)} elements`,
+      ).toEqual(expected)
     })
   })
 
@@ -68,11 +68,10 @@ describe('Columns types parser - Tuple', () => {
     ]
     args.forEach(({ expected, sourceType }) => {
       const result = parseTupleType({ columnType: sourceType, sourceType })
-      expect(result)
-        .withContext(
-          `Expected ${sourceType} to have ${joinElements(expected)} elements`,
-        )
-        .toEqual(expected)
+      expect(
+        result,
+        `Expected ${sourceType} to have ${joinElements(expected)} elements`,
+      ).toEqual(expected)
     })
   })
 
@@ -91,11 +90,10 @@ describe('Columns types parser - Tuple', () => {
     })
     args.forEach(({ expected, sourceType }) => {
       const result = parseTupleType({ columnType: sourceType, sourceType })
-      expect(result)
-        .withContext(
-          `Expected ${sourceType} to have ${joinElements(expected)} elements`,
-        )
-        .toEqual(expected)
+      expect(
+        result,
+        `Expected ${sourceType} to have ${joinElements(expected)} elements`,
+      ).toEqual(expected)
     })
   })
 

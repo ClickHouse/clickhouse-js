@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { parseFixedStringType } from '../../src/parse'
 
 describe('Columns types parser', () => {
@@ -14,11 +15,10 @@ describe('Columns types parser', () => {
           columnType,
           sourceType: columnType,
         })
-        expect(result)
-          .withContext(
-            `Expected ${columnType} to be parsed as a FixedString with size ${sizeBytes}`,
-          )
-          .toEqual({ type: 'FixedString', sizeBytes, sourceType: columnType })
+        expect(
+          result,
+          `Expected ${columnType} to be parsed as a FixedString with size ${sizeBytes}`,
+        ).toEqual({ type: 'FixedString', sizeBytes, sourceType: columnType })
       })
     })
 
@@ -30,11 +30,10 @@ describe('Columns types parser', () => {
         ['String'],
       ]
       args.forEach(([columnType]) => {
-        expect(() =>
-          parseFixedStringType({ columnType, sourceType: columnType }),
-        )
-          .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Invalid FixedString type')
+        expect(
+          () => parseFixedStringType({ columnType, sourceType: columnType }),
+          `Expected ${columnType} to throw`,
+        ).toThrowError('Invalid FixedString type')
       })
     })
 
@@ -45,11 +44,10 @@ describe('Columns types parser', () => {
         [`FixedString(')`],
       ]
       args.forEach(([columnType]) => {
-        expect(() =>
-          parseFixedStringType({ columnType, sourceType: columnType }),
-        )
-          .withContext(`Expected ${columnType} to throw`)
-          .toThrowError('Invalid FixedString size in bytes')
+        expect(
+          () => parseFixedStringType({ columnType, sourceType: columnType }),
+          `Expected ${columnType} to throw`,
+        ).toThrowError('Invalid FixedString size in bytes')
       })
     })
   })

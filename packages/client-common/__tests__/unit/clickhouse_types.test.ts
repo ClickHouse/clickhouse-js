@@ -1,4 +1,5 @@
-import { isException, isProgressRow, isRow } from '@clickhouse/client-common'
+import { describe, it, expect } from 'vitest'
+import { isException, isProgressRow, isRow } from '../../src/index'
 
 describe('ClickHouse types', () => {
   it('should check if a row is progress row', async () => {

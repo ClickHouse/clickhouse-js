@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import type { ParsedColumnMap } from '../../src/parse'
 import { parseMapType } from '../../src/parse'
 
@@ -29,11 +30,10 @@ describe('Columns types parser - Map', () => {
     ]
     args.forEach(([expected, sourceType]) => {
       const result = parseMapType({ columnType: sourceType, sourceType })
-      expect(result)
-        .withContext(
-          `Expected ${sourceType} to be parsed as a Map with key type ${expected.key.sourceType} and value type ${expected.value.sourceType}`,
-        )
-        .toEqual(expected)
+      expect(
+        result,
+        `Expected ${sourceType} to be parsed as a Map with key type ${expected.key.sourceType} and value type ${expected.value.sourceType}`,
+      ).toEqual(expected)
     })
   })
 

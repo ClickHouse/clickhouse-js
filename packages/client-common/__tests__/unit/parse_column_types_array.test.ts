@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import type {
   ParsedColumnDateTime,
   ParsedColumnDateTime64,
@@ -43,20 +44,17 @@ describe('Columns types parser - Array', () => {
     args.forEach((args: TestArgs) => {
       const { columnType, valueType, dimensions } = args
       const result = parseArrayType({ columnType, sourceType: columnType })
-      expect(result)
-        .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${valueType} and ${dimensions} dimensions`,
-        )
-        .toEqual({
-          type: 'Array',
-          value: {
-            type: 'Simple',
-            columnType: valueType,
-            sourceType: valueType, // T
-          },
-          sourceType: columnType, // Array(T)
-          dimensions,
-        })
+      // Expected ${columnType} to be parsed as an Array with value type ${valueType} and ${dimensions} dimensions
+      expect(result).toEqual({
+        type: 'Array',
+        value: {
+          type: 'Simple',
+          columnType: valueType,
+          sourceType: valueType, // T
+        },
+        sourceType: columnType, // Array(T)
+        dimensions,
+      })
     })
   })
 
@@ -80,24 +78,21 @@ describe('Columns types parser - Array', () => {
     ]
     args.forEach(({ columnType, valueType, dimensions }: TestArgs) => {
       const result = parseArrayType({ columnType, sourceType: columnType })
-      expect(result)
-        .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${valueType} and ${dimensions} dimensions`,
-        )
-        .toEqual({
-          type: 'Array',
+      // Expected ${columnType} to be parsed as an Array with value type ${valueType} and ${dimensions} dimensions
+      expect(result).toEqual({
+        type: 'Array',
+        value: {
+          type: 'Nullable',
           value: {
-            type: 'Nullable',
-            value: {
-              type: 'Simple',
-              columnType: valueType,
-              sourceType: valueType, // T
-            },
-            sourceType: `Nullable(${valueType})`, // Nullable(T)
+            type: 'Simple',
+            columnType: valueType,
+            sourceType: valueType, // T
           },
-          sourceType: columnType, // Array(Nullable(T))
-          dimensions,
-        })
+          sourceType: `Nullable(${valueType})`, // Nullable(T)
+        },
+        sourceType: columnType, // Array(Nullable(T))
+        dimensions,
+      })
     })
   })
 
@@ -158,16 +153,13 @@ describe('Columns types parser - Array', () => {
     ]
     args.forEach(({ columnType, dimensions, value }) => {
       const result = parseArrayType({ columnType, sourceType: columnType })
-      expect(result)
-        .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`,
-        )
-        .toEqual({
-          type: 'Array',
-          sourceType: columnType,
-          dimensions,
-          value,
-        })
+      // Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions
+      expect(result).toEqual({
+        type: 'Array',
+        sourceType: columnType,
+        dimensions,
+        value,
+      })
     })
   })
 
@@ -208,16 +200,15 @@ describe('Columns types parser - Array', () => {
     ]
     args.forEach(({ columnType, dimensions, value }) => {
       const result = parseArrayType({ columnType, sourceType: columnType })
-      expect(result)
-        .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`,
-        )
-        .toEqual({
-          type: 'Array',
-          sourceType: columnType,
-          dimensions,
-          value,
-        })
+      expect(
+        result,
+        `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`,
+      ).toEqual({
+        type: 'Array',
+        sourceType: columnType,
+        dimensions,
+        value,
+      })
     })
   })
 
@@ -272,16 +263,15 @@ describe('Columns types parser - Array', () => {
 
     args.forEach(({ columnType, dimensions, value }) => {
       const result = parseArrayType({ columnType, sourceType: columnType })
-      expect(result)
-        .withContext(
-          `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`,
-        )
-        .toEqual({
-          type: 'Array',
-          sourceType: columnType,
-          dimensions,
-          value,
-        })
+      expect(
+        result,
+        `Expected ${columnType} to be parsed as an Array with value type ${value.sourceType} and ${dimensions} dimensions`,
+      ).toEqual({
+        type: 'Array',
+        sourceType: columnType,
+        dimensions,
+        value,
+      })
     })
   })
 
@@ -300,9 +290,10 @@ describe('Columns types parser - Array', () => {
       ['String'],
     ]
     args.forEach(([columnType]) => {
-      expect(() => parseArrayType({ columnType, sourceType: columnType }))
-        .withContext(`Expected ${columnType} to throw`)
-        .toThrowError('Invalid Array type')
+      // Expected ${columnType} to throw
+      expect(() =>
+        parseArrayType({ columnType, sourceType: columnType }),
+      ).toThrowError('Invalid Array type')
     })
   })
 })
