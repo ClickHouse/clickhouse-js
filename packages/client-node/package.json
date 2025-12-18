@@ -2,7 +2,7 @@
   "name": "@clickhouse/client",
   "description": "Official JS client for ClickHouse DB - Node.js implementation",
   "homepage": "https://clickhouse.com",
-  "version": "0.0.0",
+  "version": "1.15.0",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
@@ -27,7 +27,7 @@
     "build": "rm -rf dist; tsc"
   },
   "dependencies": {
-    "@clickhouse/client-common": "*"
+    "@clickhouse/client-common": "1.15.0"
   },
   "devDependencies": {
     "simdjson": "^0.9.2"

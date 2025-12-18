@@ -214,27 +214,27 @@ See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177), as it should
 
 ## Release process
 
-Don't forget to change the package version in `packages/**/src/version.ts` before the release.
 We prefer to keep versions the same across the packages, and release all at once, even if there were no changes in some.
 
-Common package manual release:
-
 ```bash
-npx tsx .build/build_and_prepare.ts common && npm pack && npm publish
+./update_versions.sh [new_version]
 ```
 
-Node.js client manual release:
+Then build the packages in this order:
 
 ```bash
-npx tsx .build/build_and_prepare.ts node && npm pack && npm publish
+npm workspace @clickhouse/client-common run build
+npm workspace @clickhouse/client-node run build
+npm workspace @clickhouse/client-web run build
 ```
 
-Web client manual release:
+If the above commands complete successfully, we're ready to publish.
 
 ```bash
-npx tsx .build/build_and_prepare.ts web && npm pack && npm publish
+npm workspace @clickhouse/client-common run pack
+npm workspace @clickhouse/client-common run publish
+npm workspace @clickhouse/client-node run pack
+npm workspace @clickhouse/client-node run publish
+npm workspace @clickhouse/client-web run pack
+npm workspace @clickhouse/client-web run publish
 ```
-
-For simplicity, `build_and_prepare.ts` just overrides the root `package.json`,
-which allows to use `npm pack` and `npm publish` as usual despite having multiple workspaces.
-Don't commit the generated `package.json` after the manual release.
