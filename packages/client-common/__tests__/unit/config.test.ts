@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest'
 import type {
   BaseClickHouseClientConfigOptions,
   HandleImplSpecificURLParams,
-} from '@clickhouse/client-common'
+} from '../../src/index'
 import {
   ClickHouseLogLevel,
   getConnectionParams,
   LogWriter,
   numberConfigURLValue,
-} from '@clickhouse/client-common'
-import { TestLogger } from '@test/utils/test_logger'
+} from '../../src/index'
+import { TestLogger } from '../utils/test_logger'
 import type { BaseClickHouseClientConfigOptionsWithURL } from '../../src/config'
 import {
   booleanConfigURLValue,

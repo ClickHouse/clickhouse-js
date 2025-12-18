@@ -4,7 +4,7 @@ import {
   enhanceStackTrace,
   getCurrentStackTrace,
   parseError,
-} from '@clickhouse/client-common'
+} from '../../src/index'
 
 describe('parseError', () => {
   it('parses a single line error', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { transformUrl } from '@clickhouse/client-common'
+import { transformUrl } from '../../src/index'
 
 describe('transformUrl', () => {
   it('only adds the trailing slash to a url without pathname', () => {

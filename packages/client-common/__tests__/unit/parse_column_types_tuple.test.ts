@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parsedEnumTestArgs } from '@test/utils/native_columns'
+import { parsedEnumTestArgs } from '../utils/native_columns'
 import type {
   ParsedColumnDateTime,
   ParsedColumnDateTime64,

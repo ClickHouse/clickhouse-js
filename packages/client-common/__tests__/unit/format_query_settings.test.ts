@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatQuerySettings, SettingsMap } from '@clickhouse/client-common'
+import { formatQuerySettings, SettingsMap } from '../../src/index'
 
 describe('formatQuerySettings', () => {
   it('formats boolean', () => {

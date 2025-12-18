@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { checkErrorInChunkAtIndex } from '@clickhouse/client-common'
+import { checkErrorInChunkAtIndex } from '../../src/index'
 
 describe('utils/stream', () => {
   const errMsg = 'boom'

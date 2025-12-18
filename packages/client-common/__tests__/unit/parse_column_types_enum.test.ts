@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { enumTypes, parsedEnumTestArgs } from '@test/utils/native_columns'
+import { enumTypes, parsedEnumTestArgs } from '../utils/native_columns'
 import { parseEnumType } from '../../src/parse'
 
 describe('Columns types parser - Enum', () => {
