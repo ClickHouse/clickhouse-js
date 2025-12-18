@@ -79,9 +79,7 @@ export interface RequestParams {
   query: string
 }
 
-export abstract class NodeBaseConnection
-  implements Connection<Stream.Readable>
-{
+export abstract class NodeBaseConnection implements Connection<Stream.Readable> {
   protected readonly defaultAuthHeader: string
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders
 

@@ -45,7 +45,7 @@ export type ResultJSONType<T, F extends DataFormat | unknown> =
             F extends RawDataFormat
             ? never
             : // happens only when Format could not be inferred from a literal
-              T[] | Record<string, T> | ResponseJSON<T>
+                T[] | Record<string, T> | ResponseJSON<T>
 
 export type RowJSONType<T, F extends DataFormat | unknown> =
   // Emits either a { row: T } or an object with progress
