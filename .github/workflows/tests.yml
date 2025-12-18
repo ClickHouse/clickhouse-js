@@ -40,16 +40,30 @@ jobs:
         run: |
           npm install
 
-      - name: Install dependencies (examples)
-        working-directory: examples
-        run: |
-          npm install
-
       - name: Run unit tests
         run: |
           npm run test:common:unit
 
-      - name: Run unit tests (chrome)
+  common-unit-tests-chrome:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+          npx playwright install chromium
+
+      - name: Run unit tests
         run: |
           npm run test:common:unit:chrome
 
@@ -289,6 +303,7 @@ jobs:
   node-all-tests-codecov-upload:
     needs:
       [
+        'common-unit-tests-chrome',
         'node-integration-tests-local-single-node',
         'node-integration-tests-local-cluster',
         'node-integration-tests-cloud',
