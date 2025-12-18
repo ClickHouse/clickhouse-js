@@ -26,6 +26,7 @@
     "typecheck": "tsc --project tsconfig.all.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
+    "prettify": "prettier --write .",
     "test": ".scripts/jasmine.sh jasmine.all.json",
     "test:common:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 .scripts/jasmine.sh jasmine.common.unit.json",
     "test:common:integration": ".scripts/jasmine.sh jasmine.common.integration.json",
