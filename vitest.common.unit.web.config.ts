@@ -1,6 +1,13 @@
 import { defineConfig } from 'vitest/config'
 import { playwright } from '@vitest/browser-playwright'
 
+const browser = process.env.BROWSER ?? 'chromium'
+if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
+  throw new Error(
+    `Unsupported browser for tests: [${browser}]. Supported browsers are: chromium, firefox, webkit.`,
+  )
+}
+
 export default defineConfig({
   test: {
     root: 'packages/client-common/__tests__',
@@ -9,7 +16,7 @@ export default defineConfig({
       enabled: true,
       provider: playwright(),
       // https://vitest.dev/config/browser/playwright
-      instances: [{ browser: 'chromium' }],
+      instances: [{ browser }],
     },
   },
   resolve: {

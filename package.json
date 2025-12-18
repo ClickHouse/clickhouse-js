@@ -28,7 +28,7 @@
     "lint:fix": "eslint --fix .",
     "test": ".scripts/jasmine.sh jasmine.all.json",
     "test:common:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.common.unit.config.ts",
-    "test:common:unit:chrome": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.common.unit.chrome.config.ts",
+    "test:common:unit:web": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.common.unit.web.config.ts",
     "test:common:integration": ".scripts/jasmine.sh jasmine.common.integration.json",
     "test:node:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 .scripts/jasmine.sh jasmine.node.unit.json",
     "test:node:tls": ".scripts/jasmine.sh jasmine.node.tls.json",

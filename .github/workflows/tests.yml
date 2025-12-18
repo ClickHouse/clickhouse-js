@@ -44,7 +44,7 @@ jobs:
         run: |
           npm run test:common:unit
 
-  common-unit-tests-chrome:
+  common-unit-tests-web:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -62,11 +62,18 @@ jobs:
         run: |
           npm install
           npx playwright install chromium
+          npx playwright install firefox
+          # We're not testing in WebKit atm
 
-      - name: Run unit tests
+      - name: Run unit tests (Chromium)
         run: |
-          npm run test:common:unit:chrome
+          export BROWSER=chromium
+          npm run test:common:unit:web
 
+      - name: Run unit tests (Firefox)
+        run: |
+          export BROWSER=firefox
+          npm run test:common:unit:web
   node-unit-tests:
     runs-on: ubuntu-latest
     needs: common-unit-tests
@@ -303,7 +310,7 @@ jobs:
   node-all-tests-codecov-upload:
     needs:
       [
-        'common-unit-tests-chrome',
+        'common-unit-tests-web',
         'node-integration-tests-local-single-node',
         'node-integration-tests-local-cluster',
         'node-integration-tests-cloud',
