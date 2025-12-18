@@ -8,6 +8,8 @@ import {
   type CreateConnectionParams,
   NodeConnectionFactory,
 } from '../../src/connection'
+import { sleep } from '../utils/sleep'
+import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
 
 describe('[Node.js] createClient', () => {
   it('throws on incorrect "url" config value', () => {
@@ -164,5 +166,31 @@ describe('[Node.js] createClient', () => {
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('closes the client when used with using statement', async () => {
+    if (!isAwaitUsingStatementSupported()) {
+      pending('using statement is not supported in this environment')
+      return
+    }
+    const client = createClient()
+    let isClosed = false
+    spyOn(client, 'close').and.callFake(async () => {
+      // Simulate some delay in closing
+      await sleep(0)
+      isClosed = true
+    })
+
+    // Wrap in eval to allow using statement syntax without
+    // syntax error in older Node.js versions. Might want to
+    // consider using a separate test file for this in the future.
+    await eval(`
+      (async (value) => {
+          await using c = value;
+          // do nothing, just testing the disposal at the end of the block
+      })
+    `)(client)
+
+    expect(isClosed).toBeTrue()
   })
 })
