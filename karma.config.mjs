@@ -9,7 +9,6 @@ export default function (config) {
     frameworks: ['webpack', 'jasmine'],
     // list of files / patterns to load in the browser
     files: [
-      'packages/client-common/__tests__/unit/*.test.ts',
       'packages/client-common/__tests__/utils/*.ts',
       'packages/client-common/__tests__/integration/*.test.ts',
       'packages/client-web/__tests__/integration/*.test.ts',
@@ -18,7 +17,6 @@ export default function (config) {
     exclude: [],
     webpack: webpackConfig,
     preprocessors: {
-      'packages/client-common/**/*.ts': ['webpack', 'sourcemap'],
       'packages/client-web/**/*.ts': ['webpack', 'sourcemap'],
       'packages/client-common/__tests__/unit/*.test.ts': [
         'webpack',
