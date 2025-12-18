@@ -9,12 +9,8 @@ import type {
   MakeResultSet,
   WithClickHouseSummary,
   WithResponseHeaders,
-} from '@clickhouse/client-common'
-import {
-  type DataFormat,
-  defaultJSONHandling,
-  DefaultLogger,
-} from '@clickhouse/client-common'
+} from './index'
+import { type DataFormat, defaultJSONHandling, DefaultLogger } from './index'
 import type { InsertValues, NonEmptyArray } from './clickhouse_types'
 import type { ImplementationDetails, ValuesEncoder } from './config'
 import { getConnectionParams, prepareConfigWithURL } from './config'
@@ -135,10 +131,8 @@ export interface InsertColumnsExcept {
   except: NonEmptyArray<string>
 }
 
-export interface InsertParams<
-  Stream = unknown,
-  T = unknown,
-> extends BaseQueryParams {
+export interface InsertParams<Stream = unknown, T = unknown>
+  extends BaseQueryParams {
   /** Name of a table to insert into. */
   table: string
   /** A dataset to insert. */
