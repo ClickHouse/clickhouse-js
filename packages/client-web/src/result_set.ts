@@ -17,9 +17,9 @@ import { getAsText } from './utils'
 
 const NEWLINE = 0x0a as const
 
-export class ResultSet<Format extends DataFormat | unknown>
-  implements BaseResultSet<ReadableStream<Row[]>, Format>
-{
+export class ResultSet<
+  Format extends DataFormat | unknown,
+> implements BaseResultSet<ReadableStream<Row[]>, Format> {
   public readonly response_headers: ResponseHeaders
 
   private readonly exceptionTag: string | undefined = undefined
