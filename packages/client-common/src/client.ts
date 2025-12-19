@@ -131,8 +131,10 @@ export interface InsertColumnsExcept {
   except: NonEmptyArray<string>
 }
 
-export interface InsertParams<Stream = unknown, T = unknown>
-  extends BaseQueryParams {
+export interface InsertParams<
+  Stream = unknown,
+  T = unknown,
+> extends BaseQueryParams {
   /** Name of a table to insert into. */
   table: string
   /** A dataset to insert. */
