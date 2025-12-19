@@ -214,10 +214,16 @@ See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177), as it should
 
 ## Release process
 
+Tools required:
+
+- Node.js >= `20.x`
+- NPM >= `11.x`
+- jq (https://stedolan.github.io/jq/)
+
 We prefer to keep versions the same across the packages, and release all at once, even if there were no changes in some.
 
 ```bash
-./update_versions.sh [new_version]
+./scripts/update_version.sh [new_version]
 ```
 
 Then build the packages:
@@ -232,4 +238,13 @@ Now we're ready to publish.
 ```bash
 npm --workspaces pack
 npm --workspaces publish
+```
+
+After that you can commit the changes, create a new Git tag and push it to the repository:
+
+```bash
+git add .
+git commit -m "chore: bump version to [new_version]"
+git tag v[new_version]
+git push origin v[new_version]
 ```
