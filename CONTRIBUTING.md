@@ -222,14 +222,20 @@ Tools required:
 
 We prefer to keep versions the same across the packages, and release all at once, even if there were no changes in some.
 
+Make sure that the working directory is clean:
+
 ```bash
-./scripts/update_version.sh [new_version]
+git clean -dfX
+npm i
+```
+
+```bash
+.scripts/update_version.sh [new_version]
 ```
 
 Then build the packages:
 
 ```bash
-
 npm --workspaces run build
 ```
 
