@@ -220,21 +220,16 @@ We prefer to keep versions the same across the packages, and release all at once
 ./update_versions.sh [new_version]
 ```
 
-Then build the packages in this order:
+Then build the packages:
 
 ```bash
-npm workspace @clickhouse/client-common run build
-npm workspace @clickhouse/client-node run build
-npm workspace @clickhouse/client-web run build
+
+npm --workspaces run build
 ```
 
-If the above commands complete successfully, we're ready to publish.
+Now we're ready to publish.
 
 ```bash
-npm workspace @clickhouse/client-common run pack
-npm workspace @clickhouse/client-common run publish
-npm workspace @clickhouse/client-node run pack
-npm workspace @clickhouse/client-node run publish
-npm workspace @clickhouse/client-web run pack
-npm workspace @clickhouse/client-web run publish
+npm --workspaces pack
+npm --workspaces publish
 ```

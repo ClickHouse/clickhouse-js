@@ -19,9 +19,6 @@
   },
   "scripts": {
     "build:node:all": "rm -rf out; tsc --project tsconfig.all.json",
-    "build:common:package": ".scripts/build.sh client-common",
-    "build:node:package": ".scripts/build.sh client-node",
-    "build:web:package": ".scripts/build.sh client-web",
     "build:web:minjs": "webpack --config webpack.release.js",
     "typecheck": "tsc --project tsconfig.all.json --noEmit",
     "lint": "eslint .",
