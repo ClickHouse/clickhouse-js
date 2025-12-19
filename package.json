@@ -18,6 +18,7 @@
     "node": ">=16"
   },
   "scripts": {
+    "//": "No-op change",
     "build:node:all": "rm -rf out; tsc --project tsconfig.all.json",
     "build:common:package": ".scripts/build.sh client-common",
     "build:node:package": ".scripts/build.sh client-node",
