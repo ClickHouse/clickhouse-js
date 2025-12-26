@@ -135,8 +135,11 @@ interface ClickHouseServerSettings {
   asterisk_include_materialized_columns?: Bool
   /** If true, data from INSERT query is stored in queue and later flushed to table in background. If wait_for_async_insert is false, INSERT query is processed almost instantly, otherwise client will wait until data will be flushed to table */
   async_insert?: Bool
-  /** Maximum time to wait before dumping collected data per query since the first data appeared */
-  async_insert_busy_timeout_ms?: Milliseconds
+  /** Maximum time to wait before dumping collected data per query since the first data appeared.
+   *
+   *  @see https://clickhouse.com/docs/operations/settings/settings#async_insert_busy_timeout_max_ms
+   */
+  async_insert_busy_timeout_max_ms?: Milliseconds
   /** For async INSERT queries in the replicated table, specifies that deduplication of insertings blocks should be performed */
   async_insert_deduplicate?: Bool
   /** Maximum size in bytes of unparsed data collected per query before being inserted */
