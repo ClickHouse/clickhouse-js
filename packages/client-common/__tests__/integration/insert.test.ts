@@ -159,6 +159,7 @@ describe('insert', () => {
         wait_for_async_insert: 1,
       },
     })
-    await assertJsonValues(client, tableName)
+    // Use retry to ensure data is actually inserted
+    await assertJsonValues(client, tableName, 50, 100)
   })
 })
