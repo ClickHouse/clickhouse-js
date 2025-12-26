@@ -154,6 +154,7 @@ describe('insert', () => {
       format: 'JSONEachRow',
       // See https://clickhouse.com/docs/en/optimize/asynchronous-inserts
       clickhouse_settings: {
+        insert_quorum: '0',
         async_insert: 1,
         wait_for_async_insert: 1,
       },
