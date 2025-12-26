@@ -10,13 +10,13 @@ void (async () => {
     password: process.env['CLICKHOUSE_PASSWORD'], // defaults to an empty string
     max_open_connections: 10,
     clickhouse_settings: {
-      // https://clickhouse.com/docs/en/operations/settings/settings#async-insert
+      // https://clickhouse.com/docs/en/operations/settings/settings#async_insert
       async_insert: 1,
-      // https://clickhouse.com/docs/en/operations/settings/settings#wait-for-async-insert
+      // https://clickhouse.com/docs/en/operations/settings/settings#wait_for_async_insert
       wait_for_async_insert: 1,
-      // https://clickhouse.com/docs/en/operations/settings/settings#async-insert-max-data-size
+      // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_max_data_size
       async_insert_max_data_size: '1000000',
-      // https://clickhouse.com/docs/en/operations/settings/settings#async-insert-busy-timeout-ms
+      // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_busy_timeout_ms
       async_insert_busy_timeout_ms: 1000,
     },
   })
@@ -41,7 +41,7 @@ void (async () => {
   // (e.g. from parallel HTTP requests in your app or similar).
   const promises = [...new Array(10)].map(async () => {
     // Each of these smaller inserts could be merged into a single batch on the server side
-    // (or more, depending on https://clickhouse.com/docs/en/operations/settings/settings#async-insert-max-data-size).
+    // (or more, depending on https://clickhouse.com/docs/en/operations/settings/settings#async_insert_max_data_size).
     // Since we set `async_insert=1`, application does not have to prepare a larger batch to optimize the insert performance.
     // In this example, and with this particular (rather small) data size, we expect the server to merge it into just a single batch.
     // As we set `wait_for_async_insert=1` as well, the insert promises will be resolved when the server sends an ack
