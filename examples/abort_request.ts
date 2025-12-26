@@ -16,7 +16,7 @@ import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 void (async () => {
   const client = createClient({
     clickhouse_settings: {
-      // See https://clickhouse.com/docs/en/operations/settings/settings#cancel-http-readonly-queries-on-client-close
+      // https://clickhouse.com/docs/operations/settings/settings#cancel_http_readonly_queries_on_client_close
       cancel_http_readonly_queries_on_client_close: 1,
     },
   })

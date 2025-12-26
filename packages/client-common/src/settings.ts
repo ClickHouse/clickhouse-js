@@ -177,7 +177,9 @@ interface ClickHouseServerSettings {
   bool_true_representation?: string
   /** Calculate text stack trace in case of exceptions during query execution. This is the default. It requires symbol lookups that may slow down fuzzing tests when huge amount of wrong queries are executed. In normal cases you should not disable this option. */
   calculate_text_stack_trace?: Bool
-  /** Cancel HTTP readonly queries when a client closes the connection without waiting for response. */
+  /** Cancel HTTP readonly queries when a client closes the connection without waiting for response.
+   * @see https://clickhouse.com/docs/operations/settings/settings#cancel_http_readonly_queries_on_client_close
+   */
   cancel_http_readonly_queries_on_client_close?: Bool
   /** CAST operator into IPv4, CAST operator into IPV6 type, toIPv4, toIPv6 functions will return default value instead of throwing exception on conversion error. */
   cast_ipv4_ipv6_default_on_conversion_error?: Bool
