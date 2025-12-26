@@ -1,4 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
+import { sleep } from '../utils'
 
 export const jsonValues = [
   { id: '42', name: 'hello', sku: [0, 1] },
@@ -11,12 +12,22 @@ export const jsonValues = [
 export async function assertJsonValues(
   client: ClickHouseClient,
   tableName: string,
+  tryCount = 1,
+  tryDelayMs = 1000,
 ) {
-  const result = await client
-    .query({
-      query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
-      format: 'JSONEachRow',
-    })
-    .then((r) => r.json())
+  let result: unknown[] = []
+  for (let i = 0; i < tryCount; i++) {
+    result = await client
+      .query({
+        query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+        format: 'JSONEachRow',
+      })
+      .then((r) => r.json())
+    if (result.length === jsonValues.length) {
+      break
+    }
+    // wait a bit before retrying
+    await sleep(tryDelayMs)
+  }
   expect(result).toEqual(jsonValues)
 }
