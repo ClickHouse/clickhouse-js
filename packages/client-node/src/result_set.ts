@@ -8,9 +8,10 @@ import type {
   Row,
 } from '@clickhouse/client-common'
 import {
-  checkErrorInChunkAtIndex,
+  extractErrorAtTheEndOfChunk,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
+  CARET_RETURN,
 } from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
@@ -134,7 +135,7 @@ export class ResultSet<
 
     validateStreamFormat(this.format)
 
-    let incompleteChunks: Buffer[] = []
+    const incompleteChunks: Buffer[] = []
     const logError = this.log_error
     const exceptionTag = this.exceptionTag
     const jsonHandling = this.jsonHandling
@@ -153,18 +154,20 @@ export class ResultSet<
         do {
           idx = chunk.indexOf(NEWLINE, lastIdx)
 
-          const maybeErr = checkErrorInChunkAtIndex(chunk, idx, exceptionTag)
-          if (maybeErr) {
-            return callback(maybeErr)
+          // Check for exception in the chunk (only after 25.11)
+          if (
+            idx > 0 &&
+            chunk[idx - 1] === CARET_RETURN &&
+            exceptionTag !== undefined
+          ) {
+            return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
           }
 
           if (idx !== -1) {
             if (incompleteChunks.length > 0) {
-              currentChunkPart = Buffer.concat(
-                [...incompleteChunks, chunk.subarray(lastIdx, idx)],
-                incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx,
-              )
-              incompleteChunks = []
+              incompleteChunks.push(chunk.subarray(lastIdx, idx))
+              currentChunkPart = Buffer.concat(incompleteChunks)
+              incompleteChunks.length = 0
             } else {
               currentChunkPart = chunk.subarray(lastIdx, idx)
             }
