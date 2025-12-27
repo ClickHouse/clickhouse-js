@@ -29,8 +29,6 @@ export function checkErrorInChunkAtIndex(
     exceptionTag !== undefined
   ) {
     try {
-      const textDecoder = new TextDecoder('utf-8')
-
       const bytesCountAfterErrLenHint =
         1 + // space
         EXCEPTION_MARKER.length + // __exception__
@@ -48,6 +46,8 @@ export function checkErrorInChunkAtIndex(
       do {
         --errMsgLenStartIdx
       } while (chunk[errMsgLenStartIdx] !== NEWLINE)
+
+      const textDecoder = new TextDecoder('utf-8')
 
       const errMsgLen = parseInt(
         textDecoder.decode(
