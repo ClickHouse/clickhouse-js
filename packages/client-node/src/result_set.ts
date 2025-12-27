@@ -154,13 +154,9 @@ export class ResultSet<
         do {
           idx = chunk.indexOf(NEWLINE, lastIdx)
 
-          if (idx !== -1) {
+          if (idx > 0) {
             // Check for exception in the chunk (only after 25.11)
-            if (
-              idx > 0 &&
-              chunk[idx - 1] === CARET_RETURN &&
-              exceptionTag !== undefined
-            ) {
+            if (chunk[idx - 1] === CARET_RETURN && exceptionTag !== undefined) {
               return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
             }
 
@@ -180,11 +176,20 @@ export class ResultSet<
               },
             })
             lastIdx = idx + 1 // skipping newline character
-          } else {
+          } else if (idx === -1) {
             incompleteChunks.push(chunk.subarray(lastIdx))
             if (rows.length > 0) {
               this.push(rows)
             }
+          } else {
+            // idx === 0, short-circuiting empty text row
+            rows.push({
+              text: '',
+              json<T>(): T {
+                return jsonHandling.parse('')
+              },
+            })
+            lastIdx = idx + 1 // skipping newline character
           }
         } while (idx !== -1)
         callback()
