@@ -7,7 +7,10 @@ import type {
   ResultStream,
   Row,
 } from '@clickhouse/client-common'
-import { checkErrorInChunkAtIndex } from '@clickhouse/client-common'
+import {
+  CARET_RETURN,
+  extractErrorAtTheEndOfChunk,
+} from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
@@ -110,9 +113,13 @@ export class ResultSet<
           if (idx !== -1) {
             let bytesToDecode: Uint8Array
 
-            const maybeErr = checkErrorInChunkAtIndex(chunk, idx, exceptionTag)
-            if (maybeErr) {
-              controller.error(maybeErr)
+            // Check for exception in the chunk (only after 25.11)
+            if (
+              idx > 0 &&
+              chunk[idx - 1] === CARET_RETURN &&
+              exceptionTag !== undefined
+            ) {
+              controller.error(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
             }
 
             // using the incomplete chunks from the previous iterations
