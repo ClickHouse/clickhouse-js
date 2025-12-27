@@ -134,7 +134,7 @@ export class ResultSet<
 
     validateStreamFormat(this.format)
 
-    let incompleteChunks: Buffer[] = []
+    const incompleteChunks: Buffer[] = []
     const logError = this.log_error
     const exceptionTag = this.exceptionTag
     const jsonHandling = this.jsonHandling
@@ -160,11 +160,9 @@ export class ResultSet<
 
           if (idx !== -1) {
             if (incompleteChunks.length > 0) {
-              currentChunkPart = Buffer.concat(
-                [...incompleteChunks, chunk.subarray(lastIdx, idx)],
-                incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx,
-              )
-              incompleteChunks = []
+              incompleteChunks.push(chunk.subarray(lastIdx, idx))
+              currentChunkPart = Buffer.concat(incompleteChunks)
+              incompleteChunks.length = 0
             } else {
               currentChunkPart = chunk.subarray(lastIdx, idx)
             }
