@@ -154,16 +154,16 @@ export class ResultSet<
         do {
           idx = chunk.indexOf(NEWLINE, lastIdx)
 
-          // Check for exception in the chunk (only after 25.11)
-          if (
-            idx > 0 &&
-            chunk[idx - 1] === CARET_RETURN &&
-            exceptionTag !== undefined
-          ) {
-            return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
-          }
-
           if (idx !== -1) {
+            // Check for exception in the chunk (only after 25.11)
+            if (
+              idx > 0 &&
+              chunk[idx - 1] === CARET_RETURN &&
+              exceptionTag !== undefined
+            ) {
+              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
+            }
+
             if (incompleteChunks.length > 0) {
               incompleteChunks.push(chunk.subarray(lastIdx, idx))
               currentChunkPart = Buffer.concat(incompleteChunks)
