@@ -119,6 +119,17 @@ export function extractErrorAtTheEndOfChunkStrict(
       )
     }
 
+    const closingTag = textDecoder.decode(
+      chunk.subarray(
+        -bytesCountAfterErrLenHint + 1, // skipping the space character
+        -bytesCountAfterErrLenHint + exceptionTag.length,
+      ),
+    )
+
+    if (closingTag !== exceptionTag) {
+      return null
+    }
+
     const errMsg = textDecoder.decode(
       chunk.subarray(
         errMsgLenStartIdx - errMsgLen + 1, // skipping the newline character
