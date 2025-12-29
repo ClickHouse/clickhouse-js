@@ -110,15 +110,11 @@ export class ResultSet<
           // an unescaped newline character denotes the end of a row,
           // or at least the beginning of the exception marker
           idx = chunk.indexOf(NEWLINE, lastIdx)
-          if (idx !== -1) {
+          if (idx > 0) {
             let bytesToDecode: Uint8Array
 
             // Check for exception in the chunk (only after 25.11)
-            if (
-              idx > 0 &&
-              chunk[idx - 1] === CARET_RETURN &&
-              exceptionTag !== undefined
-            ) {
+            if (exceptionTag !== undefined && chunk[idx - 1] === CARET_RETURN) {
               controller.error(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
             }
 
@@ -156,7 +152,7 @@ export class ResultSet<
             })
 
             lastIdx = idx + 1 // skipping newline character
-          } else {
+          } else if (idx === -1) {
             // there is no complete row in the rest of the current chunk
             // to be processed during the next transform iteration
             const incompleteChunk = chunk.slice(lastIdx)
@@ -167,6 +163,16 @@ export class ResultSet<
             if (rows.length > 0) {
               controller.enqueue(rows)
             }
+          } else {
+            // idx === 0: this is the least probable case, thus handled last.
+            // Short-circuiting empty text row.
+            rows.push({
+              text: '',
+              json<T>(): T {
+                return jsonHandling.parse('')
+              },
+            })
+            lastIdx = idx + 1 // skipping newline character
           }
         } while (idx !== -1)
       },

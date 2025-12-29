@@ -152,8 +152,9 @@ export class ResultSet<
         let currentChunkPart: Buffer
 
         do {
+          // an unescaped newline character denotes the end of a row,
+          // or at least the beginning of the exception marker
           idx = chunk.indexOf(NEWLINE, lastIdx)
-
           if (idx > 0) {
             // Check for exception in the chunk (only after 25.11)
             if (exceptionTag !== undefined && chunk[idx - 1] === CARET_RETURN) {
