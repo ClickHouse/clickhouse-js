@@ -20,6 +20,11 @@ export const CARET_RETURN = 0x0d as const
  */
 export function extractErrorAtTheEndOfChunk(
   chunk: Uint8Array,
+  /**
+   * Expected to be 16 ASKII characters long
+   *
+   * @see https://clickhouse.com/docs/interfaces/http#:~:text=TAG%3E%20is%20a-,16%20byte%20random%20tag,-%2C%20which%20is%20the
+   */
   exceptionTag: string,
 ): Error {
   try {
