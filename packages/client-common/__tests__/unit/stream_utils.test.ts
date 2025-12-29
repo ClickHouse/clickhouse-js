@@ -3,7 +3,8 @@ import { extractErrorAtTheEndOfChunk } from '../../src/index'
 
 describe('utils/stream', () => {
   const errMsg = 'boom'
-  const tag = 'FOOBAR'
+  // 16 ASCII characters
+  const tag = 'FOOBARBAZQUUX123'
 
   it('should handle a valid error chunk', async () => {
     const chunk = buildValidErrorChunk(errMsg, tag)
