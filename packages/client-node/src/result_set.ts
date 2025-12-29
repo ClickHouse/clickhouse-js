@@ -156,7 +156,7 @@ export class ResultSet<
 
           if (idx > 0) {
             // Check for exception in the chunk (only after 25.11)
-            if (chunk[idx - 1] === CARET_RETURN && exceptionTag !== undefined) {
+            if (exceptionTag !== undefined && chunk[idx - 1] === CARET_RETURN) {
               return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
             }
 
