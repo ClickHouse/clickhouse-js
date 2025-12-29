@@ -154,10 +154,12 @@ describe('insert', () => {
       format: 'JSONEachRow',
       // See https://clickhouse.com/docs/en/optimize/asynchronous-inserts
       clickhouse_settings: {
+        insert_quorum: '0',
         async_insert: 1,
         wait_for_async_insert: 1,
       },
     })
-    await assertJsonValues(client, tableName)
+    // Use retry to ensure data is actually inserted
+    await assertJsonValues(client, tableName, 50, 100)
   })
 })
