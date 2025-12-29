@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { extractErrorAtTheEndOfChunk } from '../../src/index'
+import {
+  extractErrorAtTheEndOfChunk,
+  extractErrorAtTheEndOfChunkStrict,
+} from '../../src/index'
 
 describe('utils/stream', () => {
   const errMsg = 'boom'
@@ -13,6 +16,13 @@ describe('utils/stream', () => {
     expect(err).toBeDefined()
     expect(err).toBeInstanceOf(Error)
     expect(err!.message).toBe(errMsg)
+  })
+
+  it('should not handle an error-looking chunk with a mismatch tag', async () => {
+    const chunk = buildValidErrorChunk(errMsg, tag)
+
+    const err = extractErrorAtTheEndOfChunkStrict(chunk, 'MISMATCHEDTAG!')
+    expect(err).toBeNull()
   })
 
   it('should handle a broken chunk', async () => {
