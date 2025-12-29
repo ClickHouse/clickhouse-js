@@ -182,7 +182,8 @@ export class ResultSet<
               this.push(rows)
             }
           } else {
-            // idx === 0, short-circuiting empty text row
+            // idx === 0: this is the least probable case, thus handled last.
+            // Short-circuiting empty text row.
             rows.push({
               text: '',
               json<T>(): T {
