@@ -106,15 +106,31 @@ export class ResultSet<
         let idx: number
         let lastIdx = 0
 
-        do {
+        for (;;) {
           // an unescaped newline character denotes the end of a row,
           // or at least the beginning of the exception marker
           idx = chunk.indexOf(NEWLINE, lastIdx)
-          if (idx > 0) {
+          if (idx === -1) {
+            // there is no complete row in the rest of the current chunk
+            // to be processed during the next transform iteration
+            const incompleteChunk = chunk.slice(lastIdx)
+            incompleteChunks.push(incompleteChunk)
+            totalIncompleteLength += incompleteChunk.length
+
+            // send the extracted rows to the consumer, if any
+            if (rows.length > 0) {
+              controller.enqueue(rows)
+            }
+            break
+          } else {
             let bytesToDecode: Uint8Array
 
             // Check for exception in the chunk (only after 25.11)
-            if (exceptionTag !== undefined && chunk[idx - 1] === CARET_RETURN) {
+            if (
+              exceptionTag !== undefined &&
+              idx >= 1 &&
+              chunk[idx - 1] === CARET_RETURN
+            ) {
               controller.error(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
             }
 
@@ -152,29 +168,8 @@ export class ResultSet<
             })
 
             lastIdx = idx + 1 // skipping newline character
-          } else if (idx === -1) {
-            // there is no complete row in the rest of the current chunk
-            // to be processed during the next transform iteration
-            const incompleteChunk = chunk.slice(lastIdx)
-            incompleteChunks.push(incompleteChunk)
-            totalIncompleteLength += incompleteChunk.length
-
-            // send the extracted rows to the consumer, if any
-            if (rows.length > 0) {
-              controller.enqueue(rows)
-            }
-          } else {
-            // idx === 0: this is the least probable case, thus handled last.
-            // Short-circuiting empty text row.
-            rows.push({
-              text: '',
-              json<T>(): T {
-                return jsonHandling.parse('')
-              },
-            })
-            lastIdx = idx + 1 // skipping newline character
           }
-        } while (idx !== -1)
+        }
       },
     })
 
