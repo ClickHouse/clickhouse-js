@@ -131,7 +131,13 @@ export class ResultSet<
               idx >= 1 &&
               chunk[idx - 1] === CARET_RETURN
             ) {
-              controller.error(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
+              const maybeError = extractErrorAtTheEndOfChunk(
+                chunk,
+                exceptionTag,
+              )
+              if (maybeError) {
+                controller.error(maybeError)
+              }
             }
 
             // using the incomplete chunks from the previous iterations
