@@ -15,10 +15,11 @@ export function getFromEnv(key: string): string {
 }
 
 export function getAuthFromEnv() {
-  if (process.env['CLICKHOUSE_TEST_ENVIRONMENT'] === 'local_cluster') {
-    return { username: 'default', password: '' }
+  if (process.env['CLICKHOUSE_TEST_ENVIRONMENT'] === 'cloud') {
+    const username = process.env[EnvKeys.username]
+    const password = process.env[EnvKeys.password]
+    return { username: username ?? 'default', password: password ?? '' }
   }
-  const username = process.env[EnvKeys.username]
-  const password = process.env[EnvKeys.password]
-  return { username: username ?? 'default', password: password ?? '' }
+
+  return { username: 'default', password: '' }
 }
