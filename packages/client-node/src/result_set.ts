@@ -150,7 +150,7 @@ export class ResultSet<
         let lastIdx = 0
         let currentChunkPart: Buffer
 
-        for (;;) {
+        while (true) {
           // an unescaped newline character denotes the end of a row,
           // or at least the beginning of the exception marker
           const idx = chunk.indexOf(NEWLINE, lastIdx)
