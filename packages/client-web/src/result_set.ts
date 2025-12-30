@@ -86,7 +86,7 @@ export class ResultSet<
     this.markAsConsumed()
     validateStreamFormat(this.format)
 
-    let incompleteChunks: Uint8Array[] = []
+    const incompleteChunks: Uint8Array[] = []
     let totalIncompleteLength = 0
 
     const exceptionTag = this.exceptionTag
@@ -150,8 +150,10 @@ export class ResultSet<
               const finalChunk = chunk.slice(0, idx)
               completeRowBytes.set(finalChunk, offset)
 
-              // reset the incomplete chunks
-              incompleteChunks = []
+              // Reset the incomplete chunks.
+              // Removing used buffers and reusing the already allocated memory
+              // by setting length to 0
+              incompleteChunks.length = 0
               totalIncompleteLength = 0
 
               bytesToDecode = completeRowBytes
