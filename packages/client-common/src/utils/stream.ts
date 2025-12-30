@@ -100,11 +100,22 @@ export function extractErrorAtTheEndOfChunkStrict(
       return null
     }
 
+    const textDecoder = new TextDecoder('utf-8')
+
+    const closingTagAndMarkerStartIdx =
+      -exceptionTag.length - 2 - EXCEPTION_MARKER.length - 2
+    const closingTagAndMarker = textDecoder.decode(
+      chunk.subarray(closingTagAndMarkerStartIdx),
+    )
+
+    if (closingTagAndMarker !== `${exceptionTag}\r\n${EXCEPTION_MARKER}\r\n`) {
+      // the tag does not match; this is not an error chunk
+      return null
+    }
+
     do {
       --errMsgLenStartIdx
     } while (errMsgLenStartIdx > 0 && chunk[errMsgLenStartIdx] !== NEWLINE)
-
-    const textDecoder = new TextDecoder('utf-8')
 
     const errMsgLen = parseInt(
       textDecoder.decode(
@@ -114,32 +125,6 @@ export function extractErrorAtTheEndOfChunkStrict(
 
     if (isNaN(errMsgLen) || errMsgLen <= 0) {
       // does not look like an error length hint
-      return null
-    }
-
-    const closingTagStartIdx =
-      -exceptionTag.length - 2 - EXCEPTION_MARKER.length - 2
-    const closingTag = textDecoder.decode(
-      chunk.subarray(
-        closingTagStartIdx,
-        closingTagStartIdx + exceptionTag.length,
-      ),
-    )
-
-    if (closingTag !== exceptionTag) {
-      // the tag does not match; this is not an error chunk
-      return null
-    }
-
-    const closingExceptionMarker = textDecoder.decode(
-      chunk.subarray(
-        EXCEPTION_MARKER.length - 2, // skipping the space character
-        -2, // skipping the \r\n
-      ),
-    )
-
-    if (closingExceptionMarker !== EXCEPTION_MARKER) {
-      // does not look like an exception marker
       return null
     }
 

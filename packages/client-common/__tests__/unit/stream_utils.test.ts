@@ -83,6 +83,18 @@ describe('utils/stream', () => {
     expect(err).toBeInstanceOf(Error)
     expect(err?.message).toContain('valid exception 3')
   })
+
+  it('should parse a real world exception chunk (strict)', async () => {
+    const err = extractErrorAtTheEndOfChunkStrict(
+      new TextEncoder().encode(
+        "\r\n__exception__\r\nbavstjgvpumrqwto\r\nCode: 395. DB::Exception: valid exception 3: while executing 'FUNCTION throwIf(equals(__table1.number, 999999_UInt32) :: 0, 'valid exception 3'_String :: 2) -> throwIf(equals(__table1.number, 999999_UInt32), 'valid exception 3'_String) UInt8 : 3'. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.1.1.200 (official build))\n324 bavstjgvpumrqwto\r\n__exception__\r\n",
+      ),
+      'bavstjgvpumrqwto',
+    )
+    expect(err).toBeDefined()
+    expect(err).toBeInstanceOf(Error)
+    expect(err?.message).toContain('valid exception 3')
+  })
 })
 
 /**
