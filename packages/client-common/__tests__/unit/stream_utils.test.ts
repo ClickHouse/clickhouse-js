@@ -7,7 +7,7 @@ import {
 describe('utils/stream', () => {
   const errMsg = 'boom'
   // 16 ASCII characters
-  const tag = 'FOOBARBAZQUUX123'
+  const tag = '[1234567890ABCD]'
 
   it('should handle a valid error chunk', async () => {
     const chunk = buildValidErrorChunk(errMsg, tag)
@@ -21,13 +21,22 @@ describe('utils/stream', () => {
   it('should not handle an error-looking chunk with a mismatch tag', async () => {
     const chunk = buildValidErrorChunk(errMsg, tag)
 
-    const err = extractErrorAtTheEndOfChunkStrict(chunk, 'MISMATCHEDTAG!')
+    const err = extractErrorAtTheEndOfChunkStrict(chunk, '[MISMATCHEDTAG!]')
     expect(err).toBeNull()
   })
 
   it('should not error on a valid \\r\\n sequence', async () => {
     const chunk = new TextEncoder().encode(
       'this is a normal chunk with a newline\r\nnew chunk begins here',
+    )
+
+    const err = extractErrorAtTheEndOfChunkStrict(chunk, tag)
+    expect(err).toBeNull()
+  })
+
+  it('should not error on a chunk without the closing __exception__ marker', async () => {
+    const chunk = new TextEncoder().encode(
+      `body-body-body\r\n__exception__\r\n${tag}\nboom\n5 ${tag}\r\n__excePtion__\r\n`,
     )
 
     const err = extractErrorAtTheEndOfChunkStrict(chunk, tag)

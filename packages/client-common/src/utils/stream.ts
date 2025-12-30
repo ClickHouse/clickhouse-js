@@ -117,15 +117,29 @@ export function extractErrorAtTheEndOfChunkStrict(
       return null
     }
 
+    const closingTagStartIdx =
+      -exceptionTag.length - 2 - EXCEPTION_MARKER.length - 2
     const closingTag = textDecoder.decode(
       chunk.subarray(
-        -bytesCountAfterErrLenHint + 1, // skipping the space character
-        -bytesCountAfterErrLenHint + exceptionTag.length,
+        closingTagStartIdx,
+        closingTagStartIdx + exceptionTag.length,
       ),
     )
 
     if (closingTag !== exceptionTag) {
       // the tag does not match; this is not an error chunk
+      return null
+    }
+
+    const closingExceptionMarker = textDecoder.decode(
+      chunk.subarray(
+        EXCEPTION_MARKER.length - 2, // skipping the space character
+        -2, // skipping the \r\n
+      ),
+    )
+
+    if (closingExceptionMarker !== EXCEPTION_MARKER) {
+      // does not look like an exception marker
       return null
     }
 
