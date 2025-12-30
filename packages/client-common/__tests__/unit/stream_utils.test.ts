@@ -34,6 +34,15 @@ describe('utils/stream', () => {
     expect(err).toBeNull()
   })
 
+  it('should not loop forever if the exception chunk is malformed', async () => {
+    const chunk = new TextEncoder().encode(
+      'body-body-body\n\r\n__exception__\r\n' + tag,
+    )
+
+    const err = extractErrorAtTheEndOfChunk(chunk, tag)
+    expect(err).toBeInstanceOf(Error)
+  })
+
   it('should handle a broken chunk', async () => {
     const chunk = new TextEncoder().encode(
       '\r\nsome random data \nthat does not conform\r\t to the protocol\r\n',
