@@ -147,15 +147,14 @@ export class ResultSet<
       ) {
         const rows: Row[] = []
 
-        let idx = -1
         let lastIdx = 0
         let currentChunkPart: Buffer
 
-        do {
+        for (;;) {
           // an unescaped newline character denotes the end of a row,
           // or at least the beginning of the exception marker
-          idx = chunk.indexOf(NEWLINE, lastIdx)
-          if (idx > 0) {
+          const idx = chunk.indexOf(NEWLINE, lastIdx)
+          if (idx >= 1) {
             // Check for exception in the chunk (only after 25.11)
             if (exceptionTag !== undefined && chunk[idx - 1] === CARET_RETURN) {
               return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
@@ -182,6 +181,7 @@ export class ResultSet<
             if (rows.length > 0) {
               this.push(rows)
             }
+            break
           } else {
             // idx === 0: this is the least probable case, thus handled last.
             // Short-circuiting empty text row.
@@ -193,7 +193,7 @@ export class ResultSet<
             })
             lastIdx = idx + 1 // skipping newline character
           }
-        } while (idx !== -1)
+        }
         callback()
       },
       autoDestroy: true,
