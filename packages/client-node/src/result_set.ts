@@ -173,6 +173,8 @@ export class ResultSet<
             if (incompleteChunks.length > 0) {
               incompleteChunks.push(chunk.subarray(lastIdx, idx))
               currentChunkPart = Buffer.concat(incompleteChunks)
+              // Removing used buffers and reusing the already allocated memory
+              // by setting length to 0
               incompleteChunks.length = 0
             } else {
               currentChunkPart = chunk.subarray(lastIdx, idx)
