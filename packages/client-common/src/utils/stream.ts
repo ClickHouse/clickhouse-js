@@ -44,7 +44,7 @@ export function extractErrorAtTheEndOfChunk(
 
     do {
       --errMsgLenStartIdx
-    } while (chunk[errMsgLenStartIdx] !== NEWLINE)
+    } while (errMsgLenStartIdx > 0 && chunk[errMsgLenStartIdx] !== NEWLINE)
 
     const textDecoder = new TextDecoder('utf-8')
 
