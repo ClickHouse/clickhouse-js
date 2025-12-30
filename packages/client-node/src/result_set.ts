@@ -167,7 +167,13 @@ export class ResultSet<
               idx >= 1 &&
               chunk[idx - 1] === CARET_RETURN
             ) {
-              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
+              const maybeError = extractErrorAtTheEndOfChunk(
+                chunk,
+                exceptionTag,
+              )
+              if (maybeError) {
+                return callback(maybeError)
+              }
             }
 
             if (incompleteChunks.length > 0) {
