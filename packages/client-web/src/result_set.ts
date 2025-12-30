@@ -7,7 +7,10 @@ import type {
   ResultStream,
   Row,
 } from '@clickhouse/client-common'
-import { checkErrorInChunkAtIndex } from '@clickhouse/client-common'
+import {
+  CARET_RETURN,
+  extractErrorAtTheEndOfChunk,
+} from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
@@ -83,7 +86,7 @@ export class ResultSet<
     this.markAsConsumed()
     validateStreamFormat(this.format)
 
-    let incompleteChunks: Uint8Array[] = []
+    const incompleteChunks: Uint8Array[] = []
     let totalIncompleteLength = 0
 
     const exceptionTag = this.exceptionTag
@@ -103,16 +106,32 @@ export class ResultSet<
         let idx: number
         let lastIdx = 0
 
-        do {
+        while (true) {
           // an unescaped newline character denotes the end of a row,
           // or at least the beginning of the exception marker
           idx = chunk.indexOf(NEWLINE, lastIdx)
-          if (idx !== -1) {
+          if (idx === -1) {
+            // there is no complete row in the rest of the current chunk
+            // to be processed during the next transform iteration
+            const incompleteChunk = chunk.slice(lastIdx)
+            incompleteChunks.push(incompleteChunk)
+            totalIncompleteLength += incompleteChunk.length
+
+            // send the extracted rows to the consumer, if any
+            if (rows.length > 0) {
+              controller.enqueue(rows)
+            }
+            break
+          } else {
             let bytesToDecode: Uint8Array
 
-            const maybeErr = checkErrorInChunkAtIndex(chunk, idx, exceptionTag)
-            if (maybeErr) {
-              controller.error(maybeErr)
+            // Check for exception in the chunk (only after 25.11)
+            if (
+              exceptionTag !== undefined &&
+              idx >= 1 &&
+              chunk[idx - 1] === CARET_RETURN
+            ) {
+              controller.error(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
             }
 
             // using the incomplete chunks from the previous iterations
@@ -131,8 +150,10 @@ export class ResultSet<
               const finalChunk = chunk.slice(0, idx)
               completeRowBytes.set(finalChunk, offset)
 
-              // reset the incomplete chunks
-              incompleteChunks = []
+              // Reset the incomplete chunks.
+              // Removing used buffers and reusing the already allocated memory
+              // by setting length to 0
+              incompleteChunks.length = 0
               totalIncompleteLength = 0
 
               bytesToDecode = completeRowBytes
@@ -149,19 +170,8 @@ export class ResultSet<
             })
 
             lastIdx = idx + 1 // skipping newline character
-          } else {
-            // there is no complete row in the rest of the current chunk
-            // to be processed during the next transform iteration
-            const incompleteChunk = chunk.slice(lastIdx)
-            incompleteChunks.push(incompleteChunk)
-            totalIncompleteLength += incompleteChunk.length
-
-            // send the extracted rows to the consumer, if any
-            if (rows.length > 0) {
-              controller.enqueue(rows)
-            }
           }
-        } while (idx !== -1)
+        }
       },
     })
 
