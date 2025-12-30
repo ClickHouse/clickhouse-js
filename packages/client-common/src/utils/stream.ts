@@ -96,14 +96,13 @@ export function extractErrorAtTheEndOfChunkStrict(
 
     let errMsgLenStartIdx = chunk.length - bytesCountAfterErrLenHint
     if (errMsgLenStartIdx < 1) {
-      return new Error(
-        'there was an error in the stream, but the last chunk is malformed',
-      )
+      // not enough data to even contain the error length hint
+      return null
     }
 
     do {
       --errMsgLenStartIdx
-    } while (chunk[errMsgLenStartIdx] !== NEWLINE)
+    } while (errMsgLenStartIdx > 0 && chunk[errMsgLenStartIdx] !== NEWLINE)
 
     const textDecoder = new TextDecoder('utf-8')
 
@@ -114,9 +113,8 @@ export function extractErrorAtTheEndOfChunkStrict(
     )
 
     if (isNaN(errMsgLen) || errMsgLen <= 0) {
-      return new Error(
-        'there was an error in the stream; failed to parse the message length',
-      )
+      // does not look like an error length hint
+      return null
     }
 
     const closingTag = textDecoder.decode(
@@ -127,6 +125,7 @@ export function extractErrorAtTheEndOfChunkStrict(
     )
 
     if (closingTag !== exceptionTag) {
+      // the tag does not match; this is not an error chunk
       return null
     }
 
