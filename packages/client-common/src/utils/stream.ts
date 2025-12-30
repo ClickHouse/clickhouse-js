@@ -77,7 +77,7 @@ export function extractErrorAtTheEndOfChunk(
 /**
  * Optimistic version of `extractErrorAtTheEndOfChunk` that assumes
  */
-export function extractErrorAtTheEndOfChunkOptimistic(
+export function extractErrorAtTheEndOfChunkStrict(
   chunk: Uint8Array,
   /**
    * Expected to be 16 ASKII characters long

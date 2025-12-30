@@ -9,7 +9,7 @@ import type {
 } from '@clickhouse/client-common'
 import {
   extractErrorAtTheEndOfChunk,
-  extractErrorAtTheEndOfChunkOptimistic,
+  extractErrorAtTheEndOfChunkStrict,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
@@ -142,7 +142,7 @@ export class ResultSet<
     const exceptionTag = this.exceptionTag
     const jsonHandling = this.jsonHandling
     const extractError = isSupportedRawFormat(this.format as DataFormat)
-      ? extractErrorAtTheEndOfChunkOptimistic
+      ? extractErrorAtTheEndOfChunkStrict
       : extractErrorAtTheEndOfChunk
     const toRows = new Transform({
       transform(
