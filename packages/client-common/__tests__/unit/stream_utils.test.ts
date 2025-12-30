@@ -25,6 +25,15 @@ describe('utils/stream', () => {
     expect(err).toBeNull()
   })
 
+  it('should not error on a valid \\r\\n sequence', async () => {
+    const chunk = new TextEncoder().encode(
+      'this is a normal chunk with a newline\r\nnew chunk begins here',
+    )
+
+    const err = extractErrorAtTheEndOfChunkStrict(chunk, tag)
+    expect(err).toBeNull()
+  })
+
   it('should handle a broken chunk', async () => {
     const chunk = new TextEncoder().encode(
       '\r\nsome random data \nthat does not conform\r\t to the protocol\r\n',
