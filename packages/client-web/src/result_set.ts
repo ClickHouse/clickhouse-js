@@ -106,7 +106,7 @@ export class ResultSet<
         let idx: number
         let lastIdx = 0
 
-        for (;;) {
+        while (true) {
           // an unescaped newline character denotes the end of a row,
           // or at least the beginning of the exception marker
           idx = chunk.indexOf(NEWLINE, lastIdx)
