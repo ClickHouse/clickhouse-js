@@ -35,7 +35,7 @@ describe('[Node.js] streaming exception', () => {
     })
 
     const rs = await client.query({
-      query: `SELECT throwIf(number = 100, 'valid exception 2') FROM system.numbers LIMIT 10000000`,
+      query: `SELECT number, throwIf(number = 500, 'valid exception 2') FROM system.numbers LIMIT 100000`,
       format: 'CSV',
     })
 
