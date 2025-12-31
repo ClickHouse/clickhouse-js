@@ -2,6 +2,7 @@ import type { Row } from '@clickhouse/client-common'
 import type Stream from 'stream'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
+import { requireServerVersionAtLeast } from '@test/utils/jasmine'
 
 describe('[Node.js] streaming exception', () => {
   it('should not trigger on a valid \\r\\n in the stream', async () => {
@@ -27,6 +28,11 @@ describe('[Node.js] streaming exception', () => {
   })
 
   it('should trigger on a valid exception', async () => {
+    // ignore pre-25.11 servers that don't comply to the new exception-in-stream behavior
+    if (!requireServerVersionAtLeast(25, 11)) {
+      return
+    }
+
     const client: ClickHouseClient<Stream.Readable> = createTestClient({
       clickhouse_settings: {
         output_format_csv_crlf_end_of_line: 1,
