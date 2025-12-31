@@ -1,8 +1,11 @@
+import type { Row } from '@clickhouse/client-common'
+import type Stream from 'stream'
+import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
 describe('[Node.js] streaming exception', () => {
   it('should not trigger on a valid \\r\\n in the stream', async () => {
-    const client = createTestClient({
+    const client: ClickHouseClient<Stream.Readable> = createTestClient({
       clickhouse_settings: {
         output_format_csv_crlf_end_of_line: 1,
         http_write_exception_in_output_format: 0,
@@ -16,7 +19,7 @@ describe('[Node.js] streaming exception', () => {
 
     const rows = []
     for await (const chunk of rs.stream()) {
-      rows.push(...chunk.map((r: any) => r.text))
+      rows.push(...chunk.map((r: Row) => r.text))
     }
 
     await client.close()
@@ -24,7 +27,7 @@ describe('[Node.js] streaming exception', () => {
   })
 
   it('should trigger on a valid exception', async () => {
-    const client = createTestClient({
+    const client: ClickHouseClient<Stream.Readable> = createTestClient({
       clickhouse_settings: {
         output_format_csv_crlf_end_of_line: 1,
         http_write_exception_in_output_format: 0,
@@ -43,7 +46,7 @@ describe('[Node.js] streaming exception', () => {
     let err: unknown = null
     try {
       for await (const chunk of rs.stream()) {
-        rows.push(...chunk.map((r: any) => r.text))
+        rows.push(...chunk.map((r: Row) => r.text))
       }
     } catch (e) {
       err = e
