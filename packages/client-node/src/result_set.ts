@@ -9,9 +9,11 @@ import type {
 } from '@clickhouse/client-common'
 import {
   extractErrorAtTheEndOfChunk,
+  extractErrorAtTheEndOfChunkStrict,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
+  isSupportedRawFormat,
 } from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
@@ -139,6 +141,9 @@ export class ResultSet<
     const logError = this.log_error
     const exceptionTag = this.exceptionTag
     const jsonHandling = this.jsonHandling
+    const extractError = isSupportedRawFormat(this.format as DataFormat)
+      ? extractErrorAtTheEndOfChunkStrict
+      : extractErrorAtTheEndOfChunk
     const toRows = new Transform({
       transform(
         chunk: Buffer,
@@ -167,7 +172,10 @@ export class ResultSet<
               idx >= 1 &&
               chunk[idx - 1] === CARET_RETURN
             ) {
-              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
+              const maybeError = extractError(chunk, exceptionTag)
+              if (maybeError) {
+                return callback(maybeError)
+              }
             }
 
             if (incompleteChunks.length > 0) {

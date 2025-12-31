@@ -120,6 +120,7 @@ export {
   isCredentialsAuth,
   isJWTAuth,
   extractErrorAtTheEndOfChunk,
+  extractErrorAtTheEndOfChunkStrict,
   CARET_RETURN,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
