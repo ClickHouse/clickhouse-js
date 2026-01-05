@@ -23,16 +23,13 @@ jobs:
         run: |
           npm install -g typescript
 
-      - name: Build Common package
+      - name: Build packages
         run: |
-          npx tsx .build/build_and_prepare.ts common && npm pack
+          npm --workspaces run build
 
-      - name: Build Node.js package
+      - name: Pack packages
         run: |
-          npx tsx .build/build_and_prepare.ts node && npm pack
-      - name: Build Web package
-        run: |
-          npx tsx .build/build_and_prepare.ts web && npm pack
+          npm --workspaces pack
 
       - name: Rename artifacts
         run: |
