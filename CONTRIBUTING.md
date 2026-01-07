@@ -230,7 +230,8 @@ npm i
 ```
 
 ```bash
-.scripts/update_version.sh [new_version]
+export NEW_VERSION=[new_version]
+.scripts/update_version.sh $NEW_VERSION
 ```
 
 Then build the packages:
@@ -239,18 +240,45 @@ Then build the packages:
 npm --workspaces run build
 ```
 
-Now we're ready to publish.
+Now we're ready to publish the beta version for testing:
 
 ```bash
-npm --workspaces pack
-npm --workspaces publish
+npm login
+npm --workspaces publish --tag=beta
 ```
 
-After that you can commit the changes, create a new Git tag and push it to the repository:
+After the package is published it can be tests in a separate project by installing it with the `beta` tag:
+
+```bash
+npm install @clickhouse/client@beta
+```
+
+After the beta testing is done, you can commit the changes, create a new Git tag and push it to the repository:
 
 ```bash
 git add .
-git commit -m "chore: bump version to [new_version]"
-git tag v[new_version]
-git push origin v[new_version]
+git commit -m "chore: bump version to $NEW_VERSION"
 ```
+
+Promote the `beta` tag to `latest`:
+
+```bash
+npm dist-tag add @clickhouse/client-common@$NEW_VERSION latest
+npm dist-tag add @clickhouse/client@$NEW_VERSION latest
+npm dist-tag add @clickhouse/client-web@$NEW_VERSION latest
+```
+
+Check that the packages have been published correctly: <https://www.npmjs.com/org/clickhouse>
+
+Create a PR and merge it after review.
+
+The last step is to create a new Git tag and push it to the repository:
+
+```bash
+git tag "$NEW_VERSION"
+git push origin tag "$NEW_VERSION"
+```
+
+Then create a new release in GitHub using the created tag and the corresponding changelog notes.
+
+All done, thanks!

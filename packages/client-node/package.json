@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ClickHouse/clickhouse-js.git"
+    "url": "git+https://github.com/ClickHouse/clickhouse-js.git"
   },
   "private": false,
   "engines": {
