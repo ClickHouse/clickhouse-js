@@ -281,19 +281,60 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async exec(
     params: ConnExecParams<Stream.Readable>,
   ): Promise<ConnExecResult<Stream.Readable>> {
+    const query_id = this.getQueryId(params.query_id)
     return this.runExec({
       ...params,
+      query_id,
       op: 'Exec',
     })
   }
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
-    const { stream, query_id, summary, response_headers } = await this.runExec({
+    const query_id = this.getQueryId(params.query_id)
+    const commandStartTime = Date.now()
+    this.logger.trace({
+      message: 'Command: operation started',
+      args: {
+        query: params.query,
+        query_id,
+      },
+    })
+
+    const { stream, summary, response_headers } = await this.runExec({
       ...params,
+      query_id,
       op: 'Command',
     })
+
+    const runExecDuration = Date.now() - commandStartTime
+    this.logger.trace({
+      message: 'Command: runExec completed, starting stream drain',
+      args: {
+        query_id,
+        runExec_duration_ms: runExecDuration,
+        stream_state: {
+          readable: stream.readable,
+          readableEnded: stream.readableEnded,
+          readableLength: stream.readableLength,
+        },
+      },
+    })
+
     // ignore the response stream and release the socket immediately
-    await drainStream(stream)
+    const drainStartTime = Date.now()
+    await drainStream(stream, this.logger, query_id)
+    const drainDuration = Date.now() - drainStartTime
+    const totalDuration = Date.now() - commandStartTime
+
+    this.logger.trace({
+      message: 'Command: operation completed',
+      args: {
+        query_id,
+        drain_duration_ms: drainDuration,
+        total_duration_ms: totalDuration,
+      },
+    })
+
     return { query_id, summary, response_headers }
   }
 
@@ -446,7 +487,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   private async runExec(
     params: RunExecParams,
   ): Promise<ConnExecResult<Stream.Readable>> {
-    const query_id = this.getQueryId(params.query_id)
+    const query_id = params.query_id
     const sendQueryInParams = params.values !== undefined
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -528,6 +569,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       ? getCurrentStackTrace()
       : undefined
     const logger = this.logger
+    const requestTimeout = this.params.request_timeout
     return new Promise((resolve, reject) => {
       const start = Date.now()
       const request = this.createClientRequest(params)
@@ -543,6 +585,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         _response: Http.IncomingMessage,
       ): Promise<void> => {
         this.logResponse(op, request, params, _response, start)
+        const query_id = params.url.searchParams.get('query_id') ?? 'unknown'
         const tryDecompressResponseStream =
           params.try_decompress_response_stream ?? true
         const ignoreErrorResponse = params.ignore_error_response ?? false
@@ -564,6 +607,22 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         } else {
           responseStream = _response
         }
+
+        logger.trace({
+          message: `${op}: response stream created`,
+          args: {
+            query_id,
+            operation: op,
+            stream_state: {
+              readable: responseStream.readable,
+              readableEnded: responseStream.readableEnded,
+              readableLength: responseStream.readableLength,
+            },
+            is_failed_response: isFailedResponse,
+            will_decompress: tryDecompressResponseStream,
+          },
+        })
+
         if (isFailedResponse && !ignoreErrorResponse) {
           try {
             const errorMessage = await getAsText(responseStream)
@@ -729,6 +788,35 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       }
 
       function onTimeout(): void {
+        const query_id = params.url.searchParams.get('query_id') ?? 'unknown'
+        const socketState = request.socket
+          ? {
+              connecting: request.socket.connecting,
+              pending: request.socket.pending,
+              destroyed: request.socket.destroyed,
+              readyState: request.socket.readyState,
+            }
+          : undefined
+        const responseStreamState = responseStream
+          ? {
+              readable: responseStream.readable,
+              readableEnded: responseStream.readableEnded,
+              readableLength: responseStream.readableLength,
+            }
+          : undefined
+
+        logger.trace({
+          message: `${op}: timeout occurred`,
+          args: {
+            query_id,
+            operation: op,
+            timeout_ms: requestTimeout,
+            socket_state: socketState,
+            response_stream_state: responseStreamState,
+            has_response_stream: responseStream !== undefined,
+          },
+        })
+
         const err = enhanceStackTrace(
           new Error('Timeout error.'),
           currentStackTrace,
@@ -806,6 +894,7 @@ interface SocketInfo {
 }
 
 type RunExecParams = ConnBaseQueryParams & {
+  query_id: string
   op: 'Exec' | 'Command'
   values?: ConnExecParams<Stream.Readable>['values']
   decompress_response_stream?: boolean
