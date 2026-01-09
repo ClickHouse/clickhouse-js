@@ -18,4 +18,11 @@ for package in packages/client-node packages/client-web; do
   fi
 done
 
+for package in packages/client-common packages/client-node packages/client-web; do
+  if [ -f "$package/package.json" ]; then
+    echo "Updating version in $package/src/version.ts"
+    echo "export default '$version'" > "$package/src/version.ts"
+  fi
+done
+
 npm --workspaces version "$version"
