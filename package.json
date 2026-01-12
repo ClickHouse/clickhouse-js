@@ -2,7 +2,6 @@
   "name": "clickhouse-js",
   "description": "Official JS client for ClickHouse DB",
   "homepage": "https://clickhouse.com",
-  "version": "1.15.0",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
@@ -15,7 +14,7 @@
   },
   "private": true,
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   },
   "scripts": {
     "build:node:all": "rm -rf out; tsc --project tsconfig.all.json",
