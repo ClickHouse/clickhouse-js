@@ -1,3 +1,9 @@
+# 1.17.0
+
+- Added `http_status_code` to query, insert, and exec commands
+
+[#525]: https://github.com/ClickHouse/clickhouse-js/pull/525
+
 # 1.16.0
 
 ## New features
