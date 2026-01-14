@@ -39,6 +39,9 @@ export interface WithClickHouseSummary {
 
 export interface WithResponseHeaders {
   response_headers: ResponseHeaders
+}
+
+export interface WithHttpStatusCode {
   http_status_code?: number
 }
 

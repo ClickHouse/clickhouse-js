@@ -1,6 +1,7 @@
 import type { JSONHandling } from '.'
 import type {
   WithClickHouseSummary,
+  WithHttpStatusCode,
   WithResponseHeaders,
 } from './clickhouse_types'
 import type { LogWriter } from './logger'
@@ -57,7 +58,8 @@ export interface ConnExecParams<Stream> extends ConnBaseQueryParams {
   ignore_error_response?: boolean
 }
 
-export interface ConnBaseResult extends WithResponseHeaders {
+export interface ConnBaseResult
+  extends WithResponseHeaders, WithHttpStatusCode {
   query_id: string
 }
 

@@ -11,7 +11,11 @@ import type {
   WithResponseHeaders,
 } from './index'
 import { type DataFormat, defaultJSONHandling, DefaultLogger } from './index'
-import type { InsertValues, NonEmptyArray } from './clickhouse_types'
+import type {
+  InsertValues,
+  NonEmptyArray,
+  WithHttpStatusCode,
+} from './clickhouse_types'
 import type { ImplementationDetails, ValuesEncoder } from './config'
 import { getConnectionParams, prepareConfigWithURL } from './config'
 import type { ConnPingResult } from './connection'
@@ -106,7 +110,8 @@ export type ExecParamsWithValues<Stream> = ExecParams & {
 
 export type CommandParams = ExecParams
 export type CommandResult = { query_id: string } & WithClickHouseSummary &
-  WithResponseHeaders
+  WithResponseHeaders &
+  WithHttpStatusCode
 
 export type InsertResult = {
   /**
@@ -122,7 +127,8 @@ export type InsertResult = {
    */
   query_id: string
 } & WithClickHouseSummary &
-  WithResponseHeaders
+  WithResponseHeaders &
+  WithHttpStatusCode
 
 export type ExecResult<Stream> = ConnExecResult<Stream>
 

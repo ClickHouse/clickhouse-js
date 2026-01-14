@@ -584,7 +584,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               ? this.parseSummary(op, _response)
               : undefined,
             response_headers: { ..._response.headers },
-            http_status_code: _response.statusCode || 0,
+            http_status_code: _response.statusCode ?? undefined,
           })
         }
       }
@@ -787,7 +787,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 interface RequestResult {
   stream: Stream.Readable
   response_headers: ResponseHeaders
-  http_status_code: number
+  http_status_code?: number
   summary?: ClickHouseSummary
 }
 
