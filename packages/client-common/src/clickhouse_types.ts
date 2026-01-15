@@ -41,6 +41,10 @@ export interface WithResponseHeaders {
   response_headers: ResponseHeaders
 }
 
+export interface WithHttpStatusCode {
+  http_status_code?: number
+}
+
 export interface ClickHouseProgress {
   read_rows: string
   read_bytes: string

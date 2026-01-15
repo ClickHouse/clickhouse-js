@@ -2,6 +2,8 @@
 
 ## New features
 
+- Added `http_status_code` to query, insert, and exec commands (#525)
+
 - Added support for the new [Disposable API] (a.k.a the `using` keyword) (#500)
 
 [Disposable API]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using

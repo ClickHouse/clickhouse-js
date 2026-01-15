@@ -69,6 +69,7 @@ export class WebConnection implements Connection<ReadableStream> {
       query_id,
       stream: response.body || new ReadableStream<Uint8Array>(),
       response_headers: getResponseHeaders(response),
+      http_status_code: response.status,
     }
   }
 
@@ -80,15 +81,17 @@ export class WebConnection implements Connection<ReadableStream> {
       query_id: result.query_id,
       stream: result.stream || new ReadableStream<Uint8Array>(),
       response_headers: result.response_headers,
+      http_status_code: result.http_status_code,
     }
   }
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
-    const { stream, query_id, response_headers } = await this.runExec(params)
+    const { stream, query_id, response_headers, http_status_code } =
+      await this.runExec(params)
     if (stream !== null) {
       await stream.cancel()
     }
-    return { query_id, response_headers }
+    return { query_id, response_headers, http_status_code }
   }
 
   async insert<T = unknown>(
@@ -115,6 +118,7 @@ export class WebConnection implements Connection<ReadableStream> {
     return {
       query_id,
       response_headers: getResponseHeaders(response),
+      http_status_code: response.status,
     }
   }
 
@@ -249,6 +253,7 @@ export class WebConnection implements Connection<ReadableStream> {
       stream: response.body,
       response_headers: getResponseHeaders(response),
       query_id,
+      http_status_code: response.status,
     }
   }
 
@@ -289,4 +294,5 @@ interface RunExecResult {
   stream: ReadableStream<Uint8Array> | null
   query_id: string
   response_headers: ResponseHeaders
+  http_status_code: number
 }
