@@ -8,9 +8,10 @@ import type {
   Row,
 } from '@clickhouse/client-common'
 import {
-  checkErrorInChunkAtIndex,
+  extractErrorAtTheEndOfChunk,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
+  CARET_RETURN,
 } from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
@@ -134,7 +135,7 @@ export class ResultSet<
 
     validateStreamFormat(this.format)
 
-    let incompleteChunks: Buffer[] = []
+    const incompleteChunks: Buffer[] = []
     const logError = this.log_error
     const exceptionTag = this.exceptionTag
     const jsonHandling = this.jsonHandling
@@ -146,25 +147,35 @@ export class ResultSet<
       ) {
         const rows: Row[] = []
 
-        let idx = -1
         let lastIdx = 0
         let currentChunkPart: Buffer
 
-        do {
-          idx = chunk.indexOf(NEWLINE, lastIdx)
+        while (true) {
+          // an unescaped newline character denotes the end of a row,
+          // or at least the beginning of the exception marker
+          const idx = chunk.indexOf(NEWLINE, lastIdx)
+          if (idx === -1) {
+            incompleteChunks.push(chunk.subarray(lastIdx))
+            if (rows.length > 0) {
+              this.push(rows)
+            }
+            break
+          } else {
+            // Check for exception in the chunk (only after 25.11)
+            if (
+              exceptionTag !== undefined &&
+              idx >= 1 &&
+              chunk[idx - 1] === CARET_RETURN
+            ) {
+              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
+            }
 
-          const maybeErr = checkErrorInChunkAtIndex(chunk, idx, exceptionTag)
-          if (maybeErr) {
-            return callback(maybeErr)
-          }
-
-          if (idx !== -1) {
             if (incompleteChunks.length > 0) {
-              currentChunkPart = Buffer.concat(
-                [...incompleteChunks, chunk.subarray(lastIdx, idx)],
-                incompleteChunks.reduce((sz, buf) => sz + buf.length, 0) + idx,
-              )
-              incompleteChunks = []
+              incompleteChunks.push(chunk.subarray(lastIdx, idx))
+              currentChunkPart = Buffer.concat(incompleteChunks)
+              // Removing used buffers and reusing the already allocated memory
+              // by setting length to 0
+              incompleteChunks.length = 0
             } else {
               currentChunkPart = chunk.subarray(lastIdx, idx)
             }
@@ -177,13 +188,8 @@ export class ResultSet<
               },
             })
             lastIdx = idx + 1 // skipping newline character
-          } else {
-            incompleteChunks.push(chunk.subarray(lastIdx))
-            if (rows.length > 0) {
-              this.push(rows)
-            }
           }
-        } while (idx !== -1)
+        }
         callback()
       },
       autoDestroy: true,
