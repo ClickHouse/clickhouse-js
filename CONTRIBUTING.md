@@ -214,27 +214,71 @@ See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177), as it should
 
 ## Release process
 
-Don't forget to change the package version in `packages/**/src/version.ts` before the release.
+Tools required:
+
+- Node.js >= `20.x`
+- NPM >= `11.x`
+- jq (https://stedolan.github.io/jq/)
+
 We prefer to keep versions the same across the packages, and release all at once, even if there were no changes in some.
 
-Common package manual release:
+Make sure that the working directory is clean:
 
 ```bash
-npx tsx .build/build_and_prepare.ts common && npm pack && npm publish
+git clean -dfX
+npm i
 ```
-
-Node.js client manual release:
 
 ```bash
-npx tsx .build/build_and_prepare.ts node && npm pack && npm publish
+export NEW_VERSION=[new_version]
+.scripts/update_version.sh $NEW_VERSION
 ```
 
-Web client manual release:
+Then build the packages:
 
 ```bash
-npx tsx .build/build_and_prepare.ts web && npm pack && npm publish
+npm --workspaces run build
 ```
 
-For simplicity, `build_and_prepare.ts` just overrides the root `package.json`,
-which allows to use `npm pack` and `npm publish` as usual despite having multiple workspaces.
-Don't commit the generated `package.json` after the manual release.
+Now we're ready to publish the beta version for testing:
+
+```bash
+npm login
+npm --workspaces publish --tag=beta
+```
+
+After the package is published it can be tests in a separate project by installing it with the `beta` tag:
+
+```bash
+npm install @clickhouse/client@beta
+```
+
+After the beta testing is done, you can commit the changes, create a new Git tag and push it to the repository:
+
+```bash
+git add .
+git commit -m "chore: bump version to $NEW_VERSION"
+```
+
+Promote the `beta` tag to `latest`:
+
+```bash
+npm dist-tag add @clickhouse/client-common@$NEW_VERSION latest
+npm dist-tag add @clickhouse/client@$NEW_VERSION latest
+npm dist-tag add @clickhouse/client-web@$NEW_VERSION latest
+```
+
+Check that the packages have been published correctly: <https://www.npmjs.com/org/clickhouse>
+
+Create a PR and merge it after review.
+
+The last step is to create a new Git tag and push it to the repository:
+
+```bash
+git tag "$NEW_VERSION"
+git push origin tag "$NEW_VERSION"
+```
+
+Then create a new release in GitHub using the created tag and the corresponding changelog notes.
+
+All done, thanks!

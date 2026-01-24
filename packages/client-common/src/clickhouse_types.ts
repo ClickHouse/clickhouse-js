@@ -41,6 +41,10 @@ export interface WithResponseHeaders {
   response_headers: ResponseHeaders
 }
 
+export interface WithHttpStatusCode {
+  http_status_code?: number
+}
+
 export interface ClickHouseProgress {
   read_rows: string
   read_bytes: string
@@ -82,7 +86,7 @@ export interface ClickHouseJWTAuth {
 export type ClickHouseAuth = ClickHouseCredentialsAuth | ClickHouseJWTAuth
 
 /** Type guard to use with `JSONEachRowWithProgress`, checking if the emitted row is a progress row.
- *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
+ *  @see https://clickhouse.com/docs/interfaces/formats/JSONEachRowWithProgress */
 export function isProgressRow(row: unknown): row is ProgressRow {
   return (
     row !== null &&
@@ -93,7 +97,7 @@ export function isProgressRow(row: unknown): row is ProgressRow {
 }
 
 /** Type guard to use with `JSONEachRowWithProgress`, checking if the emitted row is a row with data.
- *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
+ *  @see https://clickhouse.com/docs/interfaces/formats/JSONEachRowWithProgress */
 export function isRow<T>(row: unknown): row is { row: T } {
   return (
     row !== null &&
@@ -104,7 +108,7 @@ export function isRow<T>(row: unknown): row is { row: T } {
 }
 
 /** Type guard to use with `JSONEachRowWithProgress`, checking if the row contains an exception.
- *  @see https://clickhouse.com/docs/en/interfaces/formats#jsoneachrowwithprogress */
+ *  @see https://clickhouse.com/docs/interfaces/formats/JSONEachRowWithProgress */
 export function isException(row: unknown): row is { exception: string } {
   return (
     row !== null &&

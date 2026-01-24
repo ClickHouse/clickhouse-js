@@ -15,7 +15,11 @@ export function getFromEnv(key: string): string {
 }
 
 export function getAuthFromEnv() {
-  const username = process.env[EnvKeys.username]
-  const password = process.env[EnvKeys.password]
-  return { username: username ?? 'default', password: password ?? '' }
+  if (process.env['CLICKHOUSE_TEST_ENVIRONMENT'] === 'cloud') {
+    const username = process.env[EnvKeys.username]
+    const password = process.env[EnvKeys.password]
+    return { username: username ?? 'default', password: password ?? '' }
+  }
+
+  return { username: 'default', password: '' }
 }

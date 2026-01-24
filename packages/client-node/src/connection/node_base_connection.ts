@@ -191,7 +191,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     const enableResponseCompression =
       clickhouse_settings.enable_http_compression === 1
     try {
-      const { response_headers, stream } = await this.request(
+      const { response_headers, stream, http_status_code } = await this.request(
         {
           method: 'POST',
           url: transformUrl({ url: this.params.url, searchParams }),
@@ -207,6 +207,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         stream,
         response_headers,
         query_id,
+        http_status_code,
       }
     } catch (err) {
       controller.abort('Query HTTP request failed')
@@ -242,21 +243,23 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     })
     const { controller, controllerCleanup } = this.getAbortController(params)
     try {
-      const { stream, summary, response_headers } = await this.request(
-        {
-          method: 'POST',
-          url: transformUrl({ url: this.params.url, searchParams }),
-          body: params.values,
-          abort_signal: controller.signal,
-          enable_request_compression: this.params.compression.compress_request,
-          parse_summary: true,
-          headers: this.buildRequestHeaders(params),
-          query: params.query,
-        },
-        'Insert',
-      )
+      const { stream, summary, response_headers, http_status_code } =
+        await this.request(
+          {
+            method: 'POST',
+            url: transformUrl({ url: this.params.url, searchParams }),
+            body: params.values,
+            abort_signal: controller.signal,
+            enable_request_compression:
+              this.params.compression.compress_request,
+            parse_summary: true,
+            headers: this.buildRequestHeaders(params),
+            query: params.query,
+          },
+          'Insert',
+        )
       await drainStream(stream)
-      return { query_id, summary, response_headers }
+      return { query_id, summary, response_headers, http_status_code }
     } catch (err) {
       controller.abort('Insert HTTP request failed')
       this.logRequestError({
@@ -470,28 +473,31 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           false
     const ignoreErrorResponse = params.ignore_error_response ?? false
     try {
-      const { stream, summary, response_headers } = await this.request(
-        {
-          method: 'POST',
-          url: transformUrl({ url: this.params.url, searchParams }),
-          body: sendQueryInParams ? params.values : params.query,
-          abort_signal: controller.signal,
-          parse_summary: true,
-          enable_request_compression: this.params.compression.compress_request,
-          enable_response_compression:
-            this.params.compression.decompress_response,
-          try_decompress_response_stream: tryDecompressResponseStream,
-          ignore_error_response: ignoreErrorResponse,
-          headers: this.buildRequestHeaders(params),
-          query: params.query,
-        },
-        params.op,
-      )
+      const { stream, summary, response_headers, http_status_code } =
+        await this.request(
+          {
+            method: 'POST',
+            url: transformUrl({ url: this.params.url, searchParams }),
+            body: sendQueryInParams ? params.values : params.query,
+            abort_signal: controller.signal,
+            parse_summary: true,
+            enable_request_compression:
+              this.params.compression.compress_request,
+            enable_response_compression:
+              this.params.compression.decompress_response,
+            try_decompress_response_stream: tryDecompressResponseStream,
+            ignore_error_response: ignoreErrorResponse,
+            headers: this.buildRequestHeaders(params),
+            query: params.query,
+          },
+          params.op,
+        )
       return {
         stream,
         query_id,
         summary,
         response_headers,
+        http_status_code,
       }
     } catch (err) {
       controller.abort(`${params.op} HTTP request failed`)
@@ -578,6 +584,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               ? this.parseSummary(op, _response)
               : undefined,
             response_headers: { ..._response.headers },
+            http_status_code: _response.statusCode ?? undefined,
           })
         }
       }
@@ -780,6 +787,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 interface RequestResult {
   stream: Stream.Readable
   response_headers: ResponseHeaders
+  http_status_code?: number
   summary?: ClickHouseSummary
 }
 

@@ -15,13 +15,13 @@ void (async () => {
     password: process.env['CLICKHOUSE_PASSWORD'], // defaults to an empty string
     max_open_connections: 10,
     clickhouse_settings: {
-      // https://clickhouse.com/docs/en/operations/settings/settings#async-insert
+      // https://clickhouse.com/docs/en/operations/settings/settings#async_insert
       async_insert: 1,
-      // https://clickhouse.com/docs/en/operations/settings/settings#wait-for-async-insert
+      // https://clickhouse.com/docs/en/operations/settings/settings#wait_for_async_insert
       // explicitly disable it on the client side;
       // insert operations promises will be resolved as soon as the request itself was processed on the server.
       wait_for_async_insert: 0,
-      // https://clickhouse.com/docs/en/operations/settings/settings#async-insert-max-data-size
+      // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_max_data_size
       async_insert_max_data_size: '1000000',
       // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_busy_timeout_max_ms
       async_insert_busy_timeout_max_ms: 1000,

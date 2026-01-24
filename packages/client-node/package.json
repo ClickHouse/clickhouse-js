@@ -2,7 +2,7 @@
   "name": "@clickhouse/client",
   "description": "Official JS client for ClickHouse DB - Node.js implementation",
   "homepage": "https://clickhouse.com",
-  "version": "0.0.0",
+  "version": "1.16.0",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ClickHouse/clickhouse-js.git"
+    "url": "git+https://github.com/ClickHouse/clickhouse-js.git"
   },
   "private": false,
   "engines": {
@@ -22,8 +22,12 @@
   "files": [
     "dist"
   ],
+  "scripts": {
+    "prepack": "cp ../../README.md ../../LICENSE .",
+    "build": "rm -rf dist; tsc"
+  },
   "dependencies": {
-    "@clickhouse/client-common": "*"
+    "@clickhouse/client-common": "1.16.0"
   },
   "devDependencies": {
     "simdjson": "^0.9.2"

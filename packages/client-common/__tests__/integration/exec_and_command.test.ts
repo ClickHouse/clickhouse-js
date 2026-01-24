@@ -91,6 +91,14 @@ describe('exec and command', () => {
     ).toEqual('text/csv; charset=UTF-8; header=absent')
   })
 
+  it('should get the http status code with exec', async () => {
+    const result = await client.exec({
+      query: 'SELECT 42 FORMAT CSV',
+    })
+
+    expect(result.http_status_code).toBe(200)
+  })
+
   it('can specify a parameterized query', async () => {
     const result = await client.query({
       query: `SELECT * from system.tables where name = 'numbers'`,

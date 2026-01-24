@@ -119,7 +119,8 @@ export {
   withHttpSettings,
   isCredentialsAuth,
   isJWTAuth,
-  checkErrorInChunkAtIndex,
+  extractErrorAtTheEndOfChunk,
+  CARET_RETURN,
 } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
 export { getCurrentStackTrace, enhanceStackTrace } from './error'
