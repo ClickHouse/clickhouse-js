@@ -23,8 +23,8 @@ void (async () => {
       wait_for_async_insert: 0,
       // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_max_data_size
       async_insert_max_data_size: '1000000',
-      // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_busy_timeout_ms
-      async_insert_busy_timeout_ms: 1000,
+      // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_busy_timeout_max_ms
+      async_insert_busy_timeout_max_ms: 1000,
     },
   })
   const tableName = 'async_insert_without_waiting'
