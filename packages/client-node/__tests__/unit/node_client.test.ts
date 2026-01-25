@@ -167,9 +167,9 @@ describe('[Node.js] createClient', () => {
     })
   })
 
-  it('closes the client when used with using statement', async () => {
+  it('closes the client when used with using statement', async (context) => {
     if (!isAwaitUsingStatementSupported()) {
-      pending('using statement is not supported in this environment')
+      context.skip('using statement is not supported in this environment')
       return
     }
     const client = createClient()

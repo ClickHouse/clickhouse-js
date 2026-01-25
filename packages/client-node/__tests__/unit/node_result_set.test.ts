@@ -145,9 +145,9 @@ describe('[Node.js] ResultSet', () => {
     })
   })
 
-  it('closes the ResultSet when used with using statement', async () => {
+  it('closes the ResultSet when used with using statement', async (context) => {
     if (!isUsingStatementSupported()) {
-      pending('using statement is not supported in this environment')
+      context.skip('using statement is not supported in this environment')
       return
     }
     const rs = makeResultSet(getDataStream())
