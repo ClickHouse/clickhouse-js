@@ -1,9 +1,11 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+
 import type {
   BaseClickHouseClientConfigOptions,
   ConnectionParams,
 } from '@clickhouse/client-common'
 import { LogWriter } from '@clickhouse/client-common'
-import { TestLogger } from '@test/utils'
+import { TestLogger } from '../../../client-common/__tests__/utils/test_logger'
 import { Buffer } from 'buffer'
 import http from 'http'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
@@ -82,13 +84,12 @@ describe('[Node.js] Config implementation details', () => {
       keep_alive: { enabled: false },
     }
 
-    let createConnectionStub: jasmine.Spy
     const fakeConnection = { test: true } as unknown as NodeBaseConnection
+    const createConnectionStub = vi
+      .spyOn(NodeConnectionFactory, 'create')
+      .mockReturnValue(fakeConnection)
     beforeEach(() => {
-      createConnectionStub = spyOn(
-        NodeConnectionFactory,
-        'create',
-      ).and.returnValue(fakeConnection)
+      vi.clearAllMocks()
     })
 
     it('should create a connection with default KeepAlive settings', async () => {

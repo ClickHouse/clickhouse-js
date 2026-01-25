@@ -1,3 +1,5 @@
+import { describe, it, expect } from 'vitest'
+
 import type {
   DataFormat,
   InputJSON,
@@ -68,8 +70,8 @@ describe('[Node.js] ValuesEncoder', () => {
         expect(() =>
           encoder.validateInsertValues(rawStream, format as DataFormat),
         ).toThrow(
-          jasmine.objectContaining({
-            message: jasmine.stringContaining('with enabled object mode'),
+          expect.objectContaining({
+            message: expect.stringContaining('with enabled object mode'),
           }),
         )
       })
@@ -77,8 +79,8 @@ describe('[Node.js] ValuesEncoder', () => {
         expect(() =>
           encoder.validateInsertValues(objectModeStream, format as DataFormat),
         ).toThrow(
-          jasmine.objectContaining({
-            message: jasmine.stringContaining('with disabled object mode'),
+          expect.objectContaining({
+            message: expect.stringContaining('with disabled object mode'),
           }),
         )
         expect(() =>
