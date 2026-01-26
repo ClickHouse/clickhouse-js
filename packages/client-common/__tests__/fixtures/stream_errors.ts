@@ -17,7 +17,6 @@ export function streamErrorQueryParams(): QueryParamsWithFormat<'JSONEachRow'> {
 }
 
 export function assertError(err: Error | null) {
-  expect(err).not.toBeNull()
   expect(err).toBeInstanceOf(ClickHouseError)
 
   const chErr = err as ClickHouseError
