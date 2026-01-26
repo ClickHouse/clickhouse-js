@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { createTestClient } from '@test/utils/client.node'
 import * as fs from 'fs'
 import Http from 'http'
 import https from 'node:https'
