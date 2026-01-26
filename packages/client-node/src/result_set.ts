@@ -8,6 +8,8 @@ import type {
   Row,
 } from '@clickhouse/client-common'
 import {
+  isException,
+  parseError,
   extractErrorAtTheEndOfChunk,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
@@ -110,7 +112,11 @@ export class ResultSet<
       const stream = this.stream<T>()
       for await (const rows of stream) {
         for (const row of rows) {
-          result.push(row.json() as T)
+          const value = row.json()
+          if (isException(value)) {
+            throw parseError(value.exception)
+          }
+          result.push(value as T)
         }
       }
       return result as any
