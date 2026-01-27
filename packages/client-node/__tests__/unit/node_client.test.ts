@@ -1,3 +1,5 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+
 import type {
   BaseClickHouseClientConfigOptions,
   ConnectionParams,
@@ -14,8 +16,8 @@ import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
 describe('[Node.js] createClient', () => {
   it('throws on incorrect "url" config value', () => {
     expect(() => createClient({ url: 'foobar' })).toThrow(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+      expect.objectContaining({
+        message: expect.stringContaining('ClickHouse URL is malformed.'),
       }),
     )
   })
@@ -52,12 +54,9 @@ describe('[Node.js] createClient', () => {
       application_id: 'my_app',
     }
 
-    let createConnectionStub: jasmine.Spy
+    const createConnectionStub = vi.spyOn(NodeConnectionFactory, 'create')
     beforeEach(() => {
-      createConnectionStub = spyOn(
-        NodeConnectionFactory,
-        'create',
-      ).and.callThrough()
+      vi.clearAllMocks()
     })
 
     it('should parse URL parameters and create a valid connection', async () => {
@@ -168,14 +167,14 @@ describe('[Node.js] createClient', () => {
     })
   })
 
-  it('closes the client when used with using statement', async () => {
+  it('closes the client when used with using statement', async (context) => {
     if (!isAwaitUsingStatementSupported()) {
-      pending('using statement is not supported in this environment')
+      context.skip('using statement is not supported in this environment')
       return
     }
     const client = createClient()
     let isClosed = false
-    spyOn(client, 'close').and.callFake(async () => {
+    vi.spyOn(client, 'close').mockImplementation(async () => {
       // Simulate some delay in closing
       await sleep(0)
       isClosed = true
@@ -191,6 +190,6 @@ describe('[Node.js] createClient', () => {
       })
     `)(client)
 
-    expect(isClosed).toBeTrue()
+    expect(isClosed).toBe(true)
   })
 })

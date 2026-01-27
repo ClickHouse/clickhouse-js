@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { ConnectionParams } from '@clickhouse/client-common'
 import http from 'http'
 import https from 'node:https'
@@ -8,6 +9,10 @@ import {
   NodeHttpsConnection,
 } from '../../src/connection'
 import { NodeCustomAgentConnection } from '../../src/connection/node_custom_agent_connection'
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe('[Node.js] NodeConnectionFactory', () => {
   const keepAliveParams: NodeConnectionParams['keep_alive'] = {

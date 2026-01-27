@@ -27,7 +27,7 @@
     "test:common:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.common.unit.config.ts",
     "test:common:unit:web": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.common.unit.web.config.ts",
     "test:common:integration": ".scripts/jasmine.sh jasmine.common.integration.json",
-    "test:node:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 .scripts/jasmine.sh jasmine.node.unit.json",
+    "test:node:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.node.unit.config.ts",
     "test:node:tls": ".scripts/jasmine.sh jasmine.node.tls.json",
     "test:node:integration": ".scripts/jasmine.sh jasmine.node.integration.json",
     "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:node:integration",

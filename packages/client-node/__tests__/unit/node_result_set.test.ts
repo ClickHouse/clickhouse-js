@@ -1,31 +1,44 @@
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  beforeAll,
+  afterAll,
+  vi,
+} from 'vitest'
 import type { DataFormat, Row } from '@clickhouse/client-common'
-import { guid } from '@test/utils'
+import { guid } from '../../../client-common/__tests__/utils/guid'
 import Stream, { Readable } from 'stream'
 import { ResultSet } from '../../src'
 import { isUsingStatementSupported } from '../utils/feature_detection'
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe('[Node.js] ResultSet', () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`
   const expectedJson = [{ foo: 'bar' }, { qaz: 'qux' }]
 
   const errMsg = 'Stream has been already consumed'
-  const err = jasmine.objectContaining({
-    message: jasmine.stringContaining(errMsg),
+  const err = expect.objectContaining({
+    message: expect.stringContaining(errMsg),
   })
 
   it('should consume the response as text only once', async () => {
     const rs = makeResultSet(getDataStream())
 
     expect(await rs.text()).toEqual(expectedText)
-    await expectAsync(rs.text()).toBeRejectedWith(err)
-    await expectAsync(rs.json()).toBeRejectedWith(err)
+    await expect(rs.text()).rejects.toEqual(err)
+    await expect(rs.json()).rejects.toEqual(err)
   })
 
   it('should consume the response as JSON only once', async () => {
     const rs = makeResultSet(getDataStream())
     expect(await rs.json()).toEqual(expectedJson)
-    await expectAsync(rs.json()).toBeRejectedWith(err)
-    await expectAsync(rs.text()).toBeRejectedWith(err)
+    await expect(rs.json()).rejects.toEqual(err)
+    await expect(rs.text()).rejects.toEqual(err)
   })
 
   it('should consume the response as a stream of Row instances', async () => {
@@ -44,8 +57,8 @@ describe('[Node.js] ResultSet', () => {
     expect(stream.readableEnded).toBeTruthy()
 
     expect(() => rs.stream()).toThrow(new Error(errMsg))
-    await expectAsync(rs.json()).toBeRejectedWith(err)
-    await expectAsync(rs.text()).toBeRejectedWith(err)
+    await expect(rs.json()).rejects.toEqual(err)
+    await expect(rs.text()).rejects.toEqual(err)
   })
 
   it('should be able to call Row.text and Row.json multiple times', async () => {
@@ -99,8 +112,8 @@ describe('[Node.js] ResultSet', () => {
           Stream.Readable.from([Buffer.from(invalidJSON)]),
         )
         const jsonPromise = rs.json()
-        await expectAsync(jsonPromise).toBeRejectedWith(
-          jasmine.objectContaining({
+        await expect(jsonPromise).rejects.toEqual(
+          expect.objectContaining({
             name: 'SyntaxError',
           }),
         )
@@ -123,8 +136,8 @@ describe('[Node.js] ResultSet', () => {
           'JSON',
         )
         const jsonPromise = rs.json()
-        await expectAsync(jsonPromise).toBeRejectedWith(
-          jasmine.objectContaining({
+        await expect(jsonPromise).rejects.toEqual(
+          expect.objectContaining({
             name: 'SyntaxError',
           }),
         )
@@ -132,14 +145,14 @@ describe('[Node.js] ResultSet', () => {
     })
   })
 
-  it('closes the ResultSet when used with using statement', async () => {
+  it('closes the ResultSet when used with using statement', async (context) => {
     if (!isUsingStatementSupported()) {
-      pending('using statement is not supported in this environment')
+      context.skip('using statement is not supported in this environment')
       return
     }
     const rs = makeResultSet(getDataStream())
     let isClosed = false
-    spyOn(rs, 'close').and.callFake(() => {
+    vi.spyOn(rs, 'close').mockImplementation(() => {
       // Simulate some delay in closing
       isClosed = true
     })
@@ -154,7 +167,7 @@ describe('[Node.js] ResultSet', () => {
       })
     `)(rs)
 
-    expect(isClosed).toBeTrue()
+    expect(isClosed).toBe(true)
   })
 
   function makeResultSet(

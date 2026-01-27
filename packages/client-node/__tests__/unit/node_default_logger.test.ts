@@ -1,8 +1,18 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   ClickHouseLogLevel,
   DefaultLogger,
   LogWriter,
 } from '@clickhouse/client-common'
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
+const debugSpy = vi.spyOn(console, 'debug')
+const infoSpy = vi.spyOn(console, 'info')
+const warnSpy = vi.spyOn(console, 'warn')
+const errSpy = vi.spyOn(console, 'error')
 
 describe('[Node.js] Logger/LogWriter', () => {
   type LogLevel = 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
@@ -10,18 +20,6 @@ describe('[Node.js] Logger/LogWriter', () => {
   const module = 'LoggerTest'
   const message = 'very informative'
   const err = new Error('boo')
-
-  let debugSpy: jasmine.Spy
-  let infoSpy: jasmine.Spy
-  let warnSpy: jasmine.Spy
-  let errSpy: jasmine.Spy
-
-  beforeEach(() => {
-    debugSpy = spyOn(console, 'debug')
-    infoSpy = spyOn(console, 'info')
-    warnSpy = spyOn(console, 'warn')
-    errSpy = spyOn(console, 'error')
-  })
 
   it('should use OFF by default', async () => {
     const logWriter = new LogWriter(new DefaultLogger(), module)
@@ -146,32 +144,32 @@ describe('[Node.js] Logger/LogWriter', () => {
   })
 
   function checkLogLevelSet(level: LogLevel) {
-    expect(infoSpy.calls.first().args).toEqual([
-      jasmine.stringContaining(
+    expect(infoSpy.mock.calls[0]).toEqual([
+      expect.stringContaining(
         `[INFO][@clickhouse/client][${module}] Log level is set to ${level}`,
       ),
     ])
     expect(infoSpy).toHaveBeenCalledTimes(1)
   }
 
-  function checkLog(spy: jasmine.Spy, level: LogLevel, callNumber = 0) {
-    expect(spy.calls.all()[callNumber].args).toEqual([
-      jasmine.stringContaining(
+  function checkLog(spy: any, level: LogLevel, callNumber = 0) {
+    expect(spy.mock.calls[callNumber]).toEqual([
+      expect.stringContaining(
         `[${level}][@clickhouse/client][${module}] ${message}`,
       ),
-      jasmine.stringContaining('\nArguments:'),
+      expect.stringContaining('\nArguments:'),
       { foo: `${level.toLowerCase()}-42` },
     ])
   }
 
   function checkErrorLog() {
-    expect(errSpy.calls.first().args).toEqual([
-      jasmine.stringContaining(
+    expect(errSpy.mock.calls[0]).toEqual([
+      expect.stringContaining(
         `[ERROR][@clickhouse/client][${module}] ${message}`,
       ),
-      jasmine.stringContaining('\nArguments:'),
+      expect.stringContaining('\nArguments:'),
       { foo: 'err-42' },
-      jasmine.stringContaining('\nCaused by:'),
+      expect.stringContaining('\nCaused by:'),
       err,
     ])
   }

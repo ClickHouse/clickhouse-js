@@ -1,6 +1,11 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import sinon from 'sinon'
 import { getUserAgent } from '../../src/utils'
 import { Runtime } from '../../src/utils/runtime'
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe('[Node.js] User-Agent', () => {
   const sandbox = sinon.createSandbox()

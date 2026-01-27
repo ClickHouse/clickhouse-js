@@ -1,8 +1,12 @@
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest'
 import {
   getTestConnectionType,
   TestConnectionType,
-} from '@test/utils/test_connection_type'
-import { getClickHouseTestEnvironment, TestEnv } from '@test/utils/test_env'
+} from '../../../client-common/__tests__/utils/test_connection_type'
+import {
+  getClickHouseTestEnvironment,
+  TestEnv,
+} from '../../../client-common/__tests__/utils/test_env'
 
 /** Ideally, should've been in common, but it does not work with Karma well */
 describe('Test env variables parsing', () => {
