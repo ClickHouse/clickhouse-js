@@ -48,6 +48,10 @@ export type ConnPingParams = { select: boolean } & Omit<
   'query' | 'query_params'
 >
 
+export interface ConnCommandParams extends ConnBaseQueryParams {
+  ignore_error_response?: boolean
+}
+
 export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
   values: string | Stream
 }
@@ -85,7 +89,7 @@ export interface Connection<Stream> {
   ping(params: ConnPingParams): Promise<ConnPingResult>
   query(params: ConnBaseQueryParams): Promise<ConnQueryResult<Stream>>
   insert(params: ConnInsertParams<Stream>): Promise<ConnInsertResult>
-  command(params: ConnBaseQueryParams): Promise<ConnCommandResult>
+  command(params: ConnCommandParams): Promise<ConnCommandResult>
   exec(params: ConnExecParams<Stream>): Promise<ConnExecResult<Stream>>
   close(): Promise<void>
 }

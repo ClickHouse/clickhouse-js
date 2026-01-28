@@ -34,4 +34,40 @@ describe('[Node.js] command', () => {
     clearTimeout(timeout)
     expect(1).toEqual(1) // Jasmine needs at least 1 assertion
   })
+
+  describe('ignore error response', () => {
+    it('should throw an error by default when ignore_error_response is not set', async () => {
+      await expectAsync(
+        client.command({
+          query: 'invalid',
+        }),
+      ).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Syntax error'),
+        }),
+      )
+    })
+
+    it('should throw an error when ignore_error_response is false', async () => {
+      await expectAsync(
+        client.command({
+          query: 'invalid',
+          ignore_error_response: false,
+        }),
+      ).toBeRejectedWith(
+        jasmine.objectContaining({
+          message: jasmine.stringContaining('Syntax error'),
+        }),
+      )
+    })
+
+    it('should not throw an error when ignore_error_response is true', async () => {
+      const result = await client.command({
+        query: 'invalid',
+        ignore_error_response: true,
+      })
+      // command doesn't return a stream, just summary info
+      expect(result.query_id).toBeDefined()
+    })
+  })
 })
