@@ -1,8 +1,16 @@
-# 1.16.0
+# 1.17.0
 
 ## New features
 
-- Added `http_status_code` to query, insert, and exec commands (#525)
+- Added `http_status_code` to query, insert, and exec commands ([#525], [Kinzeng])
+- Fixed `ignore_error_response` not getting passed when using `command` ([#536], [Kinzeng])
+
+[#525]: https://github.com/ClickHouse/clickhouse-js/pull/525
+[#536]: https://github.com/ClickHouse/clickhouse-js/pull/536
+
+# 1.16.0
+
+## New features
 
 - Added support for the new [Disposable API] (a.k.a the `using` keyword) (#500)
 
