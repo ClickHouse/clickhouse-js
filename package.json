@@ -32,7 +32,7 @@
     "test:node:integration": ".scripts/jasmine.sh jasmine.node.integration.json",
     "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:node:integration",
     "test:node:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:node:integration",
-    "test:node:coverage": "nyc npm run test",
+    "test:node:coverage": "nyc ./run-tests-for-coverage.sh",
     "test:web": "karma start karma.config.mjs",
     "test:web:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:web",
     "test:web:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:web",
