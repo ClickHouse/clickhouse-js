@@ -1,22 +1,26 @@
 import { TestEnv, whenOnEnv } from '@test/utils'
-import { EnvKeys, getFromEnv } from '@test/utils/env'
+import { EnvKeys, getFromEnv, maybeGetFromEnv } from '@test/utils/env'
 import { createClient } from '../../src'
 import type { NodeClickHouseClient } from '../../src/client'
 
 whenOnEnv(TestEnv.Cloud).describe('[Node.js] JWT auth', () => {
   let jwtClient: NodeClickHouseClient
   let url: string
-  let jwt: string
+  let jwt: string | undefined
 
   beforeAll(() => {
     url = `https://${getFromEnv(EnvKeys.host)}:8443`
-    jwt = getFromEnv(EnvKeys.jwt_access_token)
+    jwt = maybeGetFromEnv(EnvKeys.jwt_access_token)
   })
   afterEach(async () => {
     await jwtClient.close()
   })
 
   it('should work with client configuration', async () => {
+    if (!jwt) {
+      pending(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+    }
+
     jwtClient = createClient({
       url,
       access_token: jwt,
@@ -29,6 +33,11 @@ whenOnEnv(TestEnv.Cloud).describe('[Node.js] JWT auth', () => {
   })
 
   it('should override the client instance auth', async () => {
+    if (!jwt) {
+      pending(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+      return
+    }
+
     jwtClient = createClient({
       url,
       username: 'gibberish',

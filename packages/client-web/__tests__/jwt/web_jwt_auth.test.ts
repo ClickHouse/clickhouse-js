@@ -1,4 +1,4 @@
-import { EnvKeys, getFromEnv } from '@test/utils/env'
+import { EnvKeys, getFromEnv, maybeGetFromEnv } from '@test/utils/env'
 import { createClient } from '../../src'
 import type { WebClickHouseClient } from '../../src/client'
 
@@ -8,17 +8,22 @@ import type { WebClickHouseClient } from '../../src/client'
 describe('[Web] JWT auth', () => {
   let client: WebClickHouseClient
   let url: string
-  let jwt: string
+  let jwt: string | undefined
 
   beforeAll(() => {
     url = `https://${getFromEnv(EnvKeys.host)}:8443`
-    jwt = getFromEnv(EnvKeys.jwt_access_token)
+    jwt = maybeGetFromEnv(EnvKeys.jwt_access_token)
   })
   afterEach(async () => {
     await client.close()
   })
 
   it('should work with client configuration', async () => {
+    if (!jwt) {
+      pending(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+      return
+    }
+
     client = createClient({
       url,
       access_token: jwt,
@@ -31,6 +36,11 @@ describe('[Web] JWT auth', () => {
   })
 
   it('should override the client instance auth', async () => {
+    if (!jwt) {
+      pending(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+      return
+    }
+
     client = createClient({
       url,
       username: 'gibberish',

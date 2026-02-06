@@ -14,6 +14,10 @@ export function getFromEnv(key: string): string {
   return value
 }
 
+export function maybeGetFromEnv(key: string): string | undefined {
+  return process.env[key]
+}
+
 export function getAuthFromEnv() {
   if (process.env['CLICKHOUSE_TEST_ENVIRONMENT'] === 'cloud') {
     const username = process.env[EnvKeys.username]
