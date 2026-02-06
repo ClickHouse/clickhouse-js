@@ -2,7 +2,7 @@
   "name": "@clickhouse/client-common",
   "description": "Official JS client for ClickHouse DB - common types",
   "homepage": "https://clickhouse.com",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
