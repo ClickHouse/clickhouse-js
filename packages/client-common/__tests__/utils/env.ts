@@ -7,7 +7,13 @@ export const EnvKeys = {
 }
 
 export function getFromEnv(key: string): string {
-  const value = process.env[key]
+  let value = process.env[key]
+  // Allow overriding org level CI environment variables with "unset" value,
+  // which will be treated as not set
+  if (value === 'unset') {
+    value = undefined
+  }
+
   if (value === undefined) {
     throw Error(`Environment variable ${key} is not set`)
   }
@@ -15,7 +21,13 @@ export function getFromEnv(key: string): string {
 }
 
 export function maybeGetFromEnv(key: string): string | undefined {
-  return process.env[key]
+  const value = process.env[key]
+  // Allow overriding org level CI environment variables with "unset" value,
+  // which will be treated as not set
+  if (value === 'unset') {
+    return undefined
+  }
+  return value
 }
 
 export function getAuthFromEnv() {
