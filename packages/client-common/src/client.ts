@@ -270,8 +270,10 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async command(params: CommandParams): Promise<CommandResult> {
     const query = removeTrailingSemi(params.query.trim())
+    const ignore_error_response = params.ignore_error_response ?? false
     return await this.connection.command({
       query,
+      ignore_error_response,
       ...this.withClientQueryParams(params),
     })
   }
