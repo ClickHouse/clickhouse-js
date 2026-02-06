@@ -10,8 +10,8 @@ export function streamErrorQueryParams(): QueryParamsWithFormat<'JSONEachRow'> {
     clickhouse_settings: {
       // enforcing at least a few blocks, so that the response code is 200 OK
       max_block_size: '1',
-      // this is false by default since 25.11; no need to set it explicitly
-      // http_write_exception_in_output_format: false,
+      // this is false by default since 25.11; setting explicitly to avoid flaky tests
+      http_write_exception_in_output_format: false,
     },
   }
 }
