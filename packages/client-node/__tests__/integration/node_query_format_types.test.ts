@@ -11,7 +11,7 @@ import { createNodeTestClient } from '../utils/node_client'
 
 // Ignored and used only as a source for ESLint checks with $ExpectType
 // See also: https://www.npmjs.com/package/eslint-plugin-expect-type
-xdescribe('[Node.js] Query and ResultSet types', () => {
+describe.skip('[Node.js] Query and ResultSet types', () => {
   let client: ClickHouseClient
   const tableName = `node_query_format_types_test_${guid()}`
   const query = `SELECT * FROM ${tableName} ORDER BY id ASC`

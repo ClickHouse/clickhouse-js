@@ -29,24 +29,24 @@ describe('[Node.js] logger support', () => {
         },
       })
       expect(infoSpy).toHaveBeenCalledOnceWith(
-        jasmine.stringContaining('Log level is set to DEBUG'),
+        expect.stringContaining('Log level is set to DEBUG'),
       )
 
       const debugSpy = spyOn(console, 'debug')
       await client.ping()
       expect(debugSpy).toHaveBeenCalledOnceWith(
-        jasmine.stringContaining('Ping: got a response from ClickHouse'),
-        jasmine.stringContaining('\nArguments:'),
-        jasmine.objectContaining({
+        expect.stringContaining('Ping: got a response from ClickHouse'),
+        expect.stringContaining('\nArguments:'),
+        expect.objectContaining({
           request_headers: {
-            connection: jasmine.stringMatching(/Keep-Alive/i),
-            'user-agent': jasmine.any(String),
+            connection: expect.stringMatching(/Keep-Alive/i),
+            'user-agent': expect.any(String),
           },
           request_method: 'GET',
           request_params: '',
           request_path: '/ping',
-          response_headers: jasmine.objectContaining({
-            connection: jasmine.stringMatching(/Keep-Alive/i),
+          response_headers: expect.objectContaining({
+            connection: expect.stringMatching(/Keep-Alive/i),
             'content-type': 'text/html; charset=UTF-8',
             'transfer-encoding': 'chunked',
           }),
@@ -65,9 +65,9 @@ describe('[Node.js] logger support', () => {
       await client.ping()
       // logs[0] are about the current log level
       expect(logs[1]).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           message: 'Ping: got a response from ClickHouse',
-          args: jasmine.objectContaining({
+          args: expect.objectContaining({
             request_path: '/ping',
             request_method: 'GET',
           }),

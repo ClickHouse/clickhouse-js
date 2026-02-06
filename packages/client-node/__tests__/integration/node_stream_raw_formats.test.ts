@@ -36,8 +36,8 @@ describe('[Node.js] stream raw formats', () => {
         format: 'CSV',
       }),
     ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('Cannot parse input'),
+      expect.objectContaining({
+        message: expect.stringContaining('Cannot parse input'),
       }),
     )
   })
@@ -106,8 +106,8 @@ describe('[Node.js] stream raw formats', () => {
           format: 'TabSeparated',
         }),
       ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Cannot parse input'),
+        expect.objectContaining({
+          message: expect.stringContaining('Cannot parse input'),
         }),
       )
     })
@@ -210,8 +210,8 @@ describe('[Node.js] stream raw formats', () => {
           format: 'CSVWithNamesAndTypes',
         }),
       ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining(
+        expect.objectContaining({
+          message: expect.stringContaining(
             `Type of 'name' must be String, not UInt64`,
           ),
         }),
@@ -229,8 +229,8 @@ describe('[Node.js] stream raw formats', () => {
           format: 'CSV',
         }),
       ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Cannot parse input'),
+        expect.objectContaining({
+          message: expect.stringContaining('Cannot parse input'),
         }),
       )
     })
@@ -325,8 +325,8 @@ describe('[Node.js] stream raw formats', () => {
           clickhouse_settings,
         }),
       ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Cannot parse input'),
+        expect.objectContaining({
+          message: expect.stringContaining('Cannot parse input'),
         }),
       )
     })

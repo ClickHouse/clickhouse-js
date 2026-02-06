@@ -177,13 +177,11 @@ describe('[Node.js] stream JSON formats', () => {
         values: stream,
         format: 'JSONCompactEachRowWithNamesAndTypes',
       })
-      await expectAsync(insertPromise).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringMatching(
-            `Type of 'name' must be String, not UInt64`,
-          ),
-        }),
-      )
+      await expect(insertPromise).rejects.toMatchObject({
+        message: expect.stringMatching(
+          `Type of 'name' must be String, not UInt64`,
+        ),
+      })
     })
 
     it('should work with JSONCompactStringsEachRowWithNames', async () => {
@@ -250,7 +248,7 @@ describe('[Node.js] stream JSON formats', () => {
             read_rows: '1',
             read_bytes: '8',
             total_rows_to_read: '2',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+            elapsed_ns: expect.stringMatching(/^\d+$/),
           },
         },
         { meta: [{ name: 'foo', type: 'UInt8' }] },
@@ -260,7 +258,7 @@ describe('[Node.js] stream JSON formats', () => {
             read_rows: '2',
             read_bytes: '16',
             total_rows_to_read: '2',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+            elapsed_ns: expect.stringMatching(/^\d+$/),
           },
         },
         { row: { foo: 0 } },
@@ -284,7 +282,7 @@ describe('[Node.js] stream JSON formats', () => {
             read_rows: '100',
             read_bytes: '800',
             total_rows_to_read: '100',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+            elapsed_ns: expect.stringMatching(/^\d+$/),
           },
         },
         {
@@ -323,9 +321,9 @@ describe('[Node.js] stream JSON formats', () => {
         },
       })
       await expectAsync(rs.json()).toBeRejectedWith(
-        jasmine.objectContaining({
+        expect.objectContaining({
           code: '395',
-          message: jasmine.stringContaining(
+          message: expect.stringContaining(
             `boom: while executing 'FUNCTION throwIf`,
           ),
         }),
@@ -622,8 +620,8 @@ describe('[Node.js] stream JSON formats', () => {
         format: 'JSONEachRow',
       }),
     ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('Cannot parse input'),
+      expect.objectContaining({
+        message: expect.stringContaining('Cannot parse input'),
       }),
     )
   })

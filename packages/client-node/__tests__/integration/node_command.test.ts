@@ -42,8 +42,8 @@ describe('[Node.js] command', () => {
           query: 'invalid',
         }),
       ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Syntax error'),
+        expect.objectContaining({
+          message: expect.stringContaining('Syntax error'),
         }),
       )
     })
@@ -55,8 +55,8 @@ describe('[Node.js] command', () => {
           ignore_error_response: false,
         }),
       ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Syntax error'),
+        expect.objectContaining({
+          message: expect.stringContaining('Syntax error'),
         }),
       )
     })

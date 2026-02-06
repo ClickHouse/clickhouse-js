@@ -50,7 +50,7 @@ describe('[Node.js] Compression', () => {
           format: 'JSONEachRow',
         }),
       ).toBeRejectedWith(
-        jasmine.objectContaining({
+        expect.objectContaining({
           code: 'Z_DATA_ERROR',
         }),
       )

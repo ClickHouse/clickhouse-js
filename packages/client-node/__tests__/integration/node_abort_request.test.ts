@@ -25,12 +25,10 @@ describe('[Node.js] abort request', () => {
     })
     controller.abort()
 
-    await expectAsync(selectPromise).toBeRejectedWith(
-      jasmine.objectContaining({
-        // this happens even before we instantiate the request and its listeners, so that is just a plain AbortError
-        name: 'AbortError',
-      }),
-    )
+    await expect(selectPromise).rejects.toMatchObject({
+      // this happens even before we instantiate the request and its listeners, so that is just a plain AbortError
+      name: 'AbortError',
+    })
   })
 
   it('cancels a select query while reading response', async () => {
@@ -55,7 +53,7 @@ describe('[Node.js] abort request', () => {
     // There is no assertion against an error message.
     // A race condition on events might lead to
     // Request Aborted or ERR_STREAM_PREMATURE_CLOSE errors.
-    await expectAsync(selectPromise).toBeRejectedWithError()
+    await expect(selectPromise).rejects.toThrow()
   })
 
   it('cancels a select query while reading response by closing response stream', async () => {
@@ -76,7 +74,7 @@ describe('[Node.js] abort request', () => {
           })
         }
       })
-    await expectAsync(selectPromise).toBeRejectedWithError()
+    await expect(selectPromise).rejects.toThrow()
   })
 
   describe('insert', () => {
@@ -151,12 +149,10 @@ describe('[Node.js] abort request', () => {
       })
       controller.abort()
 
-      await expectAsync(insertPromise).toBeRejectedWith(
-        jasmine.objectContaining({
-          // this happens even before we instantiate the request and its listeners, so that is just a plain AbortError
-          name: 'AbortError',
-        }),
-      )
+      await expect(insertPromise).rejects.toMatchObject({
+        // this happens even before we instantiate the request and its listeners, so that is just a plain AbortError
+        name: 'AbortError',
+      })
     })
 
     it('cancels an insert query before it is sent by closing a stream', async () => {
@@ -169,8 +165,8 @@ describe('[Node.js] abort request', () => {
           values: stream,
         }),
       ).toEqual(
-        jasmine.objectContaining({
-          query_id: jasmine.any(String),
+        expect.objectContaining({
+          query_id: expect.any(String),
         }),
       )
     })
@@ -188,11 +184,9 @@ describe('[Node.js] abort request', () => {
         controller.abort()
       }, 50)
 
-      await expectAsync(insertPromise).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringMatching('The user aborted a request'),
-        }),
-      )
+      await expect(insertPromise).rejects.toMatchObject({
+        message: expect.stringMatching('The user aborted a request'),
+      })
     })
   })
 })

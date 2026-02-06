@@ -29,14 +29,14 @@ whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).describe(
         format: 'JSONEachRow',
       })
       expect(insertSummary).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           read_rows: '5',
-          read_bytes: jasmine.any(String),
+          read_bytes: expect.any(String),
           written_rows: '5',
-          written_bytes: jasmine.any(String),
+          written_bytes: expect.any(String),
           result_rows: '5',
-          result_bytes: jasmine.any(String),
-          elapsed_ns: jasmine.any(String),
+          result_bytes: expect.any(String),
+          elapsed_ns: expect.any(String),
         }),
       )
 
@@ -46,14 +46,14 @@ whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).describe(
               FROM ${tableName}`,
       })
       expect(execSummary).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           read_rows: '5',
-          read_bytes: jasmine.any(String),
+          read_bytes: expect.any(String),
           written_rows: '5',
-          written_bytes: jasmine.any(String),
+          written_bytes: expect.any(String),
           result_rows: '5',
-          result_bytes: jasmine.any(String),
-          elapsed_ns: jasmine.any(String),
+          result_bytes: expect.any(String),
+          elapsed_ns: expect.any(String),
         }),
       )
     })
@@ -68,14 +68,14 @@ whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).describe(
         },
       })
       expect(summary).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           read_rows: '2',
-          read_bytes: jasmine.any(String),
+          read_bytes: expect.any(String),
           written_rows: '2',
-          written_bytes: jasmine.any(String),
+          written_bytes: expect.any(String),
           result_rows: '2',
-          result_bytes: jasmine.any(String),
-          elapsed_ns: jasmine.any(String),
+          result_bytes: expect.any(String),
+          elapsed_ns: expect.any(String),
         }),
       )
     })

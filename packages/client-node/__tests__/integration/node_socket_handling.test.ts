@@ -57,7 +57,7 @@ describe('Node.js socket handling', () => {
             const pingResult = await ping()
             expect(pingResult.success).toBeFalse()
             expect((pingResult as { error: Error }).error.message).toEqual(
-              jasmine.stringContaining('Timeout error.'),
+              expect.stringContaining('Timeout error.'),
             )
             await expectAsync(fn())
               .withContext(
@@ -77,7 +77,7 @@ describe('Node.js socket handling', () => {
         const pingResult = await client.ping()
         expect(pingResult.success).toBeFalse()
         expect((pingResult as { error: Error }).error.message).toEqual(
-          jasmine.stringContaining('Timeout error.'),
+          expect.stringContaining('Timeout error.'),
         )
       }
       expect().nothing()

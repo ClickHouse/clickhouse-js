@@ -27,11 +27,9 @@ describe('abort request', () => {
         }, 50)
       })
 
-      await expectAsync(selectPromise).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringMatching('The user aborted a request'),
-        }),
-      )
+      await expect(selectPromise).rejects.toMatchObject({
+        message: expect.stringMatching('The user aborted a request'),
+      })
     })
 
     it('should not throw an error when aborted the second time', async () => {
@@ -51,17 +49,15 @@ describe('abort request', () => {
 
       controller.abort('foo bar') // no-op, does not throw here
 
-      await expectAsync(selectPromise).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringMatching('The user aborted a request'),
-        }),
-      )
+      await expect(selectPromise).rejects.toMatchObject({
+        message: expect.stringMatching('The user aborted a request'),
+      })
     })
 
     // FIXME: It does not work with ClickHouse Cloud.
     //  Active queries never contain the long-running query unlike local setup.
     //  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
-    xit('ClickHouse server must cancel query on abort', async () => {
+    it.skip('ClickHouse server must cancel query on abort', async () => {
       const controller = new AbortController()
 
       const longRunningQuery = `SELECT sleep(3), '${guid()}'`

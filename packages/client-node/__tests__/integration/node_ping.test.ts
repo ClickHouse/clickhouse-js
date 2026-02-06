@@ -20,7 +20,7 @@ describe('[Node.js] ping', () => {
     expect(result.success).toBeFalse()
     // @ts-expect-error
     expect(result.error).toEqual(
-      jasmine.objectContaining({
+      expect.objectContaining({
         code: 'ECONNREFUSED',
       }),
     )
@@ -47,7 +47,7 @@ describe('[Node.js] ping', () => {
     expect(err.code).toEqual('516')
     expect(err.type).toEqual('AUTHENTICATION_FAILED')
     expect(err.message).toEqual(
-      jasmine.stringContaining('Authentication failed'),
+      expect.stringContaining('Authentication failed'),
     )
   })
 })

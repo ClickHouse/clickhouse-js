@@ -191,8 +191,8 @@ describe('[Node.js] exec', () => {
           decompress_response_stream: false,
         }),
       ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Syntax error'),
+        expect.objectContaining({
+          message: expect.stringContaining('Syntax error'),
         }),
       )
     })

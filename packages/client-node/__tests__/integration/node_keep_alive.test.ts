@@ -10,7 +10,7 @@ import { createNodeTestClient } from '../utils/node_client'
  *  maybe because of Jasmine test runner vs Jest and tests isolation
  *  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
  */
-xdescribe('[Node.js] Keep Alive', () => {
+describe.skip('[Node.js] Keep Alive', () => {
   let client: ClickHouseClient
   const socketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
   afterEach(async () => {
