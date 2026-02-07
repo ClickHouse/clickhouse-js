@@ -84,7 +84,7 @@ export function createTestClient<Stream = unknown>(
       clickhouse_settings: clickHouseSettings,
     }
     // props to https://stackoverflow.com/a/41063795/4575540
-    return createClient(cloudConfig) as ClickHouseClient<Stream>
+    return createClient(cloudConfig) as unknown as ClickHouseClient<Stream>
   } else {
     const localConfig: BaseClickHouseClientConfigOptions = {
       database: databaseName,
@@ -92,7 +92,7 @@ export function createTestClient<Stream = unknown>(
       ...config,
       clickhouse_settings: clickHouseSettings,
     }
-    return createClient(localConfig) as ClickHouseClient<Stream>
+    return createClient(localConfig) as unknown as ClickHouseClient<Stream>
   }
 }
 

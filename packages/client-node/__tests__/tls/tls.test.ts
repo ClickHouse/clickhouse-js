@@ -1,3 +1,4 @@
+import { it, expect, describe, beforeEach, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '../utils/client.node'
 import * as fs from 'fs'
