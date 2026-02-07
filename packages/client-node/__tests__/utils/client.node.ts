@@ -12,16 +12,17 @@ import type {
   ClickHouseSettings,
 } from '@clickhouse/client-common'
 import { cacheServerVersion } from '@test/utils/server_version'
-import { EnvKeys, getFromEnv } from './env'
-import { guid } from './guid'
+import { EnvKeys, getFromEnv } from '@test/utils/env'
+import { guid } from '@test/utils/guid'
 import {
   getClickHouseTestEnvironment,
   isCloudTestEnv,
   PRINT_DDL,
   SKIP_INIT,
   TestEnv,
-} from './test_env'
-import { TestLogger } from './test_logger'
+} from '@test/utils/test_env'
+import { TestLogger } from '@test/utils/test_logger'
+import { createClient } from '@clickhouse/client-node'
 
 if (typeof jasmine !== 'undefined') {
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 400_000
@@ -83,9 +84,7 @@ export function createTestClient<Stream = unknown>(
       clickhouse_settings: clickHouseSettings,
     }
     // props to https://stackoverflow.com/a/41063795/4575540
-    return require('../../../client-node/src/client').createClient(
-      cloudConfig,
-    ) as ClickHouseClient
+    return createClient(cloudConfig) as ClickHouseClient<Stream>
   } else {
     const localConfig: BaseClickHouseClientConfigOptions = {
       database: databaseName,
@@ -93,9 +92,7 @@ export function createTestClient<Stream = unknown>(
       ...config,
       clickhouse_settings: clickHouseSettings,
     }
-    return require('../../../client-node/src/client').createClient(
-      localConfig,
-    ) as ClickHouseClient
+    return createClient(localConfig) as ClickHouseClient<Stream>
   }
 }
 
