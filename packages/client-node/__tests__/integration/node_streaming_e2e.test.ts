@@ -9,7 +9,7 @@ import { genLargeStringsDataset } from '@test/utils/datasets'
 import { tableFromIPC } from 'apache-arrow'
 import { Buffer } from 'buffer'
 import Fs from 'fs'
-import { readParquet } from 'parquet-wasm'
+import { readParquet } from 'parquet-wasm/esm'
 import split from 'split2'
 import Stream from 'stream'
 
