@@ -3,6 +3,7 @@ import type {
   ClickHouseSettings,
   RawDataFormat,
 } from '@clickhouse/client-common'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient } from '../utils/client.node'
@@ -30,17 +31,15 @@ describe('[Node.js] stream raw formats', () => {
         objectMode: false,
       },
     )
-    await expectAsync(
+    await expect(
       client.insert({
         table: tableName,
         values: stream,
         format: 'CSV',
       }),
-    ).toBeRejectedWith(
-      expect.objectContaining({
-        message: expect.stringContaining('Cannot parse input'),
-      }),
-    )
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('Cannot parse input'),
+    })
   })
 
   describe('TSV', () => {
@@ -100,17 +99,15 @@ describe('[Node.js] stream raw formats', () => {
       const stream = Stream.Readable.from(`foobar\t42\n`, {
         objectMode: false,
       })
-      await expectAsync(
+      await expect(
         client.insert({
           table: tableName,
           values: stream,
           format: 'TabSeparated',
         }),
-      ).toBeRejectedWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Cannot parse input'),
-        }),
-      )
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Cannot parse input'),
+      })
     })
 
     it('can insert multiple TSV streams at once', async () => {
@@ -204,36 +201,32 @@ describe('[Node.js] stream raw formats', () => {
           objectMode: false,
         },
       )
-      await expectAsync(
+      await expect(
         client.insert({
           table: tableName,
           values: stream,
           format: 'CSVWithNamesAndTypes',
         }),
-      ).toBeRejectedWith(
-        expect.objectContaining({
-          message: expect.stringContaining(
-            `Type of 'name' must be String, not UInt64`,
-          ),
-        }),
-      )
+      ).rejects.toMatchObject({
+        message: expect.stringContaining(
+          `Type of 'name' must be String, not UInt64`,
+        ),
+      })
     })
 
     it('should throw in case of invalid CSV format', async () => {
       const stream = Stream.Readable.from(`"foobar","42",,\n`, {
         objectMode: false,
       })
-      await expectAsync(
+      await expect(
         client.insert({
           table: tableName,
           values: stream,
           format: 'CSV',
         }),
-      ).toBeRejectedWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Cannot parse input'),
-        }),
-      )
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Cannot parse input'),
+      })
     })
 
     it('can insert multiple CSV streams at once', async () => {
@@ -318,18 +311,16 @@ describe('[Node.js] stream raw formats', () => {
       const stream = Stream.Readable.from(`"foobar"^"42"^^\n`, {
         objectMode: false,
       })
-      await expectAsync(
+      await expect(
         client.insert({
           table: tableName,
           values: stream,
           format: 'CustomSeparated',
           clickhouse_settings,
         }),
-      ).toBeRejectedWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Cannot parse input'),
-        }),
-      )
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Cannot parse input'),
+      })
     })
 
     it('can insert multiple custom-separated streams at once', async () => {

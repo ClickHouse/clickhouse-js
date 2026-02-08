@@ -1,4 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTestClient } from '../utils/client.node'
 import { guid } from '@test/utils/guid'
@@ -186,16 +187,14 @@ describe('[Node.js] exec', () => {
     })
 
     it('should force decompress in case of an error', async () => {
-      await expectAsync(
+      await expect(
         client.exec({
           query: 'invalid',
           decompress_response_stream: false,
         }),
-      ).toBeRejectedWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Syntax error'),
-        }),
-      )
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Syntax error'),
+      })
     })
   })
 

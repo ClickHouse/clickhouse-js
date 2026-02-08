@@ -1,4 +1,5 @@
 import { type ClickHouseClient } from '@clickhouse/client-common'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient } from '../utils/client.node'
@@ -321,14 +322,12 @@ describe('[Node.js] stream JSON formats', () => {
           max_block_size: '1',
         },
       })
-      await expectAsync(rs.json()).toBeRejectedWith(
-        expect.objectContaining({
-          code: '395',
-          message: expect.stringContaining(
-            `boom: while executing 'FUNCTION throwIf`,
-          ),
-        }),
-      )
+      await expect(rs.json()).rejects.toMatchObject({
+        code: '395',
+        message: expect.stringContaining(
+          `boom: while executing 'FUNCTION throwIf`,
+        ),
+      })
     })
 
     describe('custom JSON handling', () => {
@@ -559,12 +558,12 @@ describe('[Node.js] stream JSON formats', () => {
       },
     })
 
-    await expectAsync(
+    await expect(
       client.insert({
         table: tableName,
         values: stream,
       }),
-    ).toBeResolved()
+    ).resolves.toBeUndefined()
   })
 
   it('waits for stream of values to be closed', async () => {
@@ -614,16 +613,14 @@ describe('[Node.js] stream JSON formats', () => {
     const stream = makeObjectStream()
     stream.push({ id: 'baz', name: 'foo', sku: '[0,1]' })
     stream.push(null)
-    await expectAsync(
+    await expect(
       client.insert({
         table: tableName,
         values: stream,
         format: 'JSONEachRow',
       }),
-    ).toBeRejectedWith(
-      expect.objectContaining({
-        message: expect.stringContaining('Cannot parse input'),
-      }),
-    )
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('Cannot parse input'),
+    })
   })
 })

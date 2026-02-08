@@ -2,6 +2,7 @@ import type {
   ClickHouseClient,
   ConnPingResult,
 } from '@clickhouse/client-common'
+import { describe, it, beforeAll, afterAll, afterEach, expect } from 'vitest'
 import { permutations } from '@test/utils/permutations'
 import { createTestClient } from '../utils/client.node'
 import * as http from 'http'
@@ -59,17 +60,15 @@ describe('Node.js socket handling', () => {
             expect((pingResult as { error: Error }).error.message).toEqual(
               expect.stringContaining('Timeout error.'),
             )
-            await expectAsync(fn())
-              .withContext(
-                `${opName} should have been rejected. Current ops: ${ops
-                  .map(({ opName }) => opName)
-                  .join(', ')}`,
-              )
-              .toBeRejectedWithError('Timeout error.')
+            await expect(
+              fn(),
+              `${opName} should have been rejected. Current ops: ${ops
+                .map(({ opName }) => opName)
+                .join(', ')}`,
+            ).rejects.toThrow('Timeout error.')
           }
         }
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Ping', async () => {
@@ -80,41 +79,36 @@ describe('Node.js socket handling', () => {
           expect.stringContaining('Timeout error.'),
         )
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Select', async () => {
       for (let i = 1; i <= Iterations; i++) {
-        await expectAsync(select()).toBeRejectedWithError('Timeout error.')
+        await expect(select()).rejects.toThrow('Timeout error.')
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Insert', async () => {
       for (let i = 1; i <= Iterations; i++) {
-        await expectAsync(insert()).toBeRejectedWithError('Timeout error.')
+        await expect(insert()).rejects.toThrow('Timeout error.')
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Command', async () => {
       for (let i = 1; i <= Iterations; i++) {
-        await expectAsync(command()).toBeRejectedWithError('Timeout error.')
+        await expect(command()).rejects.toThrow('Timeout error.')
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Exec', async () => {
       for (let i = 1; i <= Iterations; i++) {
-        await expectAsync(exec()).toBeRejectedWithError('Timeout error.')
+        await expect(exec()).rejects.toThrow('Timeout error.')
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with parallel Select operations', async () => {
       for (let i = 1; i <= Iterations; i++) {
         const promises = [...new Array(MaxOpenConnections)].map(async () => {
-          await expectAsync(select()).toBeRejectedWithError('Timeout error.')
+          await expect(select()).rejects.toThrow('Timeout error.')
         })
         await Promise.all(promises)
       }

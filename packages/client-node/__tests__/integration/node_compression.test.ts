@@ -1,4 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createTestClient } from '../utils/client.node'
 import http from 'http'
 import type Stream from 'stream'
@@ -44,16 +45,14 @@ describe('[Node.js] Compression', () => {
       server.listen(port)
 
       // The request fails completely (and the error message cannot be decompressed)
-      await expectAsync(
+      await expect(
         client.query({
           query: 'SELECT 1',
           format: 'JSONEachRow',
         }),
-      ).toBeRejectedWith(
-        expect.objectContaining({
-          code: 'Z_DATA_ERROR',
-        }),
-      )
+      ).rejects.toMatchObject({
+        code: 'Z_DATA_ERROR',
+      })
     })
 
     it('should not propagate the exception to the global context if a successful response is malformed', async () => {
@@ -68,7 +67,7 @@ describe('[Node.js] Compression', () => {
       })
 
       // Fails during the response streaming
-      await expectAsync(rs.text()).toBeRejectedWithError()
+      await expect(rs.text()).rejects.toThrow()
     })
   })
 
