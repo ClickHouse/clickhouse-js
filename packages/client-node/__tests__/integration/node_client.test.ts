@@ -1,12 +1,12 @@
 import { getHeadersTestParams } from '@test/utils/parametrized'
 import Http from 'http'
-import { vi } from 'vitest'
+import { vi, expect } from 'vitest'
 import type { ClickHouseClient } from '../../src'
 import { createClient } from '../../src'
 import { emitResponseBody, stubClientRequest } from '../utils/http_stubs'
 
 describe('[Node.js] Client', () => {
-  let httpRequestStub: ReturnType<typeof vi.spyOn<typeof Http, 'request'>>
+  let httpRequestStub: ReturnType<typeof vi.spyOn>
   let clientRequest: Http.ClientRequest
   beforeEach(() => {
     vi.clearAllMocks()

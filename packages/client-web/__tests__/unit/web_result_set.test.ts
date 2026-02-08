@@ -101,7 +101,7 @@ describe('[Web] ResultSet', () => {
       })
     `)(rs)
 
-    expect(isClosed).toBeTrue()
+    expect(isClosed).toBeTruthy()
   })
 
   function makeResultSet() {

@@ -3,7 +3,7 @@ import { getHeadersTestParams } from '@test/utils/parametrized'
 import { createClient } from '../../src'
 
 describe('[Web] Client', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn<Window, 'fetch'>>
+  let fetchSpy: ReturnType<typeof vi.spyOn>
   beforeEach(() => {
     fetchSpy = vi
       .spyOn(window, 'fetch')
@@ -56,14 +56,13 @@ describe('[Web] Client', () => {
         })
 
         await param.methodCall({ FromInstance: 'bar' })
-        expect(getFetchRequestInit(fetchCalls++).headers)
-          .withContext(
-            `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
-          )
-          .toEqual({
-            ...defaultHeaders,
-            FromInstance: 'bar',
-          })
+        expect(
+          getFetchRequestInit(fetchCalls++).headers,
+          `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
+        ).toEqual({
+          ...defaultHeaders,
+          FromInstance: 'bar',
+        })
       }
     })
   })
@@ -108,7 +107,7 @@ describe('[Web] Client', () => {
 
   function getFetchRequestInit(fetchSpyCalledTimes = 1) {
     expect(fetchSpy).toHaveBeenCalledTimes(fetchSpyCalledTimes)
-    const [, requestInit] = fetchSpy.calls.mostRecent().args
+    const [, requestInit] = fetchSpy.mock.calls[fetchSpyCalledTimes - 1]
     return requestInit!
   }
 

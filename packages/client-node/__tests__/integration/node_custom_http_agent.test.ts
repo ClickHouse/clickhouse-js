@@ -8,7 +8,7 @@ import { createClient } from '../../src'
 describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
   '[Node.js] custom HTTP agent',
   () => {
-    let httpRequestStub: ReturnType<typeof vi.spyOn<typeof Http, 'request'>>
+    let httpRequestStub: ReturnType<typeof vi.spyOn>
     beforeEach(() => {
       httpRequestStub = vi.spyOn(Http, 'request')
     })

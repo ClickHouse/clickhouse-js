@@ -48,6 +48,6 @@ describe('[Web] createClient', () => {
         })
       `)(client)
 
-    expect(isClosed).toBeTrue()
+    expect(isClosed).toBeTruthy()
   })
 })

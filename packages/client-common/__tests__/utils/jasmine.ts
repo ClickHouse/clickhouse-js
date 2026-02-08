@@ -1,3 +1,4 @@
+// @ts-nocheck Re-enable after migrating to Vitest
 import type { TestEnv } from './test_env'
 import { getClickHouseTestEnvironment } from './test_env'
 
