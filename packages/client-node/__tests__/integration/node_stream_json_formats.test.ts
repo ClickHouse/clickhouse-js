@@ -565,7 +565,7 @@ describe('[Node.js] stream JSON formats', () => {
         table: tableName,
         values: stream,
       }),
-    ).resolves.toBeUndefined()
+    ).resolves.toBeDefined()
   })
 
   it('waits for stream of values to be closed', async () => {

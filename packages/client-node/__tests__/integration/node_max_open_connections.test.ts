@@ -9,9 +9,12 @@ describe('[Node.js] max_open_connections config', () => {
   let client: ClickHouseClient
   let results: number[] = []
 
+  beforeEach(async () => {
+    results = []
+  })
+
   afterEach(async () => {
     await client.close()
-    results = []
   })
 
   async function select(query: string) {
@@ -71,8 +74,8 @@ describe('[Node.js] max_open_connections config', () => {
     })
 
     const json = await result.json()
-    expect(json).toContain(value1)
-    expect(json).toContain(value2)
+    expect(json).toContainEqual(value1)
+    expect(json).toContainEqual(value2)
     expect(json.length).toEqual(2)
   })
 
