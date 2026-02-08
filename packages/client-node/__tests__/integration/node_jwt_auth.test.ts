@@ -14,12 +14,12 @@ describe.skipIf(!isOnEnv(TestEnv.Cloud))('[Node.js] JWT auth', () => {
     jwt = maybeGetFromEnv(EnvKeys.jwt_access_token)
   })
   afterEach(async () => {
-    await jwtClient.close()
+    await jwtClient?.close()
   })
 
-  it('should work with client configuration', async () => {
+  it('should work with client configuration', async ({ skip }) => {
     if (!jwt) {
-      pending(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+      skip(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
     }
 
     jwtClient = createClient({
@@ -33,10 +33,9 @@ describe.skipIf(!isOnEnv(TestEnv.Cloud))('[Node.js] JWT auth', () => {
     expect(await rs.json()).toEqual([{ result: 42 }])
   })
 
-  it('should override the client instance auth', async () => {
+  it('should override the client instance auth', async ({ skip }) => {
     if (!jwt) {
-      pending(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
-      return
+      skip(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
     }
 
     jwtClient = createClient({
