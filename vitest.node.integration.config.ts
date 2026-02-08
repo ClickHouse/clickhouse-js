@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
+    // Increase maxWorkers to speed up integration tests
+    // as we're not bound by the CPU here.
+    maxWorkers: '400%',
     globals: true,
     root: 'packages/',
     include: [
