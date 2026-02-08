@@ -117,7 +117,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
     const query_id = this.getQueryId(params.query_id)
     const { controller, controllerCleanup } = this.getAbortController(params)
-    let result: RequestResult
+    let result: RequestResult | null = null
     try {
       if (params.select) {
         const searchParams = toSearchParams({
@@ -147,7 +147,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           'Ping',
         )
       }
-      await drainStream(result.stream)
       return { success: true }
     } catch (error) {
       // it is used to ensure that the outgoing request is terminated,
@@ -166,6 +165,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         error: error as Error, // should NOT be propagated to the user
       }
     } finally {
+      if (result?.stream) {
+        await drainStream(result.stream)
+      }
       controllerCleanup()
     }
   }
