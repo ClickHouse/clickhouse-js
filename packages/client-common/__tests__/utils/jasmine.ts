@@ -29,9 +29,3 @@ export const whenOnEnv = (...envs: TestEnv[]) => {
     return describe.skip(...args)
   }
 }
-
-export function requireServerVersionAtLeast(major: number, minor: number) {
-  if (!isClickHouseVersionAtLeast(major, minor)) {
-    pending(`Required ClickHouse version is at least ${major}.${minor}`)
-  }
-}

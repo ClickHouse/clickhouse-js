@@ -3,8 +3,8 @@ import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
 import { createTestClient } from '../utils/client.node'
+import { isClickHouseVersionAtLeast } from '@test/utils/server_version'
 import { guid } from '@test/utils/guid'
-import { requireServerVersionAtLeast } from '@test/utils/jasmine'
 import Stream from 'stream'
 import * as simdjson from 'simdjson'
 import { makeObjectStream } from '../utils/stream'
@@ -312,8 +312,10 @@ describe('[Node.js] stream JSON formats', () => {
       ])
     })
 
-    it('works with exceptions', async () => {
-      requireServerVersionAtLeast(25, 11)
+    it('works with exceptions', async ({ skip }) => {
+      if (!isClickHouseVersionAtLeast(25, 11)) {
+        skip()
+      }
 
       const rs = await client.query({
         query: `SELECT number, throwIf(number = 3, 'boom') AS foo FROM system.numbers`,

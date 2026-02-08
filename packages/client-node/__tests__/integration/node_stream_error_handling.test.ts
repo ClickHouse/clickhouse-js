@@ -3,7 +3,7 @@ import {
   assertError,
   streamErrorQueryParams,
 } from '@test/fixtures/stream_errors'
-import { requireServerVersionAtLeast } from '@test/utils/jasmine'
+import { isClickHouseVersionAtLeast } from '@test/utils/server_version'
 import type { ClickHouseClient } from '../../src'
 import type { ClickHouseError } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
@@ -19,8 +19,10 @@ describe('[Node.js] Stream error handling', () => {
     await client.close()
   })
 
-  it('with promise listeners', async () => {
-    requireServerVersionAtLeast(25, 11)
+  it('with promise listeners', async ({ skip }) => {
+    if (!isClickHouseVersionAtLeast(25, 11)) {
+      skip()
+    }
 
     let caughtError: ClickHouseError | null = null
 
@@ -49,8 +51,10 @@ describe('[Node.js] Stream error handling', () => {
     assertError(caughtError)
   })
 
-  it('with async iterators', async () => {
-    requireServerVersionAtLeast(25, 11)
+  it('with async iterators', async ({ skip }) => {
+    if (!isClickHouseVersionAtLeast(25, 11)) {
+      skip()
+    }
 
     let caughtError: ClickHouseError | null = null
 
