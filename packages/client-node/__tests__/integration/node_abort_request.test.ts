@@ -2,7 +2,7 @@ import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { jsonValues } from '@test/fixtures/test_data'
 import { createTestClient } from '../utils/client.node'
-import { guid } from '@test/utils'
+import { guid } from '@test/utils/guid'
 import type Stream from 'stream'
 import { makeObjectStream } from '../utils/stream'
 

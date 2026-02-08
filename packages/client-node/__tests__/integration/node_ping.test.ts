@@ -17,7 +17,7 @@ describe('[Node.js] ping', () => {
     })
 
     const result = await client.ping()
-    expect(result.success).toBeFalse()
+    expect(result.success).toBeFalsy()
     // @ts-expect-error
     expect(result.error).toEqual(
       expect.objectContaining({

@@ -2,7 +2,7 @@ import type {
   ClickHouseClient,
   ConnPingResult,
 } from '@clickhouse/client-common'
-import { permutations } from '@test/utils'
+import { permutations } from '@test/utils/permutations'
 import { createTestClient } from '../utils/client.node'
 import * as http from 'http'
 import type Stream from 'stream'
@@ -55,7 +55,7 @@ describe('Node.js socket handling', () => {
         for await (const { fn, opName } of ops) {
           for (let i = 1; i <= Iterations; i++) {
             const pingResult = await ping()
-            expect(pingResult.success).toBeFalse()
+            expect(pingResult.success).toBeFalsy()
             expect((pingResult as { error: Error }).error.message).toEqual(
               expect.stringContaining('Timeout error.'),
             )
@@ -75,7 +75,7 @@ describe('Node.js socket handling', () => {
     it('should not throw unhandled errors with Ping', async () => {
       for (let i = 1; i <= Iterations; i++) {
         const pingResult = await client.ping()
-        expect(pingResult.success).toBeFalse()
+        expect(pingResult.success).toBeFalsy()
         expect((pingResult as { error: Error }).error.message).toEqual(
           expect.stringContaining('Timeout error.'),
         )
@@ -161,7 +161,7 @@ describe('Node.js socket handling', () => {
     it('should eventually get a successful ping', async () => {
       for (let i = 1; i < Iterations; i++) {
         const pingResult = await ping()
-        expect(pingResult.success).toBeFalse()
+        expect(pingResult.success).toBeFalsy()
         expect(
           (pingResult as ConnPingResult & { success: false }).error.message,
         ).toEqual('Timeout error.')
@@ -193,7 +193,7 @@ describe('Node.js socket handling', () => {
       // Try to reach to the unavailable server a few times
       for (let i = 1; i <= Iterations; i++) {
         const pingResult = await ping()
-        expect(pingResult.success).toBeFalse()
+        expect(pingResult.success).toBeFalsy()
         const error = (pingResult as ConnPingResult & { success: false }).error
         expect((error as NodeJS.ErrnoException).code).toEqual('ECONNREFUSED')
       }

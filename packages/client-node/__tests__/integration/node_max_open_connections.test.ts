@@ -1,5 +1,6 @@
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { guid, sleep } from '@test/utils'
+import { guid } from '@test/utils/guid'
+import { sleep } from '@test/utils/sleep'
 import type { ClickHouseClient } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
 

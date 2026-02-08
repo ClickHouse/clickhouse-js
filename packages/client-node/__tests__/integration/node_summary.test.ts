@@ -1,14 +1,16 @@
+import { describe, it, expect } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { jsonValues } from '@test/fixtures/test_data'
 import { createTestClient } from '../utils/client.node'
-import { guid, TestEnv, whenOnEnv } from '@test/utils'
+import { guid } from '@test/utils/guid'
+import { TestEnv, isOnEnv } from '@test/utils/test_env'
 import type Stream from 'stream'
 
 // FIXME: figure out if we can get non-flaky assertion with an SMT Cloud instance.
 //  It could be that it requires full quorum settings for non-flaky assertions.
 //  SharedMergeTree Cloud instance is auto by default (and cannot be modified).
-whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).describe(
+describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
   '[Node.js] Summary header parsing',
   () => {
     let client: ClickHouseClient<Stream.Readable>

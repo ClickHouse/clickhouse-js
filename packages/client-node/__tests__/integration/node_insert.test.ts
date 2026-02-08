@@ -1,7 +1,7 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTestClient } from '../utils/client.node'
-import { guid } from '@test/utils'
+import { guid } from '@test/utils/guid'
 import Stream from 'stream'
 
 describe('[Node.js] insert', () => {

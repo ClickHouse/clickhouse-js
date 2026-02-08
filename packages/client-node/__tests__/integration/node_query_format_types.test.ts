@@ -3,7 +3,7 @@ import type {
   DataFormat,
 } from '@clickhouse/client-common'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
-import { guid } from '@test/utils'
+import { guid } from '@test/utils/guid'
 import type { ClickHouseClient, ResultSet } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
 
