@@ -11,7 +11,9 @@ import { genLargeStringsDataset } from '@test/utils/datasets'
 import { tableFromIPC } from 'apache-arrow'
 import { Buffer } from 'buffer'
 import Fs from 'fs'
-import { readParquet } from 'parquet-wasm/esm'
+// Not working out of the box with ESM. See out package.json for the workaround.
+// Also, see https://github.com/kylebarron/parquet-wasm/issues/798
+import { readParquet } from 'parquet-wasm/node'
 import split from 'split2'
 import Stream from 'stream'
 
