@@ -14,7 +14,9 @@ describe('[Node.js] Compression', () => {
   describe('Malformed compression response', () => {
     const logAndQuit = (err: Error | unknown, prefix: string) => {
       console.error(prefix, err)
-      process.exit(1)
+      expect.fail(
+        `An unexpected error was propagated to the global context: ${prefix} ${err}`,
+      )
     }
     const uncaughtExceptionListener = (err: Error) =>
       logAndQuit(err, 'uncaughtException:')

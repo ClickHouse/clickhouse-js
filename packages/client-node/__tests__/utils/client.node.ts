@@ -166,6 +166,6 @@ export async function wakeUpPing(client: ClickHouseClient): Promise<void> {
       lastError,
     )
     await client.close()
-    process.exit(1)
+    throw new Error('Failed to wake up the service')
   }
 }
