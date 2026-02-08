@@ -137,8 +137,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     const { log_writer, log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const { controller, controllerCleanup } = this.getAbortController(params)
-    let result: RequestResult
     try {
+      let result: RequestResult
       if (params.select) {
         const searchParams = toSearchParams({
           database: undefined,
