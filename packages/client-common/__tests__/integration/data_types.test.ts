@@ -84,15 +84,15 @@ describe('data types', () => {
 
   it('should throw if a value is too large for a FixedString field', async () => {
     const table = await createTableWithFields(client, 'fs FixedString(3)')
-    await expectAsync(
+    await expect(
       client.insert({
         table,
         values: [{ fs: 'foobar' }],
         format: 'JSONEachRow',
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('Too large value for FixedString(3)'),
+    ).rejects.toMatchObject(
+      expect.objectContaining({
+        message: expect.stringContaining('Too large value for FixedString(3)'),
       }),
     )
   })

@@ -22,8 +22,8 @@ describe('[Web] ping', () => {
     // @ts-expect-error
     expect(result.error).toEqual(
       // Chrome = Failed to fetch; FF = NetworkError when attempting to fetch resource
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('to fetch'),
+      expect.objectContaining({
+        message: expect.stringContaining('to fetch'),
       }),
     )
   })
@@ -41,7 +41,7 @@ describe('[Web] ping', () => {
     expect(err.code).toEqual('516')
     expect(err.type).toEqual('AUTHENTICATION_FAILED')
     expect(err.message).toEqual(
-      jasmine.stringContaining('Authentication failed'),
+      expect.stringContaining('Authentication failed'),
     )
   })
 })

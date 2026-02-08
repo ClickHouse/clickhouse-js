@@ -78,16 +78,16 @@ describe('Insert with specific columns', () => {
     })
 
     it('should fail when an unknown column is specified', async () => {
-      await expectAsync(
+      await expect(
         client.insert({
           table,
           values: [row],
           format: 'JSONEachRow',
           columns: ['foobar', 'id'],
         }),
-      ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('No such column foobar'),
+      ).rejects.toMatchObject(
+        expect.objectContaining({
+          message: expect.stringContaining('No such column foobar'),
         }),
       )
     })

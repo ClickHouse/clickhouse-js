@@ -3,11 +3,11 @@ import { getHeadersTestParams } from '@test/utils/parametrized'
 import { createClient } from '../../src'
 
 describe('[Web] Client', () => {
-  let fetchSpy: jasmine.Spy<typeof window.fetch>
+  let fetchSpy: ReturnType<typeof vi.spyOn<Window, 'fetch'>>
   beforeEach(() => {
-    fetchSpy = spyOn(window, 'fetch').and.returnValue(
-      Promise.resolve(new Response()),
-    )
+    fetchSpy = vi
+      .spyOn(window, 'fetch')
+      .mockReturnValue(Promise.resolve(new Response()))
   })
 
   describe('HTTP headers', () => {
@@ -45,15 +45,15 @@ describe('[Web] Client', () => {
       const testParams = getHeadersTestParams(client)
       for (const param of testParams) {
         await param.methodCall({ FromMethod: 'bar' })
-        expect(getFetchRequestInit(fetchCalls++).headers)
-          .withContext(
-            `${param.methodName}: merges custom HTTP headers from both method and instance`,
-          )
-          .toEqual({
-            ...defaultHeaders,
-            FromInstance: 'foo',
-            FromMethod: 'bar',
-          })
+        // ${param.methodName}: merges custom HTTP headers from both method and instance
+        expect(
+          getFetchRequestInit(fetchCalls++).headers,
+          `${param.methodName}: merges custom HTTP headers from both method and instance`,
+        ).toEqual({
+          ...defaultHeaders,
+          FromInstance: 'foo',
+          FromMethod: 'bar',
+        })
 
         await param.methodCall({ FromInstance: 'bar' })
         expect(getFetchRequestInit(fetchCalls++).headers)

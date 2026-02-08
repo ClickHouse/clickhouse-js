@@ -101,25 +101,25 @@ describe('[Node.js] Client', () => {
       const testParams = getHeadersTestParams(client)
       for (const param of testParams) {
         await withEmit(() => param.methodCall({ FromMethod: 'bar' }))
-        expect(getRequestHeaders(requestCalls++))
-          .withContext(
-            `${param.methodName}: merges custom HTTP headers from both method and instance`,
-          )
-          .toEqual({
-            ...defaultHeaders,
-            FromInstance: 'foo',
-            FromMethod: 'bar',
-          })
+        // ${param.methodName}: merges custom HTTP headers from both method and instance
+        expect(
+          getRequestHeaders(requestCalls++),
+          `${param.methodName}: merges custom HTTP headers from both method and instance`,
+        ).toEqual({
+          ...defaultHeaders,
+          FromInstance: 'foo',
+          FromMethod: 'bar',
+        })
 
         await withEmit(() => param.methodCall({ FromInstance: 'bar' }))
-        expect(getRequestHeaders(requestCalls++))
-          .withContext(
-            `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
-          )
-          .toEqual({
-            ...defaultHeaders,
-            FromInstance: 'bar',
-          })
+        // ${param.methodName}: overrides HTTP headers from the instance with the values from the method call
+        expect(
+          getRequestHeaders(requestCalls++),
+          `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
+        ).toEqual({
+          ...defaultHeaders,
+          FromInstance: 'bar',
+        })
       }
     })
   })

@@ -61,8 +61,8 @@ describe('exec and command', () => {
       await command()
       await command()
     }
-    await expectAsync(commands()).toBeRejectedWith(
-      jasmine.objectContaining({
+    await expect(commands()).rejects.toMatchObject(
+      expect.objectContaining({
         code: '57',
         type: 'TABLE_ALREADY_EXISTS',
       }),

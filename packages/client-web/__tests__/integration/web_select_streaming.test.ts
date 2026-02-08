@@ -22,15 +22,15 @@ describe('[Web] SELECT streaming', () => {
 
   describe('consume the response only once', () => {
     async function assertAlreadyConsumed$<T>(fn: () => Promise<T>) {
-      await expectAsync(fn()).toBeRejectedWith(
-        jasmine.objectContaining({
+      await expect(fn()).rejects.toMatchObject(
+        expect.objectContaining({
           message: 'Stream has been already consumed',
         }),
       )
     }
     function assertAlreadyConsumed<T>(fn: () => T) {
       expect(fn).toThrow(
-        jasmine.objectContaining({
+        expect.objectContaining({
           message: 'Stream has been already consumed',
         }),
       )
@@ -81,8 +81,8 @@ describe('[Web] SELECT streaming', () => {
       })
       // wrap in a func to avoid changing inner "this"
       expect(() => result.stream()).toThrow(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('JSON format is not streamable'),
+        expect.objectContaining({
+          message: expect.stringContaining('JSON format is not streamable'),
         }),
       )
     })

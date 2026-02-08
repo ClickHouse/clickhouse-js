@@ -48,7 +48,7 @@ describe('insert', () => {
     expect(
       result.response_headers['Content-Type'] ??
         result.response_headers['content-type'],
-    ).toEqual(jasmine.stringMatching(/text\/.+?; charset=UTF-8/))
+    ).toEqual(expect.stringMatching(/text\/.+?; charset=UTF-8/))
   })
 
   it('should use provide query_id', async () => {
@@ -129,19 +129,19 @@ describe('insert', () => {
   })
 
   it('should provide error details when sending a request with an unknown clickhouse settings', async () => {
-    await expectAsync(
+    await expect(
       client.insert({
         table: tableName,
         values: jsonValues,
         format: 'JSONEachRow',
         clickhouse_settings: { foobar: 1 } as any,
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
+    ).rejects.toMatchObject(
+      expect.objectContaining({
         // Possible error messages:
         // Unknown setting foobar
         // Setting foobar is neither a builtin setting nor started with the prefix 'SQL_' registered for user-defined settings.
-        message: jasmine.stringContaining('foobar'),
+        message: expect.stringContaining('foobar'),
         code: '115',
         type: 'UNKNOWN_SETTING',
       }),
