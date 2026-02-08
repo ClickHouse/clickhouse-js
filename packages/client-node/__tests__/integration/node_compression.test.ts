@@ -1,16 +1,9 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
 import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createTestClient } from '../utils/client.node'
 import http from 'http'
-import type Stream from 'stream'
-import type { NodeClickHouseClientConfigOptions } from '../../src/config'
+import { type AddressInfo } from 'net'
 
 describe('[Node.js] Compression', () => {
-  const port = 18123
-
-  let client: ClickHouseClient<Stream.Readable>
-  let server: http.Server
-
   describe('Malformed compression response', () => {
     const logAndQuit = (err: Error | unknown, prefix: string) => {
       console.error(prefix, err)
@@ -26,25 +19,27 @@ describe('[Node.js] Compression', () => {
     beforeEach(async () => {
       process.on('uncaughtException', uncaughtExceptionListener)
       process.on('unhandledRejection', unhandledRejectionListener)
-      client = createTestClient({
-        url: `http://localhost:${port}`,
-        compression: {
-          response: true,
-        },
-      } as NodeClickHouseClientConfigOptions)
     })
     afterEach(async () => {
       process.off('uncaughtException', uncaughtExceptionListener)
       process.off('unhandledRejection', unhandledRejectionListener)
-      await client.close()
-      server.close()
     })
 
     it('should not propagate the exception to the global context if a failed response is malformed', async () => {
-      server = http.createServer(async (_req, res) => {
+      const server = http.createServer(async (_req, res) => {
         return makeResponse(res, 500)
       })
-      server.listen(port)
+      await new Promise<void>((resolve) => {
+        server.listen(0, () => resolve())
+      })
+      const port = (server.address() as AddressInfo).port
+
+      const client = createTestClient({
+        url: `http://localhost:${port}`,
+        compression: {
+          response: true,
+        },
+      })
 
       // The request fails completely (and the error message cannot be decompressed)
       await expect(
@@ -58,10 +53,20 @@ describe('[Node.js] Compression', () => {
     })
 
     it('should not propagate the exception to the global context if a successful response is malformed', async () => {
-      server = http.createServer(async (_req, res) => {
+      const server = http.createServer(async (_req, res) => {
         return makeResponse(res, 200)
       })
-      server.listen(port)
+      await new Promise<void>((resolve) => {
+        server.listen(0, () => resolve())
+      })
+      const port = (server.address() as AddressInfo).port
+
+      const client = createTestClient({
+        url: `http://localhost:${port}`,
+        compression: {
+          response: true,
+        },
+      })
 
       const rs = await client.query({
         query: 'SELECT 1',
