@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it } from 'vitest'
 import type {
   ClickHouseClient as BaseClickHouseClient,
   DataFormat,

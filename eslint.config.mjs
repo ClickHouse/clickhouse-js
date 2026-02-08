@@ -81,6 +81,7 @@ export default defineConfig(
   {
     ignores: [
       'vitest.*.config.ts',
+      'vitest.*.setup.ts',
       'coverage',
       'out',
       'dist',

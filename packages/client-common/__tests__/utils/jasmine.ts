@@ -1,4 +1,3 @@
-import { isClickHouseVersionAtLeast } from './server_version'
 import type { TestEnv } from './test_env'
 import { getClickHouseTestEnvironment } from './test_env'
 

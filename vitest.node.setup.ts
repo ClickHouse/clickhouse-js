@@ -1,3 +1,4 @@
+// eslint-disable
 import { createClient } from '@clickhouse/client-node'
 
 /**

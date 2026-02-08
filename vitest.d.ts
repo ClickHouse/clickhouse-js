@@ -5,4 +5,4 @@
  * By defining this function in the environment-specific setup file, we can keep the common test setup code clean and environment-agnostic.
  * Note that this function should not be imported directly in test files. Instead, it should be used indirectly through the common test setup.
  */
-declare var environmentSpecificCreateClient: any
+declare let environmentSpecificCreateClient: any
