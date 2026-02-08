@@ -3,7 +3,7 @@ import type {
   ClickHouseClient,
   ClickHouseError,
 } from '@clickhouse/client-common'
-import { createTestClient } from '../utils/client.node'
+import { createTestClient } from '@test/utils/client'
 
 describe('[Node.js] ping', () => {
   let client: ClickHouseClient

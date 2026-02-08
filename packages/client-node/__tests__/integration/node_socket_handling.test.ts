@@ -4,7 +4,7 @@ import type {
 } from '@clickhouse/client-common'
 import { describe, it, beforeAll, afterAll, afterEach, expect } from 'vitest'
 import { permutations } from '@test/utils/permutations'
-import { createTestClient } from '../utils/client.node'
+import { createTestClient } from '@test/utils/client'
 import * as http from 'http'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'

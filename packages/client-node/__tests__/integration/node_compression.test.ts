@@ -1,5 +1,5 @@
 import { describe, it, beforeEach, afterEach, expect } from 'vitest'
-import { createTestClient } from '../utils/client.node'
+import { createTestClient } from '@test/utils/client'
 import http from 'http'
 import { type AddressInfo } from 'net'
 

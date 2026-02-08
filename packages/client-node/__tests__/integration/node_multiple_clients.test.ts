@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient } from '../utils/client.node'
+import { createTestClient } from '@test/utils/client'
 import { guid } from '@test/utils/guid'
 import Stream from 'stream'
 

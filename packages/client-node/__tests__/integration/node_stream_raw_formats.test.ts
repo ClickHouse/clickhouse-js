@@ -6,7 +6,7 @@ import type {
 import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
-import { createTestClient } from '../utils/client.node'
+import { createTestClient } from '@test/utils/client'
 import { guid } from '@test/utils/guid'
 import Stream from 'stream'
 import { makeRawStream } from '../utils/stream'

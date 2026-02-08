@@ -1,6 +1,6 @@
 import { it, expect, describe, beforeEach, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '../utils/client.node'
+import { createTestClient } from '@test/utils/client'
 import * as fs from 'fs'
 import Http from 'http'
 import https from 'node:https'

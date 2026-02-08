@@ -5,7 +5,7 @@ import {
   type ClickHouseSettings,
 } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient } from '../utils/client.node'
+import { createTestClient } from '@test/utils/client'
 import { guid } from '@test/utils/guid'
 import { genLargeStringsDataset } from '@test/utils/datasets'
 import { tableFromIPC } from 'apache-arrow'

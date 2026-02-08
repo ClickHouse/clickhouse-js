@@ -6,7 +6,7 @@ import type {
 } from '@clickhouse/client-common'
 import { describe, it, afterEach, expect, vi } from 'vitest'
 import { ClickHouseLogLevel } from '@clickhouse/client-common'
-import { createTestClient } from '../utils/client.node'
+import { createTestClient } from '@test/utils/client'
 
 describe('[Node.js] logger support', () => {
   let client: ClickHouseClient
