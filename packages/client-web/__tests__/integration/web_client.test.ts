@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { getHeadersTestParams } from '@test/utils/parametrized'
 import { createClient } from '../../src'
 

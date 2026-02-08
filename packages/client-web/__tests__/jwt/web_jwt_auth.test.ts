@@ -1,3 +1,4 @@
+import { describe, it, expect, afterEach } from 'vitest'
 import { EnvKeys, getFromEnv, maybeGetFromEnv } from '@test/utils/env'
 import { createClient } from '../../src'
 import type { WebClickHouseClient } from '../../src/client'

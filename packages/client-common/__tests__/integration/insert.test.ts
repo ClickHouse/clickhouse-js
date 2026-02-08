@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '../fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '../fixtures/test_data'

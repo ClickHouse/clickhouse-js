@@ -1,3 +1,4 @@
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '../utils'
 

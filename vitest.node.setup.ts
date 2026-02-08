@@ -1,5 +1,3 @@
-console.log('Setting up Node.js test environment...')
-
 import { createClient } from '@clickhouse/client-node'
 
 /**

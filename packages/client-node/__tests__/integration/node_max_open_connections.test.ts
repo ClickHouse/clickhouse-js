@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { guid } from '@test/utils/guid'
 import { sleep } from '@test/utils/sleep'

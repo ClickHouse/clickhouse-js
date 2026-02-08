@@ -1,3 +1,4 @@
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
 import { isProgressRow } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'

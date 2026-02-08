@@ -1,3 +1,4 @@
+import { describe, it, expect, vi } from 'vitest'
 import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common'
 import { createClient } from '../../src'
 import { isAwaitUsingStatementSupported } from '../utils/feature_detection'

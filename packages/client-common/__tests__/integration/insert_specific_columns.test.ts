@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTableWithFields } from '@test/fixtures/table_with_fields'
 import { createTestClient, guid } from '../utils'

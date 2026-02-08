@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Row } from '@clickhouse/client-common'
 import {
   type ClickHouseClient,

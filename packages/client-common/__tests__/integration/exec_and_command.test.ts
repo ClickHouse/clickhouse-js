@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { ExecParams } from '@clickhouse/client-common'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import {
