@@ -1,4 +1,4 @@
-// eslint-disable
+// @ts-nocheck
 import { createClient } from '@clickhouse/client-node'
 
 /**
