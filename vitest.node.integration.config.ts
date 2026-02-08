@@ -8,6 +8,7 @@ export default defineConfig({
       'client-node/__tests__/integration/*.test.ts',
       'client-common/__tests__/integration/*.test.ts',
     ],
+    setupFiles: ['../vitest.node.setup.ts'],
   },
   resolve: {
     alias: {
