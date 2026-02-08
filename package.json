@@ -29,7 +29,7 @@
     "test:common:integration": ".scripts/jasmine.sh jasmine.common.integration.json",
     "test:node:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.node.unit.config.ts",
     "test:node:tls": "vitest -c vitest.node.tls.config.ts",
-    "test:node:integration": ".scripts/jasmine.sh jasmine.node.integration.json",
+    "test:node:integration": "vitest -c vitest.node.integration.config.ts",
     "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:node:integration",
     "test:node:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:node:integration",
     "test:node:coverage": "nyc ./run-tests-for-coverage.sh",
