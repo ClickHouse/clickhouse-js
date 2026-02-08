@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { TestEnv, isOnEnv } from '@test/utils/test_env'
 import http from 'http'
 import Http from 'http'
@@ -8,9 +8,9 @@ import { createClient } from '../../src'
 describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
   '[Node.js] custom HTTP agent',
   () => {
-    let httpRequestStub: jasmine.Spy<typeof Http.request>
+    let httpRequestStub: ReturnType<typeof vi.spyOn<typeof Http, 'request'>>
     beforeEach(() => {
-      httpRequestStub = spyOn(Http, 'request').and.callThrough()
+      httpRequestStub = vi.spyOn(Http, 'request')
     })
 
     // disabled with Cloud as it uses a simple HTTP agent
@@ -28,7 +28,8 @@ describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
       })
       expect(await rs.json()).toEqual([{ result: 42 }])
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const callArgs = httpRequestStub.calls.mostRecent().args
+      const callArgs =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1]
       expect(callArgs[1].agent).toBe(agent)
     })
   },

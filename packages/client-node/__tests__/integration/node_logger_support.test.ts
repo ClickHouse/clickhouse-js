@@ -4,6 +4,7 @@ import type {
   Logger,
   LogParams,
 } from '@clickhouse/client-common'
+import { describe, it, afterEach, expect, vi } from 'vitest'
 import { ClickHouseLogLevel } from '@clickhouse/client-common'
 import { createTestClient } from '../utils/client.node'
 
@@ -22,19 +23,21 @@ describe('[Node.js] logger support', () => {
 
   describe('Logger support', () => {
     it('should use the default logger implementation', async () => {
-      const infoSpy = spyOn(console, 'info')
+      const infoSpy = vi.spyOn(console, 'info')
       client = createTestClient({
         log: {
           level: ClickHouseLogLevel.DEBUG,
         },
       })
-      expect(infoSpy).toHaveBeenCalledOnceWith(
+      expect(infoSpy).toHaveBeenCalledOnce()
+      expect(infoSpy).toHaveBeenCalledWith(
         expect.stringContaining('Log level is set to DEBUG'),
       )
 
-      const debugSpy = spyOn(console, 'debug')
+      const debugSpy = vi.spyOn(console, 'debug')
       await client.ping()
-      expect(debugSpy).toHaveBeenCalledOnceWith(
+      expect(debugSpy).toHaveBeenCalledOnce()
+      expect(debugSpy).toHaveBeenCalledWith(
         expect.stringContaining('Ping: got a response from ClickHouse'),
         expect.stringContaining('\nArguments:'),
         expect.objectContaining({
