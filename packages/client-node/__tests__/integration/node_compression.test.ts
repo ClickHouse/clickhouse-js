@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { createTestClient } from '../utils/client.node'
 import http from 'http'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'

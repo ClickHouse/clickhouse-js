@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { createTestClient } from '../utils/client.node'
 
 /**
  * {@link ClickHouseClient.command} re-introduction is the result of

@@ -5,7 +5,7 @@ import type {
   LogParams,
 } from '@clickhouse/client-common'
 import { ClickHouseLogLevel } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { createTestClient } from '../utils/client.node'
 
 describe('[Node.js] logger support', () => {
   let client: ClickHouseClient

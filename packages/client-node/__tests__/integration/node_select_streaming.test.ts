@@ -1,5 +1,5 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { createTestClient } from '../utils/client.node'
 import type Stream from 'stream'
 
 describe('[Node.js] SELECT streaming', () => {

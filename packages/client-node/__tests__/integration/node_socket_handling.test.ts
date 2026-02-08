@@ -3,7 +3,7 @@ import type {
   ConnPingResult,
 } from '@clickhouse/client-common'
 import { permutations } from '@test/utils'
-import { createTestClient } from '@test/utils'
+import { createTestClient } from '../utils/client.node'
 import * as http from 'http'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
