@@ -36,6 +36,8 @@ describe.skipIf(!isOnEnv(TestEnv.Cloud))('[Node.js] JWT auth', () => {
   it('should override the client instance auth', async ({ skip }) => {
     if (!jwt) {
       skip(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+      // return is needed to satisfy typescript, it does not mark skip() as terminating
+      return
     }
 
     jwtClient = createClient({
