@@ -6,8 +6,9 @@ describe('[Web] Client', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>
   beforeEach(() => {
     fetchSpy = vi
-      .spyOn(window, 'fetch')
+      .spyOn(globalThis, 'fetch')
       .mockReturnValue(Promise.resolve(new Response()))
+    vi.clearAllMocks()
   })
 
   describe('HTTP headers', () => {
