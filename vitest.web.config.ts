@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import { playwright } from '@vitest/browser-playwright'
+import { fileURLToPath } from 'node:url'
 
 const browser = process.env.BROWSER ?? 'chromium'
 if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
@@ -37,9 +38,15 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@clickhouse/client-common': 'packages/client-common/src',
-      '@clickhouse/client-web': 'packages/client-web/src',
-      '@test': 'packages/client-common/__tests__',
+      '@clickhouse/client-common': fileURLToPath(
+        new URL('./packages/client-common/src', import.meta.url),
+      ),
+      '@clickhouse/client-web': fileURLToPath(
+        new URL('./packages/client-web', import.meta.url),
+      ),
+      '@test': fileURLToPath(
+        new URL('./packages/client-common/__tests__', import.meta.url),
+      ),
     },
   },
 })
