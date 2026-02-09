@@ -1,5 +1,6 @@
+import { it, expect, describe, beforeEach, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { createTestClient } from '../utils/client.node'
 import * as fs from 'fs'
 import Http from 'http'
 import https from 'node:https'
@@ -7,6 +8,7 @@ import type Stream from 'stream'
 import { createClient } from '../../src'
 import Https from 'https'
 import http from 'http'
+import { vi } from 'vitest'
 
 describe('[Node.js] TLS connection', () => {
   let client: ClickHouseClient<Stream.Readable>
@@ -63,14 +65,14 @@ describe('[Node.js] TLS connection', () => {
         key,
       },
     })
-    await expectAsync(
+    await expect(
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
         format: 'CSV',
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining(
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
           'Hostname/IP does not match certificate',
         ),
       }),
@@ -88,12 +90,12 @@ describe('[Node.js] TLS connection', () => {
       },
     })
     // FIXME: add proper error message matching (does not work on Node.js 18/20)
-    await expectAsync(
+    await expect(
       client.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
         format: 'CSV',
       }),
-    ).toBeRejectedWithError()
+    ).rejects.toThrow()
   })
 
   // query only; the rest of the methods are tested in the auth.test.ts in the common package
@@ -142,7 +144,7 @@ describe('[Node.js] TLS connection', () => {
 
     describe('Custom HTTPS agent', () => {
       it('should work with a custom HTTPS agent', async () => {
-        const httpsRequestStub = spyOn(Https, 'request').and.callThrough()
+        const httpsRequestStub = vi.spyOn(Https, 'request')
         const agent = new https.Agent({
           maxFreeSockets: 5,
           ca: ca_cert,
@@ -162,13 +164,13 @@ describe('[Node.js] TLS connection', () => {
         })
         expect(await rs.json()).toEqual([{ result: 144 }])
         expect(httpsRequestStub).toHaveBeenCalledTimes(1)
-        const callArgs = httpsRequestStub.calls.mostRecent().args
+        const callArgs = httpsRequestStub.mock.calls[0]
         expect(callArgs[1].agent).toBe(agent)
       })
 
       // does not really belong to the TLS test; keep it here for consistency
       it('should work with a custom HTTP agent', async () => {
-        const httpRequestStub = spyOn(Http, 'request').and.callThrough()
+        const httpRequestStub = vi.spyOn(Http, 'request')
         const agent = new http.Agent({
           maxFreeSockets: 5,
         })
@@ -182,7 +184,7 @@ describe('[Node.js] TLS connection', () => {
         })
         expect(await rs.json()).toEqual([{ result: 144 }])
         expect(httpRequestStub).toHaveBeenCalledTimes(1)
-        const callArgs = httpRequestStub.calls.mostRecent().args
+        const callArgs = httpRequestStub.mock.calls[0]
         expect(callArgs[1].agent).toBe(agent)
       })
     })

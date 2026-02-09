@@ -18,6 +18,7 @@
     "paths": {
       "@test/*": ["packages/client-common/__tests__/*"],
       "@clickhouse/client-common": ["packages/client-common/src/index.ts"],
+      "@clickhouse/client-node": ["packages/client-node/src/index.ts"],
       "@clickhouse/client": ["packages/client-node/src/index.ts"],
       "@clickhouse/client/*": ["packages/client-node/src/*"]
     }
