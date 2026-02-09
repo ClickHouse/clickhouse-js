@@ -26,12 +26,12 @@ export default defineConfig({
       'packages/client-web/__tests__/integration/*.test.ts',
       'packages/client-web/__tests__/unit/*.test.ts',
     ],
-    // browser: {
-    //   enabled: true,
-    //   provider: playwright(),
-    //   // https://vitest.dev/config/browser/playwright
-    //   instances: [{ browser }],
-    // },
+    browser: {
+      enabled: true,
+      provider: playwright(),
+      // https://vitest.dev/config/browser/playwright
+      instances: [{ browser }],
+    },
   },
   resolve: {
     alias: {
