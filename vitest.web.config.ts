@@ -17,7 +17,6 @@ export default defineConfig({
     testTimeout: 300_000,
     slowTestThreshold: 10_000,
     globals: true,
-    root: '.',
     setupFiles: ['vitest.web.setup.ts'],
     // include: ['unit/*.test.ts', 'utils/*.test.ts'],
     include: [
@@ -31,6 +30,9 @@ export default defineConfig({
       provider: playwright(),
       // https://vitest.dev/config/browser/playwright
       instances: [{ browser }],
+    },
+    coverage: {
+      provider: 'istanbul',
     },
   },
   resolve: {

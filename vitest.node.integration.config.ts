@@ -15,6 +15,9 @@ export default defineConfig({
       'client-common/__tests__/integration/*.test.ts',
     ],
     setupFiles: ['../vitest.node.setup.ts'],
+    coverage: {
+      provider: 'istanbul',
+    },
   },
   resolve: {
     alias: {

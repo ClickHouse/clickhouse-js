@@ -10,18 +10,23 @@ if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
 
 export default defineConfig({
   test: {
-    root: 'packages/client-common/__tests__',
-    include: ['unit/*.test.ts', 'utils/*.test.ts'],
+    include: [
+      'packages/client-common/__tests__/unit/*.test.ts',
+      'packages/client-common/__tests__/utils/*.test.ts',
+    ],
     browser: {
       enabled: true,
       provider: playwright(),
       // https://vitest.dev/config/browser/playwright
       instances: [{ browser }],
     },
+    coverage: {
+      provider: 'istanbul',
+    },
   },
   resolve: {
     alias: {
-      '@clickhouse/client-common': '../../client-common/src',
+      '@clickhouse/client-common': 'packages/client-common/src',
     },
   },
 })

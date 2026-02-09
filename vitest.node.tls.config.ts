@@ -6,15 +6,17 @@ export default defineConfig({
     // as we're not bound by the CPU here.
     maxWorkers: '400%',
     globals: true,
-    root: 'packages/client-node/__tests__',
-    include: ['tls/*.test.ts'],
+    include: ['packages/client-node/__tests__/tls/*.test.ts'],
     setupFiles: ['../../../vitest.node.setup.ts'],
+    coverage: {
+      provider: 'istanbul',
+    },
   },
   resolve: {
     alias: {
-      '@clickhouse/client-common': '../../client-common/src',
-      '@clickhouse/client-node': '../../client-node/src',
-      '@test': '../../client-common/__tests__',
+      '@clickhouse/client-common': 'packages/client-common/src',
+      '@clickhouse/client-node': 'packages/client-node/src',
+      '@test': 'packages/client-common/__tests__',
     },
   },
 })
