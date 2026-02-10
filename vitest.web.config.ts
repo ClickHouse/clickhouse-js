@@ -37,6 +37,8 @@ export default defineConfig({
     },
   },
   resolve: {
+    // Use the unittest entry point to get the source files instead of built files
+    conditions: ['unittest'],
     alias: {
       '@clickhouse/client-common': fileURLToPath(
         new URL('./packages/client-common/src', import.meta.url),
