@@ -1,8 +1,9 @@
+import { describe, it, beforeEach, afterEach } from 'vitest'
 import {
   assertError,
   streamErrorQueryParams,
 } from '@test/fixtures/stream_errors'
-import { requireServerVersionAtLeast } from '@test/utils'
+import { isClickHouseVersionAtLeast } from '@test/utils/server_version'
 import type { ClickHouseClient } from '../../src'
 import type { ClickHouseError } from '../../src'
 import { createWebTestClient } from '../utils/web_client'
@@ -18,8 +19,10 @@ describe('[Web] Stream error handling', () => {
     await client.close()
   })
 
-  it('with reader', async () => {
-    requireServerVersionAtLeast(25, 11)
+  it('with reader', async ({ skip }) => {
+    if (!isClickHouseVersionAtLeast(25, 11)) {
+      skip()
+    }
 
     let caughtError: ClickHouseError | null = null
 

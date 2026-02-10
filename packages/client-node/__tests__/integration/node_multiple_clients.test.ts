@@ -1,6 +1,8 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient, guid } from '@test/utils'
+import { createTestClient } from '@test/utils/client'
+import { guid } from '@test/utils/guid'
 import Stream from 'stream'
 
 const CLIENTS_COUNT = 5

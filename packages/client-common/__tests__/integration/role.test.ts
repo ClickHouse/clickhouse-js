@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, TestEnv, whenOnEnv } from '@test/utils'
 import { createSimpleTable } from '../fixtures/simple_table'
@@ -156,9 +157,9 @@ whenOnEnv(TestEnv.LocalSingleNode).describe('role settings', () => {
         role: roleName2,
       })
 
-      await expectAsync(tryInsert()).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Not enough privileges'),
+      await expect(tryInsert()).rejects.toMatchObject(
+        expect.objectContaining({
+          message: expect.stringContaining('Not enough privileges'),
           code: '497',
           type: 'ACCESS_DENIED',
         }),
@@ -194,9 +195,9 @@ whenOnEnv(TestEnv.LocalSingleNode).describe('role settings', () => {
         role: roleName1,
       })
 
-      await expectAsync(tryInsert(roleName2)).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Not enough privileges'),
+      await expect(tryInsert(roleName2)).rejects.toMatchObject(
+        expect.objectContaining({
+          message: expect.stringContaining('Not enough privileges'),
           code: '497',
           type: 'ACCESS_DENIED',
         }),
@@ -261,9 +262,9 @@ whenOnEnv(TestEnv.LocalSingleNode).describe('role settings', () => {
         role: roleName2,
       })
 
-      await expectAsync(tryCreateTable()).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Not enough privileges'),
+      await expect(tryCreateTable()).rejects.toMatchObject(
+        expect.objectContaining({
+          message: expect.stringContaining('Not enough privileges'),
           code: '497',
           type: 'ACCESS_DENIED',
         }),
@@ -299,9 +300,9 @@ whenOnEnv(TestEnv.LocalSingleNode).describe('role settings', () => {
         role: roleName1,
       })
 
-      await expectAsync(tryCreateTable(roleName2)).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Not enough privileges'),
+      await expect(tryCreateTable(roleName2)).rejects.toMatchObject(
+        expect.objectContaining({
+          message: expect.stringContaining('Not enough privileges'),
           code: '497',
           type: 'ACCESS_DENIED',
         }),

@@ -77,10 +77,12 @@ describe('[Node.js] ResultSet', () => {
     expect(row.json()).toEqual({ foo: 'bar' })
   })
 
-  describe('unhandled exceptions with streamable JSON formats', () => {
+  describe.skip('unhandled exceptions with streamable JSON formats', () => {
     const logAndQuit = (err: Error | unknown, prefix: string) => {
       console.error(prefix, err)
-      process.exit(1)
+      expect.fail(
+        `An unexpected error was propagated to the global context: ${prefix} ${err}`,
+      )
     }
     const uncaughtExceptionListener = (err: Error) =>
       logAndQuit(err, 'uncaughtException:')

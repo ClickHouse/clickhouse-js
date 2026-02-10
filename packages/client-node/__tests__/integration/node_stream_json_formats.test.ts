@@ -1,8 +1,10 @@
 import { type ClickHouseClient } from '@clickhouse/client-common'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
-import { createTestClient, guid } from '@test/utils'
-import { requireServerVersionAtLeast } from '@test/utils/jasmine'
+import { createTestClient } from '@test/utils/client'
+import { isClickHouseVersionAtLeast } from '@test/utils/server_version'
+import { guid } from '@test/utils/guid'
 import Stream from 'stream'
 import * as simdjson from 'simdjson'
 import { makeObjectStream } from '../utils/stream'
@@ -177,13 +179,11 @@ describe('[Node.js] stream JSON formats', () => {
         values: stream,
         format: 'JSONCompactEachRowWithNamesAndTypes',
       })
-      await expectAsync(insertPromise).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringMatching(
-            `Type of 'name' must be String, not UInt64`,
-          ),
-        }),
-      )
+      await expect(insertPromise).rejects.toMatchObject({
+        message: expect.stringMatching(
+          `Type of 'name' must be String, not UInt64`,
+        ),
+      })
     })
 
     it('should work with JSONCompactStringsEachRowWithNames', async () => {
@@ -250,7 +250,7 @@ describe('[Node.js] stream JSON formats', () => {
             read_rows: '1',
             read_bytes: '8',
             total_rows_to_read: '2',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+            elapsed_ns: expect.stringMatching(/^\d+$/),
           },
         },
         { meta: [{ name: 'foo', type: 'UInt8' }] },
@@ -260,7 +260,7 @@ describe('[Node.js] stream JSON formats', () => {
             read_rows: '2',
             read_bytes: '16',
             total_rows_to_read: '2',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+            elapsed_ns: expect.stringMatching(/^\d+$/),
           },
         },
         { row: { foo: 0 } },
@@ -284,7 +284,7 @@ describe('[Node.js] stream JSON formats', () => {
             read_rows: '100',
             read_bytes: '800',
             total_rows_to_read: '100',
-            elapsed_ns: jasmine.stringMatching(/^\d+$/),
+            elapsed_ns: expect.stringMatching(/^\d+$/),
           },
         },
         {
@@ -312,8 +312,10 @@ describe('[Node.js] stream JSON formats', () => {
       ])
     })
 
-    it('works with exceptions', async () => {
-      requireServerVersionAtLeast(25, 11)
+    it('works with exceptions', async ({ skip }) => {
+      if (!isClickHouseVersionAtLeast(25, 11)) {
+        skip()
+      }
 
       const rs = await client.query({
         query: `SELECT number, throwIf(number = 3, 'boom') AS foo FROM system.numbers`,
@@ -322,14 +324,12 @@ describe('[Node.js] stream JSON formats', () => {
           max_block_size: '1',
         },
       })
-      await expectAsync(rs.json()).toBeRejectedWith(
-        jasmine.objectContaining({
-          code: '395',
-          message: jasmine.stringContaining(
-            `boom: while executing 'FUNCTION throwIf`,
-          ),
-        }),
-      )
+      await expect(rs.json()).rejects.toMatchObject({
+        code: '395',
+        message: expect.stringContaining(
+          `boom: while executing 'FUNCTION throwIf`,
+        ),
+      })
     })
 
     describe('custom JSON handling', () => {
@@ -560,12 +560,12 @@ describe('[Node.js] stream JSON formats', () => {
       },
     })
 
-    await expectAsync(
+    await expect(
       client.insert({
         table: tableName,
         values: stream,
       }),
-    ).toBeResolved()
+    ).resolves.toBeDefined()
   })
 
   it('waits for stream of values to be closed', async () => {
@@ -615,16 +615,14 @@ describe('[Node.js] stream JSON formats', () => {
     const stream = makeObjectStream()
     stream.push({ id: 'baz', name: 'foo', sku: '[0,1]' })
     stream.push(null)
-    await expectAsync(
+    await expect(
       client.insert({
         table: tableName,
         values: stream,
         format: 'JSONEachRow',
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('Cannot parse input'),
-      }),
-    )
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('Cannot parse input'),
+    })
   })
 })

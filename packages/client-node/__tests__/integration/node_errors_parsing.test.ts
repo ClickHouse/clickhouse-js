@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { createClient } from '../../src'
 
 describe('[Node.js] errors parsing', () => {
@@ -5,14 +6,12 @@ describe('[Node.js] errors parsing', () => {
     const client = createClient({
       url: 'http://localhost:1111',
     })
-    await expectAsync(
+    await expect(
       client.query({
         query: 'SELECT * FROM system.numbers LIMIT 3',
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        code: 'ECONNREFUSED',
-      }),
-    )
+    ).rejects.toMatchObject({
+      code: 'ECONNREFUSED',
+    })
   })
 })

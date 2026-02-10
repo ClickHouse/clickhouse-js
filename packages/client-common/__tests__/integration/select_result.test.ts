@@ -1,3 +1,4 @@
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '../utils'
 
@@ -50,9 +51,9 @@ describe('Select ResultSet', () => {
         rows: 3,
         rows_before_limit_at_least: 3,
         statistics: {
-          elapsed: jasmine.any(Number),
-          rows_read: jasmine.any(Number),
-          bytes_read: jasmine.any(Number),
+          elapsed: expect.any(Number),
+          rows_read: expect.any(Number),
+          bytes_read: expect.any(Number),
         },
       })
     })

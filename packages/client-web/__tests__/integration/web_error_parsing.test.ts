@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { createClient } from '../../src'
 
 describe('[Web] errors parsing', () => {
@@ -5,14 +6,14 @@ describe('[Web] errors parsing', () => {
     const client = createClient({
       url: 'http://localhost:1111',
     })
-    await expectAsync(
+    await expect(
       client.query({
         query: 'SELECT * FROM system.numbers LIMIT 3',
       }),
-    ).toBeRejectedWith(
+    ).rejects.toMatchObject(
       // Chrome = Failed to fetch; FF = NetworkError when attempting to fetch resource
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('to fetch'),
+      expect.objectContaining({
+        message: expect.stringContaining('to fetch'),
       }),
     )
   })

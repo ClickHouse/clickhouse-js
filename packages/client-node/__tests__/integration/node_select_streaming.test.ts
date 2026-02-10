@@ -1,5 +1,6 @@
 import type { ClickHouseClient, Row } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
+import { createTestClient } from '@test/utils/client'
 import type Stream from 'stream'
 
 describe('[Node.js] SELECT streaming', () => {
@@ -13,18 +14,12 @@ describe('[Node.js] SELECT streaming', () => {
 
   describe('consume the response only once', () => {
     async function assertAlreadyConsumed$<T>(fn: () => Promise<T>) {
-      await expectAsync(fn()).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: 'Stream has been already consumed',
-        }),
-      )
+      await expect(fn()).rejects.toMatchObject({
+        message: 'Stream has been already consumed',
+      })
     }
     function assertAlreadyConsumed<T>(fn: () => T) {
-      expect(fn).toThrow(
-        jasmine.objectContaining({
-          message: 'Stream has been already consumed',
-        }),
-      )
+      expect(fn).toThrow('Stream has been already consumed')
     }
     it('should consume a JSON response only once', async () => {
       const rs = await client.query({
@@ -76,11 +71,9 @@ describe('[Node.js] SELECT streaming', () => {
         format: 'JSON',
       })
       try {
-        await expectAsync((async () => result.stream())()).toBeRejectedWith(
-          jasmine.objectContaining({
-            message: jasmine.stringContaining('JSON format is not streamable'),
-          }),
-        )
+        await expect(async () => result.stream()).rejects.toMatchObject({
+          message: expect.stringContaining('JSON format is not streamable'),
+        })
       } finally {
         result.close()
       }

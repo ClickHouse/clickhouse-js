@@ -1,15 +1,21 @@
 import { getHeadersTestParams } from '@test/utils/parametrized'
 import Http from 'http'
+import { vi, expect } from 'vitest'
 import type { ClickHouseClient } from '../../src'
 import { createClient } from '../../src'
 import { emitResponseBody, stubClientRequest } from '../utils/http_stubs'
 
 describe('[Node.js] Client', () => {
-  let httpRequestStub: jasmine.Spy<typeof Http.request>
+  let httpRequestStub: ReturnType<typeof vi.spyOn>
   let clientRequest: Http.ClientRequest
   beforeEach(() => {
+    vi.clearAllMocks()
     clientRequest = stubClientRequest()
-    httpRequestStub = spyOn(Http, 'request').and.returnValue(clientRequest)
+    httpRequestStub = vi.spyOn(Http, 'request').mockReturnValue(clientRequest)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   describe('Connection header (KeepAlive)', () => {
@@ -17,7 +23,7 @@ describe('[Node.js] Client', () => {
       const client = createClient({})
       await query(client)
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      const calledWith = httpRequestStub.mock.lastCall![1]
       expect(
         (calledWith.headers as Record<string, string>)['Connection'],
       ).toEqual('keep-alive')
@@ -29,7 +35,7 @@ describe('[Node.js] Client', () => {
       })
       await query(client)
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      const calledWith = httpRequestStub.mock.lastCall![1]
       expect(
         (calledWith.headers as Record<string, string>)['Connection'],
       ).toEqual('close')
@@ -41,7 +47,7 @@ describe('[Node.js] Client', () => {
       })
       await query(client)
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      const calledWith = httpRequestStub.mock.lastCall![1]
       expect(
         (calledWith.headers as Record<string, string>)['Connection'],
       ).toEqual('keep-alive')
@@ -59,7 +65,7 @@ describe('[Node.js] Client', () => {
       await query(client)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      const [callURL, callOptions] = httpRequestStub.mock.lastCall!
       expect(callOptions.headers).toEqual({
         ...defaultHeaders,
         'Test-Header': 'foobar',
@@ -72,7 +78,7 @@ describe('[Node.js] Client', () => {
       await query(client)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      const [callURL, callOptions] = httpRequestStub.mock.lastCall!
       expect(callOptions.headers).toEqual(defaultHeaders)
       assertSearchParams(callURL)
     })
@@ -95,25 +101,25 @@ describe('[Node.js] Client', () => {
       const testParams = getHeadersTestParams(client)
       for (const param of testParams) {
         await withEmit(() => param.methodCall({ FromMethod: 'bar' }))
-        expect(getRequestHeaders(requestCalls++))
-          .withContext(
-            `${param.methodName}: merges custom HTTP headers from both method and instance`,
-          )
-          .toEqual({
-            ...defaultHeaders,
-            FromInstance: 'foo',
-            FromMethod: 'bar',
-          })
+        // ${param.methodName}: merges custom HTTP headers from both method and instance
+        expect(
+          getRequestHeaders(requestCalls++),
+          `${param.methodName}: merges custom HTTP headers from both method and instance`,
+        ).toEqual({
+          ...defaultHeaders,
+          FromInstance: 'foo',
+          FromMethod: 'bar',
+        })
 
         await withEmit(() => param.methodCall({ FromInstance: 'bar' }))
-        expect(getRequestHeaders(requestCalls++))
-          .withContext(
-            `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
-          )
-          .toEqual({
-            ...defaultHeaders,
-            FromInstance: 'bar',
-          })
+        // ${param.methodName}: overrides HTTP headers from the instance with the values from the method call
+        expect(
+          getRequestHeaders(requestCalls++),
+          `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
+        ).toEqual({
+          ...defaultHeaders,
+          FromInstance: 'bar',
+        })
       }
     })
   })
@@ -124,7 +130,7 @@ describe('[Node.js] Client', () => {
       await query(client)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      const [callURL, callOptions] = httpRequestStub.mock.lastCall!
       expect(callOptions.headers).toEqual(defaultHeaders)
       assertSearchParams(callURL)
     })
@@ -138,7 +144,7 @@ describe('[Node.js] Client', () => {
       await query(client)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      const [callURL, callOptions] = httpRequestStub.mock.lastCall!
       assertCompressionRequestHeaders(callURL, callOptions)
     })
 
@@ -152,7 +158,7 @@ describe('[Node.js] Client', () => {
       await query(client)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      const [callURL, callOptions] = httpRequestStub.mock.lastCall!
       // no additional request headers in this case
       expect(callOptions.headers).toEqual(defaultHeaders)
       assertSearchParams(callURL)
@@ -168,7 +174,7 @@ describe('[Node.js] Client', () => {
       await query(client)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [callURL, callOptions] = httpRequestStub.calls.mostRecent().args
+      const [callURL, callOptions] = httpRequestStub.mock.lastCall!
       assertCompressionRequestHeaders(callURL, callOptions)
     })
 
@@ -204,16 +210,13 @@ describe('[Node.js] Client', () => {
 
   function getRequestHeaders(httpRequestStubCalledTimes = 1) {
     expect(httpRequestStub).toHaveBeenCalledTimes(httpRequestStubCalledTimes)
-    const [, callOptions] = httpRequestStub.calls.mostRecent().args
+    const [, callOptions] = httpRequestStub.mock.lastCall!
     return callOptions.headers
   }
 
-  const defaultHeaders: Record<
-    string,
-    string | jasmine.AsymmetricMatcher<string>
-  > = {
+  const defaultHeaders: Record<string, string | any> = {
     Connection: 'keep-alive',
     Authorization: 'Basic ZGVmYXVsdDo=', // default user with empty password
-    'User-Agent': jasmine.stringContaining('clickhouse-js'),
+    'User-Agent': expect.stringContaining('clickhouse-js'),
   }
 })

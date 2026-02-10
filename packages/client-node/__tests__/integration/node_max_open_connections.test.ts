@@ -1,5 +1,7 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { guid, sleep } from '@test/utils'
+import { guid } from '@test/utils/guid'
+import { sleep } from '@test/utils/sleep'
 import type { ClickHouseClient } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
 
@@ -7,9 +9,12 @@ describe('[Node.js] max_open_connections config', () => {
   let client: ClickHouseClient
   let results: number[] = []
 
+  beforeEach(async () => {
+    results = []
+  })
+
   afterEach(async () => {
     await client.close()
-    results = []
   })
 
   async function select(query: string) {
@@ -69,8 +74,8 @@ describe('[Node.js] max_open_connections config', () => {
     })
 
     const json = await result.json()
-    expect(json).toContain(value1)
-    expect(json).toContain(value2)
+    expect(json).toContainEqual(value1)
+    expect(json).toContainEqual(value2)
     expect(json.length).toEqual(2)
   })
 

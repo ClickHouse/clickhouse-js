@@ -1,6 +1,8 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient, guid } from '@test/utils'
+import { createTestClient } from '@test/utils/client'
+import { guid } from '@test/utils/guid'
 import Stream from 'stream'
 import Zlib from 'zlib'
 import { drainStream, ResultSet } from '../../src'
@@ -185,16 +187,14 @@ describe('[Node.js] exec', () => {
     })
 
     it('should force decompress in case of an error', async () => {
-      await expectAsync(
+      await expect(
         client.exec({
           query: 'invalid',
           decompress_response_stream: false,
         }),
-      ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Syntax error'),
-        }),
-      )
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Syntax error'),
+      })
     })
   })
 

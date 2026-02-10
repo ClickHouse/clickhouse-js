@@ -2,8 +2,9 @@ import type {
   ClickHouseClient,
   ConnPingResult,
 } from '@clickhouse/client-common'
-import { permutations } from '@test/utils'
-import { createTestClient } from '@test/utils'
+import { describe, it, beforeAll, afterAll, afterEach, expect } from 'vitest'
+import { permutations } from '@test/utils/permutations'
+import { createTestClient } from '@test/utils/client'
 import * as http from 'http'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
@@ -55,66 +56,59 @@ describe('Node.js socket handling', () => {
         for await (const { fn, opName } of ops) {
           for (let i = 1; i <= Iterations; i++) {
             const pingResult = await ping()
-            expect(pingResult.success).toBeFalse()
+            expect(pingResult.success).toBeFalsy()
             expect((pingResult as { error: Error }).error.message).toEqual(
-              jasmine.stringContaining('Timeout error.'),
+              expect.stringContaining('Timeout error.'),
             )
-            await expectAsync(fn())
-              .withContext(
-                `${opName} should have been rejected. Current ops: ${ops
-                  .map(({ opName }) => opName)
-                  .join(', ')}`,
-              )
-              .toBeRejectedWithError('Timeout error.')
+            await expect(
+              fn(),
+              `${opName} should have been rejected. Current ops: ${ops
+                .map(({ opName }) => opName)
+                .join(', ')}`,
+            ).rejects.toThrow('Timeout error.')
           }
         }
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Ping', async () => {
       for (let i = 1; i <= Iterations; i++) {
         const pingResult = await client.ping()
-        expect(pingResult.success).toBeFalse()
+        expect(pingResult.success).toBeFalsy()
         expect((pingResult as { error: Error }).error.message).toEqual(
-          jasmine.stringContaining('Timeout error.'),
+          expect.stringContaining('Timeout error.'),
         )
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Select', async () => {
       for (let i = 1; i <= Iterations; i++) {
-        await expectAsync(select()).toBeRejectedWithError('Timeout error.')
+        await expect(select()).rejects.toThrow('Timeout error.')
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Insert', async () => {
       for (let i = 1; i <= Iterations; i++) {
-        await expectAsync(insert()).toBeRejectedWithError('Timeout error.')
+        await expect(insert()).rejects.toThrow('Timeout error.')
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Command', async () => {
       for (let i = 1; i <= Iterations; i++) {
-        await expectAsync(command()).toBeRejectedWithError('Timeout error.')
+        await expect(command()).rejects.toThrow('Timeout error.')
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with Exec', async () => {
       for (let i = 1; i <= Iterations; i++) {
-        await expectAsync(exec()).toBeRejectedWithError('Timeout error.')
+        await expect(exec()).rejects.toThrow('Timeout error.')
       }
-      expect().nothing()
     })
 
     it('should not throw unhandled errors with parallel Select operations', async () => {
       for (let i = 1; i <= Iterations; i++) {
         const promises = [...new Array(MaxOpenConnections)].map(async () => {
-          await expectAsync(select()).toBeRejectedWithError('Timeout error.')
+          await expect(select()).rejects.toThrow('Timeout error.')
         })
         await Promise.all(promises)
       }
@@ -161,7 +155,7 @@ describe('Node.js socket handling', () => {
     it('should eventually get a successful ping', async () => {
       for (let i = 1; i < Iterations; i++) {
         const pingResult = await ping()
-        expect(pingResult.success).toBeFalse()
+        expect(pingResult.success).toBeFalsy()
         expect(
           (pingResult as ConnPingResult & { success: false }).error.message,
         ).toEqual('Timeout error.')
@@ -193,7 +187,7 @@ describe('Node.js socket handling', () => {
       // Try to reach to the unavailable server a few times
       for (let i = 1; i <= Iterations; i++) {
         const pingResult = await ping()
-        expect(pingResult.success).toBeFalse()
+        expect(pingResult.success).toBeFalsy()
         const error = (pingResult as ConnPingResult & { success: false }).error
         expect((error as NodeJS.ErrnoException).code).toEqual('ECONNREFUSED')
       }

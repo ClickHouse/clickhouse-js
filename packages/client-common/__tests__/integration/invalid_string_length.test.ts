@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 
@@ -11,7 +12,7 @@ describe('invalid string length', () => {
     client = createTestClient()
   })
 
-  const errorMessageMatcher = jasmine.stringContaining(
+  const errorMessageMatcher = expect.stringContaining(
     'consider limiting the amount of requested rows',
   )
 
@@ -22,12 +23,9 @@ describe('invalid string length', () => {
       query: 'SELECT number FROM numbers(50000000)',
       format: 'JSON',
     })
-    await expectAsync(rs.json()).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: errorMessageMatcher,
-      }),
-    )
-    expect().nothing()
+    await expect(rs.json()).rejects.toMatchObject({
+      message: errorMessageMatcher,
+    })
   })
 
   it('should fail with a specific error when the response string is too large - text() call', async () => {
@@ -35,11 +33,8 @@ describe('invalid string length', () => {
       query: 'SELECT number FROM numbers(50000000)',
       format: 'JSON',
     })
-    await expectAsync(rs.text()).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: errorMessageMatcher,
-      }),
-    )
-    expect().nothing()
+    await expect(rs.text()).rejects.toMatchObject({
+      message: errorMessageMatcher,
+    })
   })
 })

@@ -34,6 +34,11 @@ export function isCloudTestEnv(): boolean {
   return env === TestEnv.Cloud
 }
 
+export function isOnEnv(...envs: TestEnv[]): boolean {
+  const env = getClickHouseTestEnvironment()
+  return envs.includes(env)
+}
+
 function isEnvVarEnabled(key: string): boolean {
   return process.env[key] === '1'
 }

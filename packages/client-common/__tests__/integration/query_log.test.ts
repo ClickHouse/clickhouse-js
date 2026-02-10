@@ -1,3 +1,4 @@
+import { describe, expect, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '../fixtures/simple_table'
 import { createTestClient, guid, TestEnv, whenOnEnv } from '../utils'
@@ -85,21 +86,21 @@ describe('query_log', () => {
       format: 'JSONEachRow',
     })
     expect(await logResultSet.json()).toEqual([
-      jasmine.objectContaining({
+      expect.objectContaining({
         type: 'QueryStart',
         query: formattedQuery,
         initial_query_id: query_id,
-        query_duration_ms: jasmine.any(String),
-        read_rows: jasmine.any(String),
-        read_bytes: jasmine.any(String),
+        query_duration_ms: expect.any(String),
+        read_rows: expect.any(String),
+        read_bytes: expect.any(String),
       }),
-      jasmine.objectContaining({
+      expect.objectContaining({
         type: 'QueryFinish',
         query: formattedQuery,
         initial_query_id: query_id,
-        query_duration_ms: jasmine.any(String),
-        read_rows: jasmine.any(String),
-        read_bytes: jasmine.any(String),
+        query_duration_ms: expect.any(String),
+        read_rows: expect.any(String),
+        read_bytes: expect.any(String),
       }),
     ])
   }

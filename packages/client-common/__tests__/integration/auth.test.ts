@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { getAuthFromEnv } from '@test/utils/env'
@@ -16,17 +17,15 @@ describe('authentication', () => {
   })
 
   it('provides authentication error details', async () => {
-    await expectAsync(
+    await expect(
       invalidAuthClient.query({
         query: 'SELECT number FROM system.numbers LIMIT 3',
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        code: '516',
-        type: 'AUTHENTICATION_FAILED',
-        message: jasmine.stringMatching('Authentication failed'),
-      }),
-    )
+    ).rejects.toMatchObject({
+      code: '516',
+      type: 'AUTHENTICATION_FAILED',
+      message: expect.stringMatching('Authentication failed'),
+    })
   })
 
   describe('request auth override', () => {

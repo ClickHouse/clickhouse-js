@@ -9,7 +9,10 @@ export default defineConfig({
     testTimeout: 300_000,
     slowTestThreshold: 10_000,
     globals: true,
-    include: ['packages/client-node/__tests__/tls/*.test.ts'],
+    include: [
+      'packages/client-node/__tests__/integration/*.test.ts',
+      'packages/client-common/__tests__/integration/*.test.ts',
+    ],
     setupFiles: ['vitest.node.setup.ts'],
     coverage: {
       provider: 'istanbul',

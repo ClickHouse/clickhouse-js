@@ -1,19 +1,21 @@
-import { TestEnv, whenOnEnv } from '@test/utils'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { TestEnv, isOnEnv } from '@test/utils/test_env'
 import http from 'http'
 import Http from 'http'
 import { createClient } from '../../src'
 
 /** HTTPS agent tests are in tls.test.ts as it requires a secure connection. */
-describe('[Node.js] custom HTTP agent', () => {
-  let httpRequestStub: jasmine.Spy<typeof Http.request>
-  beforeEach(() => {
-    httpRequestStub = spyOn(Http, 'request').and.callThrough()
-  })
+describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
+  '[Node.js] custom HTTP agent',
+  () => {
+    let httpRequestStub: ReturnType<typeof vi.spyOn>
+    beforeEach(() => {
+      httpRequestStub = vi.spyOn(Http, 'request')
+    })
 
-  // disabled with Cloud as it uses a simple HTTP agent
-  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
-    'should use provided http agent instead of the default one',
-    async () => {
+    // disabled with Cloud as it uses a simple HTTP agent
+    // whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
+    it('should use provided http agent instead of the default one', async () => {
       const agent = new http.Agent({
         maxFreeSockets: 5,
       })
@@ -26,8 +28,9 @@ describe('[Node.js] custom HTTP agent', () => {
       })
       expect(await rs.json()).toEqual([{ result: 42 }])
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const callArgs = httpRequestStub.calls.mostRecent().args
+      const callArgs =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1]
       expect(callArgs[1].agent).toBe(agent)
-    },
-  )
-})
+    })
+  },
+)

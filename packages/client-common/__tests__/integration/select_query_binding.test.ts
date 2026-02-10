@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { QueryParams } from '@clickhouse/client-common'
 import { TupleParam } from '@clickhouse/client-common'
 import { type ClickHouseClient } from '@clickhouse/client-common'
@@ -394,7 +395,7 @@ describe('select with query binding', () => {
     })
 
     it('should provide error details when sending a request with missing parameter', async () => {
-      await expectAsync(
+      await expect(
         client.query({
           query: `
             SELECT *
@@ -403,18 +404,16 @@ describe('select with query binding', () => {
             LIMIT 3
           `,
         }),
-      ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringMatching(
-            // possible error messages here:
-            // (since 23.8+) Substitution `min_limit` is not set.
-            // (pre-23.8) Query parameter `min_limit` was not set
-            /^.+?`min_limit`.+?not set.*$/,
-          ),
-          code: '456',
-          type: 'UNKNOWN_QUERY_PARAMETER',
-        }),
-      )
+      ).rejects.toMatchObject({
+        message: expect.stringMatching(
+          // possible error messages here:
+          // (since 23.8+) Substitution `min_limit` is not set.
+          // (pre-23.8) Query parameter `min_limit` was not set
+          /^.+?`min_limit`.+?not set.*$/,
+        ),
+        code: '456',
+        type: 'UNKNOWN_QUERY_PARAMETER',
+      })
     })
   })
 

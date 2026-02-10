@@ -1,3 +1,4 @@
+import { describe, it, expect, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '../utils'
 
@@ -13,15 +14,13 @@ describe('config', () => {
       request_timeout: 100,
     })
 
-    await expectAsync(
+    await expect(
       client.query({
         query: 'SELECT sleep(3)',
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringMatching('Timeout error.'),
-      }),
-    )
+    ).rejects.toMatchObject({
+      message: expect.stringMatching('Timeout error.'),
+    })
   })
 
   it('should specify the default database name on creation', async () => {

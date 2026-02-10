@@ -2,12 +2,19 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    root: 'packages/client-node/__tests__',
-    include: ['unit/*.test.ts', 'utils/*.test.ts'],
+    include: [
+      'packages/client-node/__tests__/unit/*.test.ts',
+      'packages/client-node/__tests__/utils/*.test.ts',
+    ],
+    coverage: {
+      provider: 'istanbul',
+    },
   },
   resolve: {
     alias: {
-      '@clickhouse/client-common': '../../client-common/src',
+      '@clickhouse/client-common': 'packages/client-common/src',
+      '@clickhouse/client-node': 'packages/client-node/src',
+      '@test': 'packages/client-common/__tests__',
     },
   },
 })

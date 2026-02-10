@@ -1,3 +1,4 @@
+import { describe, it, expect, vi } from 'vitest'
 import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common'
 import { createClient } from '../../src'
 import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
@@ -6,8 +7,8 @@ import { sleep } from '../utils/sleep'
 describe('[Web] createClient', () => {
   it('throws on incorrect "url" config value', () => {
     expect(() => createClient({ url: 'foo' })).toThrow(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+      expect.objectContaining({
+        message: expect.stringContaining('ClickHouse URL is malformed.'),
       }),
     )
   })
@@ -31,7 +32,7 @@ describe('[Web] createClient', () => {
     }
     const client = createClient()
     let isClosed = false
-    spyOn(client, 'close').and.callFake(async () => {
+    vi.spyOn(client, 'close').mockImplementation(async () => {
       // Simulate some delay in closing
       await sleep(0)
       isClosed = true
@@ -47,6 +48,6 @@ describe('[Web] createClient', () => {
         })
       `)(client)
 
-    expect(isClosed).toBeTrue()
+    expect(isClosed).toBeTruthy()
   })
 })

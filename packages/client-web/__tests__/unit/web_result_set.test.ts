@@ -1,3 +1,4 @@
+import { describe, it, expect, vi } from 'vitest'
 import type { Row } from '@clickhouse/client-common'
 import { guid } from '@test/utils'
 import { ResultSet } from '../../src'
@@ -9,24 +10,24 @@ describe('[Web] ResultSet', () => {
   const expectedJson = [{ foo: 'bar' }, { qaz: 'qux' }]
 
   const errMsg = 'Stream has been already consumed'
-  const err = jasmine.objectContaining({
-    message: jasmine.stringContaining(errMsg),
+  const err = expect.objectContaining({
+    message: expect.stringContaining(errMsg),
   })
 
   it('should consume the response as text only once', async () => {
     const rs = makeResultSet()
 
     expect(await rs.text()).toEqual(expectedText)
-    await expectAsync(rs.text()).toBeRejectedWith(err)
-    await expectAsync(rs.json()).toBeRejectedWith(err)
+    await expect(rs.text()).rejects.toMatchObject(err)
+    await expect(rs.json()).rejects.toMatchObject(err)
   })
 
   it('should consume the response as JSON only once', async () => {
     const rs = makeResultSet()
 
     expect(await rs.json()).toEqual(expectedJson)
-    await expectAsync(rs.json()).toBeRejectedWith(err)
-    await expectAsync(rs.text()).toBeRejectedWith(err)
+    await expect(rs.json()).rejects.toMatchObject(err)
+    await expect(rs.text()).rejects.toMatchObject(err)
   })
 
   it('should consume the response as a stream of Row instances', async () => {
@@ -45,8 +46,8 @@ describe('[Web] ResultSet', () => {
 
     expect(result).toEqual(expectedJson)
     expect(() => rs.stream()).toThrow(new Error(errMsg))
-    await expectAsync(rs.json()).toBeRejectedWith(err)
-    await expectAsync(rs.text()).toBeRejectedWith(err)
+    await expect(rs.json()).rejects.toMatchObject(err)
+    await expect(rs.text()).rejects.toMatchObject(err)
   })
 
   it('should be able to call Row.text and Row.json multiple times', async () => {
@@ -84,7 +85,7 @@ describe('[Web] ResultSet', () => {
     }
     const rs = makeResultSet()
     let isClosed = false
-    spyOn(rs, 'close').and.callFake(async () => {
+    vi.spyOn(rs, 'close').mockImplementation(async () => {
       // Simulate some delay in closing
       await sleep(0)
       isClosed = true
@@ -100,7 +101,7 @@ describe('[Web] ResultSet', () => {
       })
     `)(rs)
 
-    expect(isClosed).toBeTrue()
+    expect(isClosed).toBeTruthy()
   })
 
   function makeResultSet() {

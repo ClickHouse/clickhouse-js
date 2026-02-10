@@ -1,6 +1,8 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient, guid } from '@test/utils'
+import { createTestClient } from '@test/utils/client'
+import { guid } from '@test/utils/guid'
 import Stream from 'stream'
 
 describe('[Node.js] insert', () => {
@@ -19,7 +21,7 @@ describe('[Node.js] insert', () => {
     })
 
     it('should provide error details about a dataset with an invalid type', async () => {
-      await expectAsync(
+      await expect(
         client.insert({
           table: tableName,
           values: Stream.Readable.from(['42,foobar,"[1,2]"'], {
@@ -27,13 +29,11 @@ describe('[Node.js] insert', () => {
           }),
           format: 'TabSeparated',
         }),
-      ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Cannot parse input'),
-          code: '27',
-          type: 'CANNOT_PARSE_INPUT_ASSERTION_FAILED',
-        }),
-      )
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Cannot parse input'),
+        code: '27',
+        type: 'CANNOT_PARSE_INPUT_ASSERTION_FAILED',
+      })
     })
   })
 

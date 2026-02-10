@@ -4,8 +4,9 @@ import type {
   Logger,
   LogParams,
 } from '@clickhouse/client-common'
+import { describe, it, afterEach, expect, vi } from 'vitest'
 import { ClickHouseLogLevel } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { createTestClient } from '@test/utils/client'
 
 describe('[Node.js] logger support', () => {
   let client: ClickHouseClient
@@ -22,31 +23,33 @@ describe('[Node.js] logger support', () => {
 
   describe('Logger support', () => {
     it('should use the default logger implementation', async () => {
-      const infoSpy = spyOn(console, 'info')
+      const infoSpy = vi.spyOn(console, 'info')
       client = createTestClient({
         log: {
           level: ClickHouseLogLevel.DEBUG,
         },
       })
-      expect(infoSpy).toHaveBeenCalledOnceWith(
-        jasmine.stringContaining('Log level is set to DEBUG'),
+      expect(infoSpy).toHaveBeenCalledOnce()
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Log level is set to DEBUG'),
       )
 
-      const debugSpy = spyOn(console, 'debug')
+      const debugSpy = vi.spyOn(console, 'debug')
       await client.ping()
-      expect(debugSpy).toHaveBeenCalledOnceWith(
-        jasmine.stringContaining('Ping: got a response from ClickHouse'),
-        jasmine.stringContaining('\nArguments:'),
-        jasmine.objectContaining({
+      expect(debugSpy).toHaveBeenCalledOnce()
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Ping: got a response from ClickHouse'),
+        expect.stringContaining('\nArguments:'),
+        expect.objectContaining({
           request_headers: {
-            connection: jasmine.stringMatching(/Keep-Alive/i),
-            'user-agent': jasmine.any(String),
+            connection: expect.stringMatching(/Keep-Alive/i),
+            'user-agent': expect.any(String),
           },
           request_method: 'GET',
           request_params: '',
           request_path: '/ping',
-          response_headers: jasmine.objectContaining({
-            connection: jasmine.stringMatching(/Keep-Alive/i),
+          response_headers: expect.objectContaining({
+            connection: expect.stringMatching(/Keep-Alive/i),
             'content-type': 'text/html; charset=UTF-8',
             'transfer-encoding': 'chunked',
           }),
@@ -65,9 +68,9 @@ describe('[Node.js] logger support', () => {
       await client.ping()
       // logs[0] are about the current log level
       expect(logs[1]).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           message: 'Ping: got a response from ClickHouse',
-          args: jasmine.objectContaining({
+          args: expect.objectContaining({
             request_path: '/ping',
             request_method: 'GET',
           }),

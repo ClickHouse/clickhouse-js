@@ -22,6 +22,33 @@ on:
     - cron: '0 9 * * *'
 
 jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Install dependencies (examples)
+        working-directory: examples
+        run: |
+          npm install
+
+      - name: Typecheck
+        run: |
+          npm run typecheck
+
+      - name: Run linting
+        run: |
+          npm run lint
+
   common-unit-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -70,9 +97,9 @@ jobs:
         run: |
           export BROWSER=firefox
           npm run test:common:unit:web
+
   node-unit-tests:
     runs-on: ubuntu-latest
-    needs: common-unit-tests
     strategy:
       fail-fast: false
       matrix:
@@ -94,21 +121,12 @@ jobs:
         run: |
           npm install
 
-      - name: Run linting
-        run: |
-          npm run lint
-
-      - name: Typecheck
-        run: |
-          npm run typecheck
-
       - name: Run unit tests
         run: |
           npm run test:node:unit
 
   web-all-tests-local-single-node:
     runs-on: ubuntu-latest
-    needs: node-unit-tests
     strategy:
       fail-fast: false
       matrix:
@@ -138,7 +156,6 @@ jobs:
           npm run test:web
 
   node-integration-tests-local-single-node:
-    needs: node-unit-tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -179,7 +196,6 @@ jobs:
           npm run test:node:tls
 
   node-integration-tests-local-cluster:
-    needs: node-unit-tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -213,7 +229,6 @@ jobs:
 
   web-integration-tests-local-cluster:
     runs-on: ubuntu-latest
-    needs: node-unit-tests
     strategy:
       fail-fast: false
       matrix:
@@ -243,7 +258,6 @@ jobs:
           npm run test:web:integration:local_cluster
 
   node-integration-tests-cloud:
-    needs: node-unit-tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -271,7 +285,6 @@ jobs:
           npm run test:node:integration:cloud
 
   web-integration-tests-cloud:
-    needs: node-unit-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -306,6 +319,8 @@ jobs:
   node-all-tests-codecov-upload:
     needs:
       [
+        'code-quality',
+        'common-unit-tests',
         'common-unit-tests-web',
         'node-integration-tests-local-single-node',
         'node-integration-tests-local-cluster',

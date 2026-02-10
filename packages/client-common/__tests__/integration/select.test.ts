@@ -1,3 +1,4 @@
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, guid, validateUUID } from '../utils'
 
@@ -123,19 +124,19 @@ describe('select', () => {
   })
 
   it('does not swallow a client error', async () => {
-    await expectAsync(
+    await expect(
       client.query({ query: 'SELECT number FR' }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
+    ).rejects.toMatchObject(
+      expect.objectContaining({
         type: 'UNKNOWN_IDENTIFIER',
       }),
     )
   })
 
   it('returns an error details provided by ClickHouse', async () => {
-    await expectAsync(client.query({ query: 'foobar' })).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('Syntax error'),
+    await expect(client.query({ query: 'foobar' })).rejects.toMatchObject(
+      expect.objectContaining({
+        message: expect.stringContaining('Syntax error'),
         code: '62',
         type: 'SYNTAX_ERROR',
       }),
@@ -143,17 +144,17 @@ describe('select', () => {
   })
 
   it('should provide error details when sending a request with an unknown clickhouse settings', async () => {
-    await expectAsync(
+    await expect(
       client.query({
         query: 'SELECT * FROM system.numbers',
         clickhouse_settings: { foobar: 1 } as any,
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
+    ).rejects.toMatchObject(
+      expect.objectContaining({
         // Possible error messages:
         // Unknown setting foobar
         // Setting foobar is neither a builtin setting nor started with the prefix 'SQL_' registered for user-defined settings.
-        message: jasmine.stringContaining('foobar'),
+        message: expect.stringContaining('foobar'),
         code: '115',
         type: 'UNKNOWN_SETTING',
       }),
