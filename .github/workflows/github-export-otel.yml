@@ -1,0 +1,26 @@
+name: Export Workflow Telemetry
+
+on:
+  workflow_run:
+    # To avoid trigger on self in an infinite loop list all workflows
+    # that should trigger workflow telemetry exporting explicitly.
+    workflows:
+      - tests
+      - build
+      - npm
+    types: [ completed ]
+
+jobs:
+  send-telemetry:
+    name: Send
+    runs-on: ubuntu-latest
+    steps:
+      - name: Export Workflow Telemetry
+        uses: ClickHouse/github-actions-opentelemetry@166e4f803ea5857cfcd90502d99fd35ccb20de32
+        env:
+          OTEL_SERVICE_NAME: github-actions
+          OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
+          OTEL_RESOURCE_ATTRIBUTES: 'service.namespace=clickhouse-js'
+        with:
+          # Required for collecting workflow data
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
