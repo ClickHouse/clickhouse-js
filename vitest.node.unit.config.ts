@@ -13,6 +13,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@clickhouse/client-common': 'packages/client-common/src',
+      '@clickhouse/client-node': 'packages/client-node/src',
+      '@test': 'packages/client-common/__tests__',
     },
   },
 })

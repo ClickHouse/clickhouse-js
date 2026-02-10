@@ -5,6 +5,9 @@ export default defineConfig({
     // Increase maxWorkers to speed up integration tests
     // as we're not bound by the CPU here.
     maxWorkers: '400%',
+    // Cover the Cloud instance wake-up time
+    testTimeout: 300_000,
+    slowTestThreshold: 10_000,
     globals: true,
     include: ['packages/client-node/__tests__/tls/*.test.ts'],
     setupFiles: ['vitest.node.setup.ts'],
