@@ -78,9 +78,11 @@ describe('[Web] ResultSet', () => {
     expect(row.json()).toEqual({ foo: 'bar' })
   })
 
-  it('closes the ResultSet when used with using statement', async () => {
+  it('closes the ResultSet when used with using statement', async ({
+    skip,
+  }) => {
     if (!isAwaitUsingStatementSupported()) {
-      pending('using statement is not supported in this environment')
+      skip('using statement is not supported in this environment')
       return
     }
     const rs = makeResultSet()

@@ -23,9 +23,9 @@ describe('[Web] JWT auth', () => {
     expect(true).toEqual(true)
   })
 
-  it('should work with client configuration', async () => {
+  it('should work with client configuration', async ({ skip }) => {
     if (!jwt) {
-      pending(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+      skip(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
       return
     }
 
@@ -40,9 +40,9 @@ describe('[Web] JWT auth', () => {
     expect(await rs.json()).toEqual([{ result: 42 }])
   })
 
-  it('should override the client instance auth', async () => {
+  it('should override the client instance auth', async ({ skip }) => {
     if (!jwt) {
-      pending(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+      skip(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
       return
     }
 
