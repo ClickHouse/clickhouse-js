@@ -32,6 +32,7 @@
     "test:node:integration": "vitest -c vitest.node.integration.config.ts",
     "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:node:integration",
     "test:node:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:node:integration",
+    "test:node:all": "vitest -c vitest.node.all.config.ts",
     "test:node:coverage": "nyc ./run-tests-for-coverage.sh",
     "test:web": "vitest -c vitest.web.config.ts",
     "test:web:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:web",
