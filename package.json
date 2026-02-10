@@ -26,7 +26,7 @@
     "test": "echo -e \"Please specify a test script to run. See \\033[1mnpm run\\033[0m for reference.\" && exit 1",
     "test:common:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.common.unit.config.ts",
     "test:common:unit:web": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.common.unit.web.config.ts",
-    "test:common:integration": ".scripts/jasmine.sh jasmine.common.integration.json",
+    "test:common:integration": "vitest -c vitest.common.integration.config.ts",
     "test:node:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.node.unit.config.ts",
     "test:node:tls": "vitest -c vitest.node.tls.config.ts",
     "test:node:integration": "vitest -c vitest.node.integration.config.ts",
