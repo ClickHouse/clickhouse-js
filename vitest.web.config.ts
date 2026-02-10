@@ -35,6 +35,14 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
     },
+    env: {
+      CLICKHOUSE_CLOUD_HOST: process.env.CLICKHOUSE_CLOUD_HOST,
+      CLICKHOUSE_CLOUD_PASSWORD: process.env.CLICKHOUSE_CLOUD_PASSWORD,
+      CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN:
+        process.env.CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN,
+      CLICKHOUSE_TEST_SKIP_INIT: process.env.CLICKHOUSE_TEST_SKIP_INIT,
+      CLICKHOUSE_TEST_ENVIRONMENT: process.env.CLICKHOUSE_TEST_ENVIRONMENT,
+    },
   },
   resolve: {
     // Use the unittest entry point to get the source files instead of built files
