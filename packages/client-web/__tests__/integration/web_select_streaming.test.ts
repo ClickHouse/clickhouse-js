@@ -127,7 +127,7 @@ describe('[Web] SELECT streaming', () => {
       ])
     })
 
-    xit('should return objects in JSONEachRowWithProgress format', async () => {
+    it.skip('should return objects in JSONEachRowWithProgress format', async () => {
       const limit = 2
       const expectedProgressRowsCount = 4
       const rs = await client.query({

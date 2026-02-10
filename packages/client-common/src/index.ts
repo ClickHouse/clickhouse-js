@@ -31,14 +31,16 @@ export type {
   StreamableDataFormat,
   StreamableJSONDataFormat,
   SingleDocumentJSONFormat,
+} from './data_formatter'
+export {
   SupportedJSONFormats,
   SupportedRawFormats,
   StreamableFormats,
   StreamableJSONFormats,
   SingleDocumentJSONFormats,
   RecordsJSONFormats,
+  TupleParam,
 } from './data_formatter'
-export { TupleParam } from './data_formatter'
 export { ClickHouseError, parseError } from './error'
 export {
   ClickHouseLogLevel,
