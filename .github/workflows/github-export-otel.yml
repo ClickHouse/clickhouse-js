@@ -10,6 +10,10 @@ on:
       - npm
     types: [ completed ]
 
+permissions:
+  # Required to read workflow data and export telemetry on workflow_run event.
+  actions: read
+
 jobs:
   send-telemetry:
     name: Send
