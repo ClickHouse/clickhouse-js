@@ -7,7 +7,7 @@ export default defineConfig({
     maxWorkers: '400%',
     globals: true,
     include: ['packages/client-node/__tests__/tls/*.test.ts'],
-    setupFiles: ['../../../vitest.node.setup.ts'],
+    setupFiles: ['vitest.node.setup.ts'],
     coverage: {
       provider: 'istanbul',
     },
