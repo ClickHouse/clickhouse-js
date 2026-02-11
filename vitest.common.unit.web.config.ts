@@ -11,7 +11,6 @@ if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
 
 export default defineConfig({
   test: {
-    globals: true,
     setupFiles: ['vitest.web.setup.ts'],
     include: [
       'packages/client-common/__tests__/unit/*.test.ts',

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { jsonValues } from '@test/fixtures/test_data'

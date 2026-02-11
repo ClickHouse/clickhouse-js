@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  afterEach,
+} from 'vitest'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { getAuthFromEnv } from '@test/utils/env'

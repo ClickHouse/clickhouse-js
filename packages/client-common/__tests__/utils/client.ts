@@ -1,4 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
+import { beforeAll } from 'vitest'
 import type {
   BaseClickHouseClientConfigOptions,
   ClickHouseClient,

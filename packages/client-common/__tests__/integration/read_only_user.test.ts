@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { isCloudTestEnv } from '@test/utils/test_env'
 import { createReadOnlyUser } from '../fixtures/read_only_user'

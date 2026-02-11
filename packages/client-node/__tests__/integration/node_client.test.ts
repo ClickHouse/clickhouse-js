@@ -1,6 +1,6 @@
+import { vi, expect, it, describe, beforeEach, afterEach } from 'vitest'
 import { getHeadersTestParams } from '@test/utils/parametrized'
 import Http from 'http'
-import { vi, expect } from 'vitest'
 import type { ClickHouseClient } from '../../src'
 import { createClient } from '../../src'
 import { emitResponseBody, stubClientRequest } from '../utils/http_stubs'

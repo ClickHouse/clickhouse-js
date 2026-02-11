@@ -1,3 +1,5 @@
+import { expect } from 'vitest'
+
 import type { QueryParamsWithFormat } from '@clickhouse/client-common'
 import { ClickHouseError } from '@clickhouse/client-common'
 

@@ -17,7 +17,6 @@ export default defineConfig({
     // Cover the Cloud instance wake-up time
     testTimeout: 300_000,
     slowTestThreshold: 10_000,
-    globals: true,
     setupFiles: ['vitest.web.setup.ts'],
     // include: ['unit/*.test.ts', 'utils/*.test.ts'],
     include: [
