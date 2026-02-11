@@ -1,16 +1,12 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { getUserAgent } from '../../src/utils'
+import { Runtime } from '../../src/utils/runtime'
 
-vi.mock(import('../../src/utils/runtime'), () => {
-  return {
-    // Object.create is used to prove to TS that
-    // the prototype property exists.
-    Runtime: Object.create({
-      package: '0.0.42',
-      node: 'v16.144',
-      os: 'freebsd',
-    }),
-  }
+beforeAll(() => {
+  // Mock Runtime to have a fixed package version and node version for testing
+  vi.spyOn(Runtime, 'package', 'get').mockReturnValue('0.0.42')
+  vi.spyOn(Runtime, 'node', 'get').mockReturnValue('v16.144')
+  vi.spyOn(Runtime, 'os', 'get').mockReturnValue('freebsd')
 })
 
 describe('[Node.js] User-Agent', () => {
