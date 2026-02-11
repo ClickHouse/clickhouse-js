@@ -1,5 +1,5 @@
 export {
-  WebClickHouseClient as ClickHouseClient,
+  type WebClickHouseClient as ClickHouseClient,
   type QueryResult,
 } from './client'
 export { createClient } from './client'

@@ -150,6 +150,9 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
+          npx playwright install chromium
+          npx playwright install firefox
+          # We're not testing in WebKit atm
 
       - name: Run all web tests
         run: |
@@ -252,6 +255,10 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
+          npx playwright install chromium
+          npx playwright install firefox
+          # We're not testing in WebKit atm
+
 
       - name: Run all web tests
         run: |
@@ -297,6 +304,9 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
+          npx playwright install chromium
+          npx playwright install firefox
+          # We're not testing in WebKit atm
 
       - name: Run integration tests
         env:

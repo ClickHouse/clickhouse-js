@@ -25,9 +25,9 @@ describe('[Web] createClient', () => {
     })
   })
 
-  it('closes the client when used with using statement', async () => {
+  it('closes the client when used with using statement', async ({ skip }) => {
     if (!isAwaitUsingStatementSupported()) {
-      pending('using statement is not supported in this environment')
+      skip('using statement is not supported in this environment')
       return
     }
     const client = createClient()

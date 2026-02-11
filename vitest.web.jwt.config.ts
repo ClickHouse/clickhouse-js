@@ -20,12 +20,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['vitest.web.setup.ts'],
     // include: ['unit/*.test.ts', 'utils/*.test.ts'],
-    include: [
-      'packages/client-common/__tests__/utils/*.test.ts',
-      'packages/client-common/__tests__/integration/*.test.ts',
-      'packages/client-web/__tests__/integration/*.test.ts',
-      'packages/client-web/__tests__/unit/*.test.ts',
-    ],
+    include: ['packages/client-web/__tests__/jwt/*.test.ts'],
     browser: {
       enabled: true,
       provider: playwright(),
