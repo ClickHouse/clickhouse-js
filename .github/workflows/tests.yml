@@ -331,6 +331,7 @@ jobs:
         'code-quality',
         'common-unit-tests',
         'common-unit-tests-web',
+        'node-unit-tests',
         'node-integration-tests-local-single-node',
         'node-integration-tests-local-cluster',
         'node-integration-tests-cloud',
