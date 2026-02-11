@@ -1,20 +1,27 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import sinon from 'sinon'
+import { describe, it, expect, vi, afterAll } from 'vitest'
 import { getUserAgent } from '../../src/utils'
-import { Runtime } from '../../src/utils/runtime'
+import type * as runtime from '../../src/utils/runtime'
 
-beforeEach(() => {
+vi.mock('../../src/utils/runtime', async () => {
+  const actual = await vi.importActual<typeof runtime>(
+    '../../src/utils/runtime',
+  )
+  return {
+    ...actual,
+    Runtime: {
+      ...actual.Runtime,
+      package: '0.0.42',
+      node: 'v16.144',
+      os: 'freebsd',
+    },
+  }
+})
+
+afterAll(() => {
   vi.clearAllMocks()
 })
 
 describe('[Node.js] User-Agent', () => {
-  const sandbox = sinon.createSandbox()
-  beforeEach(() => {
-    sandbox.stub(Runtime, 'package').value('0.0.42')
-    sandbox.stub(Runtime, 'node').value('v16.144')
-    sandbox.stub(Runtime, 'os').value('freebsd')
-  })
-
   it('should generate a user agent without app id', async () => {
     const userAgent = getUserAgent()
     expect(userAgent).toEqual(
