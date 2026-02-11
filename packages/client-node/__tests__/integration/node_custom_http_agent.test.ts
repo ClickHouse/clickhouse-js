@@ -5,6 +5,8 @@ import Http from 'http'
 import { createClient } from '../../src'
 
 /** HTTPS agent tests are in tls.test.ts as it requires a secure connection. */
+
+// disabled with Cloud as it uses a simple HTTP agent
 describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
   '[Node.js] custom HTTP agent',
   () => {
@@ -13,8 +15,6 @@ describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
       httpRequestStub = vi.spyOn(Http, 'request')
     })
 
-    // disabled with Cloud as it uses a simple HTTP agent
-    // whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
     it('should use provided http agent instead of the default one', async () => {
       const agent = new http.Agent({
         maxFreeSockets: 5,

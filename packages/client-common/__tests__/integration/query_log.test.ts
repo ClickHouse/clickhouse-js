@@ -1,7 +1,7 @@
-import { describe, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '../fixtures/simple_table'
-import { createTestClient, guid, TestEnv, whenOnEnv } from '../utils'
+import { createTestClient, guid, TestEnv, isOnEnv } from '../utils'
 import { sleep } from '../utils/sleep'
 
 // these tests are very flaky in the Cloud environment
@@ -17,7 +17,7 @@ describe('query_log', () => {
     }
   })
 
-  whenOnEnv(...testEnvs).it(
+  it.skipIf(!isOnEnv(...testEnvs))(
     'can use query_id to fetch query_log table with select',
     async () => {
       client = createTestClient()
@@ -32,7 +32,7 @@ describe('query_log', () => {
     },
   )
 
-  whenOnEnv(...testEnvs).it(
+  it.skipIf(!isOnEnv(...testEnvs))(
     'can use query_id to fetch query_log table with exec',
     async () => {
       client = createTestClient()
@@ -45,7 +45,7 @@ describe('query_log', () => {
     },
   )
 
-  whenOnEnv(...testEnvs).it(
+  it.skipIf(!isOnEnv(...testEnvs))(
     'can use query_id to fetch query_log table with insert',
     async () => {
       client = createTestClient()

@@ -1,6 +1,6 @@
-import { describe, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient, guid, TestEnv, whenOnEnv } from '@test/utils'
+import { createTestClient, guid, TestEnv, isOnEnv } from '@test/utils'
 
 describe('sessions settings', () => {
   let client: ClickHouseClient
@@ -8,34 +8,37 @@ describe('sessions settings', () => {
     await client.close()
   })
 
-  whenOnEnv(TestEnv.LocalSingleNode).it('should use sessions', async () => {
-    client = createTestClient({
-      session_id: `test-session-${guid()}`,
-    })
+  it.skipIf(!isOnEnv(TestEnv.LocalSingleNode))(
+    'should use sessions',
+    async () => {
+      client = createTestClient({
+        session_id: `test-session-${guid()}`,
+      })
 
-    const tableName = `temp_table_${guid()}`
-    await client.command({
-      query: getTempTableDDL(tableName),
-    })
-    await client.insert({
-      table: tableName,
-      values: [{ id: 42, name: 'foo' }],
-      format: 'JSONEachRow',
-    })
-    await client.exec({
-      query: `INSERT INTO ${tableName} VALUES (43, 'bar')`,
-    })
-    const rs = await client.query({
-      query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
-      format: 'JSONEachRow',
-    })
-    expect(await rs.json()).toEqual([
-      { id: 42, name: 'foo' },
-      { id: 43, name: 'bar' },
-    ])
-  })
+      const tableName = `temp_table_${guid()}`
+      await client.command({
+        query: getTempTableDDL(tableName),
+      })
+      await client.insert({
+        table: tableName,
+        values: [{ id: 42, name: 'foo' }],
+        format: 'JSONEachRow',
+      })
+      await client.exec({
+        query: `INSERT INTO ${tableName} VALUES (43, 'bar')`,
+      })
+      const rs = await client.query({
+        query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
+        format: 'JSONEachRow',
+      })
+      expect(await rs.json()).toEqual([
+        { id: 42, name: 'foo' },
+        { id: 43, name: 'bar' },
+      ])
+    },
+  )
 
-  whenOnEnv(TestEnv.LocalSingleNode).it(
+  it.skipIf(!isOnEnv(TestEnv.LocalSingleNode))(
     'should use session override',
     async () => {
       // no session_id by default
