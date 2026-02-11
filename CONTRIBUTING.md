@@ -200,8 +200,7 @@ Typecheck + Lint + Node.js client unit tests
 
 ## Test Coverage
 
-Prior to switching from Jest to Jasmine with multiple workspaces and client flavours,
-the reported test coverage was above 90%. We generally aim towards that threshold, if it deems reasonable.
+The average reported test coverage is above 90%. We generally aim towards this threshold, if it deems reasonable.
 
 Currently, automatic coverage reports are disabled.
 See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177), as it should be restored in the scope of that issue.

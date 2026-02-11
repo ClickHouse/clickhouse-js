@@ -19,7 +19,7 @@
     "importHelpers": false,
     "outDir": "out",
     "lib": ["esnext", "dom"],
-    "types": ["node", "jasmine"],
+    "types": ["node"],
     "baseUrl": "./"
   },
   "exclude": ["node_modules"],

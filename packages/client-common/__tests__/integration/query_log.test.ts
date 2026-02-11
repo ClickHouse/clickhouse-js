@@ -72,7 +72,8 @@ describe('query_log', () => {
   }) {
     // query_log is flushed every ~1000 milliseconds
     // so this might fail a couple of times
-    // FIXME: jasmine does not throw. RetryOnFailure does not work
+    // FIXME: jasmine did not throw, maybe Vitest does.
+    // RetryOnFailure does not work
     await sleep(1200)
     const logResultSet = await client.query({
       query: `
