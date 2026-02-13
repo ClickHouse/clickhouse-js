@@ -449,3 +449,6 @@ jobs:
         'web-codecov-upload',
       ]
     runs-on: ubuntu-latest
+    steps:
+      - name: All tests passed
+        run: echo "All tests passed! 🎉"
