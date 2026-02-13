@@ -230,7 +230,7 @@ export NEW_VERSION=[new_version]
 Then build the packages:
 
 ```bash
-npm --workspaces run build
+npm run build
 ```
 
 Now we're ready to publish the beta version for testing:
