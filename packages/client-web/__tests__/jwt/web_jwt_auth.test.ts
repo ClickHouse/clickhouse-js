@@ -3,17 +3,17 @@ import { EnvKeys, getFromEnv, maybeGetFromEnv } from '@test/utils/env'
 import { createClient } from '../../src'
 import type { WebClickHouseClient } from '../../src/client'
 
+const jwt = maybeGetFromEnv(EnvKeys.jwt_access_token)
+
 /** Cannot use the jsonwebtoken library to generate the token: it is Node.js only.
  *  The access token should be generated externally before running the test,
  *  and set as the CLICKHOUSE_JWT_ACCESS_TOKEN environment variable */
-describe('[Web] JWT auth', () => {
+describe.skipIf(!jwt)('[Web] JWT auth', () => {
   let client: WebClickHouseClient | undefined
   let url: string
-  let jwt: string | undefined
 
   beforeAll(() => {
     url = `https://${getFromEnv(EnvKeys.host)}:8443`
-    jwt = maybeGetFromEnv(EnvKeys.jwt_access_token)
   })
   afterEach(async () => {
     await client?.close()
@@ -23,12 +23,7 @@ describe('[Web] JWT auth', () => {
     expect(true).toEqual(true)
   })
 
-  it('should work with client configuration', async ({ skip }) => {
-    if (!jwt) {
-      skip(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
-      return
-    }
-
+  it('should work with client configuration', async () => {
     client = createClient({
       url,
       access_token: jwt,
