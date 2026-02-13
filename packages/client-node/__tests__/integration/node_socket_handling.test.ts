@@ -16,9 +16,9 @@ const MaxOpenConnections = 2
 
 describe('Node.js socket handling', () => {
   let client: ClickHouseClient<Stream.Readable>
-  let server: http.Server
 
   describe('Slow server', () => {
+    let server: http.Server
     const port = 18123
     beforeAll(async () => {
       // Simulate a ClickHouse server that does not respond to the request in time
@@ -116,6 +116,7 @@ describe('Node.js socket handling', () => {
   })
 
   describe('Server that never responds', () => {
+    let server: http.Server
     const port = 18124
     let timeoutId: ReturnType<typeof setTimeout>
     let requestCount = 0
@@ -166,6 +167,7 @@ describe('Node.js socket handling', () => {
   })
 
   describe('Resource is not available', () => {
+    let server: http.Server
     const port = 18125
     beforeAll(async () => {
       // Client has request timeout set to lower than the server's "sleep" time
@@ -180,7 +182,9 @@ describe('Node.js socket handling', () => {
     })
     afterAll(async () => {
       await client.close()
-      server.close()
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()))
+      })
     })
 
     it('should fail with a connection error, but then reach out to the server', async () => {
@@ -188,7 +192,11 @@ describe('Node.js socket handling', () => {
       for (let i = 1; i <= Iterations; i++) {
         const pingResult = await ping()
         expect(pingResult.success).toBeFalsy()
-        const error = (pingResult as ConnPingResult & { success: false }).error
+        if (pingResult.success) {
+          // suggest to TS what type pingResult is
+          throw new Error('Ping should have failed')
+        }
+        const error = pingResult.error
         expect((error as NodeJS.ErrnoException).code).toEqual('ECONNREFUSED')
       }
       // now we start the server, and it is available; and we should have already used every socket in the pool
@@ -196,7 +204,9 @@ describe('Node.js socket handling', () => {
         res.write('Ok.')
         return res.end()
       })
-      server.listen(port)
+      await new Promise<void>((resolve) => {
+        server.listen(port, () => resolve())
+      })
       // no socket timeout or other errors
       expect(await ping()).toEqual({ success: true })
     })
