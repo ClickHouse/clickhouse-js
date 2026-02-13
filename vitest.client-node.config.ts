@@ -6,10 +6,11 @@ if (
   testMode !== 'integration' &&
   testMode !== 'tls' &&
   testMode !== 'common' &&
-  testMode !== 'common-integration'
+  testMode !== 'common-integration' &&
+  testMode !== 'all'
 ) {
   throw new Error(
-    `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, tls, common, common-integration.`,
+    `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, tls, common, common-integration, all.`,
   )
 }
 
@@ -29,6 +30,15 @@ const collections = {
   ],
   'common-integration': [
     'packages/client-common/__tests__/integration/*.test.ts',
+  ],
+  all: [
+    'packages/client-common/__tests__/unit/*.test.ts',
+    'packages/client-common/__tests__/utils/*.test.ts',
+    'packages/client-common/__tests__/integration/*.test.ts',
+    'packages/client-node/__tests__/tls/*.test.ts',
+    'packages/client-node/__tests__/unit/*.test.ts',
+    'packages/client-node/__tests__/utils/*.test.ts',
+    'packages/client-node/__tests__/integration/*.test.ts',
   ],
 }
 
