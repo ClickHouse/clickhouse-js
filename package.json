@@ -76,7 +76,7 @@
     "typescript-eslint": "^8.46.4",
     "uuid": "^13.0.0",
     "vitest": "^4.0.16",
-    "webpack": "^5.101.1",
+    "webpack": "^5.105.2",
     "webpack-cli": "^6.0.1",
     "webpack-merge": "^6.0.1"
   },
