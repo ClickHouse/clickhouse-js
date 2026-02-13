@@ -182,7 +182,9 @@ describe('Node.js socket handling', () => {
     })
     afterAll(async () => {
       await client.close()
-      server.close()
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()))
+      })
     })
 
     it('should fail with a connection error, but then reach out to the server', async () => {
@@ -190,7 +192,11 @@ describe('Node.js socket handling', () => {
       for (let i = 1; i <= Iterations; i++) {
         const pingResult = await ping()
         expect(pingResult.success).toBeFalsy()
-        const error = (pingResult as ConnPingResult & { success: false }).error
+        if (pingResult.success) {
+          // suggest to TS what type pingResult is
+          throw new Error('Ping should have failed')
+        }
+        const error = pingResult.error
         expect((error as NodeJS.ErrnoException).code).toEqual('ECONNREFUSED')
       }
       // now we start the server, and it is available; and we should have already used every socket in the pool
@@ -198,7 +204,9 @@ describe('Node.js socket handling', () => {
         res.write('Ok.')
         return res.end()
       })
-      server.listen(port)
+      await new Promise<void>((resolve) => {
+        server.listen(port, () => resolve())
+      })
       // no socket timeout or other errors
       expect(await ping()).toEqual({ success: true })
     })
