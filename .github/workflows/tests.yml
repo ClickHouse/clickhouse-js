@@ -353,25 +353,9 @@ jobs:
         run: |
           npm run test:web:integration:cloud:jwt
 
-  # With unit + integration + TLS tests + coverage + Codecov.io upload, after the rest of the tests.
-  # Needs all integration tests on all environments to pass.
-  # It should use only the current LTS version of Node.js.
-  node-all-tests-codecov-upload:
-    needs:
-      [
-        'code-quality',
-        'common-unit-tests-node',
-        'common-unit-tests-web',
-        'node-unit-tests',
-        'node-integration-tests-local-single-node',
-        'node-integration-tests-local-cluster',
-        'node-integration-tests-cloud',
-        'web-all-tests-local-single-node',
-        'web-integration-tests-local-cluster',
-        'web-integration-tests-cloud',
-      ]
+  # It should only use the current LTS version of Node.js.
+  node-codecov-upload:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -403,6 +387,65 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
+          name: node
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: true
+
+  # It should only use the current version of Chrome
+  web-codecov-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        with:
+          compose-file: 'docker-compose.yml'
+          down-flags: '--volumes'
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
+      - name: Run unit + integration + TLS tests with coverage
+        run: |
+          npm run test:web:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          name: web
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
+
+  success:
+    needs:
+      [
+        'code-quality',
+        'code-quality-examples',
+        'common-unit-tests-node',
+        'common-unit-tests-web',
+        'node-unit-tests',
+        'node-integration-tests-local-single-node',
+        'node-integration-tests-local-cluster',
+        'node-integration-tests-cloud',
+        'node-codecov-upload',
+        'web-all-tests-local-single-node',
+        'web-integration-tests-local-cluster',
+        'web-integration-tests-cloud',
+        'web-codecov-upload',
+      ]
+    runs-on: ubuntu-latest
