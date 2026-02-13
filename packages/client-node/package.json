@@ -25,6 +25,7 @@
   "scripts": {
     "prepack": "cp ../../README.md ../../LICENSE .",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "build": "rm -rf dist; tsc"
   },
   "dependencies": {
