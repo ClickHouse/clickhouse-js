@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitest/config'
 
+const VITEST_OTEL_ENABLED = process.env.VITEST_OTEL_ENABLED === 'true'
+
 export default defineConfig({
   test: {
     // Increase maxWorkers to speed up integration tests
@@ -12,6 +14,12 @@ export default defineConfig({
     setupFiles: ['vitest.node.setup.ts'],
     coverage: {
       provider: 'istanbul',
+    },
+    experimental: {
+      openTelemetry: {
+        enabled: VITEST_OTEL_ENABLED,
+        sdkPath: './vitest.otel.mts',
+      },
     },
   },
   resolve: {
