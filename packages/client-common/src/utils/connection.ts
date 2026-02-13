@@ -35,7 +35,7 @@ export function withHttpSettings(
 
 export function isSuccessfulResponse(
   statusCode?: number,
-  headers: Record<string, string> = {},
+  headers: any = {},
 ): boolean {
   return Boolean(
     statusCode &&

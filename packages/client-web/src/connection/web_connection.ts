@@ -208,7 +208,7 @@ export class WebConnection implements Connection<ReadableStream> {
         signal: abortController.signal,
       })
       clearTimeout(timeout)
-      if (isSuccessfulResponse(response.status)) {
+      if (isSuccessfulResponse(response.status, response.headers)) {
         return response
       } else {
         return Promise.reject(
