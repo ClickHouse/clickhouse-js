@@ -21,6 +21,13 @@ on:
   schedule:
     - cron: '0 9 * * *'
 
+env:
+  OTEL_SERVICE_NAME: vitest
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
+  OTEL_EXPORTER_OTLP_HEADERS: 'authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}'
+  OTEL_RESOURCE_ATTRIBUTES: 'service.namespace=clickhouse-js,deployment.environment=ci'
+  VITEST_OTEL_ENABLED: 'true'
+
 jobs:
   code-quality:
     runs-on: ubuntu-latest

@@ -16,6 +16,12 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
     },
+    experimental: {
+      openTelemetry: {
+        enabled: process.env.VITEST_OTEL_ENABLED === 'true',
+        sdkPath: './vitest.otel.mts',
+      },
+    },
   },
   resolve: {
     alias: {
