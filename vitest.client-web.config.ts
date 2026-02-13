@@ -5,10 +5,44 @@ import { fileURLToPath } from 'node:url'
 const browser = process.env.BROWSER ?? 'chromium'
 if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
   throw new Error(
-    `Unsupported browser for tests: [${browser}]. Supported browsers are: chromium, firefox, webkit.`,
+    `Unsupported BROWSER: [${browser}]. Supported browsers are: chromium, firefox, webkit.`,
   )
 }
 
+const testMode = process.env.TEST_MODE
+if (
+  testMode !== 'unit' &&
+  testMode !== 'integration' &&
+  testMode !== 'jwt' &&
+  testMode !== 'common' &&
+  testMode !== 'common-integration'
+) {
+  throw new Error(
+    `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, jwt, all.`,
+  )
+}
+
+const collections = {
+  unit: [
+    'packages/client-common/__tests__/unit/*.test.ts',
+    'packages/client-common/__tests__/utils/*.test.ts',
+    'packages/client-web/__tests__/unit/*.test.ts',
+  ],
+  integration: [
+    'packages/client-common/__tests__/integration/*.test.ts',
+    'packages/client-web/__tests__/integration/*.test.ts',
+  ],
+  jwt: ['packages/client-web/__tests__/jwt/*.test.ts'],
+  common: [
+    'packages/client-common/__tests__/unit/*.test.ts',
+    'packages/client-common/__tests__/utils/*.test.ts',
+  ],
+  'common-integration': [
+    'packages/client-common/__tests__/integration/*.test.ts',
+  ],
+}
+
+// Configuration for all tests (unit + integration)
 export default defineConfig({
   test: {
     // Increase maxWorkers to speed up integration tests
@@ -16,19 +50,12 @@ export default defineConfig({
     maxWorkers: '400%',
     // Cover the Cloud instance wake-up time
     testTimeout: 300_000,
-    slowTestThreshold: 10_000,
+    slowTestThreshold: testMode === 'unit' ? 10_000 : undefined,
     setupFiles: ['vitest.web.setup.ts'],
-    // include: ['unit/*.test.ts', 'utils/*.test.ts'],
-    include: [
-      'packages/client-common/__tests__/utils/*.test.ts',
-      'packages/client-common/__tests__/integration/*.test.ts',
-      'packages/client-web/__tests__/integration/*.test.ts',
-      'packages/client-web/__tests__/unit/*.test.ts',
-    ],
+    include: collections[testMode],
     browser: {
       enabled: true,
       provider: playwright(),
-      // https://vitest.dev/config/browser/playwright
       instances: [{ browser }],
     },
     coverage: {

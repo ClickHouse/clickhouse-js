@@ -52,6 +52,13 @@ everyone in the community can safely benefit from your contribution.
 
 We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports both Node.js, Web environments and edge runtimes.
 
+The repository uses three consolidated Vitest configuration files:
+- `vitest.client-common.config.ts` - Tests for the common client package
+- `vitest.client-node.config.ts` - Tests for the Node.js client package
+- `vitest.client-web.config.ts` - Tests for the Web client package
+
+Each config supports multiple test modes controlled by the `TEST_MODE` environment variable, allowing different test scenarios (unit, integration, TLS, etc.) to be run with a single configuration file.
+
 ### Type checking and linting
 
 Both checks can be run manually:
@@ -68,7 +75,11 @@ However, usually, it is enough to rely on Husky Git hooks.
 Does not require a running ClickHouse server.
 
 ```bash
-npm run test:unit
+# Run common unit tests
+npm run test:common:unit
+
+# Run Node.js unit tests
+npm run test:node:unit
 ```
 
 ### Running integration tests
@@ -108,7 +119,7 @@ npm run test:node:integration
 Run the tests (Web):
 
 ```bash
-npm run test:web:integration
+npm run test:web
 ```
 
 #### Running TLS integration tests

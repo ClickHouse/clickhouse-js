@@ -80,7 +80,7 @@ jobs:
         run: |
           npm run lint
 
-  common-unit-tests:
+  common-unit-tests-node:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -100,7 +100,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          npm run test:common:unit
+          npm run test:common:unit:node
 
   common-unit-tests-web:
     runs-on: ubuntu-latest
@@ -360,7 +360,7 @@ jobs:
     needs:
       [
         'code-quality',
-        'common-unit-tests',
+        'common-unit-tests-node',
         'common-unit-tests-web',
         'node-unit-tests',
         'node-integration-tests-local-single-node',
