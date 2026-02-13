@@ -49,6 +49,7 @@ export default defineConfig(
   // Ignore build artifacts and externals
   {
     ignores: [
+      './__tests__/**/*.ts',
       'eslint.config.mjs',
       'vitest.*.config.ts',
       'vitest.*.setup.ts',
