@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es2020",
+    "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "declaration": true,
@@ -17,11 +17,8 @@
     "skipLibCheck": false,
     "esModuleInterop": true,
     "importHelpers": false,
-    "outDir": "out",
-    "lib": ["esnext", "dom"],
     "types": ["node"],
     "baseUrl": "./"
   },
-  "exclude": ["node_modules"],
-  "include": ["./packages/**/src/**/*.ts"]
+  "exclude": ["node_modules"]
 }
