@@ -98,7 +98,7 @@ const jwtConfig = defineConfig({
       reporter: ['lcov', 'text'],
       include: [
         'packages/client-common/src/**/*.ts',
-        'packages/client-node/src/**/*.ts',
+        'packages/client-web/src/**/*.ts',
       ],
       exclude: [
         'packages/**/version.ts',
