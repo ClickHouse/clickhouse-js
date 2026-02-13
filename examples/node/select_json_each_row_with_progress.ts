@@ -1,9 +1,6 @@
 import { createClient, type ResultSet } from '@clickhouse/client'
 import { isProgressRow, parseError } from '@clickhouse/client-common'
-import {
-  isException,
-  isRow,
-} from '@clickhouse/client-common/src/clickhouse_types'
+import { isException, isRow } from '@clickhouse/client-common'
 
 /** A few use cases of the `JSONEachRowWithProgress` format with ClickHouse and the Node.js/TypeScript client.
  *  Here, the ResultSet infers the final row type as `{ row: T } | ProgressRow | SpecialEventRow<T>`. */
