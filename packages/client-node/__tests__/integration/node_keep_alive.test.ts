@@ -7,12 +7,7 @@ import type { ClickHouseClient } from '../../src'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { createNodeTestClient } from '../utils/node_client'
 
-/**
- * FIXME: Works fine during the local runs, but it is flaky on GHA,
- *  maybe because of Jasmine test runner vs Jest and tests isolation
- *  To be revisited in https://github.com/ClickHouse/clickhouse-js/issues/177
- */
-describe.skip('[Node.js] Keep Alive', () => {
+describe('[Node.js] Keep Alive', () => {
   let client: ClickHouseClient
   const socketTTL = 2500 // seems to be a sweet spot for testing Keep-Alive socket hangups with 3s in config.xml
   afterEach(async () => {

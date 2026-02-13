@@ -17,7 +17,6 @@ export default defineConfig({
     // Cover the Cloud instance wake-up time
     testTimeout: 300_000,
     slowTestThreshold: 10_000,
-    globals: true,
     setupFiles: ['vitest.web.setup.ts'],
     // include: ['unit/*.test.ts', 'utils/*.test.ts'],
     include: [
@@ -34,6 +33,19 @@ export default defineConfig({
     },
     coverage: {
       provider: 'istanbul',
+      reporter: ['lcov', 'text'],
+      include: [
+        'packages/client-common/src/**/*.ts',
+        'packages/client-web/src/**/*.ts',
+      ],
+      exclude: [
+        'packages/**/version.ts',
+        'packages/client-common/src/clickhouse_types.ts',
+        'packages/client-common/src/connection.ts',
+        'packages/client-common/src/result.ts',
+        'packages/client-common/src/ts_utils.ts',
+        'packages/client-common/__tests__/utils/*.ts',
+      ],
     },
     env: {
       CLICKHOUSE_CLOUD_HOST: process.env.CLICKHOUSE_CLOUD_HOST,

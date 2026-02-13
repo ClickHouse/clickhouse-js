@@ -58,13 +58,7 @@ everyone in the community can safely benefit from your contribution.
 
 ### Tooling
 
-We use [Jasmine](https://jasmine.github.io/index.html) as a test runner,
-as it is compatible with both Node.js and Web (Karma) clients tests.
-
-Karma is to be replaced, see [#183](https://github.com/ClickHouse/clickhouse-js/issues/183),
-which might allow us to use different test framework.
-
-The test suite is being migrated to Vitest ([PoC](https://github.com/ClickHouse/clickhouse-js/pull/496)).
+We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports both Node.js, Web environments and edge runtimes.
 
 ### Type checking and linting
 
@@ -119,7 +113,7 @@ Run the tests (Node.js):
 npm run test:node:integration
 ```
 
-Run the tests (Web, Karma):
+Run the tests (Web):
 
 ```bash
 npm run test:web:integration
@@ -157,7 +151,7 @@ Run the tests (Node.js):
 npm run test:node:integration:local_cluster
 ```
 
-Run the tests (Web, Karma):
+Run the tests (Web):
 
 ```bash
 npm run test:web:integration:local_cluster
@@ -183,7 +177,7 @@ Node.js:
 npm run test:node:integration:cloud
 ```
 
-Web + Karma:
+Web:
 
 ```bash
 npm run test:web:integration:cloud
@@ -206,8 +200,7 @@ Typecheck + Lint + Node.js client unit tests
 
 ## Test Coverage
 
-Prior to switching from Jest to Jasmine with multiple workspaces and client flavours,
-the reported test coverage was above 90%. We generally aim towards that threshold, if it deems reasonable.
+The average reported test coverage is above 90%. We generally aim towards this threshold, if it deems reasonable.
 
 Currently, automatic coverage reports are disabled.
 See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177), as it should be restored in the scope of that issue.

@@ -5,7 +5,7 @@ import type {
 } from '@clickhouse/client-common'
 import { randomUUID } from '@test/utils/guid'
 import { createTableWithFields } from '../fixtures/table_with_fields'
-import { createTestClient, getRandomInt, TestEnv, whenOnEnv } from '../utils'
+import { createTestClient, getRandomInt, TestEnv, isOnEnv } from '../utils'
 
 describe('data types', () => {
   let client: ClickHouseClient
@@ -566,7 +566,7 @@ describe('data types', () => {
 
   // New experimental JSON type
   // https://clickhouse.com/docs/en/sql-reference/data-types/newjson
-  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
+  it.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
     'should work with (new) JSON',
     async () => {
       const values = [
@@ -588,7 +588,7 @@ describe('data types', () => {
 
   // New experimental Variant type
   // https://clickhouse.com/docs/en/sql-reference/data-types/variant
-  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
+  it.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
     'should work with Variant',
     async () => {
       const values = [{ var: 'foo' }, { var: 42 }]
@@ -605,7 +605,7 @@ describe('data types', () => {
 
   // New experimental Dynamic type
   // https://clickhouse.com/docs/en/sql-reference/data-types/dynamic
-  whenOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster).it(
+  it.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
     'should work with Dynamic',
     async () => {
       const values = [{ dyn: 'foo' }, { dyn: { bar: 'qux' } }]

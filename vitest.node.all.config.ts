@@ -8,7 +8,6 @@ export default defineConfig({
     // Cover the Cloud instance wake-up time
     testTimeout: 300_000,
     slowTestThreshold: 10_000,
-    globals: true,
     include: [
       'packages/client-common/__tests__/unit/*.test.ts',
       'packages/client-common/__tests__/utils/*.test.ts',

@@ -1,4 +1,5 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
+import { beforeAll } from 'vitest'
 import type {
   BaseClickHouseClientConfigOptions,
   ClickHouseClient,
@@ -15,10 +16,6 @@ import {
   TestEnv,
 } from './test_env'
 import { TestLogger } from './test_logger'
-
-if (typeof jasmine !== 'undefined') {
-  jasmine.DEFAULT_TIMEOUT_INTERVAL = 400_000
-}
 
 let databaseName: string
 beforeAll(async () => {

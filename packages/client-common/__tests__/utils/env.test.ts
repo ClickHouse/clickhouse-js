@@ -2,13 +2,9 @@ import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest'
 import {
   getTestConnectionType,
   TestConnectionType,
-} from '../../../client-common/__tests__/utils/test_connection_type'
-import {
-  getClickHouseTestEnvironment,
-  TestEnv,
-} from '../../../client-common/__tests__/utils/test_env'
+} from './test_connection_type'
+import { getClickHouseTestEnvironment, TestEnv } from './test_env'
 
-/** Ideally, should've been in common, but it does not work with Karma well */
 describe('Test env variables parsing', () => {
   describe('CLICKHOUSE_TEST_ENVIRONMENT', () => {
     const key = 'CLICKHOUSE_TEST_ENVIRONMENT'

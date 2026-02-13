@@ -8,7 +8,6 @@ export default defineConfig({
     // Cover the Cloud instance wake-up time
     testTimeout: 300_000,
     slowTestThreshold: 10_000,
-    globals: true,
     include: ['packages/client-node/__tests__/tls/*.test.ts'],
     setupFiles: ['vitest.node.setup.ts'],
     coverage: {
