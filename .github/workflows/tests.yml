@@ -414,6 +414,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
+          npx playwright install chromium
 
       - name: Add ClickHouse TLS instance to /etc/hosts
         run: |
