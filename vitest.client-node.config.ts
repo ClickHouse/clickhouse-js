@@ -1,15 +1,15 @@
 import { defineConfig } from 'vitest/config'
 
-const testMode = process.env.TEST_MODE ?? 'unit'
-
+const testMode = process.env.TEST_MODE
 if (
   testMode !== 'unit' &&
   testMode !== 'integration' &&
   testMode !== 'tls' &&
-  testMode !== 'all'
+  testMode !== 'common' &&
+  testMode !== 'common-integration'
 ) {
   throw new Error(
-    `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, tls, all.`,
+    `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, tls, common, common-integration.`,
   )
 }
 
@@ -23,14 +23,12 @@ const collections = {
     'packages/client-common/__tests__/integration/*.test.ts',
   ],
   tls: ['packages/client-node/__tests__/tls/*.test.ts'],
-  all: [
+  common: [
     'packages/client-common/__tests__/unit/*.test.ts',
     'packages/client-common/__tests__/utils/*.test.ts',
+  ],
+  'common-integration': [
     'packages/client-common/__tests__/integration/*.test.ts',
-    'packages/client-node/__tests__/tls/*.test.ts',
-    'packages/client-node/__tests__/unit/*.test.ts',
-    'packages/client-node/__tests__/utils/*.test.ts',
-    'packages/client-node/__tests__/integration/*.test.ts',
   ],
 }
 

@@ -9,9 +9,14 @@ if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
   )
 }
 
-const testMode = process.env.TEST_MODE ?? 'all'
-
-if (testMode !== 'unit' && testMode !== 'integration' && testMode !== 'jwt') {
+const testMode = process.env.TEST_MODE
+if (
+  testMode !== 'unit' &&
+  testMode !== 'integration' &&
+  testMode !== 'jwt' &&
+  testMode !== 'common' &&
+  testMode !== 'common-integration'
+) {
   throw new Error(
     `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, jwt, all.`,
   )
@@ -28,6 +33,13 @@ const collections = {
     'packages/client-web/__tests__/integration/*.test.ts',
   ],
   jwt: ['packages/client-web/__tests__/jwt/*.test.ts'],
+  common: [
+    'packages/client-common/__tests__/unit/*.test.ts',
+    'packages/client-common/__tests__/utils/*.test.ts',
+  ],
+  'common-integration': [
+    'packages/client-common/__tests__/integration/*.test.ts',
+  ],
 }
 
 // Configuration for all tests (unit + integration)
