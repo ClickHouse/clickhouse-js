@@ -22,6 +22,12 @@ export default defineConfig({
         'packages/client-common/src/ts_utils.ts',
       ],
     },
+    experimental: {
+      openTelemetry: {
+        enabled: process.env.VITEST_OTEL_ENABLED === 'true',
+        sdkPath: './vitest.node.otel.js',
+      },
+    },
   },
   resolve: {
     alias: {

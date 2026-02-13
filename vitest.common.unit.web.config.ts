@@ -25,6 +25,12 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
     },
+    experimental: {
+      openTelemetry: {
+        enabled: process.env.VITEST_OTEL_ENABLED === 'true',
+        sdkPath: './vitest.node.otel.js',
+      },
+    },
   },
   resolve: {
     // Use the unittest entry point to get the source files instead of built files
