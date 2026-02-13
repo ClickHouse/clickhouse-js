@@ -19,7 +19,7 @@
   "scripts": {
     "build:node:all": "rm -rf out; tsc --project tsconfig.all.json",
     "build:web:minjs": "webpack --config webpack.release.js",
-    "typecheck": "tsc --project tsconfig.all.json --noEmit",
+    "typecheck": "npm --workspaces run typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "prettify": "prettier --write .",

@@ -24,6 +24,7 @@
   },
   "scripts": {
     "prepack": "cp ../../README.md ../../LICENSE .",
+    "typecheck": "tsc --noEmit",
     "build": "rm -rf dist; tsc"
   },
   "dependencies": {
