@@ -16,9 +16,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": false,
     "esModuleInterop": true,
-    "importHelpers": false,
-    "types": ["node"],
-    "baseUrl": "./"
+    "importHelpers": false
   },
   "exclude": ["node_modules"]
 }
