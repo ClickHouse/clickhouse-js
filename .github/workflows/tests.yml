@@ -36,11 +36,6 @@ jobs:
         run: |
           npm ci
 
-      - name: Install dependencies (examples)
-        working-directory: examples
-        run: |
-          npm ci
-
       - name: Typecheck
         run: |
           npm run typecheck
@@ -63,11 +58,6 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        run: |
-          npm ci
-
-      - name: Install dependencies (examples)
-        working-directory: examples
         run: |
           npm ci
 
