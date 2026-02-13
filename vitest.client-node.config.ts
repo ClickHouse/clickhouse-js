@@ -3,19 +3,16 @@ import { defineConfig } from 'vitest/config'
 const testMode = process.env.TEST_MODE ?? 'unit'
 
 // Base configuration for all client-node tests
-const baseConfig = {
-  resolve: {
-    alias: {
-      '@clickhouse/client-common': 'packages/client-common/src',
-      '@clickhouse/client-node': 'packages/client-node/src',
-      '@test': 'packages/client-common/__tests__',
-    },
+const baseResolve = {
+  alias: {
+    '@clickhouse/client-common': 'packages/client-common/src',
+    '@clickhouse/client-node': 'packages/client-node/src',
+    '@test': 'packages/client-common/__tests__',
   },
 }
 
 // Configuration for unit tests
 const unitConfig = defineConfig({
-  ...baseConfig,
   test: {
     include: [
       'packages/client-node/__tests__/unit/*.test.ts',
@@ -44,11 +41,11 @@ const unitConfig = defineConfig({
       },
     },
   },
+  resolve: baseResolve,
 })
 
 // Configuration for integration tests
 const integrationConfig = defineConfig({
-  ...baseConfig,
   test: {
     // Increase maxWorkers to speed up integration tests
     // as we're not bound by the CPU here.
@@ -71,11 +68,11 @@ const integrationConfig = defineConfig({
       },
     },
   },
+  resolve: baseResolve,
 })
 
 // Configuration for TLS tests
 const tlsConfig = defineConfig({
-  ...baseConfig,
   test: {
     // Increase maxWorkers to speed up integration tests
     // as we're not bound by the CPU here.
@@ -95,11 +92,11 @@ const tlsConfig = defineConfig({
       },
     },
   },
+  resolve: baseResolve,
 })
 
 // Configuration for all tests (unit + integration + TLS)
 const allConfig = defineConfig({
-  ...baseConfig,
   test: {
     // Increase maxWorkers to speed up integration tests
     // as we're not bound by the CPU here.
@@ -133,6 +130,7 @@ const allConfig = defineConfig({
       ],
     },
   },
+  resolve: baseResolve,
 })
 
 // Export the appropriate config based on TEST_MODE
