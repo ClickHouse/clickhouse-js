@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import { defineConfig } from 'eslint/config'
 import tseslint from 'typescript-eslint'
+import { typescriptEslintConfig } from '../eslint.config.base.mjs'
 
 export default defineConfig(
   // Base ESLint recommended rules
@@ -9,6 +10,12 @@ export default defineConfig(
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
   typescriptEslintConfig(import.meta.dirname),
+  {
+    files: ['**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
   // Ignore build artifacts and externals
   {
     ignores: [
