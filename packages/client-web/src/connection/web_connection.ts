@@ -208,7 +208,10 @@ export class WebConnection implements Connection<ReadableStream> {
         signal: abortController.signal,
       })
       clearTimeout(timeout)
-      if (isSuccessfulResponse(response.status, response.headers)) {
+      if (
+        isSuccessfulResponse(response.status) &&
+        !response.headers.has('x-clickhouse-exception-code')
+      ) {
         return response
       } else {
         return Promise.reject(

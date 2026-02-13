@@ -33,16 +33,8 @@ export function withHttpSettings(
   }
 }
 
-export function isSuccessfulResponse(
-  statusCode?: number,
-  headers: any = {},
-): boolean {
-  return Boolean(
-    statusCode &&
-    200 <= statusCode &&
-    statusCode < 300 &&
-    !headers['x-clickhouse-exception-code'],
-  )
+export function isSuccessfulResponse(statusCode?: number): boolean {
+  return Boolean(statusCode && 200 <= statusCode && statusCode < 300)
 }
 
 export function isJWTAuth(auth: unknown): auth is { access_token: string } {
