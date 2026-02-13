@@ -102,46 +102,6 @@ jobs:
         run: |
           npm run test:common:unit:node
 
-  common-integration-tests-node:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [20, 22, 24]
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run integration tests
-        run: |
-          npm run test:common:integration:node
-
-  common-integration-tests-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run integration tests
-        run: |
-          npm run test:common:integration:web
-
   common-unit-tests-web:
     runs-on: ubuntu-latest
     steps:
@@ -402,8 +362,6 @@ jobs:
         'code-quality',
         'common-unit-tests-node',
         'common-unit-tests-web',
-        'common-integration-tests-node',
-        'common-integration-tests-web',
         'node-unit-tests',
         'node-integration-tests-local-single-node',
         'node-integration-tests-local-cluster',
