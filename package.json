@@ -17,11 +17,10 @@
     "node": ">=20"
   },
   "scripts": {
-    "build:node:all": "rm -rf out; tsc --project tsconfig.all.json",
-    "build:web:minjs": "webpack --config webpack.release.js",
-    "typecheck": "tsc --project tsconfig.all.json --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint --fix .",
+    "typecheck": "npm --workspaces run typecheck",
+    "lint": "npm --workspaces run lint",
+    "lint:fix": "npm --workspaces run lint:fix",
+    "build": "npm run --workspaces build",
     "prettify": "prettier --write .",
     "test": "echo -e \"Please specify a test script to run. See \\033[1mnpm run\\033[0m for reference.\" && exit 1",
     "test:common:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 vitest -c vitest.common.unit.config.ts",
