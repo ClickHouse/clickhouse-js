@@ -21,9 +21,14 @@
     "@types/node": "^25.2.3",
     "@types/split2": "^4.2.3",
     "avsc": "^5.7.7",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-expect-type": "^0.6.2",
+    "eslint-plugin-prettier": "^5.5.4",
     "set-interval-async": "^3.0.3",
     "split2": "^4.2.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4"
   }
 }
