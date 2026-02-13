@@ -23,17 +23,17 @@ export default defineConfig(
   // Project-wide rules and plugins
   {
     plugins: {
-      // prettier: pluginPrettier,
+      prettier: pluginPrettier,
       'expect-type': pluginExpectType,
     },
     rules: {
-      // 'prettier/prettier': 'error',
+      'prettier/prettier': 'error',
       // '@typescript-eslint/no-floating-promises': 'error',
-      // eqeqeq: 'error',
-      // 'no-console': 'error',
-      // // Keep some rules relaxed until addressed in dedicated PRs
+      eqeqeq: 'error',
+      'no-console': 'error',
+      // Keep some rules relaxed until addressed in dedicated PRs
       '@typescript-eslint/no-explicit-any': 'off',
-      // '@typescript-eslint/consistent-type-imports': 'warn',
+      '@typescript-eslint/consistent-type-imports': 'warn',
       '@typescript-eslint/array-type': 'off',
     },
   },

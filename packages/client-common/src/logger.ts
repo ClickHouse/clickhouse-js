@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 export interface LogParams {
   module: string
   message: string
