@@ -12,23 +12,21 @@ export default defineConfig(
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
   // Enable type-aware linting for TypeScript files only
+  // Project-wide rules and plugins
   {
     files: ['**/*.ts'],
     languageOptions: {
       parserOptions: {
-        // todo
+        projectService: true,
       },
     },
-  },
-  // Project-wide rules and plugins
-  {
     plugins: {
       prettier: pluginPrettier,
       'expect-type': pluginExpectType,
     },
     rules: {
       'prettier/prettier': 'error',
-      // '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
       eqeqeq: 'error',
       'no-console': 'error',
       // Keep some rules relaxed until addressed in dedicated PRs
