@@ -15,7 +15,8 @@ if (
   testMode !== 'integration' &&
   testMode !== 'jwt' &&
   testMode !== 'common' &&
-  testMode !== 'common-integration'
+  testMode !== 'common-integration' &&
+  testMode !== 'all'
 ) {
   throw new Error(
     `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, jwt, all.`,
@@ -39,6 +40,14 @@ const collections = {
   ],
   'common-integration': [
     'packages/client-common/__tests__/integration/*.test.ts',
+  ],
+  all: [
+    'packages/client-common/__tests__/unit/*.test.ts',
+    'packages/client-common/__tests__/utils/*.test.ts',
+    'packages/client-common/__tests__/integration/*.test.ts',
+    'packages/client-web/__tests__/unit/*.test.ts',
+    'packages/client-web/__tests__/integration/*.test.ts',
+    'packages/client-web/__tests__/jwt/*.test.ts',
   ],
 }
 
