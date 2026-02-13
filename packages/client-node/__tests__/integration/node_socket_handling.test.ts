@@ -16,9 +16,9 @@ const MaxOpenConnections = 2
 
 describe('Node.js socket handling', () => {
   let client: ClickHouseClient<Stream.Readable>
-  let server: http.Server
 
   describe('Slow server', () => {
+    let server: http.Server
     const port = 18123
     beforeAll(async () => {
       // Simulate a ClickHouse server that does not respond to the request in time
@@ -116,6 +116,7 @@ describe('Node.js socket handling', () => {
   })
 
   describe('Server that never responds', () => {
+    let server: http.Server
     const port = 18124
     let timeoutId: ReturnType<typeof setTimeout>
     let requestCount = 0
@@ -166,6 +167,7 @@ describe('Node.js socket handling', () => {
   })
 
   describe('Resource is not available', () => {
+    let server: http.Server
     const port = 18125
     beforeAll(async () => {
       // Client has request timeout set to lower than the server's "sleep" time
