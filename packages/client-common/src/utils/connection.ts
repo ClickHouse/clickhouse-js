@@ -39,9 +39,9 @@ export function isSuccessfulResponse(
 ): boolean {
   return Boolean(
     statusCode &&
-      200 <= statusCode &&
-      statusCode < 300 &&
-      !headers['x-clickhouse-exception-code'],
+    200 <= statusCode &&
+    statusCode < 300 &&
+    !headers['x-clickhouse-exception-code'],
   )
 }
 
