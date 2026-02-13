@@ -51,6 +51,7 @@ const integrationConfig = defineConfig({
     // as we're not bound by the CPU here.
     maxWorkers: '400%',
     // Cover the Cloud instance wake-up time
+    hookTimeout: 300_000,
     testTimeout: 300_000,
     slowTestThreshold: 10_000,
     include: [
@@ -78,6 +79,7 @@ const tlsConfig = defineConfig({
     // as we're not bound by the CPU here.
     maxWorkers: '400%',
     // Cover the Cloud instance wake-up time
+    hookTimeout: 300_000,
     testTimeout: 300_000,
     slowTestThreshold: 10_000,
     include: ['packages/client-node/__tests__/tls/*.test.ts'],
@@ -102,6 +104,7 @@ const allConfig = defineConfig({
     // as we're not bound by the CPU here.
     maxWorkers: '400%',
     // Cover the Cloud instance wake-up time
+    hookTimeout: 300_000,
     testTimeout: 300_000,
     slowTestThreshold: 10_000,
     include: [
