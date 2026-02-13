@@ -10,7 +10,10 @@
   "engines": {
     "node": ">=16"
   },
-  "scripts": {},
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
   "dependencies": {
     "@clickhouse/client": "latest"
   },
