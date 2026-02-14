@@ -126,8 +126,9 @@ jobs:
           npx playwright install ${{ matrix.browser }}
 
       - name: Run unit tests (${{ matrix.browser }})
+        env:
+          BROWSER: ${{ matrix.browser }}
         run: |
-          export BROWSER=${{ matrix.browser }}
           npm run test:common:unit:web -- --coverage
 
       - name: Export coverage metrics
@@ -194,6 +195,8 @@ jobs:
           npx playwright install ${{ matrix.browser }}
 
       - name: Run all web tests
+        env:
+          BROWSER: ${{ matrix.browser }}
         run: |
           npm run test:web -- --coverage
 
@@ -302,6 +305,8 @@ jobs:
           npx playwright install ${{ matrix.browser }}
 
       - name: Run all web tests
+        env:
+          BROWSER: ${{ matrix.browser }}
         run: |
           npm run test:web:integration:local_cluster -- --coverage
 
@@ -364,6 +369,7 @@ jobs:
           CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
           CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43_PROD }}
+          BROWSER: ${{ matrix.browser }}
         run: |
           npm run test:web:integration:cloud:jwt -- --coverage
 
