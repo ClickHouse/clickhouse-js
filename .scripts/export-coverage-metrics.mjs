@@ -137,6 +137,9 @@ async function exportCoverageMetrics() {
     [ATTR_SERVICE_VERSION]: process.env.GITHUB_SHA?.substring(0, 7),
     'ci.run.id': process.env.GITHUB_RUN_ID,
     'ci.job.name': process.env.GITHUB_JOB,
+    'ci.workflow': process.env.GITHUB_WORKFLOW,
+    'coverage.exporter': 'vitest-lcov',
+    'coverage.report.name': process.env.COVERAGE_REPORT_NAME || 'default',
   })
 
   const metricExporter = new OTLPMetricExporter()

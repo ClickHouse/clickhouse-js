@@ -104,6 +104,8 @@ jobs:
           npm run test:common:unit:node
 
       - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -133,6 +135,8 @@ jobs:
           npm run test:common:unit:web
 
       - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -164,6 +168,8 @@ jobs:
           npm run test:node:unit
 
       - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -172,8 +178,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clickhouse: [head, latest]
         browser: [chromium, firefox] # We're not testing in WebKit atm
+        clickhouse: [head, latest]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -202,6 +208,8 @@ jobs:
           npm run test:web
 
       - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }}, ${{ matrix.clickhouse }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -242,6 +250,8 @@ jobs:
           npm run test:node:integration:tls
 
       - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -277,13 +287,19 @@ jobs:
         run: |
           npm run test:node:integration:local_cluster
 
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
+        run: |
+          node .scripts/export-coverage-metrics.mjs
+
   web-integration-tests-local-cluster:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        clickhouse: [head, latest]
         browser: [chromium, firefox] # We're not testing in WebKit atm
+        clickhouse: [head, latest]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -312,6 +328,8 @@ jobs:
           npm run test:web:integration:local_cluster
 
       - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }}, ${{ matrix.clickhouse }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -343,6 +361,8 @@ jobs:
           npm run test:node:integration:cloud
 
       - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -375,6 +395,8 @@ jobs:
           npm run test:web:integration:cloud:jwt
 
       - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
