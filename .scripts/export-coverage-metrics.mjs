@@ -5,7 +5,7 @@
  * Usage: node export-coverage-metrics.js [coverage-file]
  *
  * Run locally:
- *   GITHUB_SHA=abc123 GITHUB_RUN_ID=12345 GITHUB_JOB_NAME=test node export-coverage-metrics.js
+ *   GITHUB_SHA=abcd123 GITHUB_RUN_ID=12345 GITHUB_JOB_NAME=local-test node export-coverage-metrics.js
  *
  * Reads lcov.info format and exports metrics for:
  * - Line coverage percentage per file
@@ -134,10 +134,9 @@ async function exportCoverageMetrics() {
   // Setup OpenTelemetry
   const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: 'test-coverage',
-    [ATTR_SERVICE_VERSION]:
-      process.env.GITHUB_SHA?.substring(0, 7) || 'unknown',
-    'ci.run.id': process.env.GITHUB_RUN_ID || 'local',
-    'ci.job.name': process.env.GITHUB_JOB_NAME || 'coverage-export',
+    [ATTR_SERVICE_VERSION]: process.env.GITHUB_SHA?.substring(0, 7),
+    'ci.run.id': process.env.GITHUB_RUN_ID,
+    'ci.job.name': process.env.GITHUB_JOB_NAME,
   })
 
   const metricExporter = new OTLPMetricExporter()
