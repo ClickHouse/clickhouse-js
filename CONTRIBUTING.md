@@ -53,6 +53,7 @@ everyone in the community can safely benefit from your contribution.
 We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports both Node.js, Web environments and edge runtimes.
 
 The repository uses three consolidated Vitest configuration files:
+
 - `vitest.client-common.config.ts` - Tests for the common client package
 - `vitest.client-node.config.ts` - Tests for the Node.js client package
 - `vitest.client-web.config.ts` - Tests for the Web client package
@@ -135,7 +136,7 @@ docker-compose up -d
 and then run the tests (Node.js only):
 
 ```bash
-npm run test:node:tls
+npm run test:node:integration:tls
 ```
 
 #### Local two nodes cluster integration tests

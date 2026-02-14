@@ -33,7 +33,13 @@ const collections = {
     'packages/client-common/__tests__/integration/*.test.ts',
     'packages/client-web/__tests__/integration/*.test.ts',
   ],
-  jwt: ['packages/client-web/__tests__/jwt/*.test.ts'],
+  // JWT tests require a specific environment setup (a valid access token)
+  // This list is integration + JWT tests
+  jwt: [
+    'packages/client-common/__tests__/integration/*.test.ts',
+    'packages/client-web/__tests__/integration/*.test.ts',
+    'packages/client-web/__tests__/jwt/*.test.ts',
+  ],
   common: [
     'packages/client-common/__tests__/unit/*.test.ts',
     'packages/client-common/__tests__/utils/*.test.ts',

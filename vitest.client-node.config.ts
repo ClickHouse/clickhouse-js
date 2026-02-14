@@ -23,7 +23,13 @@ const collections = {
     'packages/client-node/__tests__/integration/*.test.ts',
     'packages/client-common/__tests__/integration/*.test.ts',
   ],
-  tls: ['packages/client-node/__tests__/tls/*.test.ts'],
+  // TLS tests require a specific environment setup
+  // This list is integration + TLS tests
+  tls: [
+    'packages/client-node/__tests__/integration/*.test.ts',
+    'packages/client-common/__tests__/integration/*.test.ts',
+    'packages/client-node/__tests__/tls/*.test.ts',
+  ],
   common: [
     'packages/client-common/__tests__/unit/*.test.ts',
     'packages/client-common/__tests__/utils/*.test.ts',

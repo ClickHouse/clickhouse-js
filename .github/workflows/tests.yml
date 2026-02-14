@@ -100,10 +100,18 @@ jobs:
 
       - name: Run unit tests
         run: |
-          npm run test:common:unit:node
+          npm run test:common:unit:node -- --coverage
+
+      - name: Export coverage metrics
+        run: |
+          node .scripts/export-coverage-metrics.mjs
 
   common-unit-tests-web:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox] # We're not testing in WebKit atm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -115,19 +123,16 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          npx playwright install chromium
-          npx playwright install firefox
-          # We're not testing in WebKit atm
+          npx playwright install ${{ matrix.browser }}
 
-      - name: Run unit tests (Chromium)
+      - name: Run unit tests (${{ matrix.browser }})
         run: |
-          export BROWSER=chromium
-          npm run test:common:unit:web
+          export BROWSER=${{ matrix.browser }}
+          npm run test:common:unit:web -- --coverage
 
-      - name: Run unit tests (Firefox)
+      - name: Export coverage metrics
         run: |
-          export BROWSER=firefox
-          npm run test:common:unit:web
+          node .scripts/export-coverage-metrics.mjs
 
   node-unit-tests:
     runs-on: ubuntu-latest
@@ -154,7 +159,11 @@ jobs:
 
       - name: Run unit tests
         run: |
-          npm run test:node:unit
+          npm run test:node:unit -- --coverage
+
+      - name: Export coverage metrics
+        run: |
+          node .scripts/export-coverage-metrics.mjs
 
   web-all-tests-local-single-node:
     runs-on: ubuntu-latest
@@ -162,6 +171,7 @@ jobs:
       fail-fast: false
       matrix:
         clickhouse: [head, latest]
+        browser: [chromium, firefox] # We're not testing in WebKit atm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -181,13 +191,15 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          npx playwright install chromium
-          npx playwright install firefox
-          # We're not testing in WebKit atm
+          npx playwright install ${{ matrix.browser }}
 
       - name: Run all web tests
         run: |
-          npm run test:web
+          npm run test:web -- --coverage
+
+      - name: Export coverage metrics
+        run: |
+          node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-local-single-node:
     runs-on: ubuntu-latest
@@ -221,13 +233,13 @@ jobs:
         run: |
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
-      - name: Run integration tests
+      - name: Run integration tests with TLS tests
         run: |
-          npm run test:node:integration
+          npm run test:node:integration:tls -- --coverage
 
-      - name: Run TLS tests
+      - name: Export coverage metrics
         run: |
-          npm run test:node:tls
+          node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-local-cluster:
     runs-on: ubuntu-latest
@@ -267,6 +279,7 @@ jobs:
       fail-fast: false
       matrix:
         clickhouse: [head, latest]
+        browser: [chromium, firefox] # We're not testing in WebKit atm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -286,13 +299,15 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          npx playwright install chromium
-          npx playwright install firefox
-          # We're not testing in WebKit atm
+          npx playwright install ${{ matrix.browser }}
 
       - name: Run all web tests
         run: |
-          npm run test:web:integration:local_cluster
+          npm run test:web:integration:local_cluster -- --coverage
+
+      - name: Export coverage metrics
+        run: |
+          node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-cloud:
     runs-on: ubuntu-latest
@@ -319,10 +334,18 @@ jobs:
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
           CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43_PROD }}
         run: |
-          npm run test:node:integration:cloud
+          npm run test:node:integration:cloud -- --coverage
+
+      - name: Export coverage metrics
+        run: |
+          node .scripts/export-coverage-metrics.mjs
 
   web-integration-tests-cloud:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox] # We're not testing in WebKit atm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -334,24 +357,19 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          npx playwright install chromium
-          npx playwright install firefox
-          # We're not testing in WebKit atm
+          npx playwright install ${{ matrix.browser }}
 
-      - name: Run integration tests
-        env:
-          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}
-          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
-        run: |
-          npm run test:web:integration:cloud
-
-      - name: Run JWT auth integration tests
+      - name: Run integration tests and JWT auth
         env:
           CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
           CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43_PROD }}
         run: |
-          npm run test:web:integration:cloud:jwt
+          npm run test:web:integration:cloud:jwt -- --coverage
+
+      - name: Export coverage metrics
+        run: |
+          node .scripts/export-coverage-metrics.mjs
 
   # It should only use the current LTS version of Node.js.
   node-codecov-upload:

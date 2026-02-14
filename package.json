@@ -28,7 +28,7 @@
     "test:common:integration:node": "TEST_MODE=common-integration vitest -c vitest.client-node.config.ts",
     "test:common:integration:web": "TEST_MODE=common-integration vitest -c vitest.client-web.config.ts",
     "test:node:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=unit vitest -c vitest.client-node.config.ts",
-    "test:node:tls": "TEST_MODE=tls vitest -c vitest.client-node.config.ts",
+    "test:node:integration:tls": "TEST_MODE=tls vitest -c vitest.client-node.config.ts",
     "test:node:integration": "TEST_MODE=integration vitest -c vitest.client-node.config.ts",
     "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster npm run test:node:integration",
     "test:node:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud npm run test:node:integration",
