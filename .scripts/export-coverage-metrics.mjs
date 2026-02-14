@@ -133,7 +133,7 @@ async function exportCoverageMetrics() {
 
   // Setup OpenTelemetry
   const resource = resourceFromAttributes({
-    [ATTR_SERVICE_NAME]: 'clickhouse-js-coverage',
+    [ATTR_SERVICE_NAME]: 'test-coverage',
     [ATTR_SERVICE_VERSION]:
       process.env.GITHUB_SHA?.substring(0, 7) || 'unknown',
     'ci.run.id': process.env.GITHUB_RUN_ID || 'local',
