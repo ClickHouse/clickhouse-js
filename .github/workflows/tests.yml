@@ -27,6 +27,7 @@ env:
   OTEL_EXPORTER_OTLP_HEADERS: 'authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}'
   OTEL_RESOURCE_ATTRIBUTES: 'service.namespace=clickhouse-js,deployment.environment=ci'
   VITEST_OTEL_ENABLED: 'true'
+  VITEST_COVERAGE: 'true'
 
 jobs:
   code-quality:
@@ -100,7 +101,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          npm run test:common:unit:node -- --coverage
+          npm run test:common:unit:node
 
       - name: Export coverage metrics
         run: |
@@ -129,7 +130,7 @@ jobs:
         env:
           BROWSER: ${{ matrix.browser }}
         run: |
-          npm run test:common:unit:web -- --coverage
+          npm run test:common:unit:web
 
       - name: Export coverage metrics
         run: |
@@ -160,7 +161,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          npm run test:node:unit -- --coverage
+          npm run test:node:unit
 
       - name: Export coverage metrics
         run: |
@@ -198,7 +199,7 @@ jobs:
         env:
           BROWSER: ${{ matrix.browser }}
         run: |
-          npm run test:web -- --coverage
+          npm run test:web
 
       - name: Export coverage metrics
         run: |
@@ -238,7 +239,7 @@ jobs:
 
       - name: Run integration tests with TLS tests
         run: |
-          npm run test:node:integration:tls -- --coverage
+          npm run test:node:integration:tls
 
       - name: Export coverage metrics
         run: |
@@ -308,7 +309,7 @@ jobs:
         env:
           BROWSER: ${{ matrix.browser }}
         run: |
-          npm run test:web:integration:local_cluster -- --coverage
+          npm run test:web:integration:local_cluster
 
       - name: Export coverage metrics
         run: |
@@ -339,7 +340,7 @@ jobs:
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
           CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43_PROD }}
         run: |
-          npm run test:node:integration:cloud -- --coverage
+          npm run test:node:integration:cloud
 
       - name: Export coverage metrics
         run: |
@@ -371,7 +372,7 @@ jobs:
           CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43_PROD }}
           BROWSER: ${{ matrix.browser }}
         run: |
-          npm run test:web:integration:cloud:jwt -- --coverage
+          npm run test:web:integration:cloud:jwt
 
       - name: Export coverage metrics
         run: |

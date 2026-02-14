@@ -60,6 +60,7 @@ export default defineConfig({
     include: collections[testMode],
     setupFiles: ['vitest.node.setup.ts'],
     coverage: {
+      enabled: process.env.VITEST_COVERAGE === 'true',
       provider: 'istanbul',
       reporter: ['lcov', 'text'],
       include: [

@@ -74,6 +74,7 @@ export default defineConfig({
       instances: [{ browser }],
     },
     coverage: {
+      enabled: process.env.VITEST_COVERAGE === 'true',
       provider: 'istanbul',
       reporter: ['lcov', 'text'],
       include: [
