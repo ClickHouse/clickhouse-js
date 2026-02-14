@@ -136,7 +136,7 @@ async function exportCoverageMetrics() {
     [ATTR_SERVICE_NAME]: 'test-coverage',
     [ATTR_SERVICE_VERSION]: process.env.GITHUB_SHA?.substring(0, 7),
     'ci.run.id': process.env.GITHUB_RUN_ID,
-    'ci.job.name': process.env.GITHUB_JOB_NAME,
+    'ci.job.name': process.env.GITHUB_JOB,
   })
 
   const metricExporter = new OTLPMetricExporter()
