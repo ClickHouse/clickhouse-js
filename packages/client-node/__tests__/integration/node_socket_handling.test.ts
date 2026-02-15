@@ -8,6 +8,7 @@ import { createTestClient } from '@test/utils/client'
 import * as http from 'http'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
+import { AddressInfo } from 'net'
 
 const SlowServerLag = 20 // ms
 const ClientTimeout = 10 // ms
@@ -19,15 +20,14 @@ describe('Node.js socket handling', () => {
 
   describe('Slow server', () => {
     let server: http.Server
-    const port = 18123
+    let port: number
     beforeAll(async () => {
       // Simulate a ClickHouse server that does not respond to the request in time
-      server = http.createServer(async (req, res) => {
-        await new Promise((resolve) => setTimeout(resolve, SlowServerLag))
+      ;[server, port] = await createServer(async (req, res) => {
+        await sleep(SlowServerLag)
         res.write('Ok.')
         return res.end()
       })
-      server.listen(port)
       // Client has request timeout set to lower than the server's "sleep" time
       client = createTestClient({
         url: `http://localhost:${port}`,
@@ -40,7 +40,7 @@ describe('Node.js socket handling', () => {
     })
     afterAll(async () => {
       await client.close()
-      server.close()
+      await closeServer(server)
     })
 
     // ping first, then 2 operations in all possible combinations - repeat every combination several times
@@ -55,7 +55,7 @@ describe('Node.js socket handling', () => {
       for (const ops of opsPermutations) {
         for await (const { fn, opName } of ops) {
           for (let i = 1; i <= Iterations; i++) {
-            const pingResult = await ping()
+            const pingResult = await client.ping()
             expect(pingResult.success).toBeFalsy()
             expect((pingResult as { error: Error }).error.message).toEqual(
               expect.stringContaining('Timeout error.'),
@@ -117,24 +117,21 @@ describe('Node.js socket handling', () => {
 
   describe('Server that never responds', () => {
     let server: http.Server
-    const port = 18124
-    let timeoutId: ReturnType<typeof setTimeout>
+    let port: number
     let requestCount = 0
 
     beforeAll(async () => {
       // Simulate an LB where the server is not available
-      server = http.createServer(async (req, res) => {
+      ;[server, port] = await createServer(async (req, res) => {
         requestCount++
         if (requestCount === Iterations) {
           res.write('Ok.')
           return res.end()
         } else {
-          await new Promise(
-            (resolve) => (timeoutId = setTimeout(resolve, 600_000)),
-          )
+          // don't respond
+          // just keep the connection open until the client times out
         }
       })
-      server.listen(port)
       // Client has request timeout set to lower than the server's "sleep" time
       client = createTestClient({
         url: `http://localhost:${port}`,
@@ -149,20 +146,19 @@ describe('Node.js socket handling', () => {
     })
     afterAll(async () => {
       await client.close()
-      clearTimeout(timeoutId)
-      server.close()
+      await closeServer(server)
     })
 
     it('should eventually get a successful ping', async () => {
       for (let i = 1; i < Iterations; i++) {
-        const pingResult = await ping()
+        const pingResult = await client.ping()
         expect(pingResult.success).toBeFalsy()
         expect(
           (pingResult as ConnPingResult & { success: false }).error.message,
         ).toEqual('Timeout error.')
       }
       // The last request should be successful
-      expect(await ping()).toEqual({ success: true })
+      expect(await client.ping()).toEqual({ success: true })
     })
   })
 
@@ -182,15 +178,13 @@ describe('Node.js socket handling', () => {
     })
     afterAll(async () => {
       await client.close()
-      await new Promise<void>((resolve, reject) => {
-        server?.close((err) => (err ? reject(err) : resolve()))
-      })
+      await closeServer(server!)
     })
 
     it('should fail with a connection error, but then reach out to the server', async () => {
       // Try to reach to the unavailable server a few times
       for (let i = 1; i <= Iterations; i++) {
-        const pingResult = await ping()
+        const pingResult = await client.ping()
         expect(pingResult.success).toBeFalsy()
         if (pingResult.success) {
           // suggest to TS what type pingResult is
@@ -200,21 +194,14 @@ describe('Node.js socket handling', () => {
         expect((error as NodeJS.ErrnoException).code).toEqual('ECONNREFUSED')
       }
       // now we start the server, and it is available; and we should have already used every socket in the pool
-      server = http.createServer(async (req, res) => {
+      ;[server] = await createServer(async (req, res) => {
         res.write('Ok.')
         return res.end()
-      })
-      await new Promise<void>((resolve) => {
-        server?.listen(port, () => resolve())
-      })
+      }, port)
       // no socket timeout or other errors
-      expect(await ping()).toEqual({ success: true })
+      expect(await client.ping()).toEqual({ success: true })
     })
   })
-
-  async function ping() {
-    return client.ping()
-  }
 
   async function select() {
     const rs = await client.query({ query: 'SELECT 1' })
@@ -236,3 +223,24 @@ describe('Node.js socket handling', () => {
     await client.command({ query: 'SELECT 1' })
   }
 })
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function closeServer(server: http.Server): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((err) => (err ? reject(err) : resolve()))
+  })
+}
+
+async function createServer(
+  cb: (req: http.IncomingMessage, res: http.ServerResponse) => void,
+  port: number = 0,
+): Promise<[http.Server, number]> {
+  const server = http.createServer(cb)
+  await new Promise<void>((resolve) => {
+    server.listen(port, () => resolve())
+  })
+  return [server, (server.address() as AddressInfo).port]
+}
