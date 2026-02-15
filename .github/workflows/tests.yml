@@ -502,6 +502,8 @@ jobs:
         run: echo "All tests passed! 🎉"
 
   cloud-cleanup:
+    # We want to run this even if previous jobs fail, to keep the ClickHouse Cloud instance clean.
+    if: always()
     needs: [node-integration-tests-cloud, web-integration-tests-cloud]
     runs-on: ubuntu-latest
     steps:
