@@ -1,4 +1,4 @@
-#!/usr/bin/env npx zx
+#!/usr/bin/env node
 
 // ClickHouse does not have a dynamic DROP DATABASE command, so we need to query
 // for the database names first and then drop them one by one.
@@ -6,31 +6,35 @@
 // so we will drop them sequentially to avoid overwhelming the server.
 
 // Configuration
-const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || 'localhost'
-const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT || '8123'
-const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || 'default'
-const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || ''
+const CLICKHOUSE_CLOUD_HOST = process.env.CLICKHOUSE_CLOUD_HOST
+const CLICKHOUSE_CLOUD_PASSWORD = process.env.CLICKHOUSE_CLOUD_PASSWORD
 
-// Build CLI command arguments
-function getCliArgs() {
-  const args = ['--host', CLICKHOUSE_HOST, '--port', CLICKHOUSE_PORT]
-
-  if (CLICKHOUSE_USER) {
-    args.push('--user', CLICKHOUSE_USER)
-  }
-
-  if (CLICKHOUSE_PASSWORD) {
-    args.push('--password', CLICKHOUSE_PASSWORD)
-  }
-
-  return args
-}
-
-// Execute query and return results
+// Executes query using HTTP interface
 async function executeQuery(query) {
-  const args = [...getCliArgs(), '--query', query]
-  const result = await $`clickhouse-client ${args}`
-  return result.stdout.trim()
+  const r = await fetch(
+    `https://${CLICKHOUSE_CLOUD_HOST}/?query=${encodeURIComponent(query)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`default:${CLICKHOUSE_CLOUD_PASSWORD}`).toString('base64')}`,
+      },
+    },
+  )
+
+  if (!r.ok) {
+    try {
+      const errorText = await r.text()
+      throw new Error(
+        `Query failed: ${r.status} ${r.statusText} - ${errorText}`,
+      )
+    } catch (e) {
+      throw new Error(
+        `Query failed: ${r.status} ${r.statusText} - Unable to read error details`,
+      )
+    }
+  }
+
+  return r
 }
 
 // Main script
@@ -38,38 +42,29 @@ console.log('🔍 Searching for databases matching "clickhousejs_%"...\n')
 
 // Query for databases
 const query =
-  "SELECT name FROM system.databases WHERE name LIKE 'clickhousejs_%'"
+  "SELECT name FROM system.databases WHERE name LIKE 'clickhousejs_%' FORMAT JSON"
 
-try {
-  const result = await executeQuery(query)
-
-  if (!result) {
-    console.log('✅ No databases found matching "clickhousejs_%"')
-    process.exit(0)
-  }
-
-  // Parse database names (one per line)
-  const databases = result.split('\n').filter((db) => db.trim())
-
-  console.log(`Found ${databases.length} database(s):`)
-  databases.forEach((db) => console.log(`  - ${db}`))
-  console.log()
-
-  // Drop each database
-  for (const dbName of databases) {
-    try {
-      console.log(`🗑️  Dropping database: ${dbName}`)
-      await executeQuery(`DROP DATABASE IF EXISTS ${dbName}`)
-      console.log(`✅ Successfully dropped: ${dbName}`)
-    } catch (error) {
-      console.error(`❌ Failed to drop ${dbName}: ${error.message}`)
-    }
-  }
-
-  console.log(
-    `\n🎉 Cleanup completed! Dropped ${databases.length} database(s).`,
-  )
-} catch (error) {
-  console.error('❌ Failed to query databases:', error.message)
-  process.exit(1)
+const result = await executeQuery(query)
+const { data } = await result.json()
+if (data.length === 0) {
+  console.log('✅ No databases found matching "clickhousejs_%"')
+  process.exit(0)
 }
+
+console.log(`Found ${data.length} database(s):`)
+data.forEach((row) => console.log(`  - ${row.name}`))
+console.log()
+
+// Drop each database
+let droppedCount = 0
+for (const { name } of data) {
+  try {
+    await executeQuery(`DROP DATABASE IF EXISTS ${name}`)
+    console.log(`✅ Successfully dropped: ${name}`)
+    droppedCount++
+  } catch (error) {
+    console.error(`❌ Failed to drop ${name}: ${error.message}`)
+  }
+}
+
+console.log(`\n🎉 Cleanup completed! Dropped ${droppedCount} database(s).`)
