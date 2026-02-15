@@ -15,192 +15,102 @@ const ClientTimeout = 10 // ms
 const Iterations = 5
 const MaxOpenConnections = 2
 
-describe('Node.js socket handling', () => {
+describe('Slow server', () => {
   let client: ClickHouseClient<Stream.Readable>
+  let server: http.Server
+  let port: number
 
-  describe('Slow server', () => {
-    let server: http.Server
-    let port: number
-    beforeAll(async () => {
-      // Simulate a ClickHouse server that does not respond to the request in time
-      ;[server, port] = await createServer(async (req, res) => {
-        await sleep(SlowServerLag)
-        res.write('Ok.')
-        return res.end()
-      })
-      // Client has request timeout set to lower than the server's "sleep" time
-      client = createTestClient({
-        url: `http://localhost:${port}`,
-        request_timeout: ClientTimeout,
-        max_open_connections: MaxOpenConnections,
-        keep_alive: {
-          enable: true,
-        },
-      } as NodeClickHouseClientConfigOptions)
+  beforeAll(async () => {
+    // Simulate a ClickHouse server that does not respond to the request in time
+    ;[server, port] = await createServer(async (req, res) => {
+      await sleep(SlowServerLag)
+      res.write('Ok.')
+      return res.end()
     })
-    afterAll(async () => {
-      await client.close()
-      await closeServer(server)
-    })
+    // Client has request timeout set to lower than the server's "sleep" time
+    client = createTestClient({
+      url: `http://localhost:${port}`,
+      request_timeout: ClientTimeout,
+      max_open_connections: MaxOpenConnections,
+      keep_alive: {
+        enable: true,
+      },
+    } as NodeClickHouseClientConfigOptions)
+  })
+  afterAll(async () => {
+    await client.close()
+    await closeServer(server)
+  })
 
-    // ping first, then 2 operations in all possible combinations - repeat every combination several times
-    it('should work with all operations permutations', async () => {
-      const allOps: Array<{ opName: string; fn: () => Promise<unknown> }> = [
-        { fn: select, opName: 'query' },
-        { fn: insert, opName: 'insert' },
-        { fn: exec, opName: 'exec' },
-        { fn: command, opName: 'command' },
-      ]
-      const opsPermutations = permutations(allOps, 2)
-      for (const ops of opsPermutations) {
-        for await (const { fn, opName } of ops) {
-          for (let i = 1; i <= Iterations; i++) {
-            const pingResult = await client.ping()
-            expect(pingResult.success).toBeFalsy()
-            expect((pingResult as { error: Error }).error.message).toEqual(
-              expect.stringContaining('Timeout error.'),
-            )
-            await expect(
-              fn(),
-              `${opName} should have been rejected. Current ops: ${ops
-                .map(({ opName }) => opName)
-                .join(', ')}`,
-            ).rejects.toThrow('Timeout error.')
-          }
+  // ping first, then 2 operations in all possible combinations - repeat every combination several times
+  it('should work with all operations permutations', async () => {
+    const allOps: Array<{ opName: string; fn: () => Promise<unknown> }> = [
+      { fn: select, opName: 'query' },
+      { fn: insert, opName: 'insert' },
+      { fn: exec, opName: 'exec' },
+      { fn: command, opName: 'command' },
+    ]
+    const opsPermutations = permutations(allOps, 2)
+    for (const ops of opsPermutations) {
+      for await (const { fn, opName } of ops) {
+        for (let i = 1; i <= Iterations; i++) {
+          const pingResult = await client.ping()
+          expect(pingResult.success).toBeFalsy()
+          expect((pingResult as { error: Error }).error.message).toEqual(
+            expect.stringContaining('Timeout error.'),
+          )
+          await expect(
+            fn(),
+            `${opName} should have been rejected. Current ops: ${ops
+              .map(({ opName }) => opName)
+              .join(', ')}`,
+          ).rejects.toThrow('Timeout error.')
         }
       }
-    })
+    }
+  })
 
-    it('should not throw unhandled errors with Ping', async () => {
-      for (let i = 1; i <= Iterations; i++) {
-        const pingResult = await client.ping()
-        expect(pingResult.success).toBeFalsy()
-        expect((pingResult as { error: Error }).error.message).toEqual(
-          expect.stringContaining('Timeout error.'),
-        )
-      }
-    })
+  it('should not throw unhandled errors with Ping', async () => {
+    for (let i = 1; i <= Iterations; i++) {
+      const pingResult = await client.ping()
+      expect(pingResult.success).toBeFalsy()
+      expect((pingResult as { error: Error }).error.message).toEqual(
+        expect.stringContaining('Timeout error.'),
+      )
+    }
+  })
 
-    it('should not throw unhandled errors with Select', async () => {
-      for (let i = 1; i <= Iterations; i++) {
+  it('should not throw unhandled errors with Select', async () => {
+    for (let i = 1; i <= Iterations; i++) {
+      await expect(select()).rejects.toThrow('Timeout error.')
+    }
+  })
+
+  it('should not throw unhandled errors with Insert', async () => {
+    for (let i = 1; i <= Iterations; i++) {
+      await expect(insert()).rejects.toThrow('Timeout error.')
+    }
+  })
+
+  it('should not throw unhandled errors with Command', async () => {
+    for (let i = 1; i <= Iterations; i++) {
+      await expect(command()).rejects.toThrow('Timeout error.')
+    }
+  })
+
+  it('should not throw unhandled errors with Exec', async () => {
+    for (let i = 1; i <= Iterations; i++) {
+      await expect(exec()).rejects.toThrow('Timeout error.')
+    }
+  })
+
+  it('should not throw unhandled errors with parallel Select operations', async () => {
+    for (let i = 1; i <= Iterations; i++) {
+      const promises = [...new Array(MaxOpenConnections)].map(async () => {
         await expect(select()).rejects.toThrow('Timeout error.')
-      }
-    })
-
-    it('should not throw unhandled errors with Insert', async () => {
-      for (let i = 1; i <= Iterations; i++) {
-        await expect(insert()).rejects.toThrow('Timeout error.')
-      }
-    })
-
-    it('should not throw unhandled errors with Command', async () => {
-      for (let i = 1; i <= Iterations; i++) {
-        await expect(command()).rejects.toThrow('Timeout error.')
-      }
-    })
-
-    it('should not throw unhandled errors with Exec', async () => {
-      for (let i = 1; i <= Iterations; i++) {
-        await expect(exec()).rejects.toThrow('Timeout error.')
-      }
-    })
-
-    it('should not throw unhandled errors with parallel Select operations', async () => {
-      for (let i = 1; i <= Iterations; i++) {
-        const promises = [...new Array(MaxOpenConnections)].map(async () => {
-          await expect(select()).rejects.toThrow('Timeout error.')
-        })
-        await Promise.all(promises)
-      }
-    })
-  })
-
-  describe('Server that never responds', () => {
-    let server: http.Server
-    let port: number
-    let requestCount = 0
-
-    beforeAll(async () => {
-      // Simulate an LB where the server is not available
-      ;[server, port] = await createServer(async (req, res) => {
-        requestCount++
-        if (requestCount === Iterations) {
-          res.write('Ok.')
-          return res.end()
-        } else {
-          // don't respond
-          // just keep the connection open until the client times out
-        }
       })
-      // Client has request timeout set to lower than the server's "sleep" time
-      client = createTestClient({
-        url: `http://localhost:${port}`,
-        request_timeout: ClientTimeout,
-        keep_alive: {
-          enable: true,
-        },
-      } as NodeClickHouseClientConfigOptions)
-    })
-    afterEach(() => {
-      requestCount = 0
-    })
-    afterAll(async () => {
-      await client.close()
-      await closeServer(server)
-    })
-
-    it('should eventually get a successful ping', async () => {
-      for (let i = 1; i < Iterations; i++) {
-        const pingResult = await client.ping()
-        expect(pingResult.success).toBeFalsy()
-        expect(
-          (pingResult as ConnPingResult & { success: false }).error.message,
-        ).toEqual('Timeout error.')
-      }
-      // The last request should be successful
-      expect(await client.ping()).toEqual({ success: true })
-    })
-  })
-
-  describe('Resource is not available', () => {
-    let server: http.Server | undefined
-    const port = 18125
-    beforeAll(async () => {
-      // Client has request timeout set to lower than the server's "sleep" time
-      client = createTestClient({
-        url: `http://localhost:${port}`,
-        request_timeout: ClientTimeout,
-        max_open_connections: MaxOpenConnections,
-        keep_alive: {
-          enable: true,
-        },
-      } as NodeClickHouseClientConfigOptions)
-    })
-    afterAll(async () => {
-      await client.close()
-      await closeServer(server!)
-    })
-
-    it('should fail with a connection error, but then reach out to the server', async () => {
-      // Try to reach to the unavailable server a few times
-      for (let i = 1; i <= Iterations; i++) {
-        const pingResult = await client.ping()
-        expect(pingResult.success).toBeFalsy()
-        if (pingResult.success) {
-          // suggest to TS what type pingResult is
-          throw new Error('Ping should have failed')
-        }
-        const error = pingResult.error
-        expect((error as NodeJS.ErrnoException).code).toEqual('ECONNREFUSED')
-      }
-      // now we start the server, and it is available; and we should have already used every socket in the pool
-      ;[server] = await createServer(async (req, res) => {
-        res.write('Ok.')
-        return res.end()
-      }, port)
-      // no socket timeout or other errors
-      expect(await client.ping()).toEqual({ success: true })
-    })
+      await Promise.all(promises)
+    }
   })
 
   async function select() {
@@ -222,6 +132,96 @@ describe('Node.js socket handling', () => {
   async function command() {
     await client.command({ query: 'SELECT 1' })
   }
+})
+
+describe('Server that never responds', () => {
+  let client: ClickHouseClient<Stream.Readable>
+  let server: http.Server
+  let port: number
+  let requestCount = 0
+
+  beforeAll(async () => {
+    // Simulate an LB where the server is not available
+    ;[server, port] = await createServer(async (req, res) => {
+      requestCount++
+      if (requestCount === Iterations) {
+        res.write('Ok.')
+        return res.end()
+      } else {
+        // don't respond
+        // just keep the connection open until the client times out
+      }
+    })
+    // Client has request timeout set to lower than the server's "sleep" time
+    client = createTestClient({
+      url: `http://localhost:${port}`,
+      request_timeout: ClientTimeout,
+      keep_alive: {
+        enable: true,
+      },
+    } as NodeClickHouseClientConfigOptions)
+  })
+  afterEach(() => {
+    requestCount = 0
+  })
+  afterAll(async () => {
+    await client.close()
+    await closeServer(server)
+  })
+
+  it('should eventually get a successful ping', async () => {
+    for (let i = 1; i < Iterations; i++) {
+      const pingResult = await client.ping()
+      expect(pingResult.success).toBeFalsy()
+      expect(
+        (pingResult as ConnPingResult & { success: false }).error.message,
+      ).toEqual('Timeout error.')
+    }
+    // The last request should be successful
+    expect(await client.ping()).toEqual({ success: true })
+  })
+})
+
+describe('Resource is not available', () => {
+  let client: ClickHouseClient<Stream.Readable>
+  let server: http.Server | undefined
+  const port = 18125
+  beforeAll(async () => {
+    // Client has request timeout set to lower than the server's "sleep" time
+    client = createTestClient({
+      url: `http://localhost:${port}`,
+      request_timeout: ClientTimeout,
+      max_open_connections: MaxOpenConnections,
+      keep_alive: {
+        enable: true,
+      },
+    } as NodeClickHouseClientConfigOptions)
+  })
+  afterAll(async () => {
+    await client.close()
+    await closeServer(server!)
+  })
+
+  it('should fail with a connection error, but then reach out to the server', async () => {
+    // Try to reach to the unavailable server a few times
+    for (let i = 1; i <= Iterations; i++) {
+      const pingResult = await client.ping()
+      expect(pingResult.success).toBeFalsy()
+      if (pingResult.success) {
+        // suggest to TS what type pingResult is
+        throw new Error('Ping should have failed')
+      }
+      const error = pingResult.error
+      expect((error as NodeJS.ErrnoException).code).toEqual('ECONNREFUSED')
+    }
+    // now we start the server, and it is available; and we should have already used every socket in the pool
+    ;[server] = await createServer(async (req, res) => {
+      res.write('Ok.')
+      return res.end()
+    }, port)
+    // no socket timeout or other errors
+    expect(await client.ping()).toEqual({ success: true })
+  })
 })
 
 async function sleep(ms: number): Promise<void> {
