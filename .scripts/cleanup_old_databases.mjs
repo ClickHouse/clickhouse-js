@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 // ClickHouse does not have a dynamic DROP DATABASE command, so we need to query
 // for the database names first and then drop them one by one.
 // ClickHouse server also does not like dropping too many databases at once,
