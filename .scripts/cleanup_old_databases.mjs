@@ -57,6 +57,11 @@ console.log(`Found ${data.length} database(s):`)
 data.forEach((row) => console.log(`  - ${row.name}`))
 console.log()
 
+// Shuffle the list to avoid dropping the same databases first every time
+// and also allow for more efficient parallel dropping in case there
+// are many databases to clean up.
+data.sort(() => Math.random() - 0.5)
+
 // Drop each database
 let droppedCount = 0
 for (const { name } of data) {
