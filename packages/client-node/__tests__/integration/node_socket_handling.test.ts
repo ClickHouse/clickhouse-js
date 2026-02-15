@@ -167,7 +167,7 @@ describe('Node.js socket handling', () => {
   })
 
   describe('Resource is not available', () => {
-    let server: http.Server
+    let server: http.Server | undefined
     const port = 18125
     beforeAll(async () => {
       // Client has request timeout set to lower than the server's "sleep" time
@@ -183,7 +183,7 @@ describe('Node.js socket handling', () => {
     afterAll(async () => {
       await client.close()
       await new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()))
+        server?.close((err) => (err ? reject(err) : resolve()))
       })
     })
 
@@ -205,7 +205,7 @@ describe('Node.js socket handling', () => {
         return res.end()
       })
       await new Promise<void>((resolve) => {
-        server.listen(port, () => resolve())
+        server?.listen(port, () => resolve())
       })
       // no socket timeout or other errors
       expect(await ping()).toEqual({ success: true })
