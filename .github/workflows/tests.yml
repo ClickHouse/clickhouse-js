@@ -27,6 +27,7 @@ env:
   OTEL_EXPORTER_OTLP_HEADERS: 'authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}'
   OTEL_RESOURCE_ATTRIBUTES: 'service.namespace=clickhouse-js,deployment.environment=ci'
   VITEST_OTEL_ENABLED: 'true'
+  VITEST_COVERAGE: 'true'
 
 jobs:
   code-quality:
@@ -102,8 +103,18 @@ jobs:
         run: |
           npm run test:common:unit:node
 
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
+        run: |
+          node .scripts/export-coverage-metrics.mjs
+
   common-unit-tests-web:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox] # We're not testing in WebKit atm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -115,19 +126,19 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          npx playwright install chromium
-          npx playwright install firefox
-          # We're not testing in WebKit atm
+          npx playwright install ${{ matrix.browser }}
 
-      - name: Run unit tests (Chromium)
+      - name: Run unit tests (${{ matrix.browser }})
+        env:
+          BROWSER: ${{ matrix.browser }}
         run: |
-          export BROWSER=chromium
           npm run test:common:unit:web
 
-      - name: Run unit tests (Firefox)
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }})
         run: |
-          export BROWSER=firefox
-          npm run test:common:unit:web
+          node .scripts/export-coverage-metrics.mjs
 
   node-unit-tests:
     runs-on: ubuntu-latest
@@ -156,11 +167,18 @@ jobs:
         run: |
           npm run test:node:unit
 
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
+        run: |
+          node .scripts/export-coverage-metrics.mjs
+
   web-all-tests-local-single-node:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        browser: [chromium, firefox] # We're not testing in WebKit atm
         clickhouse: [head, latest]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -181,13 +199,19 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          npx playwright install chromium
-          npx playwright install firefox
-          # We're not testing in WebKit atm
+          npx playwright install ${{ matrix.browser }}
 
       - name: Run all web tests
+        env:
+          BROWSER: ${{ matrix.browser }}
         run: |
           npm run test:web
+
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }}, ${{ matrix.clickhouse }})
+        run: |
+          node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-local-single-node:
     runs-on: ubuntu-latest
@@ -221,13 +245,15 @@ jobs:
         run: |
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
-      - name: Run integration tests
+      - name: Run integration tests with TLS tests
         run: |
-          npm run test:node:integration
+          npm run test:node:integration:tls
 
-      - name: Run TLS tests
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }})
         run: |
-          npm run test:node:tls
+          node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-local-cluster:
     runs-on: ubuntu-latest
@@ -261,11 +287,18 @@ jobs:
         run: |
           npm run test:node:integration:local_cluster
 
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
+        run: |
+          node .scripts/export-coverage-metrics.mjs
+
   web-integration-tests-local-cluster:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        browser: [chromium, firefox] # We're not testing in WebKit atm
         clickhouse: [head, latest]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -286,13 +319,19 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          npx playwright install chromium
-          npx playwright install firefox
-          # We're not testing in WebKit atm
+          npx playwright install ${{ matrix.browser }}
 
       - name: Run all web tests
+        env:
+          BROWSER: ${{ matrix.browser }}
         run: |
           npm run test:web:integration:local_cluster
+
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }}, ${{ matrix.clickhouse }})
+        run: |
+          node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-cloud:
     runs-on: ubuntu-latest
@@ -321,8 +360,18 @@ jobs:
         run: |
           npm run test:node:integration:cloud
 
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
+        run: |
+          node .scripts/export-coverage-metrics.mjs
+
   web-integration-tests-cloud:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox] # We're not testing in WebKit atm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -334,24 +383,22 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          npx playwright install chromium
-          npx playwright install firefox
-          # We're not testing in WebKit atm
+          npx playwright install ${{ matrix.browser }}
 
-      - name: Run integration tests
-        env:
-          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}
-          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
-        run: |
-          npm run test:web:integration:cloud
-
-      - name: Run JWT auth integration tests
+      - name: Run integration tests and JWT auth
         env:
           CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
           CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43_PROD }}
+          BROWSER: ${{ matrix.browser }}
         run: |
           npm run test:web:integration:cloud:jwt
+
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }})
+        run: |
+          node .scripts/export-coverage-metrics.mjs
 
   # It should only use the current LTS version of Node.js.
   node-codecov-upload:
