@@ -501,8 +501,10 @@ jobs:
       - name: All tests passed
         run: echo "All tests passed! 🎉"
 
+  # Runs in parallel with the rest of the tests, there shoudl be no dependencies on it,
+  # and it should run even if other tests fail, to ensure that we keep the ClickHouse Cloud
+  # instance clean for the next runs to avoid adding cleanup cost to the critical path of the tests.
   cloud-cleanup:
-    # We want to run this even if previous jobs fail, to keep the ClickHouse Cloud instance clean.
     if: always()
     runs-on: ubuntu-latest
     steps:
