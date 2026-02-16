@@ -5,7 +5,12 @@
 // ClickHouse server also does not like dropping too many databases at once,
 // so we will drop them sequentially to avoid overwhelming the server.
 
-// Configuration
+/**
+ * Integrations tests take around 1 minute to run,
+ * so we set TTL to 60 minutes by default to give some buffer.
+ */
+const TTL_MINUTES = process.env.TTL_MINUTES || 60
+const PREFIX = process.env.PREFIX || 'clickhousejs_'
 const CLICKHOUSE_CLOUD_HOST = process.env.CLICKHOUSE_CLOUD_HOST
 const CLICKHOUSE_CLOUD_PASSWORD = process.env.CLICKHOUSE_CLOUD_PASSWORD
 
@@ -38,16 +43,15 @@ async function executeQuery(query) {
 }
 
 // Main script
-console.log('🔍 Searching for databases matching "clickhousejs_%"...\n')
+console.log(`🔍 Searching for databases matching "${PREFIX}%"...\n`)
 
 // Query for databases
-const query =
-  "SELECT name FROM system.databases WHERE name LIKE 'clickhousejs_%' FORMAT JSON"
+const query = `SELECT name FROM system.databases WHERE name LIKE '${PREFIX}%' FORMAT JSON`
 
 const result = await executeQuery(query)
 const { data } = await result.json()
 if (data.length === 0) {
-  console.log('✅ No databases found matching "clickhousejs_%"')
+  console.log(`✅ No databases found matching "${PREFIX}%"`)
   process.exit(0)
 }
 
@@ -59,6 +63,13 @@ console.log()
 let droppedCount = 0
 for (const { name } of data) {
   try {
+    const timestamp = new Date(Number(name.split('__').pop()))
+    if (Date.now() - timestamp.getTime() < TTL_MINUTES * 60 * 1000) {
+      console.log(
+        `⏳ Skipping ${name} (created at ${timestamp.toISOString()}) - TTL not expired`,
+      )
+      continue
+    }
     await executeQuery(`DROP DATABASE IF EXISTS ${name}`)
     console.log(`✅ Successfully dropped: ${name}`)
     droppedCount++
