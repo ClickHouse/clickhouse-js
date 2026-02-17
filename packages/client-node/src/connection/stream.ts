@@ -1,5 +1,13 @@
 import type { LogWriter } from '@clickhouse/client-common'
+import type { LogWriter, ConnOperation } from '@clickhouse/client-common'
 import type Stream from 'stream'
+
+interface Context {
+  op: ConnOperation
+  log_verbose?: 0 | 1
+  logger?: LogWriter
+  query_id?: string
+}
 
 /** Drains the response stream, as calling `destroy` on a {@link Stream.Readable} response stream
  *  will result in closing the underlying socket, and negate the KeepAlive feature benefits.
