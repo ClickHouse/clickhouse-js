@@ -149,7 +149,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         )
       }
       await drainStream(
-        { op: 'Command', logger: this.logger, query_id },
+        {
+          op: 'Ping' as const,
+          logger: this.logger,
+          query_id,
+          log_verbose: this.params.log_verbose ?? 0,
+        },
         result.stream,
       )
       return { success: true }
@@ -262,7 +267,15 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           },
           'Insert',
         )
-      await drainStream({ op: 'Insert', logger: this.logger, query_id }, stream)
+      await drainStream(
+        {
+          op: 'Insert',
+          logger: this.logger,
+          query_id,
+          log_verbose: this.params.log_verbose ?? 0,
+        },
+        stream,
+      )
       return { query_id, summary, response_headers, http_status_code }
     } catch (err) {
       controller.abort('Insert HTTP request failed')
@@ -326,7 +339,15 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
     // ignore the response stream and release the socket immediately
     const drainStartTime = Date.now()
-    await drainStream({ op: 'Command', logger: this.logger, query_id }, stream)
+    await drainStream(
+      {
+        op: 'Command',
+        logger: this.logger,
+        query_id,
+        log_verbose: this.params.log_verbose ?? 0,
+      },
+      stream,
+    )
     const drainDuration = Date.now() - drainStartTime
     const totalDuration = Date.now() - commandStartTime
 

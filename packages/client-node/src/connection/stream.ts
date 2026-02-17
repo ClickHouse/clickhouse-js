@@ -3,9 +3,9 @@ import type Stream from 'stream'
 
 interface Context {
   op: ConnOperation
-  log_verbose?: 0 | 1
-  logger?: LogWriter
-  query_id?: string
+  log_verbose: 0 | 1
+  query_id: string
+  logger: LogWriter
 }
 
 /** Drains the response stream, as calling `destroy` on a {@link Stream.Readable} response stream
