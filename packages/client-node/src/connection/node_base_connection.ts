@@ -547,10 +547,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           params.try_decompress_response_stream ?? true
         const ignoreErrorResponse = params.ignore_error_response ?? false
         // even if the stream decompression is disabled, we have to decompress it in case of an error
-        const isFailedResponse = !isSuccessfulResponse(_response.statusCode)
+        const responseIsSuccessful =
+          isSuccessfulResponse(_response.statusCode) &&
+          !_response.headers['x-clickhouse-exception-code']
         if (
           tryDecompressResponseStream ||
-          (isFailedResponse && !ignoreErrorResponse)
+          (!responseIsSuccessful && !ignoreErrorResponse)
         ) {
           const decompressionResult = decompressResponse(_response, this.logger)
           if (isDecompressionError(decompressionResult)) {
@@ -564,7 +566,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         } else {
           responseStream = _response
         }
-        if (isFailedResponse && !ignoreErrorResponse) {
+        if (!responseIsSuccessful && !ignoreErrorResponse) {
           try {
             const errorMessage = await getAsText(responseStream)
             const err = enhanceStackTrace(
