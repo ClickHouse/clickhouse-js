@@ -96,7 +96,7 @@ export async function drainStream(
       stream.removeListener('data', dropData)
       stream.removeListener('end', onEnd)
       stream.removeListener('error', onError)
-      stream.removeListener('onClose', onClose)
+      stream.removeListener('close', onClose)
     }
 
     stream.on('data', dropData)
