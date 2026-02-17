@@ -48,6 +48,7 @@ export type NodeConnectionParams = ConnectionParams & {
     enabled: boolean
     idle_socket_ttl: number
   }
+  log_verbose?: 0 | 1
 }
 
 export type TLSParams =
@@ -147,7 +148,10 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           'Ping',
         )
       }
-      await drainStream(result.stream)
+      await drainStream(
+        { op: 'Command', logger: this.logger, query_id },
+        result.stream,
+      )
       return { success: true }
     } catch (error) {
       // it is used to ensure that the outgoing request is terminated,
@@ -258,7 +262,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           },
           'Insert',
         )
-      await drainStream(stream)
+      await drainStream({ op: 'Insert', logger: this.logger, query_id }, stream)
       return { query_id, summary, response_headers, http_status_code }
     } catch (err) {
       controller.abort('Insert HTTP request failed')
@@ -322,7 +326,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
     // ignore the response stream and release the socket immediately
     const drainStartTime = Date.now()
-    await drainStream(stream, this.logger, query_id)
+    await drainStream({ op: 'Command', logger: this.logger, query_id }, stream)
     const drainDuration = Date.now() - drainStartTime
     const totalDuration = Date.now() - commandStartTime
 
