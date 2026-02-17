@@ -67,6 +67,16 @@ export interface BaseClickHouseClientConfigOptions {
     LoggerClass?: new () => Logger
     /** @default set to {@link ClickHouseLogLevel.OFF} */
     level?: ClickHouseLogLevel
+    /**
+     * Enable additional logs, mostly used for debugging.
+     *
+     * When set to `0`, the client will not allocate resources for the additional logs,
+     * and the related code will be not executed at all. When set to `1`, the additional logs will be produced.
+     *
+     * Set {@link level} to {@link ClickHouseLogLevel.TRACE} to see all the logs available.
+     *
+     * @default 0 */
+    verbose?: 0 | 1
   }
   /** ClickHouse Session id to attach to the outgoing requests.
    *  @default empty string (no session) */
