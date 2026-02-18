@@ -1,9 +1,10 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
 import { beforeAll } from 'vitest'
-import type {
-  BaseClickHouseClientConfigOptions,
-  ClickHouseClient,
-  ClickHouseSettings,
+import {
+  ClickHouseLogLevel,
+  type BaseClickHouseClientConfigOptions,
+  type ClickHouseClient,
+  type ClickHouseSettings,
 } from '@clickhouse/client-common'
 import { cacheServerVersion } from '@test/utils/server_version'
 import { EnvKeys, getFromEnv } from './env'
@@ -58,7 +59,12 @@ export function createTestClient<Stream = unknown>(
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
   const log: BaseClickHouseClientConfigOptions['log'] = {
     LoggerClass: TestLogger,
-    verbose: process.env.CLIENT_CONFIG === 'verbose_logging' ? 1 : 0,
+    level:
+      !process.env.LOG_LEVEL || process.env.LOG_LEVEL === 'undefined'
+        ? undefined // allow the client to use its default log level if LOG_LEVEL is not set
+        : ClickHouseLogLevel[
+            process.env.LOG_LEVEL as keyof typeof ClickHouseLogLevel
+          ],
   }
 
   if (isCloudTestEnv()) {
