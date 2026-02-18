@@ -72,16 +72,10 @@ export function createTestClient<Stream = unknown>(
       ...config,
       clickhouse_settings: clickHouseSettings,
     }
-    if (process.env.browser) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('../../../client-web/src/client').createClient(cloudConfig)
-    } else {
-      // props to https://stackoverflow.com/a/41063795/4575540
-      // @ts-expect-error
-      return globalThis.environmentSpecificCreateClient(
-        cloudConfig,
-      ) as ClickHouseClient
-    }
+    // @ts-expect-error
+    return globalThis.environmentSpecificCreateClient(
+      cloudConfig,
+    ) as ClickHouseClient
   } else {
     const localConfig: BaseClickHouseClientConfigOptions = {
       database: databaseName,
@@ -89,15 +83,10 @@ export function createTestClient<Stream = unknown>(
       ...config,
       clickhouse_settings: clickHouseSettings,
     }
-    if (process.env.browser) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('../../../client-web/src/client').createClient(localConfig)
-    } else {
-      // @ts-expect-error
-      return globalThis.environmentSpecificCreateClient(
-        localConfig,
-      ) as ClickHouseClient
-    }
+    // @ts-expect-error
+    return globalThis.environmentSpecificCreateClient(
+      localConfig,
+    ) as ClickHouseClient
   }
 }
 
