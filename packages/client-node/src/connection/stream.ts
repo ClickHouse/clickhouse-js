@@ -42,19 +42,14 @@ export async function drainStream(
       // used only for the methods without expected response; we don't care about the data here
       if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
         chunkCount++
-        if (Buffer.isBuffer(chunk)) {
-          bytesReceived += chunk.length
-        } else if (typeof chunk === 'string') {
-          bytesReceived += Buffer.byteLength(chunk)
-        }
+        const chunk_size = Buffer.byteLength(chunk)
+        bytesReceived += chunk_size
         ctx.log_writer.trace({
           message: `${ctx.op}: received data chunk during drain`,
           args: {
             query_id: ctx.query_id,
             chunk_number: chunkCount,
-            chunk_size: Buffer.isBuffer(chunk)
-              ? chunk.length
-              : Buffer.byteLength(chunk),
+            chunk_size,
             total_bytes_received: bytesReceived,
           },
         })
