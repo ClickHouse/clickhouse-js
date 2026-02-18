@@ -77,6 +77,8 @@ export interface BaseClickHouseClientConfigOptions {
      *
      * @default 0 */
     verbose?: 0 | 1
+    /** @default false */
+    unsafeLogUnredactedQueries?: boolean
   }
   /** ClickHouse Session id to attach to the outgoing requests.
    *  @default empty string (no session) */

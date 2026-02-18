@@ -312,7 +312,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     this.logger.trace({
       message: 'Command: operation started',
       args: {
-        query: params.query,
+        query: params.unsafeLogUnredactedQueries ? params.query : undefined,
         query_id,
       },
     })
