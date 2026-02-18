@@ -88,7 +88,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders
 
   private readonly jsonHandling: JSONHandling
-  private readonly logger: LogWriter
+  private readonly logWriter: LogWriter
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
   private readonly idleSocketTTL: number
 
@@ -110,7 +110,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
       'User-Agent': getUserAgent(this.params.application_id),
     }
-    this.logger = params.log_writer
+    this.logWriter = params.log_writer
     this.idleSocketTTL = params.keep_alive.idle_socket_ttl
     this.jsonHandling = params.json ?? {
       parse: JSON.parse,
@@ -159,7 +159,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       await drainStream(
         {
           op: 'Ping' as const,
-          logger: this.logger,
+          logger: this.logWriter,
           query_id,
           log_level,
         },
@@ -171,7 +171,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       // and we don't get unhandled error propagation later
       controller.abort('Ping failed')
       // not an error, as this might be semi-expected
-      this.logger.warn({
+      this.logWriter.warn({
         message: this.httpRequestErrorMessage('Ping'),
         err: error as Error,
         args: {
@@ -284,7 +284,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       await drainStream(
         {
           op: 'Insert',
-          logger: this.logger,
+          logger: this.logWriter,
           query_id,
           log_level,
         },
@@ -324,7 +324,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     const { log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const commandStartTime = Date.now()
-    this.logger.trace({
+    this.logWriter.trace({
       message: 'Command: operation started',
       args: {
         query: params.unsafeLogUnredactedQueries ? params.query : undefined,
@@ -339,7 +339,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     })
 
     const runExecDuration = Date.now() - commandStartTime
-    this.logger.trace({
+    this.logWriter.trace({
       message: 'Command: runExec completed, starting stream drain',
       args: {
         query_id,
@@ -357,7 +357,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     await drainStream(
       {
         op: 'Command',
-        logger: this.logger,
+        logger: this.logWriter,
         query_id,
         log_level,
       },
@@ -368,7 +368,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       const drainDuration = Date.now() - drainStartTime
       const totalDuration = Date.now() - commandStartTime
 
-      this.logger.trace({
+      this.logWriter.trace({
         message: 'Command: operation completed',
         args: {
           query_id,
@@ -489,7 +489,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     search_params,
     extra_args,
   }: LogRequestErrorParams) {
-    this.logger.error({
+    this.logWriter.error({
       message: this.httpRequestErrorMessage(op),
       err: err as Error,
       args: {
@@ -516,7 +516,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       try {
         return this.jsonHandling.parse(summaryHeader)
       } catch (err) {
-        this.logger.error({
+        this.logWriter.error({
           message: `${op}: failed to parse X-ClickHouse-Summary header.`,
           args: {
             'X-ClickHouse-Summary': summaryHeader,
@@ -615,7 +615,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     const currentStackTrace = this.params.capture_enhanced_stack_trace
       ? getCurrentStackTrace()
       : undefined
-    const logger = this.logger
+    const logger = this.logWriter
     const requestTimeout = this.params.request_timeout
     return new Promise((resolve, reject) => {
       const start = Date.now()
@@ -641,7 +641,10 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           tryDecompressResponseStream ||
           (isFailedResponse && !ignoreErrorResponse)
         ) {
-          const decompressionResult = decompressResponse(_response, this.logger)
+          const decompressionResult = decompressResponse(
+            _response,
+            this.logWriter,
+          )
           if (isDecompressionError(decompressionResult)) {
             const err = enhanceStackTrace(
               decompressionResult.error,
@@ -756,7 +759,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             // so it doesn't have the idle timeout handler attached to it
             if (socketInfo === undefined) {
               const socketId = crypto.randomUUID()
-              this.logger.trace({
+              this.logWriter.trace({
                 message: `Using a fresh socket ${socketId}, setting up a new 'free' listener`,
               })
               this.knownSockets.set(socket, {
@@ -766,13 +769,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               // When the request is complete and the socket is released,
               // make sure that the socket is removed after `idleSocketTTL`.
               socket.on('free', () => {
-                this.logger.trace({
+                this.logWriter.trace({
                   message: `Socket ${socketId} was released`,
                 })
                 // Avoiding the built-in socket.timeout() method usage here,
                 // as we don't want to clash with the actual request timeout.
                 const idleTimeoutHandle = setTimeout(() => {
-                  this.logger.trace({
+                  this.logWriter.trace({
                     message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
                   })
                   this.knownSockets.delete(socket)
@@ -790,11 +793,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                 if (maybeSocketInfo?.idle_timeout_handle) {
                   clearTimeout(maybeSocketInfo.idle_timeout_handle)
                 }
-                this.logger.trace({
+                this.logWriter.trace({
                   message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
                 })
                 if (responseStream && !responseStream.readableEnded) {
-                  this.logger.warn({
+                  this.logWriter.warn({
                     message:
                       `${op}: socket was closed or ended before the response was fully read. ` +
                       'This can potentially result in an uncaught ECONNRESET error! ' +
@@ -810,7 +813,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               socket.once('close', cleanup)
             } else {
               clearTimeout(socketInfo.idle_timeout_handle)
-              this.logger.trace({
+              this.logWriter.trace({
                 message: `Reusing socket ${socketInfo.id}`,
               })
               this.knownSockets.set(socket, {
@@ -911,7 +914,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         try {
           return request.end()
         } catch (e) {
-          this.logger.error({
+          this.logWriter.error({
             message: 'An error occurred while ending the request without body',
             err: e as Error,
           })
