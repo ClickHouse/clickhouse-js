@@ -5,7 +5,6 @@ import type {
   ConnectionParams,
   ConnExecResult,
   IsSame,
-  LogWriter,
   MakeResultSet,
   WithClickHouseSummary,
   WithResponseHeaders,
