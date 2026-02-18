@@ -87,7 +87,10 @@ describe('[Node.js] exec', () => {
         values: stream,
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
-      await drainStream(execResult.stream)
+      await drainStream(
+        { op: 'Insert', log_verbose: 0, query_id: execResult.query_id },
+        execResult.stream,
+      )
       await checkInsertedValues([
         {
           id: '42',
@@ -112,7 +115,10 @@ describe('[Node.js] exec', () => {
       stream.push(null)
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
       const execResult = await execPromise
-      await drainStream(execResult.stream)
+      await drainStream(
+        { op: 'Insert', log_verbose: 0, query_id: execResult.query_id },
+        execResult.stream,
+      )
       await checkInsertedValues([])
     })
 
@@ -131,7 +137,10 @@ describe('[Node.js] exec', () => {
         values: stream,
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
-      await drainStream(execResult.stream)
+      await drainStream(
+        { op: 'Insert', log_verbose: 0, query_id: execResult.query_id },
+        execResult.stream,
+      )
       await checkInsertedValues([
         {
           id: '42',
@@ -155,7 +164,10 @@ describe('[Node.js] exec', () => {
         values: stream,
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
-      await drainStream(execResult.stream)
+      await drainStream(
+        { op: 'Insert', log_verbose: 0, query_id: execResult.query_id },
+        execResult.stream,
+      )
       await checkInsertedValues([])
     })
 

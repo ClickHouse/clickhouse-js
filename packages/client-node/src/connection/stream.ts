@@ -5,7 +5,7 @@ interface Context {
   op: ConnOperation
   log_verbose: 0 | 1
   query_id: string
-  logger: LogWriter
+  logger?: LogWriter
 }
 
 /** Drains the response stream, as calling `destroy` on a {@link Stream.Readable} response stream
