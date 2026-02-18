@@ -79,7 +79,7 @@ export interface RequestParams {
   parse_summary?: boolean
   query: string
   query_id: string
-  log_verbose?: 0 | 1
+  log_verbose: 0 | 1 | undefined
 }
 
 export abstract class NodeBaseConnection implements Connection<Stream.Readable> {
@@ -118,6 +118,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   }
 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
+    const { log_verbose = 0 } = this.params
     const query_id = this.getQueryId(params.query_id)
     const { controller, controllerCleanup } = this.getAbortController(params)
     let result: RequestResult
@@ -136,6 +137,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
             query_id,
+            log_verbose,
           },
           'Ping',
         )
@@ -148,6 +150,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             headers: this.buildRequestHeaders(),
             query: 'ping',
             query_id,
+            log_verbose,
           },
           'Ping',
         )
@@ -157,7 +160,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           op: 'Ping' as const,
           logger: this.logger,
           query_id,
-          log_verbose: this.params.log_verbose ?? 0,
+          log_verbose,
         },
         result.stream,
       )
@@ -186,6 +189,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async query(
     params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<Stream.Readable>> {
+    const { log_verbose = 0 } = this.params
     const query_id = this.getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -214,6 +218,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           headers: this.buildRequestHeaders(params),
           query: params.query,
           query_id,
+          log_verbose,
         },
         'Query',
       )
@@ -245,6 +250,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async insert(
     params: ConnInsertParams<Stream.Readable>,
   ): Promise<ConnInsertResult> {
+    const { log_verbose = 0 } = this.params
     const query_id = this.getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -270,6 +276,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             headers: this.buildRequestHeaders(params),
             query: params.query,
             query_id,
+            log_verbose,
           },
           'Insert',
         )
@@ -278,7 +285,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           op: 'Insert',
           logger: this.logger,
           query_id,
-          log_verbose: this.params.log_verbose ?? 0,
+          log_verbose,
         },
         stream,
       )
@@ -313,6 +320,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   }
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
+    const { log_verbose = 0 } = this.params
     const query_id = this.getQueryId(params.query_id)
     const commandStartTime = Date.now()
     this.logger.trace({
@@ -350,12 +358,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         op: 'Command',
         logger: this.logger,
         query_id,
-        log_verbose: this.params.log_verbose ?? 0,
+        log_verbose,
       },
       stream,
     )
 
-    if (this.params.log_verbose) {
+    if (log_verbose) {
       const drainDuration = Date.now() - drainStartTime
       const totalDuration = Date.now() - commandStartTime
 
@@ -521,6 +529,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   private async runExec(
     params: RunExecParams,
   ): Promise<ConnExecResult<Stream.Readable>> {
+    const { log_verbose = 0 } = this.params
     const query_id = params.query_id
     const sendQueryInParams = params.values !== undefined
     const clickhouse_settings = withHttpSettings(
@@ -565,6 +574,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             headers: this.buildRequestHeaders(params),
             query: params.query,
             query_id,
+            log_verbose,
           },
           params.op,
         )
