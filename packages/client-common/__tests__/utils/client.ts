@@ -63,7 +63,7 @@ export function createTestClient<Stream = unknown>(
     },
   }
   if (isCloudTestEnv()) {
-    const cloudConfig: BaseClickHouseClientConfigOptions = {
+    return (globalThis as any).environmentSpecificCreateClient({
       url: `https://${getFromEnv(EnvKeys.host)}:8443`,
       password: getFromEnv(EnvKeys.password),
       database: databaseName,
@@ -71,22 +71,14 @@ export function createTestClient<Stream = unknown>(
       ...logging,
       ...config,
       clickhouse_settings: clickHouseSettings,
-    }
-    // @ts-expect-error
-    return globalThis.environmentSpecificCreateClient(
-      cloudConfig,
-    ) as ClickHouseClient
+    }) as ClickHouseClient<Stream>
   } else {
-    const localConfig: BaseClickHouseClientConfigOptions = {
+    return (globalThis as any).environmentSpecificCreateClient({
       database: databaseName,
       ...logging,
       ...config,
       clickhouse_settings: clickHouseSettings,
-    }
-    // @ts-expect-error
-    return globalThis.environmentSpecificCreateClient(
-      localConfig,
-    ) as ClickHouseClient
+    }) as ClickHouseClient<Stream>
   }
 }
 
