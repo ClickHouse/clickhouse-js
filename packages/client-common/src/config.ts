@@ -262,6 +262,7 @@ export function getConnectionParams(
     },
     database: config.database ?? 'default',
     log_writer: new LogWriter(logger, 'Connection', config.log?.level),
+    log_verbose: config.log?.verbose ?? 0,
     keep_alive: { enabled: config.keep_alive?.enabled ?? true },
     clickhouse_settings: config.clickhouse_settings ?? {},
     http_headers: config.http_headers ?? {},

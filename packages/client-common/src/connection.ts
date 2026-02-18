@@ -19,6 +19,7 @@ export interface ConnectionParams {
   database: string
   clickhouse_settings: ClickHouseSettings
   log_writer: LogWriter
+  log_verbose: 1 | 0
   keep_alive: { enabled: boolean }
   application_id?: string
   http_headers?: Record<string, string>
