@@ -47,6 +47,7 @@ describe('[Node.js] createClient', () => {
       database: 'analytics',
       clickhouse_settings: {},
       log_writer: new LogWriter(new DefaultLogger(), 'Connection'),
+      log_verbose: 0,
       keep_alive: { enabled: true },
       http_headers: {
         'X-ClickHouse-Auth': 'secret_token',

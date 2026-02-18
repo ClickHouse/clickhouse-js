@@ -367,6 +367,7 @@ describe('config', () => {
         database: 'default',
         clickhouse_settings: {},
         log_writer: expect.any(LogWriter),
+        log_verbose: 0,
         keep_alive: { enabled: true },
         application_id: undefined,
         http_headers: {},
@@ -422,6 +423,7 @@ describe('config', () => {
           'X-CLICKHOUSE-AUTH': 'secret_header',
         },
         log_writer: expect.any(LogWriter),
+        log_verbose: 0,
         keep_alive: { enabled: false },
         application_id: 'my_app',
         json: {
@@ -495,6 +497,7 @@ describe('config', () => {
         database: 'default',
         clickhouse_settings: {},
         log_writer: expect.any(LogWriter),
+        log_verbose: 0,
         keep_alive: { enabled: true },
         application_id: undefined,
         http_headers: {},
