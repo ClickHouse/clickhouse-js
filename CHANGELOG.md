@@ -1,3 +1,11 @@
+# 1.18.0
+
+## Improvements
+
+- Logging is now lazy, which means that the log messages will only be constructed if the log level is appropriate for the message. This can improve performance in cases where constructing the log message is expensive, and the log level is set to ignore such messages. ([#520])
+
+[#520]: https://github.com/ClickHouse/clickhouse-js/pull/520
+
 # 1.17.0
 
 ## New features
