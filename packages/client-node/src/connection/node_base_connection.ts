@@ -78,6 +78,8 @@ export interface RequestParams {
   ignore_error_response?: boolean
   parse_summary?: boolean
   query: string
+  query_id: string
+  log_verbose?: 0 | 1
 }
 
 export abstract class NodeBaseConnection implements Connection<Stream.Readable> {
@@ -133,6 +135,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             query: PingQuery,
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
+            query_id,
           },
           'Ping',
         )
@@ -144,6 +147,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
             query: 'ping',
+            query_id,
           },
           'Ping',
         )
@@ -209,6 +213,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           enable_response_compression: enableResponseCompression,
           headers: this.buildRequestHeaders(params),
           query: params.query,
+          query_id,
         },
         'Query',
       )
@@ -264,6 +269,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             parse_summary: true,
             headers: this.buildRequestHeaders(params),
             query: params.query,
+            query_id,
           },
           'Insert',
         )
@@ -348,17 +354,20 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       },
       stream,
     )
-    const drainDuration = Date.now() - drainStartTime
-    const totalDuration = Date.now() - commandStartTime
 
-    this.logger.trace({
-      message: 'Command: operation completed',
-      args: {
-        query_id,
-        drain_duration_ms: drainDuration,
-        total_duration_ms: totalDuration,
-      },
-    })
+    if (this.params.log_verbose) {
+      const drainDuration = Date.now() - drainStartTime
+      const totalDuration = Date.now() - commandStartTime
+
+      this.logger.trace({
+        message: 'Command: operation completed',
+        args: {
+          query_id,
+          drain_duration_ms: drainDuration,
+          total_duration_ms: totalDuration,
+        },
+      })
+    }
 
     return { query_id, summary, response_headers }
   }
@@ -555,6 +564,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             ignore_error_response: ignoreErrorResponse,
             headers: this.buildRequestHeaders(params),
             query: params.query,
+            query_id,
           },
           params.op,
         )
@@ -590,6 +600,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     // allows the event loop to process the idle socket timers, if the CPU load is high
     // otherwise, we can occasionally get an expired socket, see https://github.com/ClickHouse/clickhouse-js/issues/294
     await sleep(0)
+    const { query_id, log_verbose } = params
     const currentStackTrace = this.params.capture_enhanced_stack_trace
       ? getCurrentStackTrace()
       : undefined
@@ -610,7 +621,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         _response: Http.IncomingMessage,
       ): Promise<void> => {
         this.logResponse(op, request, params, _response, start)
-        const query_id = params.url.searchParams.get('query_id') ?? 'unknown'
         const tryDecompressResponseStream =
           params.try_decompress_response_stream ?? true
         const ignoreErrorResponse = params.ignore_error_response ?? false
@@ -633,20 +643,22 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           responseStream = _response
         }
 
-        logger.trace({
-          message: `${op}: response stream created`,
-          args: {
-            query_id,
-            operation: op,
-            stream_state: {
-              readable: responseStream.readable,
-              readableEnded: responseStream.readableEnded,
-              readableLength: responseStream.readableLength,
+        if (log_verbose) {
+          logger.trace({
+            message: `${op}: response stream created`,
+            args: {
+              query_id,
+              operation: op,
+              stream_state: {
+                readable: responseStream.readable,
+                readableEnded: responseStream.readableEnded,
+                readableLength: responseStream.readableLength,
+              },
+              is_failed_response: isFailedResponse,
+              will_decompress: tryDecompressResponseStream,
             },
-            is_failed_response: isFailedResponse,
-            will_decompress: tryDecompressResponseStream,
-          },
-        })
+          })
+        }
 
         if (isFailedResponse && !ignoreErrorResponse) {
           try {
@@ -778,8 +790,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                       'Consider fully consuming, draining, or destroying the response stream.',
                     args: {
                       query: params.query,
-                      query_id:
-                        params.url.searchParams.get('query_id') ?? 'unknown',
+                      query_id,
                     },
                   })
                 }
@@ -813,40 +824,42 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       }
 
       function onTimeout(): void {
-        const query_id = params.url.searchParams.get('query_id') ?? 'unknown'
-        const socketState = request.socket
-          ? {
-              connecting: request.socket.connecting,
-              pending: request.socket.pending,
-              destroyed: request.socket.destroyed,
-              readyState: request.socket.readyState,
-            }
-          : undefined
-        const responseStreamState = responseStream
-          ? {
-              readable: responseStream.readable,
-              readableEnded: responseStream.readableEnded,
-              readableLength: responseStream.readableLength,
-            }
-          : undefined
+        removeRequestListeners()
 
-        logger.trace({
-          message: `${op}: timeout occurred`,
-          args: {
-            query_id,
-            operation: op,
-            timeout_ms: requestTimeout,
-            socket_state: socketState,
-            response_stream_state: responseStreamState,
-            has_response_stream: responseStream !== undefined,
-          },
-        })
+        if (log_verbose) {
+          const socketState = request.socket
+            ? {
+                connecting: request.socket.connecting,
+                pending: request.socket.pending,
+                destroyed: request.socket.destroyed,
+                readyState: request.socket.readyState,
+              }
+            : undefined
+          const responseStreamState = responseStream
+            ? {
+                readable: responseStream.readable,
+                readableEnded: responseStream.readableEnded,
+                readableLength: responseStream.readableLength,
+              }
+            : undefined
+
+          logger.trace({
+            message: `${op}: timeout occurred`,
+            args: {
+              query_id,
+              operation: op,
+              timeout_ms: requestTimeout,
+              socket_state: socketState,
+              response_stream_state: responseStreamState,
+              has_response_stream: responseStream !== undefined,
+            },
+          })
+        }
 
         const err = enhanceStackTrace(
           new Error('Timeout error.'),
           currentStackTrace,
         )
-        removeRequestListeners()
         try {
           request.destroy()
         } catch (e) {
