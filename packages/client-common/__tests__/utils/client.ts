@@ -56,19 +56,18 @@ export function createTestClient<Stream = unknown>(
   }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
-  const logging = {
-    log: {
-      enable: true,
-      LoggerClass: TestLogger,
-    },
+  const log: BaseClickHouseClientConfigOptions['log'] = {
+    LoggerClass: TestLogger,
+    verbose: process.env.CLIENT_CONFIG === 'verbose_logging' ? 1 : 0,
   }
+
   if (isCloudTestEnv()) {
     const cloudConfig: BaseClickHouseClientConfigOptions = {
       url: `https://${getFromEnv(EnvKeys.host)}:8443`,
       password: getFromEnv(EnvKeys.password),
       database: databaseName,
       request_timeout: 60_000,
-      ...logging,
+      log,
       ...config,
       clickhouse_settings: clickHouseSettings,
     }
@@ -85,7 +84,7 @@ export function createTestClient<Stream = unknown>(
   } else {
     const localConfig: BaseClickHouseClientConfigOptions = {
       database: databaseName,
-      ...logging,
+      log,
       ...config,
       clickhouse_settings: clickHouseSettings,
     }

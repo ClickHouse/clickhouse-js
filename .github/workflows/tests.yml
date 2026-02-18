@@ -220,7 +220,7 @@ jobs:
       matrix:
         node: [20, 22, 24]
         clickhouse: [head, latest]
-
+        client_config: [default, verbose_logging]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -246,12 +246,14 @@ jobs:
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
       - name: Run integration tests with TLS tests
+        env:
+          CLIENT_CONFIG: ${{ matrix.client_config }}
         run: |
           npm run test:node:integration:tls
 
       - name: Export coverage metrics
         env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }})
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }}, ${{ matrix.client_config }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
