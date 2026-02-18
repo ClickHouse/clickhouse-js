@@ -247,13 +247,13 @@ jobs:
 
       - name: Run integration tests with TLS tests
         env:
-          CLIENT_CONFIG: ${{ matrix.client_config }}
+          LOG_LEVEL: ${{ matrix.log_level }}
         run: |
           npm run test:node:integration:tls
 
       - name: Export coverage metrics
         env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }}, ${{ matrix.client_config }})
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }}, ${{ matrix.log_level }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
