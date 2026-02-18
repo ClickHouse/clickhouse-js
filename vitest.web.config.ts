@@ -57,22 +57,17 @@ const collections = {
   ],
 }
 
-// Configuration for all tests (unit + integration)
 export default defineConfig({
   test: {
     // Increase maxWorkers to speed up integration tests
     // as we're not bound by the CPU here.
     maxWorkers: '400%',
     // Cover the Cloud instance wake-up time
+    hookTimeout: 300_000,
     testTimeout: 300_000,
     slowTestThreshold: testMode === 'unit' ? 10_000 : undefined,
     setupFiles: ['vitest.web.setup.ts'],
     include: collections[testMode],
-    browser: {
-      enabled: true,
-      provider: playwright(),
-      instances: [{ browser }],
-    },
     coverage: {
       enabled: process.env.VITEST_COVERAGE === 'true',
       provider: 'istanbul',
@@ -97,6 +92,11 @@ export default defineConfig({
         process.env.CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN,
       CLICKHOUSE_TEST_SKIP_INIT: process.env.CLICKHOUSE_TEST_SKIP_INIT,
       CLICKHOUSE_TEST_ENVIRONMENT: process.env.CLICKHOUSE_TEST_ENVIRONMENT,
+    },
+    browser: {
+      enabled: true,
+      provider: playwright(),
+      instances: [{ browser }],
     },
   },
   resolve: {

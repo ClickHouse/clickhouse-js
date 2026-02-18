@@ -57,8 +57,8 @@ export default defineConfig({
     hookTimeout: 300_000,
     testTimeout: 300_000,
     slowTestThreshold: testMode === 'unit' ? 10_000 : undefined,
-    include: collections[testMode],
     setupFiles: ['vitest.node.setup.ts'],
+    include: collections[testMode],
     coverage: {
       enabled: process.env.VITEST_COVERAGE === 'true',
       provider: 'istanbul',
@@ -74,6 +74,14 @@ export default defineConfig({
         'packages/client-common/src/result.ts',
         'packages/client-common/src/ts_utils.ts',
       ],
+    },
+    env: {
+      CLICKHOUSE_CLOUD_HOST: process.env.CLICKHOUSE_CLOUD_HOST,
+      CLICKHOUSE_CLOUD_PASSWORD: process.env.CLICKHOUSE_CLOUD_PASSWORD,
+      CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN:
+        process.env.CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN,
+      CLICKHOUSE_TEST_SKIP_INIT: process.env.CLICKHOUSE_TEST_SKIP_INIT,
+      CLICKHOUSE_TEST_ENVIRONMENT: process.env.CLICKHOUSE_TEST_ENVIRONMENT,
     },
     experimental: {
       openTelemetry: {
