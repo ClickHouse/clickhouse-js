@@ -55,8 +55,8 @@ We use [Vitest](https://vitest.dev/) as the test runner and the testing framewor
 The repository uses three consolidated Vitest configuration files:
 
 - `vitest.client-common.config.ts` - Tests for the common client package
-- `vitest.client-node.config.ts` - Tests for the Node.js client package
-- `vitest.client-web.config.ts` - Tests for the Web client package
+- `vitest.node.config.ts` - Tests for the Node.js client package
+- `vitest.web.config.ts` - Tests for the Web client package
 
 Each config supports multiple test modes controlled by the `TEST_MODE` environment variable, allowing different test scenarios (unit, integration, TLS, etc.) to be run with a single configuration file.
 
