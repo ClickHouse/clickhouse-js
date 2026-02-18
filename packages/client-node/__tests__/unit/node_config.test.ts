@@ -4,7 +4,7 @@ import type {
   BaseClickHouseClientConfigOptions,
   ConnectionParams,
 } from '@clickhouse/client-common'
-import { LogWriter } from '@clickhouse/client-common'
+import { ClickHouseLogLevel, LogWriter } from '@clickhouse/client-common'
 import { TestLogger } from '../../../client-common/__tests__/utils/test_logger'
 import { Buffer } from 'buffer'
 import http from 'http'
@@ -81,6 +81,7 @@ describe('[Node.js] Config implementation details', () => {
       database: 'default',
       clickhouse_settings: {},
       log_writer: new LogWriter(new TestLogger(), 'MakeConnectionTest'),
+      log_level: ClickHouseLogLevel.OFF,
       keep_alive: { enabled: false },
     }
 

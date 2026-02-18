@@ -8,8 +8,8 @@ import type Stream from 'stream'
 interface Context {
   op: ConnOperation
   log_level: ClickHouseLogLevel
+  log_writer: LogWriter
   query_id: string
-  logWriter?: LogWriter
 }
 
 /** Drains the response stream, as calling `destroy` on a {@link Stream.Readable} response stream
@@ -25,7 +25,7 @@ export async function drainStream(
     let chunkCount = 0
 
     if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
-      ctx.logWriter?.trace({
+      ctx.log_writer.trace({
         message: `${ctx.op}: starting stream drain`,
         args: {
           query_id: ctx.query_id,
@@ -47,7 +47,7 @@ export async function drainStream(
         } else if (typeof chunk === 'string') {
           bytesReceived += Buffer.byteLength(chunk)
         }
-        ctx.logWriter?.trace({
+        ctx.log_writer.trace({
           message: `${ctx.op}: received data chunk during drain`,
           args: {
             query_id: ctx.query_id,
@@ -65,7 +65,7 @@ export async function drainStream(
       removeListeners()
       if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
         const duration = Date.now() - startTime
-        ctx.logWriter?.trace({
+        ctx.log_writer.trace({
           message: `${ctx.op}: stream drain completed (end event)`,
           args: {
             query_id: ctx.query_id,
@@ -82,7 +82,7 @@ export async function drainStream(
       removeListeners()
       if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
         const duration = Date.now() - startTime
-        ctx.logWriter?.trace({
+        ctx.log_writer.trace({
           message: `${ctx.op}: stream drain failed (error event)`,
           args: {
             query_id: ctx.query_id,
@@ -100,7 +100,7 @@ export async function drainStream(
       removeListeners()
       if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
         const duration = Date.now() - startTime
-        ctx.logWriter?.trace({
+        ctx.log_writer.trace({
           message: `${ctx.op}: stream closed during drain (close event)`,
           args: {
             query_id: ctx.query_id,

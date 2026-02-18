@@ -188,8 +188,6 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly sessionId?: string
   private readonly role?: string | Array<string>
-  private readonly logWriter: LogWriter
-  private readonly log_level: ClickHouseLogLevel
   private readonly jsonHandling: JSONHandling
 
   constructor(
@@ -204,7 +202,6 @@ export class ClickHouseClient<Stream = unknown> {
       config.impl.handle_specific_url_params ?? null,
     )
     this.connectionParams = getConnectionParams(configWithURL, logger)
-    this.logWriter = this.connectionParams.log_writer
     this.clientClickHouseSettings = this.connectionParams.clickhouse_settings
     this.sessionId = config.session_id
     this.role = config.role
@@ -214,7 +211,6 @@ export class ClickHouseClient<Stream = unknown> {
     )
     // Using the connection params log level as it does the parsing.
     // Probably, it would be better to parse the log level in the client itself.
-    this.log_level = this.connectionParams.log_level
     this.makeResultSet = config.impl.make_result_set
     this.jsonHandling = {
       ...defaultJSONHandling,
@@ -242,13 +238,14 @@ export class ClickHouseClient<Stream = unknown> {
       query,
       ...queryParams,
     })
+    const { log_writer, log_level } = this.connectionParams
     return this.makeResultSet(
       stream,
       format,
       query_id,
       (err) => {
-        if (this.log_level <= ClickHouseLogLevel.ERROR) {
-          this.logWriter.error({
+        if (log_level <= ClickHouseLogLevel.ERROR) {
+          log_writer.error({
             err,
             module: 'Client',
             message: 'Error while processing the ResultSet.',

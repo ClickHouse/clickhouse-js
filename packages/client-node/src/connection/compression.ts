@@ -8,7 +8,7 @@ type DecompressResponseResult = { response: Stream.Readable } | { error: Error }
 
 export function decompressResponse(
   response: Http.IncomingMessage,
-  logWriter: LogWriter,
+  log_writer: LogWriter,
   log_level: ClickHouseLogLevel,
 ): DecompressResponseResult {
   const encoding = response.headers['content-encoding']
@@ -21,7 +21,7 @@ export function decompressResponse(
         function pipelineCb(err) {
           if (err) {
             if (log_level <= ClickHouseLogLevel.ERROR) {
-              logWriter.error({
+              log_writer.error({
                 message: 'An error occurred while decompressing the response',
                 err,
               })
