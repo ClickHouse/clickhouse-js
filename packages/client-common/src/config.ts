@@ -67,16 +67,6 @@ export interface BaseClickHouseClientConfigOptions {
     LoggerClass?: new () => Logger
     /** @default set to {@link ClickHouseLogLevel.OFF} */
     level?: ClickHouseLogLevel
-    /**
-     * Enable additional logs, mostly used for debugging.
-     *
-     * When set to `0`, the client will not allocate resources for the additional logs,
-     * and the related code will be not executed at all. When set to `1`, the additional logs will be produced.
-     *
-     * Set {@link level} to {@link ClickHouseLogLevel.TRACE} to see all the logs available.
-     *
-     * @default 0 */
-    verbose?: 0 | 1
     /** @default false */
     unsafeLogUnredactedQueries?: boolean
   }
@@ -262,7 +252,7 @@ export function getConnectionParams(
     },
     database: config.database ?? 'default',
     log_writer: new LogWriter(logger, 'Connection', config.log?.level),
-    log_verbose: config.log?.verbose ?? 0,
+    log_level: config.log?.level ?? ClickHouseLogLevel.OFF,
     keep_alive: { enabled: config.keep_alive?.enabled ?? true },
     clickhouse_settings: config.clickhouse_settings ?? {},
     http_headers: config.http_headers ?? {},

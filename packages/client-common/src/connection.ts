@@ -4,7 +4,7 @@ import type {
   WithHttpStatusCode,
   WithResponseHeaders,
 } from './clickhouse_types'
-import type { LogWriter } from './logger'
+import type { ClickHouseLogLevel, LogWriter } from './logger'
 import type { ClickHouseSettings } from './settings'
 
 export type ConnectionAuth =
@@ -19,7 +19,7 @@ export interface ConnectionParams {
   database: string
   clickhouse_settings: ClickHouseSettings
   log_writer: LogWriter
-  log_verbose: 1 | 0
+  log_level: ClickHouseLogLevel
   keep_alive: { enabled: boolean }
   application_id?: string
   http_headers?: Record<string, string>

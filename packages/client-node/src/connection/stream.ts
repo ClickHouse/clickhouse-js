@@ -1,9 +1,13 @@
-import type { LogWriter, ConnOperation } from '@clickhouse/client-common'
+import {
+  type LogWriter,
+  type ConnOperation,
+  ClickHouseLogLevel,
+} from '@clickhouse/client-common'
 import type Stream from 'stream'
 
 interface Context {
   op: ConnOperation
-  log_verbose: 0 | 1
+  log_level: ClickHouseLogLevel
   query_id: string
   logger?: LogWriter
 }
@@ -20,7 +24,7 @@ export async function drainStream(
     let bytesReceived = 0
     let chunkCount = 0
 
-    if (ctx.log_verbose) {
+    if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
       ctx.logger?.trace({
         message: `${ctx.op}: starting stream drain`,
         args: {
@@ -36,7 +40,7 @@ export async function drainStream(
 
     function dropData(chunk: Buffer | string) {
       // used only for the methods without expected response; we don't care about the data here
-      if (ctx.log_verbose) {
+      if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
         chunkCount++
         if (Buffer.isBuffer(chunk)) {
           bytesReceived += chunk.length
@@ -59,7 +63,7 @@ export async function drainStream(
 
     function onEnd() {
       removeListeners()
-      if (ctx.log_verbose) {
+      if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
         const duration = Date.now() - startTime
         ctx.logger?.trace({
           message: `${ctx.op}: stream drain completed (end event)`,
@@ -76,7 +80,7 @@ export async function drainStream(
 
     function onError(err: Error) {
       removeListeners()
-      if (ctx.log_verbose) {
+      if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
         const duration = Date.now() - startTime
         ctx.logger?.trace({
           message: `${ctx.op}: stream drain failed (error event)`,
@@ -94,7 +98,7 @@ export async function drainStream(
 
     function onClose() {
       removeListeners()
-      if (ctx.log_verbose) {
+      if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
         const duration = Date.now() - startTime
         ctx.logger?.trace({
           message: `${ctx.op}: stream closed during drain (close event)`,

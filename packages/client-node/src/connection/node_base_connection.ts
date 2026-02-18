@@ -26,6 +26,7 @@ import {
   toSearchParams,
   transformUrl,
   withHttpSettings,
+  ClickHouseLogLevel,
 } from '@clickhouse/client-common'
 import { type ConnPingParams } from '@clickhouse/client-common'
 import crypto from 'crypto'
@@ -48,7 +49,7 @@ export type NodeConnectionParams = ConnectionParams & {
     enabled: boolean
     idle_socket_ttl: number
   }
-  log_verbose?: 0 | 1
+  log_level: ClickHouseLogLevel
 }
 
 export type TLSParams =
@@ -79,7 +80,7 @@ export interface RequestParams {
   parse_summary?: boolean
   query: string
   query_id: string
-  log_verbose: 0 | 1 | undefined
+  log_level: ClickHouseLogLevel
 }
 
 export abstract class NodeBaseConnection implements Connection<Stream.Readable> {
@@ -118,7 +119,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   }
 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
-    const { log_verbose = 0 } = this.params
+    const { log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const { controller, controllerCleanup } = this.getAbortController(params)
     let result: RequestResult
@@ -137,7 +138,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
             query_id,
-            log_verbose,
+            log_level,
           },
           'Ping',
         )
@@ -150,7 +151,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             headers: this.buildRequestHeaders(),
             query: 'ping',
             query_id,
-            log_verbose,
+            log_level,
           },
           'Ping',
         )
@@ -160,7 +161,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           op: 'Ping' as const,
           logger: this.logger,
           query_id,
-          log_verbose,
+          log_level,
         },
         result.stream,
       )
@@ -189,7 +190,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async query(
     params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<Stream.Readable>> {
-    const { log_verbose = 0 } = this.params
+    const { log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -218,7 +219,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           headers: this.buildRequestHeaders(params),
           query: params.query,
           query_id,
-          log_verbose,
+          log_level,
         },
         'Query',
       )
@@ -250,7 +251,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async insert(
     params: ConnInsertParams<Stream.Readable>,
   ): Promise<ConnInsertResult> {
-    const { log_verbose = 0 } = this.params
+    const { log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -276,7 +277,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             headers: this.buildRequestHeaders(params),
             query: params.query,
             query_id,
-            log_verbose,
+            log_level,
           },
           'Insert',
         )
@@ -285,7 +286,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           op: 'Insert',
           logger: this.logger,
           query_id,
-          log_verbose,
+          log_level,
         },
         stream,
       )
@@ -320,7 +321,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   }
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
-    const { log_verbose = 0 } = this.params
+    const { log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const commandStartTime = Date.now()
     this.logger.trace({
@@ -358,12 +359,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         op: 'Command',
         logger: this.logger,
         query_id,
-        log_verbose,
+        log_level,
       },
       stream,
     )
 
-    if (log_verbose) {
+    if (log_level <= ClickHouseLogLevel.TRACE) {
       const drainDuration = Date.now() - drainStartTime
       const totalDuration = Date.now() - commandStartTime
 
@@ -529,7 +530,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   private async runExec(
     params: RunExecParams,
   ): Promise<ConnExecResult<Stream.Readable>> {
-    const { log_verbose = 0 } = this.params
+    const { log_level } = this.params
     const query_id = params.query_id
     const sendQueryInParams = params.values !== undefined
     const clickhouse_settings = withHttpSettings(
@@ -574,7 +575,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             headers: this.buildRequestHeaders(params),
             query: params.query,
             query_id,
-            log_verbose,
+            log_level,
           },
           params.op,
         )
@@ -610,7 +611,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     // allows the event loop to process the idle socket timers, if the CPU load is high
     // otherwise, we can occasionally get an expired socket, see https://github.com/ClickHouse/clickhouse-js/issues/294
     await sleep(0)
-    const { query_id, log_verbose } = params
+    const { query_id, log_level } = params
     const currentStackTrace = this.params.capture_enhanced_stack_trace
       ? getCurrentStackTrace()
       : undefined
@@ -653,7 +654,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           responseStream = _response
         }
 
-        if (log_verbose) {
+        if (log_level <= ClickHouseLogLevel.TRACE) {
           logger.trace({
             message: `${op}: response stream created`,
             args: {
@@ -836,7 +837,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       function onTimeout(): void {
         removeRequestListeners()
 
-        if (log_verbose) {
+        if (log_level <= ClickHouseLogLevel.TRACE) {
           const socketState = request.socket
             ? {
                 connecting: request.socket.connecting,
