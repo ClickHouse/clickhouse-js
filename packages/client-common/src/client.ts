@@ -9,8 +9,9 @@ import type {
   MakeResultSet,
   WithClickHouseSummary,
   WithResponseHeaders,
+  DataFormat,
 } from './index'
-import { type DataFormat, defaultJSONHandling, DefaultLogger } from './index'
+import { defaultJSONHandling, DefaultLogger, ClickHouseLogLevel } from './index'
 import type {
   InsertValues,
   NonEmptyArray,
@@ -188,6 +189,7 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly sessionId?: string
   private readonly role?: string | Array<string>
   private readonly logWriter: LogWriter
+  private readonly log_level: ClickHouseLogLevel
   private readonly jsonHandling: JSONHandling
 
   constructor(
@@ -210,6 +212,9 @@ export class ClickHouseClient<Stream = unknown> {
       configWithURL,
       this.connectionParams,
     )
+    // Using the connection params log level as it does the parsing.
+    // Probably, it would be better to parse the log level in the client itself.
+    this.log_level = this.connectionParams.log_level
     this.makeResultSet = config.impl.make_result_set
     this.jsonHandling = {
       ...defaultJSONHandling,
@@ -242,17 +247,19 @@ export class ClickHouseClient<Stream = unknown> {
       format,
       query_id,
       (err) => {
-        this.logWriter.error({
-          err,
-          module: 'Client',
-          message: 'Error while processing the ResultSet.',
-          args: {
-            session_id: queryParams.session_id,
-            role: queryParams.role,
-            query,
-            query_id,
-          },
-        })
+        if (this.log_level <= ClickHouseLogLevel.ERROR) {
+          this.logWriter.error({
+            err,
+            module: 'Client',
+            message: 'Error while processing the ResultSet.',
+            args: {
+              session_id: queryParams.session_id,
+              role: queryParams.role,
+              query,
+              query_id,
+            },
+          })
+        }
       },
       response_headers,
       this.jsonHandling,
