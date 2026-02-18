@@ -10,13 +10,11 @@ on:
       - '**/*.md'
       - 'LICENSE'
       - 'benchmarks/**'
-      - 'examples/**'
   pull_request:
     paths-ignore:
       - '**/*.md'
       - 'LICENSE'
       - 'benchmarks/**'
-      - 'examples/**'
 
   schedule:
     - cron: '0 9 * * *'
