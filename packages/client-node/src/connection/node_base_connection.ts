@@ -828,7 +828,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                         'This can potentially result in an uncaught ECONNRESET error! ' +
                         'Consider fully consuming, draining, or destroying the response stream.',
                       args: {
-                        query: params.query,
+                        query: this.params.unsafeLogUnredactedQueries
+                          ? params.query
+                          : undefined,
                         query_id,
                       },
                     })
