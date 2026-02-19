@@ -478,13 +478,26 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { authorization, host, ...headers } = request.getHeaders()
       const duration = Date.now() - startTimestamp
+
+      // Redact query parameter from URL search params unless explicitly allowed
+      let request_params = params.url.search
+      if (!this.params.unsafeLogUnredactedQueries && request_params) {
+        const searchParams = new URLSearchParams(request_params)
+        if (searchParams.has('query')) {
+          searchParams.delete('query')
+          request_params = searchParams.toString()
+            ? `?${searchParams.toString()}`
+            : ''
+        }
+      }
+
       this.params.log_writer.debug({
         module: 'HTTP Adapter',
         message: `${op}: got a response from ClickHouse`,
         args: {
           request_method: params.method,
           request_path: params.url.pathname,
-          request_params: params.url.search,
+          request_params,
           request_headers: headers,
           response_status: response.statusCode,
           response_headers: response.headers,
