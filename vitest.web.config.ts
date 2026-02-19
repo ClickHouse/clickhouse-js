@@ -105,7 +105,10 @@ export default defineConfig({
       openTelemetry: {
         enabled: process.env.VITEST_OTEL_ENABLED === 'true',
         sdkPath: './vitest.node.otel.js',
-        browserSdkPath: './vitest.web.otel.js',
+        // According to testing, runners hang indefinitely when OTEL is enabled in browser tests,
+        // and when they don't the exporter visibly slows the tests down (2x-5x).
+        // Tests also crash (their iframe?) when the devtools are open in Chrome.
+        // browserSdkPath: './vitest.web.otel.js',
       },
     },
     browser: {
