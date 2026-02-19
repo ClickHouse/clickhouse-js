@@ -57,14 +57,16 @@ export function createTestClient<Stream = unknown>(
   }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
+  const level =
+    !process.env.LOG_LEVEL || process.env.LOG_LEVEL === 'undefined'
+      ? undefined // allow the client to use its default log level if LOG_LEVEL is not set
+      : ClickHouseLogLevel[
+          process.env.LOG_LEVEL as keyof typeof ClickHouseLogLevel
+        ]
   const log: BaseClickHouseClientConfigOptions['log'] = {
     LoggerClass: TestLogger,
-    level:
-      !process.env.LOG_LEVEL || process.env.LOG_LEVEL === 'undefined'
-        ? undefined // allow the client to use its default log level if LOG_LEVEL is not set
-        : ClickHouseLogLevel[
-            process.env.LOG_LEVEL as keyof typeof ClickHouseLogLevel
-          ],
+    unsafeLogUnredactedQueries: level === ClickHouseLogLevel.TRACE,
+    level,
   }
 
   if (isCloudTestEnv()) {
