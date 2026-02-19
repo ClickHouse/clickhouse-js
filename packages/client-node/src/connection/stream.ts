@@ -21,6 +21,9 @@ export async function drainStream(stream: Stream.Readable): Promise<void> {
 
     function onClose() {
       removeListeners()
+      // The `end` event might not be emitted if the server closes the connection.
+      // Making sure to resolve the promise in this case as well.
+      resolve()
     }
 
     function removeListeners() {
