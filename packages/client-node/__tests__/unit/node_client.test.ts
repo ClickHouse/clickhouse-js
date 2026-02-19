@@ -4,7 +4,11 @@ import type {
   BaseClickHouseClientConfigOptions,
   ConnectionParams,
 } from '@clickhouse/client-common'
-import { DefaultLogger, LogWriter } from '@clickhouse/client-common'
+import {
+  DefaultLogger,
+  LogWriter,
+  ClickHouseLogLevel,
+} from '@clickhouse/client-common'
 import { createClient } from '../../src'
 import {
   type CreateConnectionParams,
@@ -47,7 +51,7 @@ describe('[Node.js] createClient', () => {
       database: 'analytics',
       clickhouse_settings: {},
       log_writer: new LogWriter(new DefaultLogger(), 'Connection'),
-      log_level: 127,
+      log_level: ClickHouseLogLevel.OFF,
       keep_alive: { enabled: true },
       http_headers: {
         'X-ClickHouse-Auth': 'secret_token',

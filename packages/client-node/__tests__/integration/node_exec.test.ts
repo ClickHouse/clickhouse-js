@@ -1,4 +1,9 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
+import {
+  DefaultLogger,
+  LogWriter,
+  type ClickHouseClient,
+  ClickHouseLogLevel,
+} from '@clickhouse/client-common'
 import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
 import { createTestClient } from '@test/utils/client'
@@ -10,8 +15,10 @@ import { getAsText } from '../../src/utils'
 
 describe('[Node.js] exec', () => {
   let client: ClickHouseClient<Stream.Readable>
+  let log_writer: LogWriter
   beforeEach(() => {
     client = createTestClient()
+    log_writer = new LogWriter(new DefaultLogger(), 'Connection')
   })
   afterEach(async () => {
     await client.close()
@@ -88,7 +95,12 @@ describe('[Node.js] exec', () => {
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
       await drainStream(
-        { op: 'Insert', log_verbose: 0, query_id: execResult.query_id },
+        {
+          op: 'Insert',
+          query_id: execResult.query_id,
+          log_writer,
+          log_level: ClickHouseLogLevel.OFF,
+        },
         execResult.stream,
       )
       await checkInsertedValues([
@@ -116,7 +128,12 @@ describe('[Node.js] exec', () => {
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
       const execResult = await execPromise
       await drainStream(
-        { op: 'Insert', log_verbose: 0, query_id: execResult.query_id },
+        {
+          op: 'Insert',
+          query_id: execResult.query_id,
+          log_writer,
+          log_level: ClickHouseLogLevel.OFF,
+        },
         execResult.stream,
       )
       await checkInsertedValues([])
@@ -138,7 +155,12 @@ describe('[Node.js] exec', () => {
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
       await drainStream(
-        { op: 'Insert', log_verbose: 0, query_id: execResult.query_id },
+        {
+          op: 'Insert',
+          query_id: execResult.query_id,
+          log_writer,
+          log_level: ClickHouseLogLevel.OFF,
+        },
         execResult.stream,
       )
       await checkInsertedValues([
@@ -165,7 +187,12 @@ describe('[Node.js] exec', () => {
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
       await drainStream(
-        { op: 'Insert', log_verbose: 0, query_id: execResult.query_id },
+        {
+          op: 'Insert',
+          query_id: execResult.query_id,
+          log_writer,
+          log_level: ClickHouseLogLevel.OFF,
+        },
         execResult.stream,
       )
       await checkInsertedValues([])
