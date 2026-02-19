@@ -5,6 +5,13 @@ import type Stream from 'stream'
  *  See https://github.com/ClickHouse/clickhouse-js/pull/203 */
 export async function drainStream(stream: Stream.Readable): Promise<void> {
   return new Promise((resolve, reject) => {
+    // If the stream has already emitted an error, we can reject the promise immediately.
+    if (stream.errored) {
+      // the stream is already errored, no need to attach listeners
+      reject(stream.errored)
+      return
+    }
+
     // Avoid a race condition where the stream has already sent the 'end' event before we attach the listener.
     // In this case, we can resolve the promise immediately without attaching any listeners.
     if (stream.readableEnded) {
@@ -13,10 +20,10 @@ export async function drainStream(stream: Stream.Readable): Promise<void> {
       return
     }
 
-    // Similarly, if the stream has already emitted an error, we can reject the promise immediately.
-    if (stream.errored) {
-      // the stream is already errored, no need to attach listeners
-      reject(stream.errored)
+    // If the stream is already closed, we can resolve the promise immediately as well.
+    if (stream.closed) {
+      // the stream is already closed, no need to attach listeners
+      resolve()
       return
     }
 
