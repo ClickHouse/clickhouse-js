@@ -10,13 +10,11 @@ on:
       - '**/*.md'
       - 'LICENSE'
       - 'benchmarks/**'
-      - 'examples/**'
   pull_request:
     paths-ignore:
       - '**/*.md'
       - 'LICENSE'
       - 'benchmarks/**'
-      - 'examples/**'
 
   schedule:
     - cron: '0 9 * * *'
@@ -205,7 +203,7 @@ jobs:
         env:
           BROWSER: ${{ matrix.browser }}
         run: |
-          npm run test:web
+          npm run test:web:all
 
       - name: Export coverage metrics
         env:
