@@ -52,15 +52,6 @@ export interface BaseQueryParams {
    *  Overrides the headers set in {@link BaseClickHouseClientConfigOptions.http_headers}.
    *  @default empty object */
   http_headers?: Record<string, string>
-
-  /**
-   * If set to `true`, the client will log the queries as is at log level TRACE.
-   * If set to `false` (default), the client will not attempt to log queries at all.
-   *
-   * @default false
-   * @see {@link BaseClickHouseClientConfigOptions.log}
-   */
-  unsafeLogUnredactedQueries?: boolean
 }
 
 export interface QueryParams extends BaseQueryParams {
@@ -175,7 +166,7 @@ export interface InsertParams<
  *  This is the default behavior for the Node.js version. */
 export type PingParamsWithEndpoint = { select: false } & Pick<
   BaseQueryParams,
-  'abort_signal' | 'http_headers' | 'unsafeLogUnredactedQueries'
+  'abort_signal' | 'http_headers'
 >
 /** Parameters for the health-check request - using a SELECT query.
  *  This is the default behavior for the Web version, as the `/ping` endpoint does not support CORS.
@@ -245,14 +236,6 @@ export class ClickHouseClient<Stream = unknown> {
     const { stream, query_id, response_headers } = await this.connection.query({
       query,
       ...queryParams,
-      // Putting it here because withClientQueryParams() has the same
-      // input and output types which makes it harder to mark
-      // unsafeLogUnredactedQueries as non-optional in the connection layer.
-      // Making user-facing types less strict than the internal ones is the
-      // way to go here. Going to address this with the Context implementation later.
-      unsafeLogUnredactedQueries:
-        queryParams.unsafeLogUnredactedQueries ??
-        this.connectionParams.unsafeLogUnredactedQueries,
     })
     const { log_writer, log_level } = this.connectionParams
     return this.makeResultSet(
@@ -296,14 +279,6 @@ export class ClickHouseClient<Stream = unknown> {
       query,
       ignore_error_response,
       ...queryParams,
-      // Putting it here because withClientQueryParams() has the same
-      // input and output types which makes it harder to mark
-      // unsafeLogUnredactedQueries as non-optional in the connection layer.
-      // Making user-facing types less strict than the internal ones is the
-      // way to go here. Going to address this with the Context implementation later.
-      unsafeLogUnredactedQueries:
-        queryParams.unsafeLogUnredactedQueries ??
-        this.connectionParams.unsafeLogUnredactedQueries,
     })
   }
 
@@ -329,14 +304,6 @@ export class ClickHouseClient<Stream = unknown> {
       decompress_response_stream,
       ignore_error_response,
       ...queryParams,
-      // Putting it here because withClientQueryParams() has the same
-      // input and output types which makes it harder to mark
-      // unsafeLogUnredactedQueries as non-optional in the connection layer.
-      // Making user-facing types less strict than the internal ones is the
-      // way to go here. Going to address this with the Context implementation later.
-      unsafeLogUnredactedQueries:
-        queryParams.unsafeLogUnredactedQueries ??
-        this.connectionParams.unsafeLogUnredactedQueries,
     })
   }
 
@@ -363,14 +330,6 @@ export class ClickHouseClient<Stream = unknown> {
       query,
       values: this.valuesEncoder.encodeValues(params.values, format),
       ...queryParams,
-      // Putting it here because withClientQueryParams() has the same
-      // input and output types which makes it harder to mark
-      // unsafeLogUnredactedQueries as non-optional in the connection layer.
-      // Making user-facing types less strict than the internal ones is the
-      // way to go here. Going to address this with the Context implementation later.
-      unsafeLogUnredactedQueries:
-        queryParams.unsafeLogUnredactedQueries ??
-        this.connectionParams.unsafeLogUnredactedQueries,
     })
     return { ...result, executed: true }
   }
@@ -385,16 +344,7 @@ export class ClickHouseClient<Stream = unknown> {
    * **NOTE**: Since the `/ping` endpoint does not support CORS, the Web version always uses a `SELECT` query.
    */
   async ping(params?: PingParams): Promise<PingResult> {
-    const queryParams = params ?? { select: false }
-    return await this.connection.ping({
-      ...queryParams,
-      // Putting it here because withClientQueryParams() is not used in this method.
-      // Making user-facing types less strict than the internal ones is the
-      // way to go here. Going to address this with the Context implementation later.
-      unsafeLogUnredactedQueries:
-        queryParams.unsafeLogUnredactedQueries ??
-        this.connectionParams.unsafeLogUnredactedQueries,
-    })
+    return await this.connection.ping(params ?? { select: false })
   }
 
   /**

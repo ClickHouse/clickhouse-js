@@ -68,7 +68,7 @@ export interface BaseClickHouseClientConfigOptions {
     /** @default set to {@link ClickHouseLogLevel.OFF} */
     level?: ClickHouseLogLevel
     /**
-     * If set to `true`, the client will log the queries as is at log level TRACE.
+     * If set to `true`, the client will log unredacted queries.
      * If set to `false` (default), the client will not attempt to log queries at all.
      *
      * @default false

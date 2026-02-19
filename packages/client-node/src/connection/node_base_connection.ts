@@ -333,7 +333,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       log_writer.trace({
         message: 'Command: operation started',
         args: {
-          query: params.unsafeLogUnredactedQueries ? params.query : undefined,
+          query: this.params.unsafeLogUnredactedQueries
+            ? params.query
+            : undefined,
           query_id,
         },
       })
