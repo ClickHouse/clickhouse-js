@@ -516,6 +516,16 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     extra_args,
   }: LogRequestErrorParams) {
     if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
+      // Redact query parameter from search params unless explicitly allowed
+      let search_params_str = search_params?.toString() ?? ''
+      if (!this.params.unsafeLogUnredactedQueries && search_params) {
+        const redactedSearchParams = new URLSearchParams(search_params)
+        if (redactedSearchParams.has('query')) {
+          redactedSearchParams.delete('query')
+          search_params_str = redactedSearchParams.toString()
+        }
+      }
+
       this.params.log_writer.error({
         message: this.httpRequestErrorMessage(op),
         err: err as Error,
@@ -523,7 +533,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           query: this.params.unsafeLogUnredactedQueries
             ? query_params.query
             : undefined,
-          search_params: search_params?.toString() ?? '',
+          search_params: search_params_str,
           with_abort_signal: query_params.abort_signal !== undefined,
           session_id: query_params.session_id,
           query_id: query_id,
