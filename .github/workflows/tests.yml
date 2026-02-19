@@ -19,6 +19,10 @@ on:
   schedule:
     - cron: '0 9 * * *'
 
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
 env:
   OTEL_SERVICE_NAME: vitest
   OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
