@@ -20,6 +20,7 @@ export interface ConnectionParams {
   clickhouse_settings: ClickHouseSettings
   log_writer: LogWriter
   log_level: ClickHouseLogLevel
+  unsafeLogUnredactedQueries: boolean
   keep_alive: { enabled: boolean }
   application_id?: string
   http_headers?: Record<string, string>
@@ -42,7 +43,7 @@ export interface ConnBaseQueryParams {
   auth?: { username: string; password: string } | { access_token: string }
   role?: string | Array<string>
   http_headers?: Record<string, string>
-  unsafeLogUnredactedQueries?: boolean
+  unsafeLogUnredactedQueries: boolean
 }
 
 export type ConnPingParams = { select: boolean } & Omit<
