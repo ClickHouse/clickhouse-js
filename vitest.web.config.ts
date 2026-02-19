@@ -92,6 +92,24 @@ export default defineConfig({
         process.env.CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN,
       CLICKHOUSE_TEST_SKIP_INIT: process.env.CLICKHOUSE_TEST_SKIP_INIT,
       CLICKHOUSE_TEST_ENVIRONMENT: process.env.CLICKHOUSE_TEST_ENVIRONMENT,
+      OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
+      OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+      OTEL_EXPORTER_OTLP_HEADERS: process.env.OTEL_EXPORTER_OTLP_HEADERS,
+
+      GITHUB_SHA: process.env.GITHUB_SHA,
+      GITHUB_RUN_ID: process.env.GITHUB_RUN_ID,
+      GITHUB_JOB_NAME: process.env.GITHUB_JOB_NAME,
+      GITHUB_WORKFLOW: process.env.GITHUB_WORKFLOW,
+    },
+    experimental: {
+      openTelemetry: {
+        enabled: process.env.VITEST_OTEL_ENABLED === 'true',
+        sdkPath: './vitest.node.otel.js',
+        // According to testing, runners hang indefinitely when OTEL is enabled in browser tests,
+        // and when they don't the exporter visibly slows the tests down (2x-5x).
+        // Tests also crash (their iframe?) when the devtools are open in Chrome.
+        // browserSdkPath: './vitest.web.otel.js',
+      },
     },
     browser: {
       enabled: true,

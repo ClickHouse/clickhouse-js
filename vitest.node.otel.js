@@ -12,7 +12,8 @@ const resource = resourceFromAttributes({
   [ATTR_SERVICE_VERSION]: process.env.GITHUB_SHA?.substring(0, 7),
   'ci.run.id': process.env.GITHUB_RUN_ID,
   'ci.job.name': process.env.GITHUB_JOB_NAME,
-  'load_test.environment': process.env.OPENAPI_LOAD_TEST_ENVIRONMENT,
+  'ci.workflow': process.env.GITHUB_WORKFLOW,
+  'test.platform': 'node',
 })
 
 const sdk = new NodeSDK({

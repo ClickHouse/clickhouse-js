@@ -19,6 +19,10 @@ on:
   schedule:
     - cron: '0 9 * * *'
 
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
 env:
   OTEL_SERVICE_NAME: vitest
   OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
@@ -29,6 +33,7 @@ env:
 
 jobs:
   code-quality:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -55,6 +60,7 @@ jobs:
           npm run lint
 
   code-quality-examples:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -80,6 +86,7 @@ jobs:
           npm run lint
 
   common-unit-tests-node:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -108,6 +115,7 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   common-unit-tests-web:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -139,6 +147,7 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   node-unit-tests:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -172,6 +181,7 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   web-all-tests-local-single-node:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -212,6 +222,7 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-local-single-node:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -254,6 +265,7 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-local-cluster:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -292,6 +304,7 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   web-integration-tests-local-cluster:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -332,6 +345,7 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-cloud:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -365,6 +379,7 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   web-integration-tests-cloud:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -400,6 +415,7 @@ jobs:
 
   # It should only use the current LTS version of Node.js.
   node-codecov-upload:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -439,6 +455,7 @@ jobs:
 
   # It should only use the current version of Chrome
   web-codecov-upload:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
