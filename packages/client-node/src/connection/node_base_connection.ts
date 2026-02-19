@@ -505,7 +505,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         message: this.httpRequestErrorMessage(op),
         err: err as Error,
         args: {
-          query: query_params.query,
+          query: this.params.unsafeLogUnredactedQueries
+            ? query_params.query
+            : undefined,
           search_params: search_params?.toString() ?? '',
           with_abort_signal: query_params.abort_signal !== undefined,
           session_id: query_params.session_id,
