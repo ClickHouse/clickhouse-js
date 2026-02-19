@@ -368,6 +368,7 @@ describe('config', () => {
         clickhouse_settings: {},
         log_writer: expect.any(LogWriter),
         log_level: 127,
+        unsafeLogUnredactedQueries: false,
         keep_alive: { enabled: true },
         application_id: undefined,
         http_headers: {},
@@ -424,6 +425,7 @@ describe('config', () => {
         },
         log_writer: expect.any(LogWriter),
         log_level: 127,
+        unsafeLogUnredactedQueries: false,
         keep_alive: { enabled: false },
         application_id: 'my_app',
         json: {
@@ -498,6 +500,7 @@ describe('config', () => {
         clickhouse_settings: {},
         log_writer: expect.any(LogWriter),
         log_level: 127,
+        unsafeLogUnredactedQueries: false,
         keep_alive: { enabled: true },
         application_id: undefined,
         http_headers: {},
