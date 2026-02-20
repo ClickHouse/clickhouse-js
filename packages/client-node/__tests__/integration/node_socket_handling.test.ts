@@ -29,7 +29,7 @@ describe('Slow server', () => {
     })
     // Client has request timeout set to lower than the server's "sleep" time
     client = createTestClient({
-      url: `http://localhost:${port}`,
+      url: `http://127.0.0.1:${port}`,
       request_timeout: ClientTimeout,
       max_open_connections: MaxOpenConnections,
       keep_alive: {
@@ -154,7 +154,7 @@ describe('Server that never responds', () => {
     })
     // Client has request timeout set to lower than the server's "sleep" time
     client = createTestClient({
-      url: `http://localhost:${port}`,
+      url: `http://127.0.0.1:${port}`,
       request_timeout: ClientTimeout,
       keep_alive: {
         enable: true,
@@ -189,7 +189,7 @@ describe('Resource is not available', () => {
   beforeAll(async () => {
     // Client has request timeout set to lower than the server's "sleep" time
     client = createTestClient({
-      url: `http://localhost:${port}`,
+      url: `http://127.0.0.1:${port}`,
       request_timeout: ClientTimeout,
       max_open_connections: MaxOpenConnections,
       keep_alive: {
