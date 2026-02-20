@@ -215,8 +215,8 @@ describe('Resource is not available', () => {
   })
 })
 
-describe.only('Server that drops connections', () => {
-  it('should not throw unhandled errors', async () => {
+describe('Server that drops connections', () => {
+  it('should expose socket error', async () => {
     const [server, port] = await createTCPServer(async (socket) => {
       drainSocket(socket)
       socket.write('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n')
@@ -227,15 +227,19 @@ describe.only('Server that drops connections', () => {
 
     const client = createTestClient({
       url: `http://127.0.0.1:${port}`,
-      request_timeout: ClientTimeout,
       keep_alive: {
         enable: true,
       },
     } as NodeClickHouseClientConfigOptions)
 
     const result = await client.ping()
-    console.log(result)
-    // await sleep(10_000_000)
+
+    expect(result).toMatchObject({ success: false })
+    if (result.success) {
+      throw new Error('Ping should have failed')
+    }
+    expect(String(result.error)).toMatch(/socket hang up/)
+
     await client.close()
     await closeServer(server)
   })
