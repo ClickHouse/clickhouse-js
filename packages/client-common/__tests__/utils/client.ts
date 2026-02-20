@@ -74,6 +74,7 @@ export function createTestClient<Stream = unknown>(
     }) as ClickHouseClient<Stream>
   } else {
     return (globalThis as any).environmentSpecificCreateClient({
+      url: 'http://127.0.0.1:8123',
       database: databaseName,
       ...logging,
       ...config,

@@ -17,7 +17,7 @@ const MaxOpenConnections = 2
 
 describe('Slow server', () => {
   let client: ClickHouseClient<Stream.Readable>
-  let server: http.Server
+  let server: http.Server | null = null
   let port: number
 
   beforeAll(async () => {
@@ -29,7 +29,7 @@ describe('Slow server', () => {
     })
     // Client has request timeout set to lower than the server's "sleep" time
     client = createTestClient({
-      url: `http://localhost:${port}`,
+      url: `http://127.0.0.1:${port}`,
       request_timeout: ClientTimeout,
       max_open_connections: MaxOpenConnections,
       keep_alive: {
@@ -39,7 +39,7 @@ describe('Slow server', () => {
   })
   afterAll(async () => {
     await client.close()
-    await closeServer(server)
+    server && (await closeServer(server))
   })
 
   // ping first, then 2 operations in all possible combinations - repeat every combination several times
@@ -154,7 +154,7 @@ describe('Server that never responds', () => {
     })
     // Client has request timeout set to lower than the server's "sleep" time
     client = createTestClient({
-      url: `http://localhost:${port}`,
+      url: `http://127.0.0.1:${port}`,
       request_timeout: ClientTimeout,
       keep_alive: {
         enable: true,
@@ -189,7 +189,7 @@ describe('Resource is not available', () => {
   beforeAll(async () => {
     // Client has request timeout set to lower than the server's "sleep" time
     client = createTestClient({
-      url: `http://localhost:${port}`,
+      url: `http://127.0.0.1:${port}`,
       request_timeout: ClientTimeout,
       max_open_connections: MaxOpenConnections,
       keep_alive: {
