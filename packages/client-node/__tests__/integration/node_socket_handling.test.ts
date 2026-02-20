@@ -11,20 +11,26 @@ import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { AddressInfo } from 'net'
 
-const SlowServerLag = 20 // ms
 const ClientTimeout = 10 // ms
 const Iterations = 5
 const MaxOpenConnections = 2
 
-describe('Slow server', () => {
+describe.concurrent('Slow server', () => {
   let client: ClickHouseClient<Stream.Readable>
   let server: http.Server | null = null
   let port: number
+  let sleepServerPromise: Promise<void>
+  let sleepServerPromiseResolve: () => void
 
   beforeAll(async () => {
+    sleepServerPromise = new Promise<void>(async (resolve) => {
+      sleepServerPromiseResolve = resolve
+      // Simulate a ClickHouse server that responds with a delay
+    })
+
     // Simulate a ClickHouse server that does not respond to the request in time
     ;[server, port] = await createHTTPServer(async (req, res) => {
-      await sleep(SlowServerLag)
+      await sleepServerPromise
       res.write('Ok.')
       return res.end()
     })
@@ -40,36 +46,37 @@ describe('Slow server', () => {
   })
   afterAll(async () => {
     await client.close()
+    sleepServerPromiseResolve()
     server && (await closeServer(server))
   })
 
-  // ping first, then 2 operations in all possible combinations - repeat every combination several times
-  it('should work with all operations permutations', async () => {
-    const allOps: Array<{ opName: string; fn: () => Promise<unknown> }> = [
-      { fn: select, opName: 'query' },
-      { fn: insert, opName: 'insert' },
-      { fn: exec, opName: 'exec' },
-      { fn: command, opName: 'command' },
-    ]
-    const opsPermutations = permutations(allOps, 2)
-    for (const ops of opsPermutations) {
-      for await (const { fn, opName } of ops) {
-        for (let i = 1; i <= Iterations; i++) {
-          const pingResult = await client.ping()
-          expect(pingResult.success).toBeFalsy()
-          expect((pingResult as { error: Error }).error.message).toEqual(
-            expect.stringContaining('Timeout error.'),
-          )
-          await expect(
-            fn(),
-            `${opName} should have been rejected. Current ops: ${ops
-              .map(({ opName }) => opName)
-              .join(', ')}`,
-          ).rejects.toThrow('Timeout error.')
-        }
+  const allOps: Array<{ opName: string; fn: () => Promise<unknown> }> = [
+    { fn: select, opName: 'query' },
+    { fn: insert, opName: 'insert' },
+    { fn: exec, opName: 'exec' },
+    { fn: command, opName: 'command' },
+  ]
+
+  // Lightly entering the fuzzing zone.
+  // Ping first, then 2 operations in all possible combinations - repeat every combination several times
+  it.for(permutations(allOps, 2))(
+    'should work with all operations permutations',
+    async (ops) => {
+      for (const { fn, opName } of ops) {
+        const pingResult = await client.ping()
+        expect(pingResult.success).toBeFalsy()
+        expect((pingResult as { error: Error }).error.message).toEqual(
+          expect.stringContaining('Timeout error.'),
+        )
+        await expect(
+          fn(),
+          `${opName} should have been rejected. Current ops: ${ops
+            .map(({ opName }) => opName)
+            .join(', ')}`,
+        ).rejects.toThrow('Timeout error.')
       }
-    }
-  })
+    },
+  )
 
   it('should not throw unhandled errors with Ping', async () => {
     for (let i = 1; i <= Iterations; i++) {
