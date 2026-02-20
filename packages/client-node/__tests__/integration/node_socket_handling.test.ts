@@ -319,8 +319,7 @@ describe.concurrent('Server that drops connections', () => {
         socket.destroy()
         throw new Error('Extra connection attempt - should not happen')
       }
-      // readOneChunk(socket)
-      drainSocket(socket)
+      // drainSocket(socket)
       // Write a valid response
       socket.write(
         'HTTP/1.1 200 OK\r\n' +
@@ -330,14 +329,14 @@ describe.concurrent('Server that drops connections', () => {
           '\r\n' +
           'Ok.',
       )
-      await sleep(10)
       // drainSocket(socket)
       // Then start the next request
       await sleepServerPromise
       // socket.write('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n')
       // …and then drop the connection before sending the full response
-      // socket.destroy()
-      socket.end()
+      socket.destroy()
+      // socket.end()
+      // drainSocket(socket)
     })
 
     const client = createTestClient({
@@ -351,21 +350,21 @@ describe.concurrent('Server that drops connections', () => {
       max_open_connections: 1,
     } as NodeClickHouseClientConfigOptions)
 
-    const result1 = await client.ping()
-    expect(result1).toMatchObject({ success: true })
+    expect(await client.ping()).toMatchObject({ success: true })
 
-    // If this sleep is uncommented then the client will have time to process the socket closure
-    // and create a new connection for the next ping, which should then fail the test.
-    // await sleep(50)
-    let result2 = client.ping()
+    let ping2 = client.ping()
+    // Client has a sleep(0) inside, the test has to wait for it to complete,
+    // otherwise the socket gets closed before the client gets to use it.
+    // This way we get the "socket hang up" error instead of "ECONNRESET".
+    await sleep(0)
     sleepServerPromiseResolve!()
-    result2 = await result2
+    ping2 = await ping2
 
-    expect(result2).toMatchObject({ success: false })
-    if (result2.success) {
+    expect(ping2).toMatchObject({ success: false })
+    if (ping2.success) {
       throw new Error('Ping should have failed')
     }
-    expect(String(result2.error)).toMatch(/socket hang up/i)
+    expect(String(ping2.error)).toMatch(/ECONNRESET/i)
 
     await client.close()
     await closeServer(server)
@@ -407,12 +406,5 @@ async function createTCPServer(
 async function drainSocket(socket: net.Socket): Promise<void> {
   for await (const chunk of socket) {
     console.log('Received from socket:', chunk.toString())
-  }
-}
-
-async function readOneChunk(socket: net.Socket): Promise<void> {
-  for await (const chunk of socket) {
-    console.log('Received from socket:', chunk.toString())
-    break
   }
 }
