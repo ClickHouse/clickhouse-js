@@ -50,7 +50,7 @@ describe.concurrent('Slow server', () => {
     server && (await closeServer(server))
   })
 
-  const allOps: Array<{ opName: string; fn: () => Promise<unknown> }> = [
+  const allOps = [
     { fn: select, opName: 'query' },
     { fn: insert, opName: 'insert' },
     { fn: exec, opName: 'exec' },
@@ -59,7 +59,7 @@ describe.concurrent('Slow server', () => {
 
   // Lightly entering the fuzzing zone.
   // Ping first, then 2 operations in all possible combinations - repeat every combination several times
-  it.for(permutations(allOps, 2))(
+  it.for<typeof allOps>(permutations(allOps, 2))(
     'should work with all operations permutations',
     async (ops) => {
       for (const { fn, opName } of ops) {
@@ -70,9 +70,7 @@ describe.concurrent('Slow server', () => {
         )
         await expect(
           fn(),
-          `${opName} should have been rejected. Current ops: ${ops
-            .map(({ opName }) => opName)
-            .join(', ')}`,
+          `${opName} should have been rejected. Current ops: ${JSON.stringify(ops)}`,
         ).rejects.toThrow('Timeout error.')
       }
     },
@@ -123,7 +121,7 @@ describe.concurrent('Slow server', () => {
 
   async function select() {
     const rs = await client.query({ query: 'SELECT 1' })
-    return rs.text()
+    rs.text()
   }
 
   async function insert() {
