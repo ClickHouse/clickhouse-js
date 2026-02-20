@@ -220,12 +220,12 @@ describe('Resource is not available', () => {
   })
 })
 
-describe('Server that drops connections', () => {
-  it('should expose socket error', async () => {
+describe.only.concurrent('Server that drops connections', () => {
+  it('should expose "socket hang up" error', async () => {
     const [server, port] = await createTCPServer(async (socket) => {
       drainSocket(socket)
       socket.write('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n')
-      await sleep(100)
+      await sleep(10)
       // close the connection without sending the rest of the response headers or body
       socket.end()
     })
@@ -244,6 +244,62 @@ describe('Server that drops connections', () => {
       throw new Error('Ping should have failed')
     }
     expect(String(result.error)).toMatch(/socket hang up/)
+
+    await client.close()
+    await closeServer(server)
+  })
+
+  it('should expose "invalid header token" error', async () => {
+    const [server, port] = await createTCPServer(async (socket) => {
+      drainSocket(socket)
+      socket.write('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nOk.\r\n')
+      await sleep(10)
+      socket.end()
+    })
+
+    const client = createTestClient({
+      url: `http://127.0.0.1:${port}`,
+      keep_alive: {
+        enable: true,
+      },
+    } as NodeClickHouseClientConfigOptions)
+
+    const result = await client.ping()
+
+    expect(result).toMatchObject({ success: false })
+    if (result.success) {
+      throw new Error('Ping should have failed')
+    }
+    expect(String(result.error)).toMatch(/invalid header/i)
+
+    await client.close()
+    await closeServer(server)
+  })
+
+  it('should expose "invalid header token" error', async () => {
+    const [server, port] = await createTCPServer(async (socket) => {
+      drainSocket(socket)
+      socket.write(
+        'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length:100\r\n\r\npartial body',
+      )
+      await sleep(10)
+      socket.end()
+    })
+
+    const client = createTestClient({
+      url: `http://127.0.0.1:${port}`,
+      keep_alive: {
+        enable: true,
+      },
+    } as NodeClickHouseClientConfigOptions)
+
+    const result = await client.ping()
+
+    expect(result).toMatchObject({ success: false })
+    if (result.success) {
+      throw new Error('Ping should have failed')
+    }
+    expect(String(result.error)).toMatch(/aborted/i)
 
     await client.close()
     await closeServer(server)
