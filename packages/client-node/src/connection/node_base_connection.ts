@@ -26,6 +26,7 @@ import {
   toSearchParams,
   transformUrl,
   withHttpSettings,
+  ClickHouseLogLevel,
 } from '@clickhouse/client-common'
 import { type ConnPingParams } from '@clickhouse/client-common'
 import crypto from 'crypto'
@@ -48,6 +49,7 @@ export type NodeConnectionParams = ConnectionParams & {
     enabled: boolean
     idle_socket_ttl: number
   }
+  log_level: ClickHouseLogLevel
 }
 
 export type TLSParams =
@@ -77,6 +79,9 @@ export interface RequestParams {
   ignore_error_response?: boolean
   parse_summary?: boolean
   query: string
+  query_id: string
+  log_writer: LogWriter
+  log_level: ClickHouseLogLevel
 }
 
 export abstract class NodeBaseConnection implements Connection<Stream.Readable> {
@@ -84,7 +89,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders
 
   private readonly jsonHandling: JSONHandling
-  private readonly logger: LogWriter
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
   private readonly idleSocketTTL: number
 
@@ -106,7 +110,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
       'User-Agent': getUserAgent(this.params.application_id),
     }
-    this.logger = params.log_writer
     this.idleSocketTTL = params.keep_alive.idle_socket_ttl
     this.jsonHandling = params.json ?? {
       parse: JSON.parse,
@@ -115,6 +118,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   }
 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
+    const { log_writer, log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const { controller, controllerCleanup } = this.getAbortController(params)
     let result: RequestResult
@@ -132,6 +136,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             query: PingQuery,
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
+            query_id,
+            log_writer,
+            log_level,
           },
           'Ping',
         )
@@ -143,24 +150,37 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
             query: 'ping',
+            query_id,
+            log_writer,
+            log_level,
           },
           'Ping',
         )
       }
-      await drainStream(result.stream)
+      await drainStream(
+        {
+          op: 'Ping' as const,
+          log_writer,
+          query_id,
+          log_level,
+        },
+        result.stream,
+      )
       return { success: true }
     } catch (error) {
       // it is used to ensure that the outgoing request is terminated,
       // and we don't get unhandled error propagation later
       controller.abort('Ping failed')
       // not an error, as this might be semi-expected
-      this.logger.warn({
-        message: this.httpRequestErrorMessage('Ping'),
-        err: error as Error,
-        args: {
-          query_id,
-        },
-      })
+      if (log_level <= ClickHouseLogLevel.WARN) {
+        log_writer.warn({
+          message: this.httpRequestErrorMessage('Ping'),
+          err: error as Error,
+          args: {
+            query_id,
+          },
+        })
+      }
       return {
         success: false,
         error: error as Error, // should NOT be propagated to the user
@@ -173,6 +193,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async query(
     params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<Stream.Readable>> {
+    const { log_writer, log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -200,6 +221,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           enable_response_compression: enableResponseCompression,
           headers: this.buildRequestHeaders(params),
           query: params.query,
+          query_id,
+          log_writer,
+          log_level,
         },
         'Query',
       )
@@ -231,6 +255,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async insert(
     params: ConnInsertParams<Stream.Readable>,
   ): Promise<ConnInsertResult> {
+    const { log_writer, log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -255,10 +280,21 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             parse_summary: true,
             headers: this.buildRequestHeaders(params),
             query: params.query,
+            query_id,
+            log_writer,
+            log_level,
           },
           'Insert',
         )
-      await drainStream(stream)
+      await drainStream(
+        {
+          op: 'Insert',
+          log_writer,
+          query_id,
+          log_level,
+        },
+        stream,
+      )
       return { query_id, summary, response_headers, http_status_code }
     } catch (err) {
       controller.abort('Insert HTTP request failed')
@@ -281,19 +317,78 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async exec(
     params: ConnExecParams<Stream.Readable>,
   ): Promise<ConnExecResult<Stream.Readable>> {
+    const query_id = this.getQueryId(params.query_id)
     return this.runExec({
       ...params,
+      query_id,
       op: 'Exec',
     })
   }
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
-    const { stream, query_id, summary, response_headers } = await this.runExec({
+    const { log_writer, log_level } = this.params
+    const query_id = this.getQueryId(params.query_id)
+    const commandStartTime = Date.now()
+    if (log_level <= ClickHouseLogLevel.TRACE) {
+      log_writer.trace({
+        message: 'Command: operation started',
+        args: {
+          query: this.params.unsafeLogUnredactedQueries
+            ? params.query
+            : undefined,
+          query_id,
+        },
+      })
+    }
+
+    const { stream, summary, response_headers } = await this.runExec({
       ...params,
+      query_id,
       op: 'Command',
     })
+
+    const runExecDuration = Date.now() - commandStartTime
+    if (log_level <= ClickHouseLogLevel.TRACE) {
+      log_writer.trace({
+        message: 'Command: runExec completed, starting stream drain',
+        args: {
+          query_id,
+          runExec_duration_ms: runExecDuration,
+          stream_state: {
+            readable: stream.readable,
+            readableEnded: stream.readableEnded,
+            readableLength: stream.readableLength,
+          },
+        },
+      })
+    }
+
     // ignore the response stream and release the socket immediately
-    await drainStream(stream)
+    const drainStartTime = Date.now()
+    await drainStream(
+      {
+        op: 'Command',
+        log_writer,
+        query_id,
+        log_level,
+      },
+      stream,
+    )
+
+    if (log_level <= ClickHouseLogLevel.TRACE) {
+      const drainDuration = Date.now() - drainStartTime
+      const totalDuration = Date.now() - commandStartTime
+
+      log_writer.trace({
+        message: 'Command: operation completed',
+        args: {
+          query_id,
+          drain_duration_ms: drainDuration,
+          total_duration_ms: totalDuration,
+        },
+      })
+    }
+
     return { query_id, summary, response_headers }
   }
 
@@ -379,22 +474,24 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     response: Http.IncomingMessage,
     startTimestamp: number,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { authorization, host, ...headers } = request.getHeaders()
-    const duration = Date.now() - startTimestamp
-    this.params.log_writer.debug({
-      module: 'HTTP Adapter',
-      message: `${op}: got a response from ClickHouse`,
-      args: {
-        request_method: params.method,
-        request_path: params.url.pathname,
-        request_params: params.url.search,
-        request_headers: headers,
-        response_status: response.statusCode,
-        response_headers: response.headers,
-        response_time_ms: duration,
-      },
-    })
+    if (this.params.log_level <= ClickHouseLogLevel.DEBUG) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { authorization, host, ...headers } = request.getHeaders()
+      const duration = Date.now() - startTimestamp
+      this.params.log_writer.debug({
+        module: 'HTTP Adapter',
+        message: `${op}: got a response from ClickHouse`,
+        args: {
+          request_method: params.method,
+          request_path: params.url.pathname,
+          request_params: params.url.search,
+          request_headers: headers,
+          response_status: response.statusCode,
+          response_headers: response.headers,
+          response_time_ms: duration,
+        },
+      })
+    }
   }
 
   private logRequestError({
@@ -405,18 +502,22 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     search_params,
     extra_args,
   }: LogRequestErrorParams) {
-    this.logger.error({
-      message: this.httpRequestErrorMessage(op),
-      err: err as Error,
-      args: {
-        query: query_params.query,
-        search_params: search_params?.toString() ?? '',
-        with_abort_signal: query_params.abort_signal !== undefined,
-        session_id: query_params.session_id,
-        query_id: query_id,
-        ...extra_args,
-      },
-    })
+    if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
+      this.params.log_writer.error({
+        message: this.httpRequestErrorMessage(op),
+        err: err as Error,
+        args: {
+          query: this.params.unsafeLogUnredactedQueries
+            ? query_params.query
+            : undefined,
+          search_params: search_params?.toString() ?? '',
+          with_abort_signal: query_params.abort_signal !== undefined,
+          session_id: query_params.session_id,
+          query_id: query_id,
+          ...extra_args,
+        },
+      })
+    }
   }
 
   private httpRequestErrorMessage(op: ConnOperation): string {
@@ -432,13 +533,15 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       try {
         return this.jsonHandling.parse(summaryHeader)
       } catch (err) {
-        this.logger.error({
-          message: `${op}: failed to parse X-ClickHouse-Summary header.`,
-          args: {
-            'X-ClickHouse-Summary': summaryHeader,
-          },
-          err: err as Error,
-        })
+        if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
+          this.params.log_writer.error({
+            message: `${op}: failed to parse X-ClickHouse-Summary header.`,
+            args: {
+              'X-ClickHouse-Summary': summaryHeader,
+            },
+            err: err as Error,
+          })
+        }
       }
     }
   }
@@ -446,7 +549,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   private async runExec(
     params: RunExecParams,
   ): Promise<ConnExecResult<Stream.Readable>> {
-    const query_id = this.getQueryId(params.query_id)
+    const { log_writer, log_level } = this.params
+    const query_id = params.query_id
     const sendQueryInParams = params.values !== undefined
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
@@ -489,6 +593,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             ignore_error_response: ignoreErrorResponse,
             headers: this.buildRequestHeaders(params),
             query: params.query,
+            query_id,
+            log_writer,
+            log_level,
           },
           params.op,
         )
@@ -524,10 +631,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     // allows the event loop to process the idle socket timers, if the CPU load is high
     // otherwise, we can occasionally get an expired socket, see https://github.com/ClickHouse/clickhouse-js/issues/294
     await sleep(0)
+    const { log_writer, query_id, log_level } = params
     const currentStackTrace = this.params.capture_enhanced_stack_trace
       ? getCurrentStackTrace()
       : undefined
-    const logger = this.logger
+    const requestTimeout = this.params.request_timeout
     return new Promise((resolve, reject) => {
       const start = Date.now()
       const request = this.createClientRequest(params)
@@ -552,7 +660,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           tryDecompressResponseStream ||
           (isFailedResponse && !ignoreErrorResponse)
         ) {
-          const decompressionResult = decompressResponse(_response, this.logger)
+          const decompressionResult = decompressResponse(
+            _response,
+            log_writer,
+            log_level,
+          )
           if (isDecompressionError(decompressionResult)) {
             const err = enhanceStackTrace(
               decompressionResult.error,
@@ -564,6 +676,24 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         } else {
           responseStream = _response
         }
+
+        if (log_level <= ClickHouseLogLevel.TRACE) {
+          log_writer.trace({
+            message: `${op}: response stream created`,
+            args: {
+              query_id,
+              operation: op,
+              stream_state: {
+                readable: responseStream.readable,
+                readableEnded: responseStream.readableEnded,
+                readableLength: responseStream.readableLength,
+              },
+              is_failed_response: isFailedResponse,
+              will_decompress: tryDecompressResponseStream,
+            },
+          })
+        }
+
         if (isFailedResponse && !ignoreErrorResponse) {
           try {
             const errorMessage = await getAsText(responseStream)
@@ -649,9 +779,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             // so it doesn't have the idle timeout handler attached to it
             if (socketInfo === undefined) {
               const socketId = crypto.randomUUID()
-              this.logger.trace({
-                message: `Using a fresh socket ${socketId}, setting up a new 'free' listener`,
-              })
+              if (log_level <= ClickHouseLogLevel.TRACE) {
+                log_writer.trace({
+                  message: `Using a fresh socket ${socketId}, setting up a new 'free' listener`,
+                })
+              }
               this.knownSockets.set(socket, {
                 id: socketId,
                 idle_timeout_handle: undefined,
@@ -659,15 +791,19 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               // When the request is complete and the socket is released,
               // make sure that the socket is removed after `idleSocketTTL`.
               socket.on('free', () => {
-                this.logger.trace({
-                  message: `Socket ${socketId} was released`,
-                })
+                if (log_level <= ClickHouseLogLevel.TRACE) {
+                  log_writer.trace({
+                    message: `Socket ${socketId} was released`,
+                  })
+                }
                 // Avoiding the built-in socket.timeout() method usage here,
                 // as we don't want to clash with the actual request timeout.
                 const idleTimeoutHandle = setTimeout(() => {
-                  this.logger.trace({
-                    message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
-                  })
+                  if (log_level <= ClickHouseLogLevel.TRACE) {
+                    log_writer.trace({
+                      message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
+                    })
+                  }
                   this.knownSockets.delete(socket)
                   socket.destroy()
                 }, this.idleSocketTTL).unref()
@@ -683,30 +819,37 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                 if (maybeSocketInfo?.idle_timeout_handle) {
                   clearTimeout(maybeSocketInfo.idle_timeout_handle)
                 }
-                this.logger.trace({
-                  message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
-                })
-                if (responseStream && !responseStream.readableEnded) {
-                  this.logger.warn({
-                    message:
-                      `${op}: socket was closed or ended before the response was fully read. ` +
-                      'This can potentially result in an uncaught ECONNRESET error! ' +
-                      'Consider fully consuming, draining, or destroying the response stream.',
-                    args: {
-                      query: params.query,
-                      query_id:
-                        params.url.searchParams.get('query_id') ?? 'unknown',
-                    },
+                if (log_level <= ClickHouseLogLevel.TRACE) {
+                  log_writer.trace({
+                    message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
                   })
+                }
+                if (responseStream && !responseStream.readableEnded) {
+                  if (log_level <= ClickHouseLogLevel.WARN) {
+                    log_writer.warn({
+                      message:
+                        `${op}: socket was closed or ended before the response was fully read. ` +
+                        'This can potentially result in an uncaught ECONNRESET error! ' +
+                        'Consider fully consuming, draining, or destroying the response stream.',
+                      args: {
+                        query: this.params.unsafeLogUnredactedQueries
+                          ? params.query
+                          : undefined,
+                        query_id,
+                      },
+                    })
+                  }
                 }
               }
               socket.once('end', cleanup)
               socket.once('close', cleanup)
             } else {
               clearTimeout(socketInfo.idle_timeout_handle)
-              this.logger.trace({
-                message: `Reusing socket ${socketInfo.id}`,
-              })
+              if (log_level <= ClickHouseLogLevel.TRACE) {
+                log_writer.trace({
+                  message: `Reusing socket ${socketInfo.id}`,
+                })
+              }
               this.knownSockets.set(socket, {
                 ...socketInfo,
                 idle_timeout_handle: undefined,
@@ -714,10 +857,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             }
           }
         } catch (e) {
-          logger.error({
-            message: 'An error occurred while housekeeping the idle sockets',
-            err: e as Error,
-          })
+          if (log_level <= ClickHouseLogLevel.ERROR) {
+            log_writer.error({
+              message: 'An error occurred while housekeeping the idle sockets',
+              err: e as Error,
+            })
+          }
         }
 
         // Socket is "prepared" with idle handlers, continue with our request
@@ -729,18 +874,51 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       }
 
       function onTimeout(): void {
+        removeRequestListeners()
+
+        if (log_level <= ClickHouseLogLevel.TRACE) {
+          const socketState = request.socket
+            ? {
+                connecting: request.socket.connecting,
+                pending: request.socket.pending,
+                destroyed: request.socket.destroyed,
+                readyState: request.socket.readyState,
+              }
+            : undefined
+          const responseStreamState = responseStream
+            ? {
+                readable: responseStream.readable,
+                readableEnded: responseStream.readableEnded,
+                readableLength: responseStream.readableLength,
+              }
+            : undefined
+
+          log_writer.trace({
+            message: `${op}: timeout occurred`,
+            args: {
+              query_id,
+              operation: op,
+              timeout_ms: requestTimeout,
+              socket_state: socketState,
+              response_stream_state: responseStreamState,
+              has_response_stream: responseStream !== undefined,
+            },
+          })
+        }
+
         const err = enhanceStackTrace(
           new Error('Timeout error.'),
           currentStackTrace,
         )
-        removeRequestListeners()
         try {
           request.destroy()
         } catch (e) {
-          logger.error({
-            message: 'An error occurred while destroying the request',
-            err: e as Error,
-          })
+          if (log_level <= ClickHouseLogLevel.ERROR) {
+            log_writer.error({
+              message: 'An error occurred while destroying the request',
+              err: e as Error,
+            })
+          }
         }
         reject(err)
       }
@@ -774,10 +952,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         try {
           return request.end()
         } catch (e) {
-          this.logger.error({
-            message: 'An error occurred while ending the request without body',
-            err: e as Error,
-          })
+          if (log_level <= ClickHouseLogLevel.ERROR) {
+            log_writer.error({
+              message:
+                'An error occurred while ending the request without body',
+              err: e as Error,
+            })
+          }
         }
       }
     })
@@ -806,6 +987,7 @@ interface SocketInfo {
 }
 
 type RunExecParams = ConnBaseQueryParams & {
+  query_id: string
   op: 'Exec' | 'Command'
   values?: ConnExecParams<Stream.Readable>['values']
   decompress_response_stream?: boolean

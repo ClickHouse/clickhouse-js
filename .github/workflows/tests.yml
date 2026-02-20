@@ -229,7 +229,7 @@ jobs:
       matrix:
         node: [20, 22, 24]
         clickhouse: [head, latest]
-
+        log_level: [undefined, TRACE]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -255,12 +255,14 @@ jobs:
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
       - name: Run integration tests with TLS tests
+        env:
+          LOG_LEVEL: ${{ matrix.log_level }}
         run: |
           npm run test:node:integration:tls
 
       - name: Export coverage metrics
         env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }})
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }}, ${{ matrix.log_level }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -442,6 +444,8 @@ jobs:
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
       - name: Run unit + integration + TLS tests with coverage
+        env:
+          LOG_LEVEL: TRACE
         run: |
           npm run test:node:coverage
 
@@ -483,6 +487,8 @@ jobs:
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
       - name: Run unit + integration + TLS tests with coverage
+        env:
+          LOG_LEVEL: TRACE
         run: |
           npm run test:web:coverage
 

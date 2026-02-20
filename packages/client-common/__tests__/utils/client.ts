@@ -1,9 +1,10 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
 import { beforeAll } from 'vitest'
-import type {
-  BaseClickHouseClientConfigOptions,
-  ClickHouseClient,
-  ClickHouseSettings,
+import {
+  ClickHouseLogLevel,
+  type BaseClickHouseClientConfigOptions,
+  type ClickHouseClient,
+  type ClickHouseSettings,
 } from '@clickhouse/client-common'
 import { cacheServerVersion } from '@test/utils/server_version'
 import { EnvKeys, getFromEnv } from './env'
@@ -56,19 +57,25 @@ export function createTestClient<Stream = unknown>(
   }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
-  const logging = {
-    log: {
-      enable: true,
-      LoggerClass: TestLogger,
-    },
+  const level =
+    !process.env.LOG_LEVEL || process.env.LOG_LEVEL === 'undefined'
+      ? undefined // allow the client to use its default log level if LOG_LEVEL is not set
+      : ClickHouseLogLevel[
+          process.env.LOG_LEVEL as keyof typeof ClickHouseLogLevel
+        ]
+  const log: BaseClickHouseClientConfigOptions['log'] = {
+    LoggerClass: TestLogger,
+    unsafeLogUnredactedQueries: level === ClickHouseLogLevel.TRACE,
+    level,
   }
+
   if (isCloudTestEnv()) {
     return (globalThis as any).environmentSpecificCreateClient({
       url: `https://${getFromEnv(EnvKeys.host)}:8443`,
       password: getFromEnv(EnvKeys.password),
       database: databaseName,
       request_timeout: 60_000,
-      ...logging,
+      log,
       ...config,
       clickhouse_settings: clickHouseSettings,
     }) as ClickHouseClient<Stream>
@@ -76,7 +83,7 @@ export function createTestClient<Stream = unknown>(
     return (globalThis as any).environmentSpecificCreateClient({
       url: 'http://127.0.0.1:8123',
       database: databaseName,
-      ...logging,
+      log,
       ...config,
       clickhouse_settings: clickHouseSettings,
     }) as ClickHouseClient<Stream>
