@@ -220,7 +220,7 @@ describe('Resource is not available', () => {
   })
 })
 
-describe.only.concurrent('Server that drops connections', () => {
+describe.concurrent('Server that drops connections', () => {
   it('should expose "socket hang up" error', async () => {
     const [server, port] = await createTCPServer(async (socket) => {
       drainSocket(socket)
@@ -276,7 +276,7 @@ describe.only.concurrent('Server that drops connections', () => {
     await closeServer(server)
   })
 
-  it('should expose "invalid header token" error', async () => {
+  it('should expose "aborted" error', async () => {
     const [server, port] = await createTCPServer(async (socket) => {
       drainSocket(socket)
       socket.write(
@@ -300,6 +300,72 @@ describe.only.concurrent('Server that drops connections', () => {
       throw new Error('Ping should have failed')
     }
     expect(String(result.error)).toMatch(/aborted/i)
+
+    await client.close()
+    await closeServer(server)
+  })
+
+  it('should expose "socket hang up" error', async () => {
+    let sleepServerPromiseResolve: () => void
+    let sleepServerPromise = new Promise<void>(async (resolve) => {
+      sleepServerPromiseResolve = resolve
+      // Simulate a ClickHouse server that responds with a delay
+    })
+
+    let attempted = 0
+    const [server, port] = await createTCPServer(async (socket) => {
+      attempted++
+      if (attempted >= 2) {
+        socket.destroy()
+        throw new Error('Extra connection attempt - should not happen')
+      }
+      // readOneChunk(socket)
+      drainSocket(socket)
+      // Write a valid response
+      socket.write(
+        'HTTP/1.1 200 OK\r\n' +
+          'Content-Type: text/plain\r\n' +
+          'Content-Length: 3\r\n' +
+          'Connection: keep-alive\r\n' +
+          '\r\n' +
+          'Ok.',
+      )
+      await sleep(10)
+      // drainSocket(socket)
+      // Then start the next request
+      await sleepServerPromise
+      // socket.write('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n')
+      // …and then drop the connection before sending the full response
+      // socket.destroy()
+      socket.end()
+    })
+
+    const client = createTestClient({
+      url: `http://127.0.0.1:${port}`,
+      keep_alive: {
+        enable: true,
+      },
+      log: {
+        level: 0,
+      },
+      max_open_connections: 1,
+    } as NodeClickHouseClientConfigOptions)
+
+    const result1 = await client.ping()
+    expect(result1).toMatchObject({ success: true })
+
+    // If this sleep is uncommented then the client will have time to process the socket closure
+    // and create a new connection for the next ping, which should then fail the test.
+    // await sleep(50)
+    let result2 = client.ping()
+    sleepServerPromiseResolve!()
+    result2 = await result2
+
+    expect(result2).toMatchObject({ success: false })
+    if (result2.success) {
+      throw new Error('Ping should have failed')
+    }
+    expect(String(result2.error)).toMatch(/socket hang up/i)
 
     await client.close()
     await closeServer(server)
@@ -341,5 +407,12 @@ async function createTCPServer(
 async function drainSocket(socket: net.Socket): Promise<void> {
   for await (const chunk of socket) {
     console.log('Received from socket:', chunk.toString())
+  }
+}
+
+async function readOneChunk(socket: net.Socket): Promise<void> {
+  for await (const chunk of socket) {
+    console.log('Received from socket:', chunk.toString())
+    break
   }
 }
