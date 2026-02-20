@@ -885,6 +885,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
         // This is for request timeout only. Surprisingly, it is not always enough to set in the HTTP request.
         // The socket won't be destroyed, and it will be returned to the pool.
+        // TODO: log the timeout value and the fact that we are setting it on the socket
         socket.setTimeout(this.params.request_timeout, onTimeout)
       }
 
