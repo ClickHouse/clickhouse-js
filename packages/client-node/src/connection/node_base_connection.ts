@@ -117,8 +117,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
     const query_id = this.getQueryId(params.query_id)
     const { controller, controllerCleanup } = this.getAbortController(params)
-    let result: RequestResult
     try {
+      let result: RequestResult
       if (params.select) {
         const searchParams = toSearchParams({
           database: undefined,
@@ -127,9 +127,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         })
         result = await this.request(
           {
+            query: PingQuery,
             method: 'GET',
             url: transformUrl({ url: this.params.url, searchParams }),
-            query: PingQuery,
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
           },
@@ -138,11 +138,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       } else {
         result = await this.request(
           {
+            query: 'ping',
             method: 'GET',
             url: transformUrl({ url: this.params.url, pathname: '/ping' }),
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
-            query: 'ping',
           },
           'Ping',
         )
