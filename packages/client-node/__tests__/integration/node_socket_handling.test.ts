@@ -6,6 +6,7 @@ import { describe, it, beforeAll, afterAll, afterEach, expect } from 'vitest'
 import { permutations } from '@test/utils/permutations'
 import { createTestClient } from '@test/utils/client'
 import * as http from 'http'
+import net from 'net'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { AddressInfo } from 'net'
@@ -22,7 +23,7 @@ describe('Slow server', () => {
 
   beforeAll(async () => {
     // Simulate a ClickHouse server that does not respond to the request in time
-    ;[server, port] = await createServer(async (req, res) => {
+    ;[server, port] = await createHTTPServer(async (req, res) => {
       await sleep(SlowServerLag)
       res.write('Ok.')
       return res.end()
@@ -138,7 +139,7 @@ describe('Server that times out', () => {
   it('should eventually get a successful ping', async () => {
     let requestCount = 0
     // Simulate an LB where the server is not available
-    const [server, port] = await createServer(async (req, res) => {
+    const [server, port] = await createHTTPServer(async (req, res) => {
       requestCount++
       if (requestCount >= 2) {
         res.write('Ok.')
@@ -205,7 +206,7 @@ describe('Resource is not available', () => {
       expect((error as NodeJS.ErrnoException).code).toEqual('ECONNREFUSED')
     }
     // now we start the server, and it is available; and we should have already used every socket in the pool
-    ;[server] = await createServer(async (req, res) => {
+    ;[server] = await createHTTPServer(async (req, res) => {
       res.write('Ok.')
       return res.end()
     }, port)
@@ -214,17 +215,43 @@ describe('Resource is not available', () => {
   })
 })
 
+describe.only('Server that drops connections', () => {
+  it('should not throw unhandled errors', async () => {
+    const [server, port] = await createTCPServer(async (socket) => {
+      drainSocket(socket)
+      socket.write('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n')
+      await sleep(100)
+      // close the connection without sending the rest of the response headers or body
+      socket.end()
+    })
+
+    const client = createTestClient({
+      url: `http://127.0.0.1:${port}`,
+      request_timeout: ClientTimeout,
+      keep_alive: {
+        enable: true,
+      },
+    } as NodeClickHouseClientConfigOptions)
+
+    const result = await client.ping()
+    console.log(result)
+    // await sleep(10_000_000)
+    await client.close()
+    await closeServer(server)
+  })
+})
+
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function closeServer(server: http.Server): Promise<void> {
+function closeServer(server: http.Server | net.Server): Promise<void> {
   return new Promise((resolve, reject) => {
     server.close((err) => (err ? reject(err) : resolve()))
   })
 }
 
-async function createServer(
+async function createHTTPServer(
   cb: (req: http.IncomingMessage, res: http.ServerResponse) => void,
   port: number = 0,
 ): Promise<[http.Server, number]> {
@@ -233,4 +260,21 @@ async function createServer(
     server.listen(port, () => resolve())
   })
   return [server, (server.address() as AddressInfo).port]
+}
+
+async function createTCPServer(
+  cb: (socket: net.Socket) => void,
+  port: number = 0,
+): Promise<[net.Server, number]> {
+  const server = net.createServer(cb)
+  await new Promise<void>((resolve) => {
+    server.listen(port, () => resolve())
+  })
+  return [server, (server.address() as AddressInfo).port]
+}
+
+async function drainSocket(socket: net.Socket): Promise<void> {
+  for await (const chunk of socket) {
+    console.log('Received from socket:', chunk.toString())
+  }
 }
