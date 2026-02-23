@@ -482,9 +482,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       // Redact query parameter from URL search params unless explicitly allowed
       const searchParams = params.url.searchParams
       if (!this.params.unsafeLogUnredactedQueries) {
-        if (searchParams.has('query')) {
-          searchParams.delete('query')
-        }
+        searchParams.delete('query')
       }
 
       this.params.log_writer.debug({
@@ -514,9 +512,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
       // Redact query parameter from search params unless explicitly allowed
       if (!this.params.unsafeLogUnredactedQueries && search_params) {
-        if (search_params.has('query')) {
-          search_params.delete('query')
-        }
+        search_params.delete('query')
       }
 
       this.params.log_writer.error({
