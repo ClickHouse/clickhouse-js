@@ -828,7 +828,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                 })
               })
 
-              const cleanup = () => {
+              const cleanup = (eventName: string) => () => {
                 const maybeSocketInfo = this.knownSockets.get(socket)
                 // clean up a possibly dangling idle timeout handle (preventing leaks)
                 if (maybeSocketInfo?.idle_timeout_handle) {
@@ -836,11 +836,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                 }
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
-                    message: `Socket ${socketId} was closed or ended, 'free' listener removed`,
+                    message: `Socket ${socketId} received '${eventName}' event, 'free' listener removed`,
                   })
                 }
-                if (responseStream && !responseStream.readableEnded) {
-                  if (log_level <= ClickHouseLogLevel.WARN) {
+
+                if (log_level <= ClickHouseLogLevel.WARN) {
+                  if (responseStream && !responseStream.readableEnded) {
                     log_writer.warn({
                       message:
                         `${op}: socket was closed or ended before the response was fully read. ` +
@@ -856,8 +857,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                   }
                 }
               }
-              socket.once('end', cleanup)
-              socket.once('close', cleanup)
+              socket.once('end', cleanup('end'))
+              socket.once('close', cleanup('close'))
             } else {
               clearTimeout(socketInfo.idle_timeout_handle)
               if (log_level <= ClickHouseLogLevel.TRACE) {
