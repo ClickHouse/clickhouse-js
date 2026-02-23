@@ -134,7 +134,7 @@ describe('Slow server', () => {
   }
 })
 
-describe('Server that never responds', () => {
+describe('Server that times out', () => {
   it('should eventually get a successful ping', async () => {
     let requestCount = 0
     // Simulate an LB where the server is not available
