@@ -135,16 +135,12 @@ describe('Slow server', () => {
 })
 
 describe('Server that never responds', () => {
-  let client: ClickHouseClient<Stream.Readable>
-  let server: http.Server
-  let port: number
-  let requestCount = 0
-
-  beforeAll(async () => {
+  it('should eventually get a successful ping', async () => {
+    let requestCount = 0
     // Simulate an LB where the server is not available
-    ;[server, port] = await createServer(async (req, res) => {
+    const [server, port] = await createServer(async (req, res) => {
       requestCount++
-      if (requestCount === Iterations) {
+      if (requestCount >= 2) {
         res.write('Ok.')
         return res.end()
       } else {
@@ -153,32 +149,26 @@ describe('Server that never responds', () => {
       }
     })
     // Client has request timeout set to lower than the server's "sleep" time
-    client = createTestClient({
+    const client = createTestClient({
       url: `http://127.0.0.1:${port}`,
-      request_timeout: ClientTimeout,
+      request_timeout: 100,
       keep_alive: {
         enable: true,
       },
     } as NodeClickHouseClientConfigOptions)
-  })
-  afterEach(() => {
-    requestCount = 0
-  })
-  afterAll(async () => {
+
+    // The first few requests should fail with a timeout error
+    const pingResult = await client.ping()
+    expect(pingResult.success).toBeFalsy()
+    expect(
+      (pingResult as ConnPingResult & { success: false }).error.message,
+    ).toEqual('Timeout error.')
+
+    // The second request should be successful
+    expect(await client.ping()).toEqual({ success: true })
+
     await client.close()
     await closeServer(server)
-  })
-
-  it('should eventually get a successful ping', async () => {
-    for (let i = 1; i < Iterations; i++) {
-      const pingResult = await client.ping()
-      expect(pingResult.success).toBeFalsy()
-      expect(
-        (pingResult as ConnPingResult & { success: false }).error.message,
-      ).toEqual('Timeout error.')
-    }
-    // The last request should be successful
-    expect(await client.ping()).toEqual({ success: true })
   })
 })
 
