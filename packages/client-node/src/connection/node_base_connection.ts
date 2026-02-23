@@ -480,14 +480,10 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       const duration = Date.now() - startTimestamp
 
       // Redact query parameter from URL search params unless explicitly allowed
-      let request_params = params.url.search
-      if (!this.params.unsafeLogUnredactedQueries && request_params) {
-        const searchParams = new URLSearchParams(request_params)
+      const searchParams = params.url.searchParams
+      if (!this.params.unsafeLogUnredactedQueries) {
         if (searchParams.has('query')) {
           searchParams.delete('query')
-          request_params = searchParams.toString()
-            ? `?${searchParams.toString()}`
-            : ''
         }
       }
 
@@ -497,7 +493,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         args: {
           request_method: params.method,
           request_path: params.url.pathname,
-          request_params,
+          request_params: searchParams.toString(),
           request_headers: headers,
           response_status: response.statusCode,
           response_headers: response.headers,
@@ -517,12 +513,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   }: LogRequestErrorParams) {
     if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
       // Redact query parameter from search params unless explicitly allowed
-      let search_params_str = search_params?.toString() ?? ''
       if (!this.params.unsafeLogUnredactedQueries && search_params) {
-        const redactedSearchParams = new URLSearchParams(search_params)
-        if (redactedSearchParams.has('query')) {
-          redactedSearchParams.delete('query')
-          search_params_str = redactedSearchParams.toString()
+        if (search_params.has('query')) {
+          search_params.delete('query')
         }
       }
 
@@ -533,7 +526,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           query: this.params.unsafeLogUnredactedQueries
             ? query_params.query
             : undefined,
-          search_params: search_params_str,
+          search_params: search_params?.toString(),
           with_abort_signal: query_params.abort_signal !== undefined,
           session_id: query_params.session_id,
           query_id: query_id,
