@@ -209,7 +209,7 @@ export class ClickHouseClient<Stream = unknown> {
       this.connectionParams,
     )
     // Using the connection params log level as it does the parsing.
-    // Probably, it would be better to parse the log level in the client itself.
+    // TODO: it would be better to parse the log level in the client itself.
     this.makeResultSet = config.impl.make_result_set
     this.jsonHandling = {
       ...defaultJSONHandling,
