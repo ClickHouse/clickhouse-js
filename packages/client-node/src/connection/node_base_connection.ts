@@ -861,15 +861,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               socket.once('close', cleanup('close'))
             } else {
               clearTimeout(socketInfo.idle_timeout_handle)
+              socketInfo.idle_timeout_handle = undefined
               if (log_level <= ClickHouseLogLevel.TRACE) {
                 log_writer.trace({
                   message: `Reusing socket ${socketInfo.id}`,
                 })
               }
-              this.knownSockets.set(socket, {
-                ...socketInfo,
-                idle_timeout_handle: undefined,
-              })
             }
           }
         } catch (e) {
