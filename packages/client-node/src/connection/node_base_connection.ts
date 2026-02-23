@@ -480,8 +480,10 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       const duration = Date.now() - startTimestamp
 
       // Redact query parameter from URL search params unless explicitly allowed
-      const searchParams = params.url.searchParams
+      let searchParams = params.url.searchParams
       if (!this.params.unsafeLogUnredactedQueries) {
+        // Clone to avoid mutating the original search params
+        searchParams = new URLSearchParams(searchParams)
         searchParams.delete('query')
       }
 
@@ -512,6 +514,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
       // Redact query parameter from search params unless explicitly allowed
       if (!this.params.unsafeLogUnredactedQueries && search_params) {
+        // Clone to avoid mutating the original search params
+        search_params = new URLSearchParams(search_params)
         search_params.delete('query')
       }
 
