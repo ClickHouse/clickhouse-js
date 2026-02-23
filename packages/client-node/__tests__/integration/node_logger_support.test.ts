@@ -88,6 +88,128 @@ describe('[Node.js] logger support', () => {
       await client.ping()
       expect(logs.length).toEqual(0)
     })
+
+    it('should redact query parameter from request_params when unsafeLogUnredactedQueries is false', async () => {
+      client = createTestClient({
+        log: {
+          level: ClickHouseLogLevel.DEBUG,
+          LoggerClass: TestLogger,
+          unsafeLogUnredactedQueries: false,
+        },
+      })
+      // Insert operation sends query as URL parameter
+      await client
+        .insert({
+          table: 'test_table',
+          values: [[1, 'test']],
+          format: 'JSONEachRow',
+        })
+        .catch(() => {
+          // Ignore errors - we're just testing logging
+        })
+
+      // Find the debug log for the response
+      const responseLog = logs.find((log) =>
+        log.message?.includes('got a response from ClickHouse'),
+      )
+      expect(responseLog).toBeDefined()
+      expect(responseLog?.args?.request_params).toBeDefined()
+      // Should not contain the query parameter
+      expect(responseLog?.args?.request_params).not.toMatch(/query=/)
+    })
+
+    it('should include query parameter in request_params when unsafeLogUnredactedQueries is true', async () => {
+      client = createTestClient({
+        log: {
+          level: ClickHouseLogLevel.DEBUG,
+          LoggerClass: TestLogger,
+          unsafeLogUnredactedQueries: true,
+        },
+      })
+      // Insert operation sends query as URL parameter
+      await client
+        .insert({
+          table: 'test_table',
+          values: [[1, 'test']],
+          format: 'JSONEachRow',
+        })
+        .catch(() => {
+          // Ignore errors - we're just testing logging
+        })
+
+      // Find the debug log for the response
+      const responseLog = logs.find((log) =>
+        log.message?.includes('got a response from ClickHouse'),
+      )
+      expect(responseLog).toBeDefined()
+      expect(responseLog?.args?.request_params).toBeDefined()
+      // Should contain the query parameter
+      expect(responseLog?.args?.request_params).toMatch(/query=/)
+    })
+
+    it('should redact query parameter from search_params in error logs when unsafeLogUnredactedQueries is false', async () => {
+      client = createTestClient({
+        // Use an invalid URL to trigger an error
+        url: 'http://localhost:1',
+        request_timeout: 100,
+        log: {
+          level: ClickHouseLogLevel.ERROR,
+          LoggerClass: TestLogger,
+          unsafeLogUnredactedQueries: false,
+        },
+      })
+      await client
+        .insert({
+          table: 'test_table',
+          values: [[1, 'test']],
+          format: 'JSONEachRow',
+        })
+        .catch(() => {
+          // Expected to fail
+        })
+
+      // Find the error log
+      const errorLog = logs.find((log) =>
+        log.message?.includes('HTTP request error'),
+      )
+      expect(errorLog).toBeDefined()
+      // search_params should not contain the query parameter
+      if (errorLog?.args?.search_params) {
+        expect(errorLog.args.search_params).not.toMatch(/query=/)
+      }
+    })
+
+    it('should include query parameter in search_params in error logs when unsafeLogUnredactedQueries is true', async () => {
+      client = createTestClient({
+        // Use an invalid URL to trigger an error
+        url: 'http://localhost:1',
+        request_timeout: 100,
+        log: {
+          level: ClickHouseLogLevel.ERROR,
+          LoggerClass: TestLogger,
+          unsafeLogUnredactedQueries: true,
+        },
+      })
+      await client
+        .insert({
+          table: 'test_table',
+          values: [[1, 'test']],
+          format: 'JSONEachRow',
+        })
+        .catch(() => {
+          // Expected to fail
+        })
+
+      // Find the error log
+      const errorLog = logs.find((log) =>
+        log.message?.includes('HTTP request error'),
+      )
+      expect(errorLog).toBeDefined()
+      // search_params should contain the query parameter
+      if (errorLog?.args?.search_params) {
+        expect(errorLog.args.search_params).toMatch(/query=/)
+      }
+    })
   })
 
   class TestLogger implements Logger {
