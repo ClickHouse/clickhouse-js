@@ -153,11 +153,11 @@ describe('Server that never responds', () => {
       url: `http://127.0.0.1:${port}`,
       request_timeout: 100,
       keep_alive: {
-        enable: true,
+        enabled: true,
       },
-    } as NodeClickHouseClientConfigOptions)
+    })
 
-    // The first few requests should fail with a timeout error
+    // The first request should fail with a timeout error
     const pingResult = await client.ping()
     expect(pingResult.success).toBeFalsy()
     expect(
