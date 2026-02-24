@@ -6,6 +6,8 @@
 
 - By default the client will no longer log the full unredacted query text for security reasons; however, it is still possible to enable it via the `unsafeLogUnredactedQueries` configuration option. ([#520])
 
+- Enhanced the logging of the HTTP request / socket lifecicle with additional trace messages and context such as Connection ID (UUID) and Request ID and Socket ID that embed the connection ID for ease of tracing the logs of a particular request across the connection lifecycle. ([#567])
+
 [#520]: https://github.com/ClickHouse/clickhouse-js/pull/520
 
 # 1.17.0
