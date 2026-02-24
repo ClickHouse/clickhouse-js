@@ -23,7 +23,7 @@ describe.concurrent('Slow server', () => {
   let sleepServerPromiseResolve: () => void
 
   beforeAll(async () => {
-    sleepServerPromise = new Promise<void>(async (resolve) => {
+    sleepServerPromise = new Promise<void>((resolve) => {
       sleepServerPromiseResolve = resolve
       // Simulate a ClickHouse server that responds with a delay
     })
@@ -307,7 +307,7 @@ describe.concurrent('Server that drops connections', () => {
 
   it('should expose "ECONNRESET" error', async () => {
     let sleepServerPromiseResolve: () => void
-    let sleepServerPromise = new Promise<void>(async (resolve) => {
+    let sleepServerPromise = new Promise<void>((resolve) => {
       sleepServerPromiseResolve = resolve
       // Simulate a ClickHouse server that responds with a delay
     })
