@@ -76,13 +76,11 @@ export type LogWriterParams<Method extends keyof Logger> = Omit<
 > & { module?: string }
 
 export class LogWriter {
-  private readonly logLevel: ClickHouseLogLevel
   constructor(
     private readonly logger: Logger,
     private readonly module: string,
-    logLevel?: ClickHouseLogLevel,
+    private readonly logLevel: ClickHouseLogLevel,
   ) {
-    this.logLevel = logLevel ?? ClickHouseLogLevel.OFF
     this.info({
       message: `Log level is set to ${ClickHouseLogLevel[this.logLevel]}`,
     })
