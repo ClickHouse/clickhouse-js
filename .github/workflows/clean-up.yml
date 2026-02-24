@@ -1,0 +1,36 @@
+name: 'misc'
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+  schedule:
+    - cron: '0 10 * * *'
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  # Runs in parallel with the rest of the tests, there shoudl be no dependencies on it,
+  # and it should run even if other tests fail, to ensure that we keep the ClickHouse Cloud
+  # instance clean for the next runs to avoid adding cleanup cost to the critical path of the tests.
+  cloud-cleanup:
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24
+
+      - name: Cleanup old databases in ClickHouse Cloud
+        env:
+          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}
+          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
+          PREFIX: clickhousejs_
+          TTL_MINUTES: 60
+        run: |
+          node .scripts/cleanup_old_databases.mjs
