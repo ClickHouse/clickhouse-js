@@ -58,7 +58,7 @@ describe.concurrent('Slow server', () => {
   ]
 
   // Lightly entering the fuzzing zone.
-  // Ping first, then 2 operations in all possible combinations - repeat every combination several times
+  // Ping first, then 2 operations in all possible combinations
   it.for<typeof allOps>(permutations(allOps, 2))(
     'should work with all operations permutations',
     async (ops) => {
@@ -305,7 +305,7 @@ describe.concurrent('Server that drops connections', () => {
     await closeServer(server)
   })
 
-  it('should expose "socket hang up" error', async () => {
+  it('should expose "ECONNRESET" error', async () => {
     let sleepServerPromiseResolve: () => void
     let sleepServerPromise = new Promise<void>(async (resolve) => {
       sleepServerPromiseResolve = resolve
