@@ -92,6 +92,10 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   private readonly idleSocketTTL: number
   private readonly connectionId: string = crypto.randomUUID()
   private socketCounter = 0
+  // For overflow concerns:
+  //   node -e 'console.log(Number.MAX_SAFE_INTEGER / (1_000_000 * 60 * 60 * 24 * 366))'
+  // gives 284 years of continuous operation at 1M requests per second
+  // before overflowing the 53-bit integer
   private requestCounter = 0
 
   private getNewSocketId(): string {
