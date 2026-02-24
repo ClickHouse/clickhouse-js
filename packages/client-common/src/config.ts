@@ -245,6 +245,9 @@ export function getConnectionParams(
       type: 'Credentials',
     }
   }
+
+  const log_level = config.log?.level ?? ClickHouseLogLevel.OFF
+
   return {
     auth,
     url: config.url,
@@ -256,8 +259,8 @@ export function getConnectionParams(
       compress_request: config.compression?.request ?? false,
     },
     database: config.database ?? 'default',
-    log_writer: new LogWriter(logger, 'Connection', config.log?.level),
-    log_level: config.log?.level ?? ClickHouseLogLevel.OFF,
+    log_writer: new LogWriter(logger, 'Connection', log_level),
+    log_level: log_level,
     unsafeLogUnredactedQueries: config.log?.unsafeLogUnredactedQueries ?? false,
     keep_alive: { enabled: config.keep_alive?.enabled ?? true },
     clickhouse_settings: config.clickhouse_settings ?? {},
