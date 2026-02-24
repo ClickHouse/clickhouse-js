@@ -808,10 +808,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                   message: `${op}: request ${requestId}: using a fresh socket ${socketId}, setting up a new 'free' listener`,
                 })
               }
-              this.knownSockets.set(socket, {
+              const newSocketInfo: SocketInfo = {
                 id: socketId,
                 idle_timeout_handle: undefined,
-              })
+                usageCount: 1,
+              }
+              this.knownSockets.set(socket, newSocketInfo)
               // When the request is complete and the socket is released,
               // make sure that the socket is removed after `idleSocketTTL`.
               socket.on('free', () => {
@@ -831,10 +833,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                   this.knownSockets.delete(socket)
                   socket.destroy()
                 }, this.idleSocketTTL).unref()
-                this.knownSockets.set(socket, {
-                  id: socketId,
-                  idle_timeout_handle: idleTimeoutHandle,
-                })
+                newSocketInfo.idle_timeout_handle = idleTimeoutHandle
               })
 
               const cleanup = (eventName: string) => () => {
@@ -873,9 +872,10 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               socketInfo.idle_timeout_handle = undefined
               if (log_level <= ClickHouseLogLevel.TRACE) {
                 log_writer.trace({
-                  message: `${op}: request ${requestId}: reusing socket ${socketInfo.id}`,
+                  message: `${op}: request ${requestId}: reusing socket ${socketInfo.id} (usage count: ${socketInfo.usageCount})`,
                 })
               }
+              socketInfo.usageCount++
             }
           }
         } catch (e) {
@@ -1022,6 +1022,7 @@ interface LogRequestErrorParams {
 interface SocketInfo {
   id: string
   idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
+  usageCount: number
 }
 
 type RunExecParams = ConnBaseQueryParams & {
