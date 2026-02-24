@@ -319,7 +319,6 @@ describe.concurrent('Server that drops connections', () => {
         socket.destroy()
         throw new Error('Extra connection attempt - should not happen')
       }
-      // drainSocket(socket)
       // Write a valid response
       socket.write(
         'HTTP/1.1 200 OK\r\n' +
@@ -329,14 +328,10 @@ describe.concurrent('Server that drops connections', () => {
           '\r\n' +
           'Ok.',
       )
-      // drainSocket(socket)
       // Then start the next request
       await sleepServerPromise
-      // socket.write('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n')
       // …and then drop the connection before sending the full response
       socket.destroy()
-      // socket.end()
-      // drainSocket(socket)
     })
 
     const client = createTestClient({
