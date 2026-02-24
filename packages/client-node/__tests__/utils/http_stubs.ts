@@ -1,4 +1,4 @@
-import { LogWriter } from '@clickhouse/client-common'
+import { ClickHouseLogLevel, LogWriter } from '@clickhouse/client-common'
 import { sleep } from '../../../client-common/__tests__/utils/sleep'
 import { TestLogger } from '../../../client-common/__tests__/utils/test_logger'
 import { randomUUID } from '../../../client-common/__tests__/utils/guid'
@@ -110,7 +110,13 @@ export function buildHttpConnection(config: Partial<NodeConnectionParams>) {
     database: 'default',
     clickhouse_settings: {},
 
-    log_writer: new LogWriter(new TestLogger(), 'NodeConnectionTest'),
+    log_writer: new LogWriter(
+      new TestLogger(),
+      'NodeConnectionTest',
+      ClickHouseLogLevel.OFF,
+    ),
+    log_level: ClickHouseLogLevel.OFF,
+    unsafeLogUnredactedQueries: false,
     keep_alive: {
       enabled: false,
       idle_socket_ttl: 2500,
@@ -126,7 +132,13 @@ export class MyTestHttpConnection extends NodeBaseConnection {
     super(
       {
         application_id,
-        log_writer: new LogWriter(new TestLogger(), 'NodeConnectionTest'),
+        log_writer: new LogWriter(
+          new TestLogger(),
+          'NodeConnectionTest',
+          ClickHouseLogLevel.OFF,
+        ),
+        log_level: ClickHouseLogLevel.OFF,
+        unsafeLogUnredactedQueries: false,
         keep_alive: {
           enabled: false,
         },

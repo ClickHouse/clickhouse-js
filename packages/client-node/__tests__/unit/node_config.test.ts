@@ -80,7 +80,11 @@ describe('[Node.js] Config implementation details', () => {
       },
       database: 'default',
       clickhouse_settings: {},
-      log_writer: new LogWriter(new TestLogger(), 'MakeConnectionTest'),
+      log_writer: new LogWriter(
+        new TestLogger(),
+        'MakeConnectionTest',
+        ClickHouseLogLevel.OFF,
+      ),
       log_level: ClickHouseLogLevel.OFF,
       keep_alive: { enabled: false },
     }

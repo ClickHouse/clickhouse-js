@@ -18,7 +18,11 @@ describe('[Node.js] exec', () => {
   let log_writer: LogWriter
   beforeEach(() => {
     client = createTestClient()
-    log_writer = new LogWriter(new DefaultLogger(), 'Connection')
+    log_writer = new LogWriter(
+      new DefaultLogger(),
+      'Connection',
+      ClickHouseLogLevel.OFF,
+    )
   })
   afterEach(async () => {
     await client.close()

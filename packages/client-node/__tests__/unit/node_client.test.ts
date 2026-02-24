@@ -50,7 +50,11 @@ describe('[Node.js] createClient', () => {
       auth: { username: 'bob', password: 'secret', type: 'Credentials' },
       database: 'analytics',
       clickhouse_settings: {},
-      log_writer: new LogWriter(new DefaultLogger(), 'Connection'),
+      log_writer: new LogWriter(
+        new DefaultLogger(),
+        'Connection',
+        ClickHouseLogLevel.OFF,
+      ),
       log_level: ClickHouseLogLevel.OFF,
       unsafeLogUnredactedQueries: false,
       keep_alive: { enabled: true },
