@@ -479,42 +479,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     }
   }
 
-  private logResponse(
-    op: ConnOperation,
-    request: Http.ClientRequest,
-    params: RequestParams,
-    response: Http.IncomingMessage,
-    startTimestamp: number,
-  ) {
-    if (this.params.log_level <= ClickHouseLogLevel.DEBUG) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { authorization, host, ...headers } = request.getHeaders()
-      const duration = Date.now() - startTimestamp
-
-      // Redact query parameter from URL search params unless explicitly allowed
-      let searchParams = params.url.searchParams
-      if (!this.params.unsafeLogUnredactedQueries) {
-        // Clone to avoid mutating the original search params
-        searchParams = new URLSearchParams(searchParams)
-        searchParams.delete('query')
-      }
-
-      this.params.log_writer.debug({
-        module: 'HTTP Adapter',
-        message: `${op}: got a response from ClickHouse`,
-        args: {
-          request_method: params.method,
-          request_path: params.url.pathname,
-          request_params: searchParams.toString(),
-          request_headers: headers,
-          response_status: response.statusCode,
-          response_headers: response.headers,
-          response_time_ms: duration,
-        },
-      })
-    }
-  }
-
   private logRequestError({
     op,
     err,
@@ -679,7 +643,34 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       const onResponse = async (
         _response: Http.IncomingMessage,
       ): Promise<void> => {
-        this.logResponse(op, request, params, _response, start)
+        if (this.params.log_level <= ClickHouseLogLevel.DEBUG) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { authorization, host, ...headers } = request.getHeaders()
+          const duration = Date.now() - start
+
+          // Redact query parameter from URL search params unless explicitly allowed
+          let searchParams = params.url.searchParams
+          if (!this.params.unsafeLogUnredactedQueries) {
+            // Clone to avoid mutating the original search params
+            searchParams = new URLSearchParams(searchParams)
+            searchParams.delete('query')
+          }
+
+          this.params.log_writer.debug({
+            module: 'HTTP Adapter',
+            message: `${op}: request ${requestId}: got a response from ClickHouse`,
+            args: {
+              request_method: params.method,
+              request_path: params.url.pathname,
+              request_params: searchParams.toString(),
+              request_headers: headers,
+              response_status: _response.statusCode,
+              response_headers: _response.headers,
+              response_time_ms: duration,
+            },
+          })
+        }
+
         const tryDecompressResponseStream =
           params.try_decompress_response_stream ?? true
         const ignoreErrorResponse = params.ignore_error_response ?? false
