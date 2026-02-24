@@ -883,7 +883,18 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
         // This is for request timeout only. Surprisingly, it is not always enough to set in the HTTP request.
         // The socket won't be destroyed, and it will be returned to the pool.
-        // TODO: log the timeout value and the fact that we are setting it on the socket
+        if (log_level <= ClickHouseLogLevel.TRACE) {
+          const socketInfo = this.knownSockets.get(socket)
+          if (socketInfo) {
+            log_writer.trace({
+              message: `Setting up request timeout on socket ${socketInfo.id} for ${requestTimeout} ms`,
+            })
+          } else {
+            log_writer.trace({
+              message: `Setting up request timeout on a socket for ${requestTimeout} ms`,
+            })
+          }
+        }
         socket.setTimeout(this.params.request_timeout, onTimeout)
       }
 
@@ -908,7 +919,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             : undefined
 
           log_writer.trace({
-            message: `${op}: timeout occurred`,
+            message: `${op}: socket timeout occurred`,
             args: {
               query_id,
               operation: op,
