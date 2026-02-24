@@ -90,11 +90,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   private readonly jsonHandling: JSONHandling
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
   private readonly idleSocketTTL: number
+  private readonly connectionId: string
 
   protected constructor(
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent,
   ) {
+    this.connectionId = crypto.randomUUID()
     if (params.auth.type === 'Credentials') {
       this.defaultAuthHeader = `Basic ${Buffer.from(
         `${params.auth.username}:${params.auth.password}`,
@@ -793,7 +795,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             // It is the first time we've encountered this socket,
             // so it doesn't have the idle timeout handler attached to it
             if (socketInfo === undefined) {
-              const socketId = crypto.randomUUID()
+              const socketId = this.getNewSocketId()
               if (log_level <= ClickHouseLogLevel.TRACE) {
                 log_writer.trace({
                   message: `Using a fresh socket ${socketId}, setting up a new 'free' listener`,
@@ -987,6 +989,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         }
       }
     })
+  }
+
+  private socketCounter = 0
+  private getNewSocketId(): string {
+    this.socketCounter += 1
+    return `${this.connectionId}:${this.socketCounter}`
   }
 }
 
