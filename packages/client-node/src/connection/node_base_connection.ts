@@ -90,13 +90,24 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   private readonly jsonHandling: JSONHandling
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
   private readonly idleSocketTTL: number
-  private readonly connectionId: string
+  private readonly connectionId: string = crypto.randomUUID()
+  private socketCounter = 0
+  private requestCounter = 0
+
+  private getNewSocketId(): string {
+    this.socketCounter += 1
+    return `${this.connectionId}:${this.socketCounter}`
+  }
+
+  private getNewRequestId(): string {
+    this.requestCounter += 1
+    return `${this.connectionId}:${this.requestCounter}`
+  }
 
   protected constructor(
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent,
   ) {
-    this.connectionId = crypto.randomUUID()
     if (params.auth.type === 'Credentials') {
       this.defaultAuthHeader = `Basic ${Buffer.from(
         `${params.auth.username}:${params.auth.password}`,
@@ -656,6 +667,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     return new Promise((resolve, reject) => {
       const start = Date.now()
       const request = this.createClientRequest(params)
+      const requestId = this.getNewRequestId()
 
       function onError(e: Error): void {
         removeRequestListeners()
@@ -696,7 +708,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
         if (log_level <= ClickHouseLogLevel.TRACE) {
           log_writer.trace({
-            message: `${op}: response stream created`,
+            message: `${op}: request ${requestId}: response stream created`,
             args: {
               query_id,
               operation: op,
@@ -798,7 +810,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               const socketId = this.getNewSocketId()
               if (log_level <= ClickHouseLogLevel.TRACE) {
                 log_writer.trace({
-                  message: `Using a fresh socket ${socketId}, setting up a new 'free' listener`,
+                  message: `${op}: request ${requestId}: using a fresh socket ${socketId}, setting up a new 'free' listener`,
                 })
               }
               this.knownSockets.set(socket, {
@@ -810,7 +822,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               socket.on('free', () => {
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
-                    message: `Socket ${socketId} was released`,
+                    message: `${op}: request ${requestId}: socket ${socketId} was released`,
                   })
                 }
                 // Avoiding the built-in socket.timeout() method usage here,
@@ -818,7 +830,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                 const idleTimeoutHandle = setTimeout(() => {
                   if (log_level <= ClickHouseLogLevel.TRACE) {
                     log_writer.trace({
-                      message: `Removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
+                      message: `${op}: request ${requestId}: removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
                     })
                   }
                   this.knownSockets.delete(socket)
@@ -838,7 +850,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                 }
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
-                    message: `Socket ${socketId} received '${eventName}' event, 'free' listener removed`,
+                    message: `${op}: request ${requestId}: socket ${socketId} received '${eventName}' event, 'free' listener removed`,
                   })
                 }
 
@@ -846,7 +858,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                   if (responseStream && !responseStream.readableEnded) {
                     log_writer.warn({
                       message:
-                        `${op}: socket was closed or ended before the response was fully read. ` +
+                        `${op}: request ${requestId}: socket was closed or ended before the response was fully read. ` +
                         'This can potentially result in an uncaught ECONNRESET error! ' +
                         'Consider fully consuming, draining, or destroying the response stream.',
                       args: {
@@ -866,7 +878,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               socketInfo.idle_timeout_handle = undefined
               if (log_level <= ClickHouseLogLevel.TRACE) {
                 log_writer.trace({
-                  message: `Reusing socket ${socketInfo.id}`,
+                  message: `${op}: request ${requestId}: reusing socket ${socketInfo.id}`,
                 })
               }
             }
@@ -874,7 +886,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         } catch (e) {
           if (log_level <= ClickHouseLogLevel.ERROR) {
             log_writer.error({
-              message: 'An error occurred while housekeeping the idle sockets',
+              message: `${op}: request ${requestId}: An error occurred while housekeeping the idle sockets`,
               err: e as Error,
             })
           }
@@ -889,21 +901,26 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           const socketInfo = this.knownSockets.get(socket)
           if (socketInfo) {
             log_writer.trace({
-              message: `Setting up request timeout on socket ${socketInfo.id} for ${requestTimeout} ms`,
+              message: `${op}: request ${requestId}: setting up request timeout on socket ${socketInfo.id} for ${requestTimeout} ms`,
             })
           } else {
             log_writer.trace({
-              message: `Setting up request timeout on a socket for ${requestTimeout} ms`,
+              message: `${op}: request ${requestId}: setting up request timeout on a socket for ${requestTimeout} ms`,
             })
           }
         }
         socket.setTimeout(this.params.request_timeout, onTimeout)
       }
 
-      function onTimeout(): void {
+      const onTimeout = (): void => {
         removeRequestListeners()
 
         if (log_level <= ClickHouseLogLevel.TRACE) {
+          const socket = request.socket
+          const maybeSocketInfo = socket
+            ? this.knownSockets.get(socket)
+            : undefined
+
           const socketState = request.socket
             ? {
                 connecting: request.socket.connecting,
@@ -921,7 +938,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             : undefined
 
           log_writer.trace({
-            message: `${op}: socket timeout occurred`,
+            message: `${op}: connection ${this.connectionId}: socket ${maybeSocketInfo?.id}: timeout occurred`,
             args: {
               query_id,
               operation: op,
@@ -942,7 +959,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         } catch (e) {
           if (log_level <= ClickHouseLogLevel.ERROR) {
             log_writer.error({
-              message: 'An error occurred while destroying the request',
+              message: `${op}: request ${requestId}: An error occurred while destroying the request`,
               err: e as Error,
             })
           }
@@ -981,20 +998,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         } catch (e) {
           if (log_level <= ClickHouseLogLevel.ERROR) {
             log_writer.error({
-              message:
-                'An error occurred while ending the request without body',
+              message: `${op}: request ${requestId}: An error occurred while ending the request without body`,
               err: e as Error,
             })
           }
         }
       }
     })
-  }
-
-  private socketCounter = 0
-  private getNewSocketId(): string {
-    this.socketCounter += 1
-    return `${this.connectionId}:${this.socketCounter}`
   }
 }
 
