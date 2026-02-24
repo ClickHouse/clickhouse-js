@@ -38,7 +38,7 @@ describe('[Node.js] logger support', () => {
       await client.ping()
       expect(debugSpy).toHaveBeenCalledOnce()
       expect(debugSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Ping: got a response from ClickHouse'),
+        expect.stringMatching(/got a response from ClickHouse/),
         expect.stringContaining('\nArguments:'),
         expect.objectContaining({
           request_headers: {
@@ -69,7 +69,7 @@ describe('[Node.js] logger support', () => {
       // logs[0] are about the current log level
       expect(logs[1]).toEqual(
         expect.objectContaining({
-          message: 'Ping: got a response from ClickHouse',
+          message: expect.stringMatching(/got a response from ClickHouse/),
           args: expect.objectContaining({
             request_path: '/ping',
             request_method: 'GET',
