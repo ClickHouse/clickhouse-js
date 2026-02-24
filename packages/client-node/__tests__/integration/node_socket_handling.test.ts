@@ -121,7 +121,7 @@ describe.concurrent('Slow server', () => {
 
   async function select() {
     const rs = await client.query({ query: 'SELECT 1' })
-    rs.text()
+    await rs.text()
   }
 
   async function insert() {
