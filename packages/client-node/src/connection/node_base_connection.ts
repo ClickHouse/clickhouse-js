@@ -37,7 +37,7 @@ import Stream from 'stream'
 import Zlib from 'zlib'
 import { getAsText, getUserAgent, isStream } from '../utils'
 import { decompressResponse, isDecompressionError } from './compression'
-import { drainStream } from './stream'
+import { drainStreamInternal } from './stream'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
@@ -173,7 +173,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           'Ping',
         )
       }
-      await drainStream(
+      await drainStreamInternal(
         {
           op: 'Ping' as const,
           log_writer,
@@ -303,7 +303,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           },
           'Insert',
         )
-      await drainStream(
+      await drainStreamInternal(
         {
           op: 'Insert',
           log_writer,
@@ -386,7 +386,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
     // ignore the response stream and release the socket immediately
     const drainStartTime = Date.now()
-    await drainStream(
+    await drainStreamInternal(
       {
         op: 'Command',
         log_writer,
