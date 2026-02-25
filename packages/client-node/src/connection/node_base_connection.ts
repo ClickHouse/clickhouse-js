@@ -662,8 +662,10 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
           this.params.log_writer.debug({
             module: 'HTTP Adapter',
-            message: `${op}: request ${requestId}: got a response from ClickHouse`,
+            message: `got a response from ClickHouse`,
             args: {
+              requestId,
+              operation: op,
               request_method: params.method,
               request_path: params.url.pathname,
               request_params: searchParams.toString(),
@@ -703,8 +705,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
         if (log_level <= ClickHouseLogLevel.TRACE) {
           log_writer.trace({
-            message: `${op}: request ${requestId}: response stream created`,
+            message: `response stream created`,
             args: {
+              requestId,
               query_id,
               operation: op,
               stream_state: {
@@ -805,7 +808,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               const socketId = this.getNewSocketId()
               if (log_level <= ClickHouseLogLevel.TRACE) {
                 log_writer.trace({
-                  message: `${op}: request ${requestId}: using a fresh socket ${socketId}, setting up a new 'free' listener`,
+                  message: `Using a fresh socket, setting up a new 'free' listener`,
+                  args: { operation: op, requestId, socketId },
                 })
               }
               const newSocketInfo: SocketInfo = {
@@ -819,7 +823,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               socket.on('free', () => {
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
-                    message: `${op}: request ${requestId}: socket ${socketId} was released`,
+                    message: `Socket was released`,
+                    args: { operation: op, requestId, socketId },
                   })
                 }
                 // Avoiding the built-in socket.timeout() method usage here,
@@ -827,7 +832,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                 const idleTimeoutHandle = setTimeout(() => {
                   if (log_level <= ClickHouseLogLevel.TRACE) {
                     log_writer.trace({
-                      message: `${op}: request ${requestId}: removing socket ${socketId} after ${this.idleSocketTTL} ms of idle`,
+                      message: `Removing idle socket`,
+                      args: {
+                        operation: op,
+                        requestId,
+                        socketId,
+                        idle_socket_ttl_ms: this.idleSocketTTL,
+                      },
                     })
                   }
                   this.knownSockets.delete(socket)
@@ -844,7 +855,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                 }
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
-                    message: `${op}: request ${requestId}: socket ${socketId} received '${eventName}' event, 'free' listener removed`,
+                    message: `received '${eventName}' event, 'free' listener removed`,
+                    args: { operation: op, requestId, socketId },
                   })
                 }
 
@@ -872,7 +884,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               socketInfo.idle_timeout_handle = undefined
               if (log_level <= ClickHouseLogLevel.TRACE) {
                 log_writer.trace({
-                  message: `${op}: request ${requestId}: reusing socket ${socketInfo.id} (usage count: ${socketInfo.usageCount})`,
+                  message: `Reusing socket`,
+                  args: {
+                    operation: op,
+                    requestId,
+                    socketId: socketInfo.id,
+                    usageCount: socketInfo.usageCount,
+                  },
                 })
               }
               socketInfo.usageCount++
@@ -896,7 +914,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           const socketInfo = this.knownSockets.get(socket)
           if (socketInfo) {
             log_writer.trace({
-              message: `${op}: request ${requestId}: setting up request timeout on socket ${socketInfo.id} for ${requestTimeout} ms`,
+              message: `setting up request timeout`,
+              args: {
+                operation: op,
+                requestId,
+                socketId: socketInfo.id,
+                timeout_ms: requestTimeout,
+              },
             })
           } else {
             log_writer.trace({
