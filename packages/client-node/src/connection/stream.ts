@@ -105,6 +105,9 @@ export async function drainStream(
           },
         })
       }
+      // The `end` event might not be emitted if the server closes the connection.
+      // Making sure to resolve the promise in this case as well.
+      resolve()
     }
 
     function removeListeners() {
