@@ -24,8 +24,14 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - name: Install and run the latest package version
+      - name: Install dependencies (inclusing beta package version)
         run: |
           npm install
+
+      - name: Type check
+        run: |
           npx tsc --noEmit
+
+      - name: Run client code
+        run: |
           node src/index.ts
