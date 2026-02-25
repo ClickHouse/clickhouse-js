@@ -1,30 +1,8 @@
-import { describe, it, expect, vi, beforeAll } from 'vitest'
-import {
-  DefaultLogger,
-  LogWriter,
-  type ClickHouseClient,
-  ClickHouseLogLevel,
-} from '@clickhouse/client-common'
-import { drainStream, type Context } from '../../src/connection/stream'
+import { describe, it, expect } from 'vitest'
+import { drainStream } from '../../src/connection/stream'
 import stream from 'stream'
 
 describe(drainStream, () => {
-  let log_writer: LogWriter
-  let context: Context
-
-  beforeAll(() => {
-    log_writer = new LogWriter(
-      new DefaultLogger(),
-      'Connection',
-      ClickHouseLogLevel.OFF,
-    )
-    context = {
-      op: 'Insert',
-      query_id: 'test-query-id',
-      log_writer,
-      log_level: ClickHouseLogLevel.OFF,
-    }
-  })
   it('resolves when the stream ends', async () => {
     let ended = false
     const readable = new stream.Readable({
@@ -36,7 +14,7 @@ describe(drainStream, () => {
     })
 
     expect(ended).toBe(false)
-    await expect(drainStream(context, readable)).resolves.toBeUndefined()
+    await expect(drainStream(readable)).resolves.toBeUndefined()
     expect(ended).toBe(true)
   })
 
@@ -55,7 +33,7 @@ describe(drainStream, () => {
       // consume the stream
     }
     expect(ended).toBe(true)
-    await expect(drainStream(context, readable)).resolves.toBeUndefined()
+    await expect(drainStream(readable)).resolves.toBeUndefined()
   })
 
   it('rejects when the stream emits an error', async () => {
@@ -68,9 +46,7 @@ describe(drainStream, () => {
     })
 
     expect(errored).toBe(false)
-    await expect(drainStream(context, readable)).rejects.toThrow(
-      'Stream error A',
-    )
+    await expect(drainStream(readable)).rejects.toThrow('Stream error A')
     expect(errored).toBe(true)
   })
 
@@ -84,7 +60,7 @@ describe(drainStream, () => {
     })
 
     expect(errored).toBe(false)
-    await expect(drainStream(context, readable)).rejects.toThrow('Stream error')
+    await expect(drainStream(readable)).rejects.toThrow('Stream error')
     expect(errored).toBe(true)
   })
 
@@ -104,7 +80,7 @@ describe(drainStream, () => {
       }
     } catch {}
     expect(errored).toBe(true)
-    await expect(drainStream(context, readable)).rejects.toThrow(
+    await expect(drainStream(readable)).rejects.toThrow(
       'The operation was aborted',
     )
   })
@@ -124,6 +100,6 @@ describe(drainStream, () => {
       // consume the stream
     }
     expect(closed).toBe(true)
-    await expect(drainStream(context, readable)).resolves.toBeUndefined()
+    await expect(drainStream(readable)).resolves.toBeUndefined()
   })
 })
