@@ -4,10 +4,10 @@ import {
   LogWriter,
   ClickHouseLogLevel,
 } from '@clickhouse/client-common'
-import { drainStream, type Context } from '../../src/connection/stream'
+import { drainStreamInternal, type Context } from '../../src/connection/stream'
 import stream from 'stream'
 
-describe(drainStream, () => {
+describe(drainStreamInternal, () => {
   let log_writer: LogWriter
   let context: Context
 
@@ -35,7 +35,9 @@ describe(drainStream, () => {
     })
 
     expect(ended).toBe(false)
-    await expect(drainStream(context, readable)).resolves.toBeUndefined()
+    await expect(
+      drainStreamInternal(context, readable),
+    ).resolves.toBeUndefined()
     expect(ended).toBe(true)
   })
 
@@ -54,7 +56,9 @@ describe(drainStream, () => {
       // consume the stream
     }
     expect(ended).toBe(true)
-    await expect(drainStream(context, readable)).resolves.toBeUndefined()
+    await expect(
+      drainStreamInternal(context, readable),
+    ).resolves.toBeUndefined()
   })
 
   it('rejects when the stream emits an error', async () => {
@@ -67,7 +71,7 @@ describe(drainStream, () => {
     })
 
     expect(errored).toBe(false)
-    await expect(drainStream(context, readable)).rejects.toThrow(
+    await expect(drainStreamInternal(context, readable)).rejects.toThrow(
       'Stream error A',
     )
     expect(errored).toBe(true)
@@ -83,7 +87,9 @@ describe(drainStream, () => {
     })
 
     expect(errored).toBe(false)
-    await expect(drainStream(context, readable)).rejects.toThrow('Stream error')
+    await expect(drainStreamInternal(context, readable)).rejects.toThrow(
+      'Stream error',
+    )
     expect(errored).toBe(true)
   })
 
@@ -103,7 +109,7 @@ describe(drainStream, () => {
       }
     } catch {}
     expect(errored).toBe(true)
-    await expect(drainStream(context, readable)).rejects.toThrow(
+    await expect(drainStreamInternal(context, readable)).rejects.toThrow(
       'The operation was aborted',
     )
   })
@@ -123,6 +129,8 @@ describe(drainStream, () => {
       // consume the stream
     }
     expect(closed).toBe(true)
-    await expect(drainStream(context, readable)).resolves.toBeUndefined()
+    await expect(
+      drainStreamInternal(context, readable),
+    ).resolves.toBeUndefined()
   })
 })

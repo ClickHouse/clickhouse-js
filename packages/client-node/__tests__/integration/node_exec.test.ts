@@ -10,7 +10,8 @@ import { createTestClient } from '@test/utils/client'
 import { guid } from '@test/utils/guid'
 import Stream from 'stream'
 import Zlib from 'zlib'
-import { drainStream, ResultSet } from '../../src'
+import { ResultSet } from '../../src'
+import { drainStreamInternal } from '../../src/connection/stream'
 import { getAsText } from '../../src/utils'
 
 describe('[Node.js] exec', () => {
@@ -98,7 +99,7 @@ describe('[Node.js] exec', () => {
         values: stream,
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
-      await drainStream(
+      await drainStreamInternal(
         {
           op: 'Insert',
           query_id: execResult.query_id,
@@ -131,7 +132,7 @@ describe('[Node.js] exec', () => {
       stream.push(null)
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
       const execResult = await execPromise
-      await drainStream(
+      await drainStreamInternal(
         {
           op: 'Insert',
           query_id: execResult.query_id,
@@ -158,7 +159,7 @@ describe('[Node.js] exec', () => {
         values: stream,
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
-      await drainStream(
+      await drainStreamInternal(
         {
           op: 'Insert',
           query_id: execResult.query_id,
@@ -190,7 +191,7 @@ describe('[Node.js] exec', () => {
         values: stream,
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
-      await drainStream(
+      await drainStreamInternal(
         {
           op: 'Insert',
           query_id: execResult.query_id,
