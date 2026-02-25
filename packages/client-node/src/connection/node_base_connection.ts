@@ -147,9 +147,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         })
         result = await this.request(
           {
+            query: PingQuery,
             method: 'GET',
             url: transformUrl({ url: this.params.url, searchParams }),
-            query: PingQuery,
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
             query_id,
@@ -161,11 +161,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       } else {
         result = await this.request(
           {
+            query: 'ping',
             method: 'GET',
             url: transformUrl({ url: this.params.url, pathname: '/ping' }),
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
-            query: 'ping',
             query_id,
             log_writer,
             log_level,
