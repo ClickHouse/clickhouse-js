@@ -835,7 +835,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               const newSocketInfo: SocketInfo = {
                 id: socket_id,
                 idle_timeout_handle: undefined,
-                usageCount: 1,
+                usage_count: 1,
               }
               this.knownSockets.set(socket, newSocketInfo)
               // When the request is complete and the socket is released,
@@ -931,11 +931,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                     query_id,
                     request_id,
                     socket_id: socketInfo.id,
-                    usageCount: socketInfo.usageCount,
+                    usage_count: socketInfo.usage_count,
                   },
                 })
               }
-              socketInfo.usageCount++
+              socketInfo.usage_count++
             }
           }
         } catch (e) {
@@ -1117,7 +1117,7 @@ interface LogRequestErrorParams {
 interface SocketInfo {
   id: string
   idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
-  usageCount: number
+  usage_count: number
 }
 
 type RunExecParams = ConnBaseQueryParams & {
