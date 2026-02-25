@@ -93,7 +93,7 @@ describe(drainStreamInternal, () => {
     expect(errored).toBe(true)
   })
 
-  it('resolves when the stream is already errored', async () => {
+  it('rejects when the stream is already errored', async () => {
     let errored = false
     const readable = new stream.Readable({
       read() {
