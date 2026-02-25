@@ -40,6 +40,16 @@ export async function drainStream(
 
     // If the stream has already emitted an error, we can reject the promise immediately.
     if (stream.errored) {
+      if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
+        ctx.log_writer.trace({
+          message: `${ctx.op}: stream already errored before drain`,
+          args: {
+            query_id: ctx.query_id,
+            chunk_number: chunkCount,
+            total_bytes_received: bytesReceived,
+          },
+        })
+      }
       // the stream is already errored, no need to attach listeners
       reject(stream.errored)
       return
@@ -48,6 +58,16 @@ export async function drainStream(
     // Avoid a race condition where the stream has already sent the 'end' event before we attach the listener.
     // In this case, we can resolve the promise immediately without attaching any listeners.
     if (stream.readableEnded) {
+      if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
+        ctx.log_writer.trace({
+          message: `${ctx.op}: stream already ended before drain`,
+          args: {
+            query_id: ctx.query_id,
+            chunk_number: chunkCount,
+            total_bytes_received: bytesReceived,
+          },
+        })
+      }
       // the stream is already ended, no need to attach listeners
       resolve()
       return
@@ -55,6 +75,16 @@ export async function drainStream(
 
     // If the stream is already closed, we can resolve the promise immediately as well.
     if (stream.closed) {
+      if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
+        ctx.log_writer.trace({
+          message: `${ctx.op}: stream already closed before drain`,
+          args: {
+            query_id: ctx.query_id,
+            chunk_number: chunkCount,
+            total_bytes_received: bytesReceived,
+          },
+        })
+      }
       // the stream is already closed, no need to attach listeners
       resolve()
       return
