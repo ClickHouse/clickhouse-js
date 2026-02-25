@@ -5,7 +5,7 @@ import {
 } from '@clickhouse/client-common'
 import type Stream from 'stream'
 
-interface Context {
+export interface Context {
   op: ConnOperation
   log_level: ClickHouseLogLevel
   log_writer: LogWriter
