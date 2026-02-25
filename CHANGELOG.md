@@ -2,13 +2,53 @@
 
 ## Improvements
 
-- Logging is now lazy, which means that the log messages will only be constructed if the log level is appropriate for the message. This can improve performance in cases where constructing the log message is expensive, and the log level is set to ignore such messages. ([#520])
+- Logging is now lazy, which means that the log messages will only be constructed if the log level is appropriate for the message. This can improve performance in cases where constructing the log message is expensive, and the log level is set to ignore such messages. See `ClickHouseLogLevel` enum for the complete list of log levels. ([#520])
+
+```ts
+const client = createClient({
+  // ...
+  log: {
+    level: ClickHouseLogLevel.TRACE, // to log everything available down to the network level events
+  },
+})
+```
 
 - By default the client will no longer log the full unredacted query text for security reasons; however, it is still possible to enable it via the `unsafeLogUnredactedQueries` configuration option. ([#520])
 
+```ts
+const client = createClient({
+  // ...
+  log: {
+    level: ClickHouseLogLevel.TRACE, // default is ClickHouseLogLevel.OFF
+    unsafeLogUnredactedQueries: true, // default is false
+  },
+})
+```
+
 - Enhanced the logging of the HTTP request / socket lifecycle with additional trace messages and context such as Connection ID (UUID) and Request ID and Socket ID that embed the connection ID for ease of tracing the logs of a particular request across the connection lifecycle. To enable such logs, set the `log.level` config option to `ClickHouseLogLevel.TRACE`. ([#567])
 
-- A step towards structured logging: the client now passes extensive context to the logger `args` parameter. ([#576])
+```console
+[2026-02-25T09:19:13.511Z][TRACE][@clickhouse/client][Connection] Insert: received 'close' event, 'free' listener removed
+Arguments: {
+  operation: 'Insert',
+  connection_id: 'da3c9796-5dc5-46ef-83b0-ed1f4422094c',
+  query_id: '9dfda627-39a2-41a6-9fc9-8f8716574826',
+  request_id: 'da3c9796-5dc5-46ef-83b0-ed1f4422094c:3',
+  socket_id: 'da3c9796-5dc5-46ef-83b0-ed1f4422094c:2',
+  event: 'close'
+}
+[2026-02-25T09:19:13.502Z][TRACE][@clickhouse/client][Connection] Query: reusing socket
+Arguments: {
+  operation: 'Query',
+  connection_id: 'da3c9796-5dc5-46ef-83b0-ed1f4422094c',
+  query_id: 'ad0127e8-b1c7-4ed6-9681-c0162f7a0ea9',
+  request_id: 'da3c9796-5dc5-46ef-83b0-ed1f4422094c:4',
+  socket_id: 'da3c9796-5dc5-46ef-83b0-ed1f4422094c:2',
+  usage_count: 1
+}
+```
+
+- A step towards structured logging: the client now passes rich context to the logger `args` parameter (e.g. `connection_id`, `query_id`, `request_id`, `socket_id`). ([#576])
 
 [#520]: https://github.com/ClickHouse/clickhouse-js/pull/520
 [#567]: https://github.com/ClickHouse/clickhouse-js/pull/567
