@@ -8,8 +8,11 @@
 
 - Enhanced the logging of the HTTP request / socket lifecycle with additional trace messages and context such as Connection ID (UUID) and Request ID and Socket ID that embed the connection ID for ease of tracing the logs of a particular request across the connection lifecycle. To enable such logs, set the `log.level` config option to `ClickHouseLogLevel.TRACE`. ([#567])
 
+- A step towards structured logging: the client now passes extensive context to the logger `args` parameter. ([#576])
+
 [#520]: https://github.com/ClickHouse/clickhouse-js/pull/520
 [#567]: https://github.com/ClickHouse/clickhouse-js/pull/567
+[#576]: https://github.com/ClickHouse/clickhouse-js/pull/576
 
 # 1.17.0
 
