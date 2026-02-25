@@ -1019,6 +1019,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               operation: op,
               connection_id: this.connectionId,
               query_id,
+              request_id,
               socket_id: maybeSocketInfo?.id,
               timeout_ms: requestTimeout,
               socket_state: socketState,
