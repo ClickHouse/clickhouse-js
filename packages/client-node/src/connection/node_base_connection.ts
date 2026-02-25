@@ -899,7 +899,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                   if (responseStream && !responseStream.readableEnded) {
                     log_writer.warn({
                       message:
-                        `${op}: Socket was closed or ended before the response was fully read. ` +
+                        `${op}: socket was closed or ended before the response was fully read. ` +
                         'This can potentially result in an uncaught ECONNRESET error! ' +
                         'Consider fully consuming, draining, or destroying the response stream.',
                       args: {
