@@ -13,6 +13,9 @@ jobs:
       fail-fast: true
       matrix:
         node: [20, 22, 24]
+    defaults:
+      run:
+        working-directory: tests/e2e
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -23,12 +26,6 @@ jobs:
 
       - name: Install and run the latest package version
         run: |
-          mkdir e2e-test
-          cd e2e-test
-          npm init -y
-          npm install @clickhouse/client
-          cat package.json
-          node <<EOF
-          const { createClient } = require('@clickhouse/client');
-          console.log(createClient({ url: 'http://localhost:8123' }));
-          EOF
+          npm install
+          npx tsc --noEmit
+          node src/index.ts
