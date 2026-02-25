@@ -21,7 +21,7 @@ describe('[Node.js] Logger/LogWriter', () => {
   const message = 'very informative'
   const err = new Error('boo')
 
-  it('should use OFF by default', async () => {
+  it('should explicitly use OFF', async () => {
     const logWriter = new LogWriter(
       new DefaultLogger(),
       module,
