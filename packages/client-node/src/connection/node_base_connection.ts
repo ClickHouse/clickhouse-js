@@ -492,13 +492,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     err,
     query_id,
     query_params,
-    search_params,
     extra_args,
   }: LogRequestErrorParams) {
     if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
-      // Redact query parameter from search params
-      search_params?.delete('query')
-
       this.params.log_writer.error({
         message: this.httpRequestErrorMessage(op),
         err: err as Error,
@@ -506,7 +502,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           operation: op,
           connection_id: this.connectionId,
           query_id,
-          search_params: search_params?.toString(),
           with_abort_signal: query_params.abort_signal !== undefined,
           session_id: query_params.session_id,
           ...extra_args,
