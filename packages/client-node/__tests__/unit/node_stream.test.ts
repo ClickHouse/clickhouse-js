@@ -4,7 +4,7 @@ import stream from 'stream'
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve))
 
-describe(drainStream, () => {
+describe('drainStream', () => {
   it('resolves when the stream ends', async () => {
     let ended = false
     const readable = new stream.Readable({
