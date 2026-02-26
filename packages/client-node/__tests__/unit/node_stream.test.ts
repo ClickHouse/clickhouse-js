@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { drainStream } from '../../src/connection/stream'
 import stream from 'stream'
 
+const nextTick = () => new Promise((resolve) => process.nextTick(resolve))
+
 describe(drainStream, () => {
   it('resolves when the stream ends', async () => {
     let ended = false
@@ -88,18 +90,20 @@ describe(drainStream, () => {
   it('resolves when the stream is already closed', async () => {
     let closed = false
     const readable = new stream.Readable({
+      emitClose: true,
       read() {
         this.push('data')
-        this.push(null) // end the stream
-        closed = true
       },
+    })
+    readable.on('close', () => {
+      closed = true
     })
 
     expect(closed).toBe(false)
-    for await (const _ of readable) {
-      // consume the stream
-    }
+    readable.destroy() // close the stream
+    await nextTick() // wait for the close event to be emitted
     expect(closed).toBe(true)
+
     await expect(drainStream(readable)).resolves.toBeUndefined()
   })
 })
