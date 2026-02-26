@@ -14,6 +14,10 @@ For every pull request review, make sure to provide evaluation of the following 
 
 1. When reviewing code changes, it is important to consider the impact on the API quality and stability. For example, if the code changes involve modifying existing API endpoints or adding new ones, it is important to ensure that the changes are well-documented and do not break existing functionality for users of the library.
 
+2. When introducing new features or making changes to the API make sure to update the CHANGELOG.md file with a concise description of the changes followed with an example usage if applicable.
+
+3. Additionally, make sure that the official documentation is in sync with the changes. The MCP server for the documentation is running at `https://clickhouse.mcp.kapa.ai/`.
+
 ### Ongoing refactoring
 
 Keep in mind the ongoing refactoring efforts in the codebase. If required put more effort into bringing more relevant code and recent changes into the context.
