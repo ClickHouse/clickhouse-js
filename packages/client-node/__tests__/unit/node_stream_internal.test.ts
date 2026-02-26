@@ -9,7 +9,7 @@ import stream from 'stream'
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve))
 
-describe(drainStreamInternal, () => {
+describe('drainStreamInternal', () => {
   let log_writer: LogWriter
   let context: Context
 
