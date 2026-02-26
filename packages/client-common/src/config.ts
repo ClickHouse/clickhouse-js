@@ -65,7 +65,7 @@ export interface BaseClickHouseClientConfigOptions {
     /** A class to instantiate a custom logger implementation.
      *  @default see {@link DefaultLogger} */
     LoggerClass?: new () => Logger
-    /** @default set to {@link ClickHouseLogLevel.OFF} */
+    /** @default set to {@link ClickHouseLogLevel.WARN} */
     level?: ClickHouseLogLevel
     /**
      * If set to `true`, the client will log unredacted queries.
@@ -246,7 +246,7 @@ export function getConnectionParams(
     }
   }
 
-  const log_level = config.log?.level ?? ClickHouseLogLevel.OFF
+  const log_level = config.log?.level ?? ClickHouseLogLevel.WARN
 
   return {
     auth,
