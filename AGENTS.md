@@ -2,7 +2,7 @@
 
 ## When reviewing code changes
 
-For every pull request review, make sure to provide evaluation of the following aspects:
+For every pull request review, make sure to provide an evaluation of the following aspects:
 
 ### Security implications
 
@@ -12,7 +12,7 @@ For every pull request review, make sure to provide evaluation of the following 
 
 ### API quality and stability
 
-1. When reviewing code changes, it is important to consider the impact on the API quality and stability. For example, if the code changes involve modifying existing API endpoints or adding new ones, it is important to ensure that the changes are well-documented and do not break existing functionality for users of the library.
+1. When reviewing code changes, it is important to consider the impact on the API quality and stability. For example, if the code changes involve modifying the library's public API surface (such as exported functions, classes, or types) or adding new public APIs, it is important to ensure that the changes are well-documented and do not break existing functionality for users of the library.
 
 2. When introducing new features or making changes to the API make sure to update the CHANGELOG.md file with a concise description of the changes followed with an example usage if applicable.
 
@@ -20,7 +20,7 @@ For every pull request review, make sure to provide evaluation of the following 
 
 ### Ongoing refactoring
 
-Keep in mind the ongoing refactoring efforts in the codebase. If required put more effort into bringing more relevant code and recent changes into the context.
+Keep in mind the ongoing refactoring efforts in the codebase. If required, put more effort into bringing more relevant code and recent changes into the context.
 
 1. The code base is gradually migrating from passing groups of similar parameters as separate parameters to passing them as a single object. This is a common refactoring pattern that improves code readability and maintainability. When suggesting code changes, please consider this ongoing refactoring effort and prefer the new object-based parameter passing style.
 
