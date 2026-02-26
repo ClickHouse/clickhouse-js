@@ -251,9 +251,6 @@ export class ClickHouseClient<Stream = unknown> {
             args: {
               session_id: queryParams.session_id,
               role: queryParams.role,
-              query: this.connectionParams.unsafeLogUnredactedQueries
-                ? query
-                : undefined,
               query_id,
             },
           })

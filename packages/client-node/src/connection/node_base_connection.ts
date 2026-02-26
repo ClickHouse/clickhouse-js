@@ -353,9 +353,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           operation: 'Command',
           connection_id: this.connectionId,
           query_id,
-          query: this.params.unsafeLogUnredactedQueries
-            ? params.query
-            : undefined,
         },
       })
     }
@@ -499,12 +496,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     extra_args,
   }: LogRequestErrorParams) {
     if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
-      // Redact query parameter from search params unless explicitly allowed
-      if (!this.params.unsafeLogUnredactedQueries && search_params) {
-        // Clone to avoid mutating the original search params
-        search_params = new URLSearchParams(search_params)
-        search_params.delete('query')
-      }
+      // Redact query parameter from search params
+      search_params?.delete('query')
 
       this.params.log_writer.error({
         message: this.httpRequestErrorMessage(op),
@@ -513,9 +506,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           operation: op,
           connection_id: this.connectionId,
           query_id,
-          query: this.params.unsafeLogUnredactedQueries
-            ? query_params.query
-            : undefined,
           search_params: search_params?.toString(),
           with_abort_signal: query_params.abort_signal !== undefined,
           session_id: query_params.session_id,
@@ -663,13 +653,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           const { authorization, host, ...headers } = request.getHeaders()
           const duration = Date.now() - start
 
-          // Redact query parameter from URL search params unless explicitly allowed
+          // Redact query parameter from URL search params
           let searchParams = params.url.searchParams
-          if (!this.params.unsafeLogUnredactedQueries) {
-            // Clone to avoid mutating the original search params
-            searchParams = new URLSearchParams(searchParams)
-            searchParams.delete('query')
-          }
+          // Clone to avoid mutating the original search params
+          searchParams = new URLSearchParams(searchParams)
+          searchParams.delete('query')
 
           this.params.log_writer.debug({
             module: 'HTTP Adapter',
@@ -909,9 +897,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                         request_id,
                         socket_id,
                         event: eventName,
-                        query: this.params.unsafeLogUnredactedQueries
-                          ? params.query
-                          : undefined,
                       },
                     })
                   }

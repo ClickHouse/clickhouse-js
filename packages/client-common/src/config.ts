@@ -67,13 +67,6 @@ export interface BaseClickHouseClientConfigOptions {
     LoggerClass?: new () => Logger
     /** @default set to {@link ClickHouseLogLevel.WARN} */
     level?: ClickHouseLogLevel
-    /**
-     * If set to `true`, the client will log unredacted queries.
-     * If set to `false` (default), the client will not attempt to log queries at all.
-     *
-     * @default false
-     */
-    unsafeLogUnredactedQueries?: boolean
   }
   /** ClickHouse Session id to attach to the outgoing requests.
    *  @default empty string (no session) */
@@ -261,7 +254,6 @@ export function getConnectionParams(
     database: config.database ?? 'default',
     log_writer: new LogWriter(logger, 'Connection', log_level),
     log_level: log_level,
-    unsafeLogUnredactedQueries: config.log?.unsafeLogUnredactedQueries ?? false,
     keep_alive: { enabled: config.keep_alive?.enabled ?? true },
     clickhouse_settings: config.clickhouse_settings ?? {},
     http_headers: config.http_headers ?? {},
