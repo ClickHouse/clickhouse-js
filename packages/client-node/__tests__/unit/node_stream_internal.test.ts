@@ -7,6 +7,8 @@ import {
 import { drainStreamInternal, type Context } from '../../src/connection/stream'
 import stream from 'stream'
 
+const nextTick = () => new Promise((resolve) => process.nextTick(resolve))
+
 describe(drainStreamInternal, () => {
   let log_writer: LogWriter
   let context: Context
@@ -117,18 +119,20 @@ describe(drainStreamInternal, () => {
   it('resolves when the stream is already closed', async () => {
     let closed = false
     const readable = new stream.Readable({
+      emitClose: true,
       read() {
         this.push('data')
-        this.push(null) // end the stream
-        closed = true
       },
+    })
+    readable.on('close', () => {
+      closed = true
     })
 
     expect(closed).toBe(false)
-    for await (const _ of readable) {
-      // consume the stream
-    }
+    readable.destroy() // close the stream
+    await nextTick() // wait for the close event to be emitted
     expect(closed).toBe(true)
+
     await expect(
       drainStreamInternal(context, readable),
     ).resolves.toBeUndefined()
