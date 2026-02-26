@@ -2,6 +2,17 @@
 
 ## Improvements
 
+- Setting `log.level` default value to `ClickHouseLogLevel.WARN` instead of `ClickHouseLogLevel.OFF` to provide better visibility into potential issues without overwhelming users with too much information by default.
+
+```ts
+const client = createClient({
+  // ...
+  log: {
+    level: ClickHouseLogLevel.WARN, // default is now ClickHouseLogLevel.WARN instead of ClickHouseLogLevel.OFF
+  },
+})
+```
+
 - Logging is now lazy, which means that the log messages will only be constructed if the log level is appropriate for the message. This can improve performance in cases where constructing the log message is expensive, and the log level is set to ignore such messages. See `ClickHouseLogLevel` enum for the complete list of log levels. ([#520])
 
 ```ts
