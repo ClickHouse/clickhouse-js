@@ -24,18 +24,6 @@ const client = createClient({
 })
 ```
 
-- By default the client will no longer log the full unredacted query text for security reasons; however, it is still possible to enable it via the `unsafeLogUnredactedQueries` configuration option. ([#520])
-
-```ts
-const client = createClient({
-  // ...
-  log: {
-    level: ClickHouseLogLevel.TRACE, // default is ClickHouseLogLevel.OFF
-    unsafeLogUnredactedQueries: true, // default is false
-  },
-})
-```
-
 - Enhanced the logging of the HTTP request / socket lifecycle with additional trace messages and context such as Connection ID (UUID) and Request ID and Socket ID that embed the connection ID for ease of tracing the logs of a particular request across the connection lifecycle. To enable such logs, set the `log.level` config option to `ClickHouseLogLevel.TRACE`. ([#567])
 
 ```console

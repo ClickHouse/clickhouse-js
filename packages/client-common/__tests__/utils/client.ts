@@ -66,7 +66,6 @@ export function createTestClient<Stream = unknown>(
         ])
   const log: BaseClickHouseClientConfigOptions['log'] = {
     LoggerClass: TestLogger,
-    unsafeLogUnredactedQueries: level === ClickHouseLogLevel.TRACE,
     level,
   }
 

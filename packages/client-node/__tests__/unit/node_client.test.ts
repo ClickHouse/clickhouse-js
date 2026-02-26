@@ -56,7 +56,6 @@ describe('[Node.js] createClient', () => {
         ClickHouseLogLevel.WARN,
       ),
       log_level: ClickHouseLogLevel.WARN,
-      unsafeLogUnredactedQueries: false,
       keep_alive: { enabled: true },
       http_headers: {
         'X-ClickHouse-Auth': 'secret_token',
