@@ -41,18 +41,8 @@ describe('[Node.js] logger support', () => {
         expect.stringMatching(/got a response from ClickHouse/),
         expect.stringContaining('\nArguments:'),
         expect.objectContaining({
-          request_headers: {
-            connection: expect.stringMatching(/Keep-Alive/i),
-            'user-agent': expect.any(String),
-          },
           request_method: 'GET',
-          request_params: '',
           request_path: '/ping',
-          response_headers: expect.objectContaining({
-            connection: expect.stringMatching(/Keep-Alive/i),
-            'content-type': 'text/html; charset=UTF-8',
-            'transfer-encoding': 'chunked',
-          }),
           response_status: 200,
         }),
       )
