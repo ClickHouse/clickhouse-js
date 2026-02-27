@@ -94,7 +94,7 @@ describe('[Node.js] logger support', () => {
     // Perform an operation that is expected to include a query in the request URL.
     await expect(
       client.exec({
-        query: 'SELECT 1',
+        query: `SELECT '${secret}'`, // Invalid query to trigger an error
         query_params: { secret },
       }),
     ).rejects.toThrow() // We expect this to fail since the query is invalid, but we want to check the logs
@@ -122,7 +122,7 @@ describe('[Node.js] logger support', () => {
 
     // Perform an operation that is expected to include a query in the request URL.
     await client.exec({
-      query: 'SELECT 1',
+      query: `SELECT '${secret}'`,
       query_params: { secret },
     })
 
