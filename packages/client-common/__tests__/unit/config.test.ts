@@ -384,6 +384,7 @@ describe("config", () => {
           parse: JSON.parse,
           stringify: JSON.stringify,
         },
+        use_multipart_params: false,
       });
     });
 
@@ -439,6 +440,7 @@ describe("config", () => {
           parse: JSON.parse,
           stringify: JSON.stringify,
         },
+        use_multipart_params: false,
       });
     });
 
@@ -514,6 +516,7 @@ describe("config", () => {
           parse: JSON.parse,
           stringify: JSON.stringify,
         },
+        use_multipart_params: false,
       });
     });
 
