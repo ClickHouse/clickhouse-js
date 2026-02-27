@@ -90,12 +90,11 @@ describe('[Node.js] logger support', () => {
     })
   })
 
-  it('should never log unredacted queries (no "query=" in logs)', async () => {
+  it('should not log unredacted and params on error', async () => {
     client = createTestClient({
       url: 'http://localhost:1', // Invalid URL to trigger errors
       log: {
         level: ClickHouseLogLevel.TRACE,
-        unsafeLogUnredactedQueries: true,
         LoggerClass: TestLogger,
       },
     })
@@ -109,6 +108,33 @@ describe('[Node.js] logger support', () => {
         query_params: { secret },
       }),
     ).rejects.toThrow() // We expect this to fail since the query is invalid, but we want to check the logs
+    for (const entry of logs) {
+      expect(entry.message).not.toContain(secret)
+      if (entry.args != null) {
+        const serializedArgs = JSON.stringify(entry.args)
+        expect(serializedArgs).not.toContain(secret)
+      }
+    }
+  })
+
+  it('should not log unredacted and params on success', async () => {
+    const secret = 'D75B76DF-C61F-4A8F-8569-829D0BFC4F1D'
+
+    client = createTestClient({
+      http_headers: {
+        'X-Test-Header': secret,
+      },
+      log: {
+        level: ClickHouseLogLevel.TRACE,
+        LoggerClass: TestLogger,
+      },
+    })
+
+    // Perform an operation that is expected to include a query in the request URL.
+    await client.exec({
+      query: 'SELECT 1',
+      query_params: { secret },
+    })
 
     for (const entry of logs) {
       expect(entry.message).not.toContain(secret)
