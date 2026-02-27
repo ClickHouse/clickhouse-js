@@ -14,7 +14,9 @@ export interface Context {
 
 /** Drains the response stream, as calling `destroy` on a {@link Stream.Readable} response stream
  *  will result in closing the underlying socket, and negate the KeepAlive feature benefits.
- *  See https://github.com/ClickHouse/clickhouse-js/pull/203 */
+ *  See https://github.com/ClickHouse/clickhouse-js/pull/203
+ *  @deprecated This method is not intended to be used outside of the client implementation anymore. Use `client.command()` instead, which will handle draining the stream internally when needed.
+ * */
 export async function drainStream(stream: Stream.Readable): Promise<void> {
   return new Promise((resolve, reject) => {
     // If the stream has already emitted an error, we can reject the promise immediately.

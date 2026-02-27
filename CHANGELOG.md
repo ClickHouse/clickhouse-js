@@ -49,9 +49,16 @@ Arguments: {
 
 - A step towards structured logging: the client now passes rich context to the logger `args` parameter (e.g. `connection_id`, `query_id`, `request_id`, `socket_id`). ([#576])
 
+## Deprecated API
+
+- The `drainStream` utility function is now deprecated, as the client will handle draining the stream internally when needed. Use `client.command()` instead, which will handle draining the stream internally when needed. ([#578])
+
+- The `sleep` utility function is now deprecated, as it is not intended to be used outside of the client implementation. Use `setTimeout` directly or a more full-featured utility library if you need additional features like cancellation or timers management. ([#578])
+
 [#520]: https://github.com/ClickHouse/clickhouse-js/pull/520
 [#567]: https://github.com/ClickHouse/clickhouse-js/pull/567
 [#576]: https://github.com/ClickHouse/clickhouse-js/pull/576
+[#578]: https://github.com/ClickHouse/clickhouse-js/pull/578
 
 # 1.17.0
 
