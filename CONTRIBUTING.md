@@ -250,7 +250,7 @@ git commit -m "chore: bump version to $NEW_VERSION"
 git push
 ```
 
-Then create a new Git tag and push it to the repository:
+Create and merge the PR and then create a new Git tag and push it to the repository:
 
 ```bash
 git tag "$NEW_VERSION"
