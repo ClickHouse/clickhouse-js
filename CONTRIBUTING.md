@@ -253,6 +253,8 @@ git push
 Create and merge the PR and then create a new Git tag and push it to the repository:
 
 ```bash
+git checkout main
+git pull
 git tag "$NEW_VERSION"
 git push origin tag "$NEW_VERSION"
 ```
