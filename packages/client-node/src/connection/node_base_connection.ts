@@ -37,7 +37,7 @@ import Stream from 'stream'
 import Zlib from 'zlib'
 import { getAsText, getUserAgent, isStream } from '../utils'
 import { decompressResponse, isDecompressionError } from './compression'
-import { drainStream } from './stream'
+import { drainStreamInternal } from './stream'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
@@ -137,8 +137,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     const { log_writer, log_level } = this.params
     const query_id = this.getQueryId(params.query_id)
     const { controller, controllerCleanup } = this.getAbortController(params)
-    let result: RequestResult
     try {
+      let result: RequestResult
       if (params.select) {
         const searchParams = toSearchParams({
           database: undefined,
@@ -147,9 +147,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         })
         result = await this.request(
           {
+            query: PingQuery,
             method: 'GET',
             url: transformUrl({ url: this.params.url, searchParams }),
-            query: PingQuery,
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
             query_id,
@@ -161,11 +161,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       } else {
         result = await this.request(
           {
+            query: 'ping',
             method: 'GET',
             url: transformUrl({ url: this.params.url, pathname: '/ping' }),
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
-            query: 'ping',
             query_id,
             log_writer,
             log_level,
@@ -173,7 +173,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           'Ping',
         )
       }
-      await drainStream(
+      await drainStreamInternal(
         {
           op: 'Ping' as const,
           log_writer,
@@ -303,7 +303,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           },
           'Insert',
         )
-      await drainStream(
+      await drainStreamInternal(
         {
           op: 'Insert',
           log_writer,
@@ -383,7 +383,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
     // ignore the response stream and release the socket immediately
     const drainStartTime = Date.now()
-    await drainStream(
+    await drainStreamInternal(
       {
         op: 'Command',
         log_writer,
