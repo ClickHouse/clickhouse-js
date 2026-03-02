@@ -1,4 +1,4 @@
-# 1.18.0
+# 1.18.1
 
 ## Improvements
 
@@ -59,6 +59,10 @@ Arguments: {
 [#567]: https://github.com/ClickHouse/clickhouse-js/pull/567
 [#576]: https://github.com/ClickHouse/clickhouse-js/pull/576
 [#578]: https://github.com/ClickHouse/clickhouse-js/pull/578
+
+# 1.18.0
+
+A beta version. See 1.18.1 for the stable release.
 
 # 1.17.0
 
