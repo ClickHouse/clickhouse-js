@@ -219,19 +219,45 @@ Tools required:
 
 We prefer to keep versions the same across the packages, and release all at once, even if there were no changes in some.
 
-Make sure that the working directory is clean:
+Bump the version:
 
 ```bash
+# get the current version
+cat packages/client-common/package.json | grep '"version":'
+# update the version appropriately and set it to the environment variable
+export NEW_VERSION=[new_version]
+```
+
+Make sure that the working directory is up to date and clean:
+
+```bash
+git checkout main
+git pull
+git checkout -b release-$NEW_VERSION
 git clean -dfX
 npm i
 ```
 
 ```bash
-export NEW_VERSION=[new_version]
 .scripts/update_version.sh $NEW_VERSION
 ```
 
-Then build the packages:
+Commit the version update and push it to the repository:
+
+```bash
+git add .
+git commit -m "chore: bump version to $NEW_VERSION"
+git push
+```
+
+Then create a new Git tag and push it to the repository:
+
+```bash
+git tag "$NEW_VERSION"
+git push origin tag "$NEW_VERSION"
+```
+
+Now the Git history is set. Time to build the packages:
 
 ```bash
 npm run build
@@ -250,13 +276,6 @@ After the package is published it can be tests in a separate project by installi
 npm install @clickhouse/client@beta
 ```
 
-After the beta testing is done, you can commit the changes, create a new Git tag and push it to the repository:
-
-```bash
-git add .
-git commit -m "chore: bump version to $NEW_VERSION"
-```
-
 Promote the `beta` tag to `latest`:
 
 ```bash
@@ -266,15 +285,6 @@ npm dist-tag add @clickhouse/client-web@$NEW_VERSION latest
 ```
 
 Check that the packages have been published correctly: <https://www.npmjs.com/org/clickhouse>
-
-Create a PR and merge it after review.
-
-The last step is to create a new Git tag and push it to the repository:
-
-```bash
-git tag "$NEW_VERSION"
-git push origin tag "$NEW_VERSION"
-```
 
 Then create a new release in GitHub using the created tag and the corresponding changelog notes.
 
