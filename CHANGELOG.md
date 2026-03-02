@@ -82,6 +82,33 @@ A beta version. See 1.18.1 for the stable release.
 
 [Disposable API]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
 
+```ts
+async function main() {
+  await using client = await client.query(…);
+
+  // some code that can throw
+  // but thanks to `using` the client will still get closed
+
+  // client is also automatically closed here by calling [Symbol.disaposeAsync]
+}
+```
+
+Without the new `using` keyword it is required to wrap the code that might leak expensive resources like sockets and big buffers in ` try / finally`
+
+```ts
+async function main() {
+  let client
+  try {
+    client = await createClient(…);
+    // some code that can throw
+  } finally {
+    if (client) {
+      await client.close()
+    }
+  }
+}
+```
+
 # 1.15.0
 
 ## New features
