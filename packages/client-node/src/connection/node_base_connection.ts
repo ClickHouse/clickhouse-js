@@ -14,6 +14,7 @@ import type {
   ResponseHeaders,
 } from "@clickhouse/client-common";
 import {
+  buildMultipartBody,
   isCredentialsAuth,
   isJWTAuth,
   toSearchParams,
@@ -27,7 +28,6 @@ import type Http from "http";
 import type Https from "node:https";
 import type Stream from "stream";
 import { getUserAgent } from "../utils";
-import { buildMultipartBody } from "./multipart";
 import { drainStreamInternal } from "./stream";
 import { type RequestParams, SocketPool } from "./socket_pool";
 
@@ -205,7 +205,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     const enableResponseCompression =
       clickhouse_settings.enable_http_compression === 1;
 
-    let body: string | Buffer = params.query;
+    let body: string = params.query;
     const headers = this.buildRequestHeaders(params);
     if (useMultipart && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
