@@ -353,9 +353,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           operation: 'Command',
           connection_id: this.connectionId,
           query_id,
-          query: this.params.unsafeLogUnredactedQueries
-            ? params.query
-            : undefined,
         },
       })
     }
@@ -495,17 +492,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     err,
     query_id,
     query_params,
-    search_params,
     extra_args,
   }: LogRequestErrorParams) {
     if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
-      // Redact query parameter from search params unless explicitly allowed
-      if (!this.params.unsafeLogUnredactedQueries && search_params) {
-        // Clone to avoid mutating the original search params
-        search_params = new URLSearchParams(search_params)
-        search_params.delete('query')
-      }
-
       this.params.log_writer.error({
         message: this.httpRequestErrorMessage(op),
         err: err as Error,
@@ -513,10 +502,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           operation: op,
           connection_id: this.connectionId,
           query_id,
-          query: this.params.unsafeLogUnredactedQueries
-            ? query_params.query
-            : undefined,
-          search_params: search_params?.toString(),
           with_abort_signal: query_params.abort_signal !== undefined,
           session_id: query_params.session_id,
           ...extra_args,
@@ -660,17 +645,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       ): Promise<void> => {
         if (this.params.log_level <= ClickHouseLogLevel.DEBUG) {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { authorization, host, ...headers } = request.getHeaders()
           const duration = Date.now() - start
-
-          // Redact query parameter from URL search params unless explicitly allowed
-          let searchParams = params.url.searchParams
-          if (!this.params.unsafeLogUnredactedQueries) {
-            // Clone to avoid mutating the original search params
-            searchParams = new URLSearchParams(searchParams)
-            searchParams.delete('query')
-          }
-
           this.params.log_writer.debug({
             module: 'HTTP Adapter',
             message: `${op}: got a response from ClickHouse`,
@@ -681,10 +656,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               request_id,
               request_method: params.method,
               request_path: params.url.pathname,
-              request_params: searchParams.toString(),
-              request_headers: headers,
               response_status: _response.statusCode,
-              response_headers: _response.headers,
               response_time_ms: duration,
             },
           })
@@ -909,9 +881,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                         request_id,
                         socket_id,
                         event: eventName,
-                        query: this.params.unsafeLogUnredactedQueries
-                          ? params.query
-                          : undefined,
                       },
                     })
                   }

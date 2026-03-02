@@ -20,7 +20,6 @@ export interface ConnectionParams {
   clickhouse_settings: ClickHouseSettings
   log_writer: LogWriter
   log_level: ClickHouseLogLevel
-  unsafeLogUnredactedQueries: boolean
   keep_alive: { enabled: boolean }
   application_id?: string
   http_headers?: Record<string, string>
