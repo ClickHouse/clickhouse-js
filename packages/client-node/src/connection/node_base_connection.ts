@@ -644,7 +644,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         _response: Http.IncomingMessage,
       ): Promise<void> => {
         if (this.params.log_level <= ClickHouseLogLevel.DEBUG) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const duration = Date.now() - start
           this.params.log_writer.debug({
             module: 'HTTP Adapter',
