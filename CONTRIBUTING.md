@@ -247,7 +247,7 @@ Commit the version update and push it to the repository:
 ```bash
 git add .
 git commit -m "chore: bump version to $NEW_VERSION"
-git push
+git push -u origin release-$NEW_VERSION
 ```
 
 Create and merge the PR and then create a new Git tag and push it to the repository:
@@ -256,7 +256,7 @@ Create and merge the PR and then create a new Git tag and push it to the reposit
 git checkout main
 git pull
 git tag "$NEW_VERSION"
-git push origin tag "$NEW_VERSION"
+git push origin "$NEW_VERSION"
 ```
 
 Now the Git history is set. Time to build the packages:
