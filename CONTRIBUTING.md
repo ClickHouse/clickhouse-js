@@ -256,7 +256,7 @@ Create and merge the PR and then create a new Git tag and push it to the reposit
 git checkout main
 git pull
 git tag "$NEW_VERSION"
-git push origin "$NEW_VERSION"
+git push origin tag "$NEW_VERSION"
 ```
 
 Now the Git history is set. Time to build the packages:
@@ -277,6 +277,8 @@ After the package is published it can be tests in a separate project by installi
 ```bash
 npm install @clickhouse/client@beta
 ```
+
+and run the simple e2e test: https://github.com/ClickHouse/clickhouse-js/actions/workflows/npm.yml
 
 Promote the `beta` tag to `latest`:
 
