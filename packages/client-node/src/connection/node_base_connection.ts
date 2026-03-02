@@ -16,6 +16,7 @@ import type {
   ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
+  buildMultipartBody,
   enhanceStackTrace,
   getCurrentStackTrace,
   isCredentialsAuth,
@@ -37,7 +38,6 @@ import Stream from 'stream'
 import Zlib from 'zlib'
 import { getAsText, getUserAgent, isStream } from '../utils'
 import { decompressResponse, isDecompressionError } from './compression'
-import { buildMultipartBody } from './multipart'
 import { drainStreamInternal } from './stream'
 
 export type NodeConnectionParams = ConnectionParams & {
@@ -68,7 +68,7 @@ export interface RequestParams {
   method: 'GET' | 'POST'
   url: URL
   headers: Http.OutgoingHttpHeaders
-  body?: string | Buffer | Stream.Readable
+  body?: string | Stream.Readable
   // provided by the user and wrapped around internally
   abort_signal: AbortSignal
   enable_response_compression?: boolean
@@ -235,7 +235,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     const enableResponseCompression =
       clickhouse_settings.enable_http_compression === 1
 
-    let body: string | Buffer = params.query
+    let body: string = params.query
     const headers = this.buildRequestHeaders(params)
     if (useMultipart && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`

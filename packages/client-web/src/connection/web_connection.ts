@@ -10,6 +10,7 @@ import type {
   ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
+  buildMultipartBody,
   isCredentialsAuth,
   isJWTAuth,
   isSuccessfulResponse,
@@ -52,18 +53,40 @@ export class WebConnection implements Connection<ReadableStream> {
       params.clickhouse_settings,
       this.params.compression.decompress_response,
     )
+
+    const useMultipart =
+      this.params.use_multipart_params &&
+      params.query_params !== undefined &&
+      Object.keys(params.query_params).length > 0
+
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings,
-      query_params: params.query_params,
+      query_params: useMultipart ? undefined : params.query_params,
       session_id: params.session_id,
       role: params.role,
       query_id,
     })
+
+    let body: string = params.query
+    let extraHeaders: Record<string, string> | undefined
+    if (useMultipart && params.query_params !== undefined) {
+      const boundary = `----clickhouse-js-${crypto.randomUUID()}`
+      body = buildMultipartBody({
+        query: params.query,
+        query_params: params.query_params,
+        boundary,
+      })
+      extraHeaders = {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      }
+    }
+
     const response = await this.request({
-      body: params.query,
+      body,
       params,
       searchParams,
+      extraHeaders,
     })
     return {
       query_id,
@@ -160,12 +183,14 @@ export class WebConnection implements Connection<ReadableStream> {
     searchParams,
     pathname,
     method,
+    extraHeaders,
   }: {
     body: string | null
     params?: ConnBaseQueryParams
     searchParams?: URLSearchParams
     pathname?: string
     method?: 'GET' | 'POST'
+    extraHeaders?: Record<string, string>
   }): Promise<Response> {
     const url = transformUrl({
       url: this.params.url,
@@ -191,7 +216,10 @@ export class WebConnection implements Connection<ReadableStream> {
 
     try {
       const headers = withCompressionHeaders({
-        headers: this.defaultHeadersWithOverride(params),
+        headers: {
+          ...this.defaultHeadersWithOverride(params),
+          ...extraHeaders,
+        },
         // It is not currently working as expected in all major browsers
         enable_request_compression: false,
         enable_response_compression:

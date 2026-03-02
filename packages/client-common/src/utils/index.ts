@@ -1,4 +1,5 @@
 export * from './connection'
+export * from './multipart'
 export * from './sleep'
 export * from './stream'
 export * from './url'
