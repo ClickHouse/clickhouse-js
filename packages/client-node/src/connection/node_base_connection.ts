@@ -1020,7 +1020,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       }
 
       function removeRequestListeners(): void {
-        if (request.socket !== null) {
+        if (request.socket) {
           request.socket.setTimeout(0) // reset previously set timeout
           request.socket.removeListener('timeout', onTimeout)
         }
@@ -1028,7 +1028,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         request.removeListener('response', onResponse)
         request.removeListener('error', onError)
         request.removeListener('close', onClose)
-        if (params.abort_signal !== undefined) {
+        if (params.abort_signal) {
           request.removeListener('abort', onAbort)
         }
       }
@@ -1038,7 +1038,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       request.on('error', onError)
       request.on('close', onClose)
 
-      if (params.abort_signal !== undefined) {
+      if (params.abort_signal) {
         params.abort_signal.addEventListener('abort', onAbort, {
           once: true,
         })
