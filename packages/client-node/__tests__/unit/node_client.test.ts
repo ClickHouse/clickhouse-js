@@ -53,10 +53,9 @@ describe('[Node.js] createClient', () => {
       log_writer: new LogWriter(
         new DefaultLogger(),
         'Connection',
-        ClickHouseLogLevel.OFF,
+        ClickHouseLogLevel.WARN,
       ),
-      log_level: ClickHouseLogLevel.OFF,
-      unsafeLogUnredactedQueries: false,
+      log_level: ClickHouseLogLevel.WARN,
       keep_alive: { enabled: true },
       http_headers: {
         'X-ClickHouse-Auth': 'secret_token',

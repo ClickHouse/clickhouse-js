@@ -116,7 +116,6 @@ export function buildHttpConnection(config: Partial<NodeConnectionParams>) {
       ClickHouseLogLevel.OFF,
     ),
     log_level: ClickHouseLogLevel.OFF,
-    unsafeLogUnredactedQueries: false,
     keep_alive: {
       enabled: false,
       idle_socket_ttl: 2500,
@@ -138,7 +137,6 @@ export class MyTestHttpConnection extends NodeBaseConnection {
           ClickHouseLogLevel.OFF,
         ),
         log_level: ClickHouseLogLevel.OFF,
-        unsafeLogUnredactedQueries: false,
         keep_alive: {
           enabled: false,
         },

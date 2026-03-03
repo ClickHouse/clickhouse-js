@@ -1,6 +1,17 @@
-# 1.18.0
+# 1.18.1
 
 ## Improvements
+
+- Setting `log.level` default value to `ClickHouseLogLevel.WARN` instead of `ClickHouseLogLevel.OFF` to provide better visibility into potential issues without overwhelming users with too much information by default.
+
+```ts
+const client = createClient({
+  // ...
+  log: {
+    level: ClickHouseLogLevel.WARN, // default is now ClickHouseLogLevel.WARN instead of ClickHouseLogLevel.OFF
+  },
+})
+```
 
 - Logging is now lazy, which means that the log messages will only be constructed if the log level is appropriate for the message. This can improve performance in cases where constructing the log message is expensive, and the log level is set to ignore such messages. See `ClickHouseLogLevel` enum for the complete list of log levels. ([#520])
 
@@ -9,18 +20,6 @@ const client = createClient({
   // ...
   log: {
     level: ClickHouseLogLevel.TRACE, // to log everything available down to the network level events
-  },
-})
-```
-
-- By default the client will no longer log the full unredacted query text for security reasons; however, it is still possible to enable it via the `unsafeLogUnredactedQueries` configuration option. ([#520])
-
-```ts
-const client = createClient({
-  // ...
-  log: {
-    level: ClickHouseLogLevel.TRACE, // default is ClickHouseLogLevel.OFF
-    unsafeLogUnredactedQueries: true, // default is false
   },
 })
 ```
@@ -50,9 +49,20 @@ Arguments: {
 
 - A step towards structured logging: the client now passes rich context to the logger `args` parameter (e.g. `connection_id`, `query_id`, `request_id`, `socket_id`). ([#576])
 
+## Deprecated API
+
+- The `drainStream` utility function is now deprecated, as the client will handle draining the stream internally when needed. Use `client.command()` instead, which will handle draining the stream internally when needed. ([#578])
+
+- The `sleep` utility function is now deprecated, as it is not intended to be used outside of the client implementation. Use `setTimeout` directly or a more full-featured utility library if you need additional features like cancellation or timers management. ([#578])
+
 [#520]: https://github.com/ClickHouse/clickhouse-js/pull/520
 [#567]: https://github.com/ClickHouse/clickhouse-js/pull/567
 [#576]: https://github.com/ClickHouse/clickhouse-js/pull/576
+[#578]: https://github.com/ClickHouse/clickhouse-js/pull/578
+
+# 1.18.0
+
+A beta version. See 1.18.1 for the stable release.
 
 # 1.17.0
 
