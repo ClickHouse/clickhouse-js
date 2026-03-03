@@ -89,7 +89,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
   private readonly jsonHandling: JSONHandling
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
-  private readonly idleSocketTTL: number
   private readonly connectionId: string = crypto.randomUUID()
   private socketCounter = 0
   // For overflow concerns:
@@ -126,7 +125,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
       'User-Agent': getUserAgent(this.params.application_id),
     }
-    this.idleSocketTTL = params.keep_alive.idle_socket_ttl
     this.jsonHandling = params.json ?? {
       parse: JSON.parse,
       stringify: JSON.stringify,
@@ -836,13 +834,14 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                         query_id,
                         request_id,
                         socket_id,
-                        idle_socket_ttl_ms: this.idleSocketTTL,
+                        idle_socket_ttl_ms:
+                          this.params.keep_alive.idle_socket_ttl,
                       },
                     })
                   }
                   this.knownSockets.delete(socket)
                   socket.destroy()
-                }, this.idleSocketTTL).unref()
+                }, this.params.keep_alive.idle_socket_ttl).unref()
                 newSocketInfo.idle_timeout_handle = idleTimeoutHandle
               })
 
