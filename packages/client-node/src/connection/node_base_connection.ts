@@ -631,9 +631,57 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       const request = this.createClientRequest(params)
       const request_id = this.getNewRequestId()
 
-      function onError(e: unknown): void {
+      const onError = (e: unknown): void => {
         removeRequestListeners()
         if (e instanceof Error) {
+          if (log_level <= ClickHouseLogLevel.TRACE) {
+            if ((e as any).code === 'ECONNRESET') {
+              log_writer.trace({
+                module: 'HTTP Adapter',
+                message: `${op}: connection reset by peer`,
+                args: {
+                  operation: op,
+                  connection_id: this.connectionId,
+                  query_id,
+                  request_id,
+                },
+              })
+            }
+          }
+          if (log_level <= ClickHouseLogLevel.WARN) {
+            if (this.params.keep_alive.enabled)
+              if ((e as any).code === 'ECONNRESET') {
+                const socket = request.socket
+                if (socket) {
+                  const socketInfo = this.knownSockets.get(socket)
+                  if (socketInfo) {
+                    const serverTimeoutMs =
+                      socketInfo.server_keep_alive_timeout_ms
+                    if (serverTimeoutMs !== undefined) {
+                      if (
+                        this.params.keep_alive.idle_socket_ttl > serverTimeoutMs
+                      ) {
+                        log_writer.warn({
+                          module: 'HTTP Adapter',
+                          message: `${op}: idle socket TTL is greater than server keep-alive timeout`,
+                          args: {
+                            operation: op,
+                            connection_id: this.connectionId,
+                            query_id,
+                            request_id,
+                            socket_id: socketInfo.id,
+                            server_keep_alive_timeout_ms: serverTimeoutMs,
+                            idle_socket_ttl:
+                              this.params.keep_alive.idle_socket_ttl,
+                          },
+                        })
+                      }
+                    }
+                  }
+                }
+              }
+          }
+
           const err = enhanceStackTrace(e, currentStackTrace)
           reject(err)
         } else {
