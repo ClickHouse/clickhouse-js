@@ -199,7 +199,7 @@ void (async () => {
 
   await client.command({
     query: `
-      CREATE OR REPLACE ${tableName}
+      CREATE OR REPLACE TABLE ${tableName}
       (
         id UInt64,
         timestamp DateTime,
