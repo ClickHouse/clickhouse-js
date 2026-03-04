@@ -631,10 +631,14 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       const request = this.createClientRequest(params)
       const request_id = this.getNewRequestId()
 
-      function onError(e: Error): void {
+      function onError(e: unknown): void {
         removeRequestListeners()
-        const err = enhanceStackTrace(e, currentStackTrace)
-        reject(err)
+        if (e instanceof Error) {
+          const err = enhanceStackTrace(e, currentStackTrace)
+          reject(err)
+        } else {
+          reject(e)
+        }
       }
 
       let responseStream: Stream.Readable
