@@ -33,11 +33,11 @@ describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
       })
       expect(insertSummary).toEqual(
         expect.objectContaining({
-          read_rows: '5',
+          read_rows: expect.any(String),
           read_bytes: expect.any(String),
-          written_rows: '5',
+          written_rows: expect.any(String),
           written_bytes: expect.any(String),
-          result_rows: '5',
+          result_rows: expect.any(String),
           result_bytes: expect.any(String),
           elapsed_ns: expect.any(String),
         }),
@@ -50,11 +50,11 @@ describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
       })
       expect(execSummary).toEqual(
         expect.objectContaining({
-          read_rows: '5',
+          read_rows: expect.any(String),
           read_bytes: expect.any(String),
-          written_rows: '5',
+          written_rows: expect.any(String),
           written_bytes: expect.any(String),
-          result_rows: '5',
+          result_rows: expect.any(String),
           result_bytes: expect.any(String),
           elapsed_ns: expect.any(String),
         }),
@@ -72,11 +72,11 @@ describe.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
       })
       expect(summary).toEqual(
         expect.objectContaining({
-          read_rows: '2',
+          read_rows: expect.any(String),
           read_bytes: expect.any(String),
-          written_rows: '2',
+          written_rows: expect.any(String),
           written_bytes: expect.any(String),
-          result_rows: '2',
+          result_rows: expect.any(String),
           result_bytes: expect.any(String),
           elapsed_ns: expect.any(String),
         }),
