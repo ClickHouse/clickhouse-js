@@ -56,10 +56,14 @@ void (async () => {
       max_block_size: '1',
     },
   })
-  await processResultSet<{ number: string; foo: 0 }>(
-    'An exception in the middle of a stream',
-    exceptionResultSet,
-  )
+  try {
+    await processResultSet<{ number: string; foo: 0 }>(
+      'An exception in the middle of a stream',
+      exceptionResultSet,
+    )
+  } catch (err) {
+    console.error('Caught an error while processing the result set:', err)
+  }
 
   await client.close()
 })()

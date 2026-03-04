@@ -85,6 +85,45 @@ jobs:
         run: |
           npm run lint
 
+  run-examples:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        clickhouse: [head, latest]
+    defaults:
+      run:
+        working-directory: examples
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: 'docker-compose.yml'
+          down-flags: '--volumes'
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24
+
+      - name: Install root dependencies
+        working-directory: .
+        run: |
+          npm install
+
+      - name: Install examples dependencies
+        run: |
+          npm install
+
+      - name: Run examples
+        run: |
+          npm run run-examples
+
   common-unit-tests-node:
     timeout-minutes: 5
     runs-on: ubuntu-latest
@@ -505,6 +544,7 @@ jobs:
       [
         'code-quality',
         'code-quality-examples',
+        'run-examples',
         'common-unit-tests-node',
         'common-unit-tests-web',
         'node-unit-tests',
