@@ -659,6 +659,36 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           })
         }
 
+        if (this.params.keep_alive.enabled) {
+          const keepAliveHeader = _response.headers['keep-alive']
+          if (keepAliveHeader) {
+            const [, timeout] =
+              /timeout=(\d+)/i.exec(String(keepAliveHeader)) ?? []
+
+            if (timeout) {
+              const socketInfo = this.knownSockets.get(_response.socket)
+              if (socketInfo) {
+                const timeoutMs = Number(timeout) * 1000
+                socketInfo.server_keep_alive_timeout_ms = timeoutMs
+                if (log_level <= ClickHouseLogLevel.TRACE) {
+                  this.params.log_writer.trace({
+                    module: 'HTTP Adapter',
+                    message: `${op}: updated server sent socket keep-alive timeout`,
+                    args: {
+                      operation: op,
+                      connection_id: this.connectionId,
+                      query_id,
+                      request_id,
+                      socket_id: socketInfo.id,
+                      keep_alive_timeout_ms: timeoutMs,
+                    },
+                  })
+                }
+              }
+            }
+          }
+        }
+
         const tryDecompressResponseStream =
           params.try_decompress_response_stream ?? true
         const ignoreErrorResponse = params.ignore_error_response ?? false
@@ -1086,6 +1116,7 @@ interface SocketInfo {
   id: string
   idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
   usage_count: number
+  server_keep_alive_timeout_ms?: number
 }
 
 type RunExecParams = ConnBaseQueryParams & {
