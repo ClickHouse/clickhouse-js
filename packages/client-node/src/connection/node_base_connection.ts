@@ -680,7 +680,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                       query_id,
                       request_id,
                       socket_id: socketInfo.id,
-                      keep_alive_timeout_ms: timeoutMs,
+                      server_keep_alive_timeout_ms: timeoutMs,
                     },
                   })
                 }

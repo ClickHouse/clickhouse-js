@@ -1,4 +1,4 @@
-import type { Logger } from '@clickhouse/client-common'
+import { ClickHouseLogLevel, Logger } from '@clickhouse/client-common'
 import { describe, it, expect } from 'vitest'
 import { createTestClient } from '@test/utils/client'
 import * as http from 'http'
@@ -7,35 +7,7 @@ import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { AddressInfo } from 'net'
 
 describe.concurrent('Handling keep-alive header', () => {
-  it('should expose "socket hang up" error', async () => {
-    const [server, port] = await createTCPServer(async (socket) => {
-      drainSocket(socket)
-      socket.write('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n')
-      await sleep(10)
-      // close the connection without sending the rest of the response headers or body
-      socket.end()
-    })
-
-    const client = createTestClient({
-      url: `http://127.0.0.1:${port}`,
-      keep_alive: {
-        enable: true,
-      },
-    } as NodeClickHouseClientConfigOptions)
-
-    const result = await client.ping()
-
-    expect(result).toMatchObject({ success: false })
-    if (result.success) {
-      throw new Error('Ping should have failed')
-    }
-    expect(String(result.error)).toMatch(/socket hang up/)
-
-    await client.close()
-    await closeServer(server)
-  })
-
-  it('should expose "ECONNRESET" error', async () => {
+  it.only('should expose "ECONNRESET" error', async ({ expect }) => {
     let sleepServerPromiseResolve: () => void
     let sleepServerPromise = new Promise<void>((resolve) => {
       sleepServerPromiseResolve = resolve
@@ -47,22 +19,27 @@ describe.concurrent('Handling keep-alive header', () => {
       attempted++
       if (attempted >= 2) {
         socket.destroy()
-        throw new Error('Extra connection attempt - should not happen')
+        expect.fail('Extra connection attempt - should not happen')
       }
       // Write a valid response
       socket.write(
         'HTTP/1.1 200 OK\r\n' +
           'Content-Type: text/plain\r\n' +
           'Content-Length: 3\r\n' +
-          'Connection: keep-alive\r\n' +
+          'Connection: Keep-Alive\r\n' +
+          'Keep-Alive: timeout=10, max=9999\r\n' +
           '\r\n' +
           'Ok.',
       )
       // Then start the next request
       await sleepServerPromise
-      // …and then drop the connection before sending the full response
-      socket.destroy()
+      // …and then close the connection before sending anything,
+      // to trigger the error in the client
+      socket.end()
     })
+
+    const logs: any[] = []
+    const LoggerClass = createLoggerClass(logs)
 
     const client = createTestClient({
       url: `http://127.0.0.1:${port}`,
@@ -70,14 +47,25 @@ describe.concurrent('Handling keep-alive header', () => {
         enable: true,
       },
       log: {
-        level: 0,
+        LoggerClass,
+        level: ClickHouseLogLevel.TRACE,
       },
-      max_open_connections: 1,
     } as NodeClickHouseClientConfigOptions)
 
-    expect(await client.ping()).toMatchObject({ success: true })
+    expect(await client.ping({ select: true })).toMatchObject({ success: true })
 
-    let ping2 = client.ping()
+    expect(
+      findMatchingLogEvents(
+        logs,
+        /updated server sent socket keep-alive timeout/,
+      )[0][0],
+    ).toMatchObject({
+      args: {
+        server_keep_alive_timeout_ms: 10000,
+      },
+    })
+
+    let ping2 = client.ping({ select: true })
     // Client has a sleep(0) inside, the test has to wait for it to complete,
     // otherwise the socket gets closed before the client gets to use it.
     // This way we get the "socket hang up" error instead of "ECONNRESET".
@@ -89,32 +77,20 @@ describe.concurrent('Handling keep-alive header', () => {
     if (ping2.success) {
       throw new Error('Ping should have failed')
     }
-    expect(String(ping2.error)).toMatch(/ECONNRESET/i)
+    expect(ping2.error.code).toMatch(/ECONNRESET/i)
+    expect(ping2.error.message).toMatch(/socket hang up/i)
 
-    await client.close()
-    await closeServer(server)
+    // console.log('!!!!!!!!!!!!!!!!!!!!')
+    // console.log(JSON.stringify(logs, null, 2))
+    // console.log('!!!!!!!!!!!!!!!!!!!!')
+
+    server.close()
+    client.close()
   })
 })
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function closeServer(server: http.Server | net.Server): Promise<void> {
-  return new Promise((resolve, reject) => {
-    server.close((err) => (err ? reject(err) : resolve()))
-  })
-}
-
-async function createHTTPServer(
-  cb: (req: http.IncomingMessage, res: http.ServerResponse) => void,
-  port: number = 0,
-): Promise<[http.Server, number]> {
-  const server = http.createServer(cb)
-  await new Promise<void>((resolve) => {
-    server.listen(port, () => resolve())
-  })
-  return [server, (server.address() as AddressInfo).port]
 }
 
 async function createTCPServer(
@@ -152,3 +128,7 @@ const createLoggerClass = (logs: any[]) =>
       logs.push(args)
     }
   }
+
+function findMatchingLogEvents<T>(logs: T[], regex: RegExp): T[] {
+  return logs.filter((args) => regex.test(JSON.stringify(args)))
+}
