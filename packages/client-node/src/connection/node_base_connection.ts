@@ -637,7 +637,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           if (log_level <= ClickHouseLogLevel.TRACE) {
             if ((e as any).code === 'ECONNRESET') {
               log_writer.trace({
-                module: 'HTTP Adapter',
                 message: `${op}: connection reset by peer`,
                 args: {
                   operation: op,
@@ -645,11 +644,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                   query_id,
                   request_id,
                 },
+                module: 'HTTP Adapter',
               })
             }
           }
           if (log_level <= ClickHouseLogLevel.WARN) {
-            if (this.params.keep_alive.enabled)
+            if (this.params.keep_alive.enabled) {
               if ((e as any).code === 'ECONNRESET') {
                 const socket = request.socket
                 if (socket) {
@@ -662,8 +662,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                         this.params.keep_alive.idle_socket_ttl > serverTimeoutMs
                       ) {
                         log_writer.warn({
-                          module: 'HTTP Adapter',
-                          message: `${op}: idle socket TTL is greater than server keep-alive timeout`,
+                          message: `${op}: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://c.house/js_keep_alive_econnreset for more details.`,
                           args: {
                             operation: op,
                             connection_id: this.connectionId,
@@ -674,12 +673,14 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                             idle_socket_ttl:
                               this.params.keep_alive.idle_socket_ttl,
                           },
+                          module: 'HTTP Adapter',
                         })
                       }
                     }
                   }
                 }
               }
+            }
           }
 
           const err = enhanceStackTrace(e, currentStackTrace)
