@@ -45,6 +45,7 @@ describe.concurrent('Handling keep-alive header', () => {
       url: `http://127.0.0.1:${port}`,
       keep_alive: {
         enable: true,
+        idle_socket_ttl: 15000, // bigger than the server's timeout
       },
       log: {
         LoggerClass,
@@ -58,7 +59,7 @@ describe.concurrent('Handling keep-alive header', () => {
       findMatchingLogEvents(
         logs,
         /updated server sent socket keep-alive timeout/,
-      )[0][0],
+      )?.[0]?.[0],
     ).toMatchObject({
       args: {
         server_keep_alive_timeout_ms: 10000,
@@ -80,9 +81,16 @@ describe.concurrent('Handling keep-alive header', () => {
     expect(ping2.error.code).toMatch(/ECONNRESET/i)
     expect(ping2.error.message).toMatch(/socket hang up/i)
 
-    // console.log('!!!!!!!!!!!!!!!!!!!!')
-    // console.log(JSON.stringify(logs, null, 2))
-    // console.log('!!!!!!!!!!!!!!!!!!!!')
+    expect(
+      findMatchingLogEvents(
+        logs,
+        /https:\/\/c.house\/js_keep_alive_econnreset/,
+      )?.[0]?.[0],
+    ).toMatchObject({
+      args: {
+        server_keep_alive_timeout_ms: 10000,
+      },
+    })
 
     server.close()
     client.close()
