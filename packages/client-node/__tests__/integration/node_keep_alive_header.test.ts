@@ -92,6 +92,10 @@ describe.concurrent('Handling keep-alive header', () => {
       },
     })
 
+    // console.log('!!!!!!!!!!!!!!!!!!!!')
+    // console.log(JSON.stringify(logs, null, 2))
+    // console.log('!!!!!!!!!!!!!!!!!!!!')
+
     server.close()
     client.close()
   })

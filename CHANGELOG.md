@@ -1,3 +1,59 @@
+# 1.19.0
+
+## Improvements
+
+- Added a helping `WARN` level log message with a suggestion to check the `keep_alive` configuration if the client receives an `ECONNRESET` error from the server, which can happen when the server closes idle connections after a certain timeout, and the client tries to reuse such a connection from the pool. This can be especially helpful for new users who might not be aware of this aspect of HTTP connection management. The log message is only emitted if the `keep_alive` option is enabled in the client configuration, and it includes the server's keep-alive timeout value (if available) to assist with troubleshooting. ([#597])
+
+How to reproduce the issue that triggers the log message:
+
+```ts
+const client = createClient({
+  // ...
+  keep_alive: {
+    enabled: true,
+    // ❌ DON'T SET THIS VALUE SO HIGH IN PRODUCTION
+    idle_socket_ttl: 1_000_000,
+  },
+  log: {
+    level: ClickHouseLogLevel.WARN, // to see the warning logs
+  },
+})
+
+for (let i = 0; i < 1000; i++) {
+  await client.ping({
+    // To use a regular query instead of the /ping endpoint
+    // which might be configurred differently on the server side
+    // and have different timeout settings.
+    select: true,
+  })
+
+  // Wait long enough to let the server close the idle connection,
+  // but not too long to let the client remove it from the pool,
+  // in other words try to hit the scenario when the race condition
+  // happens between the server closing the connection and the client
+  // trying to reuse it.
+  await sleep(SERVER_KEEP_ALIVE_TIMEOUT_MS - 100)
+}
+```
+
+Example log message:
+
+```json
+{
+  "message": "Ping: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://c.house/js_keep_alive_econnreset for more details.",
+  "args": {
+    "operation": "Ping",
+    "connection_id": "8dc1c9bd-7895-49b1-8a95-276470151c65",
+    "query_id": "beee95af-2e83-4dcb-8e1e-045bd61f4985",
+    "request_id": "8dc1c9bd-7895-49b1-8a95-276470151c65:2",
+    "socket_id": "8dc1c9bd-7895-49b1-8a95-276470151c65:1",
+    "server_keep_alive_timeout_ms": 10000,
+    "idle_socket_ttl": 15000
+  },
+  "module": "HTTP Adapter"
+}
+```
+
 # 1.18.1
 
 ## Improvements
