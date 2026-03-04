@@ -33,6 +33,11 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install dependencies (examples)
+        working-directory: examples
+        run: |
+          npm install
+
       - name: Install dependencies
         run: |
           npm install
