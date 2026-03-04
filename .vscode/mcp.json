@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "clickhouse-docs": {
+      "type": "http",
+      "url": "https://clickhouse.mcp.kapa.ai/"
+    }
+  },
+  "inputs": []
+}
