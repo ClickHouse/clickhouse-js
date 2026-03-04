@@ -7,7 +7,7 @@ import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { AddressInfo } from 'net'
 
 describe.concurrent('Handling keep-alive header', () => {
-  it.only('should log the suggestion', async ({ expect }) => {
+  it('should log the suggestion', async ({ expect }) => {
     let sleepServerPromiseResolve: () => void
     let sleepServerPromise = new Promise<void>((resolve) => {
       sleepServerPromiseResolve = resolve
@@ -100,7 +100,7 @@ describe.concurrent('Handling keep-alive header', () => {
     client.close()
   })
 
-  it.only('should not log the suggestion', async ({ expect }) => {
+  it('should not log the suggestion', async ({ expect }) => {
     let sleepServerPromiseResolve: () => void
     let sleepServerPromise = new Promise<void>((resolve) => {
       sleepServerPromiseResolve = resolve
