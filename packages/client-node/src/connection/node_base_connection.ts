@@ -891,7 +891,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               }
               this.knownSockets.set(socket, newSocketInfo)
               // When the request is complete and the socket is released,
-              // make sure that the socket is removed after `idleSocketTTL`.
+              // make sure that the socket is removed after `idle_socket_ttl`.
               socket.on('free', () => {
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
