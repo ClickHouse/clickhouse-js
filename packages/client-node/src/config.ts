@@ -25,8 +25,9 @@ export type NodeClickHouseClientConfigOptions =
        *  @default true */
       enabled?: boolean
       /** For how long keep a particular idle socket alive on the client side (in milliseconds).
-       *  It is supposed to be a fair bit less that the ClickHouse server KeepAlive timeout,
-       *  which is by default 3000 ms for pre-23.11 versions. <br/>
+       *  It is supposed to be at least a second less than the ClickHouse server KeepAlive timeout,
+       *  which is by default `3000` ms for pre-23.11 versions.
+       *
        *  When set to `0`, the idle socket management feature is disabled.
        *  @default 2500 */
       idle_socket_ttl?: number
