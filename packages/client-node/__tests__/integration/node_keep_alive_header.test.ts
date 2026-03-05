@@ -1,7 +1,6 @@
 import { ClickHouseLogLevel, Logger } from '@clickhouse/client-common'
-import { describe, it, expect } from 'vitest'
+import { describe, it } from 'vitest'
 import { createTestClient } from '@test/utils/client'
-import * as http from 'http'
 import net from 'net'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { AddressInfo } from 'net'
@@ -44,7 +43,7 @@ describe.concurrent('Handling keep-alive header', () => {
     const client = createTestClient({
       url: `http://127.0.0.1:${port}`,
       keep_alive: {
-        enable: true,
+        enabled: true,
         idle_socket_ttl: 15000, // bigger than the server's timeout
       },
       log: {
@@ -137,7 +136,7 @@ describe.concurrent('Handling keep-alive header', () => {
     const client = createTestClient({
       url: `http://127.0.0.1:${port}`,
       keep_alive: {
-        enable: true,
+        enabled: true,
         idle_socket_ttl: 5000, // smaller than the server's timeout
       },
       log: {
@@ -201,11 +200,6 @@ async function createTCPServer(
   return [server, (server.address() as AddressInfo).port]
 }
 
-async function drainSocket(socket: net.Socket): Promise<void> {
-  for await (const chunk of socket) {
-    console.log('Received from socket:', chunk.toString())
-  }
-}
 
 const createLoggerClass = (logs: any[]) =>
   class TestLogger implements Logger {

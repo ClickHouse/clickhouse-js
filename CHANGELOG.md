@@ -2,7 +2,7 @@
 
 ## Improvements
 
-- Added a helping `WARN` level log message with a suggestion to check the `keep_alive` configuration if the client receives an `ECONNRESET` error from the server, which can happen when the server closes idle connections after a certain timeout, and the client tries to reuse such a connection from the pool. This can be especially helpful for new users who might not be aware of this aspect of HTTP connection management. The log message is only emitted if the `keep_alive` option is enabled in the client configuration, and it includes the server's keep-alive timeout value (if available) to assist with troubleshooting. ([#597])
+- Added a helping `WARN` level log message with a suggestion to check the `keep_alive` configuration if the client receives an `ECONNRESET` error from the server, which can happen when the server closes idle connections after a certain timeout, and the client tries to reuse such a connection from the pool. This can be especially helpful for new users who might not be aware of this aspect of HTTP connection management. The log message is only emitted if the `keep_alive` option is enabled in the client configuration, and it includes the server's keep-alive timeout value (if available) to assist with troubleshooting. ([#597](https://github.com/ClickHouse/clickhouse-js/pull/597))
 
 How to reproduce the issue that triggers the log message:
 
@@ -22,7 +22,7 @@ const client = createClient({
 for (let i = 0; i < 1000; i++) {
   await client.ping({
     // To use a regular query instead of the /ping endpoint
-    // which might be configurred differently on the server side
+    // which might be configured differently on the server side
     // and have different timeout settings.
     select: true,
   })
@@ -140,12 +140,12 @@ A beta version. See 1.18.1 for the stable release.
 
 ```ts
 async function main() {
-  await using client = await client.query(…);
+  using resultSet = await client.query(…);
 
   // some code that can throw
-  // but thanks to `using` the client will still get closed
+  // but thanks to `using` the resultSet will still get disposed
 
-  // client is also automatically closed here by calling [Symbol.disaposeAsync]
+  // resultSet is also automatically disposed here by calling [Symbol.dispose]
 }
 ```
 
