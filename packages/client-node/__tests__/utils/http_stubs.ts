@@ -122,6 +122,7 @@ export function buildHttpConnection(config: Partial<NodeConnectionParams>) {
     },
     set_basic_auth_header: true,
     capture_enhanced_stack_trace: false,
+    use_multipart_params: false,
     ...config,
   })
 }
@@ -141,6 +142,7 @@ export class MyTestHttpConnection extends NodeBaseConnection {
           enabled: false,
         },
         set_basic_auth_header: true,
+        use_multipart_params: false,
         auth: {
           username: 'default',
           password: '',

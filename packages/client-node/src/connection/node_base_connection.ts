@@ -16,6 +16,7 @@ import type {
   ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
+  buildMultipartBody,
   enhanceStackTrace,
   getCurrentStackTrace,
   isCredentialsAuth,
@@ -216,9 +217,16 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       params.clickhouse_settings,
       this.params.compression.decompress_response,
     )
+
+    const useMultipart =
+      this.params.use_multipart_params &&
+      params.query_params !== undefined &&
+      Object.keys(params.query_params).length > 0
+
     const searchParams = toSearchParams({
       database: this.params.database,
-      query_params: params.query_params,
+      // When using multipart, query_params are sent in the multipart body
+      query_params: useMultipart ? undefined : params.query_params,
       session_id: params.session_id,
       clickhouse_settings,
       query_id,
@@ -228,15 +236,28 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     // allows enforcing the compression via the settings even if the client instance has it disabled
     const enableResponseCompression =
       clickhouse_settings.enable_http_compression === 1
+
+    let body: string = params.query
+    const headers = this.buildRequestHeaders(params)
+    if (useMultipart && params.query_params !== undefined) {
+      const boundary = `----clickhouse-js-${crypto.randomUUID()}`
+      body = buildMultipartBody({
+        query: params.query,
+        query_params: params.query_params,
+        boundary,
+      })
+      headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`
+    }
+
     try {
       const { response_headers, stream, http_status_code } = await this.request(
         {
           method: 'POST',
           url: transformUrl({ url: this.params.url, searchParams }),
-          body: params.query,
+          body,
           abort_signal: controller.signal,
           enable_response_compression: enableResponseCompression,
-          headers: this.buildRequestHeaders(params),
+          headers,
           query: params.query,
           query_id,
           log_writer,

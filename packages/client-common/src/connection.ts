@@ -25,6 +25,7 @@ export interface ConnectionParams {
   http_headers?: Record<string, string>
   auth: ConnectionAuth
   json?: JSONHandling
+  use_multipart_params?: boolean
 }
 
 export interface CompressionSettings {

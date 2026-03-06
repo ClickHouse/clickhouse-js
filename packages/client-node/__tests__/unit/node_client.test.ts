@@ -61,6 +61,7 @@ describe('[Node.js] createClient', () => {
         'X-ClickHouse-Auth': 'secret_token',
       },
       application_id: 'my_app',
+      use_multipart_params: false,
     }
 
     const createConnectionStub = vi.spyOn(NodeConnectionFactory, 'create')

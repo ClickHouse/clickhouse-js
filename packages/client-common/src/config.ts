@@ -93,6 +93,13 @@ export interface BaseClickHouseClientConfigOptions {
    * Defaults to using standard `JSON.parse` and `JSON.stringify`
    */
   json?: Partial<JSONHandling>
+  /** When true, query() sends query_params as multipart/form-data parts
+   *  instead of URL query string entries. This avoids HTTP URL length limits
+   *  when query parameters contain large arrays (25K+ values).
+   *  The SQL query is also moved into a multipart part named "query".
+   *  All other URL search params (database, query_id, settings, etc.) remain in the URL.
+   *  @default false */
+  use_multipart_params?: boolean
 }
 
 export type MakeConnection<
@@ -261,6 +268,7 @@ export function getConnectionParams(
       ...defaultJSONHandling,
       ...config.json,
     },
+    use_multipart_params: config.use_multipart_params ?? false,
   }
 }
 
