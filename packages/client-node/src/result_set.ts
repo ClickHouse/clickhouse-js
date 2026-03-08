@@ -98,9 +98,14 @@ export class ResultSet<
    * condition where the stream's 'end' event fires between two separate
    * `readableEnded` checks (e.g. when `json()` calls `stream()` internally
    * for JSONEachRow). See: https://github.com/ClickHouse/clickhouse-js/issues/575
+   *
+   * We intentionally do NOT check `readableEnded` here. A stream can have
+   * `readableEnded=true` (the 'end' event fired) while its data is still
+   * buffered and available for reading. Checking readableEnded would falsely
+   * reject the first consumption call for fast/small responses.
    */
   private markAsConsumed(): void {
-    if (this._consumed || this._stream.readableEnded) {
+    if (this._consumed) {
       throw Error(streamAlreadyConsumedMessage)
     }
     this._consumed = true
