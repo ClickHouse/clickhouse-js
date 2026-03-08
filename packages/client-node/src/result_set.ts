@@ -142,17 +142,19 @@ export class ResultSet<
 
   /** See {@link BaseResultSet.stream}. */
   stream<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
+    // Validate format before marking as consumed, so that if the format is
+    // invalid, the ResultSet can still be consumed via text() afterwards.
+    validateStreamFormat(this.format)
     this.markAsConsumed()
     return this._streamImpl<T>()
   }
 
   /**
-   * Internal stream implementation that skips the consumption check.
-   * Used by `json()` which has already called `markAsConsumed()`.
+   * Internal stream implementation that skips the consumption check
+   * and format validation. Used by `json()` which has already called
+   * `markAsConsumed()` and validated the format via `isStreamableJSONFamily`.
    */
   private _streamImpl<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
-
-    validateStreamFormat(this.format)
 
     const incompleteChunks: Buffer[] = []
     const logError = this.log_error

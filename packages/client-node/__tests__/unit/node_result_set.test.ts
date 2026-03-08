@@ -62,18 +62,22 @@ describe('[Node.js] ResultSet', () => {
   })
 
   // Regression test for https://github.com/ClickHouse/clickhouse-js/issues/575
-  // json() on JSONEachRow calls stream() internally. If the underlying stream
-  // ends between json()'s readableEnded check and stream()'s readableEnded check,
-  // the old code would throw "Stream has been already consumed" on first call.
-  // The fix uses a boolean flag instead of readableEnded for consumption tracking.
-  it('should not throw "already consumed" on json() when stream ends quickly', async () => {
-    // Use a stream that ends immediately (single synchronous chunk)
-    const rs = makeResultSet(
-      Readable.from([Buffer.from('{"n":1}\n')]),
-    )
-    // Yield to event loop to allow the stream to potentially end
-    await new Promise((r) => setImmediate(r))
-    // This should NOT throw "Stream has been already consumed"
+  // The old code used readableEnded to track consumption, which could become
+  // true before json() is called (for fast/small responses). The fix uses a
+  // _consumed boolean flag that only our code controls.
+  it('should succeed on json() even if readableEnded is already true', async () => {
+    const stream = Readable.from([Buffer.from('{"n":1}\n')])
+
+    // Force readableEnded=true to deterministically simulate a fast response
+    // that has already ended before json() is called.
+    Object.defineProperty(stream, 'readableEnded', {
+      get: () => true,
+      configurable: true,
+    })
+
+    const rs = makeResultSet(stream)
+    // Old code would throw "Stream has been already consumed" here
+    // because it checked readableEnded. New code only checks _consumed.
     const result = await rs.json()
     expect(result).toEqual([{ n: 1 }])
   })
