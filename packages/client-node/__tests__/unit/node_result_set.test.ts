@@ -61,6 +61,23 @@ describe('[Node.js] ResultSet', () => {
     await expect(rs.text()).rejects.toEqual(err)
   })
 
+  // Regression test for https://github.com/ClickHouse/clickhouse-js/issues/575
+  // json() on JSONEachRow calls stream() internally. If the underlying stream
+  // ends between json()'s readableEnded check and stream()'s readableEnded check,
+  // the old code would throw "Stream has been already consumed" on first call.
+  // The fix uses a boolean flag instead of readableEnded for consumption tracking.
+  it('should not throw "already consumed" on json() when stream ends quickly', async () => {
+    // Use a stream that ends immediately (single synchronous chunk)
+    const rs = makeResultSet(
+      Readable.from([Buffer.from('{"n":1}\n')]),
+    )
+    // Yield to event loop to allow the stream to potentially end
+    await new Promise((r) => setImmediate(r))
+    // This should NOT throw "Stream has been already consumed"
+    const result = await rs.json()
+    expect(result).toEqual([{ n: 1 }])
+  })
+
   it('should be able to call Row.text and Row.json multiple times', async () => {
     const rs = makeResultSet(
       Stream.Readable.from([Buffer.from('{"foo":"bar"}\n')]),

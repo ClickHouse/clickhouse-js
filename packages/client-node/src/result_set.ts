@@ -67,6 +67,7 @@ export class ResultSet<
   private readonly exceptionTag: string | undefined = undefined
   private readonly log_error: (error: Error) => void
   private readonly jsonHandling: JSONHandling
+  private _consumed = false
 
   constructor(
     private _stream: Stream.Readable,
@@ -91,23 +92,33 @@ export class ResultSet<
     }
   }
 
-  /** See {@link BaseResultSet.text}. */
-  async text(): Promise<string> {
-    if (this._stream.readableEnded) {
+  /**
+   * Mark the result set as consumed and throw if it was already consumed.
+   * Uses a boolean flag instead of checking `readableEnded` to avoid a race
+   * condition where the stream's 'end' event fires between two separate
+   * `readableEnded` checks (e.g. when `json()` calls `stream()` internally
+   * for JSONEachRow). See: https://github.com/ClickHouse/clickhouse-js/issues/575
+   */
+  private markAsConsumed(): void {
+    if (this._consumed || this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
+    this._consumed = true
+  }
+
+  /** See {@link BaseResultSet.text}. */
+  async text(): Promise<string> {
+    this.markAsConsumed()
     return (await getAsText(this._stream)).toString()
   }
 
   /** See {@link BaseResultSet.json}. */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
-    if (this._stream.readableEnded) {
-      throw Error(streamAlreadyConsumedMessage)
-    }
+    this.markAsConsumed()
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
       const result: T[] = []
-      const stream = this.stream<T>()
+      const stream = this._streamImpl<T>()
       for await (const rows of stream) {
         for (const row of rows) {
           result.push(row.json() as T)
@@ -126,12 +137,15 @@ export class ResultSet<
 
   /** See {@link BaseResultSet.stream}. */
   stream<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
-    // If the underlying stream has already ended by calling `text` or `json`,
-    // Stream.pipeline will create a new empty stream
-    // but without "readableEnded" flag set to true
-    if (this._stream.readableEnded) {
-      throw Error(streamAlreadyConsumedMessage)
-    }
+    this.markAsConsumed()
+    return this._streamImpl<T>()
+  }
+
+  /**
+   * Internal stream implementation that skips the consumption check.
+   * Used by `json()` which has already called `markAsConsumed()`.
+   */
+  private _streamImpl<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
 
     validateStreamFormat(this.format)
 
