@@ -99,6 +99,8 @@ console.log(tables)
 await client.close()
 ```
 
+See more examples in the [examples directory](./examples).
+
 ## Documentation
 
 See the [ClickHouse website](https://clickhouse.com/docs/integrations/javascript) for the full documentation.
