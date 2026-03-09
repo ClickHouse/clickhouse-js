@@ -25,6 +25,12 @@ void (async () => {
       return value.map(valueSerializer)
     }
 
+    if (typeof value === 'object' && value !== null) {
+      return Object.fromEntries(
+        Object.entries(value).map(([k, v]) => [k, valueSerializer(v)]),
+      )
+    }
+
     return value
   }
 
