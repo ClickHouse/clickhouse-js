@@ -117,7 +117,7 @@ const ALL_EXAMPLES = [
 
 function runExample(examplePath, { timeoutMs, stopAfterMs } = {}) {
   return new Promise((resolve) => {
-    const fullPath = new URL(examplePath, import.meta.url).pathname
+    const fullPath = fileURLToPath(new URL(examplePath, import.meta.url))
     const child = spawn(TSX, [fullPath], {
       cwd: __dirname,
       env: process.env,
