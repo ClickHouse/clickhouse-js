@@ -147,6 +147,12 @@ function runExample(examplePath, { timeoutMs, stopAfterMs } = {}) {
       clearTimeout(hardTimer)
       resolve({ code, signal, stdout, stderr })
     })
+    child.on('error', (err) => {
+      clearTimeout(stopTimer)
+      clearTimeout(hardTimer)
+      reject(err)
+    })
+
   })
 }
 
