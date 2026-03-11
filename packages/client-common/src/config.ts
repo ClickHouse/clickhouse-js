@@ -268,7 +268,7 @@ export function getConnectionParams(
       ...defaultJSONHandling,
       ...config.json,
     },
-    use_multipart_params: config.use_multipart_params ?? false,
+    ...(config.use_multipart_params ? { use_multipart_params: true } : {}),
   }
 }
 

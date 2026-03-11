@@ -17,6 +17,7 @@ import type {
 } from '@clickhouse/client-common'
 import {
   buildMultipartBody,
+  formatQueryParams,
   enhanceStackTrace,
   getCurrentStackTrace,
   isCredentialsAuth,
@@ -217,7 +218,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     )
 
     const useMultipart =
-      this.params.use_multipart_params &&
+      (params.use_multipart_params ?? this.params.use_multipart_params) &&
       params.query_params !== undefined &&
       Object.keys(params.query_params).length > 0
 
@@ -239,11 +240,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     const headers = this.buildRequestHeaders(params)
     if (useMultipart && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`
-      body = buildMultipartBody({
-        query: params.query,
-        query_params: params.query_params,
-        boundary,
-      })
+      const parts: Record<string, string> = { query: params.query }
+      for (const [key, value] of Object.entries(params.query_params)) {
+        parts[`param_${key}`] = formatQueryParams({ value })
+      }
+      body = buildMultipartBody(parts, boundary)
       headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`
     }
 

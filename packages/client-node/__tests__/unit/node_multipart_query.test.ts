@@ -14,10 +14,6 @@ describe('[Node.js] Multipart query params', () => {
   describe('when use_multipart_params is true', () => {
     it('should move query_params from URL into multipart body parts', async () => {
       const adapter = buildHttpConnection({
-        compression: {
-          decompress_response: false,
-          compress_request: false,
-        },
         use_multipart_params: true,
       })
 
@@ -47,10 +43,6 @@ describe('[Node.js] Multipart query params', () => {
 
     it('should set Content-Type with a boundary when using multipart', async () => {
       const adapter = buildHttpConnection({
-        compression: {
-          decompress_response: false,
-          compress_request: false,
-        },
         use_multipart_params: true,
       })
 
@@ -109,10 +101,6 @@ describe('[Node.js] Multipart query params', () => {
 
     it('should not include param entries in URL when multiple params are provided', async () => {
       const adapter = buildHttpConnection({
-        compression: {
-          decompress_response: false,
-          compress_request: false,
-        },
         use_multipart_params: true,
       })
 
@@ -139,10 +127,6 @@ describe('[Node.js] Multipart query params', () => {
 
     it('should fall back to normal behavior when query_params is undefined', async () => {
       const adapter = buildHttpConnection({
-        compression: {
-          decompress_response: false,
-          compress_request: false,
-        },
         use_multipart_params: true,
       })
 
@@ -162,10 +146,6 @@ describe('[Node.js] Multipart query params', () => {
 
     it('should fall back to normal behavior when query_params is empty object', async () => {
       const adapter = buildHttpConnection({
-        compression: {
-          decompress_response: false,
-          compress_request: false,
-        },
         use_multipart_params: true,
       })
 
@@ -188,10 +168,6 @@ describe('[Node.js] Multipart query params', () => {
   describe('when use_multipart_params is false (default)', () => {
     it('should send query_params as URL search params', async () => {
       const adapter = buildHttpConnection({
-        compression: {
-          decompress_response: false,
-          compress_request: false,
-        },
         use_multipart_params: false,
       })
 

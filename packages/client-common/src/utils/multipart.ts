@@ -1,12 +1,9 @@
-import { formatQueryParams } from '../data_formatter'
-
-const SAFE_PARAM_NAME = /^[A-Za-z0-9_]+$/
+const SAFE_PART_NAME = /^[A-Za-z0-9_]+$/
 
 /**
- * Builds a multipart/form-data body containing the SQL query and
- * formatted query parameters as named parts.
+ * Builds a multipart/form-data body from a record of named string parts.
  *
- * The resulting body follows the format expected by ClickHouse's HTTP interface:
+ * Example output:
  *
  *   --BOUNDARY\r\n
  *   Content-Disposition: form-data; name="query"\r\n
@@ -18,44 +15,28 @@ const SAFE_PARAM_NAME = /^[A-Za-z0-9_]+$/
  *   ['a@b.com','c@d.com']\r\n
  *   --BOUNDARY--\r\n
  */
-export function buildMultipartBody({
-  query,
-  query_params,
-  boundary,
-}: {
-  query: string
-  query_params: Record<string, unknown>
-  boundary: string
-}): string {
-  const parts: string[] = []
+export function buildMultipartBody(
+  parts: Record<string, string>,
+  boundary: string,
+): string {
+  const chunks: string[] = []
 
-  // Query part
-  parts.push(
-    `--${boundary}\r\n` +
-      `Content-Disposition: form-data; name="query"\r\n` +
-      `\r\n` +
-      `${query}\r\n`,
-  )
-
-  // Parameter parts
-  for (const [key, value] of Object.entries(query_params)) {
-    if (!SAFE_PARAM_NAME.test(key)) {
+  for (const [name, value] of Object.entries(parts)) {
+    if (!SAFE_PART_NAME.test(name)) {
       throw new Error(
-        `Invalid query parameter name: "${key}". ` +
-          'Parameter names must match /^[A-Za-z0-9_]+$/.',
+        `Invalid multipart part name: "${name}". ` +
+          `Part names must match ${SAFE_PART_NAME}.`,
       )
     }
-    const formattedValue = formatQueryParams({ value })
-    parts.push(
+    chunks.push(
       `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="param_${key}"\r\n` +
+        `Content-Disposition: form-data; name="${name}"\r\n` +
         `\r\n` +
-        `${formattedValue}\r\n`,
+        `${value}\r\n`,
     )
   }
 
-  // Final boundary
-  parts.push(`--${boundary}--\r\n`)
+  chunks.push(`--${boundary}--\r\n`)
 
-  return parts.join('')
+  return chunks.join('')
 }
