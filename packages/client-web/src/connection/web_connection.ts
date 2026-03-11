@@ -11,6 +11,7 @@ import type {
 } from "@clickhouse/client-common";
 import {
   buildMultipartBody,
+  formatQueryParams,
   isCredentialsAuth,
   isJWTAuth,
   isSuccessfulResponse,
@@ -57,7 +58,7 @@ export class WebConnection implements Connection<ReadableStream> {
     );
 
     const useMultipart =
-      this.params.use_multipart_params &&
+      (params.use_multipart_params ?? this.params.use_multipart_params) &&
       params.query_params !== undefined &&
       Object.keys(params.query_params).length > 0;
 
@@ -71,24 +72,22 @@ export class WebConnection implements Connection<ReadableStream> {
     });
 
     let body: string = params.query;
-    let extraHeaders: Record<string, string> | undefined;
+    const headers = this.defaultHeadersWithOverride(params);
     if (useMultipart && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
-      body = buildMultipartBody({
-        query: params.query,
-        query_params: params.query_params,
-        boundary,
-      });
-      extraHeaders = {
-        "Content-Type": `multipart/form-data; boundary=${boundary}`,
-      };
+      const multipartParts: Record<string, string> = { query: params.query };
+      for (const [key, value] of Object.entries(params.query_params)) {
+        multipartParts[`param_${key}`] = formatQueryParams({ value });
+      }
+      body = buildMultipartBody(multipartParts, boundary);
+      headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
     }
 
     const response = await this.request({
       body,
       params,
       searchParams,
-      extraHeaders,
+      headers,
     });
     return {
       query_id,
@@ -185,14 +184,14 @@ export class WebConnection implements Connection<ReadableStream> {
     searchParams,
     pathname,
     method,
-    extraHeaders,
+    headers: prebuiltHeaders,
   }: {
     body: string | null;
     params?: ConnBaseQueryParams;
     searchParams?: URLSearchParams;
     pathname?: string;
     method?: "GET" | "POST";
-    extraHeaders?: Record<string, string>;
+    headers?: Record<string, string>;
   }): Promise<Response> {
     const url = transformUrl({
       url: this.params.url,
@@ -218,10 +217,7 @@ export class WebConnection implements Connection<ReadableStream> {
 
     try {
       const headers = withCompressionHeaders({
-        headers: {
-          ...this.defaultHeadersWithOverride(params),
-          ...extraHeaders,
-        },
+        headers: prebuiltHeaders ?? this.defaultHeadersWithOverride(params),
         // It is not currently working as expected in all major browsers
         enable_request_compression: false,
         enable_response_compression:
