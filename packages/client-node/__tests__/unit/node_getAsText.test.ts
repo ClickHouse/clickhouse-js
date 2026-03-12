@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import Stream from 'stream'
 import { constants } from 'buffer'
-
 import { getAsText } from '../../src/utils/stream'
 
 function makeStreamFromStrings(chunks: string[]): Stream.Readable {
@@ -23,7 +22,7 @@ function makeStreamFromBuffers(chunks: Buffer[]): Stream.Readable {
   return Stream.Readable.from(gen(), { objectMode: false })
 }
 
-describe('getAsText', () => {
+describe.concurrent('getAsText', () => {
   it('should return a string containing the concatenated chunks', async () => {
     expect(await getAsText(makeStreamFromStrings(['123', '456']))).toBe(
       '123456',
@@ -31,7 +30,8 @@ describe('getAsText', () => {
   })
 
   it('should throw a custom error if the stream is too long for a string', async () => {
-    const bigChunk = Buffer.alloc((constants.MAX_STRING_LENGTH / 8) >> 0)
+    // Passing the fill option is fine as Node always fills the buffer with zeroes otherwise
+    const bigChunk = Buffer.alloc((constants.MAX_STRING_LENGTH / 8) >> 0, 'a')
     await expect(
       getAsText(
         makeStreamFromBuffers([
@@ -50,5 +50,20 @@ describe('getAsText', () => {
     ).rejects.toThrowError(
       'The response length exceeds the maximum allowed size of V8 String:',
     )
+  })
+
+  it('should now throw on big but not too big streams', async () => {
+    const bigChunk = Buffer.alloc((constants.MAX_STRING_LENGTH / 8) >> 0, 'b')
+    expect(
+      await getAsText(
+        makeStreamFromBuffers([
+          bigChunk,
+          bigChunk,
+          bigChunk,
+          bigChunk,
+          bigChunk,
+        ]),
+      ),
+    ).toHaveLength(335_544_305)
   })
 })
