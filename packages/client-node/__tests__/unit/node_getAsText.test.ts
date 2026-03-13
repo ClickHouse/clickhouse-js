@@ -22,7 +22,7 @@ function makeStreamFromBuffers(chunks: Buffer[]): Stream.Readable {
   return Stream.Readable.from(gen(), { objectMode: false })
 }
 
-describe.concurrent('getAsText', () => {
+describe('getAsText', () => {
   it('should return a string containing the concatenated chunks', async () => {
     expect(await getAsText(makeStreamFromStrings(['123', '456']))).toBe(
       '123456',
