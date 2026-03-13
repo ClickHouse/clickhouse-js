@@ -66,4 +66,22 @@ describe.concurrent('getAsText', () => {
       ),
     ).toHaveLength(335_544_305)
   })
+
+  it('should use streamed decoding and not break utf-8 characters', async () => {
+    const stream = makeStreamFromBuffers([
+      Buffer.from([0xe2, 0x82]), // first 2 bytes of '€'
+      Buffer.from([0xac, 0x20, 0x61]), // last byte of '€', space and 'a'
+    ])
+    const text = '€ a'
+    expect(await getAsText(stream)).toBe(text)
+  })
+
+  it('should flush the decoder at the end of the stream', async () => {
+    const stream = makeStreamFromBuffers([
+      Buffer.from([0x61, 0x20, 0xe2, 0x82]), // first 2 bytes of '€'
+      // no more bytes, but the decoder should be flushed and return the butes it has buffered
+    ])
+    const text = 'a \ufffd'
+    expect(await getAsText(stream)).toBe(text)
+  })
 })
