@@ -20,15 +20,11 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
 
     const textDecoder = new TextDecoder()
     for await (const chunk of stream) {
-      const decoded = textDecoder.decode(chunk, { stream: true })
-      text += decoded
+      text += textDecoder.decode(chunk, { stream: true })
     }
 
-    // flush
-    const last = textDecoder.decode()
-    if (last) {
-      text += last
-    }
+    // flush unfinished multi-byte characters
+    text += textDecoder.decode()
 
     return text
   } catch (err) {
