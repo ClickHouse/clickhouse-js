@@ -52,7 +52,7 @@ describe('getAsText', () => {
     )
   })
 
-  it('should now throw on big but not too big streams', async () => {
+  it('should not throw on big but not too big streams', async () => {
     const bigChunk = Buffer.alloc((constants.MAX_STRING_LENGTH / 8) >> 0, 'b')
     expect(
       await getAsText(
