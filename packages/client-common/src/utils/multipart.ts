@@ -1,4 +1,4 @@
-const SAFE_PART_NAME = /^[A-Za-z0-9_]+$/
+const SAFE_PART_NAME = /^[A-Za-z0-9_.-]+$/;
 
 /**
  * Builds a multipart/form-data body from a record of named string parts.
@@ -19,24 +19,24 @@ export function buildMultipartBody(
   parts: Record<string, string>,
   boundary: string,
 ): string {
-  const chunks: string[] = []
+  const chunks: string[] = [];
 
   for (const [name, value] of Object.entries(parts)) {
     if (!SAFE_PART_NAME.test(name)) {
       throw new Error(
         `Invalid multipart part name: "${name}". ` +
           `Part names must match ${SAFE_PART_NAME}.`,
-      )
+      );
     }
     chunks.push(
       `--${boundary}\r\n` +
         `Content-Disposition: form-data; name="${name}"\r\n` +
         `\r\n` +
         `${value}\r\n`,
-    )
+    );
   }
 
-  chunks.push(`--${boundary}--\r\n`)
+  chunks.push(`--${boundary}--\r\n`);
 
-  return chunks.join('')
+  return chunks.join("");
 }
