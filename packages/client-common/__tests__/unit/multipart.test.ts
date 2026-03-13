@@ -84,4 +84,12 @@ describe('buildMultipartBody', () => {
       `Content-Disposition: form-data; name="param_my_value_123"\r\n`,
     )
   })
+
+  it('should accept part names with hyphens and dots', () => {
+    const result = buildMultipartBody({ 'param_my-key.name': 'ok' }, boundary)
+
+    expect(result).toContain(
+      `Content-Disposition: form-data; name="param_my-key.name"\r\n`,
+    )
+  })
 })

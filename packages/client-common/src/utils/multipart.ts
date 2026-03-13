@@ -1,4 +1,4 @@
-const SAFE_PART_NAME = /^[A-Za-z0-9_]+$/
+const SAFE_PART_NAME = /^[A-Za-z0-9_.-]+$/
 
 /**
  * Builds a multipart/form-data body from a record of named string parts.
