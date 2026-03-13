@@ -15,28 +15,25 @@ export function isStream(obj: unknown): obj is Stream.Readable {
 }
 
 export async function getAsText(stream: Stream.Readable): Promise<string> {
-  const text = []
-  let length = 0
+  let text = ''
 
   const textDecoder = new TextDecoder()
   for await (const chunk of stream) {
     const decoded = textDecoder.decode(chunk, { stream: true })
-    text.push(decoded)
-    length += decoded.length
-    if (length > MAX_STRING_LENGTH) {
+    if (text.length + decoded.length > MAX_STRING_LENGTH) {
       throw new Error(
         'The response length exceeds the maximum allowed size of V8 String: ' +
           `${MAX_STRING_LENGTH}; consider limiting the amount of requested rows.`,
       )
     }
+    text += decoded
   }
 
   // flush
   const last = textDecoder.decode()
   if (last) {
-    text.push(last)
-    length += last.length
-    if (length > MAX_STRING_LENGTH) {
+    text += last
+    if (text.length > MAX_STRING_LENGTH) {
       throw new Error(
         'The response length exceeds the maximum allowed size of V8 String: ' +
           `${MAX_STRING_LENGTH}; consider limiting the amount of requested rows.`,
@@ -44,7 +41,9 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
     }
   }
 
-  return text.join('')
+  // Single allocation of the resulting string, should increase memory locality
+  // and reduce GC pressure for cons-strings. See https://v8.dev/blog/strings#cons-strings for more details.
+  return text
 }
 
 export function mapStream(
