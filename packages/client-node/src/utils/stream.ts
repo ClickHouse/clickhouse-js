@@ -30,8 +30,6 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
       text += last
     }
 
-    // Single allocation of the resulting string, should increase memory locality
-    // and reduce GC pressure for cons-strings. See https://v8.dev/blog/strings#cons-strings for more details.
     return text
   } catch (err) {
     if (
