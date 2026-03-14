@@ -6,7 +6,6 @@ import {
   type ClickHouseClient,
   type ClickHouseSettings,
 } from '@clickhouse/client-common'
-import { cacheServerVersion } from '@test/utils/server_version'
 import { EnvKeys, getFromEnv } from './env'
 import { guid } from './guid'
 import {
@@ -38,7 +37,6 @@ beforeAll(async () => {
     await wakeUpPing(initClient)
     databaseName = await createRandomDatabase(initClient)
   }
-  await cacheServerVersion(initClient)
   await initClient.close()
 })
 

@@ -313,15 +313,22 @@ describe('[Node.js] stream JSON formats', () => {
     })
 
     it('works with exceptions', async ({ skip }) => {
-      if (!isClickHouseVersionAtLeast(25, 11)) {
+      if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
         skip()
       }
 
       const rs = await client.query({
-        query: `SELECT number, throwIf(number = 3, 'boom') AS foo FROM system.numbers`,
+        query: `SELECT toInt32(number) AS n,
+                   throwIf(number = 10, 'boom') AS e,
+                   sleepEachRow(0.001)
+            FROM system.numbers LIMIT 100`,
         format: 'JSONEachRowWithProgress',
         clickhouse_settings: {
+          // enforcing at least a few blocks, so that the response code is 200 OK
           max_block_size: '1',
+          // Should be false by default since 25.11; but setting explicitly to make sure
+          // the server configuration doesn't interfere with the test.
+          http_write_exception_in_output_format: false,
         },
       })
       await expect(rs.json()).rejects.toMatchObject({
