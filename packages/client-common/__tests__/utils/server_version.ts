@@ -77,5 +77,11 @@ export async function isClickHouseVersionAtLeast(
   if (serverVersion.major > major) {
     return true
   }
-  return serverVersion.major === major && serverVersion.minor >= minor
+  if (serverVersion.major === major && serverVersion.minor >= minor) {
+    return true
+  }
+  console.info(
+    `ClickHouse server version ${serverVersion.major}.${serverVersion.minor} does not meet required version ${major}.${minor}`,
+  )
+  return false
 }
