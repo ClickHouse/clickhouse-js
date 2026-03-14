@@ -89,7 +89,7 @@ export default defineConfig({
         sdkPath: './vitest.node.otel.js',
       },
     },
-    retry: 2,
+    retry: process.env.CI ? 2 : 0,
   },
   resolve: {
     alias: {
