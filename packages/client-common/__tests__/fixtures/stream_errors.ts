@@ -6,7 +6,8 @@ import { ClickHouseError } from '@clickhouse/client-common'
 export function streamErrorQueryParams(): QueryParamsWithFormat<'JSONEachRow'> {
   return {
     query: `SELECT toInt32(number) AS n,
-                   throwIf(number = 10, 'boom') AS e
+                   throwIf(number = 10, 'boom') AS e,
+                   sleepEachRow(0.001)
             FROM system.numbers LIMIT 10000000`,
     format: 'JSONEachRow',
     clickhouse_settings: {
