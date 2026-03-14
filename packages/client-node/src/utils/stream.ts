@@ -15,27 +15,29 @@ export function isStream(obj: unknown): obj is Stream.Readable {
 }
 
 export async function getAsText(stream: Stream.Readable): Promise<string> {
-  let text = ''
+  try {
+    let text = ''
 
-  const textDecoder = new TextDecoder()
-  for await (const chunk of stream) {
-    const decoded = textDecoder.decode(chunk, { stream: true })
-    if (decoded.length + text.length > MAX_STRING_LENGTH) {
+    const textDecoder = new TextDecoder()
+    for await (const chunk of stream) {
+      text += textDecoder.decode(chunk, { stream: true })
+    }
+
+    // flush unfinished multi-byte characters
+    text += textDecoder.decode()
+
+    return text
+  } catch (err) {
+    if (
+      err instanceof RangeError &&
+      err.message.includes('Invalid string length')
+    ) {
       throw new Error(
-        'The response length exceeds the maximum allowed size of V8 String: ' +
-          `${MAX_STRING_LENGTH}; consider limiting the amount of requested rows.`,
+        `The response length exceeds the maximum allowed size of V8 String: ${MAX_STRING_LENGTH} characters.`,
       )
     }
-    text += decoded
+    throw err
   }
-
-  // flush
-  const last = textDecoder.decode()
-  if (last) {
-    text += last
-  }
-
-  return text
 }
 
 export function mapStream(

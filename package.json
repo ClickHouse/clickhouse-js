@@ -34,7 +34,7 @@
     "test:node:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud TEST_MODE=integration vitest -c vitest.node.config.ts",
     "test:node:all": "TEST_MODE=all vitest -c vitest.node.config.ts",
     "test:node:coverage": "VITEST_COVERAGE=true TEST_MODE=all vitest -c vitest.node.config.ts",
-    "test:web:unit": "TEST_MODE=unit vitest -c vitest.web.config.ts",
+    "test:web:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=unit vitest -c vitest.web.config.ts",
     "test:web:integration": "TEST_MODE=integration vitest -c vitest.web.config.ts",
     "test:web:integration:local_cluster": "TEST_MODE=integration CLICKHOUSE_TEST_ENVIRONMENT=local_cluster vitest -c vitest.web.config.ts",
     "test:web:integration:cloud": "TEST_MODE=integration CLICKHOUSE_TEST_ENVIRONMENT=cloud vitest -c vitest.web.config.ts",
