@@ -5,9 +5,16 @@ interface ServerVersion {
   minor: number
 }
 
+const versionCache: WeakMap<ClickHouseClient, ServerVersion> = new WeakMap()
+
 export async function getServerVersion(
   client: ClickHouseClient,
 ): Promise<ServerVersion> {
+  const cachedVersion = versionCache.get(client)
+  if (cachedVersion) {
+    return cachedVersion
+  }
+
   const rs = await client.query({
     query: `SELECT version() as version`,
     format: 'JSONEachRow',
@@ -52,10 +59,12 @@ export async function getServerVersion(
     )
   }
 
-  return {
+  const serverVersion = {
     major,
     minor,
   }
+  versionCache.set(client, serverVersion)
+  return serverVersion
 }
 
 export async function isClickHouseVersionAtLeast(
