@@ -313,7 +313,7 @@ describe('[Node.js] stream JSON formats', () => {
     })
 
     it('works with exceptions', async ({ skip }) => {
-      if (!isClickHouseVersionAtLeast(25, 11)) {
+      if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
         skip()
       }
 
