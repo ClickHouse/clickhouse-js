@@ -8,7 +8,7 @@ export function streamErrorQueryParams(): QueryParamsWithFormat<'JSONEachRow'> {
     query: `SELECT toInt32(number) AS n,
                    throwIf(number = 10, 'boom') AS e,
                    sleepEachRow(0.001)
-            FROM system.numbers LIMIT 10000000`,
+            FROM system.numbers LIMIT 100`,
     format: 'JSONEachRow',
     clickhouse_settings: {
       // enforcing at least a few blocks, so that the response code is 200 OK
