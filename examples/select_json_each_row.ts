@@ -4,13 +4,11 @@ interface Data {
   number: string
 }
 
-void (async () => {
-  const client = createClient()
-  const rows = await client.query({
-    query: 'SELECT number FROM system.numbers LIMIT 5',
-    format: 'JSONEachRow',
-  })
-  const result = await rows.json<Data>()
-  result.map((row) => console.log(row))
-  await client.close()
-})()
+const client = createClient()
+const rows = await client.query({
+  query: 'SELECT number FROM system.numbers LIMIT 5',
+  format: 'JSONEachRow',
+})
+const result = await rows.json<Data>()
+result.forEach((row) => console.log(row))
+await client.close()

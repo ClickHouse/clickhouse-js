@@ -24,25 +24,23 @@ import { createClient, type Row } from '@clickhouse/client'
  * See other supported formats for streaming:
  * https://clickhouse.com/docs/en/integrations/language-clients/javascript#supported-data-formats
  */
-void (async () => {
-  const client = createClient()
-  const rows = await client.query({
-    query: 'SELECT number, number + 1 FROM system.numbers_mt LIMIT 5',
-    format: 'CSV', // or TabSeparated, CustomSeparated, etc.
+const client = createClient()
+const rows = await client.query({
+  query: 'SELECT number, number + 1 FROM system.numbers_mt LIMIT 5',
+  format: 'CSV', // or TabSeparated, CustomSeparated, etc.
+})
+const stream = rows.stream()
+stream.on('data', (rows: Row[]) => {
+  rows.forEach((row: Row) => {
+    console.log(row.text)
   })
-  const stream = rows.stream()
-  stream.on('data', (rows: Row[]) => {
-    rows.forEach((row: Row) => {
-      console.log(row.text)
-    })
+})
+await new Promise((resolve, reject) => {
+  stream.on('end', () => {
+    console.log('Completed!')
+    resolve(0)
   })
-  await new Promise((resolve, reject) => {
-    stream.on('end', () => {
-      console.log('Completed!')
-      resolve(0)
-    })
-    stream.on('error', reject)
-  })
-  await client.close()
-  process.exit(0)
-})()
+  stream.on('error', reject)
+})
+await client.close()
+process.exit(0)
