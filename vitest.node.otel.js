@@ -28,6 +28,25 @@ const sdk = new NodeSDK({
 })
 
 sdk.start()
-export default sdk
+
+// Wrap shutdown/forceFlush to gracefully handle unavailable OTEL endpoints
+// (e.g. when OTEL_EXPORTER_OTLP_ENDPOINT is not set in the environment)
+// Without this, vitest 4.1+ would propagate the ECONNREFUSED teardown error
+// and report the test run as failed even if all tests passed.
+export default new Proxy(sdk, {
+  get(target, prop, receiver) {
+    const value = Reflect.get(target, prop, receiver)
+    if ((prop === 'shutdown' || prop === 'forceFlush') && typeof value === 'function') {
+      return async (...args) => {
+        try {
+          await value.apply(target, args)
+        } catch (e) {
+          console.warn(`[OTEL] SDK ${String(prop)} error (endpoint may not be available):`, e.message)
+        }
+      }
+    }
+    return value
+  },
+})
 
 console.log('OTEL for Vitest initialized')
