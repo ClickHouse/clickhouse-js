@@ -2,7 +2,7 @@ import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 // Ephemeral columns documentation: https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral
 const tableName = 'insert_ephemeral_columns'
-const client = createClient({})
+const client = createClient()
 
 await client.command({
   query: `

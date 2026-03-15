@@ -1,9 +1,9 @@
-import { createClient } from '@clickhouse/client'
-import type { DataFormat } from '@clickhouse/client-common'
 import {
+  createClient,
+  type DataFormat,
   type InputJSON,
   type InputJSONObjectEachRow,
-} from '@clickhouse/client-common'
+} from '@clickhouse/client' // or '@clickhouse/client-web'
 
 /**
  * An overview of available formats for inserting your data, mainly in different JSON formats.

@@ -10,5 +10,5 @@ const rows = await client.query({
   format: 'JSONEachRow',
 })
 const result = await rows.json<Data>()
-result.map((row) => console.log(row))
+result.forEach((row) => console.log(row))
 await client.close()

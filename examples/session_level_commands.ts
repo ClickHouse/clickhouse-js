@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
-import * as crypto from 'crypto' // required for Node.js only
+import { randomUUID } from 'crypto' // required for Node.js only
 
 // Note that session will work as expected ONLY if you are accessing the Node directly.
 // If there is a load-balancer in front of ClickHouse nodes, the requests might end up on different nodes,
@@ -8,7 +8,7 @@ import * as crypto from 'crypto' // required for Node.js only
 const client = createClient({
   // with session_id defined, SET and other session commands
   // will affect all the consecutive queries
-  session_id: crypto.randomUUID(),
+  session_id: randomUUID(),
 })
 
 await client.command({

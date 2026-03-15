@@ -1,5 +1,4 @@
-import { createClient } from '@clickhouse/client'
-import { ClickHouseError } from '@clickhouse/client-common'
+import { createClient, ClickHouseError } from '@clickhouse/client' // or '@clickhouse/client-web'
 import { EventEmitter } from 'events'
 
 // This example demonstrates how to use async inserts without waiting for an ack about a successfully written batch.
@@ -113,7 +112,7 @@ const rowsCountHandle = setInterval(async () => {
 
 // When Ctrl+C is pressed - clean up and exit.
 async function gracefulShutdown() {
-  clearInterval(sendRowsHandle)
+  clearTimeout(sendRowsHandle)
   clearInterval(rowsCountHandle)
   listener.removeListener('data', asyncInsertOnData)
   await client.close()

@@ -1,5 +1,4 @@
-import { createClient } from '@clickhouse/client'
-import type { DataFormat } from '@clickhouse/client-common'
+import { createClient, type DataFormat } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 /**
  * An overview of all available formats for selecting your data.

@@ -6,11 +6,8 @@ import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 const tableName = 'insert_from_select'
 const client = createClient()
 await client.command({
-  query: `DROP TABLE IF EXISTS ${tableName}`,
-})
-await client.command({
   query: `
-    CREATE TABLE ${tableName}
+    CREATE OR REPLACE TABLE ${tableName}
     (id String, data AggregateFunction(quantilesBFloat16(0.5), Float32))
     ENGINE MergeTree()
     ORDER BY (id)

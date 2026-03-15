@@ -1,12 +1,12 @@
 import { createClient, ClickHouseError } from '@clickhouse/client' // or '@clickhouse/client-web'
-import * as crypto from 'crypto' // Node.js only
+import { randomUUID } from 'crypto' // Node.js only
 
 /**
  * An example of cancelling a long-running query on the server side.
  * See https://clickhouse.com/docs/en/sql-reference/statements/kill
  */
 const client = createClient()
-const query_id = crypto.randomUUID()
+const query_id = randomUUID()
 
 // Assuming a long-running query on the server. This promise is not awaited.
 const selectPromise = client

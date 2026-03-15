@@ -1,9 +1,9 @@
 import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
-import * as crypto from 'crypto' // required for Node.js only
+import { randomUUID } from 'crypto' // required for Node.js only
 
 const tableName = 'temporary_example'
 const client = createClient({
-  session_id: crypto.randomUUID(),
+  session_id: randomUUID(),
 })
 await client.command({
   query: `CREATE TEMPORARY TABLE ${tableName} (i Int32)`,
