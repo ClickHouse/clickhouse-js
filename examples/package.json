@@ -13,7 +13,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "run-examples": "node run-examples.mjs"
+    "run-examples": "cd .. && node node_modules/.bin/vitest run --config vitest.examples.config.ts"
   },
   "dependencies": {
     "@clickhouse/client": "latest"
