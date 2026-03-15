@@ -10,31 +10,29 @@ import Path from 'path'
  *  In this scenario, we are inserting the data from a stream in AVRO format.
  *  Related issue with a question: https://github.com/ClickHouse/clickhouse-js/issues/418 */
 
-void (async () => {
-  const client = createClient()
-  const tableName = 'chjs_avro_stream_insert_demo'
-  await prepareTable(client, tableName)
+const client = createClient()
+const tableName = 'chjs_avro_stream_insert_demo'
+await prepareTable(client, tableName)
 
-  const avroDataFilePath = Path.resolve(cwd(), './node/resources/data.avro')
-  const avroStream = await getAvroDataFileStream(avroDataFilePath)
+const avroDataFilePath = Path.resolve(cwd(), './node/resources/data.avro')
+const avroStream = await getAvroDataFileStream(avroDataFilePath)
 
-  // Important #1: remember to add the FORMAT clause here, as `exec` takes a raw query in the arguments!
-  const execResult = await client.exec({
-    query: `INSERT INTO ${tableName} FORMAT Avro`,
-    values: avroStream,
-  })
+// Important #1: remember to add the FORMAT clause here, as `exec` takes a raw query in the arguments!
+const execResult = await client.exec({
+  query: `INSERT INTO ${tableName} FORMAT Avro`,
+  values: avroStream,
+})
 
-  // Important #2: the result stream contains nothing useful for an INSERT query (usually, it is just `Ok.`),
-  // and should be immediately drained to release the underlying connection (i.e., HTTP keep-alive socket).
-  await drainStream(execResult.stream)
+// Important #2: the result stream contains nothing useful for an INSERT query (usually, it is just `Ok.`),
+// and should be immediately drained to release the underlying connection (i.e., HTTP keep-alive socket).
+await drainStream(execResult.stream)
 
-  // Verifying that the data was properly inserted; using `JSONEachRow` output format for convenience
-  const rs = await client.query({
-    query: `SELECT * FROM ${tableName}`,
-    format: 'JSONEachRow',
-  })
-  console.log('Inserted data:', await rs.json())
-})()
+// Verifying that the data was properly inserted; using `JSONEachRow` output format for convenience
+const rs = await client.query({
+  query: `SELECT * FROM ${tableName}`,
+  format: 'JSONEachRow',
+})
+console.log('Inserted data:', await rs.json())
 
 async function prepareTable(client: ClickHouseClient, tableName: string) {
   await client.command({

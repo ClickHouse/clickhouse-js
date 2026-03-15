@@ -12,64 +12,62 @@ interface Data {
  * An example how to send an INSERT INTO ... VALUES ... query that requires additional functions call.
  * Inspired by https://github.com/ClickHouse/clickhouse-js/issues/239
  */
-void (async () => {
-  const tableName = 'insert_values_and_functions'
-  const client = createClient()
-  // Recommended for cluster usage to avoid situations where a query processing error occurred after the response code
-  // and HTTP headers were sent to the client, as it might happen before the changes were applied on the server.
-  // See https://clickhouse.com/docs/en/interfaces/http/#response-buffering
-  const commandSettings: ClickHouseSettings = {
-    wait_end_of_query: 1,
-  }
+const tableName = 'insert_values_and_functions'
+const client = createClient()
+// Recommended for cluster usage to avoid situations where a query processing error occurred after the response code
+// and HTTP headers were sent to the client, as it might happen before the changes were applied on the server.
+// See https://clickhouse.com/docs/en/interfaces/http/#response-buffering
+const commandSettings: ClickHouseSettings = {
+  wait_end_of_query: 1,
+}
 
-  // Prepare an example table
-  await client.command({
-    query: `DROP TABLE IF EXISTS ${tableName}`,
-    clickhouse_settings: commandSettings,
-  })
-  await client.command({
-    query: `
-      CREATE TABLE ${tableName} (
-        id String,
-        timestamp DateTime64(3, 'UTC'),
-        email String,
-        name Nullable(String)
-      )
-      ENGINE MergeTree()
-      ORDER BY (id)
-    `,
-    clickhouse_settings: commandSettings,
-  })
+// Prepare an example table
+await client.command({
+  query: `DROP TABLE IF EXISTS ${tableName}`,
+  clickhouse_settings: commandSettings,
+})
+await client.command({
+  query: `
+    CREATE TABLE ${tableName} (
+      id String,
+      timestamp DateTime64(3, 'UTC'),
+      email String,
+      name Nullable(String)
+    )
+    ENGINE MergeTree()
+    ORDER BY (id)
+  `,
+  clickhouse_settings: commandSettings,
+})
 
-  // Here we are assuming that we are getting these rows from somewhere...
-  const rows = getRows(20_000)
+// Here we are assuming that we are getting these rows from somewhere...
+const rows = getRows(20_000)
 
-  // Generate the query and insert the values
-  const insertQuery = `
-    INSERT INTO ${tableName}
-      (id, timestamp, email, name)
-    VALUES
-      ${rows.map((r) => toInsertValue(r)).join(',')}
-  `
-  await client.command({
-    query: insertQuery,
-    clickhouse_settings: commandSettings,
-  })
+// Generate the query and insert the values
+const insertQuery = `
+  INSERT INTO ${tableName}
+    (id, timestamp, email, name)
+  VALUES
+    ${rows.map((r) => toInsertValue(r)).join(',')}
+`
+await client.command({
+  query: insertQuery,
+  clickhouse_settings: commandSettings,
+})
 
-  // Get a few back and print those rows to check what was inserted
-  const sampleResultSet = await client.query({
-    query: `SELECT * FROM ${tableName} ORDER BY rand() LIMIT 3`,
-    format: 'JSONEachRow',
-  })
-  console.info(`Sample inserted rows:`)
-  const sampleRows = await sampleResultSet.json<Data[]>()
-  sampleRows.forEach((row) => {
-    console.info(row)
-  })
+// Get a few back and print those rows to check what was inserted
+const sampleResultSet = await client.query({
+  query: `SELECT * FROM ${tableName} ORDER BY rand() LIMIT 3`,
+  format: 'JSONEachRow',
+})
+console.info(`Sample inserted rows:`)
+const sampleRows = await sampleResultSet.json<Data[]>()
+sampleRows.forEach((row) => {
+  console.info(row)
+})
 
-  // Close it during your application graceful shutdown
-  await client.close()
-})()
+// Close it during your application graceful shutdown
+await client.close()
 
 function getRows(n: number): Data[] {
   const now = Date.now() // UNIX timestamp in milliseconds

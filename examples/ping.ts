@@ -11,11 +11,9 @@ import http from 'http'
  * Ping might be a useful tool to check if the server is available when the application starts,
  * especially with ClickHouse Cloud, where an instance might be idling and will wake up after a ping.
  */
-void (async () => {
-  await existingHostPing()
-  await nonExistingHostPing()
-  await timeoutPing()
-})()
+await existingHostPing()
+await nonExistingHostPing()
+await timeoutPing()
 
 async function existingHostPing() {
   const client = createClient({

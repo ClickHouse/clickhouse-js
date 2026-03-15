@@ -73,65 +73,63 @@ class SimpleBackpressureStream extends Stream.Readable {
   }
 }
 
-void (async () => {
-  const tableName = 'simple_streaming_demo'
-  const client = createClient()
+const tableName = 'simple_streaming_demo'
+const client = createClient()
 
-  // Setup table
-  await client.command({
-    query: `DROP TABLE IF EXISTS ${tableName}`,
+// Setup table
+await client.command({
+  query: `DROP TABLE IF EXISTS ${tableName}`,
+})
+
+await client.command({
+  query: `
+    CREATE TABLE ${tableName}
+    (
+      id UInt32,
+      name String,
+      value Float64
+    )
+    ENGINE = MergeTree()
+    ORDER BY id
+  `,
+})
+
+const maxRecords = 10000
+console.log('Creating backpressure-aware data stream...')
+
+const dataStream = new SimpleBackpressureStream(maxRecords)
+
+try {
+  console.log('Starting streaming insert with backpressure demonstration...')
+
+  const insertPromise = client.insert({
+    table: tableName,
+    values: dataStream,
+    format: 'JSONEachRow',
+    clickhouse_settings: {
+      // Use async inserts to handle streaming data more efficiently
+      async_insert: 1,
+      wait_for_async_insert: 1,
+      async_insert_max_data_size: '10485760', // 10MB
+      async_insert_busy_timeout_ms: 1000,
+    },
   })
 
-  await client.command({
-    query: `
-      CREATE TABLE ${tableName}
-      (
-        id UInt32,
-        name String,
-        value Float64
-      )
-      ENGINE = MergeTree()
-      ORDER BY id
-    `,
+  setTimeout(() => dataStream.start(), 100)
+
+  await insertPromise
+
+  console.log('Insert completed successfully!')
+
+  const result = await client.query({
+    query: `SELECT count() as total FROM ${tableName}`,
+    format: 'JSONEachRow',
   })
 
-  const maxRecords = 10000
-  console.log('Creating backpressure-aware data stream...')
-
-  const dataStream = new SimpleBackpressureStream(maxRecords)
-
-  try {
-    console.log('Starting streaming insert with backpressure demonstration...')
-
-    const insertPromise = client.insert({
-      table: tableName,
-      values: dataStream,
-      format: 'JSONEachRow',
-      clickhouse_settings: {
-        // Use async inserts to handle streaming data more efficiently
-        async_insert: 1,
-        wait_for_async_insert: 1,
-        async_insert_max_data_size: '10485760', // 10MB
-        async_insert_busy_timeout_ms: 1000,
-      },
-    })
-
-    setTimeout(() => dataStream.start(), 100)
-
-    await insertPromise
-
-    console.log('Insert completed successfully!')
-
-    const result = await client.query({
-      query: `SELECT count() as total FROM ${tableName}`,
-      format: 'JSONEachRow',
-    })
-
-    const [{ total }] = await result.json<{ total: string }>()
-    console.log(`Total records inserted: ${total}`)
-  } catch (error) {
-    console.error('Insert failed:', error)
-  } finally {
-    await client.close()
-  }
-})()
+  const [{ total }] = await result.json<{ total: string }>()
+  console.log(`Total records inserted: ${total}`)
+} catch (error) {
+  console.error('Insert failed:', error)
+} finally {
+  await client.close()
+}
