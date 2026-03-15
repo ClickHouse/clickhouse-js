@@ -4,11 +4,8 @@ import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 const tableName = 'insert_js_date'
 const client = createClient()
 await client.command({
-  query: `DROP TABLE IF EXISTS ${tableName}`,
-})
-await client.command({
   query: `
-    CREATE TABLE ${tableName}
+    CREATE OR REPLACE TABLE ${tableName}
     (id String, dt DateTime64(3, 'UTC'))
     ENGINE MergeTree()
     ORDER BY (id)

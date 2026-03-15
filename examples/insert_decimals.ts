@@ -1,4 +1,4 @@
-import { createClient } from '@clickhouse/client' // or @clickhouse/client-web
+import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 const client = createClient()
 const tableName = 'insert_decimals_example'

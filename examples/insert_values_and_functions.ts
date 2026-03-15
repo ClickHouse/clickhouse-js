@@ -61,7 +61,7 @@ const sampleResultSet = await client.query({
   format: 'JSONEachRow',
 })
 console.info(`Sample inserted rows:`)
-const sampleRows = await sampleResultSet.json<Data[]>()
+const sampleRows = await sampleResultSet.json<Data>()
 sampleRows.forEach((row) => {
   console.info(row)
 })

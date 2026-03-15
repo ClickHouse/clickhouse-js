@@ -1,5 +1,4 @@
-import { createClient } from '@clickhouse/client'
-import type { Row } from '@clickhouse/client-common'
+import { createClient, type Row } from '@clickhouse/client'
 import Fs from 'fs'
 import { cwd } from 'node:process'
 import Path from 'path'
