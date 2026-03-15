@@ -180,122 +180,120 @@ class SimulatedDataSource extends EventEmitter {
   }
 }
 
-void (async () => {
-  const tableName = 'streaming_backpressure_demo'
-  const client = createClient({
-    // Configure client for high-throughput scenarios
-    max_open_connections: 5,
-    compression: {
-      request: true,
-      response: true,
+const tableName = 'streaming_backpressure_demo'
+const client = createClient({
+  // Configure client for high-throughput scenarios
+  max_open_connections: 5,
+  compression: {
+    request: true,
+    response: true,
+  },
+})
+
+console.log('Setting up table...')
+
+await client.command({
+  query: `DROP TABLE IF EXISTS ${tableName}`,
+})
+
+await client.command({
+  query: `
+    CREATE OR REPLACE TABLE ${tableName}
+    (
+      id UInt64,
+      timestamp DateTime,
+      message String,
+      value Float64
+    )
+    ENGINE = MergeTree()
+    ORDER BY (id, timestamp)
+  `,
+})
+
+// Create data source and producer
+const dataSource = new SimulatedDataSource()
+const dataProducer = new BackpressureAwareDataProducer(dataSource)
+
+// Start generating data
+console.log('Starting data generation...')
+dataSource.start()
+
+// Handle graceful shutdown
+const cleanup = async () => {
+  console.log('\nShutting down gracefully...')
+  dataSource.stop()
+
+  // Wait a bit for any remaining data to be processed
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+
+  console.log(`Final stats:`)
+  console.log(`- Generated: ${dataSource.total} rows`)
+  console.log(`- Produced: ${dataProducer.total} rows`)
+
+  await client.close()
+  process.exit(0)
+}
+
+process.on('SIGINT', cleanup)
+process.on('SIGTERM', cleanup)
+
+try {
+  console.log('Starting streaming insert...')
+  const startTime = Date.now()
+
+  await client.insert({
+    table: tableName,
+    values: dataProducer,
+    format: 'JSONEachRow',
+    clickhouse_settings: {
+      // Optimize for streaming inserts
+      async_insert: 1,
+      wait_for_async_insert: 1,
+      async_insert_max_data_size: '10485760', // 10MB
+      async_insert_busy_timeout_ms: 1000,
     },
   })
 
-  console.log('Setting up table...')
+  const duration = Date.now() - startTime
 
-  await client.command({
-    query: `DROP TABLE IF EXISTS ${tableName}`,
-  })
+  console.log(`\nInsert completed in ${duration}ms`)
+  console.log(`Inserted ${dataProducer.total} rows`)
+  console.log('\nVerifying inserted data...')
 
-  await client.command({
+  const result = await client.query({
     query: `
-      CREATE OR REPLACE TABLE ${tableName}
-      (
-        id UInt64,
-        timestamp DateTime,
-        message String,
-        value Float64
-      )
-      ENGINE = MergeTree()
-      ORDER BY (id, timestamp)
+      SELECT
+        count() as total_rows,
+        min(timestamp) as min_timestamp,
+        max(timestamp) as max_timestamp,
+        avg(value) as avg_value
+      FROM ${tableName}
     `,
+    format: 'JSONEachRow',
   })
 
-  // Create data source and producer
-  const dataSource = new SimulatedDataSource()
-  const dataProducer = new BackpressureAwareDataProducer(dataSource)
+  const stats = await result.json<{
+    total_rows: string
+    min_timestamp: string
+    max_timestamp: string
+    avg_value: string
+  }>()
 
-  // Start generating data
-  console.log('Starting data generation...')
-  dataSource.start()
+  console.log('Verification results:', stats[0])
 
-  // Handle graceful shutdown
-  const cleanup = async () => {
-    console.log('\nShutting down gracefully...')
-    dataSource.stop()
+  const sampleResult = await client.query({
+    query: `SELECT * FROM ${tableName} ORDER BY id LIMIT 5`,
+    format: 'JSONEachRow',
+  })
 
-    // Wait a bit for any remaining data to be processed
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    console.log(`Final stats:`)
-    console.log(`- Generated: ${dataSource.total} rows`)
-    console.log(`- Produced: ${dataProducer.total} rows`)
-
-    await client.close()
-    process.exit(0)
+  console.log('\nSample data:')
+  for await (const rows of sampleResult.stream()) {
+    rows.forEach((row: Row) => {
+      console.log(row.json())
+    })
   }
-
-  process.on('SIGINT', cleanup)
-  process.on('SIGTERM', cleanup)
-
-  try {
-    console.log('Starting streaming insert...')
-    const startTime = Date.now()
-
-    await client.insert({
-      table: tableName,
-      values: dataProducer,
-      format: 'JSONEachRow',
-      clickhouse_settings: {
-        // Optimize for streaming inserts
-        async_insert: 1,
-        wait_for_async_insert: 1,
-        async_insert_max_data_size: '10485760', // 10MB
-        async_insert_busy_timeout_ms: 1000,
-      },
-    })
-
-    const duration = Date.now() - startTime
-
-    console.log(`\nInsert completed in ${duration}ms`)
-    console.log(`Inserted ${dataProducer.total} rows`)
-    console.log('\nVerifying inserted data...')
-
-    const result = await client.query({
-      query: `
-        SELECT
-          count() as total_rows,
-          min(timestamp) as min_timestamp,
-          max(timestamp) as max_timestamp,
-          avg(value) as avg_value
-        FROM ${tableName}
-      `,
-      format: 'JSONEachRow',
-    })
-
-    const stats = await result.json<{
-      total_rows: string
-      min_timestamp: string
-      max_timestamp: string
-      avg_value: string
-    }>()
-
-    console.log('Verification results:', stats[0])
-
-    const sampleResult = await client.query({
-      query: `SELECT * FROM ${tableName} ORDER BY id LIMIT 5`,
-      format: 'JSONEachRow',
-    })
-
-    console.log('\nSample data:')
-    for await (const rows of sampleResult.stream()) {
-      rows.forEach((row: Row) => {
-        console.log(row.json())
-      })
-    }
-  } catch (error) {
-    console.error('Insert failed:', error)
-  } finally {
-    await cleanup()
-  }
-})()
+} catch (error) {
+  console.error('Insert failed:', error)
+} finally {
+  await cleanup()
+}

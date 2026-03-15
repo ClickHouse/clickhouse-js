@@ -7,6 +7,7 @@
     "url": "https://github.com/ClickHouse/clickhouse-js.git"
   },
   "private": false,
+  "type": "module",
   "engines": {
     "node": ">=16"
   },

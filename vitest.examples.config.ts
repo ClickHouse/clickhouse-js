@@ -1,30 +1,5 @@
 import { resolve } from 'path'
-import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
-
-/**
- * A Vite transform plugin that replaces `void (async () => {` with
- * `await (async () => {` in example files, turning the top-level IIFE
- * call into a top-level `await` expression.
- *
- * This makes Vitest wait for each example's async body to complete
- * (and surface any errors as test failures) without modifying the
- * example source files.
- */
-function awaitExamplesPlugin(): Plugin {
-  return {
-    name: 'await-examples',
-    transform(code: string, id: string) {
-      if (id.includes('/node_modules/')) return null
-      if (!id.endsWith('.ts')) return null
-      if (!id.includes('/examples/')) return null
-      return {
-        code: code.replace(/^void \(async \(\) => \{/m, 'await (async () => {'),
-        map: null,
-      }
-    },
-  }
-}
 
 /**
  * Examples that cannot be run in a standard single-node CI environment.
@@ -45,7 +20,6 @@ const EXCLUDED_EXAMPLES = [
 ]
 
 export default defineConfig({
-  plugins: [awaitExamplesPlugin()],
   test: {
     name: 'examples',
     include: ['examples/*.ts', 'examples/node/*.ts'],
