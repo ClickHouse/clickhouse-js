@@ -67,8 +67,31 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
           http_agent: httpsAgent,
         }),
       )
-      // Verify the connection was created successfully with an https URL
       expect(connection).toBeInstanceOf(NodeCustomAgentConnection)
+
+      const mockRequest = {} as Http.ClientRequest
+      const httpsRequestSpy = vi
+        .spyOn(Https, 'request')
+        .mockReturnValue(mockRequest)
+      const httpRequestSpy = vi.spyOn(Http, 'request')
+
+      const abortController = new AbortController()
+      connection.testCreateClientRequest({
+        method: 'GET',
+        url: new URL('https://localhost:8443'),
+        headers: {},
+        abort_signal: abortController.signal,
+        query: 'SELECT 1',
+        query_id: 'test',
+        log_writer: buildCustomAgentConnectionParams().log_writer,
+        log_level: ClickHouseLogLevel.OFF,
+      })
+
+      expect(httpsRequestSpy).toHaveBeenCalledTimes(1)
+      expect(httpRequestSpy).not.toHaveBeenCalled()
+
+      httpsRequestSpy.mockRestore()
+      httpRequestSpy.mockRestore()
     })
 
     it('should use Http.request for http URLs', () => {
@@ -80,6 +103,30 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
         }),
       )
       expect(connection).toBeInstanceOf(NodeCustomAgentConnection)
+
+      const mockRequest = {} as Http.ClientRequest
+      const httpRequestSpy = vi
+        .spyOn(Http, 'request')
+        .mockReturnValue(mockRequest)
+      const httpsRequestSpy = vi.spyOn(Https, 'request')
+
+      const abortController = new AbortController()
+      connection.testCreateClientRequest({
+        method: 'GET',
+        url: new URL('http://localhost:8123'),
+        headers: {},
+        abort_signal: abortController.signal,
+        query: 'SELECT 1',
+        query_id: 'test',
+        log_writer: buildCustomAgentConnectionParams().log_writer,
+        log_level: ClickHouseLogLevel.OFF,
+      })
+
+      expect(httpRequestSpy).toHaveBeenCalledTimes(1)
+      expect(httpsRequestSpy).not.toHaveBeenCalled()
+
+      httpRequestSpy.mockRestore()
+      httpsRequestSpy.mockRestore()
     })
   })
 
