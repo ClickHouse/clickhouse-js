@@ -6,19 +6,17 @@ import { createClient, type Row } from '@clickhouse/client' // or '@clickhouse/c
  * NB (Node.js platform): `for await const` has some overhead (up to 2 times worse) vs the old-school `on(data)` approach.
  * See the related Node.js issue: https://github.com/nodejs/node/issues/31979
  */
-void (async () => {
-  const client = createClient()
-  const rs = await client.query({
-    query: 'SELECT number FROM system.numbers LIMIT 10',
-    // See all supported formats for streaming:
-    // https://clickhouse.com/docs/en/integrations/language-clients/javascript#supported-data-formats
-    format: 'JSONEachRow',
+const client = createClient()
+const rs = await client.query({
+  query: 'SELECT number FROM system.numbers LIMIT 10',
+  // See all supported formats for streaming:
+  // https://clickhouse.com/docs/en/integrations/language-clients/javascript#supported-data-formats
+  format: 'JSONEachRow',
+})
+for await (const rows of rs.stream()) {
+  rows.forEach((row: Row) => {
+    console.log(row.json())
   })
-  for await (const rows of rs.stream()) {
-    rows.forEach((row: Row) => {
-      console.log(row.json())
-    })
-  }
-  console.log('Completed!')
-  await client.close()
-})()
+}
+console.log('Completed!')
+await client.close()

@@ -13,26 +13,24 @@ import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
  *
  * For query cancellation, see `cancel_query.ts` example.
  */
-void (async () => {
-  const client = createClient({
-    clickhouse_settings: {
-      // https://clickhouse.com/docs/operations/settings/settings#cancel_http_readonly_queries_on_client_close
-      cancel_http_readonly_queries_on_client_close: 1,
-    },
+const client = createClient({
+  clickhouse_settings: {
+    // https://clickhouse.com/docs/operations/settings/settings#cancel_http_readonly_queries_on_client_close
+    cancel_http_readonly_queries_on_client_close: 1,
+  },
+})
+const controller = new AbortController()
+const selectPromise = client
+  .query({
+    query: 'SELECT sleep(3)',
+    format: 'CSV',
+    abort_signal: controller.signal,
   })
-  const controller = new AbortController()
-  const selectPromise = client
-    .query({
-      query: 'SELECT sleep(3)',
-      format: 'CSV',
-      abort_signal: controller.signal,
-    })
-    .catch((e: unknown) => {
-      console.error(e)
-      console.info('---------------------------------------------------')
-      console.info('Select was aborted, see above for the error details')
-    })
-  controller.abort()
-  await selectPromise
-  await client.close()
-})()
+  .catch((e: unknown) => {
+    console.error(e)
+    console.info('---------------------------------------------------')
+    console.info('Select was aborted, see above for the error details')
+  })
+controller.abort()
+await selectPromise
+await client.close()
