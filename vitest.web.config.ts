@@ -103,7 +103,10 @@ export default defineConfig({
     },
     experimental: {
       openTelemetry: {
-        enabled: process.env.VITEST_OTEL_ENABLED === 'true',
+        enabled:
+          process.env.VITEST_OTEL_ENABLED === 'true' &&
+          // not set in dependabot PRs
+          !!process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
         sdkPath: './vitest.node.otel.js',
         // According to testing, runners hang indefinitely when OTEL is enabled in browser tests,
         // and when they don't the exporter visibly slows the tests down (2x-5x).
