@@ -59,7 +59,7 @@ describe('[Node.js] ResultSet (extra coverage)', () => {
         Stream.Readable.from([Buffer.from('{}')]),
         'JSON',
       )
-      expect(() => rs.stream()).toThrow('JSON format is not streamable')
+      expect(() => rs.stream()).toThrow(/JSON format is not streamable/)
     })
   })
 
@@ -79,16 +79,22 @@ describe('[Node.js] ResultSet (extra coverage)', () => {
         guid(),
         // log_error omitted — should default to console.error
       )
+      const pipelineStream = rs.stream()
+      const done = new Promise<void>((resolve) => {
+        pipelineStream.once('error', () => resolve())
+        pipelineStream.once('close', () => resolve())
+        pipelineStream.once('end', () => resolve())
+      })
       // Consume the stream to trigger the pipeline error callback
       try {
-        for await (const _ of rs.stream()) {
+        for await (const _ of pipelineStream) {
           // consume
         }
       } catch {
         // stream error expected
       }
-      // Give the pipeline callback a chance to fire
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      // Wait deterministically for the pipeline to complete before asserting
+      await done
       expect(consoleSpy).toHaveBeenCalled()
       consoleSpy.mockRestore()
     })
