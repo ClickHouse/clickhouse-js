@@ -65,7 +65,11 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
       const httpsRequestSpy = vi
         .spyOn(Https, 'request')
         .mockReturnValue(mockRequest)
-      const httpRequestSpy = vi.spyOn(Http, 'request')
+      const httpRequestSpy = vi
+        .spyOn(Http, 'request')
+        .mockImplementation(() => {
+          throw new Error('Http.request should not be called for https URLs')
+        })
 
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
@@ -100,7 +104,10 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
       const httpRequestSpy = vi
         .spyOn(Http, 'request')
         .mockReturnValue(mockRequest)
-      const httpsRequestSpy = vi.spyOn(Https, 'request')
+      const mockHttpsRequest = {} as Http.ClientRequest
+      const httpsRequestSpy = vi
+        .spyOn(Https, 'request')
+        .mockReturnValue(mockHttpsRequest)
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
           url: new URL('http://localhost:8123'),
