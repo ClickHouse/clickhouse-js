@@ -99,7 +99,7 @@ describe('[Node.js] NodeHttpsConnection', () => {
     it('should throw when JWT auth is used with TLS certificates', () => {
       const connection = new TestableHttpsConnection(
         buildHttpsConnectionParams({
-          auth: { type: 'JWT', access_token: 'token' } as any,
+          auth: { type: 'JWT', access_token: 'token' },
           tls: {
             type: 'Basic',
             ca_cert: Buffer.from('ca_cert'),
