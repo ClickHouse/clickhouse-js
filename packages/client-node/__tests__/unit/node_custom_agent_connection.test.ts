@@ -58,7 +58,9 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
           ),
       ).toThrow('http_agent is required to create NodeCustomAgentConnection')
     })
+  })
 
+  describe('createClientRequest', () => {
     it('should use Https.request for https URLs', () => {
       const httpsAgent = new Https.Agent()
       const mockRequest = {} as Http.ClientRequest
@@ -152,7 +154,7 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
         }),
       )
 
-      const url = new URL('http://localhost:8123/?query_id=test')
+      const url = new URL('http://localhost:8123/?query_id=test-query-id')
       const abortController = new AbortController()
       const result = connection.testCreateClientRequest({
         method: 'POST',
