@@ -61,6 +61,12 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
 
     it('should use Https.request for https URLs', () => {
       const httpsAgent = new Https.Agent()
+      const mockRequest = {} as Http.ClientRequest
+      const httpsRequestSpy = vi
+        .spyOn(Https, 'request')
+        .mockReturnValue(mockRequest)
+      const httpRequestSpy = vi.spyOn(Http, 'request')
+
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
           url: new URL('https://localhost:8443'),
@@ -68,12 +74,6 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
         }),
       )
       expect(connection).toBeInstanceOf(NodeCustomAgentConnection)
-
-      const mockRequest = {} as Http.ClientRequest
-      const httpsRequestSpy = vi
-        .spyOn(Https, 'request')
-        .mockReturnValue(mockRequest)
-      const httpRequestSpy = vi.spyOn(Http, 'request')
 
       const abortController = new AbortController()
       connection.testCreateClientRequest({
@@ -96,6 +96,11 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
 
     it('should use Http.request for http URLs', () => {
       const httpAgent = new Http.Agent()
+      const mockRequest = {} as Http.ClientRequest
+      const httpRequestSpy = vi
+        .spyOn(Http, 'request')
+        .mockReturnValue(mockRequest)
+      const httpsRequestSpy = vi.spyOn(Https, 'request')
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
           url: new URL('http://localhost:8123'),
@@ -103,12 +108,6 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
         }),
       )
       expect(connection).toBeInstanceOf(NodeCustomAgentConnection)
-
-      const mockRequest = {} as Http.ClientRequest
-      const httpRequestSpy = vi
-        .spyOn(Http, 'request')
-        .mockReturnValue(mockRequest)
-      const httpsRequestSpy = vi.spyOn(Https, 'request')
 
       const abortController = new AbortController()
       connection.testCreateClientRequest({
@@ -133,17 +132,18 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
   describe('createClientRequest', () => {
     it('should call Http.request for http URLs', () => {
       const httpAgent = new Http.Agent()
+
+      const mockRequest = {} as Http.ClientRequest
+      const httpRequestSpy = vi
+        .spyOn(Http, 'request')
+        .mockReturnValue(mockRequest)
+
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
           url: new URL('http://localhost:8123'),
           http_agent: httpAgent,
         }),
       )
-
-      const mockRequest = {} as Http.ClientRequest
-      const httpRequestSpy = vi
-        .spyOn(Http, 'request')
-        .mockReturnValue(mockRequest)
 
       const url = new URL('http://localhost:8123/?query_id=test')
       const abortController = new AbortController()
@@ -177,17 +177,18 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
 
     it('should call Https.request for https URLs', () => {
       const httpsAgent = new Https.Agent()
+
+      const mockRequest = {} as Http.ClientRequest
+      const httpsRequestSpy = vi
+        .spyOn(Https, 'request')
+        .mockReturnValue(mockRequest)
+
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
           url: new URL('https://localhost:8443'),
           http_agent: httpsAgent,
         }),
       )
-
-      const mockRequest = {} as Http.ClientRequest
-      const httpsRequestSpy = vi
-        .spyOn(Https, 'request')
-        .mockReturnValue(mockRequest)
 
       const url = new URL('https://localhost:8443/?query_id=test')
       const abortController = new AbortController()
@@ -221,17 +222,18 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
 
     it('should add compression headers when compression is enabled', () => {
       const httpAgent = new Http.Agent()
+
+      const mockRequest = {} as Http.ClientRequest
+      const httpRequestSpy = vi
+        .spyOn(Http, 'request')
+        .mockReturnValue(mockRequest)
+
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
           url: new URL('http://localhost:8123'),
           http_agent: httpAgent,
         }),
       )
-
-      const mockRequest = {} as Http.ClientRequest
-      const httpRequestSpy = vi
-        .spyOn(Http, 'request')
-        .mockReturnValue(mockRequest)
 
       const url = new URL('http://localhost:8123/?query_id=test')
       const abortController = new AbortController()
