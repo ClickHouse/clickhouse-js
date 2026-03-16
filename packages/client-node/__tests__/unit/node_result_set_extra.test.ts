@@ -1,9 +1,14 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import Stream from 'stream'
 import { ResultSet } from '../../src'
 import { guid } from '../../../client-common/__tests__/utils/guid'
+import type { DataFormat } from '@clickhouse/client-common'
 
 describe('[Node.js] ResultSet (extra coverage)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   describe('json()', () => {
     it('should throw when calling json() with a non-JSON format', async () => {
       const rs = makeResultSet(
@@ -70,7 +75,9 @@ describe('[Node.js] ResultSet (extra coverage)', () => {
       })
       const errorStream = new Stream.Readable({
         read() {
-          this.destroy(new Error('test stream error'))
+          queueMicrotask(() => {
+            this.destroy(new Error('test stream error'))
+          })
         },
       })
       const rs = new ResultSet(
@@ -121,10 +128,10 @@ describe('[Node.js] ResultSet (extra coverage)', () => {
   })
 })
 
-function makeResultSet(stream: Stream.Readable, format: string) {
+function makeResultSet(stream: Stream.Readable, format: DataFormat) {
   return ResultSet.instance({
     stream,
-    format: format as any,
+    format,
     query_id: guid(),
     log_error: () => {
       // noop
