@@ -37,6 +37,7 @@ import Stream from 'stream'
 import Zlib from 'zlib'
 import { getAsText, getUserAgent, isStream } from '../utils'
 import { decompressResponse, isDecompressionError } from './compression'
+import { KeepAliveSocketManager } from './keep_alive_socket_manager'
 import { drainStreamInternal } from './stream'
 
 export type NodeConnectionParams = ConnectionParams & {
@@ -88,19 +89,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders
 
   private readonly jsonHandling: JSONHandling
-  private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
+  private readonly socketManager: KeepAliveSocketManager | null
   private readonly connectionId: string = crypto.randomUUID()
-  private socketCounter = 0
   // For overflow concerns:
   //   node -e 'console.log(Number.MAX_SAFE_INTEGER / (1_000_000 * 60 * 60 * 24 * 366))'
   // gives 284 years of continuous operation at 1M requests per second
   // before overflowing the 53-bit integer
   private requestCounter = 0
-
-  private getNewSocketId(): string {
-    this.socketCounter += 1
-    return `${this.connectionId}:${this.socketCounter}`
-  }
 
   private getNewRequestId(): string {
     this.requestCounter += 1
@@ -129,6 +124,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       parse: JSON.parse,
       stringify: JSON.stringify,
     }
+    this.socketManager =
+      params.keep_alive.enabled && params.keep_alive.idle_socket_ttl > 0
+        ? new KeepAliveSocketManager(
+            this.connectionId,
+            params.keep_alive.idle_socket_ttl,
+          )
+        : null
   }
 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
@@ -649,33 +651,28 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             }
           }
           if (log_level <= ClickHouseLogLevel.WARN) {
-            if (this.params.keep_alive.enabled) {
+            if (this.socketManager) {
               if ((e as any).code === 'ECONNRESET') {
                 const socket = request.socket
                 if (socket) {
-                  const socketInfo = this.knownSockets.get(socket)
+                  const socketInfo = this.socketManager.getSocketInfo(socket)
                   if (socketInfo) {
-                    const serverTimeoutMs =
-                      socketInfo.server_keep_alive_timeout_ms
-                    if (serverTimeoutMs !== undefined) {
-                      if (
-                        this.params.keep_alive.idle_socket_ttl > serverTimeoutMs
-                      ) {
-                        log_writer.warn({
-                          message: `${op}: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://c.house/js_keep_alive_econnreset for more details.`,
-                          args: {
-                            operation: op,
-                            connection_id: this.connectionId,
-                            query_id,
-                            request_id,
-                            socket_id: socketInfo.id,
-                            server_keep_alive_timeout_ms: serverTimeoutMs,
-                            idle_socket_ttl:
-                              this.params.keep_alive.idle_socket_ttl,
-                          },
-                          module: 'HTTP Adapter',
-                        })
-                      }
+                    if (this.socketManager.shouldWarnAboutTTL(socketInfo)) {
+                      log_writer.warn({
+                        message: `${op}: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://c.house/js_keep_alive_econnreset for more details.`,
+                        args: {
+                          operation: op,
+                          connection_id: this.connectionId,
+                          query_id,
+                          request_id,
+                          socket_id: socketInfo.id,
+                          server_keep_alive_timeout_ms:
+                            socketInfo.server_keep_alive_timeout_ms,
+                          idle_socket_ttl:
+                            this.socketManager.getIdleSocketTTL(),
+                        },
+                        module: 'HTTP Adapter',
+                      })
                     }
                   }
                 }
@@ -712,17 +709,22 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           })
         }
 
-        if (this.params.keep_alive.enabled) {
+        if (this.socketManager) {
           const keepAliveHeader = _response.headers['keep-alive']
           if (keepAliveHeader) {
             const [, timeout] =
               /timeout=(\d+)/i.exec(String(keepAliveHeader)) ?? []
 
             if (timeout) {
-              const socketInfo = this.knownSockets.get(_response.socket)
+              const socketInfo = this.socketManager.getSocketInfo(
+                _response.socket,
+              )
               if (socketInfo) {
                 const timeoutMs = Number(timeout) * 1000
-                socketInfo.server_keep_alive_timeout_ms = timeoutMs
+                this.socketManager.updateServerKeepAliveTimeout(
+                  socketInfo,
+                  timeoutMs,
+                )
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   this.params.log_writer.trace({
                     module: 'HTTP Adapter',
@@ -863,15 +865,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
       const onSocket = (socket: net.Socket) => {
         try {
-          if (
-            this.params.keep_alive.enabled &&
-            this.params.keep_alive.idle_socket_ttl > 0
-          ) {
-            const socketInfo = this.knownSockets.get(socket)
+          if (this.socketManager) {
+            const socketManager = this.socketManager
+            const existingSocketInfo = socketManager.getSocketInfo(socket)
             // It is the first time we've encountered this socket,
             // so it doesn't have the idle timeout handler attached to it
-            if (socketInfo === undefined) {
-              const socket_id = this.getNewSocketId()
+            if (existingSocketInfo === undefined) {
+              const socket_id = socketManager.getNewSocketId()
               if (log_level <= ClickHouseLogLevel.TRACE) {
                 log_writer.trace({
                   message: `${op}: using a fresh socket, setting up a new 'free' listener`,
@@ -884,12 +884,10 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                   },
                 })
               }
-              const newSocketInfo: SocketInfo = {
-                id: socket_id,
-                idle_timeout_handle: undefined,
-                usage_count: 1,
-              }
-              this.knownSockets.set(socket, newSocketInfo)
+              const newSocketInfo = socketManager.registerSocket(
+                socket,
+                socket_id,
+              )
               // When the request is complete and the socket is released,
               // make sure that the socket is removed after `idle_socket_ttl`.
               socket.on('free', () => {
@@ -907,33 +905,30 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                 }
                 // Avoiding the built-in socket.timeout() method usage here,
                 // as we don't want to clash with the actual request timeout.
-                const idleTimeoutHandle = setTimeout(() => {
-                  if (log_level <= ClickHouseLogLevel.TRACE) {
-                    log_writer.trace({
-                      message: `${op}: removing idle socket`,
-                      args: {
-                        operation: op,
-                        connection_id: this.connectionId,
-                        query_id,
-                        request_id,
-                        socket_id,
-                        idle_socket_ttl_ms:
-                          this.params.keep_alive.idle_socket_ttl,
-                      },
-                    })
-                  }
-                  this.knownSockets.delete(socket)
-                  socket.destroy()
-                }, this.params.keep_alive.idle_socket_ttl).unref()
-                newSocketInfo.idle_timeout_handle = idleTimeoutHandle
+                socketManager.scheduleIdleSocketDestruction(
+                  socket,
+                  newSocketInfo,
+                  () => {
+                    if (log_level <= ClickHouseLogLevel.TRACE) {
+                      log_writer.trace({
+                        message: `${op}: removing idle socket`,
+                        args: {
+                          operation: op,
+                          connection_id: this.connectionId,
+                          query_id,
+                          request_id,
+                          socket_id,
+                          idle_socket_ttl_ms: socketManager.getIdleSocketTTL(),
+                        },
+                      })
+                    }
+                  },
+                )
               })
 
               const cleanup = (eventName: string) => () => {
-                const maybeSocketInfo = this.knownSockets.get(socket)
                 // clean up a possibly dangling idle timeout handle (preventing leaks)
-                if (maybeSocketInfo?.idle_timeout_handle) {
-                  clearTimeout(maybeSocketInfo.idle_timeout_handle)
-                }
+                socketManager.cleanupIdleTimeout(socket)
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
                     message: `${op}: received '${eventName}' event, 'free' listener removed`,
@@ -970,8 +965,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               socket.once('end', cleanup('end'))
               socket.once('close', cleanup('close'))
             } else {
-              clearTimeout(socketInfo.idle_timeout_handle)
-              socketInfo.idle_timeout_handle = undefined
+              socketManager.handleSocketReuse(existingSocketInfo)
               if (log_level <= ClickHouseLogLevel.TRACE) {
                 log_writer.trace({
                   message: `${op}: reusing socket`,
@@ -980,12 +974,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                     connection_id: this.connectionId,
                     query_id,
                     request_id,
-                    socket_id: socketInfo.id,
-                    usage_count: socketInfo.usage_count,
+                    socket_id: existingSocketInfo.id,
+                    usage_count: existingSocketInfo.usage_count,
                   },
                 })
               }
-              socketInfo.usage_count++
             }
           }
         } catch (e) {
@@ -1009,7 +1002,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         // This is for request timeout only. Surprisingly, it is not always enough to set in the HTTP request.
         // The socket won't be destroyed, and it will be returned to the pool.
         if (log_level <= ClickHouseLogLevel.TRACE) {
-          const socketInfo = this.knownSockets.get(socket)
+          const socketInfo = this.socketManager?.getSocketInfo(socket)
           if (socketInfo) {
             log_writer.trace({
               message: `${op}: setting up request timeout`,
@@ -1044,7 +1037,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         if (log_level <= ClickHouseLogLevel.TRACE) {
           const socket = request.socket
           const maybeSocketInfo = socket
-            ? this.knownSockets.get(socket)
+            ? this.socketManager?.getSocketInfo(socket)
             : undefined
 
           const socketState = request.socket
@@ -1163,13 +1156,6 @@ interface LogRequestErrorParams {
   query_params: ConnBaseQueryParams
   search_params: URLSearchParams | undefined
   extra_args: Record<string, unknown>
-}
-
-interface SocketInfo {
-  id: string
-  idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
-  usage_count: number
-  server_keep_alive_timeout_ms?: number
 }
 
 type RunExecParams = ConnBaseQueryParams & {
