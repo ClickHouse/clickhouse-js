@@ -25,8 +25,8 @@ describe('KeepAliveSocketManager', () => {
     const manager = new KeepAliveSocketManager(connectionId, idleSocketTTL)
     const id1 = manager.getNewSocketId()
     const id2 = manager.getNewSocketId()
-    expect(id1).toBe(`${connectionId}:S:1`)
-    expect(id2).toBe(`${connectionId}:S:2`)
+    expect(id1).toBe(`${connectionId}:1`)
+    expect(id2).toBe(`${connectionId}:2`)
     expect(id1).not.toBe(id2)
   })
 

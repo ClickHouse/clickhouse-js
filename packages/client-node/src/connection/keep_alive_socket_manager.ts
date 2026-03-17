@@ -29,7 +29,7 @@ export class KeepAliveSocketManager {
   /** Generate a unique socket ID scoped to this connection. */
   getNewSocketId(): string {
     this.socketCounter += 1
-    return `${this.connectionId}:S:${this.socketCounter}`
+    return `${this.connectionId}:${this.socketCounter}`
   }
 
   /** Get the SocketInfo for a known socket, or undefined if not tracked. */
@@ -57,8 +57,8 @@ export class KeepAliveSocketManager {
 
   /**
    * Schedule the idle socket destruction after the configured TTL.
-   * Returns a cleanup callback to cancel the scheduled destruction.
-   * The `onDestroy` callback is invoked just before the socket is destroyed.
+   * The `onDestroy` callback is invoked just before the socket is destroyed,
+   * allowing for logging or other cleanup actions.
    */
   scheduleIdleSocketDestruction(
     socket: net.Socket,
@@ -66,9 +66,9 @@ export class KeepAliveSocketManager {
     onDestroy?: () => void,
   ): void {
     const handle = setTimeout(() => {
+      onDestroy?.()
       this.knownSockets.delete(socket)
       socket.destroy()
-      onDestroy?.()
     }, this.idleSocketTTL).unref()
     socketInfo.idle_timeout_handle = handle
   }
