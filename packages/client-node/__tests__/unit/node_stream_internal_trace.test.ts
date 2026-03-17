@@ -5,7 +5,7 @@ import {
   ClickHouseLogLevel,
 } from '@clickhouse/client-common'
 import { drainStreamInternal, type Context } from '../../src/connection/stream'
-import stream from 'stream'
+import { Readable } from 'stream'
 
 const nextTick = () => new Promise((resolve) => process.nextTick(resolve))
 
@@ -27,7 +27,7 @@ describe('drainStreamInternal (TRACE logging)', () => {
   })
 
   it('should log starting stream drain and stream drain completed on end', async () => {
-    const readable = new stream.Readable({
+    const readable = new Readable({
       read() {
         this.push('data')
         this.push(null)
@@ -45,7 +45,7 @@ describe('drainStreamInternal (TRACE logging)', () => {
   })
 
   it('should log chunk details when receiving data during drain', async () => {
-    const readable = new stream.Readable({
+    const readable = new Readable({
       read() {
         this.push('hello')
         this.push('world')
@@ -72,7 +72,7 @@ describe('drainStreamInternal (TRACE logging)', () => {
   })
 
   it('should log stream already errored before drain', async () => {
-    const readable = new stream.Readable({
+    const readable = new Readable({
       read() {
         this.emit('error', new Error('Pre-existing error'))
       },
@@ -94,7 +94,7 @@ describe('drainStreamInternal (TRACE logging)', () => {
   })
 
   it('should log stream already ended before drain', async () => {
-    const readable = new stream.Readable({
+    const readable = new Readable({
       read() {
         this.push('data')
         this.push(null)
@@ -115,7 +115,7 @@ describe('drainStreamInternal (TRACE logging)', () => {
   })
 
   it('should log stream already closed before drain', async () => {
-    const readable = new stream.Readable({
+    const readable = new Readable({
       emitClose: true,
       read() {
         this.push('data')
@@ -135,7 +135,7 @@ describe('drainStreamInternal (TRACE logging)', () => {
   })
 
   it('should log stream drain failed on error event', async () => {
-    const readable = new stream.Readable({
+    const readable = new Readable({
       read() {
         this.emit('error', new Error('Stream error during drain'))
       },
@@ -161,7 +161,7 @@ describe('drainStreamInternal (TRACE logging)', () => {
   })
 
   it('should log stream closed during drain on close event', async () => {
-    const readable = new stream.Readable({
+    const readable = new Readable({
       emitClose: true,
       read() {
         // don't push any data; the stream will be destroyed externally
@@ -181,7 +181,7 @@ describe('drainStreamInternal (TRACE logging)', () => {
   })
 
   it('should include stream state in the starting drain log', async () => {
-    const readable = new stream.Readable({
+    const readable = new Readable({
       read() {
         this.push(null)
       },
@@ -206,7 +206,7 @@ describe('drainStreamInternal (TRACE logging)', () => {
   })
 
   it('should include duration and totals in the end log', async () => {
-    const readable = new stream.Readable({
+    const readable = new Readable({
       read() {
         this.push('some data')
         this.push(null)
