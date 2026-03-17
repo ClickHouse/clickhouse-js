@@ -103,7 +103,6 @@ describe('[Node.js] ResultSet (extra coverage)', () => {
       // Wait deterministically for the pipeline to complete before asserting
       await done
       expect(consoleSpy).toHaveBeenCalled()
-      consoleSpy.mockRestore()
     })
 
     it('should freeze response_headers', () => {
