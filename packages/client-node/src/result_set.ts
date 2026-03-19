@@ -119,9 +119,9 @@ export class ResultSet<
 
   /** See {@link BaseResultSet.json}. */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
-    this.markAsConsumed()
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
+      this.markAsConsumed()
       const result: T[] = []
       const stream = this._streamImpl<T>()
       for await (const rows of stream) {
@@ -133,10 +133,12 @@ export class ResultSet<
     }
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
+      this.markAsConsumed()
       const text = await getAsText(this._stream)
       return this.jsonHandling.parse(text)
     }
     // should not be called for CSV, etc.
+    // Do NOT mark as consumed here — the caller can still use text() instead.
     throw new Error(`Cannot decode ${this.format} as JSON`)
   }
 

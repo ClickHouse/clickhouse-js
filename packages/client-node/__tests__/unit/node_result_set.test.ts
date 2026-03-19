@@ -82,6 +82,32 @@ describe('[Node.js] ResultSet', () => {
     expect(result).toEqual([{ n: 1 }])
   })
 
+  // Verify that calling json() on a non-JSON format (e.g. CSV) does not
+  // permanently mark the ResultSet as consumed — text() should still work.
+  it('should allow text() after json() throws for unsupported format', async () => {
+    const rs = makeResultSet(
+      Stream.Readable.from([Buffer.from('1,"foo"\n')]),
+      'CSV',
+    )
+    await expect(rs.json()).rejects.toThrow('Cannot decode CSV as JSON')
+    // ResultSet should NOT be consumed — text() should still work
+    const text = await rs.text()
+    expect(text).toEqual('1,"foo"\n')
+  })
+
+  // Verify that calling stream() on a non-streamable format does not
+  // permanently mark the ResultSet as consumed — text() should still work.
+  it('should allow text() after stream() throws for invalid format', async () => {
+    const rs = makeResultSet(
+      Stream.Readable.from([Buffer.from('{"data":[1,2,3]}')]),
+      'JSON',
+    )
+    expect(() => rs.stream()).toThrow()
+    // ResultSet should NOT be consumed — text() should still work
+    const text = await rs.text()
+    expect(text).toEqual('{"data":[1,2,3]}')
+  })
+
   it('should be able to call Row.text and Row.json multiple times', async () => {
     const rs = makeResultSet(
       Stream.Readable.from([Buffer.from('{"foo":"bar"}\n')]),
