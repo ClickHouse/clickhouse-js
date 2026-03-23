@@ -239,7 +239,7 @@ npm i
 ```
 
 ```bash
-.scripts/update_version.sh $NEW_VERSION
+.scripts/update_version.sh "$NEW_VERSION"
 ```
 
 Commit the version update and push it to the repository:
