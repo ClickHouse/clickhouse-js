@@ -34,7 +34,7 @@ jobs:
       - name: Set head pre-release version
         run: |
           BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
-          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}"
+          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
           echo "Setting version to: $HEAD_VERSION"
           .scripts/update_version.sh "$HEAD_VERSION"
 
