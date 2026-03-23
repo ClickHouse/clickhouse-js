@@ -24,3 +24,5 @@ for package in packages/client-common packages/client-node packages/client-web; 
     echo "export default '$version'" > "$package/src/version.ts"
   fi
 done
+
+npm --workspaces version --no-git-tag-version "$version"

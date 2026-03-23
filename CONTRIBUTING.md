@@ -240,7 +240,6 @@ npm i
 
 ```bash
 .scripts/update_version.sh $NEW_VERSION
-npm --workspaces version --no-git-tag-version "$NEW_VERSION"
 ```
 
 Commit the version update and push it to the repository:
