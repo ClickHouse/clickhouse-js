@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -e
+
+# Script to verify if a commit message indicates a release PR merge
+# Used by the release-publisher workflow
+#
+# Usage: verify-release-commit "commit message"
+# Output: "VERSION RELEASE_TYPE" on success (e.g., "1.2.3 latest")
+# Exit: 0 on success, 1 on failure
+
+COMMIT_MSG="$1"
+
+if [[ -z "$COMMIT_MSG" ]]; then
+  echo "Error: No commit message provided" >&2
+  exit 1
+fi
+
+# Match the pattern used by the manual release process:
+# The commit message should match: "Release v{version}" or "chore: Release v{version}"
+# Version format: X.Y.Z or X.Y.Z-rc.N or X.Y.Z-beta.N or X.Y.Z-test.N
+
+# Pattern matching for release commit messages
+if [[ "$COMMIT_MSG" =~ ^(chore:\ )?[Rr]elease\ v([0-9]+\.[0-9]+\.[0-9]+(-[a-z]+\.[0-9]+)?)$ ]]; then
+  VERSION="${BASH_REMATCH[2]}"
+
+  # Determine release type based on version suffix
+  if [[ "$VERSION" =~ -rc\. ]]; then
+    RELEASE_TYPE="rc"
+  elif [[ "$VERSION" =~ -beta\. ]]; then
+    RELEASE_TYPE="beta"
+  elif [[ "$VERSION" =~ -test\. ]]; then
+    RELEASE_TYPE="test"
+  elif [[ "$VERSION" =~ -alpha\. ]]; then
+    RELEASE_TYPE="alpha"
+  else
+    RELEASE_TYPE="latest"
+  fi
+
+  echo "$VERSION $RELEASE_TYPE"
+  exit 0
+fi
+
+# Not a release commit
+exit 1
