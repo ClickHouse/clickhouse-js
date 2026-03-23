@@ -31,6 +31,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set head pre-release version
+        run: |
+          BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
+          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}"
+          echo "Publishing version: $HEAD_VERSION"
+          # Update all workspace package versions
+          npm --workspaces version "$HEAD_VERSION" --no-git-tag-version
+          # Update inter-workspace dependency on @clickhouse/client-common
+          for package in packages/client-node packages/client-web; do
+            json=$(cat "$package/package.json")
+            echo "$json" | jq --arg version "$HEAD_VERSION" \
+              '.dependencies["@clickhouse/client-common"] = $version' > "$package/package.json"
+          done
+          # Update version.ts files
+          for package in packages/client-common packages/client-node packages/client-web; do
+            echo "export default '$HEAD_VERSION'" > "$package/src/version.ts"
+          done
+
       - name: Build packages
         run: npm --workspaces run build
 
