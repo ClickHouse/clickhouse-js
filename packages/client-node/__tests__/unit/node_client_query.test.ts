@@ -3,7 +3,6 @@ import Http from 'http'
 import { NodeClickHouseClient } from '../../src/client'
 import { NodeConfigImpl } from '../../src/config'
 import {
-  buildHttpConnection,
   emitResponseBody,
   stubClientRequest,
 } from '../utils/http_stubs'
