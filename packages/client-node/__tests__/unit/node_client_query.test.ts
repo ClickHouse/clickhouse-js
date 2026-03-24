@@ -4,6 +4,9 @@ import { NodeClickHouseClient } from '../../src/client'
 import { NodeConfigImpl } from '../../src/config'
 import { emitResponseBody, stubClientRequest } from '../utils/http_stubs'
 
+const UUID_REGEX =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -23,7 +26,7 @@ describe('[Node.js] NodeClickHouseClient query method', () => {
 
     // Start a query
     const queryPromise = client.query({
-      query: 'SELECT number FROM system.numbers LIMIT 3',
+      query: 'SELECT number FROM system.numbers LIMIT 1',
       format: 'JSONEachRow',
     })
 
@@ -36,8 +39,7 @@ describe('[Node.js] NodeClickHouseClient query method', () => {
 
     // Verify the result is a ResultSet
     expect(result).toBeDefined()
-    expect(result.query_id).toBeDefined()
-    expect(typeof result.query_id).toBe('string')
+    expect(result.query_id).toMatch(UUID_REGEX)
 
     // Verify the stream can be consumed
     const text = await result.text()
