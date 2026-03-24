@@ -77,14 +77,17 @@ describe('[Node.js] ResultSet', () => {
     expect(() => rs.rawStream()).toThrow(errMsg)
   })
 
-  it('should throw if text is called after rawStream', async () => {
+  it('should throw if text is called immediately after rawStream', async () => {
     const rs = makeResultSet(getDataStream())
-    const raw = rs.rawStream()
-    // consume it
-    for await (const _ of raw) {
-      /* noop */
-    }
+    rs.rawStream()
+    // text() should throw immediately — not only after the stream ends
     await expect(rs.text()).rejects.toEqual(err)
+  })
+
+  it('should throw if stream is called after rawStream', async () => {
+    const rs = makeResultSet(getDataStream())
+    rs.rawStream()
+    expect(() => rs.stream()).toThrow(errMsg)
   })
 
   it('should be able to call Row.text and Row.json multiple times', async () => {

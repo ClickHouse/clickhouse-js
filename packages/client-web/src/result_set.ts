@@ -190,7 +190,8 @@ export class ResultSet<
   }
 
   async close(): Promise<void> {
-    this.markAsConsumed()
+    // close() should be safe to call even after a consumer method (rawStream, stream, etc.)
+    this.isAlreadyConsumed = true
     await this._stream.cancel()
   }
 
