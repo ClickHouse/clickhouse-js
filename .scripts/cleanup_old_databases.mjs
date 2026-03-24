@@ -5,9 +5,9 @@
 
 /**
  * Integrations tests take around 1 minute to run,
- * so we set TTL to 60 minutes by default to give some buffer.
+ * so we set TTL to 10 minutes by default to give some buffer.
  */
-const TTL_MINUTES = process.env.TTL_MINUTES || 60
+const TTL_MINUTES = process.env.TTL_MINUTES || 10
 const PREFIX = process.env.PREFIX || 'clickhousejs_'
 const CLICKHOUSE_CLOUD_HOST = process.env.CLICKHOUSE_CLOUD_HOST
 const CLICKHOUSE_CLOUD_PASSWORD = process.env.CLICKHOUSE_CLOUD_PASSWORD
