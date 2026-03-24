@@ -212,6 +212,14 @@ export class ResultSet<
     return pipeline as any
   }
 
+  /** See {@link BaseResultSet.rawStream}. */
+  rawStream(): Stream.Readable {
+    if (this._stream.readableEnded) {
+      throw Error(streamAlreadyConsumedMessage)
+    }
+    return this._stream
+  }
+
   /** See {@link BaseResultSet.close}. */
   close() {
     this._stream.destroy(new Error(resultSetClosedMessage))

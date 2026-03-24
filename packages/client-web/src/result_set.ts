@@ -183,6 +183,12 @@ export class ResultSet<
     return pipeline as any
   }
 
+  /** See {@link BaseResultSet.rawStream}. */
+  rawStream(): ReadableStream {
+    this.markAsConsumed()
+    return this._stream
+  }
+
   async close(): Promise<void> {
     this.markAsConsumed()
     await this._stream.cancel()
