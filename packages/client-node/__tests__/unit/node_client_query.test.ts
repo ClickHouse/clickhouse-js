@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import Http from 'http'
 import { NodeClickHouseClient } from '../../src/client'
 import { NodeConfigImpl } from '../../src/config'
-import {
-  emitResponseBody,
-  stubClientRequest,
-} from '../utils/http_stubs'
+import { emitResponseBody, stubClientRequest } from '../utils/http_stubs'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -44,7 +41,10 @@ describe('[Node.js] NodeClickHouseClient query method', () => {
 
     // Verify the stream can be consumed
     const text = await result.text()
-    expect(text).toContain('number')
+    expect(text).toMatchInlineSnapshot(`
+      "{"number":"0"}
+      "
+    `)
 
     // Close the client
     await client.close()
@@ -72,7 +72,7 @@ describe('[Node.js] NodeClickHouseClient query method', () => {
     expect(result).toBeDefined()
 
     const text = await result.text()
-    expect(text).toBe('1\n')
+    expect(text).toMatchInlineSnapshot(`"1\n"`)
 
     await client.close()
   })
@@ -110,7 +110,27 @@ describe('[Node.js] NodeClickHouseClient query method', () => {
 
     // Verify we can get JSON response
     const json = await result.json()
-    expect(json).toBeDefined()
+    expect(json).toMatchInlineSnapshot(`
+      {
+        "data": [
+          {
+            "answer": 42,
+          },
+        ],
+        "meta": [
+          {
+            "name": "answer",
+            "type": "UInt8",
+          },
+        ],
+        "rows": 1,
+        "statistics": {
+          "bytes_read": 1,
+          "elapsed": 0.001,
+          "rows_read": 1,
+        },
+      }
+    `)
 
     await client.close()
   })
