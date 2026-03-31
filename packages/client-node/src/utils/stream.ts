@@ -34,6 +34,7 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
     ) {
       throw new Error(
         `The response length exceeds the maximum allowed size of V8 String: ${MAX_STRING_LENGTH} characters.`,
+        { cause: err },
       )
     }
     throw err
