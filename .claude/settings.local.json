@@ -1,7 +1,20 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(npm run test:node:integration:*)"
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/langfuse_hook.py"
+          }
+        ]
+      }
     ]
+  },
+  "enabledPlugins": {
+    "github@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": ["Bash(npm run test:node:integration:*)"]
   }
 }
