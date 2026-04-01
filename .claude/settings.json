@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run .claude/hooks/langfuse_hook.py"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "github@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": ["Bash(npm run test:node:integration:*)"]
+  }
+}
