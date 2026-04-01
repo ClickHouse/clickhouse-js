@@ -46,10 +46,6 @@ jobs:
         run: |
           npm run build
 
-      - name: Install Langfuse SDK
-        run: |
-          pip3 install --break-system-packages langfuse
-
       - name: Start ClickHouse
         uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
         env:
