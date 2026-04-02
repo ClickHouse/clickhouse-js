@@ -893,6 +893,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               // When the request is complete and the socket is released,
               // make sure that the socket is removed after `idle_socket_ttl`.
               socket.on('free', () => {
+                // Record timestamp when socket becomes free
+                newSocketInfo.freed_at_timestamp_ms = Date.now()
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
                     message: `${op}: socket was released`,
@@ -970,22 +972,55 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               socket.once('end', cleanup('end'))
               socket.once('close', cleanup('close'))
             } else {
-              clearTimeout(socketInfo.idle_timeout_handle)
-              socketInfo.idle_timeout_handle = undefined
-              if (log_level <= ClickHouseLogLevel.TRACE) {
-                log_writer.trace({
-                  message: `${op}: reusing socket`,
-                  args: {
-                    operation: op,
-                    connection_id: this.connectionId,
-                    query_id,
-                    request_id,
-                    socket_id: socketInfo.id,
-                    usage_count: socketInfo.usage_count,
-                  },
-                })
+              // Check if TTL has expired based on timestamp
+              // This provides accurate TTL validation even when timers fire late on loaded machines
+              const now = Date.now()
+              const socketAge =
+                socketInfo.freed_at_timestamp_ms !== undefined
+                  ? now - socketInfo.freed_at_timestamp_ms
+                  : 0
+              const ttlExpired =
+                socketAge >= this.params.keep_alive.idle_socket_ttl
+
+              if (ttlExpired) {
+                if (log_level <= ClickHouseLogLevel.TRACE) {
+                  log_writer.trace({
+                    message: `${op}: socket TTL expired based on timestamp, destroying and requesting fresh socket`,
+                    args: {
+                      operation: op,
+                      connection_id: this.connectionId,
+                      query_id,
+                      request_id,
+                      socket_id: socketInfo.id,
+                      socket_age_ms: socketAge,
+                      idle_socket_ttl_ms:
+                        this.params.keep_alive.idle_socket_ttl,
+                    },
+                  })
+                }
+                // Clean up the expired socket
+                clearTimeout(socketInfo.idle_timeout_handle)
+                this.knownSockets.delete(socket)
+                socket.destroy()
+                // The HTTP agent will create a new socket for this request
+              } else {
+                clearTimeout(socketInfo.idle_timeout_handle)
+                socketInfo.idle_timeout_handle = undefined
+                if (log_level <= ClickHouseLogLevel.TRACE) {
+                  log_writer.trace({
+                    message: `${op}: reusing socket`,
+                    args: {
+                      operation: op,
+                      connection_id: this.connectionId,
+                      query_id,
+                      request_id,
+                      socket_id: socketInfo.id,
+                      usage_count: socketInfo.usage_count,
+                    },
+                  })
+                }
+                socketInfo.usage_count++
               }
-              socketInfo.usage_count++
             }
           }
         } catch (e) {
@@ -1170,6 +1205,7 @@ interface SocketInfo {
   idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
   usage_count: number
   server_keep_alive_timeout_ms?: number
+  freed_at_timestamp_ms?: number
 }
 
 type RunExecParams = ConnBaseQueryParams & {
