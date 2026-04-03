@@ -893,8 +893,41 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               // When the request is complete and the socket is released,
               // make sure that the socket is removed after `idle_socket_ttl`.
               socket.on('free', () => {
-                // Record timestamp when socket becomes free
-                newSocketInfo.freed_at_timestamp_ms = Date.now()
+                const now = Date.now()
+                // Check if this is the first time the socket is freed or a subsequent release
+                if (newSocketInfo.freed_at_timestamp_ms === undefined) {
+                  // First time freed - record the timestamp
+                  newSocketInfo.freed_at_timestamp_ms = now
+                } else {
+                  // Socket was previously freed and is now being released again
+                  // Check if it has exceeded TTL based on the original freed timestamp
+                  const socketAge = now - newSocketInfo.freed_at_timestamp_ms
+                  if (socketAge >= this.params.keep_alive.idle_socket_ttl) {
+                    if (log_level <= ClickHouseLogLevel.TRACE) {
+                      log_writer.trace({
+                        message: `${op}: socket TTL expired on release, destroying immediately`,
+                        args: {
+                          operation: op,
+                          connection_id: this.connectionId,
+                          query_id,
+                          request_id,
+                          socket_id,
+                          socket_age_ms: socketAge,
+                          idle_socket_ttl_ms:
+                            this.params.keep_alive.idle_socket_ttl,
+                        },
+                      })
+                    }
+                    // Clear any pending timeout
+                    if (newSocketInfo.idle_timeout_handle) {
+                      clearTimeout(newSocketInfo.idle_timeout_handle)
+                    }
+                    this.knownSockets.delete(socket)
+                    socket.destroy()
+                    return
+                  }
+                }
+
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
                     message: `${op}: socket was released`,
@@ -985,7 +1018,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
               if (ttlExpired) {
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
-                    message: `${op}: socket TTL expired based on timestamp, destroying and requesting fresh socket`,
+                    message: `${op}: socket TTL expired based on timestamp, will be destroyed after current request`,
                     args: {
                       operation: op,
                       connection_id: this.connectionId,
@@ -998,11 +1031,32 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
                     },
                   })
                 }
-                // Clean up the expired socket
+                // Clean up the expired socket after the current request completes
+                // We can't destroy it immediately as it's already assigned to this request
                 clearTimeout(socketInfo.idle_timeout_handle)
-                this.knownSockets.delete(socket)
-                socket.destroy()
-                // The HTTP agent will create a new socket for this request
+                socketInfo.idle_timeout_handle = undefined
+                // Mark the socket to be destroyed after this request
+                // by not allowing it to be reused (we'll clean it up on 'close' event)
+                socket.once('free', () => {
+                  // Check if socket is still tracked (might have been cleaned up by the recurring free handler)
+                  if (!this.knownSockets.has(socket)) {
+                    return
+                  }
+                  if (log_level <= ClickHouseLogLevel.TRACE) {
+                    log_writer.trace({
+                      message: `${op}: destroying expired socket after request completion`,
+                      args: {
+                        operation: op,
+                        connection_id: this.connectionId,
+                        query_id,
+                        request_id,
+                        socket_id: socketInfo.id,
+                      },
+                    })
+                  }
+                  this.knownSockets.delete(socket)
+                  socket.destroy()
+                })
               } else {
                 clearTimeout(socketInfo.idle_timeout_handle)
                 socketInfo.idle_timeout_handle = undefined

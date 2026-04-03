@@ -37,6 +37,121 @@ describe('[Node.js] Keep Alive TTL Timestamp Validation', () => {
     }
   }
 
+  it('should validate TTL using timestamp when timer has not fired yet', async () => {
+    // This test specifically verifies timestamp-based validation by mocking Date.now()
+    // to advance time past TTL without letting the setTimeout callback execute
+    const shortTTL = 1000
+    let currentTime = Date.now()
+
+    // Spy on Date.now() to control time
+    const dateNowSpy = vi
+      .spyOn(Date, 'now')
+      .mockImplementation(() => currentTime)
+
+    client = createNodeTestClient({
+      max_open_connections: 1,
+      log: {
+        level: ClickHouseLogLevel.TRACE,
+        LoggerClass: createLoggerClass(),
+      },
+      keep_alive: {
+        enabled: true,
+        idle_socket_ttl: shortTTL,
+      },
+    } as NodeClickHouseClientConfigOptions)
+
+    // First query to establish a socket
+    const result1 = await client.query({
+      query: 'SELECT 1 as value',
+      format: 'JSONEachRow',
+    })
+    expect(await result1.json()).toEqual([{ value: 1 }])
+
+    // Verify a fresh socket was used
+    const freshSocketCalls1 = traceSpy.mock.calls.filter(
+      (c) =>
+        typeof c[0] === 'object' &&
+        c[0].message?.includes("using a fresh socket, setting up a new 'free'"),
+    )
+    expect(freshSocketCalls1.length).toBe(1)
+    const firstSocketId = freshSocketCalls1[0][0].args?.socket_id
+    expect(firstSocketId).toBeDefined()
+
+    // Verify socket was released
+    const socketReleasedCalls = traceSpy.mock.calls.filter(
+      (c) =>
+        typeof c[0] === 'object' &&
+        c[0].message?.includes('socket was released'),
+    )
+    expect(socketReleasedCalls.length).toBeGreaterThanOrEqual(1)
+
+    // Clear spy
+    traceSpy.mockClear()
+
+    // Advance mocked time past TTL WITHOUT letting real time pass
+    // This simulates a scenario where the timer hasn't fired yet (delayed)
+    // but Date.now() has advanced past the TTL
+    currentTime += shortTTL + 100
+
+    // Wait a tiny bit for socket to be fully released back to the pool
+    await sleep(10)
+
+    // Second query should detect TTL expiry via timestamp check
+    // The timer hasn't fired yet (real time hasn't passed), so the socket is still in the pool
+    const result2 = await client.query({
+      query: 'SELECT 2 as value',
+      format: 'JSONEachRow',
+    })
+    expect(await result2.json()).toEqual([{ value: 2 }])
+
+    // Verify that TTL expiration was detected based on timestamp
+    const ttlExpiredCalls = traceSpy.mock.calls.filter(
+      (c) =>
+        typeof c[0] === 'object' &&
+        (c[0].message?.includes(
+          'socket TTL expired based on timestamp, will be destroyed after current request',
+        ) ||
+          c[0].message?.includes(
+            'socket TTL expired on release, destroying immediately',
+          ) ||
+          c[0].message?.includes(
+            'destroying expired socket after request completion',
+          )),
+    )
+    expect(ttlExpiredCalls.length).toBeGreaterThanOrEqual(1)
+    // Find the specific TTL expiration detection message
+    const ttlDetectionCall = traceSpy.mock.calls.find(
+      (c) =>
+        typeof c[0] === 'object' &&
+        c[0].message?.includes(
+          'socket TTL expired based on timestamp, will be destroyed after current request',
+        ),
+    )
+    if (ttlDetectionCall) {
+      expect(ttlDetectionCall[0].args?.socket_id).toBe(firstSocketId)
+      expect(ttlDetectionCall[0].args?.socket_age_ms).toBeGreaterThanOrEqual(
+        shortTTL,
+      )
+    }
+
+    // Verify the expired socket was destroyed after use
+    const destroyedSocketCalls = traceSpy.mock.calls.filter(
+      (c) =>
+        typeof c[0] === 'object' &&
+        (c[0].message?.includes(
+          'socket TTL expired on release, destroying immediately',
+        ) ||
+          c[0].message?.includes(
+            'destroying expired socket after request completion',
+          )),
+    )
+    expect(destroyedSocketCalls.length).toBeGreaterThanOrEqual(1)
+    expect(destroyedSocketCalls[0][0].args?.socket_id).toBe(firstSocketId)
+
+    // Restore Date.now()
+    dateNowSpy.mockRestore()
+  })
+
   it('should validate TTL using timestamp even if timer fires late', async () => {
     // This test verifies that socket reuse is prevented based on timestamp
     // even when the Node.js setTimeout fires late (e.g., on a loaded machine)
