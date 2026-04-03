@@ -28,7 +28,7 @@ import type Https from 'node:https'
 import type Stream from 'stream'
 import { getUserAgent } from '../utils'
 import { drainStreamInternal } from './stream'
-import { RequestParams, SocketPool } from './socket_pool'
+import { type RequestParams, SocketPool } from './socket_pool'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
