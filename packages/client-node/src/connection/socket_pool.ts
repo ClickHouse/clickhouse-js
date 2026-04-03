@@ -1,6 +1,7 @@
 import type Http from 'http'
 import Stream from 'stream'
-
+import type * as net from 'net'
+import Zlib from 'zlib'
 import {
   enhanceStackTrace,
   getCurrentStackTrace,
@@ -12,9 +13,11 @@ import {
   type ConnOperation,
   type ResponseHeaders,
   type ClickHouseSummary,
+  type JSONHandling,
 } from '@clickhouse/client-common'
-
+import { getAsText, isStream } from '../utils'
 import { decompressResponse, isDecompressionError } from './compression'
+import { type NodeConnectionParams } from './node_base_connection'
 
 export interface RequestParams {
   method: 'GET' | 'POST'
@@ -43,7 +46,43 @@ export interface RequestResult {
   summary?: ClickHouseSummary
 }
 
+interface SocketInfo {
+  id: string
+  idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
+  usage_count: number
+  server_keep_alive_timeout_ms?: number
+}
+
 export class SocketPool {
+  private readonly jsonHandling: JSONHandling
+  private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
+
+  // For overflow concerns:
+  //   node -e 'console.log(Number.MAX_SAFE_INTEGER / (1_000_000 * 60 * 60 * 24 * 366))'
+  // gives 284 years of continuous operation at 1M requests per second
+  // before overflowing the 53-bit integer
+  private requestCounter = 0
+  private getNewRequestId(): string {
+    this.requestCounter += 1
+    return `${this.connectionId}:${this.requestCounter}`
+  }
+
+  private socketCounter = 0
+  private getNewSocketId(): string {
+    this.socketCounter += 1
+    return `${this.connectionId}:${this.socketCounter}`
+  }
+
+  constructor(
+    private readonly connectionId: string,
+    private readonly params: NodeConnectionParams,
+  ) {
+    this.jsonHandling = params.json ?? {
+      parse: JSON.parse,
+      stringify: JSON.stringify,
+    }
+  }
+
   private async request(
     params: RequestParams,
     op: ConnOperation,
@@ -576,5 +615,29 @@ export class SocketPool {
         }
       }
     })
+  }
+
+  private parseSummary(
+    op: ConnOperation,
+    response: Http.IncomingMessage,
+  ): ClickHouseSummary | undefined {
+    const summaryHeader = response.headers['x-clickhouse-summary']
+    if (typeof summaryHeader === 'string') {
+      try {
+        return this.jsonHandling.parse(summaryHeader)
+      } catch (err) {
+        if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
+          this.params.log_writer.error({
+            message: `${op}: failed to parse X-ClickHouse-Summary header.`,
+            args: {
+              operation: op,
+              connection_id: this.connectionId,
+              'X-ClickHouse-Summary': summaryHeader,
+            },
+            err: err as Error,
+          })
+        }
+      }
+    }
   }
 }
