@@ -53,6 +53,8 @@ interface SocketInfo {
   server_keep_alive_timeout_ms?: number
 }
 
+type CreateClientRequest = (params: RequestParams) => Http.ClientRequest
+
 export class SocketPool {
   private readonly jsonHandling: JSONHandling
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
@@ -83,9 +85,10 @@ export class SocketPool {
     }
   }
 
-  private async request(
+  async request(
     params: RequestParams,
     op: ConnOperation,
+    createClientRequest: CreateClientRequest,
   ): Promise<RequestResult> {
     // allows the event loop to process the idle socket timers, if the CPU load is high
     // otherwise, we can occasionally get an expired socket, see https://github.com/ClickHouse/clickhouse-js/issues/294
@@ -97,7 +100,7 @@ export class SocketPool {
     const requestTimeout = this.params.request_timeout
     return new Promise((resolve, reject) => {
       const start = Date.now()
-      const request = this.createClientRequest(params)
+      const request = createClientRequest(params)
       const request_id = this.getNewRequestId()
 
       const onError = (e: unknown): void => {

@@ -28,7 +28,7 @@ import type Https from 'node:https'
 import type Stream from 'stream'
 import { getUserAgent } from '../utils'
 import { drainStreamInternal } from './stream'
-import { type RequestParams } from './socket_pool'
+import { RequestParams, SocketPool } from './socket_pool'
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams
@@ -59,11 +59,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders
 
   private readonly connectionId: string = crypto.randomUUID()
+  private readonly socketPool: SocketPool
 
   protected constructor(
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent,
   ) {
+    this.socketPool = new SocketPool(this.connectionId, this.params)
     if (params.auth.type === 'Credentials') {
       this.defaultAuthHeader = `Basic ${Buffer.from(
         `${params.auth.username}:${params.auth.password}`,
@@ -542,7 +544,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   private async request(
     params: RequestParams,
     op: ConnOperation,
-  ): Promise<RequestResult> {}
+  ): Promise<RequestResult> {
+    return this.socketPool.request(
+      params,
+      op,
+      this.createClientRequest.bind(this),
+    )
+  }
 }
 
 interface RequestResult {
