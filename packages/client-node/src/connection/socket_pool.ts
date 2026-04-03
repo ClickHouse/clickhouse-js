@@ -454,7 +454,7 @@ export class SocketPool {
                 if (socketAge >= this.params.keep_alive.idle_socket_ttl) {
                   if (log_level <= ClickHouseLogLevel.TRACE) {
                     log_writer.trace({
-                      message: `${op}: socket TTL expired based on timestamp, destroying and using a fresh socket`,
+                      message: `${op}: socket TTL expired based on timestamp, destroying socket`,
                       args: {
                         operation: op,
                         connection_id: this.connectionId,
@@ -469,28 +469,32 @@ export class SocketPool {
                   }
                   clearTimeout(socketInfo.idle_timeout_handle)
                   this.knownSockets.delete(socket)
+                  // Destroy the socket to prevent using a stale connection.
+                  // This will cause the request to fail, but the request will be
+                  // retried by the HTTP agent with a fresh socket.
                   socket.destroy()
-                  // The destroyed socket will be replaced by Node.js with a fresh one
-                  return
                 }
               }
 
-              clearTimeout(socketInfo.idle_timeout_handle)
-              socketInfo.idle_timeout_handle = undefined
-              if (log_level <= ClickHouseLogLevel.TRACE) {
-                log_writer.trace({
-                  message: `${op}: reusing socket`,
-                  args: {
-                    operation: op,
-                    connection_id: this.connectionId,
-                    query_id,
-                    request_id,
-                    socket_id: socketInfo.id,
-                    usage_count: socketInfo.usage_count,
-                  },
-                })
+              // Only update socket info if the socket wasn't destroyed
+              if (!socket.destroyed) {
+                clearTimeout(socketInfo.idle_timeout_handle)
+                socketInfo.idle_timeout_handle = undefined
+                if (log_level <= ClickHouseLogLevel.TRACE) {
+                  log_writer.trace({
+                    message: `${op}: reusing socket`,
+                    args: {
+                      operation: op,
+                      connection_id: this.connectionId,
+                      query_id,
+                      request_id,
+                      socket_id: socketInfo.id,
+                      usage_count: socketInfo.usage_count,
+                    },
+                  })
+                }
+                socketInfo.usage_count++
               }
-              socketInfo.usage_count++
             }
           }
         } catch (e) {

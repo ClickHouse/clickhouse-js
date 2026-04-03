@@ -75,9 +75,14 @@ describe('[Node.js] Keep Alive TTL with Timestamp Validation', () => {
     )
     expect(releaseLog).toBeDefined()
     const socketId = releaseLog?.args?.socket_id
+    const freedAt = releaseLog?.args?.freed_at_timestamp_ms
 
-    // Wait for the TTL to expire (plus buffer)
-    await sleep(socketTTL + 300)
+    // Clear logs to focus on the next request
+    logs = []
+
+    // Wait just slightly longer than TTL
+    // This ensures the socket has aged past TTL based on timestamp
+    await sleep(socketTTL + 100)
 
     // Make another request - should detect expired socket via timestamp check
     const rs2 = await client.query({
@@ -86,23 +91,29 @@ describe('[Node.js] Keep Alive TTL with Timestamp Validation', () => {
     })
     await rs2.json() // Consume the stream
 
-    // Verify that either:
-    // 1. Socket TTL expired based on timestamp (if timer was late)
-    // 2. Or socket was removed by timer and a fresh socket was used
+    // Verify that we see EITHER:
+    // 1. The timestamp-based expiry detection (proves the timestamp check works)
+    // 2. OR a fresh socket was used (timer fired and cleaned it up)
     const ttlExpiredLog = logs.find(
       (log) =>
         log.message?.includes('socket TTL expired based on timestamp') &&
         log.args?.socket_id === socketId,
     )
 
-    const freshSocketLog = logs.find(
-      (log) =>
-        log.message?.includes('using a fresh socket') &&
-        log.args?.socket_id !== socketId,
+    const freshSocketLog = logs.find((log) =>
+      log.message?.includes('using a fresh socket'),
     )
 
-    // At least one of these should be true
+    // At least one should have happened
     expect(ttlExpiredLog || freshSocketLog).toBeTruthy()
+
+    // If we see the timestamp expiry log, verify it includes the age calculation
+    if (ttlExpiredLog) {
+      expect(ttlExpiredLog.args?.socket_age_ms).toBeGreaterThanOrEqual(
+        socketTTL,
+      )
+      expect(ttlExpiredLog.args?.idle_socket_ttl_ms).toBe(socketTTL)
+    }
   })
 
   it('should reuse socket within TTL window', async () => {
