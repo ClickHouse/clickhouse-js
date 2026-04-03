@@ -51,6 +51,7 @@ interface SocketInfo {
   idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
   usage_count: number
   server_keep_alive_timeout_ms?: number
+  freed_at_timestamp_ms?: number
 }
 
 type CreateClientRequest = (params: RequestParams) => Http.ClientRequest
@@ -365,6 +366,8 @@ export class SocketPool {
               // When the request is complete and the socket is released,
               // make sure that the socket is removed after `idle_socket_ttl`.
               socket.on('free', () => {
+                const freedAt = Date.now()
+                newSocketInfo.freed_at_timestamp_ms = freedAt
                 if (log_level <= ClickHouseLogLevel.TRACE) {
                   log_writer.trace({
                     message: `${op}: socket was released`,
@@ -374,6 +377,7 @@ export class SocketPool {
                       query_id,
                       request_id,
                       socket_id,
+                      freed_at_timestamp_ms: freedAt,
                     },
                   })
                 }
@@ -442,6 +446,35 @@ export class SocketPool {
               socket.once('end', cleanup('end'))
               socket.once('close', cleanup('close'))
             } else {
+              // Check if socket TTL has expired based on timestamp
+              // This prevents using expired sockets when Node.js timers fire late on loaded machines
+              const freedAt = socketInfo.freed_at_timestamp_ms
+              if (freedAt !== undefined) {
+                const socketAge = Date.now() - freedAt
+                if (socketAge >= this.params.keep_alive.idle_socket_ttl) {
+                  if (log_level <= ClickHouseLogLevel.TRACE) {
+                    log_writer.trace({
+                      message: `${op}: socket TTL expired based on timestamp, destroying and using a fresh socket`,
+                      args: {
+                        operation: op,
+                        connection_id: this.connectionId,
+                        query_id,
+                        request_id,
+                        socket_id: socketInfo.id,
+                        socket_age_ms: socketAge,
+                        idle_socket_ttl_ms:
+                          this.params.keep_alive.idle_socket_ttl,
+                      },
+                    })
+                  }
+                  clearTimeout(socketInfo.idle_timeout_handle)
+                  this.knownSockets.delete(socket)
+                  socket.destroy()
+                  // The destroyed socket will be replaced by Node.js with a fresh one
+                  return
+                }
+              }
+
               clearTimeout(socketInfo.idle_timeout_handle)
               socketInfo.idle_timeout_handle = undefined
               if (log_level <= ClickHouseLogLevel.TRACE) {
