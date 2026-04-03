@@ -65,7 +65,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     protected readonly params: NodeConnectionParams,
     protected readonly agent: Http.Agent,
   ) {
-    this.socketPool = new SocketPool(this.connectionId, this.params)
+    this.socketPool = new SocketPool(
+      this.connectionId,
+      this.params,
+      this.createClientRequest.bind(this),
+    )
     if (params.auth.type === 'Credentials') {
       this.defaultAuthHeader = `Basic ${Buffer.from(
         `${params.auth.username}:${params.auth.password}`,
@@ -545,11 +549,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     params: RequestParams,
     op: ConnOperation,
   ): Promise<RequestResult> {
-    return this.socketPool.request(
-      params,
-      op,
-      this.createClientRequest.bind(this),
-    )
+    return this.socketPool.request(params, op)
   }
 }
 

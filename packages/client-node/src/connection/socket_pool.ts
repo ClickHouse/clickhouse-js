@@ -78,6 +78,7 @@ export class SocketPool {
   constructor(
     private readonly connectionId: string,
     private readonly params: NodeConnectionParams,
+    private readonly createClientRequest: CreateClientRequest,
   ) {
     this.jsonHandling = params.json ?? {
       parse: JSON.parse,
@@ -88,7 +89,6 @@ export class SocketPool {
   async request(
     params: RequestParams,
     op: ConnOperation,
-    createClientRequest: CreateClientRequest,
   ): Promise<RequestResult> {
     // allows the event loop to process the idle socket timers, if the CPU load is high
     // otherwise, we can occasionally get an expired socket, see https://github.com/ClickHouse/clickhouse-js/issues/294
@@ -100,7 +100,7 @@ export class SocketPool {
     const requestTimeout = this.params.request_timeout
     return new Promise((resolve, reject) => {
       const start = Date.now()
-      const request = createClientRequest(params)
+      const request = this.createClientRequest(params)
       const request_id = this.getNewRequestId()
 
       const onError = (e: unknown): void => {
