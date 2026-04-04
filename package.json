@@ -64,7 +64,7 @@
     "@vitest/coverage-istanbul": "^4.1.0",
     "@vitest/coverage-v8": "^4.1.0",
     "apache-arrow": "^21.0.0",
-    "eslint": "^10.1.0",
+    "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-expect-type": "^0.6.2",
     "eslint-plugin-prettier": "^5.5.5",
