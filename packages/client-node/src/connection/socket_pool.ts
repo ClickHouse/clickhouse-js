@@ -98,11 +98,10 @@ export class SocketPool {
       ? getCurrentStackTrace()
       : undefined
     const requestTimeout = this.params.request_timeout
+    const start = Date.now()
+    const request = this.createClientRequest(params)
+    const request_id = this.getNewRequestId()
     return new Promise((resolve, reject) => {
-      const start = Date.now()
-      const request = this.createClientRequest(params)
-      const request_id = this.getNewRequestId()
-
       const onError = (e: unknown): void => {
         removeRequestListeners()
         if (e instanceof Error) {
