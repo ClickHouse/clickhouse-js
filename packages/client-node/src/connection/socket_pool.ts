@@ -80,6 +80,7 @@ export class SocketPool {
     private readonly connectionId: string,
     private readonly params: NodeConnectionParams,
     private readonly createClientRequest: CreateClientRequest,
+    private readonly agent: Http.Agent,
   ) {
     this.jsonHandling = params.json ?? {
       parse: JSON.parse,
@@ -99,6 +100,52 @@ export class SocketPool {
       ? getCurrentStackTrace()
       : undefined
     const requestTimeout = this.params.request_timeout
+
+    if (this.params.eagerly_destroy_stale_sockets) {
+      // Just checking in case of a custom agent with a different implementation
+      if (this.agent.freeSockets) {
+        for (const host of Object.keys(this.agent.freeSockets)) {
+          const byHostSockets = this.agent.freeSockets[host]
+          if (byHostSockets) {
+            for (const socket of byHostSockets) {
+              const socketInfo = this.knownSockets.get(socket)
+              if (socketInfo) {
+                const freedAt = socketInfo.freed_at_timestamp_ms
+                if (freedAt) {
+                  const socketAge = Date.now() - freedAt
+                  // The check below is still racy on a CPU starved machine.
+                  // A throttled machine can check time on one line, then get descheduled,
+                  // decide the socket is still good after rescheduling, and then proceed
+                  // to use a socket that has actually been idle for much longer than `idle_socket_ttl`.
+                  // However, this is an edge case that should be clearly visible in the
+                  // application monitoring.
+                  if (socketAge >= this.params.keep_alive.idle_socket_ttl) {
+                    if (log_level <= ClickHouseLogLevel.TRACE) {
+                      log_writer.trace({
+                        message: `${op}: socket TTL expired based on timestamp, destroying socket`,
+                        args: {
+                          operation: op,
+                          connection_id: this.connectionId,
+                          query_id,
+                          socket_id: socketInfo.id,
+                          socket_age_ms: socketAge,
+                          idle_socket_ttl_ms:
+                            this.params.keep_alive.idle_socket_ttl,
+                        },
+                      })
+                    }
+                    clearTimeout(socketInfo.idle_timeout_handle)
+                    this.knownSockets.delete(socket)
+                    socket.destroy()
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     const start = Date.now()
     const request = this.createClientRequest(params)
     const request_id = this.getNewRequestId()

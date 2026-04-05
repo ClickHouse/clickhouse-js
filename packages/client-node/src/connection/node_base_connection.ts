@@ -40,6 +40,10 @@ export type NodeConnectionParams = ConnectionParams & {
     idle_socket_ttl: number
   }
   log_level: ClickHouseLogLevel
+  /**
+   * Eagerly destroy the sockets that are considered stale (idle for more than `idle_socket_ttl`), without waiting for the timeout to trigger. This allows to free up the stale sockets in case of longer event loop delays.
+   */
+  eagerly_destroy_stale_sockets: boolean
 }
 
 export type TLSParams =
@@ -69,6 +73,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.connectionId,
       this.params,
       this.createClientRequest.bind(this),
+      this.agent,
     )
     if (params.auth.type === 'Credentials') {
       this.defaultAuthHeader = `Basic ${Buffer.from(
