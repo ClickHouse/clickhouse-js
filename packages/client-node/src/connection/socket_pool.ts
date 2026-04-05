@@ -101,7 +101,11 @@ export class SocketPool {
       : undefined
     const requestTimeout = this.params.request_timeout
 
-    if (this.params.eagerly_destroy_stale_sockets) {
+    if (
+      this.params.eagerly_destroy_stale_sockets &&
+      this.params.keep_alive.enabled &&
+      this.params.keep_alive.idle_socket_ttl > 0
+    ) {
       // Just checking in case of a custom agent with a different implementation
       if (this.agent.freeSockets) {
         for (const host of Object.keys(this.agent.freeSockets)) {
