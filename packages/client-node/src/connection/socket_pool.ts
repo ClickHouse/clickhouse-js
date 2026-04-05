@@ -503,7 +503,7 @@ export class SocketPool {
                 if (socketAge >= this.params.keep_alive.idle_socket_ttl) {
                   if (log_level <= ClickHouseLogLevel.WARN) {
                     log_writer.warn({
-                      message: `${op}: reusing socket with TTL expired based on timestamp, this can potentially indicate a Node.js process that is starved or has a delayed event loop, consider setting 'eagerly_destroy_stale_sockets' to true to mitigate this issue to some extent`,
+                      message: `${op}: reusing socket with TTL expired based on timestamp; this may indicate a starved Node.js process or delayed event loop; set keep_alive.eagerly_destroy_stale_sockets=true to mitigate`,
                       args: {
                         operation: op,
                         connection_id: this.connectionId,
