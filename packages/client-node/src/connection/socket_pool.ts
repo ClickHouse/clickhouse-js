@@ -493,6 +493,31 @@ export class SocketPool {
               socket.once('end', cleanup('end'))
               socket.once('close', cleanup('close'))
             } else {
+              const freedAt = socketInfo.freed_at_timestamp_ms
+              if (freedAt) {
+                // On a CPU throttled machine or when event loop is delayed,
+                // the socket can be idle for much longer than `idle_socket_ttl`
+                // as the timers don't fire exactly on time which can lead
+                // to a stale socket being reused.
+                const socketAge = Date.now() - freedAt
+                if (socketAge >= this.params.keep_alive.idle_socket_ttl) {
+                  if (log_level <= ClickHouseLogLevel.WARN) {
+                    log_writer.warn({
+                      message: `${op}: reusing socket with TTL expired based on timestamp, this can potentially indicate a Node.js process that is starved or has a delayed event loop, consider setting 'eagerly_destroy_stale_sockets' to true to mitigate this issue to some extent`,
+                      args: {
+                        operation: op,
+                        connection_id: this.connectionId,
+                        query_id,
+                        socket_id: socketInfo.id,
+                        socket_age_ms: socketAge,
+                        idle_socket_ttl_ms:
+                          this.params.keep_alive.idle_socket_ttl,
+                      },
+                    })
+                  }
+                }
+              }
+
               clearTimeout(socketInfo.idle_timeout_handle)
               socketInfo.idle_timeout_handle = undefined
               if (log_level <= ClickHouseLogLevel.TRACE) {
