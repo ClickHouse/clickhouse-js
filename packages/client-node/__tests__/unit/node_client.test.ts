@@ -16,6 +16,7 @@ import {
 } from '../../src/connection'
 import { sleep } from '../utils/sleep'
 import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
+import { createSimpleNodeTestClient } from '../utils/node_client'
 
 describe('[Node.js] createClient', () => {
   it('throws on incorrect "url" config value', () => {
@@ -24,6 +25,15 @@ describe('[Node.js] createClient', () => {
         message: expect.stringContaining('ClickHouse URL is malformed.'),
       }),
     )
+  })
+
+  it('createSimpleNodeTestClient creates a client without requiring ClickHouse', () => {
+    // This test verifies that createSimpleNodeTestClient can be called without
+    // connecting to a ClickHouse instance, which is important for unit tests
+    const client = createSimpleNodeTestClient()
+    expect(client).toBeDefined()
+    expect(client.close).toBeDefined()
+    client.close()
   })
 
   it('should not mutate provided configuration', async () => {
