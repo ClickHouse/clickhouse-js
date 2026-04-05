@@ -55,19 +55,24 @@ describe('[Node.js] Eager socket destruction', () => {
     } as NodeClickHouseClientConfigOptions)
 
     try {
+      // Capture the current timestamp before the first request so that
+      // futureNow is computed from a stable baseline rather than from
+      // whatever Date.now() returns after the async sleep completes.
+      const baseNow = Date.now()
+
       // First ping establishes the socket and, once the response is consumed,
       // returns it to agent.freeSockets with freed_at_timestamp_ms = Date.now().
       await client.ping()
 
       // Small delay to ensure the 'free' event has fired and the socket is
       // back in agent.freeSockets before the next request is sent.
-      await sleep(10)
+      await sleep(50)
 
       // Simulate passage of time beyond the TTL so the eager-destroy loop
       // considers the free socket to be stale. Using a constant mock so that
       // the idle timer (which only fires after socketTTL real milliseconds)
       // has no chance to fire and destroy the socket first.
-      const futureNow = Date.now() + socketTTL + 100
+      const futureNow = baseNow + socketTTL + 100
       vi.spyOn(Date, 'now').mockReturnValue(futureNow)
 
       // Second ping triggers the eager-destroy pre-request loop.
@@ -128,15 +133,20 @@ describe('[Node.js] Eager socket destruction', () => {
     } as NodeClickHouseClientConfigOptions)
 
     try {
+      // Capture the current timestamp before the first request so that
+      // futureNow is computed from a stable baseline rather than from
+      // whatever Date.now() returns after the async sleep completes.
+      const baseNow = Date.now()
+
       // First ping establishes the socket and returns it to freeSockets.
       await client.ping()
 
       // Small delay to ensure the socket is back in agent.freeSockets.
-      await sleep(10)
+      await sleep(50)
 
       // Simulate passage of time beyond the TTL so the WARN log fires when
       // the reuse path checks freed_at_timestamp_ms.
-      const futureNow = Date.now() + socketTTL + 100
+      const futureNow = baseNow + socketTTL + 100
       vi.spyOn(Date, 'now').mockReturnValue(futureNow)
 
       // Second ping reuses the stale socket (eager destroy is off) and should
