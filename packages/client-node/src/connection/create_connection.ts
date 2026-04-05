@@ -16,7 +16,7 @@ export interface CreateConnectionParams {
   http_agent: http.Agent | https.Agent | undefined
   set_basic_auth_header: boolean
   capture_enhanced_stack_trace: boolean
-  eagerly_destroy_stale_sockets: boolean
+  eagerly_destroy_stale_sockets?: boolean
 }
 
 /** A factory for easier mocking after Node.js 22.18 */
@@ -29,7 +29,7 @@ export class NodeConnectionFactory {
     http_agent,
     set_basic_auth_header,
     capture_enhanced_stack_trace,
-    eagerly_destroy_stale_sockets,
+    eagerly_destroy_stale_sockets = false,
   }: CreateConnectionParams): NodeBaseConnection {
     if (http_agent !== undefined) {
       return new NodeCustomAgentConnection({
