@@ -1,6 +1,7 @@
 export { TestLogger } from './test_logger'
 export {
   createTestClient,
+  createSimpleTestClient,
   createRandomDatabase,
   createTable,
   getTestDatabaseName,

@@ -40,9 +40,40 @@ beforeAll(async () => {
   await initClient.close()
 })
 
+/**
+ * Create a simple test client that does not require a ClickHouse instance.
+ * This is useful for unit tests that don't actually need to connect to ClickHouse.
+ */
+export function createSimpleTestClient<Stream = unknown>(
+  config: BaseClickHouseClientConfigOptions = {},
+): ClickHouseClient<Stream> {
+  const level =
+    config.log?.level ??
+    (!process.env.LOG_LEVEL || process.env.LOG_LEVEL === 'undefined'
+      ? undefined
+      : ClickHouseLogLevel[
+          process.env.LOG_LEVEL as keyof typeof ClickHouseLogLevel
+        ])
+  const log: BaseClickHouseClientConfigOptions['log'] = {
+    LoggerClass: TestLogger,
+    level,
+  }
+
+  return (globalThis as any).environmentSpecificCreateClient({
+    url: 'http://localhost:8123',
+    log,
+    ...config,
+  }) as ClickHouseClient<Stream>
+}
+
 export function createTestClient<Stream = unknown>(
   config: BaseClickHouseClientConfigOptions = {},
 ): ClickHouseClient<Stream> {
+  // If SKIP_INIT is set, create a simple client that doesn't require ClickHouse
+  if (SKIP_INIT) {
+    return createSimpleTestClient(config)
+  }
+
   const env = getClickHouseTestEnvironment()
   const clickHouseSettings: ClickHouseSettings = {
     // (U)Int64 are not quoted by default since 25.8
