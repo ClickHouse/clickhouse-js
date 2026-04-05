@@ -51,6 +51,7 @@ interface SocketInfo {
   idle_timeout_handle: ReturnType<typeof setTimeout> | undefined
   usage_count: number
   server_keep_alive_timeout_ms?: number
+  freed_at_timestamp_ms?: number
 }
 
 type CreateClientRequest = (params: RequestParams) => Http.ClientRequest
@@ -376,9 +377,12 @@ export class SocketPool {
                     },
                   })
                 }
+                const freed_at_timestamp_ms = Date.now()
+                newSocketInfo.freed_at_timestamp_ms = freed_at_timestamp_ms
                 // Avoiding the built-in socket.timeout() method usage here,
                 // as we don't want to clash with the actual request timeout.
                 const idleTimeoutHandle = setTimeout(() => {
+                  const freedAfter = Date.now() - freed_at_timestamp_ms
                   if (log_level <= ClickHouseLogLevel.TRACE) {
                     log_writer.trace({
                       message: `${op}: removing idle socket`,
@@ -390,6 +394,7 @@ export class SocketPool {
                         socket_id,
                         idle_socket_ttl_ms:
                           this.params.keep_alive.idle_socket_ttl,
+                        freed_after_ms: freedAfter,
                       },
                     })
                   }
