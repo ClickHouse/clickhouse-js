@@ -103,7 +103,8 @@ export class SocketPool {
 
     if (
       this.params.eagerly_destroy_stale_sockets &&
-      this.params.keep_alive.enabled
+      this.params.keep_alive.enabled &&
+      this.params.keep_alive.idle_socket_ttl > 0
     ) {
       // Just checking in case of a custom agent with a different implementation
       if (this.agent.freeSockets) {
