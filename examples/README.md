@@ -75,6 +75,27 @@ If something is missing, or you found a mistake in one of these examples, please
 - [session_level_commands.ts](session_level_commands.ts) - using SET commands, memorized for the specific session_id.
 - [role.ts](role.ts) - using one or more roles without explicit `USE` commands or session IDs
 
+#### Minimal Fetch API Implementation
+
+A minimal reference implementation of the ClickHouse client using the native Fetch API. This demonstrates the core concepts without the full complexity of the official library.
+
+- [MINIMAL_FETCH_CLIENT.md](MINIMAL_FETCH_CLIENT.md) - Documentation for the minimal fetch client implementation
+- [minimal_fetch_client.ts](minimal_fetch_client.ts) - The minimal client implementation (~250 lines)
+- [minimal_fetch_basic_query.ts](minimal_fetch_basic_query.ts) - Basic SELECT query example
+- [minimal_fetch_insert_select.ts](minimal_fetch_insert_select.ts) - Table creation, insert, and select
+- [minimal_fetch_ping.ts](minimal_fetch_ping.ts) - Ping/health check examples
+- [minimal_fetch_parameter_binding.ts](minimal_fetch_parameter_binding.ts) - Query parameter binding
+- [minimal_fetch_settings.ts](minimal_fetch_settings.ts) - Using ClickHouse settings
+- [minimal_fetch_test.ts](minimal_fetch_test.ts) - Comprehensive test suite for the minimal client
+
+This implementation is useful for:
+
+- Learning how the ClickHouse HTTP interface works
+- Building lightweight custom integrations
+- Understanding the client internals
+
+**Note:** For production use, please use the official `@clickhouse/client` or `@clickhouse/client-web` packages, which provide comprehensive features including streaming, compression, connection pooling, and advanced error handling.
+
 ## How to run
 
 ### Prerequisites
