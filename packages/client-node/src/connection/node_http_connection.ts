@@ -1,9 +1,7 @@
 import { withCompressionHeaders } from '@clickhouse/client-common'
 import Http from 'http'
-import type {
-  NodeConnectionParams,
-  RequestParams,
-} from './node_base_connection'
+import type { NodeConnectionParams } from './node_base_connection'
+import type { RequestParams } from './socket_pool'
 import { NodeBaseConnection } from './node_base_connection'
 
 export class NodeHttpConnection extends NodeBaseConnection {

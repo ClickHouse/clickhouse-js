@@ -1,9 +1,7 @@
 import Http from 'http'
 import Https from 'https'
-import type {
-  NodeConnectionParams,
-  RequestParams,
-} from './node_base_connection'
+import type { NodeConnectionParams } from './node_base_connection'
+import type { RequestParams } from './socket_pool'
 import { NodeBaseConnection } from './node_base_connection'
 import { withCompressionHeaders } from '@clickhouse/client-common'
 
