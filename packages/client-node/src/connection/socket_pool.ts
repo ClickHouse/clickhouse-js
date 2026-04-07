@@ -503,7 +503,11 @@ export class SocketPool {
                 // as the timers don't fire exactly on time which can lead
                 // to a stale socket being reused.
                 const socketAge = Date.now() - freedAt
-                if (socketAge >= this.params.keep_alive.idle_socket_ttl) {
+                const overdueBy =
+                  socketAge - this.params.keep_alive.idle_socket_ttl
+                // Give some grace period to account for timer inaccuracy and minor
+                // event loop delays, but log if the socket is significantly overdue
+                if (overdueBy > 1000) {
                   if (log_level <= ClickHouseLogLevel.WARN) {
                     log_writer.warn({
                       message: `${op}: reusing socket with TTL expired based on timestamp; this may indicate a starved Node.js process or delayed event loop; set keep_alive.eagerly_destroy_stale_sockets=true to mitigate`,

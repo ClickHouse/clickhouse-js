@@ -146,7 +146,7 @@ describe('[Node.js] Eager socket destruction', () => {
 
       // Simulate passage of time beyond the TTL so the WARN log fires when
       // the reuse path checks freed_at_timestamp_ms.
-      const futureNow = baseNow + socketTTL + 100
+      const futureNow = baseNow + socketTTL + 2000
       vi.spyOn(Date, 'now').mockReturnValue(futureNow)
 
       // Second ping reuses the stale socket (eager destroy is off) and should
