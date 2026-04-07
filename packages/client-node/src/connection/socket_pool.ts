@@ -110,7 +110,7 @@ export class SocketPool {
         for (const host of Object.keys(this.agent.freeSockets)) {
           const byHostSockets = this.agent.freeSockets[host]
           if (byHostSockets) {
-            for (const socket of byHostSockets) {
+            for (const socket of [...byHostSockets]) {
               const socketInfo = this.knownSockets.get(socket)
               if (socketInfo) {
                 const freedAt = socketInfo.freed_at_timestamp_ms
