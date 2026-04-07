@@ -32,7 +32,7 @@ export type NodeClickHouseClientConfigOptions =
        *  @default 2500 */
       idle_socket_ttl?: number
       /** Eagerly destroy the sockets that are considered stale (idle for more than `idle_socket_ttl`),
-       *  without waiting for the timeout to trigger. This allows to free up the stale sockets
+       *  without waiting for the timeout to trigger. This allows freeing up stale sockets
        *  in case of longer event loop delays.
        *  @default false */
       eagerly_destroy_stale_sockets?: boolean
