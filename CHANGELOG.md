@@ -1,3 +1,19 @@
+# 1.18.3
+
+## Improvements
+
+- Added `keep_alive.eagerly_destroy_stale_sockets` option (Node.js only, default: `false`). When enabled, sockets that have been idle for longer than `idle_socket_ttl` are destroyed immediately before each request, rather than waiting for the idle timeout to fire. This helps reclaim stale sockets during event loop delays, where the timeout callback may not run on time.
+
+```ts
+const client = createClient({
+  keep_alive: {
+    enabled: true,
+    idle_socket_ttl: 2500,
+    eagerly_destroy_stale_sockets: true,
+  },
+})
+```
+
 # 1.18.2
 
 ## Improvements

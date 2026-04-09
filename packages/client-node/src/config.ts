@@ -31,6 +31,11 @@ export type NodeClickHouseClientConfigOptions =
        *  When set to `0`, the idle socket management feature is disabled.
        *  @default 2500 */
       idle_socket_ttl?: number
+      /** Eagerly destroy the sockets that are considered stale (idle for more than `idle_socket_ttl`),
+       *  without waiting for the timeout to trigger. This allows freeing up stale sockets
+       *  in case of longer event loop delays.
+       *  @default false */
+      eagerly_destroy_stale_sockets?: boolean
     }
     /** Custom HTTP agent to use for the outgoing HTTP(s) requests.
      *  If set, {@link BaseClickHouseClientConfigOptions.max_open_connections}, {@link tls} and {@link keep_alive}
@@ -128,6 +133,8 @@ export const NodeConfigImpl: Required<
       set_basic_auth_header: nodeConfig.set_basic_auth_header ?? true,
       capture_enhanced_stack_trace:
         nodeConfig.capture_enhanced_stack_trace ?? false,
+      eagerly_destroy_stale_sockets:
+        nodeConfig.keep_alive?.eagerly_destroy_stale_sockets ?? false,
       http_agent: nodeConfig.http_agent,
       keep_alive,
       tls,
