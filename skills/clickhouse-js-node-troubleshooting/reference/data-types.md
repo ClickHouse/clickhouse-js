@@ -44,6 +44,20 @@ await client.insert({
 })
 ```
 
+## Format Selection Quick Reference
+
+| Use case                    | Recommended format                  | Min version                           |
+| --------------------------- | ----------------------------------- | ------------------------------------- |
+| Insert/select JS objects    | `JSONEachRow`                       | all                                   |
+| Bulk insert arrays          | `JSONEachRow`                       | all                                   |
+| Stream large result sets    | `JSONEachRow`, `JSONCompactEachRow` | all                                   |
+| CSV file streaming          | `CSV`, `CSVWithNames`               | all                                   |
+| Parquet file streaming      | `Parquet`                           | `>= 0.2.6`                            |
+| Single JSON object response | `JSON`, `JSONCompact`               | `JSON` all; `JSONCompact` `>= 0.0.14` |
+| Stream with progress        | `JSONEachRowWithProgress`           | `>= 1.7.0`                            |
+
+> ⚠️ `JSON` and `JSONCompact` return a single object and **cannot be streamed**.
+
 ## Date/DateTime insertion fails or produces wrong values
 
 > **Applies to:** all versions. Note that `>= 0.2.1` changed Date object serialization to use time-zone-agnostic Unix timestamps instead of timezone-naive datetime strings, which fixed timezone mismatch issues between client and server.
