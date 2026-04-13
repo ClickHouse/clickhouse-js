@@ -5,6 +5,7 @@
 Both request and response compression are supported. Only **GZIP** is supported (via zlib).
 
 ```js
+import { createClient } from '@clickhouse/client'
 const client = createClient({
   compression: {
     response: true,
