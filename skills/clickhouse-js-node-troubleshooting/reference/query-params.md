@@ -22,15 +22,7 @@ The ClickHouse JS client uses ClickHouse's native `{name: type}` syntax — not 
 // ❌ Wrong — these don't work
 await client.query({
   query: 'SELECT * FROM t WHERE id = $1',
-  query_params: { id: 42 },
-})
-
-await client.query({
   query: 'SELECT * FROM t WHERE id = ?',
-  query_params: { id: 42 },
-})
-
-await client.query({
   query: 'SELECT * FROM t WHERE id = :id',
   query_params: { id: 42 },
 })
