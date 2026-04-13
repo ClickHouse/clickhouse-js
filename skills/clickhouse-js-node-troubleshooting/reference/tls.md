@@ -35,7 +35,7 @@ const client = createClient({
 })
 ```
 
-> **Tip (`>= 1.2.0`):** If you need a custom HTTP(S) agent (e.g., for TLS authorization where the `Authorization` header conflicts), use the `http_agent` option combined with `set_basic_auth_header: false`.
+> **Tip (`>= 1.2.0`):** If you need a custom HTTP(S) agent, use the `http_agent` option. Only set `set_basic_auth_header: false` if you must avoid sending the basic-auth `Authorization` header (for example, due to a header conflict); in that case, provide alternative auth headers such as `X-ClickHouse-User` / `X-ClickHouse-Key` via `http_headers`.
 
 ## Common TLS errors
 
@@ -68,7 +68,6 @@ The server uses a self-signed cert. Options in order of preference:
    const client = createClient({
      url: 'https://<hostname>:<port>',
      http_agent: new https.Agent({ rejectUnauthorized: false }),
-     set_basic_auth_header: false, // required when using http_agent with basic auth
    })
    ```
 
