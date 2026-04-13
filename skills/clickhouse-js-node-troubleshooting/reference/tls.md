@@ -71,8 +71,16 @@ The server uses a self-signed cert. Options in order of preference:
 
    const client = createClient({
      url: 'https://<hostname>:<port>',
+     username: '<user>',
+     password: '<pass>',
      http_agent: new https.Agent({ rejectUnauthorized: false }),
-     set_basic_auth_header: false, // required when using http_agent with basic auth
+     // Optional: only disable the basic-auth Authorization header if you need to
+     // provide alternative auth headers instead.
+     set_basic_auth_header: false,
+     http_headers: {
+       'X-ClickHouse-User': '<user>',
+       'X-ClickHouse-Key': '<pass>',
+     },
    })
    ```
 
