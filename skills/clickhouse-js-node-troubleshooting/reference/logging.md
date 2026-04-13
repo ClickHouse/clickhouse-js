@@ -16,7 +16,8 @@ const client = createClient({
 
 To use a custom logger (e.g., to pipe to your observability stack), implement the `Logger` interface:
 
-```js
+```ts
+import { ClickHouseLogLevel, createClient } from '@clickhouse/client'
 import type { Logger } from '@clickhouse/client'
 
 class MyLogger implements Logger {
