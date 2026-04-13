@@ -41,7 +41,7 @@ const client = createClient({
 
 ### `UNABLE_TO_VERIFY_LEAF_SIGNATURE` / `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`
 
-The server's certificate was signed by a CA that Node.js doesn't trust. Pass the CA cert explicitly:
+**Scenario A — Private/internal CA (most common for self-hosted):** The server's certificate was issued by a private CA that Node.js doesn't trust. Pass the CA certificate explicitly:
 
 ```js
 tls: {
@@ -49,11 +49,11 @@ tls: {
 }
 ```
 
-If you're using ClickHouse Cloud, the CA is a well-known public CA and this error usually means the system CA bundle is outdated or the URL is wrong.
+**Scenario B — ClickHouse Cloud:** The CA is a well-known public CA; this error typically means the system CA bundle is outdated or the URL/hostname is wrong. Updating Node.js or the system certificates usually resolves it.
 
 ### `self signed certificate` / `self signed certificate in certificate chain`
 
-The server uses a self-signed cert. Options in order of preference:
+The server uses a self-signed cert (the certificate is its own CA). Options in order of preference:
 
 1. Pass the self-signed cert as the CA:
 

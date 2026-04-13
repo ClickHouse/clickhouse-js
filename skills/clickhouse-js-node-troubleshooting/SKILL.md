@@ -15,7 +15,7 @@ description: >
 
 Reference: https://clickhouse.com/docs/integrations/javascript
 
-> **⚠️ Node.js only.** This skill covers the `@clickhouse/client` package exclusively. If the user is running the ClickHouse JS client in a browser or Web Worker environment, do not use this skill — a dedicated Web client troubleshooting skill should be used instead.
+> **⚠️ Node.js only.** This skill covers the `@clickhouse/client` package running in a **Node.js server environment** exclusively — including Next.js API routes, React Server Components, Server Actions, and standard Node.js processes. If the user mentions browser client components, a Web Worker, Cloudflare Workers, or `@clickhouse/client-web`, do **not** apply this skill's guidance. Instead, let the user know they need the `@clickhouse/client-web` package for browser/edge environments.
 
 ---
 
