@@ -68,6 +68,7 @@ The server uses a self-signed cert. Options in order of preference:
    const client = createClient({
      url: 'https://<hostname>:<port>',
      http_agent: new https.Agent({ rejectUnauthorized: false }),
+     set_basic_auth_header: false, // required when using http_agent with basic auth
    })
    ```
 
