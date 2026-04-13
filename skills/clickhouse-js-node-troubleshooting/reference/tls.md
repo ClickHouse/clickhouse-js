@@ -6,6 +6,7 @@
 
 ```js
 import fs from 'fs'
+import { createClient } from '@clickhouse/client'
 
 const client = createClient({
   url: 'https://<hostname>:<port>',
@@ -21,6 +22,7 @@ const client = createClient({
 
 ```js
 import fs from 'fs'
+import { createClient } from '@clickhouse/client'
 
 const client = createClient({
   url: 'https://<hostname>:<port>',

@@ -5,7 +5,7 @@
 The default log level is **OFF** (for `< 1.18.1`) or **WARN** (for `>= 1.18.1`). Enable it explicitly:
 
 ```js
-import { ClickHouseLogLevel } from '@clickhouse/client'
+import { ClickHouseLogLevel, createClient } from '@clickhouse/client'
 
 const client = createClient({
   log: {
@@ -21,11 +21,21 @@ import { ClickHouseLogLevel, createClient } from '@clickhouse/client'
 import type { Logger } from '@clickhouse/client'
 
 class MyLogger implements Logger {
-  debug({ module, message, args }) { /* ... */ }
-  info({ module, message, args }) { /* ... */ }
-  warn({ module, message, args, err }) { /* ... */ }
-  error({ module, message, args, err }) { /* ... */ }
-  trace({ module, message, args }) { /* ... */ }
+  debug({ module, message, args }) {
+    /* ... */
+  }
+  info({ module, message, args }) {
+    /* ... */
+  }
+  warn({ module, message, args, err }) {
+    /* ... */
+  }
+  error({ module, message, args, err }) {
+    /* ... */
+  }
+  trace({ module, message, args }) {
+    /* ... */
+  }
 }
 
 const client = createClient({

@@ -9,6 +9,8 @@
 **Fix:** Use the `pathname` option separately:
 
 ```js
+import { createClient } from '@clickhouse/client'
+
 const client = createClient({
   url: 'http://proxy:8123',
   pathname: '/clickhouse_server', // leading slash optional; multiple segments supported
@@ -20,6 +22,8 @@ For proxies that require custom auth headers:
 > **Requires:** `>= 1.0.0` (`http_headers` config option; replaces the deprecated `additional_headers` from `>= 0.2.9`). Per-request `http_headers` overrides are available since `>= 1.11.0`.
 
 ```js
+import { createClient } from '@clickhouse/client'
+
 const client = createClient({
   http_headers: {
     'My-Auth-Header': 'secret',

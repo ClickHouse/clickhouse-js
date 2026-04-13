@@ -9,6 +9,8 @@
 **Fix:** Remove response compression for read-only users:
 
 ```js
+import { createClient } from '@clickhouse/client'
+
 // Don't do this with a readonly=1 user:
 // compression: { response: true }
 
