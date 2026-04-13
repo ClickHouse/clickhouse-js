@@ -45,6 +45,10 @@ Use the `TupleParam` wrapper to pass a tuple:
 ```js
 import { TupleParam, createClient } from '@clickhouse/client'
 
+const client = createClient({
+  host: 'http://localhost:8123',
+})
+
 await client.query({
   query: 'SELECT {t: Tuple(UInt32, String)}',
   format: 'JSONEachRow',
