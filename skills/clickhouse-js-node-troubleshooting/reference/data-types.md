@@ -52,6 +52,7 @@ await client.insert({
 - `DateTime` / `DateTime64` columns accept strings **or** JS `Date` objects. To use `Date` objects, set:
 
 ```js
+import { createClient } from '@clickhouse/client'
 const client = createClient({
   clickhouse_settings: { date_time_input_format: 'best_effort' },
 })
