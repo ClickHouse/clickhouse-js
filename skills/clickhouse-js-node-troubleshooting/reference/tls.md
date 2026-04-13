@@ -56,11 +56,15 @@ If you're using ClickHouse Cloud, the CA is a well-known public CA and this erro
 The server uses a self-signed cert. Options in order of preference:
 
 1. Pass the self-signed cert as the CA:
+
    ```js
-   tls: { ca_cert: fs.readFileSync('certs/server.crt') }
+   tls: {
+     ca_cert: fs.readFileSync('certs/server.crt')
+   }
    ```
 
 2. For development only — disable verification via a custom agent (`>= 1.2.0`):
+
    ```js
    import https from 'https'
    import { createClient } from '@clickhouse/client'
