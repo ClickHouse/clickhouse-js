@@ -20,6 +20,8 @@ const client = createClient({
 ## Mutual TLS (client certificate + key)
 
 ```js
+import fs from 'fs'
+
 const client = createClient({
   url: 'https://<hostname>:<port>',
   username: '<user>',
