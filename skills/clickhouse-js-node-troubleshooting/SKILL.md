@@ -2,7 +2,7 @@
 name: clickhouse-js-node-troubleshooting
 description: >
   Troubleshoot and resolve common issues with the ClickHouse Node.js client
-  (@clickhouse/client-node). Use this skill whenever a user reports errors, unexpected
+  (@clickhouse/client). Use this skill whenever a user reports errors, unexpected
   behavior, or configuration questions involving the Node.js client specifically —
   including socket hang-up errors, Keep-Alive problems, stream handling issues, data
   type mismatches, read-only user restrictions, proxy/TLS setup problems, or long-running
@@ -15,7 +15,7 @@ description: >
 
 Reference: https://clickhouse.com/docs/integrations/javascript
 
-> **⚠️ Node.js only.** This skill covers the `@clickhouse/client-node` package exclusively. If the user is running the ClickHouse JS client in a browser or Web Worker environment, do not use this skill — a dedicated Web client troubleshooting skill should be used instead.
+> **⚠️ Node.js only.** This skill covers the `@clickhouse/client` package exclusively. If the user is running the ClickHouse JS client in a browser or Web Worker environment, do not use this skill — a dedicated Web client troubleshooting skill should be used instead.
 
 ---
 
