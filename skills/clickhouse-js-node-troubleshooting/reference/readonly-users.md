@@ -18,5 +18,8 @@ const client = createClient({
   username: 'my_readonly_user',
   password: '...',
   // compression omitted, or explicitly set to false
+  compression: {
+    response: false,
+  },
 })
 ```

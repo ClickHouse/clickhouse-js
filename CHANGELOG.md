@@ -586,7 +586,7 @@ Complete reference:
 | ------------------------------- | --------------------- | --------------------------- | ----------------- | --------------- |
 | JSON                            | ResponseJSON\<T\>     | never                       | never             | never           |
 | JSONObjectEachRow               | Record\<string, T\>   | never                       | never             | never           |
-| All other JSON\*EachRow         | Array\<T\>            | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | T               |
+| All other `JSON*EachRow`        | Array\<T\>            | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | T               |
 | CSV/TSV/CustomSeparated/Parquet | never                 | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | never           |
 
 By default, `T` (which represents `JSONType`) is still `unknown`. However, considering `JSONObjectsEachRow` example: prior to 1.0.0, you had to specify the entire type hint, including the shape of the data, manually:

@@ -13,3 +13,75 @@ await client.query({
 ```
 
 Do **not** use string template literals to inject user values — this creates SQL injection risk.
+
+## Common mistake: wrong parameter syntax
+
+The ClickHouse JS client uses ClickHouse's native `{name: type}` syntax — not `$1`/`?`/`:name` placeholders from other databases:
+
+```js
+// ❌ Wrong — these don't work
+await client.query({
+  query: 'SELECT * FROM t WHERE id = $1',
+  query: 'SELECT * FROM t WHERE id = ?',
+  query: 'SELECT * FROM t WHERE id = :id',
+  query_params: { id: 42 },
+})
+
+// ✓ Correct
+await client.query({
+  query: 'SELECT * FROM t WHERE id = {id: UInt32}',
+  query_params: { id: 42 },
+})
+```
+
+## Array parameters
+
+```js
+await client.query({
+  query: 'SELECT * FROM t WHERE id IN {ids: Array(UInt32)}',
+  format: 'JSONEachRow',
+  query_params: { ids: [1, 2, 3] },
+})
+```
+
+## Tuple parameters (`>= 1.9.0`)
+
+Use the `TupleParam` wrapper to pass a tuple:
+
+```js
+import { TupleParam, createClient } from '@clickhouse/client'
+
+const client = createClient({
+  url: 'http://localhost:8123',
+})
+
+await client.query({
+  query: 'SELECT {t: Tuple(UInt32, String)}',
+  format: 'JSONEachRow',
+  query_params: { t: new TupleParam([42, 'hello']) },
+})
+```
+
+## Map parameters (`>= 1.9.0`)
+
+Pass a JS `Map` directly:
+
+```js
+await client.query({
+  query: 'SELECT {m: Map(String, UInt32)}',
+  format: 'JSONEachRow',
+  query_params: { m: new Map([['key', 1]]) },
+})
+```
+
+## NULL parameters
+
+Pass `null` directly — binding fixed in `0.0.16`:
+
+```js
+await client.query({
+  query: 'SELECT {val: Nullable(String)}',
+  format: 'JSONEachRow',
+  query_params: { val: null },
+})
+```

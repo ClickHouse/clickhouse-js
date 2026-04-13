@@ -21,30 +21,10 @@ Reference: https://clickhouse.com/docs/integrations/javascript
 
 ## How to Use This Skill
 
-When a user comes to you with a ClickHouse Node.js client issue, follow this process:
-
-### 1. Extract context from the user's message first
-
-Scan the user's message for any information they've already provided — client version, Node.js version, error messages, connection setup. Don't ask for information they've already given you.
-
-### 2. Identify the issue category
-
-Match their symptoms to one of the issues in the Issue Index below. If the issue is ambiguous, pick the most likely match and mention the alternative if relevant.
-
-### 3. Read the reference file
-
-Each issue has a dedicated reference file (listed below) with detailed troubleshooting steps.
-
-### 4. Tailor your response
-
-- **Lead with the diagnosis** — explain what's likely causing their issue and why.
-- **Give the fix** — show the specific code/config change for their situation.
-- **Note version constraints** — if a solution requires a minimum client version, check it against what the user told you (or flag that you need to know their version).
-- **Mention next steps** — if the first fix doesn't resolve it, what should they try next?
-
-### 5. Ask only what's missing
-
-If you still need critical info to help (like their client version when a fix is version-dependent), ask — but keep it targeted. Don't run through a full diagnostic checklist if you already have enough to help.
+1. **Identify the issue** — match symptoms to the Issue Index below and read the corresponding reference file.
+2. **Lead with the diagnosis** — explain what's likely causing the issue before giving the fix.
+3. **Note version constraints** — flag if a fix requires a minimum client version and check it against what the user provided.
+4. **Ask only what's missing** — if the fix is version-dependent and you don't know their version, ask; otherwise help immediately.
 
 ---
 
@@ -62,22 +42,6 @@ Identify the user's issue from the list below and read the corresponding referen
 | **Compression Not Working**           | GZIP compression not activating for requests or responses                                      | `reference/compression.md`    |
 | **Logging Not Showing Anything**      | No log output, need custom logger integration                                                  | `reference/logging.md`        |
 | **Query Parameters Not Interpolated** | Parameterized queries not working, SQL injection concerns                                      | `reference/query-params.md`   |
-
----
-
-## Format Selection Quick Reference
-
-| Use case                    | Recommended format                  | Min version                           |
-| --------------------------- | ----------------------------------- | ------------------------------------- |
-| Insert/select JS objects    | `JSONEachRow`                       | all                                   |
-| Bulk insert arrays          | `JSONEachRow`                       | all                                   |
-| Stream large result sets    | `JSONEachRow`, `JSONCompactEachRow` | all                                   |
-| CSV file streaming          | `CSV`, `CSVWithNames`               | all                                   |
-| Parquet file streaming      | `Parquet`                           | `>= 0.2.6`                            |
-| Single JSON object response | `JSON`, `JSONCompact`               | `JSON` all; `JSONCompact` `>= 0.0.14` |
-| Stream with progress        | `JSONEachRowWithProgress`           | `>= 1.7.0`                            |
-
-> ⚠️ `JSON` and `JSONCompact` return a single object and **cannot be streamed**.
 
 ---
 

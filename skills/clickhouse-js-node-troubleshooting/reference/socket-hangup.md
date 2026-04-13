@@ -4,6 +4,13 @@
 
 **Root cause:** The server or load balancer closes the Keep-Alive connection before the client detects it and stops reusing the socket.
 
+**Quick triage:**
+
+- Errors on every request → likely dangling stream (Step 1–2)
+- Errors only after idle periods → Keep-Alive timeout mismatch (Step 3)
+- Errors on long-running queries (INSERT FROM SELECT, etc.) → load balancer idle timeout (Step 4)
+- Can't diagnose → disable Keep-Alive as a last resort (Step 5)
+
 ## Step 1 — Enable WARN-level logging to find dangling streams
 
 > **Requires:** `>= 0.2.0` (logging support with `log.level` config option). In `>= 1.18.1`, the default log level changed from `OFF` to `WARN`, so this step may already be active. In `>= 1.18.2`, the client auto-emits a WARN log with Keep-Alive troubleshooting hints when an `ECONNRESET` is detected. In `>= 1.12.0`, a warning is logged when a socket is closed without fully consuming the stream.
@@ -29,6 +36,7 @@ curl -v --data-binary "SELECT 1" <your_clickhouse_url>
 ```
 
 Check the response headers:
+
 ```
 < Connection: Keep-Alive
 < Keep-Alive: timeout=10

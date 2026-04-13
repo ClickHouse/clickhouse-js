@@ -4,7 +4,7 @@
 
 > **Applies to:** all versions. The `output_format_json_quote_64bit_integers` ClickHouse setting is server-side and can be passed via `clickhouse_settings` in any client version.
 
-`UInt64`, `Int64`, `UInt128`, `Int128`, `UInt256`, `Int256` are serialized as **strings** in JSON* formats to prevent overflow (they exceed `Number.MAX_SAFE_INTEGER`).
+`UInt64`, `Int64`, `UInt128`, `Int128`, `UInt256`, `Int256` are serialized as **strings** in `JSON*` formats to prevent overflow (they exceed `Number.MAX_SAFE_INTEGER`).
 
 To receive them as numbers (use with caution — precision loss possible):
 
@@ -22,7 +22,7 @@ const resultSet = await client.query({
 
 > **Applies to:** all versions (this is a ClickHouse JSON serialization behavior). For custom JSON parse/stringify (e.g., using a BigInt-safe parser), see `>= 1.14.0` which added configurable `json.parse` and `json.stringify` functions.
 
-ClickHouse returns Decimals as numbers by default in JSON* formats. Cast to string in the query:
+ClickHouse returns Decimals as numbers by default in `JSON*` formats. Cast to string in the query:
 
 ```js
 const resultSet = await client.query({
@@ -43,6 +43,20 @@ await client.insert({
   format: 'JSONEachRow',
 })
 ```
+
+## Format Selection Quick Reference
+
+| Use case                    | Recommended format                  | Min version                           |
+| --------------------------- | ----------------------------------- | ------------------------------------- |
+| Insert/select JS objects    | `JSONEachRow`                       | all                                   |
+| Bulk insert arrays          | `JSONEachRow`                       | all                                   |
+| Stream large result sets    | `JSONEachRow`, `JSONCompactEachRow` | all                                   |
+| CSV file streaming          | `CSV`, `CSVWithNames`               | all                                   |
+| Parquet file streaming      | `Parquet`                           | `>= 0.2.6`                            |
+| Single JSON object response | `JSON`, `JSONCompact`               | `JSON` all; `JSONCompact` `>= 0.0.14` |
+| Stream with progress        | `JSONEachRowWithProgress`           | `>= 1.7.0`                            |
+
+> ⚠️ `JSON` and `JSONCompact` return a single object and **cannot be streamed**.
 
 ## Date/DateTime insertion fails or produces wrong values
 
