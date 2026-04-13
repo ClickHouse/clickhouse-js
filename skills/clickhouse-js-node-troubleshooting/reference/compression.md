@@ -22,6 +22,6 @@ See [`reference/readonly-users.md`](./readonly-users.md) for the fix.
 
 ## Compression enabled but response doesn't seem compressed?
 
-- Verify you're on `>= 1.0.0` — earlier versions had response compression enabled by default; since `>= 1.0.0`, that default changed and you must enable it explicitly.
+- Verify your version-specific defaults — response compression was enabled by default in `< 1.0.0` and is **disabled by default** in `>= 1.0.0`, so on newer versions you must enable `compression.response: true` explicitly.
 - Check that the ClickHouse server has HTTP compression enabled (`enable_http_compression = 1` in server config). By default this is enabled on ClickHouse Cloud and most self-hosted setups.
 - Request compression (`compression.request: true`) compresses the request body sent to ClickHouse. It has no effect on the response.
