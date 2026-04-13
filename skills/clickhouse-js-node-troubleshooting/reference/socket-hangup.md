@@ -5,6 +5,7 @@
 **Root cause:** The server or load balancer closes the Keep-Alive connection before the client detects it and stops reusing the socket.
 
 **Quick triage:**
+
 - Errors on every request → likely dangling stream (Step 1–2)
 - Errors only after idle periods → Keep-Alive timeout mismatch (Step 3)
 - Errors on long-running queries (INSERT FROM SELECT, etc.) → load balancer idle timeout (Step 4)
@@ -35,6 +36,7 @@ curl -v --data-binary "SELECT 1" <your_clickhouse_url>
 ```
 
 Check the response headers:
+
 ```
 < Connection: Keep-Alive
 < Keep-Alive: timeout=10
