@@ -36,7 +36,7 @@
     },
     {
       "id": 3,
-      "prompt": "We have ClickHouse sitting behind an nginx reverse proxy. The proxy URL is http://myproxy.internal:8123/clickhouse. I'm creating the client like this:\n\n```js\nconst client = createClient({ url: 'http://myproxy.internal:8123/clickhouse' })\n```\n\nBut it seems to be selecting the wrong database — it's trying to use 'clickhouse' as the database name instead of going through the proxy path. What am I missing?",
+      "prompt": "We have ClickHouse sitting behind an nginx reverse proxy. The proxy URL is http://myproxy.internal:8123/clickhouse. I'm on @clickhouse/client 1.3.0 and creating the client like this:\n\n```js\nconst client = createClient({ url: 'http://myproxy.internal:8123/clickhouse' })\n```\n\nBut it seems to be selecting the wrong database — it's trying to use 'clickhouse' as the database name instead of going through the proxy path. What am I missing?",
       "expected_output": "Explanation of the proxy/pathname confusion: the path in the URL is being interpreted as the database name. Fix: use the `pathname` option separately — createClient({ url: 'http://myproxy.internal:8123', pathname: '/clickhouse' }). Should note this requires >= 1.0.0.",
       "files": [],
       "expectations": [
@@ -80,7 +80,7 @@
     },
     {
       "id": 7,
-      "prompt": "I'm trying to set up structured logging from @clickhouse/client to pipe into our observability stack (we use pino). I want to forward all client log messages at INFO level and above to pino. How do I wire that up?",
+      "prompt": "I'm on @clickhouse/client 1.3.0 and trying to set up structured logging to pipe into our observability stack (we use pino). I want to forward all client log messages at INFO level and above to pino. How do I wire that up?",
       "expected_output": "Should show how to implement the Logger interface with a class (MyLogger implements Logger) that forwards to pino, then pass it via createClient({ log: { LoggerClass: MyLogger, level: ClickHouseLogLevel.INFO } }). Should show the debug/info/warn/error/trace method signatures.",
       "files": [],
       "expectations": [
