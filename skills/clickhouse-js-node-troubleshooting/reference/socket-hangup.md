@@ -47,7 +47,7 @@ for await (const row of resultSet.stream()) {
   // process row
 }
 
-// ✓ Correct — explicitly close when you do not need to consume the result
+// ✓ Correct — explicitly close; this destroys the underlying socket immediately
 const resultSet = await client.query({ query: 'SELECT ...' })
 resultSet.close()
 ```
