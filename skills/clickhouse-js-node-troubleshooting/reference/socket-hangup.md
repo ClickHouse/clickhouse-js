@@ -49,8 +49,10 @@ const resultSet = await client.query({
   query: 'SELECT ...',
   format: 'JSONEachRow',
 })
-for await (const row of resultSet.stream()) {
-  // process row
+for await (const rows of resultSet.stream()) {
+  for (const row of rows) {
+    // process row
+  }
 }
 
 // ✓ Correct — explicitly close; this destroys the underlying socket immediately
