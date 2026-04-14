@@ -15,7 +15,7 @@ description: >
 
 Reference: https://clickhouse.com/docs/integrations/javascript
 
-> **⚠️ Node.js only.** This skill covers the `@clickhouse/client` package running in a **Node.js server environment** exclusively — including Next.js API routes, React Server Components, Server Actions, and standard Node.js processes. If the user mentions browser client components, a Web Worker, Cloudflare Workers, or `@clickhouse/client-web`, do **not** apply this skill's guidance. Instead, let the user know they need the `@clickhouse/client-web` package for browser/edge environments.
+> **⚠️ Node.js runtime only.** This skill covers the `@clickhouse/client` package running in a **Node.js runtime** exclusively — including **Next.js Node runtime** API routes, React Server Components, Server Actions, and standard Node.js processes. Do **not** apply this skill to browser client components, Web Workers, **Next.js Edge runtime**, Cloudflare Workers, or any usage of `@clickhouse/client-web`. For browser/edge environments, the correct package is `@clickhouse/client-web`.
 
 ---
 
