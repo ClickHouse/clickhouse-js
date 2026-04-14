@@ -49,7 +49,7 @@ for await (const row of resultSet.stream()) {
 
 // ✓ Correct — explicitly close when you do not need to consume the result
 const resultSet = await client.query({ query: 'SELECT ...' })
-await resultSet.close()
+resultSet.close()
 ```
 
 ## Step 2 — Check your ESLint setup
