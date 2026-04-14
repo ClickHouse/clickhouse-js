@@ -4,7 +4,7 @@
 
 **Symptom:** Error when using `compression: { response: true }` with a `readonly=1` user.
 
-**Cause:** Response compression requires the `enable_http_compression` setting, which `readonly=1` users cannot change.
+**Cause:** Response compression requires the `enable_http_compression` setting, which `readonly=1` users cannot change. Note: **request compression** (`compression: { request: true }`) is unaffected by this restriction — only response compression triggers the error.
 
 **Fix:** Remove response compression for read-only users:
 

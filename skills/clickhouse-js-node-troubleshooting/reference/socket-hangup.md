@@ -23,11 +23,46 @@ const client = createClient({
 })
 ```
 
-Look for log lines about unconsumed or dangling streams — these are a common hidden cause.
+Look for log lines about unconsumed or dangling streams — these are a common hidden cause. A **dangling stream** is a query response stream that was never fully consumed or explicitly closed with `ResultSet.close()`. Because the Node.js client reuses sockets (Keep-Alive), leaving a stream open corrupts the socket and causes the _next_ request to fail with `ECONNRESET`. Errors on **every request** strongly suggest dangling streams rather than a Keep-Alive timeout mismatch.
+
+**Common dangling stream patterns:**
+
+```js
+// ❌ Wrong — result stream never consumed; socket is left open
+const resultSet = await client.query({ query: 'SELECT ...' })
+// result is abandoned without calling .json(), .text(), .stream(), or .close()
+
+// ❌ Wrong — stream created but not fully piped/iterated
+const resultSet = await client.query({
+  query: 'SELECT ...',
+  format: 'JSONEachRow',
+})
+const stream = resultSet.stream()
+// stream is never iterated and resultSet is never closed
+
+// ✓ Correct — consume via .json()
+const resultSet = await client.query({ query: 'SELECT ...' })
+const data = await resultSet.json()
+
+// ✓ Correct — consume via async iteration
+const resultSet = await client.query({
+  query: 'SELECT ...',
+  format: 'JSONEachRow',
+})
+for await (const rows of resultSet.stream()) {
+  // process rows
+}
+
+// ✓ Correct — explicitly close; this destroys the underlying socket immediately
+const resultSet = await client.query({ query: 'SELECT ...' })
+resultSet.close()
+```
 
 ## Step 2 — Check your ESLint setup
 
 Add the [`no-floating-promises`](https://typescript-eslint.io/rules/no-floating-promises/) ESLint rule. Unhandled promises leave streams dangling, which can cause the server to close the socket.
+
+Even with `await`, if the returned `ResultSet` is not consumed (no `.json()`, `.text()`, `.close()`, or full stream iteration), the socket is left open. The ESLint rule catches the promise case; code review is needed for the "awaited but unconsumed result" case.
 
 ## Step 3 — Find the server's Keep-Alive timeout
 
@@ -74,7 +109,9 @@ const client = createClient({
 })
 ```
 
-> ⚠️ Node.js caps total received headers at ~16 KB. After ~70–80 progress headers, an exception is thrown. For very long queries, consider the alternative approach: fire-and-forget via the HTTP interface (mutations are not cancelled when the connection is lost — see the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples)).
+> ⚠️ Node.js caps total received headers at ~16 KB. After ~70–80 progress headers, an exception is thrown. For a query running longer than roughly `http_headers_progress_interval_ms * 75`, this limit will be hit — use a longer interval or the fire-and-forget approach below.
+
+**Alternatively — fire-and-forget (mutations only):** Mutations (`INSERT ... SELECT`, `OPTIMIZE`, `ALTER`) are not cancelled on the server when the client connection is lost. You can send the mutation and immediately close the connection, then poll `system.query_log` or `system.mutations` for status. See the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples) for a concrete implementation.
 
 ## Step 5 — Disable Keep-Alive entirely (last resort)
 
