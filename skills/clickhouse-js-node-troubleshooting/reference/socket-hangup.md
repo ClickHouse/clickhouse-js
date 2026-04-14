@@ -23,7 +23,7 @@ const client = createClient({
 })
 ```
 
-Look for log lines about unconsumed or dangling streams — these are a common hidden cause. A **dangling stream** is a query response stream that was never fully consumed or explicitly closed with `ResultSet.close()`. Because the Node.js client reuses sockets (Keep-Alive), leaving a stream open corrupts the socket and causes the *next* request to fail with `ECONNRESET`. Errors on **every request** strongly suggest dangling streams rather than a Keep-Alive timeout mismatch.
+Look for log lines about unconsumed or dangling streams — these are a common hidden cause. A **dangling stream** is a query response stream that was never fully consumed or explicitly closed with `ResultSet.close()`. Because the Node.js client reuses sockets (Keep-Alive), leaving a stream open corrupts the socket and causes the _next_ request to fail with `ECONNRESET`. Errors on **every request** strongly suggest dangling streams rather than a Keep-Alive timeout mismatch.
 
 **Common dangling stream patterns:**
 
@@ -33,7 +33,10 @@ const resultSet = await client.query({ query: 'SELECT ...' })
 // result is abandoned without calling .json(), .text(), .stream(), or .close()
 
 // ❌ Wrong — stream created but not fully piped/iterated
-const resultSet = await client.query({ query: 'SELECT ...', format: 'JSONEachRow' })
+const resultSet = await client.query({
+  query: 'SELECT ...',
+  format: 'JSONEachRow',
+})
 const stream = resultSet.stream()
 // stream is never iterated and resultSet is never closed
 
@@ -42,7 +45,10 @@ const resultSet = await client.query({ query: 'SELECT ...' })
 const data = await resultSet.json()
 
 // ✓ Correct — consume via async iteration
-const resultSet = await client.query({ query: 'SELECT ...', format: 'JSONEachRow' })
+const resultSet = await client.query({
+  query: 'SELECT ...',
+  format: 'JSONEachRow',
+})
 for await (const row of resultSet.stream()) {
   // process row
 }
