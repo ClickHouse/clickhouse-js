@@ -1,0 +1,53 @@
+{
+  "skill_name": "clickhouse-js-node-troubleshooting",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I'm using @clickhouse/client in a Node.js API server and I get `socket hang up` errors, but only after the server has been idle for a while — if I hammer it with requests it's fine. Any idea what's going on? I'm on version 0.3.2.",
+      "expected_output": "Explanation that this is a Keep-Alive idle socket timeout mismatch. The server's keep-alive timeout is shorter than the client's idle_socket_ttl. Should recommend checking the server's keep-alive timeout with curl and setting idle_socket_ttl to ~500ms below it.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "I keep getting ECONNRESET on literally every second request in my Node.js app. Here's my code:\n\n```js\nconst resultSet = await client.query({ query: 'SELECT count() FROM events' })\nconst stream = resultSet.stream()\n// then I do some stuff and run another query\nconst result2 = await client.query({ query: 'SELECT 1' })\n```\n\nThe first query always works, second always fails. What am I doing wrong?",
+      "expected_output": "Diagnosis of dangling stream — the stream from the first query is never fully iterated or closed, corrupting the Keep-Alive socket. Fix: either fully consume via for-await or call resultSet.close().",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "My UInt64 column values are coming back as strings in JavaScript — like `\"9007199254740993\"` instead of a number. I'm using JSONEachRow format. Is there a way to get them as actual numbers?",
+      "expected_output": "Explanation that ClickHouse serializes 64-bit integers as strings in JSON formats to prevent overflow. Option 1: use output_format_json_quote_64bit_integers: 0 (with precision-loss warning). Option 2: use BigInt or a BigInt-safe JSON parser. Should mention the precision risk.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "We have ClickHouse sitting behind an nginx reverse proxy. The proxy URL is http://myproxy.internal:8123/clickhouse. I'm creating the client like this:\n\n```js\nconst client = createClient({ url: 'http://myproxy.internal:8123/clickhouse' })\n```\n\nBut it seems to be selecting the wrong database — it's trying to use 'clickhouse' as the database name instead of going through the proxy path. What am I missing?",
+      "expected_output": "Explanation of the proxy/pathname confusion: the path in the URL is being interpreted as the database name. Fix: use the `pathname` option separately — createClient({ url: 'http://myproxy.internal:8123', pathname: '/clickhouse' }). Should note this requires >= 1.0.0.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I'm getting this error when connecting to our self-hosted ClickHouse over HTTPS:\n\n```\nError: unable to verify the first certificate\n    at TLSSocket.onConnectEnd (_tls_wrap.js:1495:19)\n```\n\nWe use an internal certificate authority. I'm using @clickhouse/client 1.3.0 with Node.js 18. How do I fix this?",
+      "expected_output": "Diagnosis: private/internal CA not trusted by Node.js. Fix: pass the CA certificate via the tls.ca_cert option using fs.readFileSync. Should show the createClient({ url: 'https://...', tls: { ca_cert: fs.readFileSync('certs/CA.pem') } }) example.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "My parameterized queries aren't working. I'm doing:\n\n```js\nawait client.query({\n  query: 'SELECT * FROM users WHERE id = $1 AND status = $2',\n  query_params: { 1: 42, 2: 'active' }\n})\n```\n\nThe values just don't get substituted. Coming from PostgreSQL and this was how params work there.",
+      "expected_output": "Explanation that ClickHouse JS client uses ClickHouse's native {name: type} syntax, not $1/$2 placeholders. Show the correct syntax: { query: 'SELECT * FROM users WHERE id = {id: UInt32} AND status = {status: String}', query_params: { id: 42, status: 'active' } }. Warn against template literal interpolation (SQL injection risk).",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "I enabled response compression in @clickhouse/client for my readonly user, but I'm getting an error from ClickHouse that says something like 'Cannot modify setting enable_http_compression for user with readonly=1'. My client setup:\n\n```js\nconst client = createClient({\n  username: 'readonly_user',\n  password: 'secret',\n  compression: { response: true }\n})\n```",
+      "expected_output": "Explanation that readonly=1 users cannot change the enable_http_compression setting, which response compression requires. Fix: remove compression.response: true (or set to false). Note that request compression is unaffected. Mention that in >= 1.0.0, response compression is disabled by default.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "I'm trying to set up structured logging from @clickhouse/client to pipe into our observability stack (we use pino). I want to forward all client log messages at INFO level and above to pino. How do I wire that up?",
+      "expected_output": "Should show how to implement the Logger interface with a class (MyLogger implements Logger) that forwards to pino, then pass it via createClient({ log: { LoggerClass: MyLogger, level: ClickHouseLogLevel.INFO } }). Should show the debug/info/warn/error/trace method signatures.",
+      "files": []
+    }
+  ]
+}
