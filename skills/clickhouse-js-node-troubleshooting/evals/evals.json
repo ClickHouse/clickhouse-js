@@ -48,6 +48,24 @@
       "prompt": "I'm trying to set up structured logging from @clickhouse/client to pipe into our observability stack (we use pino). I want to forward all client log messages at INFO level and above to pino. How do I wire that up?",
       "expected_output": "Should show how to implement the Logger interface with a class (MyLogger implements Logger) that forwards to pino, then pass it via createClient({ log: { LoggerClass: MyLogger, level: ClickHouseLogLevel.INFO } }). Should show the debug/info/warn/error/trace method signatures.",
       "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "I'm using `@clickhouse/client-web` inside a Next.js Edge route and trying to debug random request failures and TLS weirdness. Can you walk me through the Node.js client socket and certificate options I should tune?",
+      "expected_output": "Should explicitly reject applying the Node.js troubleshooting flow because this is an Edge/browser-style runtime using `@clickhouse/client-web`, not `@clickhouse/client`. Must redirect the user to the web client / runtime-appropriate guidance instead of suggesting Node-only socket, keep-alive, or tls options.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "I'm on @clickhouse/client 1.6.0 talking to a self-hosted ClickHouse cluster over HTTP. I turned on `compression: { response: true }` but the responses still don't look compressed. This is not a readonly user, and there is no settings error from ClickHouse. What should I check?",
+      "expected_output": "Should explain that in >= 1.0.0 response compression is disabled by default unless enabled, but since it is already enabled here the next checks are whether the server has HTTP compression enabled and whether the user is confusing request compression with response compression. Should mention that only GZIP is supported and that request compression does not affect response bodies.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "We run a long `INSERT INTO dst SELECT * FROM src` through @clickhouse/client in a Node.js worker. It can sit there for a couple minutes with no rows coming back, and then our AWS load balancer drops the connection around the 120 second mark. Smaller queries are fine. We're on client 1.4.0. How should we handle this?",
+      "expected_output": "Should diagnose this as a long-running query idle-timeout problem rather than a dangling stream issue. Must recommend increasing request_timeout and enabling periodic progress headers with send_progress_in_http_headers and http_headers_progress_interval_ms set below the load balancer idle timeout. Should also mention the Node.js response-header limit tradeoff for very long queries and optionally suggest the fire-and-forget mutation pattern.",
+      "files": []
     }
   ]
 }
