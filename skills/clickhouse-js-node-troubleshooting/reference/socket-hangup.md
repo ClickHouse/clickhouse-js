@@ -23,19 +23,19 @@ const client = createClient({
 })
 ```
 
-Look for log lines about unconsumed or dangling streams — these are a common hidden cause. A **dangling stream** is a query response stream that was never fully consumed or explicitly destroyed. Because the Node.js client reuses sockets (Keep-Alive), leaving a stream open corrupts the socket and causes the *next* request to fail with `ECONNRESET`. Errors on **every request** strongly suggest dangling streams rather than a Keep-Alive timeout mismatch.
+Look for log lines about unconsumed or dangling streams — these are a common hidden cause. A **dangling stream** is a query response stream that was never fully consumed or explicitly closed with `ResultSet.close()`. Because the Node.js client reuses sockets (Keep-Alive), leaving a stream open corrupts the socket and causes the *next* request to fail with `ECONNRESET`. Errors on **every request** strongly suggest dangling streams rather than a Keep-Alive timeout mismatch.
 
 **Common dangling stream patterns:**
 
 ```js
 // ❌ Wrong — result stream never consumed; socket is left open
 const resultSet = await client.query({ query: 'SELECT ...' })
-// result is abandoned without calling .json(), .text(), or .stream()
+// result is abandoned without calling .json(), .text(), .stream(), or .close()
 
 // ❌ Wrong — stream created but not fully piped/iterated
 const resultSet = await client.query({ query: 'SELECT ...', format: 'JSONEachRow' })
 const stream = resultSet.stream()
-// stream is never iterated or destroyed
+// stream is never iterated and resultSet is never closed
 
 // ✓ Correct — consume via .json()
 const resultSet = await client.query({ query: 'SELECT ...' })
@@ -46,13 +46,17 @@ const resultSet = await client.query({ query: 'SELECT ...', format: 'JSONEachRow
 for await (const row of resultSet.stream()) {
   // process row
 }
+
+// ✓ Correct — explicitly close when you do not need to consume the result
+const resultSet = await client.query({ query: 'SELECT ...' })
+await resultSet.close()
 ```
 
 ## Step 2 — Check your ESLint setup
 
 Add the [`no-floating-promises`](https://typescript-eslint.io/rules/no-floating-promises/) ESLint rule. Unhandled promises leave streams dangling, which can cause the server to close the socket.
 
-Even with `await`, if the returned `ResultSet` is not consumed (no `.json()`, `.text()`, or full stream iteration), the socket is left open. The ESLint rule catches the promise case; code review is needed for the "awaited but unconsumed result" case.
+Even with `await`, if the returned `ResultSet` is not consumed (no `.json()`, `.text()`, `.close()`, or full stream iteration), the socket is left open. The ESLint rule catches the promise case; code review is needed for the "awaited but unconsumed result" case.
 
 ## Step 3 — Find the server's Keep-Alive timeout
 
