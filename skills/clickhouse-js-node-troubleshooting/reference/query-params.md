@@ -12,7 +12,23 @@ await client.query({
 })
 ```
 
-Do **not** use string template literals to inject user values — this creates SQL injection risk.
+## Never use template literals for user values
+
+When `$1`/`?` don't work, a common instinct is to interpolate values directly with a template literal. Don't — this bypasses ClickHouse's server-side escaping and opens the door to SQL injection:
+
+```js
+// ❌ Dangerous — never do this with user-controlled values
+const userId = req.params.id
+await client.query({ query: `SELECT * FROM users WHERE id = ${userId}` })
+
+// ✓ Safe — parameterized
+await client.query({
+  query: 'SELECT * FROM users WHERE id = {id: UInt32}',
+  query_params: { id: userId },
+})
+```
+
+Always bring this up when answering query-params questions, especially when the user is coming from another database (PostgreSQL, MySQL, etc.) — they're the most likely to reach for template literals as a fallback.
 
 ## Common mistake: wrong parameter syntax
 
