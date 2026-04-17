@@ -251,10 +251,19 @@ export function getConnectionParams(
     const progress_interval =
       clickhouse_settings.http_headers_progress_interval_ms
 
-    // Check if send_progress_in_http_headers is not enabled (0 or undefined)
-    // In ClickHouse, 1 means true, 0 means false for boolean settings
+    // Normalize send_progress_in_http_headers to ClickHouse's string boolean form.
+    // Treat undefined, false, 0, and '0' as disabled.
+    const normalized_send_progress =
+      send_progress === undefined
+        ? undefined
+        : typeof send_progress === 'boolean'
+          ? send_progress
+            ? '1'
+            : '0'
+          : String(send_progress)
     const progressHeadersDisabled =
-      send_progress === undefined || send_progress === 0
+      normalized_send_progress === undefined ||
+      normalized_send_progress === '0'
 
     if (progressHeadersDisabled) {
       logger.warn({
