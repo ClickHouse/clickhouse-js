@@ -240,12 +240,43 @@ export function getConnectionParams(
   }
 
   const log_level = config.log?.level ?? ClickHouseLogLevel.WARN
+  const request_timeout = config.request_timeout ?? 30_000
+  const clickhouse_settings = config.clickhouse_settings ?? {}
+
+  // Warn if request_timeout is high but progress headers are not configured
+  // This can lead to socket hang-up errors when long-running queries exceed load balancer idle timeouts
+  const THRESHOLD_MS = 60_000 // 60 seconds
+  if (request_timeout > THRESHOLD_MS) {
+    const send_progress = clickhouse_settings.send_progress_in_http_headers
+    const progress_interval =
+      clickhouse_settings.http_headers_progress_interval_ms
+
+    // Check if send_progress_in_http_headers is not enabled (0, false, or undefined)
+    // In ClickHouse, 1 means true, 0 means false for boolean settings
+    const progressHeadersDisabled =
+      send_progress === undefined ||
+      send_progress === 0 ||
+      send_progress === '0' ||
+      send_progress === false
+
+    if (progressHeadersDisabled) {
+      logger.warn({
+        module: 'Config',
+        message: `request_timeout is set to ${request_timeout}ms, but send_progress_in_http_headers is not enabled. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. Consider enabling progress headers with clickhouse_settings: { send_progress_in_http_headers: 1, http_headers_progress_interval_ms: '<interval>' }. See https://github.com/ClickHouse/clickhouse-js/blob/main/examples/long_running_queries_timeouts.ts for more details.`,
+      })
+    } else if (progress_interval === undefined) {
+      logger.warn({
+        module: 'Config',
+        message: `request_timeout is set to ${request_timeout}ms and send_progress_in_http_headers is enabled, but http_headers_progress_interval_ms is not set. It is recommended to set http_headers_progress_interval_ms to a value slightly below your load balancer's idle timeout (e.g., '110000' for a 120s LB timeout). See https://github.com/ClickHouse/clickhouse-js/blob/main/examples/long_running_queries_timeouts.ts for more details.`,
+      })
+    }
+  }
 
   return {
     auth,
     url: config.url,
     application_id: config.application,
-    request_timeout: config.request_timeout ?? 30_000,
+    request_timeout,
     max_open_connections: config.max_open_connections ?? 10,
     compression: {
       decompress_response: config.compression?.response ?? false,
@@ -255,7 +286,7 @@ export function getConnectionParams(
     log_writer: new LogWriter(logger, 'Connection', log_level),
     log_level: log_level,
     keep_alive: { enabled: config.keep_alive?.enabled ?? true },
-    clickhouse_settings: config.clickhouse_settings ?? {},
+    clickhouse_settings,
     http_headers: config.http_headers ?? {},
     json: {
       ...defaultJSONHandling,

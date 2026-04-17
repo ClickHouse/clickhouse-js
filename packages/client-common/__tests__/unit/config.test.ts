@@ -344,6 +344,15 @@ describe('config', () => {
       ),
     })
 
+    class SpyLogger extends TestLogger {
+      warnings: Array<{ module: string; message: string }> = []
+
+      override warn({ module, message }: { module: string; message: string }) {
+        this.warnings.push({ module, message })
+        super.warn({ module, message })
+      }
+    }
+
     it('should return the default connection params', async () => {
       const res = getConnectionParams(
         {
@@ -505,6 +514,178 @@ describe('config', () => {
           parse: JSON.parse,
           stringify: JSON.stringify,
         },
+      })
+    })
+
+    describe('request_timeout warnings for progress headers', () => {
+      it('should warn when request_timeout is high but send_progress_in_http_headers is not enabled', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 120_000, // 120 seconds
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(1)
+        expect(spyLogger.warnings[0].module).toBe('Config')
+        expect(spyLogger.warnings[0].message).toContain(
+          'request_timeout is set to 120000ms',
+        )
+        expect(spyLogger.warnings[0].message).toContain(
+          'send_progress_in_http_headers is not enabled',
+        )
+        expect(spyLogger.warnings[0].message).toContain(
+          'Long-running queries may fail with socket hang-up errors',
+        )
+      })
+
+      it('should warn when request_timeout is high and send_progress_in_http_headers is 0', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 80_000,
+            clickhouse_settings: {
+              send_progress_in_http_headers: 0,
+            },
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(1)
+        expect(spyLogger.warnings[0].message).toContain(
+          'send_progress_in_http_headers is not enabled',
+        )
+      })
+
+      it('should warn when request_timeout is high and send_progress_in_http_headers is "0"', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 80_000,
+            clickhouse_settings: {
+              send_progress_in_http_headers: '0',
+            },
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(1)
+        expect(spyLogger.warnings[0].message).toContain(
+          'send_progress_in_http_headers is not enabled',
+        )
+      })
+
+      it('should warn when request_timeout is high and send_progress_in_http_headers is false', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 80_000,
+            clickhouse_settings: {
+              send_progress_in_http_headers: false,
+            },
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(1)
+        expect(spyLogger.warnings[0].message).toContain(
+          'send_progress_in_http_headers is not enabled',
+        )
+      })
+
+      it('should warn when send_progress_in_http_headers is enabled but http_headers_progress_interval_ms is not set', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 120_000,
+            clickhouse_settings: {
+              send_progress_in_http_headers: 1,
+            },
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(1)
+        expect(spyLogger.warnings[0].module).toBe('Config')
+        expect(spyLogger.warnings[0].message).toContain(
+          'send_progress_in_http_headers is enabled',
+        )
+        expect(spyLogger.warnings[0].message).toContain(
+          'http_headers_progress_interval_ms is not set',
+        )
+      })
+
+      it('should not warn when request_timeout is below threshold', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 30_000, // 30 seconds (default)
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(0)
+      })
+
+      it('should not warn when request_timeout is exactly at threshold', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 60_000, // 60 seconds (exactly at threshold)
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(0)
+      })
+
+      it('should not warn when both send_progress_in_http_headers and http_headers_progress_interval_ms are properly configured', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 400_000,
+            clickhouse_settings: {
+              send_progress_in_http_headers: 1,
+              http_headers_progress_interval_ms: '110000',
+            },
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(0)
+      })
+
+      it('should not warn when send_progress_in_http_headers is enabled as string "1"', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 120_000,
+            clickhouse_settings: {
+              send_progress_in_http_headers: '1',
+              http_headers_progress_interval_ms: '110000',
+            },
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(0)
+      })
+
+      it('should not warn when send_progress_in_http_headers is enabled as boolean true', async () => {
+        const spyLogger = new SpyLogger()
+        getConnectionParams(
+          {
+            url: new URL('https://my.host:8443/'),
+            request_timeout: 120_000,
+            clickhouse_settings: {
+              send_progress_in_http_headers: true,
+              http_headers_progress_interval_ms: '110000',
+            },
+          },
+          spyLogger,
+        )
+        expect(spyLogger.warnings).toHaveLength(0)
       })
     })
   })
