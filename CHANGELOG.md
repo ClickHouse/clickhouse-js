@@ -17,7 +17,7 @@ const client = createClient({
 - Added auto-detection and warning when `request_timeout` is high (> 60 seconds) but progress headers are not configured. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. The client now warns users to enable `send_progress_in_http_headers` and `http_headers_progress_interval_ms` settings to prevent such issues.
 
 ```ts
-// ❌ This will now trigger a warning
+// This will now trigger a warning
 const client = createClient({
   request_timeout: 120_000, // 120 seconds
   // send_progress_in_http_headers is not configured
