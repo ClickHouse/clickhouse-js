@@ -25,6 +25,12 @@ export interface BaseClickHouseClientConfigOptions {
   /** The request timeout in milliseconds.
    *  @default 30_000 */
   request_timeout?: number
+  /** Idle packet timeout in milliseconds. If no data (headers or body chunks) is received
+   *  from the server for this duration, the request will be aborted with a timeout error.
+   *  This helps detect load balancer idle connection timeouts.
+   *  Set to 0 to disable this check.
+   *  @default 300_000 (5 minutes) */
+  idle_packet_timeout?: number
   /** Maximum number of sockets to allow per host.
    *  @default 10 */
   max_open_connections?: number
@@ -246,6 +252,7 @@ export function getConnectionParams(
     url: config.url,
     application_id: config.application,
     request_timeout: config.request_timeout ?? 30_000,
+    idle_packet_timeout: config.idle_packet_timeout ?? 300_000,
     max_open_connections: config.max_open_connections ?? 10,
     compression: {
       decompress_response: config.compression?.response ?? false,

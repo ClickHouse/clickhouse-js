@@ -14,6 +14,7 @@ export type ConnectionAuth =
 export interface ConnectionParams {
   url: URL
   request_timeout: number
+  idle_packet_timeout: number
   max_open_connections: number
   compression: CompressionSettings
   database: string
