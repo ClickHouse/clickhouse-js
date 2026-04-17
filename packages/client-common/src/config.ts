@@ -26,8 +26,8 @@ export interface BaseClickHouseClientConfigOptions {
    *  @default 30_000 */
   request_timeout?: number
   /** Idle packet timeout in milliseconds. If no data (headers or body chunks) is received
-   *  from the server for this duration, the request will be aborted with a timeout error.
-   *  This helps detect load balancer idle connection timeouts.
+   *  from the server for this duration, a warning will be logged to help detect potential
+   *  load balancer idle connection timeouts. The connection remains active and is not aborted.
    *  Set to 0 to disable this check.
    *  @default 300_000 (5 minutes) */
   idle_packet_timeout?: number

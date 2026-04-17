@@ -2,16 +2,19 @@
 
 ## New Features
 
-- Added `idle_packet_timeout` configuration option (default: 300000ms / 5 minutes). This client-side timeout detects potential load balancer (LB) idle connection timeouts by monitoring packet activity. If no data (headers or body chunks) is received from the server for the specified duration, the request is aborted with an "Idle packet timeout" error. This helps distinguish between query execution timeouts and LB timeout scenarios. Set to `0` to disable this check.
+- Added `idle_packet_timeout` configuration option (default: 300000ms / 5 minutes). This provides early warning detection for potential load balancer (LB) idle connection timeouts by monitoring packet activity. If no data (headers or body chunks) is received from the server for the specified duration, a warning is logged to help users identify potential LB timeout issues before they occur. The connection remains active and is not aborted by the client. Set to `0` to disable this check.
 
 ```ts
 const client = createClient({
   request_timeout: 400_000, // Total request timeout
-  idle_packet_timeout: 300_000, // 5 minutes - abort if no packets for this duration
+  idle_packet_timeout: 300_000, // 5 minutes - warn if no packets for this duration
+  log: {
+    level: ClickHouseLogLevel.WARN, // Ensure warnings are visible
+  },
 })
 ```
 
-This feature is particularly useful for long-running queries (e.g., `INSERT FROM SELECT`) where the server is actively processing but the load balancer may close idle connections. The idle packet timer resets each time data is received, ensuring only truly stalled connections are detected.
+This feature is particularly useful for long-running queries (e.g., `INSERT FROM SELECT`) where the server is actively processing but the load balancer may close idle connections. The idle packet timer resets each time data is received, ensuring only truly stalled connections trigger warnings. The warning message suggests using the `send_progress_in_http_headers` ClickHouse setting to keep the connection alive.
 
 ## Improvements
 

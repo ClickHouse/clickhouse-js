@@ -156,75 +156,9 @@ export class SocketPool {
     const request_id = this.getNewRequestId()
 
     return new Promise((resolve, reject) => {
-      // Idle packet timeout tracking
+      // Idle packet timeout tracking - warns when no packets received
       let idlePacketTimeoutHandle: ReturnType<typeof setTimeout> | undefined
-
-      const onIdlePacketTimeout = (): void => {
-        removeRequestListeners()
-        clearIdlePacketTimeout()
-
-        if (log_level <= ClickHouseLogLevel.TRACE) {
-          const socket = request.socket
-          const maybeSocketInfo = socket
-            ? this.knownSockets.get(socket)
-            : undefined
-
-          const socketState = request.socket
-            ? {
-                connecting: request.socket.connecting,
-                pending: request.socket.pending,
-                destroyed: request.socket.destroyed,
-                readyState: request.socket.readyState,
-              }
-            : undefined
-          const responseStreamState = responseStream
-            ? {
-                readable: responseStream.readable,
-                readableEnded: responseStream.readableEnded,
-                readableLength: responseStream.readableLength,
-              }
-            : undefined
-
-          log_writer.trace({
-            message: `${op}: idle packet timeout occurred`,
-            args: {
-              operation: op,
-              connection_id: this.connectionId,
-              query_id,
-              request_id,
-              socket_id: maybeSocketInfo?.id,
-              idle_packet_timeout_ms: idlePacketTimeout,
-              socket_state: socketState,
-              response_stream_state: responseStreamState,
-              has_response_stream: responseStream !== undefined,
-            },
-          })
-        }
-
-        const err = enhanceStackTrace(
-          new Error(
-            `Idle packet timeout: no data received from the server for ${idlePacketTimeout}ms. This might indicate a load balancer idle timeout.`,
-          ),
-          currentStackTrace,
-        )
-        try {
-          request.destroy()
-        } catch (e) {
-          if (log_level <= ClickHouseLogLevel.ERROR) {
-            log_writer.error({
-              message: `${op}: An error occurred while destroying the request due to idle packet timeout`,
-              err: e as Error,
-              args: {
-                operation: op,
-                connection_id: this.connectionId,
-                query_id,
-                request_id,
-              },
-            })
-          }
-        }
-        reject(err)
-      }
+      let idlePacketWarningEmitted = false
 
       const resetIdlePacketTimeout = () => {
         if (idlePacketTimeout > 0) {
@@ -232,9 +166,14 @@ export class SocketPool {
             clearTimeout(idlePacketTimeoutHandle)
           }
           idlePacketTimeoutHandle = setTimeout(() => {
-            if (log_level <= ClickHouseLogLevel.WARN) {
+            // Only emit warning once to avoid log spam
+            if (
+              !idlePacketWarningEmitted &&
+              log_level <= ClickHouseLogLevel.WARN
+            ) {
+              idlePacketWarningEmitted = true
               log_writer.warn({
-                message: `${op}: no data received from the server for ${idlePacketTimeout}ms, aborting request due to potential load balancer idle timeout`,
+                message: `${op}: no data received from the server for ${idlePacketTimeout}ms. The connection might be dropped by a load balancer soon. Consider using send_progress_in_http_headers ClickHouse setting to keep the connection alive.`,
                 args: {
                   operation: op,
                   connection_id: this.connectionId,
@@ -244,7 +183,8 @@ export class SocketPool {
                 },
               })
             }
-            onIdlePacketTimeout()
+            // Reset timer to potentially warn again if still no data
+            resetIdlePacketTimeout()
           }, idlePacketTimeout)
         }
       }

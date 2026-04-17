@@ -96,22 +96,25 @@ const client = createClient({
 ## Step 4 — Long-running queries with no data in/out (INSERT FROM SELECT, etc.)
 
 > **Requires:** `>= 1.0.0` (`request_timeout` default was fixed to 30 000 ms in 0.3.0; `url`-based configuration including `request_timeout` via URL params available since 1.0.0).
-> **New in 1.18.3:** `idle_packet_timeout` provides client-side detection of load balancer timeouts.
+> **New in 1.18.3:** `idle_packet_timeout` provides early warning for potential load balancer timeouts.
 
 Load balancers may close idle connections mid-query. There are several approaches to handle this:
 
-### Option 1: Client-side idle packet timeout detection (Recommended, >= 1.18.3)
+### Option 1: Client-side idle packet timeout warning (Recommended, >= 1.18.3)
 
-The client now includes built-in detection of LB timeouts via `idle_packet_timeout` (default: 5 minutes). This monitors packet activity and aborts the request if no data is received for the specified duration, helping identify LB timeout scenarios:
+The client now includes early warning detection for potential LB timeouts via `idle_packet_timeout` (default: 5 minutes). This monitors packet activity and logs a warning if no data is received for the specified duration, helping you identify potential LB timeout issues before they cause connection failures. The connection remains active and is not aborted by the client:
 
 ```js
 const client = createClient({
   request_timeout: 400_000, // e.g. 400s total timeout
-  idle_packet_timeout: 300_000, // 5 minutes - abort if no packets received
+  idle_packet_timeout: 300_000, // 5 minutes - warn if no packets received
+  log: {
+    level: ClickHouseLogLevel.WARN, // Ensure warnings are visible
+  },
 })
 ```
 
-Set `idle_packet_timeout: 0` to disable this check if needed.
+When the warning is triggered, it suggests using `send_progress_in_http_headers` (see Option 2 below) to keep the connection alive. Set `idle_packet_timeout: 0` to disable this check if needed.
 
 ### Option 2: Force periodic progress headers from ClickHouse
 

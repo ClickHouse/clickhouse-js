@@ -1,14 +1,16 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { describe, it, beforeAll, afterAll, expect } from 'vitest'
+import { describe, it, beforeAll, afterAll, expect, vi } from 'vitest'
 import { createTestClient } from '@test/utils/client'
 import * as http from 'http'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { AddressInfo } from 'net'
+import { ClickHouseLogLevel } from '@clickhouse/client-common'
 
-describe('Idle packet timeout', () => {
-  it('should timeout when no data is received for idle_packet_timeout duration', async () => {
-    let headersSent = false
+describe('Idle packet timeout warnings', () => {
+  it('should warn when no data is received for idle_packet_timeout duration', async () => {
+    const warnSpy = vi.fn()
+
     // Simulate a server that sends headers but then stops sending data
     const [server, port] = await createHTTPServer(async (req, res) => {
       // Send headers immediately
@@ -16,9 +18,13 @@ describe('Idle packet timeout', () => {
         'Content-Type': 'text/plain',
         'Transfer-Encoding': 'chunked',
       })
-      headersSent = true
-      // Don't send any body data - simulate LB idle timeout scenario
-      // The connection stays open but no data flows
+      // Send some data initially
+      res.write('initial data\n')
+      // Then stop sending data for a while
+      await sleep(150)
+      // Finally send more data and end
+      res.write('final data\n')
+      res.end()
     })
 
     // Client has idle_packet_timeout set to a short duration for testing
@@ -29,24 +35,43 @@ describe('Idle packet timeout', () => {
       keep_alive: {
         enabled: true,
       },
+      log: {
+        level: ClickHouseLogLevel.WARN,
+        LoggerClass: class {
+          trace() {}
+          debug() {}
+          info() {}
+          warn(args: any) {
+            warnSpy(args)
+          }
+          error() {}
+        },
+      },
     } as NodeClickHouseClientConfigOptions)
 
-    const startTime = Date.now()
-    await expect(
-      client.query({ query: 'SELECT 1' }).then((rs) => rs.text()),
-    ).rejects.toThrow(/Idle packet timeout/)
+    // Should succeed and emit a warning
+    const rs = await client.query({ query: 'SELECT 1' })
+    const text = await rs.text()
+    expect(text).toContain('initial data')
+    expect(text).toContain('final data')
 
-    const duration = Date.now() - startTime
-    // Should timeout around 100ms, not 10 seconds
-    expect(duration).toBeLessThan(1000)
-    expect(duration).toBeGreaterThanOrEqual(100)
-    expect(headersSent).toBe(true)
+    // Should have emitted a warning about no data received
+    expect(warnSpy).toHaveBeenCalled()
+    const warningCall = warnSpy.mock.calls.find((call) =>
+      call[0].message?.includes('no data received from the server'),
+    )
+    expect(warningCall).toBeDefined()
+    expect(warningCall[0].message).toContain(
+      'might be dropped by a load balancer',
+    )
 
     await client.close()
     await closeServer(server)
   })
 
-  it('should not timeout when data is continuously received', async () => {
+  it('should not warn when data is continuously received', async () => {
+    const warnSpy = vi.fn()
+
     // Simulate a server that sends data in chunks with delays
     const [server, port] = await createHTTPServer(async (req, res) => {
       res.writeHead(200, {
@@ -70,20 +95,40 @@ describe('Idle packet timeout', () => {
       keep_alive: {
         enabled: true,
       },
+      log: {
+        level: ClickHouseLogLevel.WARN,
+        LoggerClass: class {
+          trace() {}
+          debug() {}
+          info() {}
+          warn(args: any) {
+            warnSpy(args)
+          }
+          error() {}
+        },
+      },
     } as NodeClickHouseClientConfigOptions)
 
-    // Should succeed because data is received every 50ms
+    // Should succeed without warnings
     const rs = await client.query({ query: 'SELECT 1' })
     const text = await rs.text()
     expect(text).toContain('chunk0')
     expect(text).toContain('chunk4')
+
+    // Should not have emitted any idle packet warnings
+    const idleWarning = warnSpy.mock.calls.find((call) =>
+      call[0].message?.includes('no data received from the server'),
+    )
+    expect(idleWarning).toBeUndefined()
 
     await client.close()
     await closeServer(server)
   })
 
   it('should respect idle_packet_timeout=0 to disable the check', async () => {
-    // Simulate a server that sends headers but no body
+    const warnSpy = vi.fn()
+
+    // Simulate a server that sends headers but no body for a while
     const [server, port] = await createHTTPServer(async (req, res) => {
       res.writeHead(200, {
         'Content-Type': 'text/plain',
@@ -100,42 +145,27 @@ describe('Idle packet timeout', () => {
       keep_alive: {
         enabled: true,
       },
+      log: {
+        level: ClickHouseLogLevel.WARN,
+        LoggerClass: class {
+          trace() {}
+          debug() {}
+          info() {}
+          warn(args: any) {
+            warnSpy(args)
+          }
+          error() {}
+        },
+      },
     } as NodeClickHouseClientConfigOptions)
 
-    // Should succeed even though no data for 200ms
+    // Should succeed without warnings even though no data for 200ms
     const rs = await client.query({ query: 'SELECT 1' })
     const text = await rs.text()
     expect(text).toBe('delayed response')
 
-    await client.close()
-    await closeServer(server)
-  })
-
-  it('should timeout on initial response delay', async () => {
-    // Simulate a server that never sends headers
-    const [server, port] = await createHTTPServer(async (req, res) => {
-      // Never respond - simulate complete stall
-      await new Promise(() => {}) // Never resolves
-    })
-
-    const client = createTestClient({
-      url: `http://127.0.0.1:${port}`,
-      request_timeout: 10_000,
-      idle_packet_timeout: 100,
-      keep_alive: {
-        enabled: true,
-      },
-    } as NodeClickHouseClientConfigOptions)
-
-    const startTime = Date.now()
-    await expect(
-      client.query({ query: 'SELECT 1' }).then((rs) => rs.text()),
-    ).rejects.toThrow(/Timeout error/) // Request timeout, not idle packet timeout
-
-    const duration = Date.now() - startTime
-    // Should use request_timeout since we never got headers
-    expect(duration).toBeGreaterThanOrEqual(100)
-    expect(duration).toBeLessThan(1000)
+    // Should not have emitted any warnings
+    expect(warnSpy).not.toHaveBeenCalled()
 
     await client.close()
     await closeServer(server)
