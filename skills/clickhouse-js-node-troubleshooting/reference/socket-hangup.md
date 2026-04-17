@@ -109,9 +109,37 @@ const client = createClient({
 })
 ```
 
-> ⚠️ Node.js caps total received headers at ~16 KB. After ~70–80 progress headers, an exception is thrown. For a query running longer than roughly `http_headers_progress_interval_ms * 75`, this limit will be hit — use a longer interval or the fire-and-forget approach below.
+### ⚠️ Critical: 16 KB Node.js Header Size Limit
 
-**Alternatively — fire-and-forget (mutations only):** Mutations (`INSERT ... SELECT`, `OPTIMIZE`, `ALTER`) are not cancelled on the server when the client connection is lost. You can send the mutation and immediately close the connection, then poll `system.query_log` or `system.mutations` for status. See the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples) for a concrete implementation.
+**Node.js caps total received HTTP headers at approximately 16 KB.** ClickHouse sends a new progress header with each interval, and after ~70–80 progress headers accumulate, Node.js will throw an exception and terminate the request.
+
+**Maximum safe query duration formula:**
+
+```
+Max duration ≈ http_headers_progress_interval_ms × 75 ÷ 1000
+```
+
+**Examples:**
+
+- `http_headers_progress_interval_ms: 10000` (10s) → **~12.5 minutes** max safe duration
+- `http_headers_progress_interval_ms: 60000` (60s) → **~75 minutes** max safe duration
+- `http_headers_progress_interval_ms: 120000` (120s) → **~2.5 hours** max safe duration
+
+**Guidelines for choosing the interval:**
+
+1. **For queries under 12 minutes:** Use `10000` ms (10s) intervals
+2. **For queries 12 min – 1 hour:** Use `60000` ms (60s) intervals
+3. **For queries 1–2 hours:** Use `120000` ms (120s) intervals
+4. **For queries over 2 hours:** Use the fire-and-forget pattern (see below)
+
+**Important trade-offs:**
+
+- **Shorter intervals** = better load balancer keep-alive (prevents idle timeout) but **lower max duration**
+- **Longer intervals** = higher max duration but **higher risk of LB idle timeout**
+
+The interval must be ~10–20 seconds **below** your load balancer's idle timeout to prevent mid-query disconnections, while staying under the header limit for your expected query duration.
+
+**Alternatively — fire-and-forget (mutations only):** Mutations (`INSERT ... SELECT`, `OPTIMIZE`, `ALTER`) are not cancelled on the server when the client connection is lost. You can send the mutation and immediately close the connection, then poll `system.query_log` or `system.mutations` for status. This bypasses both the load balancer idle timeout and the Node.js header limit. See the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples) for a concrete implementation.
 
 ## Step 5 — Disable Keep-Alive entirely (last resort)
 
