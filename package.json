@@ -20,7 +20,7 @@
     "typecheck": "npm --workspaces run typecheck",
     "lint": "npm --workspaces run lint",
     "lint:fix": "npm --workspaces run lint:fix",
-    "build": "npm run --workspaces build",
+    "build": "npm run build -w @clickhouse/client-common && npm run build -w @clickhouse/client && npm run build -w @clickhouse/client-web",
     "prettify": "prettier --write .",
     "test": "echo -e \"Please specify a test script to run. See \\033[1mnpm run\\033[0m for reference.\" && exit 1",
     "run-examples": "vitest run -c vitest.examples.config.ts",
