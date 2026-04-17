@@ -1,5 +1,18 @@
 # 1.18.3
 
+## New Features
+
+- Added `idle_packet_timeout` configuration option (default: 300000ms / 5 minutes). This client-side timeout detects potential load balancer (LB) idle connection timeouts by monitoring packet activity. If no data (headers or body chunks) is received from the server for the specified duration, the request is aborted with an "Idle packet timeout" error. This helps distinguish between query execution timeouts and LB timeout scenarios. Set to `0` to disable this check.
+
+```ts
+const client = createClient({
+  request_timeout: 400_000, // Total request timeout
+  idle_packet_timeout: 300_000, // 5 minutes - abort if no packets for this duration
+})
+```
+
+This feature is particularly useful for long-running queries (e.g., `INSERT FROM SELECT`) where the server is actively processing but the load balancer may close idle connections. The idle packet timer resets each time data is received, ensuring only truly stalled connections are detected.
+
 ## Improvements
 
 - Added `keep_alive.eagerly_destroy_stale_sockets` option (Node.js only, default: `false`). When enabled, sockets that have been idle for longer than `idle_socket_ttl` are destroyed immediately before each request, rather than waiting for the idle timeout to fire. This helps reclaim stale sockets during event loop delays, where the timeout callback may not run on time.
