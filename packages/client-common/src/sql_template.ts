@@ -197,10 +197,27 @@ export function sql(
 
       // Handle nested SQLTemplate (composability)
       if (isSQLTemplate(value)) {
-        // Merge the nested template's query and params
-        query += value.query
-        // Merge params - need to ensure no conflicts
-        Object.assign(query_params, value.query_params)
+        // Need to rename parameters in the nested template to avoid conflicts
+        const nestedQuery = value.query
+        const nestedParams = value.query_params
+
+        // Create a mapping of old param names to new param names
+        const paramMapping = new Map<string, string>()
+        for (const oldParamName of Object.keys(nestedParams)) {
+          const newParamName = `__p${paramCounter++}`
+          paramMapping.set(oldParamName, newParamName)
+          query_params[newParamName] = nestedParams[oldParamName]
+        }
+
+        // Replace parameter names in the nested query
+        let renamedQuery = nestedQuery
+        for (const [oldName, newName] of paramMapping) {
+          // Use a regex to replace {oldName: Type} with {newName: Type}
+          const regex = new RegExp(`\\{${oldName}:`, 'g')
+          renamedQuery = renamedQuery.replace(regex, `{${newName}:`)
+        }
+
+        query += renamedQuery
       } else {
         // Generate a unique parameter name
         const paramName = `__p${paramCounter++}`
