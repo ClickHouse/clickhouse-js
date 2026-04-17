@@ -1,5 +1,21 @@
 # 1.18.3
 
+## New Features
+
+- Added `idle_packet_timeout` configuration option (default: 300000ms / 5 minutes). This provides early warning detection for potential load balancer (LB) idle connection timeouts by monitoring packet activity. If no data (headers or body chunks) is received from the server for the specified duration, a warning is logged to help users identify potential LB timeout issues before they occur. The connection remains active and is not aborted by the client. Set to `0` to disable this check.
+
+```ts
+const client = createClient({
+  request_timeout: 400_000, // Total request timeout
+  idle_packet_timeout: 300_000, // 5 minutes - warn if no packets for this duration
+  log: {
+    level: ClickHouseLogLevel.WARN, // Ensure warnings are visible
+  },
+})
+```
+
+This feature is particularly useful for long-running queries (e.g., `INSERT FROM SELECT`) where the server is actively processing but the load balancer may close idle connections. The idle packet timer resets each time data is received, ensuring only truly stalled connections trigger warnings. The warning message suggests using the `send_progress_in_http_headers` ClickHouse setting to keep the connection alive.
+
 ## Improvements
 
 - Added `keep_alive.eagerly_destroy_stale_sockets` option (Node.js only, default: `false`). When enabled, sockets that have been idle for longer than `idle_socket_ttl` are destroyed immediately before each request, rather than waiting for the idle timeout to fire. This helps reclaim stale sockets during event loop delays, where the timeout callback may not run on time.

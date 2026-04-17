@@ -100,6 +100,7 @@ export class SocketPool {
       ? getCurrentStackTrace()
       : undefined
     const requestTimeout = this.params.request_timeout
+    const idlePacketTimeout = this.params.idle_packet_timeout
 
     if (
       this.params.eagerly_destroy_stale_sockets &&
@@ -153,9 +154,51 @@ export class SocketPool {
     const start = Date.now()
     const request = this.createClientRequest(params)
     const request_id = this.getNewRequestId()
+
     return new Promise((resolve, reject) => {
+      // Idle packet timeout tracking - warns when no packets received
+      let idlePacketTimeoutHandle: ReturnType<typeof setTimeout> | undefined
+      let idlePacketWarningEmitted = false
+
+      const resetIdlePacketTimeout = () => {
+        if (idlePacketTimeout > 0) {
+          if (idlePacketTimeoutHandle) {
+            clearTimeout(idlePacketTimeoutHandle)
+          }
+          idlePacketTimeoutHandle = setTimeout(() => {
+            // Only emit warning once to avoid log spam
+            if (
+              !idlePacketWarningEmitted &&
+              log_level <= ClickHouseLogLevel.WARN
+            ) {
+              idlePacketWarningEmitted = true
+              log_writer.warn({
+                message: `${op}: no data received from the server for ${idlePacketTimeout}ms. The connection might be dropped by a load balancer soon. Consider using send_progress_in_http_headers ClickHouse setting to keep the connection alive.`,
+                args: {
+                  operation: op,
+                  connection_id: this.connectionId,
+                  query_id,
+                  request_id,
+                  idle_packet_timeout_ms: idlePacketTimeout,
+                },
+              })
+            }
+            // Reset timer to potentially warn again if still no data
+            resetIdlePacketTimeout()
+          }, idlePacketTimeout)
+        }
+      }
+
+      // Clear the idle packet timeout
+      const clearIdlePacketTimeout = () => {
+        if (idlePacketTimeoutHandle) {
+          clearTimeout(idlePacketTimeoutHandle)
+          idlePacketTimeoutHandle = undefined
+        }
+      }
       const onError = (e: unknown): void => {
         removeRequestListeners()
+        clearIdlePacketTimeout()
         if (e instanceof Error) {
           if (log_level <= ClickHouseLogLevel.TRACE) {
             if ((e as any).code === 'ECONNRESET') {
@@ -217,6 +260,9 @@ export class SocketPool {
       const onResponse = async (
         _response: Http.IncomingMessage,
       ): Promise<void> => {
+        // Reset idle packet timeout when we receive the response headers
+        resetIdlePacketTimeout()
+
         if (this.params.log_level <= ClickHouseLogLevel.DEBUG) {
           const duration = Date.now() - start
           this.params.log_writer.debug({
@@ -313,6 +359,7 @@ export class SocketPool {
         if (isFailedResponse && !ignoreErrorResponse) {
           try {
             const errorMessage = await getAsText(responseStream)
+            clearIdlePacketTimeout()
             const err = enhanceStackTrace(
               parseError(errorMessage),
               currentStackTrace,
@@ -320,10 +367,20 @@ export class SocketPool {
             reject(err)
           } catch (e) {
             // If the ClickHouse response is malformed
+            clearIdlePacketTimeout()
             const err = enhanceStackTrace(e as Error, currentStackTrace)
             reject(err)
           }
         } else {
+          // Set up data event listener to reset idle packet timeout on each chunk
+          if (idlePacketTimeout > 0) {
+            responseStream.on('data', resetIdlePacketTimeout)
+            // Clean up the timer when stream ends or errors
+            responseStream.once('end', clearIdlePacketTimeout)
+            responseStream.once('error', clearIdlePacketTimeout)
+            responseStream.once('close', clearIdlePacketTimeout)
+          }
+
           return resolve({
             stream: responseStream,
             summary: params.parse_summary
@@ -339,6 +396,7 @@ export class SocketPool {
         // Prefer 'abort' event since it always triggered unlike 'error' and 'close'
         // see the full sequence of events https://nodejs.org/api/http.html#httprequesturl-options-callback
         removeRequestListeners()
+        clearIdlePacketTimeout()
         request.once('error', function () {
           /**
            * catch "Error: ECONNRESET" error which shouldn't be reported to users.
@@ -357,6 +415,7 @@ export class SocketPool {
         // It's necessary in order to handle 'abort' and 'timeout' events while response is streamed.
         // It's always the last event, according to https://nodejs.org/docs/latest-v14.x/api/http.html#http_http_request_url_options_callback
         removeRequestListeners()
+        clearIdlePacketTimeout()
       }
 
       function pipeStream(): void {
@@ -596,6 +655,7 @@ export class SocketPool {
 
       const onTimeout = (): void => {
         removeRequestListeners()
+        clearIdlePacketTimeout()
 
         if (log_level <= ClickHouseLogLevel.TRACE) {
           const socket = request.socket

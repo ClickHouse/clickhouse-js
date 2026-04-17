@@ -42,6 +42,7 @@ describe('[Node.js] createClient', () => {
     const params: ConnectionParams = {
       url: new URL('https://my.host:8443'),
       request_timeout: 42_000,
+      idle_packet_timeout: 300_000,
       max_open_connections: 10,
       compression: {
         compress_request: false,

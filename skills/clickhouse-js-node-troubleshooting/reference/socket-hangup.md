@@ -96,8 +96,27 @@ const client = createClient({
 ## Step 4 — Long-running queries with no data in/out (INSERT FROM SELECT, etc.)
 
 > **Requires:** `>= 1.0.0` (`request_timeout` default was fixed to 30 000 ms in 0.3.0; `url`-based configuration including `request_timeout` via URL params available since 1.0.0).
+> **New in 1.18.3:** `idle_packet_timeout` provides early warning for potential load balancer timeouts.
 
-Load balancers may close idle connections mid-query. Force periodic progress headers:
+Load balancers may close idle connections mid-query. There are several approaches to handle this:
+
+### Option 1: Client-side idle packet timeout warning (Recommended, >= 1.18.3)
+
+The client now includes early warning detection for potential LB timeouts via `idle_packet_timeout` (default: 5 minutes). This monitors packet activity and logs a warning if no data is received for the specified duration, helping you identify potential LB timeout issues before they cause connection failures. The connection remains active and is not aborted by the client:
+
+```js
+const client = createClient({
+  request_timeout: 400_000, // e.g. 400s total timeout
+  idle_packet_timeout: 300_000, // 5 minutes - warn if no packets received
+  log: {
+    level: ClickHouseLogLevel.WARN, // Ensure warnings are visible
+  },
+})
+```
+
+When the warning is triggered, it suggests using `send_progress_in_http_headers` (see Option 2 below) to keep the connection alive. Set `idle_packet_timeout: 0` to disable this check if needed.
+
+### Option 2: Force periodic progress headers from ClickHouse
 
 ```js
 const client = createClient({
@@ -110,6 +129,8 @@ const client = createClient({
 ```
 
 > ⚠️ Node.js caps total received headers at ~16 KB. After ~70–80 progress headers, an exception is thrown. For a query running longer than roughly `http_headers_progress_interval_ms * 75`, this limit will be hit — use a longer interval or the fire-and-forget approach below.
+
+### Option 3: Fire-and-forget (mutations only)
 
 **Alternatively — fire-and-forget (mutations only):** Mutations (`INSERT ... SELECT`, `OPTIMIZE`, `ALTER`) are not cancelled on the server when the client connection is lost. You can send the mutation and immediately close the connection, then poll `system.query_log` or `system.mutations` for status. See the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples) for a concrete implementation.
 
