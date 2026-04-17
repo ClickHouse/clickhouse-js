@@ -144,3 +144,5 @@ export type {
 } from './connection'
 export type { QueryParamsWithFormat } from './client'
 export type { IsSame } from './ts_utils'
+export type { SQLTemplate } from './sql_template'
+export { sql, identifier, isSQLTemplate, isSQLIdentifier } from './sql_template'

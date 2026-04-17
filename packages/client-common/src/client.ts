@@ -21,6 +21,8 @@ import { getConnectionParams, prepareConfigWithURL } from './config'
 import type { ConnPingResult } from './connection'
 import type { JSONHandling } from './parse/json_handling'
 import type { BaseResultSet } from './result'
+import type { SQLTemplate } from './sql_template'
+import { isSQLTemplate } from './sql_template'
 
 export interface BaseQueryParams {
   /** ClickHouse's settings that can be applied on query level. */
@@ -229,9 +231,50 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async query<Format extends DataFormat = 'JSON'>(
     params: QueryParamsWithFormat<Format>,
+  ): Promise<QueryResult<Stream, Format>>
+  /**
+   * Execute a query using a SQL template literal.
+   * All interpolated values are automatically parameterized for security.
+   *
+   * @example
+   * ```typescript
+   * import { sql, identifier } from '@clickhouse/client'
+   *
+   * const tableName = 'users'
+   * const userName = 'Alice'
+   * const result = await client.query(
+   *   sql`SELECT * FROM ${identifier(tableName)} WHERE name = ${userName}`
+   * )
+   * ```
+   *
+   * @param template - The SQL template literal created by the `sql` tagged template function
+   * @param format - Optional data format (default is `JSON`)
+   */
+  async query<Format extends DataFormat = 'JSON'>(
+    template: SQLTemplate,
+    format?: Format,
+  ): Promise<QueryResult<Stream, Format>>
+  async query<Format extends DataFormat = 'JSON'>(
+    paramsOrTemplate: QueryParamsWithFormat<Format> | SQLTemplate,
+    format?: Format,
   ): Promise<QueryResult<Stream, Format>> {
-    const format = params.format ?? 'JSON'
-    const query = formatQuery(params.query, format)
+    // Determine if we received an SQLTemplate or QueryParams
+    let params: QueryParamsWithFormat<Format>
+
+    if (isSQLTemplate(paramsOrTemplate)) {
+      // Convert SQLTemplate to QueryParams
+      params = {
+        query: paramsOrTemplate.query,
+        query_params: paramsOrTemplate.query_params,
+        format: format,
+      } as QueryParamsWithFormat<Format>
+    } else {
+      // It's already QueryParams
+      params = paramsOrTemplate
+    }
+
+    const finalFormat = params.format ?? ('JSON' as Format)
+    const query = formatQuery(params.query, finalFormat)
     const queryParams = this.withClientQueryParams(params)
     const { stream, query_id, response_headers } = await this.connection.query({
       query,
@@ -240,7 +283,7 @@ export class ClickHouseClient<Stream = unknown> {
     const { log_writer, log_level } = this.connectionParams
     return this.makeResultSet(
       stream,
-      format,
+      finalFormat,
       query_id,
       (err) => {
         if (log_level <= ClickHouseLogLevel.ERROR) {
