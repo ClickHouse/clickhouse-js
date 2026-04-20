@@ -283,6 +283,27 @@ export function parseDecimalType({
   }
 }
 
+/**
+ * Unescape backslash escape sequences in enum names.
+ * In ClickHouse, backslash escapes single quotes and backslashes themselves.
+ * Examples: "f\\'" -> "f'", "b\\'\\'\\''" -> "b'''", "\\'" -> "'"
+ */
+function unescapeEnumName(escaped: string): string {
+  let unescaped = ''
+  let i = 0
+  while (i < escaped.length) {
+    if (escaped.charCodeAt(i) === BackslashASCII && i + 1 < escaped.length) {
+      // Skip the backslash and add the next character
+      i++
+      unescaped += escaped[i]
+    } else {
+      unescaped += escaped[i]
+    }
+    i++
+  }
+  return unescaped
+}
+
 export function parseEnumType({
   columnType,
   sourceType,
@@ -327,7 +348,9 @@ export function parseEnumType({
           charEscaped = true
         } else if (columnType.charCodeAt(i) === SingleQuoteASCII) {
           // non-escaped closing tick - push the name
-          const name = columnType.slice(startIndex, i)
+          const rawName = columnType.slice(startIndex, i)
+          // Unescape the name by removing backslash escape sequences
+          const name = unescapeEnumName(rawName)
           if (names.includes(name)) {
             throw new ColumnTypeParseError('Duplicate Enum name', {
               columnType,

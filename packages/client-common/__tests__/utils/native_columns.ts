@@ -38,10 +38,10 @@ export const parsedEnumTestArgs: ParsedColumnEnum[] = enumTypes.flatMap(
       type: 'Enum',
       sourceType: `${enumType}('f\\'' = 1, 'x =' = 2, 'b\\'\\'\\'' = 3, '\\'c=4=' = 42, '4' = 100)`,
       values: {
-        1: "f\\'",
+        1: "f'",
         2: 'x =',
-        3: "b\\'\\'\\'",
-        42: "\\'c=4=",
+        3: "b'''",
+        42: "'c=4=",
         100: '4',
       },
       intSize,
@@ -50,7 +50,7 @@ export const parsedEnumTestArgs: ParsedColumnEnum[] = enumTypes.flatMap(
       type: 'Enum',
       sourceType: `${enumType}('f\\'()' = 1)`,
       values: {
-        1: "f\\'()",
+        1: "f'()",
       },
       intSize,
     },
@@ -58,7 +58,7 @@ export const parsedEnumTestArgs: ParsedColumnEnum[] = enumTypes.flatMap(
       type: 'Enum',
       sourceType: `${enumType}('\\'' = 0)`,
       values: {
-        0: `\\'`,
+        0: `'`,
       },
       intSize,
     },

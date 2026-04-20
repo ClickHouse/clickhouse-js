@@ -89,4 +89,18 @@ describe('Columns types parser - Enum', () => {
       }),
     )
   })
+
+  it('should unescape backslash escape sequences in enum names', async () => {
+    // Test case from issue: parseEnumType returns escaped backslashes instead of unescaping them
+    const result = parseEnumType({
+      columnType: "Enum8('f\\'' = 1)",
+      sourceType: "Enum8('f\\'' = 1)",
+    })
+    expect(result).toEqual({
+      type: 'Enum',
+      values: { 1: "f'" }, // Should be unescaped, not "f\\'"
+      intSize: 8,
+      sourceType: "Enum8('f\\'' = 1)",
+    })
+  })
 })
