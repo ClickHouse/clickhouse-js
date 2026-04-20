@@ -6,8 +6,6 @@ on:
     # that should trigger workflow telemetry exporting explicitly.
     workflows:
       - tests
-      - build
-      - npm
     types: [completed]
 
 permissions:
@@ -24,8 +22,8 @@ jobs:
         env:
           OTEL_SERVICE_NAME: github-actions
           OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-          OTEL_EXPORTER_OTLP_HEADERS: "authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}"
-          OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js"
+          OTEL_EXPORTER_OTLP_HEADERS: 'authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}'
+          OTEL_RESOURCE_ATTRIBUTES: 'service.namespace=clickhouse-js'
         with:
           # Required for collecting workflow data
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
