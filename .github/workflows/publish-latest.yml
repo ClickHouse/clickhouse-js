@@ -1,4 +1,4 @@
-name: 'publish-head'
+name: 'publish-latest'
 
 # Publish packages with 'head' tag on each merge to main
 # Uses npm OIDC authentication with provenance support
@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Set head pre-release version
+      - name: Get the release version
         run: |
           BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
           echo "Using version: $BASE_VERSION"
