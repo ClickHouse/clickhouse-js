@@ -233,12 +233,11 @@ Make sure that the working directory is up to date and clean:
 ```bash
 git checkout main
 git pull
-git checkout -b release-$NEW_VERSION
 git clean -dfX
-npm i
 ```
 
 ```bash
+git checkout -b release-$NEW_VERSION
 .scripts/update_version.sh "$NEW_VERSION"
 ```
 
