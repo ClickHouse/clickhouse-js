@@ -1,7 +1,7 @@
 name: 'publish-latest'
 
-# Publish packages with 'head' tag on each merge to main
-# Uses npm OIDC authentication with provenance support
+# Publish packages to npm with the "latest" tag
+# when a workflow is manually triggered on the main branch.
 
 permissions:
   contents: read
