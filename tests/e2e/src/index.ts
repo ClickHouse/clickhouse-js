@@ -9,12 +9,12 @@ async function main() {
     )
   ).json()
 
-  console.log(`Latest beta version on npm: ${tags.beta}`)
+  console.log(`Latest "latest" version on npm: ${tags.latest}`)
 
   assert.strictEqual(
     version.default,
-    tags.beta,
-    'Version should be the latest beta version on npm',
+    tags.latest,
+    'Version should be the latest "latest" version on npm',
   )
 
   assert.strictEqual(
