@@ -58,6 +58,6 @@ npm dist-tag add @clickhouse/client-web@head latest
 
 Check that the packages have been published correctly: <https://www.npmjs.com/org/clickhouse>
 
-Then create a new release in GitHub using the created tag and the corresponding changelog notes.
+Then create a new release in GitHub for `$NEW_VERSION` and include the corresponding changelog notes.
 
 All done, thanks!
