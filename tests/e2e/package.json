@@ -15,6 +15,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@clickhouse/client": "beta"
+    "@clickhouse/client": "head"
   }
 }
