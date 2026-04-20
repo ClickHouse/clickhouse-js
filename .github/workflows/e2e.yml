@@ -1,4 +1,4 @@
-name: 'npm'
+name: 'E2E Tests'
 
 permissions: {}
 on:
@@ -8,7 +8,7 @@ on:
       - .github/workflows/e2e.yml
 
 jobs:
-  test-install:
+  tiny-project:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
