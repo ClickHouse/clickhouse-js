@@ -262,8 +262,7 @@ export function getConnectionParams(
             : '0'
           : String(send_progress)
     const progressHeadersDisabled =
-      normalized_send_progress === undefined ||
-      normalized_send_progress === '0'
+      normalized_send_progress === undefined || normalized_send_progress === '0'
 
     if (progressHeadersDisabled) {
       logger.warn({
