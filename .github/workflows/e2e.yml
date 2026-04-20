@@ -3,6 +3,9 @@ name: 'npm'
 permissions: {}
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/e2e.yml
 
 jobs:
   test-install:
