@@ -2,7 +2,7 @@
 
 ## The problem
 
-When executing a long-running query (e.g. `INSERT FROM SELECT`) that does not send or receive data over HTTP, the client sends the statement and then waits for a response. If a load balancer sits between the client and ClickHouse server and has an idle connection timeout shorter than the query execution time, the LB will close the connection before the query finishes. This happens even then the LB is stateful and correctly understands that the connection is in use — it simply considers it idle because no data is flowing for a longer time.
+When executing a long-running query (e.g. `INSERT FROM SELECT`) that does not send or receive data over HTTP, the client sends the statement and then waits for a response. If a load balancer sits between the client and ClickHouse server and has an idle connection timeout shorter than the query execution time, the LB will close the connection before the query finishes. This happens even when the LB is stateful and correctly understands that the connection is in use — it simply considers it idle because no data is flowing for a longer time.
 
 ## How to diagnose
 
