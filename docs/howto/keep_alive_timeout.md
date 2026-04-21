@@ -61,26 +61,24 @@ A margin of 500–1000 ms is recommended to account for clock skew and event-loo
 
 **Optional — enable eager socket destruction** as an extra safeguard on CPU-starved machines where timers may fire late:
 
+If you also see this in logs:
+
+```
+reusing socket with TTL expired based on timestamp
+{ socket_age_ms: 5380, idle_socket_ttl_ms: 2500, ... }
+```
+
+This is a sign that the application running the client is under heavy load and timers are firing late and the eager destruction might help in this case. Try enabling eager socket destruction to have the client proactively destroy idle sockets that have exceeded the server timeout instead of waiting for the next request to discover and destroy them:
+
 ```ts
 keep_alive: {
-  idle_socket_ttl: 2500,
   eagerly_destroy_stale_sockets: true,
 }
 ```
 
-This can also be seen in logs:
+When enabled and the client detects that an idle socket has exceeded the server timeout, it will be destroyed immediately. This can help prevent `ECONNRESET` errors on the next request that tries to reuse that socket. You can check the logs for messages about destroying idle sockets:
 
 ```
-destroying idle socket that exceeded server keep-alive timeout
-{ server_keep_alive_timeout_ms: 3000, idle_socket_ttl_ms: 2500, ... }
-```
-
-Which is a sign that the application running the client is under heavy load and timers are firing late and the eager destruction might help in this case.
-
-## How the client tracks the server timeout
-
-The server sends the timeout in every HTTP response header:
-
-```
-Keep-Alive: timeout=3
+socket TTL expired based on timestamp, destroying socket
+{ socket_age_ms: 4730, idle_socket_ttl_ms: 3000, ... }
 ```
