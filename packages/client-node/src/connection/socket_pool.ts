@@ -185,7 +185,7 @@ export class SocketPool {
                         this.params.keep_alive.idle_socket_ttl > serverTimeoutMs
                       ) {
                         log_writer.warn({
-                          message: `${op}: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://c.house/js_keep_alive_econnreset for more details.`,
+                          message: `${op}: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/keep_alive_timeout.md for more details.`,
                           args: {
                             operation: op,
                             connection_id: this.connectionId,
