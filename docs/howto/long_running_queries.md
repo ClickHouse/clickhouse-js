@@ -38,6 +38,8 @@ curl -v "http://localhost:8123/?wait_end_of_query=1&send_progress_in_http_header
 - `send_progress_in_http_headers` — enables progress headers (boolean, pass as `1`)
 - `http_headers_progress_interval_ms` — how often to send them (UInt64, pass as a string)
 
+The default value for `http_headers_progress_interval_ms` is defined by how often ClickHouse sends progress updates for the query type. For some queries, this may be too frequent (causing unnecessary overhead and/or HTTP client headers buffer overflow) or too infrequent (failing to keep the LB connection alive). Therefore, it's recommended to set it explicitly when using `send_progress_in_http_headers`.
+
 **Step 1.** Estimate the maximum query execution time. Set `request_timeout` to a value safely above that estimate.
 
 **Step 2.** Find out your LB's idle connection timeout (e.g. 120s). Set `http_headers_progress_interval_ms` to a value a few seconds below it (e.g. `'110000'`).
