@@ -478,10 +478,7 @@ export class SocketPool {
                 if (log_level <= ClickHouseLogLevel.WARN) {
                   if (responseStream && !responseStream.readableEnded) {
                     log_writer.warn({
-                      message:
-                        `${op}: socket was closed or ended before the response was fully read. ` +
-                        'This can potentially result in an uncaught ECONNRESET error! ' +
-                        'Consider fully consuming, draining, or destroying the response stream.',
+                      message: `${op}: socket was closed or ended before the response was fully read. This can potentially result in an uncaught ECONNRESET error! Consider fully consuming, draining, or destroying the response stream.`,
                       args: {
                         operation: op,
                         connection_id: this.connectionId,
@@ -511,7 +508,7 @@ export class SocketPool {
                 if (overdueBy > 1000) {
                   if (log_level <= ClickHouseLogLevel.WARN) {
                     log_writer.warn({
-                      message: `${op}: reusing socket with TTL expired based on timestamp; this may indicate a starved Node.js process or delayed event loop; set keep_alive.eagerly_destroy_stale_sockets=true to mitigate`,
+                      message: `${op}: reusing socket with TTL expired based on timestamp; this may indicate a starved Node.js process or delayed event loop; set keep_alive.eagerly_destroy_stale_sockets=true to mitigate, see more details at https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/keep_alive_timeout.md`,
                       args: {
                         operation: op,
                         connection_id: this.connectionId,
