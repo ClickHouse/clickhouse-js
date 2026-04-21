@@ -16,6 +16,9 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}
+  cancel-in-progress: false
 jobs:
   bump:
     runs-on: ubuntu-latest
