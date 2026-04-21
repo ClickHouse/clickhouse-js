@@ -33,7 +33,7 @@ Look for two log entries:
 
    ```
    idle socket TTL is greater than server keep-alive timeout ...
-   { server_keep_alive_timeout_ms: 3000, idle_socket_ttl: 2500, ... }
+   { server_keep_alive_timeout_ms: 3000, idle_socket_ttl: 3500, ... }
    ```
 
    This confirms that the ECONNRESET error is due to the idle socket TTL being greater than the server's Keep-Alive timeout.
