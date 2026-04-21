@@ -1,4 +1,4 @@
-import type Http from 'http'
+import Http from 'http'
 import Stream from 'stream'
 import type * as net from 'net'
 import Zlib from 'zlib'
@@ -107,7 +107,7 @@ export class SocketPool {
       this.params.keep_alive.idle_socket_ttl > 0
     ) {
       // Just checking in case of a custom agent with a different implementation
-      if (this.agent.freeSockets) {
+      if (this.agent instanceof Http.Agent) {
         for (const host of Object.keys(this.agent.freeSockets)) {
           const byHostSockets = this.agent.freeSockets[host]
           if (byHostSockets) {
