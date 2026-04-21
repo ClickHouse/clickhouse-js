@@ -2,24 +2,24 @@
 
 1. When adding log messages, make sure to use eager log level checks to avoid unnecessary calculations for log messages that will not be emitted. For example:
 
-```ts
-if (log_level <= ClickHouseLogLevel.WARN) {
-  log_writer.warn({
-    message: 'Example log message',
-  })
-}
-```
+   ```ts
+   if (log_level <= ClickHouseLogLevel.WARN) {
+     log_writer.warn({
+       message: 'Example log message',
+     })
+   }
+   ```
 
 2. When adding new log messages with suggestions for users, make sure to create a unique documentation page in the `docs` directory with a detailed explanation of the issue and how to resolve it. Then, include a link to that documentation page in the log message. For example:
 
-```ts
-if (some_condition) {
-  log_writer.warn({
-    message:
-      'Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/example-log-message.md',
-  })
-}
-```
+   ```ts
+   if (some_condition) {
+     log_writer.warn({
+       message:
+         'Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/example-log-message.md',
+     })
+   }
+   ```
 
 ## When reviewing code changes
 
