@@ -1,5 +1,26 @@
 # Recommendations for AI agents
 
+1. When adding log messages, make sure to use eager log level checks to avoid unnecessary calculations for log messages that will not be emitted. For example:
+
+   ```ts
+   if (log_level <= ClickHouseLogLevel.WARN) {
+     log_writer.warn({
+       message: 'Example log message',
+     })
+   }
+   ```
+
+2. When adding new log messages with suggestions for users, make sure to create a unique documentation page in the `docs` directory with a detailed explanation of the issue and how to resolve it. Then, include a link to that documentation page in the log message. For example:
+
+   ```ts
+   if (some_condition) {
+     log_writer.warn({
+       message:
+         'Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/example-log-message.md',
+     })
+   }
+   ```
+
 ## When reviewing code changes
 
 For every pull request review, make sure to provide an evaluation of the following aspects:
@@ -17,11 +38,3 @@ For every pull request review, make sure to provide an evaluation of the followi
 2. When introducing new features or making changes to the API make sure to update the CHANGELOG.md file with a concise description of the changes followed with an example usage if applicable.
 
 3. Additionally, make sure that the official documentation is in sync with the changes. The MCP server for the documentation is running at `https://clickhouse.mcp.kapa.ai/`.
-
-### Ongoing refactoring
-
-Keep in mind the ongoing refactoring efforts in the codebase. If required, put more effort into bringing more relevant code and recent changes into the context.
-
-1. The code base is gradually migrating from passing groups of similar parameters as separate parameters to passing them as a single object. This is a common refactoring pattern that improves code readability and maintainability. When suggesting code changes, please consider this ongoing refactoring effort and prefer the new object-based parameter passing style.
-
-2. The logging configuration is being updated to use eager log level evaluation instead of lazy evaluation. This means that the log level is determined at the time of client creation rather than being evaluated lazily during logging. When suggesting code changes related to logging, please ensure that the log level is being checked at the time of emission with a guard clause, rather than relying on the logger class tail-filtering logs based on the log level. This change is aimed at improving performance by avoiding unnecessary log message construction when the log level is not enabled.

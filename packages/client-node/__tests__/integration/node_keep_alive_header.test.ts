@@ -81,10 +81,7 @@ describe.concurrent('Handling keep-alive header', () => {
     expect(ping2.error.message).toMatch(/socket hang up/i)
 
     expect(
-      findMatchingLogEvents(
-        logs,
-        /https:\/\/c.house\/js_keep_alive_econnreset/,
-      )?.[0]?.[0],
+      findMatchingLogEvents(logs, /howto\/keep_alive_timeout/)?.[0]?.[0],
     ).toMatchObject({
       args: {
         server_keep_alive_timeout_ms: 10000,
@@ -174,10 +171,7 @@ describe.concurrent('Handling keep-alive header', () => {
     expect(ping2.error.message).toMatch(/socket hang up/i)
 
     expect(
-      findMatchingLogEvents(
-        logs,
-        /https:\/\/c.house\/js_keep_alive_econnreset/,
-      )?.[0]?.[0],
+      findMatchingLogEvents(logs, /howto\/keep_alive_timeout/)?.[0]?.[0],
     ).toBeUndefined()
 
     server.close()
@@ -199,7 +193,6 @@ async function createTCPServer(
   })
   return [server, (server.address() as AddressInfo).port]
 }
-
 
 const createLoggerClass = (logs: any[]) =>
   class TestLogger implements Logger {

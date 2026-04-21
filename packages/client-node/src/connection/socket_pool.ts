@@ -1,4 +1,4 @@
-import type Http from 'http'
+import Http from 'http'
 import Stream from 'stream'
 import type * as net from 'net'
 import Zlib from 'zlib'
@@ -106,8 +106,8 @@ export class SocketPool {
       this.params.keep_alive.enabled &&
       this.params.keep_alive.idle_socket_ttl > 0
     ) {
-      // Just checking in case of a custom agent with a different implementation
-      if (this.agent.freeSockets) {
+      // Only run this cleanup for the built-in Node.js HTTP agent, since it relies on `freeSockets`.
+      if (this.agent instanceof Http.Agent) {
         for (const host of Object.keys(this.agent.freeSockets)) {
           const byHostSockets = this.agent.freeSockets[host]
           if (byHostSockets) {
@@ -185,7 +185,7 @@ export class SocketPool {
                         this.params.keep_alive.idle_socket_ttl > serverTimeoutMs
                       ) {
                         log_writer.warn({
-                          message: `${op}: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://c.house/js_keep_alive_econnreset for more details.`,
+                          message: `${op}: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/keep_alive_timeout.md for more details.`,
                           args: {
                             operation: op,
                             connection_id: this.connectionId,

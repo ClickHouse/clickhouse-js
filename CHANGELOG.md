@@ -56,7 +56,7 @@ Example log message:
 
 ```json
 {
-  "message": "Ping: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://c.house/js_keep_alive_econnreset for more details.",
+  "message": "Ping: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/keep_alive_timeout.md for more details.",
   "args": {
     "operation": "Ping",
     "connection_id": "8dc1c9bd-7895-49b1-8a95-276470151c65",
