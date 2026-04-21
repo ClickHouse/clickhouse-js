@@ -1,0 +1,69 @@
+name: 'bump-version'
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Calculate new version
+        id: version
+        env:
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          CURRENT=$(node -p "require('./packages/client-common/package.json').version")
+          NEW=$(CURRENT="$CURRENT" node -e "
+            const [major, minor, patch] = process.env.CURRENT.split('.').map(Number);
+            if (process.env.BUMP_TYPE === 'major') process.stdout.write((major+1) + '.0.0');
+            else if (process.env.BUMP_TYPE === 'minor') process.stdout.write(major + '.' + (minor+1) + '.0');
+            else process.stdout.write(major + '.' + minor + '.' + (patch+1));
+          ")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version in packages
+        run: .scripts/update_version.sh "${{ steps.version.outputs.new }}"
+
+      - name: Commit and push branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "bump/v${{ steps.version.outputs.new }}"
+          git add packages/ package-lock.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new }}"
+          git push origin "bump/v${{ steps.version.outputs.new }}"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "chore: bump version to ${{ steps.version.outputs.new }}" \
+            --body "Bumps version from \`${{ steps.version.outputs.current }}\` to \`${{ steps.version.outputs.new }}\` (${{ inputs.bump_type }} bump)." \
+            --base main \
+            --head "bump/v${{ steps.version.outputs.new }}"
