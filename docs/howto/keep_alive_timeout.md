@@ -27,7 +27,7 @@ Look for two log entries:
    { server_keep_alive_timeout_ms: 3000, ... }
    ```
 
-   This confirms the server-sent Keep-Alive timeout value; `ECONNRESET` occurs when this timeout is lower than the client's `idle_socket_ttl`.
+   This confirms the server-sent Keep-Alive timeout value. `ECONNRESET` occurs when the client's `idle_socket_ttl` is greater (within the network latency margin) than the server-sent Keep-Alive timeout.
 
 2. The mismatch warning, logged when `ECONNRESET` occurs:
 
