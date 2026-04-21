@@ -243,37 +243,40 @@ export function getConnectionParams(
   const request_timeout = config.request_timeout ?? 30_000
   const clickhouse_settings = config.clickhouse_settings ?? {}
 
-  // Warn if request_timeout is high but progress headers are not configured
-  // This can lead to socket hang-up errors when long-running queries exceed load balancer idle timeouts
-  const THRESHOLD_MS = 60_000 // 60 seconds
-  if (request_timeout > THRESHOLD_MS) {
-    const send_progress = clickhouse_settings.send_progress_in_http_headers
-    const progress_interval =
-      clickhouse_settings.http_headers_progress_interval_ms
+  if (log_level <= ClickHouseLogLevel.WARN) {
+    // Warn if request_timeout is high but progress headers are not configured
+    // This can lead to socket hang-up errors when long-running queries exceed load balancer idle timeouts
+    const THRESHOLD_MS = 60_000 // 60 seconds
+    if (request_timeout > THRESHOLD_MS) {
+      const send_progress = clickhouse_settings.send_progress_in_http_headers
+      const progress_interval =
+        clickhouse_settings.http_headers_progress_interval_ms
 
-    // Normalize send_progress_in_http_headers to ClickHouse's string boolean form.
-    // Treat undefined, false, 0, and '0' as disabled.
-    const normalized_send_progress =
-      send_progress === undefined
-        ? undefined
-        : typeof send_progress === 'boolean'
-          ? send_progress
-            ? '1'
-            : '0'
-          : String(send_progress)
-    const progressHeadersDisabled =
-      normalized_send_progress === undefined || normalized_send_progress === '0'
+      // Normalize send_progress_in_http_headers to ClickHouse's string boolean form.
+      // Treat undefined, false, 0, and '0' as disabled.
+      const normalized_send_progress =
+        send_progress === undefined
+          ? undefined
+          : typeof send_progress === 'boolean'
+            ? send_progress
+              ? '1'
+              : '0'
+            : String(send_progress)
+      const progressHeadersDisabled =
+        normalized_send_progress === undefined ||
+        normalized_send_progress === '0'
 
-    if (progressHeadersDisabled) {
-      logger.warn({
-        module: 'Config',
-        message: `request_timeout is set to ${request_timeout}ms, but send_progress_in_http_headers is not enabled. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. Consider enabling progress headers with clickhouse_settings: { send_progress_in_http_headers: 1, http_headers_progress_interval_ms: '<interval>' }. See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/long_running_queries.md for more details.`,
-      })
-    } else if (progress_interval === undefined) {
-      logger.warn({
-        module: 'Config',
-        message: `request_timeout is set to ${request_timeout}ms and send_progress_in_http_headers is enabled, but http_headers_progress_interval_ms is not set. It is recommended to set http_headers_progress_interval_ms to a value slightly below your load balancer's idle timeout (e.g., '110000' for a 120s LB timeout). See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/long_running_queries.md for more details.`,
-      })
+      if (progressHeadersDisabled) {
+        logger.warn({
+          module: 'Config',
+          message: `request_timeout is set to ${request_timeout}ms, but send_progress_in_http_headers is not enabled. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. Consider enabling progress headers with clickhouse_settings: { send_progress_in_http_headers: 1, http_headers_progress_interval_ms: '<interval>' }. See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/long_running_queries.md for more details.`,
+        })
+      } else if (progress_interval === undefined) {
+        logger.warn({
+          module: 'Config',
+          message: `request_timeout is set to ${request_timeout}ms and send_progress_in_http_headers is enabled, but http_headers_progress_interval_ms is not set. It is recommended to set http_headers_progress_interval_ms to a value slightly below your load balancer's idle timeout (e.g., '110000' for a 120s LB timeout). See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/long_running_queries.md for more details.`,
+        })
+      }
     }
   }
 
