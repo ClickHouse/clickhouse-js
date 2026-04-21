@@ -106,7 +106,7 @@ export class SocketPool {
       this.params.keep_alive.enabled &&
       this.params.keep_alive.idle_socket_ttl > 0
     ) {
-      // Just checking in case of a custom agent with a different implementation
+      // Only run this cleanup for the built-in Node.js HTTP agent, since it relies on `freeSockets`.
       if (this.agent instanceof Http.Agent) {
         for (const host of Object.keys(this.agent.freeSockets)) {
           const byHostSockets = this.agent.freeSockets[host]
