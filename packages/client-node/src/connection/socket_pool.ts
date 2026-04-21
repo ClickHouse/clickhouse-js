@@ -478,10 +478,7 @@ export class SocketPool {
                 if (log_level <= ClickHouseLogLevel.WARN) {
                   if (responseStream && !responseStream.readableEnded) {
                     log_writer.warn({
-                      message:
-                        `${op}: socket was closed or ended before the response was fully read. ` +
-                        'This can potentially result in an uncaught ECONNRESET error! ' +
-                        'Consider fully consuming, draining, or destroying the response stream.',
+                      message: `${op}: socket was closed or ended before the response was fully read. This can potentially result in an uncaught ECONNRESET error! Consider fully consuming, draining, or destroying the response stream.`,
                       args: {
                         operation: op,
                         connection_id: this.connectionId,
