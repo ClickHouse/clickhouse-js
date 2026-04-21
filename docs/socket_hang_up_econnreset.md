@@ -30,7 +30,7 @@ If you're experiencing `socket hang up` and / or `ECONNRESET` errors even when u
   })
   ```
 
-  Keep in mind, however, that the total size of the received headers has 16KB limit in recent Node.js versions; after certain amount of progress headers received, which was around 70-80 in our tests, an exception will be generated.
+  Keep in mind, however, that the total size of the received headers has a 16KB limit in recent Node.js versions; after a certain amount of progress headers received, which was around 70-80 in our tests, an exception will be thrown.
 
   It is also possible to use an entirely different approach, avoiding wait time on the wire completely; it could be done by leveraging HTTP interface "feature" that mutations aren't cancelled when the connection is lost. See [this example (part 2)](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/long_running_queries_timeouts.ts) for more details.
 
