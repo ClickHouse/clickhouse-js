@@ -267,12 +267,12 @@ export function getConnectionParams(
     if (progressHeadersDisabled) {
       logger.warn({
         module: 'Config',
-        message: `request_timeout is set to ${request_timeout}ms, but send_progress_in_http_headers is not enabled. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. Consider enabling progress headers with clickhouse_settings: { send_progress_in_http_headers: 1, http_headers_progress_interval_ms: '<interval>' }. See https://github.com/ClickHouse/clickhouse-js/blob/main/examples/long_running_queries_timeouts.ts for more details.`,
+        message: `request_timeout is set to ${request_timeout}ms, but send_progress_in_http_headers is not enabled. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. Consider enabling progress headers with clickhouse_settings: { send_progress_in_http_headers: 1, http_headers_progress_interval_ms: '<interval>' }. See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/long_running_queries.md for more details.`,
       })
     } else if (progress_interval === undefined) {
       logger.warn({
         module: 'Config',
-        message: `request_timeout is set to ${request_timeout}ms and send_progress_in_http_headers is enabled, but http_headers_progress_interval_ms is not set. It is recommended to set http_headers_progress_interval_ms to a value slightly below your load balancer's idle timeout (e.g., '110000' for a 120s LB timeout). See https://github.com/ClickHouse/clickhouse-js/blob/main/examples/long_running_queries_timeouts.ts for more details.`,
+        message: `request_timeout is set to ${request_timeout}ms and send_progress_in_http_headers is enabled, but http_headers_progress_interval_ms is not set. It is recommended to set http_headers_progress_interval_ms to a value slightly below your load balancer's idle timeout (e.g., '110000' for a 120s LB timeout). See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/long_running_queries.md for more details.`,
       })
     }
   }
