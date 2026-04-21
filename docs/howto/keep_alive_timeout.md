@@ -71,9 +71,11 @@ reusing socket with TTL expired based on timestamp
 This is a sign that the application running the client is under heavy load and timers are firing late and the eager destruction might help in this case. Try enabling eager socket destruction to have the client proactively destroy idle sockets that have exceeded the server timeout instead of waiting for the next request to discover and destroy them:
 
 ```ts
-keep_alive: {
-  eagerly_destroy_stale_sockets: true,
-}
+const client = createClient({
+  keep_alive: {
+    eagerly_destroy_stale_sockets: true,
+  },
+})
 ```
 
 When enabled and the client detects that an idle socket has exceeded the server timeout, it will be destroyed immediately. This can help prevent `ECONNRESET` errors on the next request that tries to reuse that socket. You can check the logs for messages about destroying idle sockets:
