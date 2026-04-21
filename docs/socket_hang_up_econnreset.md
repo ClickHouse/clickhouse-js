@@ -54,15 +54,15 @@ If you're experiencing `socket hang up` and / or `ECONNRESET` errors even when u
 
 - To test the connection with plain Node.js functionality, you can try to create a simple HTTP request to the ClickHouse server using the built-in `fetch` API:
 
-```ts
-const response = await fetch('<clickhouse_url>?query=SELECT+1', {
-  method: 'POST',
-  headers: {
-    Authorization:
-      'Basic ' + Buffer.from('<user>:<password>').toString('base64'),
-  },
-})
-```
+  ```ts
+  const response = await fetch('<clickhouse_url>?query=SELECT+1', {
+    method: 'POST',
+    headers: {
+      Authorization:
+        'Basic ' + Buffer.from('<user>:<password>').toString('base64'),
+    },
+  })
+  ```
 
 - In some cases the application code or the framework adapters can add a preemptive `ping()` before the actual query execution, which can lead to a situation where the `ping()` request is successful, but the subsequent query request fails with a "socket hang up" error due to the same underlying issue with idle connections. If you see that pattern in the logs, try to check if there is an option to disable preemptive pings in your framework or application code. This should also help with reducing the probability of getting rate limited by any of the intermediate network components.
 
