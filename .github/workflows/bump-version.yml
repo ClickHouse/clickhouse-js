@@ -54,7 +54,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "bump/v${{ steps.version.outputs.new }}"
-          git add packages/ package-lock.json
+          git add .
           git commit -m "chore: bump version to ${{ steps.version.outputs.new }}"
           git push origin "bump/v${{ steps.version.outputs.new }}"
 
