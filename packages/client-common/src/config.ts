@@ -249,7 +249,7 @@ export function getConnectionParams(
     const THRESHOLD_MS = 60_000 // 60 seconds
     if (request_timeout > THRESHOLD_MS) {
       const send_progress =
-        clickhouse_settings.send_progress_in_http_headers === 1
+        String(clickhouse_settings.send_progress_in_http_headers) === '1'
       const progress_interval =
         clickhouse_settings.http_headers_progress_interval_ms
 
