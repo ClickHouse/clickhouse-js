@@ -58,10 +58,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "bump/v${{ steps.version.outputs.new }}"
+          git checkout -b "release-${{ steps.version.outputs.new }}"
           git add .
           git commit -m "chore: bump version to ${{ steps.version.outputs.new }}"
-          git push origin "bump/v${{ steps.version.outputs.new }}"
+          git push origin "release-${{ steps.version.outputs.new }}"
 
       - name: Create pull request
         env:
@@ -71,4 +71,4 @@ jobs:
             --title "chore: bump version to ${{ steps.version.outputs.new }}" \
             --body "Bumps version from \`${{ steps.version.outputs.current }}\` to \`${{ steps.version.outputs.new }}\` (${{ inputs.bump_type }} bump)." \
             --base main \
-            --head "bump/v${{ steps.version.outputs.new }}"
+            --head "release-${{ steps.version.outputs.new }}"
