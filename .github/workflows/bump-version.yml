@@ -12,6 +12,8 @@ on:
           - minor
           - major
 
+permissions: {}
+
 concurrency:
   group: ${{ github.repository }}-${{ github.workflow }}
   cancel-in-progress: false
