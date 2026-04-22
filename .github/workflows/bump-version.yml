@@ -44,7 +44,9 @@ jobs:
         run: |
           CURRENT=$(node -p "require('./packages/client-common/package.json').version")
           NEW=$(CURRENT="$CURRENT" node -e "
-            const [major, minor, patch] = process.env.CURRENT.split('.').map(Number);
+            const m = process.env.CURRENT.match(/^(\d+)\.(\d+)\.(\d+)$/);
+            if (!m) throw new Error('Version ' + process.env.CURRENT + ' is not a strict x.y.z release; bump manually.');
+            const [, major, minor, patch] = m.map(Number);
             if (process.env.BUMP_TYPE === 'major') process.stdout.write((major+1) + '.0.0');
             else if (process.env.BUMP_TYPE === 'minor') process.stdout.write(major + '.' + (minor+1) + '.0');
             else process.stdout.write(major + '.' + minor + '.' + (patch+1));
