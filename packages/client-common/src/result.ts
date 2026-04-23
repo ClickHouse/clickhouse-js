@@ -141,6 +141,22 @@ export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
    */
   stream(): ResultStream<Format, Stream>
 
+  /**
+   * Returns the raw underlying stream without any row parsing or transformation.
+   *
+   * Useful when you need the raw bytes (e.g., CSV or TSV data)
+   * and want to pipe them directly to a file or another stream
+   * without the overhead of row-by-row parsing.
+   *
+   * The stream is already decompressed if HTTP compression is enabled.
+   *
+   * Should be called only once.
+   *
+   * The method should throw if the underlying stream was already consumed
+   * by calling the other methods.
+   */
+  rawStream(): Stream
+
   /** Close the underlying stream. */
   close(): void
 

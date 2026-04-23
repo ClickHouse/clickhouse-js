@@ -61,6 +61,35 @@ describe('[Node.js] ResultSet', () => {
     await expect(rs.text()).rejects.toEqual(err)
   })
 
+  it('should return the raw stream without row parsing', async () => {
+    const rs = makeResultSet(getDataStream(), 'CSVWithNames')
+    const raw = rs.rawStream()
+    const chunks: Buffer[] = []
+    for await (const chunk of raw) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    }
+    expect(Buffer.concat(chunks).toString()).toEqual(expectedText)
+  })
+
+  it('should throw if rawStream is called after text', async () => {
+    const rs = makeResultSet(getDataStream())
+    await rs.text()
+    expect(() => rs.rawStream()).toThrow(errMsg)
+  })
+
+  it('should throw if text is called immediately after rawStream', async () => {
+    const rs = makeResultSet(getDataStream())
+    rs.rawStream()
+    // text() should throw immediately — not only after the stream ends
+    await expect(rs.text()).rejects.toEqual(err)
+  })
+
+  it('should throw if stream is called after rawStream', async () => {
+    const rs = makeResultSet(getDataStream())
+    rs.rawStream()
+    expect(() => rs.stream()).toThrow(errMsg)
+  })
+
   it('should be able to call Row.text and Row.json multiple times', async () => {
     const rs = makeResultSet(
       Stream.Readable.from([Buffer.from('{"foo":"bar"}\n')]),

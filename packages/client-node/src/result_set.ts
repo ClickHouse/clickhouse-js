@@ -67,6 +67,7 @@ export class ResultSet<
   private readonly exceptionTag: string | undefined = undefined
   private readonly log_error: (error: Error) => void
   private readonly jsonHandling: JSONHandling
+  private _consumed = false
 
   constructor(
     private _stream: Stream.Readable,
@@ -91,20 +92,22 @@ export class ResultSet<
     }
   }
 
-  /** See {@link BaseResultSet.text}. */
-  async text(): Promise<string> {
-    if (this._stream.readableEnded) {
+  private markAsConsumed() {
+    if (this._consumed || this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
+    this._consumed = true
+  }
+
+  /** See {@link BaseResultSet.text}. */
+  async text(): Promise<string> {
+    this.markAsConsumed()
     return (await getAsText(this._stream)).toString()
   }
 
   /** See {@link BaseResultSet.json}. */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
-    if (this._stream.readableEnded) {
-      throw Error(streamAlreadyConsumedMessage)
-    }
-    // JSONEachRow, etc.
+    // JSONEachRow, etc. — delegates to stream() which marks as consumed
     if (isStreamableJSONFamily(this.format as DataFormat)) {
       const result: T[] = []
       const stream = this.stream<T>()
@@ -117,6 +120,7 @@ export class ResultSet<
     }
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
+      this.markAsConsumed()
       const text = await getAsText(this._stream)
       return this.jsonHandling.parse(text)
     }
@@ -126,12 +130,7 @@ export class ResultSet<
 
   /** See {@link BaseResultSet.stream}. */
   stream<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
-    // If the underlying stream has already ended by calling `text` or `json`,
-    // Stream.pipeline will create a new empty stream
-    // but without "readableEnded" flag set to true
-    if (this._stream.readableEnded) {
-      throw Error(streamAlreadyConsumedMessage)
-    }
+    this.markAsConsumed()
 
     validateStreamFormat(this.format)
 
@@ -210,6 +209,12 @@ export class ResultSet<
       },
     )
     return pipeline as any
+  }
+
+  /** See {@link BaseResultSet.rawStream}. */
+  rawStream(): Stream.Readable {
+    this.markAsConsumed()
+    return this._stream
   }
 
   /** See {@link BaseResultSet.close}. */
