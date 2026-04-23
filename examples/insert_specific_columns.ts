@@ -1,10 +1,10 @@
 import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 /**
- * Excluding certain columns from the INSERT statement.
- * For the inverse (specifying the exact columns to insert into), see `insert_specific_columns.ts`.
+ * Explicitly specifying a list of columns to insert the data into.
+ * For the inverse (excluding certain columns instead), see `insert_exclude_columns.ts`.
  */
-const tableName = 'insert_exclude_columns'
+const tableName = 'insert_specific_columns'
 const client = createClient()
 
 await client.command({
@@ -18,22 +18,18 @@ await client.command({
 
 await client.insert({
   table: tableName,
-  values: [{ message: 'bar' }],
+  values: [{ message: 'foo' }],
   format: 'JSONEachRow',
   // `id` column value for this row will be zero
-  columns: {
-    except: ['id'],
-  },
+  columns: ['message'],
 })
 
 await client.insert({
   table: tableName,
-  values: [{ id: 144 }],
+  values: [{ id: 42 }],
   format: 'JSONEachRow',
   // `message` column value for this row will be an empty string
-  columns: {
-    except: ['message'],
-  },
+  columns: ['id'],
 })
 
 const rows = await client.query({

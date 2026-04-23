@@ -13,7 +13,8 @@ const EXCLUDED_EXAMPLES = [
   'examples/node/basic_tls.ts',
   'examples/node/mutual_tls.ts',
   // Designed as a production-scenario demo; intentionally uses very long timeouts (up to 400 s)
-  'examples/long_running_queries_timeouts.ts',
+  'examples/long_running_queries_progress_headers.ts',
+  'examples/long_running_queries_cancel_request.ts',
   // Designed to run indefinitely; they never resolve on their own
   'examples/async_insert_without_waiting.ts',
   'examples/node/insert_streaming_with_backpressure.ts',
