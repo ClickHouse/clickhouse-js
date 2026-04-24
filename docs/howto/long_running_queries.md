@@ -175,4 +175,4 @@ Use **Approach 2** when you need stronger guarantees against transient network f
 
 ## Full example
 
-See [`examples/long_running_queries_timeouts.ts`](../../examples/long_running_queries_timeouts.ts) for runnable code covering both approaches.
+See [`examples/long_running_queries_progress_headers.ts`](../../examples/long_running_queries_progress_headers.ts) and [`examples/long_running_queries_cancel_request.ts`](../../examples/long_running_queries_cancel_request.ts) for runnable code covering both approaches.

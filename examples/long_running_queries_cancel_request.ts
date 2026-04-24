@@ -1,9 +1,11 @@
 import { type ClickHouseClient, createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
-import * as crypto from 'crypto'
+import * as crypto from 'crypto' // Node.js only
 import type { SetIntervalAsyncTimer } from 'set-interval-async'
 import { clearIntervalAsync, setIntervalAsync } from 'set-interval-async'
 
 /**
+ * Node.js-only example (uses Node's `crypto` module to generate a query_id).
+ *
  * If you execute a long-running query without data coming in from the client,
  * and your LB has idle connection timeout set to a value less than the query execution time,
  * one approach (see `long_running_queries_progress_headers.ts`) is to enable progress HTTP headers.

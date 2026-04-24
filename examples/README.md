@@ -17,7 +17,7 @@ If something is missing, or you found a mistake in one of these examples, please
 - [clickhouse_settings.ts](clickhouse_settings.ts) - ClickHouse settings on the client side, both global and per operation.
 - [ping_existing_host.ts](ping_existing_host.ts) - successful ping against an existing ClickHouse server.
 - [ping_non_existing_host.ts](ping_non_existing_host.ts) - ping against a host that does not exist; ping returns an error instead of throwing.
-- [ping_timeout.ts](ping_timeout.ts) - ping that times out against a server which is too slow to respond.
+- [ping_timeout.ts](ping_timeout.ts) - (Node.js only) ping that times out against a server which is too slow to respond.
 - [abort_request.ts](abort_request.ts) - cancelling an outgoing request or a read-only query.
 - [cancel_query.ts](cancel_query.ts) - cancelling a potentially long-running query on the server side.
 - [long_running_queries_progress_headers.ts](long_running_queries_progress_headers.ts) - avoiding timeout errors for long-running queries by enabling ClickHouse progress HTTP headers.
