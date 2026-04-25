@@ -185,30 +185,37 @@ async function pollOnInterval(
   let intervalId: SetIntervalAsyncTimer<[]> | undefined
   const result: boolean = await new Promise((resolve) => {
     let pollsCount = 1
+    let settled = false
+    const stopAndResolve = async (value: boolean) => {
+      if (settled) return
+      settled = true
+      if (intervalId !== undefined) {
+        await clearIntervalAsync(intervalId)
+      }
+      resolve(value)
+    }
     // See https://www.npmjs.com/package/set-interval-async#when-should-i-use-setintervalasync
     intervalId = setIntervalAsync(async () => {
+      if (settled) return
       try {
         const success = await fn()
         console.log(`[${op}] Poll #${pollsCount}: ${success}`)
         if (success) {
-          resolve(true)
+          await stopAndResolve(true)
         } else {
           if (pollsCount < maxPolls) {
             pollsCount++
             return
           }
           console.error(`[${op}] Max polls count reached!`)
-          resolve(false)
+          await stopAndResolve(false)
         }
       } catch (err) {
         console.error(`[${op}] Error while polling:`, err)
-        resolve(false)
+        await stopAndResolve(false)
       }
     }, intervalMs)
   })
-  if (intervalId !== undefined) {
-    await clearIntervalAsync(intervalId)
-  }
   return result
 }
 
