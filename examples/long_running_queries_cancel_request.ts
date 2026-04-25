@@ -118,7 +118,7 @@ async function longRunningInsert(
   } catch (err) {
     if (err instanceof Error && err.message.includes('abort')) {
       console.info(
-        'The request was aborted, but the query is still running on the server.',
+        'The request was aborted, but the query might still be running on the server.',
       )
     } else {
       console.error('Unexpected error:', err)
