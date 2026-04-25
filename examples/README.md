@@ -15,10 +15,13 @@ If something is missing, or you found a mistake in one of these examples, please
 
 - [url_configuration.ts](url_configuration.ts) - client configuration using the URL parameters.
 - [clickhouse_settings.ts](clickhouse_settings.ts) - ClickHouse settings on the client side, both global and per operation.
-- [ping.ts](ping.ts) - sample checks if the server can be reached.
+- [ping_existing_host.ts](ping_existing_host.ts) - successful ping against an existing ClickHouse server.
+- [ping_non_existing_host.ts](ping_non_existing_host.ts) - ping against a host that does not exist; ping returns an error instead of throwing.
+- [ping_timeout.ts](ping_timeout.ts) - (Node.js only) ping that times out against a server which is too slow to respond.
 - [abort_request.ts](abort_request.ts) - cancelling an outgoing request or a read-only query.
 - [cancel_query.ts](cancel_query.ts) - cancelling a potentially long-running query on the server side.
-- [long_running_queries_timeouts.ts](long_running_queries_timeouts.ts) - avoiding timeout errors for long-running queries (two different approaches).
+- [long_running_queries_progress_headers.ts](long_running_queries_progress_headers.ts) - avoiding timeout errors for long-running queries by enabling ClickHouse progress HTTP headers.
+- [long_running_queries_cancel_request.ts](long_running_queries_cancel_request.ts) - avoiding timeout errors for long-running queries by cancelling the outgoing HTTP request and polling the query status server-side.
 - [read_only_user.ts](read_only_user.ts) - an example of using the client with a read-only user, with possible read-only user limitations highlights.
 - [basic_tls.ts](node/basic_tls.ts) - (Node.js only) using certificates for basic TLS authentication.
 - [mutual_tls.ts](node/mutual_tls.ts) - (Node.js only) using certificates for mutual TLS authentication.
@@ -36,7 +39,8 @@ If something is missing, or you found a mistake in one of these examples, please
 - [insert_data_formats_overview.ts](insert_data_formats_overview.ts) - an overview of available data formats for inserting data.
 - [async_insert.ts](async_insert.ts) - server-side batching using async inserts; the client will be waiting for a written batch ack.
 - [async_insert_without_waiting.ts](async_insert_without_waiting.ts) - server-side batching using async inserts; the client will not be waiting for a written batch ack. This is a bit more advanced async insert example simulating an event listener.
-- [insert_exclude_columns.ts](insert_exclude_columns.ts) - inserting into specific columns only, or excluding certain columns from the INSERT statement.
+- [insert_specific_columns.ts](insert_specific_columns.ts) - inserting into a specific subset of columns by listing them explicitly.
+- [insert_exclude_columns.ts](insert_exclude_columns.ts) - inserting into all columns except the listed ones.
 - [insert_from_select.ts](insert_from_select.ts) - `INSERT FROM SELECT` example, using the `command` method instead of the default `insert`.
 - [insert_into_different_db.ts](insert_into_different_db.ts) - inserting data into a table in a different database, regardless of the database provided in the connection settings.
 - [insert_decimals.ts](insert_decimals.ts) - inserting decimal values into ClickHouse using `JSONEachRow` format.
@@ -56,7 +60,8 @@ If something is missing, or you found a mistake in one of these examples, please
 - [select_json_each_row.ts](select_json_each_row.ts) - simple select of the data in the `JSONEachRow` format.
 - [select_data_formats_overview.ts](select_data_formats_overview.ts) - an overview of all available data formats for select queries.
 - [select_json_with_metadata.ts](select_json_with_metadata.ts) - select result as a JSON object with query metadata.
-- [query_with_parameter_binding.ts](query_with_parameter_binding.ts) - query parameter binding example.
+- [query_with_parameter_binding.ts](query_with_parameter_binding.ts) - query parameter binding example with various data types.
+- [query_with_parameter_binding_special_chars.ts](query_with_parameter_binding_special_chars.ts) - query parameter binding example for values containing special characters (tabs, newlines, quotes, backslashes).
 - [select_parquet_as_file.ts](node/select_parquet_as_file.ts) - (Node.js only) select data from ClickHouse and save it as a Parquet file. This example can be adjusted to save the data in other formats, such as CSV/TSV/TabSeparated, by changing the format in the query.
 - [select_streaming_json_each_row.ts](node/select_streaming_json_each_row.ts) - (Node.js only) streaming JSON\* formats from ClickHouse and processing it with `on('data')` event.
 - [select_streaming_json_each_row_for_await.ts](node/select_streaming_json_each_row_for_await.ts) - (Node.js only) similar to [select_streaming_json_each_row.ts](node/select_streaming_json_each_row.ts), but using the `for await` loop syntax.

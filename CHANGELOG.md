@@ -878,7 +878,7 @@ await client.insert({
 
 See also the new examples:
 
-- [Including specific columns or excluding certain ones instead](./examples/insert_exclude_columns.ts)
+- [Including specific columns](./examples/insert_specific_columns.ts) or [excluding certain ones instead](./examples/insert_exclude_columns.ts)
 - [Leveraging this feature](./examples/insert_ephemeral_columns.ts) when working with
   [ephemeral columns](https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral)
   ([#217](https://github.com/ClickHouse/clickhouse-js/issues/217))
