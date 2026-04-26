@@ -80,23 +80,23 @@ The client may work with older versions too; however, this is best-effort suppor
 ## Quick start
 
 ```ts
-import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client"; // or '@clickhouse/client-web'
 
 const client = createClient({
-  url: process.env.CLICKHOUSE_URL ?? 'http://localhost:8123',
-  username: process.env.CLICKHOUSE_USER ?? 'default',
-  password: process.env.CLICKHOUSE_PASSWORD ?? '',
-})
+  url: process.env.CLICKHOUSE_URL ?? "http://localhost:8123",
+  username: process.env.CLICKHOUSE_USER ?? "default",
+  password: process.env.CLICKHOUSE_PASSWORD ?? "",
+});
 
 const resultSet = await client.query({
-  query: 'SELECT * FROM system.tables',
-  format: 'JSONEachRow',
-})
+  query: "SELECT * FROM system.tables",
+  format: "JSONEachRow",
+});
 
-const tables = await resultSet.json()
-console.log(tables)
+const tables = await resultSet.json();
+console.log(tables);
 
-await client.close()
+await client.close();
 ```
 
 See more examples in the [examples directory](./examples).
@@ -104,6 +104,25 @@ See more examples in the [examples directory](./examples).
 ## Documentation
 
 See the [ClickHouse website](https://clickhouse.com/docs/integrations/javascript) for the full documentation.
+
+## AI Agent Skills
+
+This repository contains agent skills for working with the client:
+
+- `clickhouse-js-node-troubleshooting` — troubleshooting playbook for the Node.js client.
+
+Install manually:
+
+```sh
+# per project
+npx skills add ClickHouse/clickhouse-js
+# globally
+npx skills add ClickHouse/clickhouse-js -g
+```
+
+or ask your agent to install it:
+
+> install agent skills from ClickHouse/clickhouse-js
 
 ## Usage examples
 
