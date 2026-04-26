@@ -80,23 +80,23 @@ The client may work with older versions too; however, this is best-effort suppor
 ## Quick start
 
 ```ts
-import { createClient } from "@clickhouse/client"; // or '@clickhouse/client-web'
+import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
 
 const client = createClient({
-  url: process.env.CLICKHOUSE_URL ?? "http://localhost:8123",
-  username: process.env.CLICKHOUSE_USER ?? "default",
-  password: process.env.CLICKHOUSE_PASSWORD ?? "",
-});
+  url: process.env.CLICKHOUSE_URL ?? 'http://localhost:8123',
+  username: process.env.CLICKHOUSE_USER ?? 'default',
+  password: process.env.CLICKHOUSE_PASSWORD ?? '',
+})
 
 const resultSet = await client.query({
-  query: "SELECT * FROM system.tables",
-  format: "JSONEachRow",
-});
+  query: 'SELECT * FROM system.tables',
+  format: 'JSONEachRow',
+})
 
-const tables = await resultSet.json();
-console.log(tables);
+const tables = await resultSet.json()
+console.log(tables)
 
-await client.close();
+await client.close()
 ```
 
 See more examples in the [examples directory](./examples).
