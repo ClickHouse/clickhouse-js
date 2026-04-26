@@ -111,7 +111,7 @@ This repository contains agent skills for working with the client:
 
 - `clickhouse-js-node-troubleshooting` — troubleshooting playbook for the Node.js client.
 
-Install manually:
+Install via CLI:
 
 ```sh
 # per project
@@ -120,7 +120,7 @@ npx skills add ClickHouse/clickhouse-js
 npx skills add ClickHouse/clickhouse-js -g
 ```
 
-or ask your agent to install it:
+Or ask your agent to install it for you:
 
 > install agent skills from ClickHouse/clickhouse-js
 
