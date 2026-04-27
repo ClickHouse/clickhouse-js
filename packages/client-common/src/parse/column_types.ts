@@ -285,8 +285,9 @@ export function parseDecimalType({
 
 /**
  * Unescape backslash escape sequences in enum names.
- * In ClickHouse, backslash escapes single quotes and backslashes themselves.
- * Examples: "f\\'" -> "f'", "b\\'\\'\\''" -> "b'''", "\\'" -> "'"
+ * This implementation treats a backslash as escaping the next character:
+ * when a backslash is followed by another character, the backslash is removed.
+ * Examples: "f\\'" -> "f'", "b\\'\\'\\''" -> "b'''", "\\'" -> "'", "a\\nb" -> "anb"
  */
 function unescapeEnumName(escaped: string): string {
   let unescaped = ''
