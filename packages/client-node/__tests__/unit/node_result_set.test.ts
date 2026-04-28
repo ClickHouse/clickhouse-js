@@ -61,6 +61,53 @@ describe('[Node.js] ResultSet', () => {
     await expect(rs.text()).rejects.toEqual(err)
   })
 
+  // Regression test for https://github.com/ClickHouse/clickhouse-js/issues/575
+  // The old code used readableEnded to track consumption, which could become
+  // true before json() is called (for fast/small responses). The fix uses a
+  // _consumed boolean flag that only our code controls.
+  it('should succeed on json() even if readableEnded is already true', async () => {
+    const stream = Readable.from([Buffer.from('{"n":1}\n')])
+
+    // Force readableEnded=true to deterministically simulate a fast response
+    // that has already ended before json() is called.
+    Object.defineProperty(stream, 'readableEnded', {
+      get: () => true,
+      configurable: true,
+    })
+
+    const rs = makeResultSet(stream)
+    // Old code would throw "Stream has been already consumed" here
+    // because it checked readableEnded. New code only checks _consumed.
+    const result = await rs.json()
+    expect(result).toEqual([{ n: 1 }])
+  })
+
+  // Verify that calling json() on a non-JSON format (e.g. CSV) does not
+  // permanently mark the ResultSet as consumed — text() should still work.
+  it('should allow text() after json() throws for unsupported format', async () => {
+    const rs = makeResultSet(
+      Stream.Readable.from([Buffer.from('1,"foo"\n')]),
+      'CSV',
+    )
+    await expect(rs.json()).rejects.toThrow('Cannot decode CSV as JSON')
+    // ResultSet should NOT be consumed — text() should still work
+    const text = await rs.text()
+    expect(text).toEqual('1,"foo"\n')
+  })
+
+  // Verify that calling stream() on a non-streamable format does not
+  // permanently mark the ResultSet as consumed — text() should still work.
+  it('should allow text() after stream() throws for invalid format', async () => {
+    const rs = makeResultSet(
+      Stream.Readable.from([Buffer.from('{"data":[1,2,3]}')]),
+      'JSON',
+    )
+    expect(() => rs.stream()).toThrow()
+    // ResultSet should NOT be consumed — text() should still work
+    const text = await rs.text()
+    expect(text).toEqual('{"data":[1,2,3]}')
+  })
+
   it('should be able to call Row.text and Row.json multiple times', async () => {
     const rs = makeResultSet(
       Stream.Readable.from([Buffer.from('{"foo":"bar"}\n')]),
