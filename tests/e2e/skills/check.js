@@ -36,10 +36,14 @@ check('@clickhouse/client package.json declares agents.skills', () => {
   )
 })
 
-// @clickhouse/client-web — no skills yet, just verify the package installed cleanly
+// @clickhouse/client-web — no skills yet; verify the package installed cleanly and does not ship skills
 check('@clickhouse/client-web installs without skills dir', () => {
   const webRoot = path.join(nm, '@clickhouse', 'client-web')
   assert.ok(fs.existsSync(webRoot), '@clickhouse/client-web should be installed')
+  assert.ok(
+    !fs.existsSync(path.join(webRoot, 'skills')),
+    '@clickhouse/client-web should not include a skills directory'
+  )
 })
 
 console.log('\nAll checks passed.')
