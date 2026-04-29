@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - .github/workflows/e2e.yml
+      - .github/workflows/e2e-install.yml
 
 jobs:
   tiny-project:
@@ -16,7 +16,7 @@ jobs:
         node: [20, 22, 24]
     defaults:
       run:
-        working-directory: tests/e2e
+        working-directory: tests/e2e/install
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

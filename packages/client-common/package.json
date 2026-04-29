@@ -20,6 +20,7 @@
     "dist"
   ],
   "scripts": {
+    "pack": "npm pack",
     "prepack": "cp ../../README.md ../../LICENSE .",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
