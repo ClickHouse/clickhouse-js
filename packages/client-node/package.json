@@ -32,6 +32,7 @@
     ]
   },
   "scripts": {
+    "pack": "npm pack",
     "prepack": "rm -rf skills && cp ../../README.md ../../LICENSE . && cp -r ../../skills .",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",

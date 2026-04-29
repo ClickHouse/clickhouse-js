@@ -34,17 +34,9 @@ jobs:
         run: npm --workspaces run build
         working-directory: .
 
-      - name: Pack @clickhouse/client-common
-        run: npm pack
-        working-directory: packages/client-common
-
-      - name: Pack @clickhouse/client
-        run: npm pack
-        working-directory: packages/client-node
-
-      - name: Pack @clickhouse/client-web
-        run: npm pack
-        working-directory: packages/client-web
+      - name: Pack packages
+        run: npm --workspaces run pack
+        working-directory: .
 
       - name: Install packed packages
         run: |
