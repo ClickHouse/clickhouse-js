@@ -7,6 +7,8 @@ on:
     paths:
       - .github/workflows/skills-e2e.yml
       - skills/**
+      - tests/e2e/skills/**
+      - packages/client-common/package.json
       - packages/client-node/package.json
       - packages/client-web/package.json
 
