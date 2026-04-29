@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "prepare": "skills-npm --agents claude --force --cleanup --cwd ."
+    "prepare": "skills-npm --yes --agents claude-code --force --cleanup --cwd ."
   },
   "devDependencies": {
     "skills-npm": "latest"
