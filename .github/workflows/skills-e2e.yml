@@ -38,6 +38,9 @@ jobs:
         run: npm --workspaces run pack
         working-directory: .
 
+      - name: Install test dependencies
+        run: npm install
+
       - name: Install packed packages
         run: |
           npm install \

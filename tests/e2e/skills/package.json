@@ -1,5 +1,8 @@
 {
   "name": "skills-e2e",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "skills-npm": "latest"
+  }
 }
