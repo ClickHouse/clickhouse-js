@@ -47,7 +47,7 @@ jobs:
           npm run build || echo "Failed to build packages"
 
       - name: Start ClickHouse
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: isbang/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.4.2
         env:
           CLICKHOUSE_VERSION: 'latest'
         with:
