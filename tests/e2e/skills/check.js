@@ -61,14 +61,6 @@ check('@clickhouse/client-web installs without skills dir', () => {
   )
 })
 
-// skills-npm: install skills via skills-npm and verify symlinks are created
-check('skills-npm runs successfully', () => {
-  execSync('./node_modules/.bin/skills-npm --yes --source=node_modules', {
-    cwd: __dirname,
-    stdio: 'pipe',
-  })
-})
-
 check('skills-npm creates a skills/ directory', () => {
   assert.ok(
     fs.existsSync(path.join(__dirname, 'skills')),

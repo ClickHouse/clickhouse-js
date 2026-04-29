@@ -2,6 +2,9 @@
   "name": "skills-e2e",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "prepare": "skills-npm"
+  },
   "devDependencies": {
     "skills-npm": "latest"
   }
