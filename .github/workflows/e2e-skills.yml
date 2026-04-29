@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - .github/workflows/skills-e2e.yml
+      - .github/workflows/e2e-skills.yml
       - skills/**
       - tests/e2e/skills/**
       - packages/client-common/package.json
