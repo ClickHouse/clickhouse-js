@@ -15,9 +15,6 @@ on:
 jobs:
   skills-packaging:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: tests/e2e/skills
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -28,25 +25,25 @@ jobs:
 
       - name: Install root dependencies
         run: npm ci
-        working-directory: .
 
       - name: Build packages
         run: npm --workspaces run build
-        working-directory: .
 
       - name: Pack packages
         run: npm --workspaces run pack
-        working-directory: .
-
-      - name: Install test dependencies
-        run: npm install
 
       - name: Install packed packages
+        working-directory: tests/e2e/skills
         run: |
           npm install \
             ../../../packages/client-common/clickhouse-client-common-*.tgz \
             ../../../packages/client-node/clickhouse-client-*.tgz \
             ../../../packages/client-web/clickhouse-client-web-*.tgz
 
+      - name: Install test dependencies
+        working-directory: tests/e2e/skills
+        run: npm install
+
       - name: Check skills are accessible
+        working-directory: tests/e2e/skills
         run: node check.js
