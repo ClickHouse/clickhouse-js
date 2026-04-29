@@ -62,13 +62,13 @@ check('@clickhouse/client-web installs without skills dir', () => {
 
 check('skills-npm creates a skills/ directory', () => {
   assert.ok(
-    fs.existsSync(path.join(__dirname, 'skills')),
+    fs.existsSync(path.join(__dirname, '.claude', 'skills')),
     'skills/ directory should be created by skills-npm',
   )
 })
 
 check('skills-npm symlinks clickhouse-js-node-troubleshooting', () => {
-  const skillsDir = path.join(__dirname, 'skills')
+  const skillsDir = path.join(__dirname, '.claude', 'skills')
   const entries = fs.readdirSync(skillsDir)
   const npmLinks = entries.filter((e) => e.startsWith('npm-'))
   assert.ok(
