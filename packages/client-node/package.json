@@ -20,10 +20,19 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
+  "agents": {
+    "skills": [
+      {
+        "name": "clickhouse-js-node-troubleshooting",
+        "path": "./skills/clickhouse-js-node-troubleshooting"
+      }
+    ]
+  },
   "scripts": {
-    "prepack": "cp ../../README.md ../../LICENSE .",
+    "prepack": "cp ../../README.md ../../LICENSE . && cp -r ../../skills .",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",
