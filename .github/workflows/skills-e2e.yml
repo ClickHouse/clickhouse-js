@@ -1,0 +1,55 @@
+name: 'Skills E2E'
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/skills-e2e.yml
+      - skills/**
+      - packages/client-node/package.json
+      - packages/client-web/package.json
+
+jobs:
+  skills-packaging:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests/e2e/skills
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+
+      - name: Install root dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Build packages
+        run: npm --workspaces run build
+        working-directory: .
+
+      - name: Pack @clickhouse/client-common
+        run: npm pack
+        working-directory: packages/client-common
+
+      - name: Pack @clickhouse/client
+        run: npm pack
+        working-directory: packages/client-node
+
+      - name: Pack @clickhouse/client-web
+        run: npm pack
+        working-directory: packages/client-web
+
+      - name: Install packed packages
+        run: |
+          npm install \
+            ../../../packages/client-common/clickhouse-client-common-*.tgz \
+            ../../../packages/client-node/clickhouse-client-*.tgz \
+            ../../../packages/client-web/clickhouse-client-web-*.tgz
+
+      - name: Check skills are accessible
+        run: node check.js
