@@ -4,8 +4,10 @@ import { createClient, ClickHouseError } from '@clickhouse/client-web'
 // Suitable for ClickHouse Cloud, too. Can be used with either Node.js or Web versions of the client.
 // See https://clickhouse.com/docs/en/optimize/asynchronous-inserts
 const client = createClient({
-  url: process.env['CLICKHOUSE_URL'], // defaults to 'http://localhost:8123'
-  password: process.env['CLICKHOUSE_PASSWORD'], // defaults to an empty string
+  // In a browser application, configure the URL/credentials directly here
+  // (or build them from a runtime configuration object). The defaults below
+  // assume a ClickHouse instance running locally without authentication.
+  url: 'http://localhost:8123',
   max_open_connections: 10,
   clickhouse_settings: {
     // https://clickhouse.com/docs/en/operations/settings/settings#async_insert

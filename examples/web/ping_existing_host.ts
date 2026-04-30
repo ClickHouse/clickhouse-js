@@ -13,8 +13,10 @@ import { createClient } from '@clickhouse/client-web'
  *  - `ping_timeout.ts`           - ping that times out.
  */
 const client = createClient({
-  url: process.env['CLICKHOUSE_URL'], // defaults to 'http://localhost:8123'
-  password: process.env['CLICKHOUSE_PASSWORD'], // defaults to an empty string
+  // In a browser application, configure the URL/credentials directly here
+  // (or build them from a runtime configuration object). The defaults below
+  // assume a ClickHouse instance running locally without authentication.
+  url: 'http://localhost:8123',
 })
 const pingResult = await client.ping()
 if (pingResult.success) {

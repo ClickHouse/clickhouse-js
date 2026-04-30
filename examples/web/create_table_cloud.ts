@@ -1,15 +1,30 @@
 import { createClient } from '@clickhouse/client-web'
 
+// Replace the placeholders below with your ClickHouse Cloud connection details.
+// In a real browser application, you would typically inject these at build time
+// or read them from a runtime configuration object instead of hardcoding them.
+const CLICKHOUSE_URL = 'https://<your-clickhouse-cloud-hostname>:8443'
+const CLICKHOUSE_PASSWORD = '<your-clickhouse-cloud-password>'
+
+if (
+  CLICKHOUSE_URL.includes('<your-') ||
+  CLICKHOUSE_PASSWORD.includes('<your-')
+) {
+  throw new Error(
+    'Please set CLICKHOUSE_URL and CLICKHOUSE_PASSWORD in this example before running it.',
+  )
+}
+
 const client = createClient({
-  url: getFromEnv('CLICKHOUSE_URL'),
-  password: getFromEnv('CLICKHOUSE_PASSWORD'),
+  url: CLICKHOUSE_URL,
+  password: CLICKHOUSE_PASSWORD,
 })
 // Note that ENGINE and ON CLUSTER clauses can be omitted entirely here.
 // ClickHouse cloud will automatically use ReplicatedMergeTree
 // with appropriate settings in this case.
 await client.command({
   query: `
-    CREATE TABLE IF NOT EXISTS clickhouse_js_example_cloud_table
+    CREATE TABLE IF NOT EXISTS clickhouse_js_example_cloud_table_web
     (id UInt64, name String)
     ORDER BY (id)
   `,
@@ -22,11 +37,3 @@ await client.command({
   },
 })
 await client.close()
-
-function getFromEnv(key: string) {
-  if (process.env[key]) {
-    return process.env[key]
-  }
-  console.error(`${key} environment variable should be set`)
-  process.exit(1)
-}

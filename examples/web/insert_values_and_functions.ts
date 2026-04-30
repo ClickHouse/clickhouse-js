@@ -72,11 +72,21 @@ await client.close()
 function getRows(n: number): Data[] {
   const now = Date.now() // UNIX timestamp in milliseconds
   return [...new Array(n)].map((_, i) => ({
-    id: Buffer.from(i.toString(10)).toString('hex'),
+    id: toHex(i.toString(10)),
     timestamp: now - i * 1000, // subtract one second for each row
     email: `email${i}@example.com`,
     name: i % 2 === 0 ? `Name${i}` : null, // for every second row it is NULL
   }))
+}
+
+// Convert an ASCII string to its hexadecimal representation using browser-friendly APIs.
+// Equivalent to Buffer.from(value).toString('hex') in Node.js, but works in any JS runtime.
+function toHex(value: string): string {
+  let out = ''
+  for (let i = 0; i < value.length; i++) {
+    out += value.charCodeAt(i).toString(16).padStart(2, '0')
+  }
+  return out
 }
 
 // Generates something like:
