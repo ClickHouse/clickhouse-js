@@ -25,12 +25,7 @@ const client = createClient({
 
 const tableName = 'long_running_queries_cancel_request'
 await client.command({
-  query: `
-        CREATE OR REPLACE TABLE ${tableName}
-        (id String, data String)
-        ENGINE MergeTree()
-        ORDER BY (id)
-      `,
+  query: `CREATE OR REPLACE TABLE ${tableName} (id Int32, _unused Int32)`,
 })
 
 // Used to cancel the outgoing HTTP request (but not the query itself!).
@@ -46,8 +41,7 @@ const queryId = crypto.randomUUID()
 const longRunningQueryPromise = client.command({
   query: `
         INSERT INTO ${tableName}
-        SELECT toString(42 + inner.number), concat('foobar_', inner.number, '_', sleepEachRow(1))
-        FROM (SELECT number FROM system.numbers LIMIT 10) AS inner
+        SELECT number, sleepEachRow(1) FROM system.numbers LIMIT 10
       `,
   clickhouse_settings: {
     function_sleep_max_microseconds_per_block: '100000000', // 1 second per block
