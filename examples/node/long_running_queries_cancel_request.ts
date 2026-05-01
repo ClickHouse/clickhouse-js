@@ -131,7 +131,7 @@ async function getQueryStatus(
     format: 'JSONEachRow',
   })
   const result = await resultSet.json<QueryLogInfo>()
-  console.log(`[Query ${queryId}] CheckCompletedQuery result:`, result)
+  console.log(`[Query ${queryId}] getQueryStatus() result:`, result)
   if (result.length === 0) {
     return null
   }
