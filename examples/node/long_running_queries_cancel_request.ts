@@ -3,8 +3,6 @@ import * as crypto from 'node:crypto'
 import { setTimeout as sleep } from 'node:timers/promises'
 
 /**
- * Node.js-only example (uses Node's `crypto` module to generate a query_id).
- *
  * If you execute a long-running query without data coming in from the client,
  * and your LB has idle connection timeout set to a value less than the query execution time,
  * one approach (see `long_running_queries_progress_headers.ts`) is to enable progress HTTP headers.
@@ -21,11 +19,19 @@ import { setTimeout as sleep } from 'node:timers/promises'
  *
  * @see https://clickhouse.com/docs/en/interfaces/http
  */
-const tableName = 'long_running_queries_cancel_request'
 const client = createClient({
   // we don't need any extra settings here.
 })
-await createTestTable(client, tableName)
+
+const tableName = 'long_running_queries_cancel_request'
+await client.command({
+  query: `
+        CREATE OR REPLACE TABLE ${tableName}
+        (id String, data String)
+        ENGINE MergeTree()
+        ORDER BY (id)
+      `,
+})
 
 // Used to cancel the outgoing HTTP request (but not the query itself!).
 // See more on cancelling the HTTP requests in examples/abort_request.ts.
@@ -61,9 +67,10 @@ await commandPromise
 if (!insertQueryExists) {
   // The query is still not received by the server after a reasonable amount of time.
   // We might assume that the query will not be executed. Handle this depending on your use case.
-  console.error('The query is not received by the server - assuming a failure.')
   await client.close()
-  process.exit(1)
+  throw new Error(
+    'The query is not received by the server - assuming a failure.',
+  )
 }
 
 // Waiting until the query is completed on the server.
@@ -81,9 +88,10 @@ if (isCompleted) {
 } else {
   // Handle this depending on your use case - you could wait a bit more, or cancel the query on the server.
   // See examples/cancel_query.ts for the latter option.
-  console.error('The query is not completed after a reasonable amount of time.')
   await client.close()
-  process.exit(1)
+  throw new Error(
+    'The query is not completed after a reasonable amount of time.',
+  )
 }
 
 // Check the inserted data.
@@ -93,7 +101,6 @@ const rows = await client.query({
 })
 console.info('Inserted data:', await rows.json())
 await client.close()
-process.exit(0)
 
 async function longRunningInsert(
   client: ClickHouseClient,
@@ -123,9 +130,9 @@ async function longRunningInsert(
         'The request was aborted, but the query might still be running on the server.',
       )
     } else {
-      console.error('Unexpected error:', err)
+      console.error('Unexpected error occurred during long-running insert.')
       await client.close()
-      process.exit(1)
+      throw err
     }
   }
 }
@@ -200,21 +207,4 @@ async function pollOnInterval(
   }
   console.error(`[${op}] Max polls count reached!`)
   return false
-}
-
-async function createTestTable(client: ClickHouseClient, tableName: string) {
-  try {
-    await client.command({
-      query: `
-        CREATE OR REPLACE TABLE ${tableName}
-        (id String, data String)
-        ENGINE MergeTree()
-        ORDER BY (id)
-      `,
-    })
-  } catch (err) {
-    console.error(`Error while creating the table ${tableName}:`, err)
-    await client.close()
-    process.exit(1)
-  }
 }
