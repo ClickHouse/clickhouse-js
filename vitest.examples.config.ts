@@ -21,9 +21,6 @@ export default defineConfig({
     env: {
       CLICKHOUSE_URL: process.env['CLICKHOUSE_URL'] ?? 'http://localhost:8123',
       CLICKHOUSE_PASSWORD: process.env['CLICKHOUSE_PASSWORD'] ?? '',
-      CLICKHOUSE_TLS_URL:
-        process.env['CLICKHOUSE_TLS_URL'] ??
-        'https://server.clickhouseconnect.test:8443',
       CLICKHOUSE_CLUSTER_URL:
         process.env['CLICKHOUSE_CLUSTER_URL'] ?? 'http://localhost:8127',
       EXAMPLE_LONG_QUERY_MAX_POLLS: '60',
