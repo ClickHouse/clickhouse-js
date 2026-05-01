@@ -1,4 +1,4 @@
-import { createClient, type Row } from '@clickhouse/client' // or '@clickhouse/client-web'
+import { createClient, type Row } from '@clickhouse/client'
 
 /**
  * Similar to `select_streaming_text_line_by_line.ts`, but using `for await const` syntax instead of `on(data)`.

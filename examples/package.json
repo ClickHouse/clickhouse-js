@@ -17,7 +17,8 @@
     "run-examples": "cd .. && node node_modules/.bin/vitest run --config vitest.examples.config.ts"
   },
   "dependencies": {
-    "@clickhouse/client": "latest"
+    "@clickhouse/client": "latest",
+    "@clickhouse/client-web": "latest"
   },
   "devDependencies": {
     "@types/node": "^25.2.3",
