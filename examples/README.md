@@ -162,21 +162,6 @@ After that, you should be able to run the examples (from `examples/node`):
 ```bash
 npx tsx --transpile-only basic_tls.ts
 npx tsx --transpile-only mutual_tls.ts
-```
-
-### On-premise cluster examples
-
-For `create_table_on_premise_cluster.ts`, you will need to start a local cluster first.
-
-Run this command from the root folder of this repository:
-
-```sh
-docker-compose -f docker-compose.cluster.yml up -d
-```
-
-Now, you should be able to run the example (from `examples/node`):
-
-```
 npx tsx --transpile-only create_table_on_premise_cluster.ts
 ```
 
