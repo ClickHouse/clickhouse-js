@@ -2,7 +2,7 @@ import { createClient } from "@clickhouse/client-web";
 
 // Replace the placeholders below with your ClickHouse Cloud connection details.
 const CLICKHOUSE_URL = "https://<your-instance>.clickhouse.cloud:8443";
-// The pasword is available during a service creation or can be later
+// The password is available during a service creation or can be later
 // set in the Cloud Console: https://console.clickhouse.cloud/
 const CLICKHOUSE_PASSWORD = "<your-clickhouse-cloud-password>";
 // In a real browser application, you would typically inject non-secrets at build time
