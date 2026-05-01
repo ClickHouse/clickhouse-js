@@ -84,3 +84,9 @@ const resultSet = await client.query({
 const [{ count }] = await resultSet.json<{ count: string }>()
 // It is expected to have 10k records in the table.
 console.info('Select count result:', count)
+
+// Close the client to release any open connections/handles. In a long-lived
+// browser application you would typically keep the client around for the
+// lifetime of the page; in a one-shot script like this example, closing it
+// avoids leaving the process hanging.
+await client.close()
