@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     name: 'examples-web',
     include: ['*.ts'],
-    exclude: ['vitest.config.ts', 'vitest.setup.ts'],
+    exclude: ['**/*.d.ts', 'vitest.config.ts', 'vitest.setup.ts'],
     setupFiles: ['vitest.setup.ts'],
     pool: 'forks',
     testTimeout: 60_000,
