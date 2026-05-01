@@ -42,13 +42,6 @@ The goals of the refactor are:
    exist in both subdirectories where applicable, with the only differences being the `import`
    statement and any platform-specific adjustments. Examples that rely on Node.js-only APIs live only
    under `examples/node`.
-5. When adding a new example, also update [`examples/README.md`](examples/README.md) so that the new
-   file is listed in the appropriate table alongside its Node/Web counterpart (or `—` if it is
-   Node.js only).
-6. Examples are executed in CI via Vitest (`vitest.examples.config.ts`); make sure new examples either
-   run successfully against the default local ClickHouse setup or are added to the explicit exclude
-   list when they cannot run in CI (e.g., they require external resources or credentials).
-
 ## When reviewing code changes
 
 For every pull request review, make sure to provide an evaluation of the following aspects:
