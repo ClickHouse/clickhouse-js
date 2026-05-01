@@ -9,7 +9,7 @@
   "private": false,
   "type": "module",
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
