@@ -47,8 +47,11 @@ const longRunningQueryPromise = client.command({
   query: `
         INSERT INTO ${tableName}
         SELECT toString(42 + inner.number), concat('foobar_', inner.number, '_', sleepEachRow(1))
-        FROM (SELECT number FROM system.numbers LIMIT 3) AS inner
+        FROM (SELECT number FROM system.numbers LIMIT 10) AS inner
       `,
+  clickhouse_settings: {
+    function_sleep_max_microseconds_per_block: '100000000', // 1 second per block
+  },
   abort_signal: abortController.signal,
   query_id: queryId,
 })
@@ -56,7 +59,7 @@ const longRunningQueryPromise = client.command({
 // Waiting until the query appears on the server in `system.query_log`.
 // Once it is there, we can safely cancel the outgoing HTTP request.
 for (let attempts = 1; ; attempts++) {
-  if (await getQueryLogQueryType(client, queryId)) {
+  if (await getQueryStatus(client, queryId)) {
     break
   }
   await sleep(1000)
@@ -67,7 +70,11 @@ for (let attempts = 1; ; attempts++) {
   }
 }
 
-abortController.abort()
+// Simulate the user cancelling the request.
+setTimeout(() => {
+  console.info('Aborting the HTTP request...')
+  abortController.abort()
+}, 3000)
 
 try {
   await longRunningQueryPromise
@@ -83,6 +90,21 @@ try {
   }
 }
 
+// Waiting until the query finishes on the server so we can make sure
+// that the query finished successfully and the data is inserted,
+// even though the client request was cancelled.
+for (let attempts = 1; ; attempts++) {
+  if ((await getQueryStatus(client, queryId)) === 'QueryFinish') {
+    break
+  }
+  await sleep(1000)
+  if (attempts >= 30) {
+    throw new Error(
+      'The query did not finish on the server - assuming a failure.',
+    )
+  }
+}
+
 // Check the inserted data.
 const rows = await client.query({
   query: `SELECT * FROM ${tableName}`,
@@ -90,6 +112,7 @@ const rows = await client.query({
 })
 console.info('Inserted data:', await rows.json())
 
+// Make sure all the resources are released and the process can exit.
 await client.close()
 
 interface QueryLogInfo {
@@ -100,7 +123,7 @@ interface QueryLogInfo {
     | 'ExceptionWhileProcessing'
 }
 
-async function getQueryLogQueryType(
+async function getQueryStatus(
   client: ClickHouseClient,
   queryId: string,
 ): Promise<QueryLogInfo['type'] | null> {
@@ -108,7 +131,7 @@ async function getQueryLogQueryType(
     query: `
       SELECT type
       FROM system.query_log
-      WHERE query_id = '${queryId}' AND type != 'QueryStart'
+      WHERE query_id = '${queryId}'
       LIMIT 1
     `,
     format: 'JSONEachRow',
