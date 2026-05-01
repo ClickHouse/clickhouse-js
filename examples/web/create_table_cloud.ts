@@ -1,24 +1,21 @@
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
 // Replace the placeholders below with your ClickHouse Cloud connection details.
-// In a real browser application, you would typically inject these at build time
-// or read them from a runtime configuration object instead of hardcoding them.
-const CLICKHOUSE_URL = 'https://<your-clickhouse-cloud-hostname>:8443'
-const CLICKHOUSE_PASSWORD = '<your-clickhouse-cloud-password>'
-
-if (
-  CLICKHOUSE_URL.includes('<your-') ||
-  CLICKHOUSE_PASSWORD.includes('<your-')
-) {
-  throw new Error(
-    'Please set CLICKHOUSE_URL and CLICKHOUSE_PASSWORD in this example before running it.',
-  )
-}
+const CLICKHOUSE_URL = "https://<your-instance>.clickhouse.cloud:8443";
+// The pasword is available during a service creation or can be later
+// set in the Cloud Console: https://console.clickhouse.cloud/
+const CLICKHOUSE_PASSWORD = "<your-clickhouse-cloud-password>";
+// In a real browser application, you would typically inject non-secrets at build time
+// (for example using Vites bundler env vars: https://vite.dev/guide/env-and-mode)
+// const CLICKHOUSE_URL = import.meta.env.VITE_CLICKHOUSE_URL
+// and read secrets from a runtime configuration object instead of hardcoding them:
+// const CLICKHOUSE_PASSWORD = (await import('/you-app-config.json')).CLICKHOUSE_PASSWORD
 
 const client = createClient({
   url: CLICKHOUSE_URL,
   password: CLICKHOUSE_PASSWORD,
-})
+});
+
 // Note that ENGINE and ON CLUSTER clauses can be omitted entirely here.
 // ClickHouse cloud will automatically use ReplicatedMergeTree
 // with appropriate settings in this case.
@@ -35,5 +32,6 @@ await client.command({
   clickhouse_settings: {
     wait_end_of_query: 1,
   },
-})
-await client.close()
+});
+
+await client.close();
