@@ -196,4 +196,4 @@ The following environment variables control behavior when running examples in au
 
 - `CLICKHOUSE_CLUSTER_URL` — Overrides the URL for on-premise cluster examples. Default: `http://localhost:8127`.
 
-- `CLICKHOUSE_CLOUD_URL` / `CLICKHOUSE_CLOUD_PASSWORD` — When set, the Cloud examples (`*_cloud.ts`) will connect to the specified ClickHouse Cloud instance. When unset, these examples skip with an informative log message.
+- `CLICKHOUSE_CLOUD_URL` / `CLICKHOUSE_CLOUD_PASSWORD` — When both are set, the Cloud examples (`*_cloud.ts`) connect to the specified ClickHouse Cloud instance. When unset, these examples do not skip automatically and will fail because the required Cloud configuration is missing.
