@@ -1,8 +1,8 @@
 import type { Row } from '@clickhouse/client'
 import { createClient } from '@clickhouse/client'
-import Fs from 'fs'
+import Fs from 'node:fs'
 import { cwd } from 'node:process'
-import Path from 'path'
+import Path from 'node:path'
 import split from 'split2'
 
 const client = createClient()
