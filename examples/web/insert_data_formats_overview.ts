@@ -158,5 +158,6 @@ async function printInsertedData() {
   })
   const data = await resultSet.json()
   console.log('Inserted data:')
-  console.dir(data, { depth: null })
+  // Browsers' console.log expands nested objects/arrays interactively in the devtools UI.
+  console.log(data)
 }

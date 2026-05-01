@@ -66,7 +66,8 @@ async function selectJSON(format: DataFormat) {
   })
   const data = await rows.json() // get all the data at once
   console.log(`Format: ${format}, parsed data:`)
-  console.dir(data, { depth: null }) // prints the nested arrays, too
+  // Browsers' console.log expands nested arrays/objects interactively in the devtools UI.
+  console.log(data)
 }
 
 // Selecting text data in different formats; `.json()` cannot be used here as it does not make sense.
