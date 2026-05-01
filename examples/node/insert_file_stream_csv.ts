@@ -1,7 +1,7 @@
 import { createClient, type Row } from '@clickhouse/client'
-import Fs from 'fs'
+import Fs from 'node:fs'
 import { cwd } from 'node:process'
-import Path from 'path'
+import Path from 'node:path'
 
 const client = createClient()
 const tableName = 'insert_file_stream_csv'

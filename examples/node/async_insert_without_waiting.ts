@@ -1,9 +1,8 @@
 import { createClient, ClickHouseError } from '@clickhouse/client'
-import { EventEmitter } from 'events'
+import { EventEmitter } from 'node:events'
 
 // This example demonstrates how to use async inserts without waiting for an ack about a successfully written batch.
 // Run it for some time and observe the number of rows sent and the number of rows written to the table.
-// Suitable for ClickHouse Cloud, too. Can be used with either Node.js or Web versions of the client.
 // A bit more advanced version of the `examples/async_insert.ts` example,
 // as async inserts are an interesting option when working with event listeners
 // that can receive an arbitrarily large or small amount of data at various times.

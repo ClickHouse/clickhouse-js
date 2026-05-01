@@ -1,5 +1,5 @@
 import { createClient, ClickHouseError } from '@clickhouse/client'
-import * as crypto from 'crypto' // Node.js only
+import * as crypto from 'node:crypto'
 
 /**
  * An example of cancelling a long-running query on the server side.

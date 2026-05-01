@@ -1,5 +1,4 @@
-import { createClient } from '@clickhouse/client'
-import type { Row } from '@clickhouse/client-common'
+import { createClient, type Row } from '@clickhouse/client'
 import * as Stream from 'node:stream'
 import { EventEmitter } from 'node:events'
 

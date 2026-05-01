@@ -1,9 +1,9 @@
 import type { ClickHouseClient } from '@clickhouse/client'
 import { createClient, drainStream } from '@clickhouse/client'
 import * as avro from 'avsc'
-import Fs from 'fs'
+import Fs from 'node:fs'
 import { cwd } from 'node:process'
-import Path from 'path'
+import Path from 'node:path'
 
 /** If a particular format is not supported in the {@link ClickHouseClient.insert} method, there is still a workaround:
  *  you could use the {@link ClickHouseClient.exec} method to insert data in an arbitrary format.

@@ -1,5 +1,5 @@
 import { type ClickHouseClient, createClient } from '@clickhouse/client'
-import * as crypto from 'crypto' // Node.js only
+import * as crypto from 'node:crypto'
 import type { SetIntervalAsyncTimer } from 'set-interval-async'
 import { clearIntervalAsync, setIntervalAsync } from 'set-interval-async'
 

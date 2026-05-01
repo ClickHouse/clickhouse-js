@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client'
-import * as crypto from 'crypto' // required for Node.js only
+import * as crypto from 'node:crypto'
 
 const tableName = 'temporary_example'
 const client = createClient({
