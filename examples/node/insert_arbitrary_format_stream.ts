@@ -1,21 +1,27 @@
 import type { ClickHouseClient } from '@clickhouse/client'
 import { createClient, drainStream } from '@clickhouse/client'
-import * as avro from 'avsc'
 import Fs from 'node:fs'
 import { cwd } from 'node:process'
 import Path from 'node:path'
 
 /** If a particular format is not supported in the {@link ClickHouseClient.insert} method, there is still a workaround:
  *  you could use the {@link ClickHouseClient.exec} method to insert data in an arbitrary format.
- *  In this scenario, we are inserting the data from a stream in AVRO format.
- *  Related issue with a question: https://github.com/ClickHouse/clickhouse-js/issues/418 */
+ *  In this scenario, we are inserting the data from a file stream in AVRO format.
+ *
+ *  The Avro file used here (`./node/resources/data.avro`) was generated ahead of time
+ *  so that this example does not depend on a third-party Avro encoder. To produce your own
+ *  Avro files, see the official ClickHouse docs and any Avro tooling of your choice
+ *  (e.g., the `avsc` npm package, the Apache Avro CLI, etc.).
+ *
+ *  Related issue with a question: https://github.com/ClickHouse/clickhouse-js/issues/418
+ *  See also: https://clickhouse.com/docs/interfaces/formats/Avro#inserting-data */
 
 const client = createClient()
 const tableName = 'chjs_avro_stream_insert_demo'
 await prepareTable(client, tableName)
 
 const avroDataFilePath = Path.resolve(cwd(), './node/resources/data.avro')
-const avroStream = await getAvroDataFileStream(avroDataFilePath)
+const avroStream = Fs.createReadStream(avroDataFilePath)
 
 // Important #1: remember to add the FORMAT clause here, as `exec` takes a raw query in the arguments!
 const execResult = await client.exec({
@@ -48,46 +54,4 @@ async function prepareTable(client: ClickHouseClient, tableName: string) {
       wait_end_of_query: 1,
     },
   })
-}
-
-// A simple AVRO data file stream generator for the sake of this example.
-// See also: https://clickhouse.com/docs/interfaces/formats/Avro#inserting-data
-async function getAvroDataFileStream(filePath: string) {
-  const userSchema: avro.Schema = {
-    type: 'record',
-    name: 'User',
-    fields: [
-      { name: 'id', type: 'int' },
-      { name: 'name', type: 'string' },
-      { name: 'email', type: 'string' },
-      { name: 'isActive', type: 'boolean' },
-    ],
-  }
-  const userEncoder = avro.createFileEncoder(filePath, userSchema)
-  const users = [
-    {
-      id: 1001,
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-      isActive: true,
-    },
-    {
-      id: 1002,
-      name: 'John Doe',
-      email: 'john.doe@unknown.com',
-      isActive: false,
-    },
-  ]
-
-  for (const user of users) {
-    userEncoder.write(user)
-  }
-
-  // Wait until the data is flushed to the file
-  await new Promise((resolve, reject) => {
-    userEncoder.end(() => resolve(true))
-    userEncoder.on('error', reject)
-  })
-
-  return Fs.createReadStream(filePath)
 }
