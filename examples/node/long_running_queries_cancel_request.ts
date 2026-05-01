@@ -51,7 +51,7 @@ const longRunningQueryPromise = client.command({
         SELECT number, sleepEachRow(1) FROM system.numbers LIMIT 10
       `,
   clickhouse_settings: {
-    function_sleep_max_microseconds_per_block: '100000000', // 1 second per block
+    function_sleep_max_microseconds_per_block: '100000000', // 100 seconds per block
   },
   abort_signal: abortController.signal,
   query_id: queryId,
