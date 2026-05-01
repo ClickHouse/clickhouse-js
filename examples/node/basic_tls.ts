@@ -2,7 +2,9 @@ import { createClient } from '@clickhouse/client'
 import fs from 'fs'
 
 const client = createClient({
-  url: 'https://server.clickhouseconnect.test:8443',
+  url:
+    process.env['CLICKHOUSE_TLS_URL'] ??
+    'https://server.clickhouseconnect.test:8443',
   tls: {
     ca_cert: fs.readFileSync(
       '../.docker/clickhouse/single_node_tls/certificates/ca.crt',

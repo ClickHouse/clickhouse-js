@@ -16,6 +16,7 @@ class BackpressureAwareDataProducer extends Stream.Readable {
   #pendingData: DataRow[] = []
   #isDestroyed = false
   #total = 0
+  #shouldEndAfterDrain = false
 
   constructor(dataSource: EventEmitter, options?: Stream.ReadableOptions) {
     super({
@@ -79,7 +80,14 @@ class BackpressureAwareDataProducer extends Stream.Readable {
 
   #handleDataSourceEnd() {
     console.log(`Data source ended. Total produced: ${this.#total} rows`)
-    this.push(null)
+    // If there's pending data, it will be flushed in _read()
+    // before the final push(null) when the stream is ready
+    if (this.#pendingData.length === 0 && !this.#streamPaused) {
+      this.push(null)
+    } else {
+      // Mark that we should end after draining pending data
+      this.#shouldEndAfterDrain = true
+    }
   }
 
   #handleDataSourceError(error: Error) {
@@ -102,6 +110,15 @@ class BackpressureAwareDataProducer extends Stream.Readable {
         }
       }
     }
+
+    // If we should end after draining and all data is flushed, push null
+    if (
+      this.#shouldEndAfterDrain &&
+      this.#pendingData.length === 0 &&
+      !this.#streamPaused
+    ) {
+      this.push(null)
+    }
   }
 
   _destroy(error: Error | null, callback: (error?: Error | null) => void) {
@@ -120,9 +137,16 @@ class BackpressureAwareDataProducer extends Stream.Readable {
 // Simulated data source that generates data at varying rates
 class SimulatedDataSource extends EventEmitter {
   #intervalHandle: NodeJS.Timeout | null = null
+  #burstModeIntervalHandle: NodeJS.Timeout | null = null
   #isRunning = false
   #total = 0
   #burstMode = false
+  #maxRows: number | null = null
+
+  constructor(maxRows: number | null = null) {
+    super()
+    this.#maxRows = maxRows
+  }
 
   start() {
     if (this.#isRunning) return
@@ -131,7 +155,7 @@ class SimulatedDataSource extends EventEmitter {
     this.#scheduleNextBatch()
 
     // Randomly switch between normal and burst modes
-    setInterval(() => {
+    this.#burstModeIntervalHandle = setInterval(() => {
       this.#burstMode = !this.#burstMode
       console.log(`Switched to ${this.#burstMode ? 'burst' : 'normal'} mode`)
     }, 10000)
@@ -154,6 +178,13 @@ class SimulatedDataSource extends EventEmitter {
 
   #generateBatch(size: number) {
     for (let i = 0; i < size; i++) {
+      // Stop generating if we've reached the limit
+      if (this.#maxRows && this.#total >= this.#maxRows) {
+        // Schedule stop for next tick to avoid stopping mid-batch
+        setImmediate(() => this.stop())
+        return
+      }
+
       const id = this.#total++
       const data: DataRow = {
         id,
@@ -172,7 +203,12 @@ class SimulatedDataSource extends EventEmitter {
       clearTimeout(this.#intervalHandle)
       this.#intervalHandle = null
     }
-    this.emit('end')
+    if (this.#burstModeIntervalHandle) {
+      clearInterval(this.#burstModeIntervalHandle)
+      this.#burstModeIntervalHandle = null
+    }
+    // Emit 'end' on next tick to ensure all 'data' events are processed first
+    process.nextTick(() => this.emit('end'))
   }
 
   get total(): number {
@@ -211,7 +247,10 @@ await client.command({
 })
 
 // Create data source and producer
-const dataSource = new SimulatedDataSource()
+// For CI: limit the total rows generated based on runtime duration
+const runDurationMs = Number(process.env['EXAMPLE_RUN_DURATION_MS'] ?? 0)
+const maxRows = runDurationMs > 0 ? 500 : null // ~500 rows in 8 seconds
+const dataSource = new SimulatedDataSource(maxRows)
 const dataProducer = new BackpressureAwareDataProducer(dataSource)
 
 // Start generating data
@@ -219,7 +258,11 @@ console.log('Starting data generation...')
 dataSource.start()
 
 // Handle graceful shutdown
+let isCleaningUp = false
 const cleanup = async () => {
+  if (isCleaningUp) return
+  isCleaningUp = true
+
   console.log('\nShutting down gracefully...')
   dataSource.stop()
 

@@ -1,8 +1,15 @@
 import { createClient } from '@clickhouse/client'
 
+if (!process.env['CLICKHOUSE_CLOUD_URL']) {
+  console.info(
+    'Skipping create_table_cloud example: CLICKHOUSE_CLOUD_URL is not set',
+  )
+  process.exit(0)
+}
+
 const client = createClient({
-  url: getFromEnv('CLICKHOUSE_URL'),
-  password: getFromEnv('CLICKHOUSE_PASSWORD'),
+  url: process.env['CLICKHOUSE_CLOUD_URL'],
+  password: process.env['CLICKHOUSE_CLOUD_PASSWORD'],
 })
 // Note that ENGINE and ON CLUSTER clauses can be omitted entirely here.
 // ClickHouse cloud will automatically use ReplicatedMergeTree
@@ -22,11 +29,3 @@ await client.command({
   },
 })
 await client.close()
-
-function getFromEnv(key: string) {
-  if (process.env[key]) {
-    return process.env[key]
-  }
-  console.error(`${key} environment variable should be set`)
-  process.exit(1)
-}

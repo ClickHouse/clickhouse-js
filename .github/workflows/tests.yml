@@ -126,6 +126,10 @@ jobs:
         run: |
           npm install
 
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
       - name: Run examples
         run: |
           npm run run-examples

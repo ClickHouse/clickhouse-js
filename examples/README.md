@@ -171,8 +171,8 @@ npx tsx --transpile-only create_table_on_premise_cluster.ts
   variables first for the Node.js client:
 
 ```sh
-export CLICKHOUSE_URL=https://<your-clickhouse-cloud-hostname>:8443
-export CLICKHOUSE_PASSWORD=<your-clickhouse-cloud-password>
+export CLICKHOUSE_CLOUD_URL=https://<your-clickhouse-cloud-hostname>:8443
+export CLICKHOUSE_CLOUD_PASSWORD=<your-clickhouse-cloud-password>
 ```
 
 and for the Web client, you need to set these variables in the examples themselves.
@@ -188,3 +188,17 @@ Run one of the Cloud examples (from `examples/node`):
 ```
 npx tsx --transpile-only create_table_cloud.ts
 ```
+
+### Environment variables for runnable examples
+
+The following environment variables control behavior when running examples in automated environments (e.g., CI):
+
+- `EXAMPLE_RUN_DURATION_MS` — When greater than 0, causes indefinite-loop examples (`async_insert_without_waiting.ts`, `insert_streaming_with_backpressure.ts`) to self-terminate gracefully after the specified number of milliseconds. Default: `0` (run forever, suitable for interactive use). CI sets this to `8000`.
+
+- `EXAMPLE_LONG_QUERY_MAX_POLLS` — Caps the polling loop in `long_running_queries_cancel_request.ts`. Default: `400` (production-like timeout). CI sets this to `60` to keep test suite runtime under 60 seconds.
+
+- `CLICKHOUSE_TLS_URL` — Overrides the URL for TLS examples (`basic_tls.ts`, `mutual_tls.ts`). Default: `https://server.clickhouseconnect.test:8443`.
+
+- `CLICKHOUSE_CLUSTER_URL` — Overrides the URL for on-premise cluster examples. Default: `http://localhost:8127`.
+
+- `CLICKHOUSE_CLOUD_URL` / `CLICKHOUSE_CLOUD_PASSWORD` — When set, the Cloud examples (`*_cloud.ts`) will connect to the specified ClickHouse Cloud instance. When unset, these examples skip with an informative log message.
