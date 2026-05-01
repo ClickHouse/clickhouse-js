@@ -133,6 +133,7 @@ async function getQueryStatus(
       SELECT type
       FROM system.query_log
       WHERE query_id = '${queryId}'
+      ORDER BY event_time DESC
       LIMIT 1
     `,
     format: 'JSONEachRow',
