@@ -23,6 +23,8 @@ export default defineConfig({
       CLICKHOUSE_PASSWORD: process.env['CLICKHOUSE_PASSWORD'] ?? '',
       CLICKHOUSE_CLUSTER_URL:
         process.env['CLICKHOUSE_CLUSTER_URL'] ?? 'http://localhost:8127',
+      CLICKHOUSE_CLOUD_URL: process.env['CLICKHOUSE_CLOUD_URL'],
+      CLICKHOUSE_CLOUD_PASSWORD: process.env['CLICKHOUSE_CLOUD_PASSWORD'],
     },
     browser: {
       enabled: true,
