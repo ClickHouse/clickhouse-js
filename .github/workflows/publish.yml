@@ -29,6 +29,9 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.base.json'
+      - 'README.md'
+      - 'LICENSE'
+      - 'skills/**'
       - '.scripts/update_version.sh'
       - '.github/workflows/publish.yml'
 
