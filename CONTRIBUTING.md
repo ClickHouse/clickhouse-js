@@ -143,13 +143,6 @@ npm run test:node:integration:tls
 
 Used when `CLICKHOUSE_TEST_ENVIRONMENT` is set to `local_cluster`.
 
-The cluster services (`clickhouse1`, `clickhouse2`, and the `nginx` round-robin entrypoint
-exposed on host port `8127`) are part of the same `docker-compose.yml` as the single-node setup
-and use non-conflicting host ports, so the same `docker compose up -d` command starts both:
-
-```bash
-docker compose up -d
-```
 
 Run the tests (Node.js):
 

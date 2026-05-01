@@ -157,13 +157,6 @@ npx tsx --transpile-only node/mutual_tls.ts
 
 ### On-premise cluster examples
 
-For `create_table_on_premise_cluster.ts`, you will need a local cluster running.
-The cluster services (`clickhouse1`, `clickhouse2`, and the `nginx` round-robin entrypoint on
-port `8127`) are part of the same `docker-compose.yml` as the single-node setup, so the
-`docker-compose up -d` command from above is enough to start them.
-
-The example connects to the cluster entrypoint at `http://localhost:8127`.
-
 Now, you should be able to run the example:
 
 ```
