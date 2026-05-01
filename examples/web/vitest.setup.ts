@@ -20,3 +20,18 @@ process.exit = ((code?: number | string | null): never => {
   // exit(0) — intentional success signal, treat as no-op
   return undefined as never
 }) as typeof process.exit
+
+// Web examples read connection details from ambient globals (the bundler-injected
+// pattern they would use in a real browser app). When running them under Vitest,
+// expose the corresponding env values on `globalThis` so the bare identifiers
+// resolve. Cluster URL always has a default; Cloud vars are only set when
+// provided so the *_cloud.ts examples can detect them and skip in CI.
+const g = globalThis as Record<string, unknown>
+g['CLICKHOUSE_CLUSTER_URL'] =
+  process.env['CLICKHOUSE_CLUSTER_URL'] ?? 'http://localhost:8127'
+if (process.env['CLICKHOUSE_CLOUD_URL']) {
+  g['CLICKHOUSE_CLOUD_URL'] = process.env['CLICKHOUSE_CLOUD_URL']
+}
+if (process.env['CLICKHOUSE_CLOUD_PASSWORD']) {
+  g['CLICKHOUSE_CLOUD_PASSWORD'] = process.env['CLICKHOUSE_CLOUD_PASSWORD']
+}
