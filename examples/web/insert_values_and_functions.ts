@@ -81,12 +81,13 @@ function getRows(n: number): Data[] {
 
 // Convert an ASCII string to its hexadecimal representation using browser-friendly APIs.
 // Equivalent to Buffer.from(value).toString('hex') in Node.js, but works in any JS runtime.
-function toHex(value: string): string {
-  let out = ''
-  for (let i = 0; i < value.length; i++) {
-    out += value.charCodeAt(i).toString(16).padStart(2, '0')
+function toHex(str) {
+  const bytes = new TextEncoder().encode(str);
+  let hex = '';
+  for (const b of bytes) {
+    hex += b.toString(16).padStart(2, '0');
   }
-  return out
+  return hex;
 }
 
 // Generates something like:
