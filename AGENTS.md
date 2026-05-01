@@ -21,6 +21,27 @@
    }
    ```
 
+## Examples
+
+The repository contains an [`examples`](examples) directory that is being refactored to be AI-agent-friendly.
+The goals of the refactor are:
+
+1. Examples should be runnable right away, with no manual edits required to get them working against a
+   local ClickHouse instance (use `docker-compose up` from the repo root for the default setup).
+2. Examples are organized by client flavor and tailored to the corresponding runtime:
+   - [`examples/node`](examples/node) — examples for the Node.js client (`@clickhouse/client`). These
+     may freely use Node.js-only APIs (file streams, TLS, `http`, `node:*` built-ins, etc.) and import
+     Node built-ins using the `node:` prefix (e.g., `node:fs`, `node:path`, `node:stream`).
+   - [`examples/web`](examples/web) — examples for the Web client (`@clickhouse/client-web`). These
+     must only use Web-platform APIs (e.g., `globalThis.crypto.randomUUID()` instead of Node's
+     `crypto` module) and must not depend on Node.js-only modules.
+3. `examples/node` and `examples/web` are independent npm packages, each with its own `package.json`,
+   `tsconfig.json`, and ESLint config. Keep dependencies and configuration scoped to the relevant
+   subpackage.
+4. General-purpose scenarios (configuration, ping, inserts, selects, parameters, sessions, etc.) should
+   exist in both subdirectories where applicable, with the only differences being the `import`
+   statement and any platform-specific adjustments. Examples that rely on Node.js-only APIs live only
+   under `examples/node`.
 ## When reviewing code changes
 
 For every pull request review, make sure to provide an evaluation of the following aspects:
