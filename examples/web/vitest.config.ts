@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import { playwright } from '@vitest/browser-playwright'
 
 /**
  * Examples that cannot be run in a standard single-node CI environment.
@@ -22,6 +23,11 @@ export default defineConfig({
       CLICKHOUSE_PASSWORD: process.env['CLICKHOUSE_PASSWORD'] ?? '',
       CLICKHOUSE_CLUSTER_URL:
         process.env['CLICKHOUSE_CLUSTER_URL'] ?? 'http://localhost:8127',
+    },
+    browser: {
+      enabled: true,
+      provider: playwright(),
+      instances: [{ browser: 'chromium' }],
     },
   },
 })
