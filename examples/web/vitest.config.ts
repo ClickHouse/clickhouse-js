@@ -1,17 +1,11 @@
 import { defineConfig } from 'vitest/config'
 import { playwright } from '@vitest/browser-playwright'
 
-/**
- * Examples that cannot be run in a standard single-node CI environment.
- * All examples are now runnable; they handle missing resources at runtime via env-var checks.
- */
-const EXCLUDED_EXAMPLES: string[] = []
-
 export default defineConfig({
   test: {
     name: 'examples-web',
     include: ['*.ts'],
-    exclude: ['vitest.config.ts', 'vitest.setup.ts', ...EXCLUDED_EXAMPLES],
+    exclude: ['vitest.config.ts', 'vitest.setup.ts'],
     setupFiles: ['vitest.setup.ts'],
     pool: 'forks',
     testTimeout: 60_000,
