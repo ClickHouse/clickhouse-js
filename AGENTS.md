@@ -23,7 +23,7 @@
 
 ## Examples
 
-The repository contains an [`examples`](examples) directory that is being refactored to be AI agent friendly.
+The repository contains an [`examples`](examples) directory that is being refactored to be AI-agent-friendly.
 The goals of the refactor are:
 
 1. Examples should be runnable right away, with no manual edits required to get them working against a
