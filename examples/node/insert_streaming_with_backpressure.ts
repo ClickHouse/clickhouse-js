@@ -248,8 +248,7 @@ await client.command({
 
 // Create data source and producer
 // For CI: limit the total rows generated based on runtime duration
-const runDurationMs = Number(process.env['EXAMPLE_RUN_DURATION_MS'] ?? 0)
-const maxRows = runDurationMs > 0 ? 500 : null // ~500 rows in 8 seconds
+const maxRows = 5000 // in ~80 seconds
 const dataSource = new SimulatedDataSource(maxRows)
 const dataProducer = new BackpressureAwareDataProducer(dataSource)
 

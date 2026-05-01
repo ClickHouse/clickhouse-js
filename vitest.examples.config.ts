@@ -26,7 +26,6 @@ export default defineConfig({
         'https://server.clickhouseconnect.test:8443',
       CLICKHOUSE_CLUSTER_URL:
         process.env['CLICKHOUSE_CLUSTER_URL'] ?? 'http://localhost:8127',
-      EXAMPLE_RUN_DURATION_MS: '8000',
       EXAMPLE_LONG_QUERY_MAX_POLLS: '60',
     },
   },

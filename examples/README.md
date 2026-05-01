@@ -193,8 +193,6 @@ npx tsx --transpile-only create_table_cloud.ts
 
 The following environment variables control behavior when running examples in automated environments (e.g., CI):
 
-- `EXAMPLE_RUN_DURATION_MS` — When greater than 0, causes indefinite-loop examples (`async_insert_without_waiting.ts`, `insert_streaming_with_backpressure.ts`) to self-terminate gracefully after the specified number of milliseconds. Default: `0` (run forever, suitable for interactive use). CI sets this to `8000`.
-
 - `EXAMPLE_LONG_QUERY_MAX_POLLS` — Caps the polling loop in `long_running_queries_cancel_request.ts`. Default: `400` (production-like timeout). CI sets this to `60` to keep test suite runtime under 60 seconds.
 
 - `CLICKHOUSE_TLS_URL` — Overrides the URL for TLS examples (`basic_tls.ts`, `mutual_tls.ts`). Default: `https://server.clickhouseconnect.test:8443`.

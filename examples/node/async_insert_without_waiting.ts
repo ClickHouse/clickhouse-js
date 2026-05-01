@@ -121,8 +121,6 @@ async function gracefulShutdown() {
 process.on('SIGINT', gracefulShutdown)
 process.on('SIGTERM', gracefulShutdown)
 
-// For CI: auto-stop after N milliseconds if EXAMPLE_RUN_DURATION_MS is set.
-const runDurationMs = Number(process.env['EXAMPLE_RUN_DURATION_MS'] ?? 0)
-if (runDurationMs > 0) {
-  setTimeout(gracefulShutdown, runDurationMs)
-}
+// Run the example for a certain amount of time and then exit.
+// Adjust the duration as needed.
+setTimeout(gracefulShutdown, 30_000)
