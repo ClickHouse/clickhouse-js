@@ -20,6 +20,20 @@ on:
   push:
     branches:
       - main
+    # Only run the head publishing workflow when files relevant to the
+    # published packages change. The web and node packages depend on the
+    # common package, so any change under packages/** triggers an
+    # all-or-nothing publish of every package.
+    paths:
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - 'README.md'
+      - 'LICENSE'
+      - 'skills/**'
+      - '.scripts/update_version.sh'
+      - '.github/workflows/publish.yml'
 
 jobs:
   head:
