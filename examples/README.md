@@ -174,12 +174,14 @@ npx tsx --transpile-only node/create_table_on_premise_cluster.ts
 ### ClickHouse Cloud examples
 
 - for `*_cloud.ts` examples, Docker containers are not required, but you need to set some environment
-  variables first:
+  variables first for the Node.js client:
 
 ```sh
 export CLICKHOUSE_URL=https://<your-clickhouse-cloud-hostname>:8443
 export CLICKHOUSE_PASSWORD=<your-clickhouse-cloud-password>
 ```
+
+and for the Web client, you need to set these variables in the examples themselves.
 
 You can obtain these credentials in the ClickHouse Cloud console (check
 [the docs](https://clickhouse.com/docs/en/integrations/language-clients/javascript#gather-your-connection-details)
