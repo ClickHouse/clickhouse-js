@@ -338,7 +338,7 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.cluster.yml'
+          compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
@@ -376,7 +376,7 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.cluster.yml'
+          compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
       - name: Setup NodeJS
