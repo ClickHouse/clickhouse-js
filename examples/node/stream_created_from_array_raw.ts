@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client'
-import Stream from 'stream'
+import Stream from 'node:stream'
 
 // If your application deals with a string input that can be considered as one of "raw" formats, such as CSV, TabSeparated, etc.
 // the client will require the input values to be converted into a Stream.Readable instance.

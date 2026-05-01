@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client'
-import fs from 'fs'
+import fs from 'node:fs'
 
 const certsPath = '../.docker/clickhouse/single_node_tls/certificates'
 const client = createClient({

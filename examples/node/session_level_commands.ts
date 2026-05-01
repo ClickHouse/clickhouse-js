@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client'
-import * as crypto from 'crypto' // required for Node.js only
+import * as crypto from 'node:crypto'
 
 // Note that session will work as expected ONLY if you are accessing the Node directly.
 // If there is a load-balancer in front of ClickHouse nodes, the requests might end up on different nodes,

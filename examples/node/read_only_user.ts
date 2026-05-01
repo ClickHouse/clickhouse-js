@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client'
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 
 /**
  * An illustration of limitations and client-specific settings for users created in `READONLY = 1` mode.

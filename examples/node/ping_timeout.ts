@@ -1,6 +1,6 @@
 import type { PingResult } from '@clickhouse/client'
 import { createClient } from '@clickhouse/client'
-import http from 'http' // Node.js only
+import http from 'node:http'
 
 /**
  * Node.js-only example.
