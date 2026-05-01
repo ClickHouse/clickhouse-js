@@ -1,10 +1,10 @@
 import { createClient } from '@clickhouse/client'
 
 if (!process.env['CLICKHOUSE_CLOUD_URL']) {
-  console.info(
-    'Skipping create_table_cloud example: CLICKHOUSE_CLOUD_URL is not set',
-  )
-  process.exit(0)
+  throw new Error('CLICKHOUSE_CLOUD_URL environment variable is not set')
+}
+if (!process.env['CLICKHOUSE_CLOUD_PASSWORD']) {
+  throw new Error('CLICKHOUSE_CLOUD_PASSWORD environment variable is not set')
 }
 
 const client = createClient({
