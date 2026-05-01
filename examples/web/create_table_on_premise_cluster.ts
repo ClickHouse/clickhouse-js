@@ -1,8 +1,7 @@
 import { createClient } from '@clickhouse/client-web'
 
 if (typeof CLICKHOUSE_CLUSTER_URL === 'undefined') {
-  console.info('Skipping: CLICKHOUSE_CLUSTER_URL is not set')
-  throw new Error('CLICKHOUSE_CLUSTER_URL environment variable is required')
+  throw new Error('CLICKHOUSE_CLUSTER_URL is required')
 }
 
 // ClickHouse cluster - for example, as defined in our `docker-compose.yml`

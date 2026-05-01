@@ -1,12 +1,10 @@
 import { createClient } from '@clickhouse/client-web'
 
 if (typeof CLICKHOUSE_CLOUD_URL === 'undefined') {
-  console.info('Skipping: CLICKHOUSE_CLOUD_URL is not set')
-  throw new Error('CLICKHOUSE_CLOUD_URL environment variable is required')
+  throw new Error('CLICKHOUSE_CLOUD_URL is required')
 }
 if (typeof CLICKHOUSE_CLOUD_PASSWORD === 'undefined') {
-  console.info('Skipping: CLICKHOUSE_CLOUD_PASSWORD is not set')
-  throw new Error('CLICKHOUSE_CLOUD_PASSWORD environment variable is required')
+  throw new Error('CLICKHOUSE_CLOUD_PASSWORD is required')
 }
 
 const client = createClient({
