@@ -158,5 +158,5 @@ async function printInsertedData() {
   })
   const data = await resultSet.json()
   console.log('Inserted data:')
-  console.dir(data, { depth: null })
+  console.log(data)
 }
