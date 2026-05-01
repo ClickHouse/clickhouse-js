@@ -2,7 +2,8 @@
 # This compose file contains both the single-node setup (services `clickhouse` and `clickhouse_tls`)
 # and the two-node cluster setup (services `clickhouse1`, `clickhouse2`, and the `nginx` cluster
 # entrypoint). They use non-overlapping host ports so they can be started together with a single
-# `docker compose up -d` and used to run all tests against a single environment.
+# `docker compose up -d` (or `docker-compose up -d`) and used to run all tests against a single
+# environment.
 #
 # Default single-node ports (kept unchanged):
 #   clickhouse:      8123 (HTTP), 9000 (native)
