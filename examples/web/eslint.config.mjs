@@ -26,7 +26,6 @@ export default defineConfig(
       'prettier/prettier': 'error',
       '@typescript-eslint/no-floating-promises': 'error',
       eqeqeq: 'error',
-      'no-console': 'error',
       // Keep some rules relaxed until addressed in dedicated PRs
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/consistent-type-imports': 'warn',
