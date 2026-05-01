@@ -23,7 +23,6 @@ export default defineConfig({
       CLICKHOUSE_PASSWORD: process.env['CLICKHOUSE_PASSWORD'] ?? '',
       CLICKHOUSE_CLUSTER_URL:
         process.env['CLICKHOUSE_CLUSTER_URL'] ?? 'http://localhost:8127',
-      EXAMPLE_LONG_QUERY_MAX_POLLS: '60',
     },
   },
   resolve: {

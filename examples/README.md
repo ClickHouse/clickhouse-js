@@ -193,8 +193,6 @@ npx tsx --transpile-only create_table_cloud.ts
 
 The following environment variables control behavior when running examples in automated environments (e.g., CI):
 
-- `EXAMPLE_LONG_QUERY_MAX_POLLS` — Caps the polling loop in `long_running_queries_cancel_request.ts`. Default: `400` (production-like timeout). CI sets this to `60` to keep test suite runtime under 60 seconds.
-
 - `CLICKHOUSE_CLUSTER_URL` — Overrides the URL for on-premise cluster examples. Default: `http://localhost:8127`.
 
 - `CLICKHOUSE_CLOUD_URL` / `CLICKHOUSE_CLOUD_PASSWORD` — When set, the Cloud examples (`*_cloud.ts`) will connect to the specified ClickHouse Cloud instance. When unset, these examples skip with an informative log message.

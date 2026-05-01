@@ -5,17 +5,7 @@ import { createClient } from '@clickhouse/client'
 const client = createClient({
   url: process.env['CLICKHOUSE_CLUSTER_URL'] ?? 'http://localhost:8127',
 })
-// Drop and recreate for idempotency in CI
-await client.command({
-  query: `
-    DROP TABLE IF EXISTS clickhouse_js_examples_local_cluster_table
-    ON CLUSTER '{cluster}'
-    SYNC
-  `,
-  clickhouse_settings: {
-    wait_end_of_query: 1,
-  },
-})
+
 await client.command({
   // Sample macro definitions are located in `.docker/clickhouse/cluster/serverN_config.xml`
   query: `
@@ -35,4 +25,5 @@ await client.command({
     wait_end_of_query: 1,
   },
 })
+
 await client.close()

@@ -69,8 +69,7 @@ const isCompleted = await pollOnInterval(
   'CheckCompletedQuery',
   () => checkCompletedQuery(client, queryId),
   {
-    // Overridable for CI; default production-like value is 400.
-    maxPolls: Number(process.env['EXAMPLE_LONG_QUERY_MAX_POLLS'] ?? 400),
+    maxPolls: 60, // Set to 400+ for a production-like timeout
     intervalMs: 1000, // assuming that our query max execution time is 400s
   },
 )
