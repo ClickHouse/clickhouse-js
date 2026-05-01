@@ -1,7 +1,6 @@
 import { type ClickHouseClient, createClient } from '@clickhouse/client'
 import * as crypto from 'node:crypto'
-import type { SetIntervalAsyncTimer } from 'set-interval-async'
-import { clearIntervalAsync, setIntervalAsync } from 'set-interval-async'
+import { setTimeout as sleep } from 'node:timers/promises'
 
 /**
  * Node.js-only example (uses Node's `crypto` module to generate a query_id).
@@ -182,41 +181,22 @@ async function pollOnInterval(
     maxPolls: number
   },
 ): Promise<boolean> {
-  let intervalId: SetIntervalAsyncTimer<[]> | undefined
-  const result: boolean = await new Promise((resolve) => {
-    let pollsCount = 1
-    let settled = false
-    const stopAndResolve = async (value: boolean) => {
-      if (settled) return
-      settled = true
-      if (intervalId !== undefined) {
-        await clearIntervalAsync(intervalId)
-      }
-      resolve(value)
+  // Sequential polling loop: never overlap calls to `fn`, and wait `intervalMs`
+  // between attempts. This is the equivalent of `set-interval-async` for the
+  // simple "poll until success or max attempts" use case.
+  for (let pollsCount = 1; pollsCount <= maxPolls; pollsCount++) {
+    try {
+      const success = await fn()
+      console.log(`[${op}] Poll #${pollsCount}: ${success}`)
+      if (success) return true
+    } catch (err) {
+      console.error(`[${op}] Error while polling:`, err)
+      return false
     }
-    // See https://www.npmjs.com/package/set-interval-async#when-should-i-use-setintervalasync
-    intervalId = setIntervalAsync(async () => {
-      if (settled) return
-      try {
-        const success = await fn()
-        console.log(`[${op}] Poll #${pollsCount}: ${success}`)
-        if (success) {
-          await stopAndResolve(true)
-        } else {
-          if (pollsCount < maxPolls) {
-            pollsCount++
-            return
-          }
-          console.error(`[${op}] Max polls count reached!`)
-          await stopAndResolve(false)
-        }
-      } catch (err) {
-        console.error(`[${op}] Error while polling:`, err)
-        await stopAndResolve(false)
-      }
-    }, intervalMs)
-  })
-  return result
+    if (pollsCount < maxPolls) await sleep(intervalMs)
+  }
+  console.error(`[${op}] Max polls count reached!`)
+  return false
 }
 
 async function createTestTable(client: ClickHouseClient, tableName: string) {

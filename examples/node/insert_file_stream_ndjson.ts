@@ -3,7 +3,8 @@ import { createClient } from '@clickhouse/client'
 import Fs from 'node:fs'
 import { cwd } from 'node:process'
 import Path from 'node:path'
-import split from 'split2'
+import Readline from 'node:readline'
+import { Readable } from 'node:stream'
 
 const client = createClient()
 const tableName = 'insert_file_stream_ndjson'
@@ -21,8 +22,19 @@ await client.command({
 // contains id as numbers in JSONCompactEachRow format ["0"]\n["0"]\n...
 // see also: NDJSON format
 const filename = Path.resolve(cwd(), './node/resources/data.ndjson')
-const fileStream = Fs.createReadStream(filename).pipe(
-  split((row: string) => JSON.parse(row)),
+
+// Read the file line by line and parse each line as JSON, then expose the
+// parsed rows as a Readable stream that the client can consume.
+const lines = Readline.createInterface({
+  input: Fs.createReadStream(filename),
+  crlfDelay: Infinity,
+})
+const fileStream = Readable.from(
+  (async function* () {
+    for await (const line of lines) {
+      if (line.length > 0) yield JSON.parse(line) as unknown[]
+    }
+  })(),
 )
 
 await client.insert({
