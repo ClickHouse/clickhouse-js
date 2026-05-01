@@ -1,7 +1,7 @@
 import { createClient } from '@clickhouse/client'
 
 /**
- * Similar to `examples/insert_js_dates.ts` but testing custom JSON handling
+ * Similar to `insert_js_dates.ts` but testing custom JSON handling
  *
  * JSON.stringify does not handle BigInt data types by default, so we'll provide
  * a custom serializer before passing it to the JSON.stringify function.
