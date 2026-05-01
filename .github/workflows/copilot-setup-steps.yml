@@ -33,10 +33,15 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install dependencies (examples)
-        working-directory: examples
+      - name: Install dependencies (Node examples)
+        working-directory: examples/node
         run: |
-          npm install || echo "Failed to install dependencies in examples"
+          npm install || echo "Failed to install dependencies in examples/node"
+
+      - name: Install dependencies (Web examples)
+        working-directory: examples/web
+        run: |
+          npm install || echo "Failed to install dependencies in examples/web"
 
       - name: Install dependencies
         run: |
