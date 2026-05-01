@@ -42,6 +42,8 @@ export default defineConfig(
   {
     ignores: [
       'eslint.config.mjs',
+      'vitest.config.ts',
+      'vitest.setup.ts',
       'coverage',
       'out',
       'dist',
