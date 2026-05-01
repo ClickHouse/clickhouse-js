@@ -41,17 +41,22 @@ const abortController = new AbortController()
 const queryId = crypto.randomUUID()
 
 // Assuming that this is our long-long running insert.
-// IMPORTANT: do not wait for the promise to resolve yet.
-const commandPromise = longRunningInsert(client, {
-  tableName,
-  queryId,
-  abortController,
+// IMPORTANT: do not wait for the promise to resolve yet,
+// otherwise we won't be able to cancel the request later.
+const longRunningQueryPromise = client.command({
+  query: `
+        INSERT INTO ${tableName}
+        SELECT toString(42 + inner.number), concat('foobar_', inner.number, '_', sleepEachRow(1))
+        FROM (SELECT number FROM system.numbers LIMIT 3) AS inner
+      `,
+  abort_signal: abortController.signal,
+  query_id: queryId,
 })
 
-// Waiting until the INSERT appears on the server in system.query_log.
+// Waiting until the query appears on the server in `system.query_log`.
 // Once it is there, we can safely cancel the outgoing HTTP request.
 for (let attempts = 1; ; attempts++) {
-  if (await checkQueryExists(client, queryId)) {
+  if (await getQueryLogQueryType(client, queryId)) {
     break
   }
   await sleep(1000)
@@ -63,20 +68,18 @@ for (let attempts = 1; ; attempts++) {
 }
 
 abortController.abort()
-await commandPromise
 
-// Now we wait until the query is completed on the server.
-// This is not strictly necessary, but it is good to be sure
-// that the query is completed before we check the inserted data.
-for (let attempts = 1; ; attempts++) {
-  if (await checkCompletedQuery(client, queryId)) {
-    break
-  }
-  await sleep(1000)
-  if (attempts >= 30) {
-    throw new Error(
-      'The query is not completed after a reasonable amount of time - assuming a failure.',
+try {
+  await longRunningQueryPromise
+} catch (err) {
+  if (err instanceof Error && err.message.includes('abort')) {
+    console.info(
+      'The request was aborted, but the query might still be running on the server.',
     )
+  } else {
+    console.error('Unexpected error occurred during long-running insert.')
+    await client.close()
+    throw err
   }
 }
 
@@ -86,59 +89,8 @@ const rows = await client.query({
   format: 'JSONEachRow',
 })
 console.info('Inserted data:', await rows.json())
+
 await client.close()
-
-async function longRunningInsert(
-  client: ClickHouseClient,
-  {
-    abortController,
-    queryId,
-    tableName,
-  }: {
-    tableName: string
-    queryId: string
-    abortController: AbortController
-  },
-): Promise<void> {
-  try {
-    await client.command({
-      query: `
-        INSERT INTO ${tableName}
-        SELECT toString(42 + inner.number), concat('foobar_', inner.number, '_', sleepEachRow(1))
-        FROM (SELECT number FROM system.numbers LIMIT 3) AS inner
-      `,
-      abort_signal: abortController.signal,
-      query_id: queryId,
-    })
-  } catch (err) {
-    if (err instanceof Error && err.message.includes('abort')) {
-      console.info(
-        'The request was aborted, but the query might still be running on the server.',
-      )
-    } else {
-      console.error('Unexpected error occurred during long-running insert.')
-      await client.close()
-      throw err
-    }
-  }
-}
-
-async function checkQueryExists(
-  client: ClickHouseClient,
-  queryId: string,
-): Promise<boolean> {
-  const resultSet = await client.query({
-    query: `
-      SELECT COUNT(*) > 0 AS exists
-      FROM system.query_log
-      WHERE query_id = '${queryId}'
-    `,
-    format: 'JSONEachRow',
-  })
-  const result = await resultSet.json<{ exists: 0 | 1 }>()
-  console.log(`[Query ${queryId}] CheckQueryExists result:`, result)
-  return result.length > 0 && result[0].exists !== 0
-}
 
 interface QueryLogInfo {
   type:
@@ -148,10 +100,10 @@ interface QueryLogInfo {
     | 'ExceptionWhileProcessing'
 }
 
-async function checkCompletedQuery(
+async function getQueryLogQueryType(
   client: ClickHouseClient,
   queryId: string,
-): Promise<boolean> {
+): Promise<QueryLogInfo['type'] | null> {
   const resultSet = await client.query({
     query: `
       SELECT type
@@ -163,5 +115,8 @@ async function checkCompletedQuery(
   })
   const result = await resultSet.json<QueryLogInfo>()
   console.log(`[Query ${queryId}] CheckCompletedQuery result:`, result)
-  return result.length > 0 && result[0].type === 'QueryFinish'
+  if (result.length === 0) {
+    return null
+  }
+  return result[0].type
 }
