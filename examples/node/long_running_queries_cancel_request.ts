@@ -99,7 +99,7 @@ for (let attempts = 1; ; attempts++) {
     break
   }
   await sleep(1000)
-  if (attempts >= 30) {
+  if (attempts >= 60) {
     throw new Error(
       'The query did not finish on the server - assuming a failure.',
     )
