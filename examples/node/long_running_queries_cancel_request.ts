@@ -25,7 +25,14 @@ const client = createClient({
 
 const tableName = 'long_running_queries_cancel_request'
 await client.command({
-  query: `CREATE OR REPLACE TABLE ${tableName} (id Int32, _unused Int32)`,
+  query: `
+    CREATE OR REPLACE TABLE ${tableName} (
+      id Int32,
+      _unused Int32
+    )
+    ENGINE = MergeTree()
+    ORDER BY id
+  `,
 })
 
 // Used to cancel the outgoing HTTP request (but not the query itself!).
