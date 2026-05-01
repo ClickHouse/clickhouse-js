@@ -49,7 +49,10 @@ const insertQueryExists = await pollOnInterval(
   () => checkQueryExists(client, queryId),
   {
     intervalMs: 100,
-    maxPolls: 50,
+    // 20s of headroom: in CI, system.query_log is shared with many
+    // concurrently-running example processes, so the QueryStart entry can take
+    // noticeably longer to appear than the 1s flush interval suggests.
+    maxPolls: 200,
   },
 )
 abortController.abort()
