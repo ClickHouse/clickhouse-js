@@ -122,8 +122,9 @@ This will create two local ClickHouse instances: one with plain authentication a
 
 ### Any example except `create_table_*`
 
-Each subdirectory (`node` and `web`) is now an independent npm package with its own
-`package.json`, `tsconfig.json`, and `eslint.config.mjs`. Install dependencies in the
+Each subdirectory (`node` and `web`) is a fully independent npm package with its own
+`package.json`, `tsconfig.json`, `eslint.config.mjs`, and Vitest runner config — they do
+not share any configuration with the repository root. Install dependencies in the
 subdirectory matching the example you want to run:
 
 ```sh

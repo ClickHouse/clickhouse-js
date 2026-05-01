@@ -9,12 +9,12 @@
   "private": false,
   "type": "module",
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "run-examples": "cd ../.. && node node_modules/.bin/vitest run --config vitest.examples.config.ts examples/node"
+    "run-examples": "vitest run -c vitest.config.ts"
   },
   "dependencies": {
     "@clickhouse/client": "latest"
@@ -31,6 +31,7 @@
     "split2": "^4.2.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.4"
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^4.0.16"
   }
 }

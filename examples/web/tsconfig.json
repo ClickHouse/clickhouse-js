@@ -1,8 +1,24 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "pretty": true,
+    "noEmitOnError": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "removeComments": false,
+    "sourceMap": true,
+    "noFallthroughCasesInSwitch": true,
+    "useDefineForClassFields": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "importHelpers": false,
     "lib": ["ES2022", "ESNext.Disposable", "DOM"],
     "types": []
   },
-  "include": ["./**/*.ts"]
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules", "vitest.config.ts", "vitest.setup.ts"]
 }

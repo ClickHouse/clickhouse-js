@@ -1,10 +1,11 @@
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
-// Examples reference data files relative to the examples/ directory (e.g. `./node/resources/data.csv`).
-// Change the working directory to examples/ so that cwd()-based path resolution works correctly
-// when examples run in Vitest forks from the repo root.
-const examplesDir = resolve(dirname(fileURLToPath(import.meta.url)), 'examples')
+// Examples reference data files relative to the parent `examples/` directory
+// (e.g. `./node/resources/data.csv`). Change the working directory to the
+// parent so that cwd()-based path resolution works correctly when examples
+// run in Vitest forks from this package directory.
+const examplesDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 process.chdir(examplesDir)
 
 // Some examples call `process.exit(0)` as a final success signal.
@@ -13,7 +14,7 @@ process.chdir(examplesDir)
 //  - exit(0)  → no-op: let the async IIFE return normally so Vitest reports it as passed
 //  - exit(≠0) → throw an Error so Vitest captures the failure with a useful message
 process.exit = ((code?: number | string | null): never => {
-  const exitCode = code != null ? Number(code) : 0
+  const exitCode = code !== null && code !== undefined ? Number(code) : 0
   if (exitCode !== 0) {
     throw new Error(`process.exit(${exitCode}) called`)
   }
