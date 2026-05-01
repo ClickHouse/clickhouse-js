@@ -66,7 +66,6 @@ async function selectJSON(format: DataFormat) {
   })
   const data = await rows.json() // get all the data at once
   console.log(`Format: ${format}, parsed data:`)
-  // Browsers' console.log expands nested arrays/objects interactively in the devtools UI.
   console.log(data)
 }
 
