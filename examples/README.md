@@ -122,19 +122,28 @@ This will create two local ClickHouse instances: one with plain authentication a
 
 ### Any example except `create_table_*`
 
-Change the working directory to `examples` and install the dependencies:
+Each subdirectory (`node` and `web`) is now an independent npm package with its own
+`package.json`, `tsconfig.json`, and `eslint.config.mjs`. Install dependencies in the
+subdirectory matching the example you want to run:
 
 ```sh
-cd examples
+# For Node.js examples
+cd examples/node
+npm i
+
+# For Web examples
+cd examples/web
 npm i
 ```
 
 Then, you should be able to run the sample programs, for example:
 
 ```sh
-npx tsx --transpile-only node/array_json_each_row.ts
-# or, for the Web client equivalent:
-npx tsx --transpile-only web/array_json_each_row.ts
+# from examples/node
+npx tsx --transpile-only array_json_each_row.ts
+
+# from examples/web
+npx tsx --transpile-only array_json_each_row.ts
 ```
 
 ### TLS examples
@@ -148,11 +157,11 @@ Execute the following command to add the required `/etc/hosts` entry:
 sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 ```
 
-After that, you should be able to run the examples:
+After that, you should be able to run the examples (from `examples/node`):
 
 ```bash
-npx tsx --transpile-only node/basic_tls.ts
-npx tsx --transpile-only node/mutual_tls.ts
+npx tsx --transpile-only basic_tls.ts
+npx tsx --transpile-only mutual_tls.ts
 ```
 
 ### On-premise cluster examples
@@ -165,10 +174,10 @@ Run this command from the root folder of this repository:
 docker-compose -f docker-compose.cluster.yml up -d
 ```
 
-Now, you should be able to run the example:
+Now, you should be able to run the example (from `examples/node`):
 
 ```
-npx tsx --transpile-only node/create_table_on_premise_cluster.ts
+npx tsx --transpile-only create_table_on_premise_cluster.ts
 ```
 
 ### ClickHouse Cloud examples
@@ -189,8 +198,8 @@ for more information).
 
 Cloud examples assume that you are using the `default` user and database.
 
-Run one of the Cloud examples:
+Run one of the Cloud examples (from `examples/node`):
 
 ```
-npx tsx --transpile-only node/create_table_cloud.ts
+npx tsx --transpile-only create_table_cloud.ts
 ```

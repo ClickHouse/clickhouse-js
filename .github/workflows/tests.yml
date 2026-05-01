@@ -62,9 +62,13 @@ jobs:
   code-quality-examples:
     timeout-minutes: 5
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [node, web]
     defaults:
       run:
-        working-directory: examples
+        working-directory: examples/${{ matrix.package }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -92,9 +96,6 @@ jobs:
       fail-fast: false
       matrix:
         clickhouse: [head, latest]
-    defaults:
-      run:
-        working-directory: examples
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -112,11 +113,16 @@ jobs:
           node-version: 24
 
       - name: Install root dependencies
-        working-directory: .
         run: |
           npm install
 
-      - name: Install examples dependencies
+      - name: Install Node examples dependencies
+        working-directory: examples/node
+        run: |
+          npm install
+
+      - name: Install Web examples dependencies
+        working-directory: examples/web
         run: |
           npm install
 
@@ -204,8 +210,8 @@ jobs:
         run: |
           npm install
 
-      - name: Install dependencies (examples)
-        working-directory: examples
+      - name: Install dependencies (Node examples)
+        working-directory: examples/node
         run: |
           npm install
 
