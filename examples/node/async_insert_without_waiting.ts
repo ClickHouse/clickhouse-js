@@ -1,5 +1,6 @@
 import { createClient, ClickHouseError } from '@clickhouse/client'
 import { EventEmitter } from 'node:events'
+import { setTimeout as sleep } from 'node:timers/promises'
 
 // This example demonstrates how to use async inserts without waiting for an ack about a successfully written batch.
 // Run it for some time and observe the number of rows sent and the number of rows written to the table.
@@ -75,7 +76,7 @@ listener.on('data', asyncInsertOnData)
 
 // Periodically send a random amount of data to the listener, simulating a real application behavior.
 let rowsSent = 0
-let sendRowsHandle: ReturnType<typeof setTimeout>
+let sendRowsHandle: ReturnType<typeof setTimeout> | null = null
 const sendRows = () => {
   const rowsCount = Math.floor(Math.random() * 100) + 1
   const rows = [...new Array(rowsCount)].map((_, i) => ({
@@ -109,13 +110,12 @@ const rowsCountHandle = setInterval(async () => {
   }
 }, 1000)
 
-// When Ctrl+C is pressed - clean up and exit.
-async function gracefulShutdown() {
+await sleep(15000) // Run the example for 15 seconds
+
+if (sendRowsHandle) {
   clearTimeout(sendRowsHandle)
-  clearInterval(rowsCountHandle)
-  listener.removeListener('data', asyncInsertOnData)
-  await client.close()
-  process.exit(0)
 }
-process.on('SIGINT', gracefulShutdown)
-process.on('SIGTERM', gracefulShutdown)
+clearInterval(rowsCountHandle)
+listener.removeListener('data', asyncInsertOnData)
+
+await client.close()

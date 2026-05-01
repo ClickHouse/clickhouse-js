@@ -1,19 +1,15 @@
 import { createClient } from '@clickhouse/client-web'
 
-// Replace the placeholders below with your ClickHouse Cloud connection details.
-const CLICKHOUSE_URL = 'https://<your-instance>.clickhouse.cloud:8443'
-// The password is available during a service creation or can be later
-// set in the Cloud Console: https://console.clickhouse.cloud/
-const CLICKHOUSE_PASSWORD = '<your-clickhouse-cloud-password>'
-// In a real browser application, you would typically inject non-secrets at build time
-// (for example using Vite bundler env vars: https://vite.dev/guide/env-and-mode)
-// const CLICKHOUSE_URL = import.meta.env.VITE_CLICKHOUSE_URL
-// and read secrets from a runtime configuration object instead of hardcoding them:
-// const CLICKHOUSE_PASSWORD = (await import('/you-app-config.json')).CLICKHOUSE_PASSWORD
+if (typeof CLICKHOUSE_CLOUD_URL === 'undefined') {
+  throw new Error('CLICKHOUSE_CLOUD_URL is required')
+}
+if (typeof CLICKHOUSE_CLOUD_PASSWORD === 'undefined') {
+  throw new Error('CLICKHOUSE_CLOUD_PASSWORD is required')
+}
 
 const client = createClient({
-  url: CLICKHOUSE_URL,
-  password: CLICKHOUSE_PASSWORD,
+  url: CLICKHOUSE_CLOUD_URL,
+  password: CLICKHOUSE_CLOUD_PASSWORD,
 })
 
 // Note that ENGINE and ON CLUSTER clauses can be omitted entirely here.

@@ -20,6 +20,7 @@
     "@clickhouse/client-web": "latest"
   },
   "devDependencies": {
+    "@vitest/browser-playwright": "4.1.5",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-expect-type": "^0.6.2",
@@ -27,6 +28,6 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vitest": "^4.0.16"
+    "vitest": "4.1.5"
   }
 }

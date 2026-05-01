@@ -41,7 +41,7 @@ await client.command({
 })
 
 // Here we are assuming that we are getting these rows from somewhere...
-const rows = getRows(20_000)
+const rows = getRows(100)
 
 // Generate the query and insert the values
 const insertQuery = `
@@ -50,6 +50,7 @@ const insertQuery = `
   VALUES
     ${rows.map((r) => toInsertValue(r)).join(',')}
 `
+
 await client.command({
   query: insertQuery,
   clickhouse_settings: commandSettings,
