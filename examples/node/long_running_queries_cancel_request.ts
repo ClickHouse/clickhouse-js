@@ -50,48 +50,34 @@ const commandPromise = longRunningInsert(client, {
 
 // Waiting until the INSERT appears on the server in system.query_log.
 // Once it is there, we can safely cancel the outgoing HTTP request.
-const insertQueryExists = await pollOnInterval(
-  'CheckQueryExists',
-  () => checkQueryExists(client, queryId),
-  {
-    intervalMs: 100,
-    // 20s of headroom: in CI, system.query_log is shared with many
-    // concurrently-running example processes, so the QueryStart entry can take
-    // noticeably longer to appear than the 1s flush interval suggests.
-    maxPolls: 200,
-  },
-)
+for (let attempts = 1; ; attempts++) {
+  if (await checkQueryExists(client, queryId)) {
+    break
+  }
+  await sleep(1000)
+  if (attempts >= 30) {
+    throw new Error(
+      'The query is not received by the server - assuming a failure.',
+    )
+  }
+}
+
 abortController.abort()
 await commandPromise
 
-if (!insertQueryExists) {
-  // The query is still not received by the server after a reasonable amount of time.
-  // We might assume that the query will not be executed. Handle this depending on your use case.
-  await client.close()
-  throw new Error(
-    'The query is not received by the server - assuming a failure.',
-  )
-}
-
-// Waiting until the query is completed on the server.
-const isCompleted = await pollOnInterval(
-  'CheckCompletedQuery',
-  () => checkCompletedQuery(client, queryId),
-  {
-    maxPolls: 60, // Set to 400+ for a production-like timeout
-    intervalMs: 1000, // assuming that our query max execution time is 400s
-  },
-)
-
-if (isCompleted) {
-  console.info('The query is completed.')
-} else {
-  // Handle this depending on your use case - you could wait a bit more, or cancel the query on the server.
-  // See examples/cancel_query.ts for the latter option.
-  await client.close()
-  throw new Error(
-    'The query is not completed after a reasonable amount of time.',
-  )
+// Now we wait until the query is completed on the server.
+// This is not strictly necessary, but it is good to be sure
+// that the query is completed before we check the inserted data.
+for (let attempts = 1; ; attempts++) {
+  if (await checkCompletedQuery(client, queryId)) {
+    break
+  }
+  await sleep(1000)
+  if (attempts >= 30) {
+    throw new Error(
+      'The query is not completed after a reasonable amount of time - assuming a failure.',
+    )
+  }
 }
 
 // Check the inserted data.
@@ -178,33 +164,4 @@ async function checkCompletedQuery(
   const result = await resultSet.json<QueryLogInfo>()
   console.log(`[Query ${queryId}] CheckCompletedQuery result:`, result)
   return result.length > 0 && result[0].type === 'QueryFinish'
-}
-
-async function pollOnInterval(
-  op: string,
-  fn: () => Promise<boolean>,
-  {
-    intervalMs,
-    maxPolls,
-  }: {
-    intervalMs: number
-    maxPolls: number
-  },
-): Promise<boolean> {
-  // Sequential polling loop: never overlap calls to `fn`, and wait `intervalMs`
-  // between attempts. This is the equivalent of `set-interval-async` for the
-  // simple "poll until success or max attempts" use case.
-  for (let pollsCount = 1; pollsCount <= maxPolls; pollsCount++) {
-    try {
-      const success = await fn()
-      console.log(`[${op}] Poll #${pollsCount}: ${success}`)
-      if (success) return true
-    } catch (err) {
-      console.error(`[${op}] Error while polling:`, err)
-      return false
-    }
-    if (pollsCount < maxPolls) await sleep(intervalMs)
-  }
-  console.error(`[${op}] Max polls count reached!`)
-  return false
 }
