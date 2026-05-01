@@ -28,17 +28,47 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Need history back to `github.event.before` so we can detect
+          # whether any package files changed in this push.
+          fetch-depth: 0
+
+      # Quick path-based gate: if no files under packages/** changed in
+      # this push, there is nothing the head tag could meaningfully point
+      # to, so skip the rest of the job entirely.
+      - name: Detect changes to packages/
+        id: changes
+        run: |
+          BEFORE_SHA="${{ github.event.before }}"
+          AFTER_SHA="${{ github.sha }}"
+          # `before` is all-zeros for the first push to a new branch; in
+          # that case fall back to the parent commit so we still produce
+          # a meaningful diff.
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE_SHA="${AFTER_SHA}^"
+          fi
+          echo "Comparing $BEFORE_SHA..$AFTER_SHA"
+          if git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" -- 'packages/' | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Detected changes under packages/, continuing."
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes under packages/ in this push; skipping head publish."
+          fi
 
       - name: Setup Node.js
+        if: steps.changes.outputs.changed == 'true'
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
+        if: steps.changes.outputs.changed == 'true'
         run: npm ci
 
       - name: Set head pre-release version
+        if: steps.changes.outputs.changed == 'true'
         run: |
           BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
           HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
@@ -46,9 +76,71 @@ jobs:
           .scripts/update_version.sh "$HEAD_VERSION"
 
       - name: Build packages
+        if: steps.changes.outputs.changed == 'true'
         run: npm --workspaces run build
 
+      # Content-based gate: pack each workspace package, compute a
+      # version-normalized content hash, and compare it to the hash of
+      # the currently-published `head` tarball on npm. We treat all
+      # three packages as a single unit (all-or-nothing) because
+      # client-node and client-web share client-common as a dependency,
+      # so we publish iff at least one package's content actually
+      # differs from what is already on npm under the `head` tag.
+      - name: Compare packed contents to currently published head
+        if: steps.changes.outputs.changed == 'true'
+        id: pack_diff
+        run: |
+          set -euo pipefail
+          differs=false
+          for pkg_dir in packages/client-common packages/client-node packages/client-web; do
+            pkg_name=$(node -p "require('./$pkg_dir/package.json').name")
+            echo "::group::Comparing $pkg_name"
+
+            # Pack the freshly built package.
+            pushd "$pkg_dir" >/dev/null
+            tarball=$(npm pack --silent)
+            new_hash=$(../../.scripts/pkg_content_hash.sh "$tarball")
+            popd >/dev/null
+            echo "new content hash:       $new_hash"
+
+            # Fetch the currently-published head tarball, if any.
+            # `npm view` exits non-zero both when the package/dist-tag
+            # does not exist yet and on transient registry errors. We
+            # treat both the same way (assume "not published" and force
+            # a publish); a real registry outage will surface in the
+            # subsequent `npm publish` step.
+            published_url=$(npm view "${pkg_name}@head" dist.tarball 2>/dev/null || true)
+            if [ -z "$published_url" ]; then
+              echo "no published head version found for $pkg_name; will publish."
+              differs=true
+              echo "::endgroup::"
+              continue
+            fi
+            echo "published tarball url:  $published_url"
+            published_tgz=$(mktemp --suffix=.tgz)
+            curl -fsSL "$published_url" -o "$published_tgz"
+            published_hash=$(.scripts/pkg_content_hash.sh "$published_tgz")
+            rm -f "$published_tgz"
+            echo "published content hash: $published_hash"
+
+            if [ "$new_hash" != "$published_hash" ]; then
+              echo "$pkg_name content differs from the published head version."
+              differs=true
+            else
+              echo "$pkg_name content matches the published head version."
+            fi
+            echo "::endgroup::"
+          done
+
+          if [ "$differs" = "true" ]; then
+            echo "differs=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "differs=false" >> "$GITHUB_OUTPUT"
+            echo "All packed contents match the currently-published head versions; skipping publish."
+          fi
+
       - name: Publish packages with head tag
+        if: steps.changes.outputs.changed == 'true' && steps.pack_diff.outputs.differs == 'true'
         run: |
           npm --workspaces publish \
             --access public \
