@@ -143,11 +143,6 @@ npm run test:node:integration:tls
 
 Used when `CLICKHOUSE_TEST_ENVIRONMENT` is set to `local_cluster`.
 
-Start a ClickHouse cluster using Docker compose:
-
-```bash
-docker compose -f docker-compose.cluster.yml up -d
-```
 
 Run the tests (Node.js):
 

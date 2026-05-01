@@ -1,4 +1,18 @@
 #version: '3.8'
+# This compose file contains both the single-node setup (services `clickhouse` and `clickhouse_tls`)
+# and the two-node cluster setup (services `clickhouse1`, `clickhouse2`, and the `nginx` cluster
+# entrypoint). They use non-overlapping host ports so they can be started together with a single
+# `docker compose up -d` (or `docker-compose up -d`) and used to run all tests against a single
+# environment.
+#
+# Default single-node ports (kept unchanged):
+#   clickhouse:      8123 (HTTP), 9000 (native)
+#   clickhouse_tls:  8443 (HTTPS), 9440 (native TLS)
+#
+# Cluster ports (chosen to not conflict with the single-node setup):
+#   clickhouse1:     8124 (HTTP), 9100 (native), 9181 (keeper)
+#   clickhouse2:     8125 (HTTP), 9101 (native), 9182 (keeper)
+#   nginx (cluster HTTP entrypoint, round-robin load balancer): 8127
 services:
   clickhouse:
     image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-head}'
@@ -33,3 +47,51 @@ services:
     volumes:
       - './.docker/clickhouse/single_node_tls/config.xml:/etc/clickhouse-server/config.xml'
       - './.docker/clickhouse/single_node_tls/users.xml:/etc/clickhouse-server/users.xml'
+
+  clickhouse1:
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-head}'
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    hostname: clickhouse1
+    container_name: clickhouse-js-clickhouse-server-node-1
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
+    ports:
+      - '8124:8123'
+      - '9100:9000'
+      - '9181:9181'
+    volumes:
+      - './.docker/clickhouse/cluster/server1_config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/cluster/server1_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
+      - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+
+  clickhouse2:
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-head}'
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    hostname: clickhouse2
+    container_name: clickhouse-js-clickhouse-server-node-2
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
+    ports:
+      - '8125:8123'
+      - '9101:9000'
+      - '9182:9181'
+    volumes:
+      - './.docker/clickhouse/cluster/server2_config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/cluster/server2_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
+      - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+
+  # Using Nginx as a cluster entrypoint and a round-robin load balancer for HTTP requests
+  nginx:
+    image: 'nginx:1.23.1-alpine'
+    hostname: nginx
+    ports:
+      - '8127:8123'
+    volumes:
+      - './.docker/nginx/local.conf:/etc/nginx/conf.d/local.conf'
+    container_name: clickhouse-js-nginx
