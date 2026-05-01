@@ -6,7 +6,7 @@ const CLICKHOUSE_URL = "https://<your-instance>.clickhouse.cloud:8443";
 // set in the Cloud Console: https://console.clickhouse.cloud/
 const CLICKHOUSE_PASSWORD = "<your-clickhouse-cloud-password>";
 // In a real browser application, you would typically inject non-secrets at build time
-// (for example using Vites bundler env vars: https://vite.dev/guide/env-and-mode)
+// (for example using Vite bundler env vars: https://vite.dev/guide/env-and-mode)
 // const CLICKHOUSE_URL = import.meta.env.VITE_CLICKHOUSE_URL
 // and read secrets from a runtime configuration object instead of hardcoding them:
 // const CLICKHOUSE_PASSWORD = (await import('/you-app-config.json')).CLICKHOUSE_PASSWORD
