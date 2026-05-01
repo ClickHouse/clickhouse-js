@@ -119,6 +119,10 @@ jobs:
       - name: Install examples dependencies
         run: |
           npm install
+
+      - name: Install Playwright Chromium
+        if: matrix.package == 'web'
+        run: |
           npx playwright install chromium
 
       - name: Add ClickHouse TLS instance to /etc/hosts
