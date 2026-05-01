@@ -1,15 +1,17 @@
 import { createClient } from '@clickhouse/client-web'
 
-if (!process.env['CLICKHOUSE_CLOUD_URL']) {
-  console.info(
-    'Skipping create_table_cloud example: CLICKHOUSE_CLOUD_URL is not set',
-  )
-  process.exit(0)
+if (typeof CLICKHOUSE_CLOUD_URL === 'undefined') {
+  console.info('Skipping: CLICKHOUSE_CLOUD_URL is not set')
+  throw new Error('CLICKHOUSE_CLOUD_URL environment variable is required')
+}
+if (typeof CLICKHOUSE_CLOUD_PASSWORD === 'undefined') {
+  console.info('Skipping: CLICKHOUSE_CLOUD_PASSWORD is not set')
+  throw new Error('CLICKHOUSE_CLOUD_PASSWORD environment variable is required')
 }
 
 const client = createClient({
-  url: process.env['CLICKHOUSE_CLOUD_URL'],
-  password: process.env['CLICKHOUSE_CLOUD_PASSWORD'],
+  url: CLICKHOUSE_CLOUD_URL,
+  password: CLICKHOUSE_CLOUD_PASSWORD,
 })
 
 // Note that ENGINE and ON CLUSTER clauses can be omitted entirely here.
