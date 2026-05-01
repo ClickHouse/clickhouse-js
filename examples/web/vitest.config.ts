@@ -2,15 +2,9 @@ import { defineConfig } from 'vitest/config'
 
 /**
  * Examples that cannot be run in a standard single-node CI environment.
+ * All examples are now runnable; they handle missing resources at runtime via env-var checks.
  */
-const EXCLUDED_EXAMPLES = [
-  // Requires ClickHouse Cloud credentials
-  'create_table_cloud.ts',
-  // Requires a multi-node ClickHouse cluster
-  'create_table_on_premise_cluster.ts',
-  // Designed as a production-scenario demo; intentionally uses very long timeouts (up to 400 s)
-  'long_running_queries_progress_headers.ts',
-]
+const EXCLUDED_EXAMPLES: string[] = []
 
 export default defineConfig({
   test: {
@@ -26,6 +20,8 @@ export default defineConfig({
     env: {
       CLICKHOUSE_URL: process.env['CLICKHOUSE_URL'] ?? 'http://localhost:8123',
       CLICKHOUSE_PASSWORD: process.env['CLICKHOUSE_PASSWORD'] ?? '',
+      CLICKHOUSE_CLUSTER_URL:
+        process.env['CLICKHOUSE_CLUSTER_URL'] ?? 'http://localhost:8127',
     },
   },
 })

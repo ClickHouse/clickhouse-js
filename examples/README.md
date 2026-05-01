@@ -172,8 +172,8 @@ npx tsx --transpile-only create_table_on_premise_cluster.ts
   variables first for the Node.js client:
 
 ```sh
-export CLICKHOUSE_URL=https://<your-clickhouse-cloud-hostname>:8443
-export CLICKHOUSE_PASSWORD=<your-clickhouse-cloud-password>
+export CLICKHOUSE_CLOUD_URL=https://<your-clickhouse-cloud-hostname>:8443
+export CLICKHOUSE_CLOUD_PASSWORD=<your-clickhouse-cloud-password>
 ```
 
 and for the Web client, you need to set these variables in the examples themselves.
@@ -189,3 +189,11 @@ Run one of the Cloud examples (from `examples/node`):
 ```
 npx tsx --transpile-only create_table_cloud.ts
 ```
+
+### Environment variables for runnable examples
+
+The following environment variables control behavior when running examples in automated environments (e.g., CI):
+
+- `CLICKHOUSE_CLUSTER_URL` — Overrides the URL for on-premise cluster examples. Default: `http://localhost:8127`.
+
+- `CLICKHOUSE_CLOUD_URL` / `CLICKHOUSE_CLOUD_PASSWORD` — When set, the Cloud examples (`*_cloud.ts`) will connect to the specified ClickHouse Cloud instance. When unset, these examples skip with an informative log message.

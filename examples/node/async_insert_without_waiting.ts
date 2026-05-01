@@ -119,3 +119,7 @@ async function gracefulShutdown() {
 }
 process.on('SIGINT', gracefulShutdown)
 process.on('SIGTERM', gracefulShutdown)
+
+// Run the example for a certain amount of time and then exit.
+// Adjust the duration as needed.
+setTimeout(gracefulShutdown, 30_000)

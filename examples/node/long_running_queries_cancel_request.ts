@@ -68,7 +68,7 @@ const isCompleted = await pollOnInterval(
   'CheckCompletedQuery',
   () => checkCompletedQuery(client, queryId),
   {
-    maxPolls: 400,
+    maxPolls: 60, // Set to 400+ for a production-like timeout
     intervalMs: 1000, // assuming that our query max execution time is 400s
   },
 )
