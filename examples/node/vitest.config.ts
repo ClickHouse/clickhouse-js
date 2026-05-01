@@ -1,8 +1,4 @@
-import { dirname, resolve } from 'path'
-import { fileURLToPath } from 'url'
 import { defineConfig } from 'vitest/config'
-
-const here = dirname(fileURLToPath(import.meta.url))
 
 /**
  * Examples that cannot be run in a standard single-node CI environment.
@@ -37,15 +33,6 @@ export default defineConfig({
     env: {
       CLICKHOUSE_URL: process.env['CLICKHOUSE_URL'] ?? 'http://localhost:8123',
       CLICKHOUSE_PASSWORD: process.env['CLICKHOUSE_PASSWORD'] ?? '',
-    },
-  },
-  resolve: {
-    alias: {
-      '@clickhouse/client': resolve(here, '../../packages/client-node/src'),
-      '@clickhouse/client-common': resolve(
-        here,
-        '../../packages/client-common/src',
-      ),
     },
   },
 })
