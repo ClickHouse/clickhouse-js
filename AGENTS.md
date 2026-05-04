@@ -1,5 +1,7 @@
 # Recommendations for AI agents
 
+> **Audience:** This file contains guidance for AI agents contributing to the `ClickHouse/clickhouse-js` repository itself. It is **not** intended for downstream projects that depend on `@clickhouse/client` or `@clickhouse/client-web`
+
 1. When adding log messages, make sure to use eager log level checks to avoid unnecessary calculations for log messages that will not be emitted. For example:
 
    ```ts
@@ -75,4 +77,4 @@ For every pull request review, make sure to provide an evaluation of the followi
 
 2. When introducing new features or making changes to the API make sure to update the CHANGELOG.md file with a concise description of the changes followed with an example usage if applicable.
 
-3. Additionally, make sure that the official documentation is in sync with the changes. The MCP server for the documentation is running at `https://clickhouse.mcp.kapa.ai/`.
+3. Additionally, make sure that the official documentation is in sync with the changes.
