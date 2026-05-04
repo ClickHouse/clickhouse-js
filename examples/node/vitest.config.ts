@@ -3,8 +3,28 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     name: 'examples-node',
-    include: ['*.ts'],
-    exclude: ['vitest.config.ts', 'vitest.setup.ts'],
+    include: ['**/*.ts'],
+    // Examples are intentionally duplicated across category folders so each
+    // category is a self-contained "skill corpus". To keep CI runtime stable,
+    // each example runs once from its primary location; secondary copies are
+    // excluded below. Keep this list in sync with examples/README.md.
+    exclude: [
+      'node_modules/**',
+      'vitest.config.ts',
+      'vitest.setup.ts',
+      // Duplicates of `coding/` files
+      'performance/async_insert.ts',
+      'performance/insert_from_select.ts',
+      'troubleshooting/ping_non_existing_host.ts',
+      'troubleshooting/custom_json_handling.ts',
+      'security/query_with_parameter_binding.ts',
+      'security/query_with_parameter_binding_special_chars.ts',
+      'schema-and-deployments/insert_ephemeral_columns.ts',
+      'schema-and-deployments/insert_exclude_columns.ts',
+      'schema-and-deployments/url_configuration.ts',
+      // Duplicate of `security/read_only_user.ts`
+      'troubleshooting/read_only_user.ts',
+    ],
     setupFiles: ['vitest.setup.ts'],
     pool: 'forks',
     testTimeout: 60_000,

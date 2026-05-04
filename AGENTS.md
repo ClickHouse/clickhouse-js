@@ -44,6 +44,22 @@ The goals of the refactor are:
    exist in both subdirectories where applicable, with the only differences being the `import`
    statement and any platform-specific adjustments. Examples that rely on Node.js-only APIs live only
    under `examples/node`.
+5. Within each subpackage, examples are split into intent-driven **use-case folders** so each folder
+   can back a focused AI agent skill:
+   - `coding/` — day-to-day client API usage (configure, ping, basic insert/select, parameter
+     binding, sessions, data types, custom JSON).
+   - `performance/` — async inserts, streaming with backpressure, file/Parquet streams, progress
+     streaming, server-side bulk moves. Node-only (no `performance/` folder under `examples/web`).
+   - `troubleshooting/` — cancellation, timeouts, long-running query progress, server error surfaces,
+     number-precision pitfalls.
+   - `security/` — TLS, RBAC, SQL-injection-safe parameter binding.
+   - `schema-and-deployments/` — `CREATE TABLE` examples for each deployment shape and
+     deployment-shaped connection strings.
+6. A small number of examples are **intentionally duplicated** across folders so each folder is a
+   self-contained skill corpus. Each duplicated example has one _primary_ location; the secondary
+   copies are excluded from the Vitest runner via the per-package `vitest.config.ts`. When you edit
+   a duplicated example, update **all** copies. The current duplicates and their primary locations
+   are listed in [`examples/README.md`](examples/README.md#editing-duplicated-examples).
 
 ## When reviewing code changes
 
