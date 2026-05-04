@@ -3,10 +3,7 @@
 > **Audience:** This file contains guidance for AI agents contributing to the
 > `ClickHouse/clickhouse-js` repository itself. It is **not** intended for
 > downstream projects that depend on `@clickhouse/client` or
-> `@clickhouse/client-web`. AI agents working in consumer projects should
-> ignore this file — its conventions (logging style, `docs/` pages, examples
-> layout, PR review checklist, etc.) only apply to development inside this
-> repository.
+> `@clickhouse/client-web`
 
 1. When adding log messages, make sure to use eager log level checks to avoid unnecessary calculations for log messages that will not be emitted. For example:
 
