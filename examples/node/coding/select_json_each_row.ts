@@ -1,5 +1,8 @@
 import { createClient } from '@clickhouse/client'
 
+// Selecting rows in `JSONEachRow` format and parsing them into a typed array via `rows.json<T>()`.
+// This is the simplest path for "give me all rows as JS objects". For larger result sets,
+// stream instead — see node/select_streaming_json_each_row.ts.
 interface Data {
   number: string
 }
