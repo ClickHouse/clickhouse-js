@@ -1,4 +1,20 @@
-Set up the `clickhouse-js` repository so you can run tests, lints, and type checks.
+---
+name: setup
+description: >
+  Set up the `clickhouse-js` repository in a fresh checkout so the agent can run
+  tests, lints, type checks, builds, or examples. Use this skill before invoking
+  any `npm run test:*`, `npm run lint`, `npm run typecheck`, `npm run build`, or
+  `npm run run-examples` script — or after pulling changes that touch any
+  `package.json` (root, `examples/node`, or `examples/web`). Covers Node.js
+  version requirements, installing dependencies across the npm workspaces and
+  the two independent example packages, building the workspace packages so
+  inter-package imports resolve, and starting ClickHouse via Docker Compose for
+  integration tests. Do NOT use this skill for downstream user projects that
+  merely depend on `@clickhouse/client` or `@clickhouse/client-web`; it is
+  specific to contributing to the `ClickHouse/clickhouse-js` repo itself.
+---
+
+# clickhouse-js Repository Setup
 
 Use this skill before running any of the `npm run test:*`, `npm run lint`, `npm run typecheck`, or `npm run build` scripts in a fresh checkout (or after pulling changes that touch `package.json` files).
 
