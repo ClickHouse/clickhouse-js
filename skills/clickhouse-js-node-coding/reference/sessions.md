@@ -76,7 +76,13 @@ await client.close()
 client, every subsequent call inherits the change.
 
 ```ts
-const client = createClient({ session_id: crypto.randomUUID() })
+import { createClient } from '@clickhouse/client'
+import * as crypto from 'node:crypto'
+
+const client = createClient({
+  session_id: crypto.randomUUID(),
+  max_open_connections: 1, // prevent concurrent-session errors
+})
 
 await client.command({
   query: 'SET output_format_json_quote_64bit_integers = 0',
@@ -99,6 +105,8 @@ const rs2 = await client.query({
   format: 'JSONEachRow',
 })
 // → 64-bit integers come back as strings again
+
+await client.close()
 ```
 
 > **`wait_end_of_query: 1` matters here.** Without it, a `SET` on one
