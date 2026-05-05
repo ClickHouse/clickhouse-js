@@ -114,9 +114,9 @@ default since CH 25.8) so the server emits unquoted 64-bit integers that
 
 ## Common pitfalls
 
-- **Setting `json.parse` only.** It's also used to _write_ JSON bodies — you
-  generally want a matching `stringify`, or you'll have asymmetric
-  serialization.
+- **Setting `json.parse` only.** That only affects reading JSON responses;
+  outgoing JSON bodies use `json.stringify`. If you want consistent custom
+  handling in both directions, generally provide a matching `stringify` too.
 - **Forgetting `bigint` handling in `stringify`.** Default `JSON.stringify`
   throws on `BigInt`; if your data ever contains one, the insert will fail
   with `TypeError: Do not know how to serialize a BigInt`.
