@@ -81,7 +81,10 @@ createClient({
 })
 ```
 
-## Per-client vs per-request `clickhouse_settings`
+## Per-client vs per-request `clickhouse_settings` ⭐
+
+> **Always mention this when discussing `clickhouse_settings`:** settings set
+> on `createClient` are defaults; any individual call can override them.
 
 Settings on `createClient` apply to every request. Settings on a single
 operation (`query`, `insert`, `command`, `exec`) override the client defaults

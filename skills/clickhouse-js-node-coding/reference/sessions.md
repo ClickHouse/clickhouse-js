@@ -17,9 +17,31 @@ Use a `session_id` whenever multiple calls must share **server-side state**:
 - Any other server feature scoped per session (e.g., session-scoped
   variables in newer ClickHouse versions).
 
+## ⚠️ `session_id` and concurrency
+
+ClickHouse **rejects concurrent queries within the same session** — if two
+requests arrive at the server at the same time sharing the same `session_id`,
+the second one gets an error like
+`"Session is locked by a concurrent client"`. This has two practical
+implications:
+
+1. **Do not set `session_id` on a global / module-static client** that handles
+   concurrent requests (e.g., an Express app's shared client). Every
+   in-flight request would share the same session and collide under load.
+2. **If you do set `session_id` on a client**, restrict its concurrency:
+   set `max_open_connections: 1` so at most one request is in flight at a
+   time, turning the pool into a serial queue. This is fine for a
+   dedicated per-workflow client but wrong for a shared application client.
+
+The right pattern for application code: create a **short-lived client** (or
+use per-request `session_id`) scoped to a single logical workflow, not to
+the entire process.
+
 ## Per-client `session_id`
 
-The simplest setup — one client, one session.
+Appropriate when **one client handles exactly one sequential workflow** (a
+script, a background job, a single user's session that you've already
+serialized).
 
 ```ts
 import { createClient } from '@clickhouse/client'
@@ -27,6 +49,7 @@ import * as crypto from 'node:crypto'
 
 const client = createClient({
   session_id: crypto.randomUUID(),
+  max_open_connections: 1, // prevent concurrent-session errors
 })
 
 await client.command({
@@ -107,6 +130,10 @@ Mitigations:
 - **Forgetting `session_id` and being surprised that
   `CREATE TEMPORARY TABLE` "disappears."** Without a session, every request
   may land on a different connection / server context.
+- **Setting `session_id` on a shared application client.** Under concurrent
+  load, two in-flight requests will share the same session and one will fail
+  with `"Session is locked by a concurrent client"`. Use per-request
+  `session_id` or a dedicated short-lived client instead.
 - **Reusing the same `session_id` across unrelated workflows.** A second
   session-using consumer will trip over your temporary tables and `SET`
   values. Generate a fresh UUID per logical session.

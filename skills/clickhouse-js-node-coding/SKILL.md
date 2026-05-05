@@ -39,6 +39,10 @@ Reference: https://clickhouse.com/docs/integrations/javascript
 3. **Prefer `JSONEachRow` for typical row inserts/selects** unless the user
    has already chosen another format or is streaming raw bytes (CSV / TSV /
    Parquet — those belong to the performance skill).
+   **Note on `clickhouse_settings`:** settings passed to `createClient` are
+   defaults for every request; they can be overridden per-call by passing
+   `clickhouse_settings` directly to `insert()`, `query()`, or `command()`.
+   Always mention this when the user configures settings at the client level.
 4. **Always use `query_params` for user-supplied values** — never template-
    literal-interpolate them into SQL. See `reference/query-parameters.md`.
 5. **Pick the right method for the job:**

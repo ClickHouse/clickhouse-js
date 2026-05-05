@@ -80,6 +80,34 @@ app.get('/healthz', async (_req, res) => {
 })
 ```
 
+## `ping()` vs `ping({ select: true })`
+
+The default `ping()` hits ClickHouse's `/ping` HTTP endpoint — it verifies
+network connectivity but **does not check credentials or query processing**.
+A server that is reachable but has a bad password (or a broken query
+pipeline) will still return `{ success: true }` from a plain `ping()`.
+
+Pass `{ select: true }` to run a lightweight `SELECT 1` instead:
+
+```ts
+const r = await client.ping({ select: true })
+// success only if the server is reachable AND auth is correct AND it can run queries
+```
+
+|                         | `client.ping()` | `client.ping({ select: true })` |
+| ----------------------- | --------------- | ------------------------------- |
+| Endpoint                | `/ping` (HTTP)  | `SELECT 1` query                |
+| Checks auth             | **No**          | Yes                             |
+| Checks query processing | No              | **Yes**                         |
+| Overhead                | Minimal         | Slightly higher                 |
+
+**When to use which:**
+
+- **Liveness probe** (is the process alive?) — plain `ping()` is fine.
+- **Readiness probe** (can it serve traffic?) — use `ping({ select: true })`
+  so the probe fails if credentials are wrong or the query layer is broken.
+- **Waking a ClickHouse Cloud idle instance** — plain `ping()` is enough.
+
 ## Common pitfalls
 
 - **Do not wrap `ping()` in `try/catch` as your only check.** It resolves on
@@ -87,4 +115,6 @@ app.get('/healthz', async (_req, res) => {
 - **Lower `request_timeout` if you want pings to fail fast** (the example
   above uses `50` ms). The default is high enough to be unsuitable for
   liveness probes.
+- **Plain `ping()` does not check credentials.** If auth is part of what you
+  want to verify, use `ping({ select: true })`.
 - For ping that times out specifically, see the troubleshooting skill.

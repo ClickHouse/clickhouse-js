@@ -123,3 +123,8 @@ default since CH 25.8) so the server emits unquoted 64-bit integers that
 - **Targeting client `< 1.14.0`.** The `json` option doesn't exist; you'll
   need to convert values manually before calling `insert()` / `query()` (or
   upgrade).
+- **Casting 64-bit integers to `Number`.** JavaScript's `number` type has
+  only 53 bits of mantissa — values above `Number.MAX_SAFE_INTEGER` (2^53 − 1)
+  are silently rounded. Do **not** try to fix precision loss by calling
+  `Number()`, `parseInt()`, or `parseFloat()` on the value. The correct fix
+  is a `BigInt`-aware parser (shown above), not a lossy cast.
