@@ -68,12 +68,12 @@ array. See the performance skill for streaming guidance.
 
 These cannot be streamed — the entire body is sent in one shot.
 
-| Format                    | `values` shape (typed via `InputJSON<T>` / `InputJSONObjectEachRow<T>`)                  |
-| ------------------------- | ---------------------------------------------------------------------------------------- |
-| `JSON`                    | `{ meta?: [], data: Array<{ col: value, ... }> }` — `meta` is optional for `JSON`        |
-| `JSONCompact`             | `{ meta: [{ name, type }, ...], data: Array<[v1, v2, ...]> }`                            |
-| `JSONColumnsWithMetadata` | `{ meta: [...], data: { col1: [v, ...], col2: [v, ...] } }`                              |
-| `JSONObjectEachRow`       | `Record<string, { col: value, ... }>` (the record key labels each row but is not stored) |
+| Format                    | `values` shape (typed via `InputJSON<T>` / `InputJSONObjectEachRow<T>`)                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `JSON`                    | `{ meta: [], data: Array<{ col: value, ... }> }` — for TypeScript/client usage, pass `meta: []` if metadata is not needed |
+| `JSONCompact`             | `{ meta: [{ name, type }, ...], data: Array<[v1, v2, ...]> }`                                                       |
+| `JSONColumnsWithMetadata` | `{ meta: [...], data: { col1: [v, ...], col2: [v, ...] } }`                                                         |
+| `JSONObjectEachRow`       | `Record<string, { col: value, ... }>` (the record key labels each row but is not stored)                            |
 
 ```ts
 import type { InputJSON, InputJSONObjectEachRow } from '@clickhouse/client'
