@@ -145,7 +145,7 @@ Experimenting with the exact load balancer stack might be required.
 - **Shorter intervals** = better load balancer keep-alive (prevents idle timeout) but **lower max duration**
 - **Longer intervals** = higher max duration but **higher risk of LB idle timeout**
 
-The interval must be ~10–20 seconds **below** your load balancer's idle timeout to prevent mid-query disconnections, while staying under the header limit for your expected query duration.
+As a rule of thumb, set the interval slightly **below** your load balancer's idle timeout—typically by a few seconds (for example, often around 5–20 seconds), depending on your load balancer, proxies, and network behavior—while staying under the header limit for your expected query duration.
 
 **Alternatively — fire-and-forget (mutations only):** Mutations (`INSERT ... SELECT`, `OPTIMIZE`, `ALTER`) are not cancelled on the server when the client connection is lost. You can send the mutation and immediately close the connection, then poll `system.query_log` or `system.mutations` for status. This bypasses both the load balancer idle timeout and the Node.js header limit. See the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples) for a concrete implementation.
 
