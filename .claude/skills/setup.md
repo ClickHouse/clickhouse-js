@@ -4,7 +4,7 @@ Use this skill before running any of the `npm run test:*`, `npm run lint`, `npm 
 
 ## Prerequisites
 
-- **Node.js 22+** (matches `.nvmrc`; the CI workflow uses Node 24, so any version `>= 22` works). The root `package.json` declares `"engines": { "node": ">=20" }`.
+- **Node.js 22 recommended** (matches `.nvmrc`). The root `package.json` declares `"engines": { "node": ">=20" }`, and CI tests Node 20, 22, and 24.
 - **Docker** with the Compose plugin (`docker compose ...`). Required only for integration tests and any example that talks to a real server.
 
 ## 1. Install dependencies
