@@ -37,7 +37,6 @@
         "Uses client.insert({ table, values, format: 'JSONEachRow' }).",
         "Notes that the array can be passed directly to values — no need to stringify or stream for a few thousand rows.",
         "Does NOT recommend a streaming/Parquet flow for this size.",
-        "Mentions to not wrap in a `{ data: [...] }` envelope.",
         "Mentions `JSONCompact*` formats as an alternative for bigger payloads"
       ]
     },

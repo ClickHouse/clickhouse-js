@@ -18,14 +18,19 @@ When answering configuration questions, include the relevant points:
 - Show `createClient` from `@clickhouse/client` with explicit fields when the
   user is writing code; this is easier to read and review than encoding
   everything into a URL string.
-- Mention the URL form when useful for environment variables, DSNs, or config
-  files.
+- When mentioning the URL form for environment variables / DSNs: show a **Bash**
+  `export` with the literal URL value, and `createClient({ url: process.env.CLICKHOUSE_URL })`
+  in the Node code. **Never construct a URL in application code** — no string
+  concatenation, no template literals, no query-string builders.
 - If URL parameters and object fields both set the same option, URL parameters
   override the rest of the configuration object.
 - If `clickhouse_settings` appear on `createClient`, explain that they are
   defaults for every request and can be overridden on individual `query()`,
   `insert()`, `command()`, or `exec()` calls.
 - Remind long-running services to close the client during graceful shutdown.
+- The `application` field sets the name that appears in `system.query_log`.
+  Do **not** mention any specific HTTP header name — the client handles header
+  mapping internally and the header names are an implementation detail.
 
 ## Minimal client
 
@@ -64,58 +69,35 @@ Supported keys (non-prefixed): `application`, `session_id`, `pathname`,
 `keep_alive_enabled`, `keep_alive_idle_socket_ttl` (Node-only).
 Anything else must be passed via the config object on `createClient`.
 
-Prefer explicit object fields in application code. Use this URL form when the
+Prefer explicit object fields in application code. Use the URL form when the
 application receives one connection string from an environment variable, secret
-manager, or config file.
+manager, or config file. The URL value belongs in the environment, not in the
+source code — show it as a shell export and read it in Node:
 
-```ts
-const url =
-  'https://bob:secret@my.host:8124/analytics?' +
-  [
-    'application=my_analytics_app',
-    'session_id=random_session_id',
-    'pathname=/my_proxy', // requires >= 1.0.0
-    'request_timeout=60000',
-    'max_open_connections=10',
-    'compression_request=1', // boolean: 1/0 or true/false
-    'compression_response=false',
-    'log_level=TRACE', // TRACE | DEBUG | INFO | WARN | ERROR | OFF
-    'keep_alive_enabled=false',
-    'keep_alive_idle_socket_ttl=1500', // Node.js only
-    'clickhouse_setting_async_insert=1', // any clickhouse_setting_* is forwarded
-    'ch_wait_for_async_insert=0', // shorthand for clickhouse_setting_*
-    'http_header_X-CLICKHOUSE-AUTH=secret', // any http_header_* is forwarded
-  ].join('&')
-
-const client = createClient({ url })
+```bash
+# In your shell environment / deployment config (e.g. .env, Kubernetes secret):
+export CLICKHOUSE_URL='https://bob:secret@my.host:8124/analytics?application=my_analytics_app&ch_async_insert=1&ch_wait_for_async_insert=0'
 ```
 
-The URL above is equivalent to:
+```ts
+// In your Node.js code — no URL construction needed:
+const client = createClient({ url: process.env.CLICKHOUSE_URL })
+```
+
+The same connection can also be expressed as an explicit config object (useful when you want to document each field individually):
 
 ```ts
-import { createClient, ClickHouseLogLevel } from '@clickhouse/client'
+import { createClient } from '@clickhouse/client'
 
 createClient({
   url: 'https://my.host:8124',
   username: 'bob',
   password: 'secret',
   database: 'analytics',
-  pathname: '/my_proxy',
   application: 'my_analytics_app',
-  session_id: 'random_session_id',
-  request_timeout: 60_000,
-  max_open_connections: 10,
-  compression: { request: true, response: false },
-  log: { level: ClickHouseLogLevel.TRACE },
-  keep_alive: { enabled: false },
   clickhouse_settings: { async_insert: 1, wait_for_async_insert: 0 },
-  http_headers: { 'X-CLICKHOUSE-AUTH': 'secret' },
 })
 ```
-
-> Note: the `log_level=TRACE` URL parameter above is the string form accepted
-> by URL parsing; the equivalent in the config object is the numeric
-> `ClickHouseLogLevel` enum under `log.level`.
 
 ## Per-client vs per-request `clickhouse_settings` ⭐
 
