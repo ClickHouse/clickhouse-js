@@ -9,7 +9,7 @@ Use this skill before running any of the `npm run test:*`, `npm run lint`, `npm 
 
 ## 1. Install dependencies
 
-This is a npm workspaces repo (`packages/*`), with two additional independent example packages (`examples/node`, `examples/web`) that have their own `package.json` and are **not** part of the workspaces.
+This is an npm workspaces repo (`packages/*`), with two additional independent example packages (`examples/node`, `examples/web`) that have their own `package.json` and are **not** part of the workspaces.
 
 Install all three:
 
