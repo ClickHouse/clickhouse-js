@@ -34,8 +34,9 @@ Reference: https://clickhouse.com/docs/integrations/javascript
 1. **Match the user's intent** to a row in the Task Index below and read the
    corresponding reference file before writing code.
 2. **Always import from `@clickhouse/client`** (never `@clickhouse/client-web`)
-   and create a single client with `createClient({ url })`. Close it with
-   `await client.close()` during graceful shutdown.
+   and create a single client with `createClient({ url })` or rely on
+   supported defaults when appropriate. Close it with `await client.close()`
+   during graceful shutdown.
 3. **Prefer `JSONEachRow` for typical row inserts/selects** unless the user
    has already chosen another format or is streaming raw bytes (CSV / TSV /
    Parquet — those belong to the performance skill).
