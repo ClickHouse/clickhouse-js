@@ -106,7 +106,7 @@ Identify the user's task and read the matching reference file.
 - For inserts, prefer `format: 'JSONEachRow'` and `values: [...]` unless the
   user's scenario requires otherwise.
 - For selects, prefer `await (await client.query({...})).json<RowType>()` for
-  small / medium result sets; defer to the performance skill for streaming.
+  small / medium result sets; for streaming, see `examples/node/performance/`.
 - When showing parameter binding, use ClickHouse's native `{name: Type}`
   syntax — never `$1`, `?`, or `:name`.
 - For DDL inside a cluster or behind a load balancer, set
