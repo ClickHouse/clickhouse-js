@@ -116,7 +116,7 @@ const client = createClient({
 **Maximum safe query duration formula:**
 
 ```
-Max duration ≈ http_headers_progress_interval_ms ÷ 1000 × 75
+Max duration (seconds) ≈ http_headers_progress_interval_ms × 75 ÷ 1000
 ```
 
 **Examples:**
