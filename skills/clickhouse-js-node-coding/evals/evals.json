@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 0,
-      "prompt": "I'm setting up @clickhouse/client in a Node service. I want to point it at https://my.host:8124, use database 'analytics', user 'bob' / password 'secret', set application name 'my_app', and turn on async_insert without waiting for ack. What's the cleanest way to express that?",
+      "prompt": "I'm setting up clickhouse client in a Node service. I want to point it at https://my.host:8124, use database 'analytics', user 'bob' / password 'secret', set application name 'my_app', and turn on async_insert without waiting for ack. What's the cleanest way to express that?",
       "expected_output": "A createClient call (Node, not Web) that sets url, username/password (or embeds them in the URL), database, application, and clickhouse_settings: { async_insert: 1, wait_for_async_insert: 0 }. Optionally mentions the equivalent URL-parameter form (ch_async_insert=1&ch_wait_for_async_insert=0) and that URL params override the config object.",
       "files": [],
       "expectations": [
