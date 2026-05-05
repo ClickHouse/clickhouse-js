@@ -156,7 +156,8 @@ Examples at 64 KB:
 1. **For queries under 12 minutes:** Use `'10000'` ms (10s) intervals, if your LB idle timeout allows
 2. **For queries 12 min – 1 hour:** Use `'60000'` ms (60s) intervals, if your LB idle timeout allows
 3. **For queries 1–2 hours:** Use `'120000'` ms (120s) intervals, if your LB idle timeout allows
-4. **For queries over 2 hours:** Use the fire-and-forget pattern (see below)
+4. **For mutations over 2 hours:** Use the fire-and-forget pattern (see below)
+5. **For SELECT queries over 2 hours:** Increase `http_headers_progress_interval_ms` to extend the safe duration, while keeping it below your LB idle timeout and within Node.js header-limit constraints
 
 Use this command to experiment and debug:
 
