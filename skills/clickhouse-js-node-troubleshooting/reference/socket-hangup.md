@@ -127,6 +127,30 @@ Max duration ≈ http_headers_progress_interval_ms ÷ 1000 × 75
 
 > **Note:** `http_headers_progress_interval_ms` is a `UInt64` ClickHouse setting, so it must be passed as a **string** (e.g., `'10000'`).
 
+**Raising the Node.js header limit (e.g., to 64 KB):**
+
+If you need a longer max safe duration without lengthening the progress interval, raise Node's HTTP header limit. For example, increasing it from the default 16 KB to **64 KB** quadruples the max safe duration (≈300 progress headers instead of ≈75).
+
+```bash
+# Option 1 — CLI flag when launching your app
+node --max-http-header-size=65536 app.js
+
+# Option 2 — environment variable (works with any Node entry point, including npm/ts-node)
+NODE_OPTIONS="--max-http-header-size=65536" node app.js
+```
+
+With `maxHeaderSize = 65536` (64 KB), the formula becomes:
+
+```
+Max duration ≈ http_headers_progress_interval_ms ÷ 1000 × 300
+```
+
+Examples at 64 KB:
+
+- `http_headers_progress_interval_ms: '10000'` (10s) → **~50 minutes** max safe duration
+- `http_headers_progress_interval_ms: '60000'` (60s) → **~5 hours** max safe duration
+- `http_headers_progress_interval_ms: '120000'` (120s) → **~10 hours** max safe duration
+
 **Guidelines for choosing the interval** (subject to your load balancer's idle timeout — see trade-offs below):
 
 1. **For queries under 12 minutes:** Use `'10000'` ms (10s) intervals, if your LB idle timeout allows
