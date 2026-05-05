@@ -44,6 +44,15 @@ export type NodeConnectionParams = ConnectionParams & {
    * Eagerly destroy the sockets that are considered stale (idle for more than `idle_socket_ttl`), without waiting for the timeout to trigger. This allows to free up the stale sockets in case of longer event loop delays.
    */
   eagerly_destroy_stale_sockets: boolean
+  /**
+   * Optional override for {@link Http.RequestOptions.maxHeaderSize} forwarded to
+   * `http(s).request`. Useful for long-running queries that accumulate many
+   * `X-ClickHouse-Progress` headers and would otherwise hit the Node.js default
+   * (~16 KB) total response header limit.
+   *
+   * When `undefined`, the Node.js default applies.
+   */
+  max_response_headers_size?: number
 }
 
 export type TLSParams =

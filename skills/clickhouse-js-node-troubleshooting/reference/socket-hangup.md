@@ -109,7 +109,18 @@ const client = createClient({
 })
 ```
 
-> ⚠️ Node.js caps total received headers at ~16 KB. After ~70–80 progress headers, an exception is thrown. For a query running longer than roughly `http_headers_progress_interval_ms * 75`, this limit will be hit — use a longer interval or the fire-and-forget approach below.
+> ⚠️ Node.js caps total received headers at ~16 KB. After ~70–80 progress headers, an exception is thrown. For a query running longer than roughly `http_headers_progress_interval_ms * 75`, this limit will be hit — use a longer interval, raise the limit per client (since `>= 1.18.3`) by passing `max_response_headers_size` (in bytes) to `createClient`, or use the fire-and-forget approach below.
+>
+> ```js
+> const client = createClient({
+>   request_timeout: 400_000,
+>   max_response_headers_size: 1024 * 1024, // 1 MiB; lifts the per-request header cap
+>   clickhouse_settings: {
+>     send_progress_in_http_headers: 1,
+>     http_headers_progress_interval_ms: '110000',
+>   },
+> })
+> ```
 
 **Alternatively — fire-and-forget (mutations only):** Mutations (`INSERT ... SELECT`, `OPTIMIZE`, `ALTER`) are not cancelled on the server when the client connection is lost. You can send the mutation and immediately close the connection, then poll `system.query_log` or `system.mutations` for status. See the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples) for a concrete implementation.
 

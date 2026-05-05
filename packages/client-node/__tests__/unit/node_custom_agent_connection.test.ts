@@ -273,5 +273,84 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
 
       httpRequestSpy.mockRestore()
     })
+
+    it('should forward max_response_headers_size as maxHeaderSize when set', () => {
+      const httpAgent = new Http.Agent()
+      const mockRequest = {} as Http.ClientRequest
+      const httpRequestSpy = vi
+        .spyOn(Http, 'request')
+        .mockReturnValue(mockRequest)
+
+      const connection = new TestableCustomAgentConnection(
+        buildCustomAgentConnectionParams({
+          url: new URL('http://localhost:8123'),
+          http_agent: httpAgent,
+          max_response_headers_size: 64 * 1024,
+        }),
+      )
+
+      const url = new URL('http://localhost:8123/?query_id=test')
+      const abortController = new AbortController()
+      connection.testCreateClientRequest({
+        method: 'GET',
+        url,
+        headers: {},
+        abort_signal: abortController.signal,
+        query: 'SELECT 1',
+        query_id: 'test-query-id',
+        log_writer: new LogWriter(
+          new TestLogger(),
+          'CustomAgentConnectionTest',
+          ClickHouseLogLevel.OFF,
+        ),
+        log_level: ClickHouseLogLevel.OFF,
+      })
+
+      expect(httpRequestSpy).toHaveBeenCalledTimes(1)
+      const calledOptions = httpRequestSpy.mock
+        .calls[0][1] as Http.RequestOptions
+      expect(calledOptions.maxHeaderSize).toBe(64 * 1024)
+
+      httpRequestSpy.mockRestore()
+    })
+
+    it('should not include maxHeaderSize when max_response_headers_size is undefined', () => {
+      const httpAgent = new Http.Agent()
+      const mockRequest = {} as Http.ClientRequest
+      const httpRequestSpy = vi
+        .spyOn(Http, 'request')
+        .mockReturnValue(mockRequest)
+
+      const connection = new TestableCustomAgentConnection(
+        buildCustomAgentConnectionParams({
+          url: new URL('http://localhost:8123'),
+          http_agent: httpAgent,
+        }),
+      )
+
+      const url = new URL('http://localhost:8123/?query_id=test')
+      const abortController = new AbortController()
+      connection.testCreateClientRequest({
+        method: 'GET',
+        url,
+        headers: {},
+        abort_signal: abortController.signal,
+        query: 'SELECT 1',
+        query_id: 'test-query-id',
+        log_writer: new LogWriter(
+          new TestLogger(),
+          'CustomAgentConnectionTest',
+          ClickHouseLogLevel.OFF,
+        ),
+        log_level: ClickHouseLogLevel.OFF,
+      })
+
+      expect(httpRequestSpy).toHaveBeenCalledTimes(1)
+      const calledOptions = httpRequestSpy.mock
+        .calls[0][1] as Http.RequestOptions
+      expect(calledOptions).not.toHaveProperty('maxHeaderSize')
+
+      httpRequestSpy.mockRestore()
+    })
   })
 })

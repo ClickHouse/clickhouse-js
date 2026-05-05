@@ -2,6 +2,19 @@
 
 ## Improvements
 
+- (Node.js only) Added `max_response_headers_size` client option that forwards the [`maxHeaderSize`](https://nodejs.org/api/http.html#httprequesturl-options-callback) option to the underlying `http(s).request` call. This raises the per-request limit on the total size of HTTP response headers received from the server (Node.js default is ~16 KB). It is most useful when running long-running queries with `send_progress_in_http_headers` enabled — the `X-ClickHouse-Progress` headers accumulate over the lifetime of the request and can exceed the default limit, causing the request to fail with `HPE_HEADER_OVERFLOW`. Setting this option avoids the need to use the global `--max-http-header-size` Node.js CLI flag or the `NODE_OPTIONS` environment variable. Has no effect for the Web client (which uses `fetch`) and no effect when a custom `http_agent` is configured with a request implementation that does not honor the option.
+
+```ts
+const client = createClient({
+  request_timeout: 400_000,
+  max_response_headers_size: 1024 * 1024, // accept up to 1 MiB of response headers
+  clickhouse_settings: {
+    send_progress_in_http_headers: 1,
+    http_headers_progress_interval_ms: '110000',
+  },
+})
+```
+
 - Added `keep_alive.eagerly_destroy_stale_sockets` option (Node.js only, default: `false`). When enabled, sockets that have been idle for longer than `idle_socket_ttl` are destroyed immediately before each request, rather than waiting for the idle timeout to fire. This helps reclaim stale sockets during event loop delays, where the timeout callback may not run on time.
 
 ```ts

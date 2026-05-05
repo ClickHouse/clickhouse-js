@@ -59,6 +59,23 @@ export type NodeClickHouseClientConfigOptions =
      *                  please provide your feedback in the repository.
      *  @default false (disabled) */
     capture_enhanced_stack_trace?: boolean
+    /** Override the maximum length (in bytes) of HTTP response headers accepted from the server.
+     *  Forwarded as the `maxHeaderSize` option to {@link http.request} / {@link https.request}.
+     *
+     *  This is primarily useful for long-running queries that rely on
+     *  `send_progress_in_http_headers`: ClickHouse keeps appending an `X-ClickHouse-Progress`
+     *  header on every progress interval, and once the cumulative size exceeds the Node.js
+     *  default (~16 KB), the request fails with `HPE_HEADER_OVERFLOW`. Setting a higher value
+     *  here (e.g. `64 * 1024` or `1024 * 1024`) lifts that limit per client without requiring
+     *  the global `--max-http-header-size` Node.js CLI flag or `NODE_OPTIONS` environment variable.
+     *
+     *  When `undefined`, the Node.js default (or the value of `--max-http-header-size`) applies.
+     *
+     *  Has no effect when a custom {@link http_agent} is provided that uses a different
+     *  request implementation; for the bundled HTTP/HTTPS connections it is passed straight
+     *  through to the request options.
+     *  @default undefined */
+    max_response_headers_size?: number
   }
 
 interface BasicTLSOptions {
@@ -138,6 +155,7 @@ export const NodeConfigImpl: Required<
       http_agent: nodeConfig.http_agent,
       keep_alive,
       tls,
+      max_response_headers_size: nodeConfig.max_response_headers_size,
     })
   },
   values_encoder: (jsonHandling: JSONHandling) =>

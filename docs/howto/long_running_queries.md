@@ -40,6 +40,21 @@ curl -v "http://localhost:8123/?wait_end_of_query=1&send_progress_in_http_header
 
 The default value for `http_headers_progress_interval_ms` is defined by how often ClickHouse sends progress updates for the query type. For some queries, this may be too frequent (causing unnecessary overhead and/or HTTP client headers buffer overflow) or too infrequent (failing to keep the LB connection alive). Therefore, it's recommended to set it explicitly when using `send_progress_in_http_headers`.
 
+> **Note (Node.js, `>= 1.18.3`):** Node.js caps the total size of received HTTP headers at ~16 KB by default. Each `X-ClickHouse-Progress` header is roughly 200 bytes, so after ~75 progress headers accumulate the request fails with `HPE_HEADER_OVERFLOW`. To raise this limit per client (without resorting to the global `--max-http-header-size` CLI flag or `NODE_OPTIONS`), pass `max_response_headers_size` (in bytes) to `createClient`:
+>
+> ```ts
+> const client = createClient({
+>   request_timeout: 400_000,
+>   max_response_headers_size: 1024 * 1024, // 1 MiB
+>   clickhouse_settings: {
+>     send_progress_in_http_headers: 1,
+>     http_headers_progress_interval_ms: '110000',
+>   },
+> })
+> ```
+>
+> The Web client uses `fetch` and is not subject to this limit.
+
 **Step 1.** Estimate the maximum query execution time. Set `request_timeout` to a value safely above that estimate.
 
 **Step 2.** Find out your LB's idle connection timeout (e.g. 120s). Set `http_headers_progress_interval_ms` to a value a few seconds below it (e.g. `'110000'`).
