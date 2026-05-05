@@ -111,25 +111,27 @@ const client = createClient({
 
 ### ⚠️ Critical: 16 KB Node.js Header Size Limit
 
-**Node.js defaults to a total received HTTP header limit of approximately 16 KB (this can be increased via the max HTTP header size setting).** ClickHouse sends a new progress header with each interval (~200 bytes), and after ~80 progress headers accumulate, Node.js will throw an exception and terminate the request unless that limit is raised.
+**Node.js defaults to a total received HTTP header limit of approximately 16 KB (this can be increased via the `--max-http-header-size` CLI flag or the `maxHeaderSize` option on `http(s).request`).** ClickHouse sends a new progress header with each interval (~200 bytes), and after ~75 progress headers accumulate, Node.js will throw an exception and terminate the request unless that limit is raised.
 
 **Maximum safe query duration formula:**
 
 ```
-Max duration ≈ http_headers_progress_interval_ms ÷ 1000 × 80 
+Max duration ≈ http_headers_progress_interval_ms ÷ 1000 × 75
 ```
 
 **Examples:**
 
-- `http_headers_progress_interval_ms: 10000` (10s) → **~12.5 minutes** max safe duration
-- `http_headers_progress_interval_ms: 60000` (60s) → **~75 minutes** max safe duration
-- `http_headers_progress_interval_ms: 120000` (120s) → **~2.5 hours** max safe duration
+- `http_headers_progress_interval_ms: '10000'` (10s) → **~12.5 minutes** max safe duration
+- `http_headers_progress_interval_ms: '60000'` (60s) → **~75 minutes** max safe duration
+- `http_headers_progress_interval_ms: '120000'` (120s) → **~2.5 hours** max safe duration
 
-**Guidelines for choosing the interval:**
+> **Note:** `http_headers_progress_interval_ms` is a `UInt64` ClickHouse setting, so it must be passed as a **string** (e.g., `'10000'`).
 
-1. **For queries under 12 minutes:** Use `10000` ms (10s) intervals
-2. **For queries 12 min – 1 hour:** Use `60000` ms (60s) intervals
-3. **For queries 1–2 hours:** Use `120000` ms (120s) intervals
+**Guidelines for choosing the interval** (subject to your load balancer's idle timeout — see trade-offs below):
+
+1. **For queries under 12 minutes:** Use `'10000'` ms (10s) intervals, if your LB idle timeout allows
+2. **For queries 12 min – 1 hour:** Use `'60000'` ms (60s) intervals, if your LB idle timeout allows
+3. **For queries 1–2 hours:** Use `'120000'` ms (120s) intervals, if your LB idle timeout allows
 4. **For queries over 2 hours:** Use the fire-and-forget pattern (see below)
 
 Use this command to experiment and debug:
