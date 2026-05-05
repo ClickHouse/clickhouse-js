@@ -113,18 +113,25 @@ Identify the user's task and read the matching reference file.
 
 ---
 
-## Out of scope (delegate to another skill)
+## Out of scope
 
-- **Streaming, Parquet, file streams, server-side bulk moves, progress
-  streaming, async-insert throughput tuning** → `clickhouse-js-node-performance`.
-- **TLS, RBAC / read-only users, deeper SQL-injection guidance** →
-  `clickhouse-js-node-security`.
-- **`CREATE TABLE` patterns, deployment-shaped connection strings,
-  replication / sharding choices** → `clickhouse-js-node-schema-and-deployments`.
+This skill covers day-to-day coding against `@clickhouse/client` (Node).
+The following topics are intentionally **not** covered here:
+
 - **Errors, hangs, type mismatches, proxy pathname surprises, log silence,
-  socket hang-ups, `ECONNRESET`** → `clickhouse-js-node-troubleshooting`.
-- **Browser, Web Worker, Next.js Edge, Cloudflare Workers** → use the
-  Web-client coding skill (`@clickhouse/client-web`).
+  socket hang-ups, `ECONNRESET`** → use the
+  `clickhouse-js-node-troubleshooting` skill.
+- **Streaming, Parquet, file streams, server-side bulk moves, progress
+  streaming, async-insert throughput tuning** — see
+  [`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance).
+- **TLS, RBAC / read-only users, deeper SQL-injection guidance** — see
+  [`examples/node/security/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/security).
+- **`CREATE TABLE` patterns, deployment-shaped connection strings,
+  replication / sharding choices** — see
+  [`examples/node/schema-and-deployments/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/schema-and-deployments).
+- **Browser, Web Worker, Next.js Edge, Cloudflare Workers** — use
+  `@clickhouse/client-web` and see
+  [`examples/web/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/web).
 
 ---
 
