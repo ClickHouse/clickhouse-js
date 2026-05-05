@@ -1,17 +1,15 @@
+// This example assumes that your local port 8100 is free.
+//
+// Illustrates ping behaviour against a non-existing host: ping does not throw,
+// instead it returns `{ success: false; error: Error }`. This can be useful when checking
+// server availability on application startup.
+//
+// See also:
+//  - `ping_existing_host.ts` - successful ping against an existing host.
+//  - `ping_timeout.ts`       - ping that times out.
 import type { PingResult } from '@clickhouse/client'
 import { createClient } from '@clickhouse/client'
 
-/**
- * This example assumes that your local port 8100 is free.
- *
- * Illustrates ping behaviour against a non-existing host: ping does not throw,
- * instead it returns `{ success: false; error: Error }`. This can be useful when checking
- * server availability on application startup.
- *
- * See also:
- *  - `ping_existing_host.ts` - successful ping against an existing host.
- *  - `ping_timeout.ts`       - ping that times out.
- */
 const client = createClient({
   url: 'http://localhost:8100', // non-existing host
   request_timeout: 50, // low request_timeout to speed up the example

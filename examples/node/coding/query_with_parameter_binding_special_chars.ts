@@ -1,11 +1,9 @@
+// Binding query parameters that contain special characters (tabs, newlines, quotes, backslashes, etc.).
+// Available since clickhouse-js 0.3.1.
+//
+// For an overview of binding regular values of various data types, see `query_with_parameter_binding.ts`.
 import { createClient } from '@clickhouse/client'
 
-/**
- * Binding query parameters that contain special characters (tabs, newlines, quotes, backslashes, etc.).
- * Available since clickhouse-js 0.3.1.
- *
- * For an overview of binding regular values of various data types, see `query_with_parameter_binding.ts`.
- */
 const client = createClient()
 
 const resultSet = await client.query({
