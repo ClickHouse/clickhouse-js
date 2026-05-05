@@ -111,7 +111,7 @@ const client = createClient({
 
 ### ⚠️ Critical: 16 KB Node.js Header Size Limit
 
-**Node.js caps total received HTTP headers at approximately 16 KB.** ClickHouse sends a new progress header with each interval (~200 bytes), and after ~80 progress headers accumulate, Node.js will throw an exception and terminate the request.
+**Node.js defaults to a total received HTTP header limit of approximately 16 KB (this can be increased via the max HTTP header size setting).** ClickHouse sends a new progress header with each interval (~200 bytes), and after ~80 progress headers accumulate, Node.js will throw an exception and terminate the request unless that limit is raised.
 
 **Maximum safe query duration formula:**
 
