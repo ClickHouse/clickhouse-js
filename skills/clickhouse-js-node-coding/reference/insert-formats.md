@@ -123,13 +123,13 @@ await client.insert({
 
 ## Quick chooser
 
-| Use case                                     | Format                                       |
-| -------------------------------------------- | -------------------------------------------- |
-| Insert plain JS objects                      | `JSONEachRow` _(default)_                    |
-| Insert tuples / column-positional rows       | `JSONCompactEachRow`                         |
-| Insert with explicit column ordering / types | `JSONCompactEachRow*WithNames…`              |
-| Insert a single document with metadata       | `JSON`, `JSONCompact`                        |
-| Insert from a CSV / TSV / Parquet file       | Raw format + Node stream → performance skill |
+| Use case                                     | Format                                            |
+| -------------------------------------------- | ------------------------------------------------- |
+| Insert plain JS objects                      | `JSONEachRow` _(default)_                         |
+| Insert tuples / column-positional rows       | `JSONCompactEachRow`                              |
+| Insert with explicit column ordering / types | `JSONCompactEachRow*WithNames…`                   |
+| Insert a single document with metadata       | `JSON`, `JSONCompact`                             |
+| Insert from a CSV / TSV / Parquet file       | Raw format + Node stream → `examples/node/performance/` |
 
 ## Common pitfalls
 
