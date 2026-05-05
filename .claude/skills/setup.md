@@ -43,7 +43,7 @@ docker compose up -d
 
 This starts both the single-node setup (`clickhouse` on 8123/9000, `clickhouse_tls` on 8443/9440) and the two-node cluster (`clickhouse1`, `clickhouse2`, plus the `nginx` round-robin entrypoint on 8127). All services use non-overlapping ports so a single `up -d` covers every integration test mode.
 
-To pin a specific server version: `CLICKHOUSE_VERSION=latest docker compose up -d`.
+To override the server version, set `CLICKHOUSE_VERSION` when starting Compose; for example: `CLICKHOUSE_VERSION=head docker compose up -d`, `CLICKHOUSE_VERSION=latest docker compose up -d`, or `CLICKHOUSE_VERSION=24.8 docker compose up -d` to use an explicit version tag.
 
 ## 4. Verify
 
