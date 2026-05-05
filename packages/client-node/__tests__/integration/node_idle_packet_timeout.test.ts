@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { describe, it, beforeAll, afterAll, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { createTestClient } from '@test/utils/client'
 import * as http from 'http'
 import type Stream from 'stream'
