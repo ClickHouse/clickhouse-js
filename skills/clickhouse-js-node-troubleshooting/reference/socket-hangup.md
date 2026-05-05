@@ -111,12 +111,12 @@ const client = createClient({
 
 ### ⚠️ Critical: 16 KB Node.js Header Size Limit
 
-**Node.js caps total received HTTP headers at approximately 16 KB.** ClickHouse sends a new progress header with each interval, and after ~70–80 progress headers accumulate, Node.js will throw an exception and terminate the request.
+**Node.js caps total received HTTP headers at approximately 16 KB.** ClickHouse sends a new progress header with each interval (~200 bytes), and after ~80 progress headers accumulate, Node.js will throw an exception and terminate the request.
 
 **Maximum safe query duration formula:**
 
 ```
-Max duration ≈ http_headers_progress_interval_ms × 75 ÷ 1000
+Max duration ≈ http_headers_progress_interval_ms ÷ 1000 × 80 
 ```
 
 **Examples:**
@@ -131,6 +131,8 @@ Max duration ≈ http_headers_progress_interval_ms × 75 ÷ 1000
 2. **For queries 12 min – 1 hour:** Use `60000` ms (60s) intervals
 3. **For queries 1–2 hours:** Use `120000` ms (120s) intervals
 4. **For queries over 2 hours:** Use the fire-and-forget pattern (see below)
+
+Experimenting with the exact load balancer stack might be required.
 
 **Important trade-offs:**
 
