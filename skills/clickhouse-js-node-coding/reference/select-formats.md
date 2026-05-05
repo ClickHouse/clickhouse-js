@@ -29,9 +29,11 @@ result.forEach((r) => console.log(r))
 await client.close()
 ```
 
-`UInt64`/`Int64` and other 64-bit integers come back as **strings** by
-default to avoid JS precision loss; see the troubleshooting skill for the
-ways to change that.
+`UInt64`/`Int64` and other 64-bit integers are returned as **strings**
+when `output_format_json_quote_64bit_integers=1`, to avoid JS precision
+loss. If that setting is `0`, they may be returned as unquoted JSON
+numbers instead. Note that in ClickHouse `>= 25.8`, this setting can
+default to `0`; see the troubleshooting skill for ways to control that.
 
 ## Single-document `JSON` format with metadata
 
