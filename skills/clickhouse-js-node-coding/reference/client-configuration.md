@@ -36,9 +36,10 @@ http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=val
 
 A fixed allowlist of config fields can be set as URL query parameters
 (plus any key prefixed with `clickhouse_setting_` / `ch_` / `http_header_`).
-**URL parameters always override the rest of the configuration object** —
-when they do, the client logs a warning. Unknown URL parameters cause
-`createClient` to throw `Unknown URL parameters: ...`
+**Supported URL parameters override the corresponding values in the rest of
+the configuration object** — when they do, the client logs a warning.
+Unknown URL parameters cause `createClient` to throw
+`Unknown URL parameters: ...`
 (see [`packages/client-common/src/config.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/packages/client-common/src/config.ts)).
 
 Supported keys (non-prefixed): `application`, `session_id`, `pathname`,
