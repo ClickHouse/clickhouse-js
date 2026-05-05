@@ -10,7 +10,7 @@ description: >
   customizing JSON parsing. Trigger on phrases like "how do I insert…", "how
   do I select…", "what format should I use…", "how do I parameterize…", "how
   do I configure the client…". Do NOT use for browser/Web client code, for
-  performance/streaming/Parquet questions (see clickhouse-js-node-performance),
+  performance/streaming/Parquet questions (see `examples/node/performance/`),
   or for diagnosing errors and unexpected behavior (see
   clickhouse-js-node-troubleshooting).
 ---

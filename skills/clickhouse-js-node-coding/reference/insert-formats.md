@@ -9,8 +9,9 @@ Backing examples:
 [`examples/node/coding/insert_data_formats_overview.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_data_formats_overview.ts).
 
 > **Raw / binary formats (CSV, TSV, CustomSeparated, Parquet) require a Node
-> stream as input.** Those belong to the `clickhouse-js-node-performance`
-> skill — defer if the user wants to insert from a file or `Readable`.
+> stream as input.** See
+> [`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance)
+> — defer if the user wants to insert from a file or `Readable`.
 
 ## Answer checklist
 
@@ -83,12 +84,12 @@ array. See the performance skill for streaming guidance.
 
 These cannot be streamed — the entire body is sent in one shot.
 
-| Format                    | `values` shape (typed via `InputJSON<T>` / `InputJSONObjectEachRow<T>`)                                             |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Format                    | `values` shape (typed via `InputJSON<T>` / `InputJSONObjectEachRow<T>`)                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `JSON`                    | `{ meta: [], data: Array<{ col: value, ... }> }` — for TypeScript/client usage, pass `meta: []` if metadata is not needed |
-| `JSONCompact`             | `{ meta: [{ name, type }, ...], data: Array<[v1, v2, ...]> }`                                                       |
-| `JSONColumnsWithMetadata` | `{ meta: [...], data: { col1: [v, ...], col2: [v, ...] } }`                                                         |
-| `JSONObjectEachRow`       | `Record<string, { col: value, ... }>` (the record key labels each row but is not stored)                            |
+| `JSONCompact`             | `{ meta: [{ name, type }, ...], data: Array<[v1, v2, ...]> }`                                                             |
+| `JSONColumnsWithMetadata` | `{ meta: [...], data: { col1: [v, ...], col2: [v, ...] } }`                                                               |
+| `JSONObjectEachRow`       | `Record<string, { col: value, ... }>` (the record key labels each row but is not stored)                                  |
 
 ```ts
 import type { InputJSON, InputJSONObjectEachRow } from '@clickhouse/client'
