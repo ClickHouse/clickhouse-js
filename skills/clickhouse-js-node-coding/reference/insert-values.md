@@ -28,42 +28,35 @@ Use `command()` (not `insert()`) — there is no row payload to send.
 ## `INSERT … VALUES` with SQL functions
 
 When you need `unhex(...)`, `toUUID(...)`, `now()`, or any other SQL
-function around a value, build an `INSERT … VALUES` string and run it via
-`command()`. Set `wait_end_of_query: 1` for safety in clustered setups.
+function around a value, keep the SQL shape static and pass values with
+ClickHouse `{name: Type}` parameters. Run it via `command()` and set
+`wait_end_of_query: 1` for safety in clustered setups.
 
 ```ts
-import type { ClickHouseSettings } from '@clickhouse/client'
-
-const commandSettings: ClickHouseSettings = { wait_end_of_query: 1 }
-
-const insertQuery = `
-  INSERT INTO events (id, timestamp, email, name)
-  VALUES
-    ${rows.map(toInsertValue).join(',')}
-`
-
 await client.command({
-  query: insertQuery,
-  clickhouse_settings: commandSettings,
+  query: `
+    INSERT INTO events (id, timestamp, email, name)
+    VALUES (
+      unhex({id: String}),
+      {timestamp: DateTime},
+      {email: String},
+      {name: Nullable(String)}
+    )
+  `,
+  query_params: {
+    id: '00112233445566778899aabbccddeeff',
+    timestamp: '2026-05-06 12:34:56',
+    email: 'alice@example.com',
+    name: 'Alice',
+  },
+  clickhouse_settings: { wait_end_of_query: 1 },
 })
-
-function toInsertValue(row: {
-  id: string
-  timestamp: number
-  email: string
-  name: string | null
-}): string {
-  const id = `unhex('${row.id}')`
-  const timestamp = `'${row.timestamp}'`
-  const email = `'${row.email}'`
-  const name = row.name === null ? 'NULL' : `'${row.name}'`
-  return `(${id}, ${timestamp}, ${email}, ${name})`
-}
 ```
 
-> ⚠️ **Only acceptable when the values are not user-controlled.** For any
-> user-supplied input, use `query_params` (`reference/query-parameters.md`) —
-> manual escaping is a SQL-injection footgun.
+Do not build `VALUES` rows with string interpolation or manual escaping. If
+you need to insert many ordinary JS rows, prefer `client.insert()` with
+`format: 'JSONEachRow'`; use this `command()` pattern when the SQL itself needs
+functions or expressions around the values.
 
 ## Inserting JS `Date` objects
 
