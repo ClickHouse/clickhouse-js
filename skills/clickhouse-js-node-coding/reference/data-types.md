@@ -70,9 +70,11 @@ console.log(await rs.json())
 - The `JSON` column type accepts a real JS object on insert and returns one
   on select — no need for `JSON.stringify` / `JSON.parse` in your app code.
 - A JS number written into a `Dynamic` or `Variant` column defaults to
-  `Int64` on the server — and `Int64` is returned as a **string** in JSON
-  formats unless you set `output_format_json_quote_64bit_integers: 0`
-  (default since CH `25.8`).
+  `Int64` on the server. In JSON formats, `output_format_json_quote_64bit_integers`
+  controls how 64-bit integers are returned: `1` returns them as JSON strings,
+  while `0` returns them as JSON numbers (and `0` is the default since CH `25.8`).
+  In JS, large 64-bit integers returned as numbers can lose precision, so use
+  quoted output if you need exact integer values in application code.
 - Use `variantType(...)`, `dynamicType(...)` to introspect what the server
   ended up storing.
 
