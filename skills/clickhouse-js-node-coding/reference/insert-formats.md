@@ -78,7 +78,9 @@ await client.insert({
 ```
 
 These formats can be **streamed** — pass a Node stream of rows instead of an
-array. See the performance skill for streaming guidance.
+array. See
+[`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance)
+for streaming guidance.
 
 ## Single-document JSON formats (pass an object)
 
