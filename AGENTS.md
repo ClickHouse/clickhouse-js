@@ -1,5 +1,66 @@
 # Recommendations for AI agents
 
+> **Audience:** This file contains guidance for AI agents contributing to the `ClickHouse/clickhouse-js` repository itself. It is **not** intended for downstream projects that depend on `@clickhouse/client` or `@clickhouse/client-web`
+
+1. When adding log messages, make sure to use eager log level checks to avoid unnecessary calculations for log messages that will not be emitted. For example:
+
+   ```ts
+   if (log_level <= ClickHouseLogLevel.WARN) {
+     log_writer.warn({
+       message: 'Example log message',
+     })
+   }
+   ```
+
+2. When adding new log messages with suggestions for users, make sure to create a unique documentation page in the `docs` directory with a detailed explanation of the issue and how to resolve it. Then, include a link to that documentation page in the log message. For example:
+
+   ```ts
+   if (some_condition) {
+     log_writer.warn({
+       message:
+         'Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/example-log-message.md',
+     })
+   }
+   ```
+
+## Examples
+
+The repository contains an [`examples`](examples) directory that is being refactored to be AI-agent-friendly.
+The goals of the refactor are:
+
+1. Examples should be runnable right away, with no manual edits required to get them working against a
+   local ClickHouse instance (use `docker-compose up` from the repo root for the default setup).
+2. Examples are organized by client flavor and tailored to the corresponding runtime:
+   - [`examples/node`](examples/node) — examples for the Node.js client (`@clickhouse/client`). These
+     may freely use Node.js-only APIs (file streams, TLS, `http`, `node:*` built-ins, etc.) and import
+     Node built-ins using the `node:` prefix (e.g., `node:fs`, `node:path`, `node:stream`).
+   - [`examples/web`](examples/web) — examples for the Web client (`@clickhouse/client-web`). These
+     must only use Web-platform APIs (e.g., `globalThis.crypto.randomUUID()` instead of Node's
+     `crypto` module) and must not depend on Node.js-only modules.
+3. `examples/node` and `examples/web` are independent npm packages, each with its own `package.json`,
+   `tsconfig.json`, and ESLint config. Keep dependencies and configuration scoped to the relevant
+   subpackage.
+4. General-purpose scenarios (configuration, ping, inserts, selects, parameters, sessions, etc.) should
+   exist in both subdirectories where applicable, with the only differences being the `import`
+   statement and any platform-specific adjustments. Examples that rely on Node.js-only APIs live only
+   under `examples/node`.
+5. Within each subpackage, examples are split into intent-driven **use-case folders** so each folder
+   can back a focused AI agent skill:
+   - `coding/` — day-to-day client API usage (configure, ping, basic insert/select, parameter
+     binding, sessions, data types, custom JSON).
+   - `performance/` — async inserts, streaming with backpressure, file/Parquet streams, progress
+     streaming, server-side bulk moves. Node-only (no `performance/` folder under `examples/web`).
+   - `troubleshooting/` — cancellation, timeouts, long-running query progress, server error surfaces,
+     number-precision pitfalls.
+   - `security/` — TLS, RBAC, SQL-injection-safe parameter binding.
+   - `schema-and-deployments/` — `CREATE TABLE` examples for each deployment shape and
+     deployment-shaped connection strings.
+6. A small number of examples are **intentionally duplicated** across folders so each folder is a
+   self-contained skill corpus. Each duplicated example has one _primary_ location; the secondary
+   copies are excluded from the Vitest runner via the per-package `vitest.config.ts`. When you edit
+   a duplicated example, update **all** copies. The current duplicates and their primary locations
+   are listed in [`examples/README.md`](examples/README.md#editing-duplicated-examples).
+
 ## When reviewing code changes
 
 For every pull request review, make sure to provide an evaluation of the following aspects:
@@ -16,12 +77,4 @@ For every pull request review, make sure to provide an evaluation of the followi
 
 2. When introducing new features or making changes to the API make sure to update the CHANGELOG.md file with a concise description of the changes followed with an example usage if applicable.
 
-3. Additionally, make sure that the official documentation is in sync with the changes. The MCP server for the documentation is running at `https://clickhouse.mcp.kapa.ai/`.
-
-### Ongoing refactoring
-
-Keep in mind the ongoing refactoring efforts in the codebase. If required, put more effort into bringing more relevant code and recent changes into the context.
-
-1. The code base is gradually migrating from passing groups of similar parameters as separate parameters to passing them as a single object. This is a common refactoring pattern that improves code readability and maintainability. When suggesting code changes, please consider this ongoing refactoring effort and prefer the new object-based parameter passing style.
-
-2. The logging configuration is being updated to use eager log level evaluation instead of lazy evaluation. This means that the log level is determined at the time of client creation rather than being evaluated lazily during logging. When suggesting code changes related to logging, please ensure that the log level is being checked at the time of emission with a guard clause, rather than relying on the logger class tail-filtering logs based on the log level. This change is aimed at improving performance by avoiding unnecessary log message construction when the log level is not enabled.
+3. Additionally, make sure that the official documentation is in sync with the changes.

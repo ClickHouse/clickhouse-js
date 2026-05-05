@@ -2,7 +2,7 @@
   "name": "@clickhouse/client-common",
   "description": "Official JS client for ClickHouse DB - common types",
   "homepage": "https://clickhouse.com",
-  "version": "1.18.2",
+  "version": "1.18.4",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
@@ -20,6 +20,7 @@
     "dist"
   ],
   "scripts": {
+    "pack": "npm pack",
     "prepack": "cp ../../README.md ../../LICENSE .",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",

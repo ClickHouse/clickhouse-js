@@ -30,6 +30,25 @@ const client = createClient({
 })
 ```
 
+- Added auto-detection and warning when `request_timeout` is high (> 60 seconds) but progress headers are not configured. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. The client now warns users to enable `send_progress_in_http_headers` and `http_headers_progress_interval_ms` settings to prevent such issues.
+
+```ts
+// This will now trigger a warning
+const client = createClient({
+  request_timeout: 120_000, // 120 seconds
+  // send_progress_in_http_headers is not configured
+})
+
+// ✓ Properly configured to avoid load balancer timeouts
+const client = createClient({
+  request_timeout: 400_000,
+  clickhouse_settings: {
+    send_progress_in_http_headers: 1,
+    http_headers_progress_interval_ms: '110000', // ~10s below LB timeout
+  },
+})
+```
+
 # 1.18.2
 
 ## Improvements
@@ -72,7 +91,7 @@ Example log message:
 
 ```json
 {
-  "message": "Ping: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://c.house/js_keep_alive_econnreset for more details.",
+  "message": "Ping: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/keep_alive_timeout.md for more details.",
   "args": {
     "operation": "Ping",
     "connection_id": "8dc1c9bd-7895-49b1-8a95-276470151c65",
@@ -875,7 +894,7 @@ await client.insert({
 
 See also the new examples:
 
-- [Including specific columns or excluding certain ones instead](./examples/insert_exclude_columns.ts)
+- [Including specific columns](./examples/insert_specific_columns.ts) or [excluding certain ones instead](./examples/insert_exclude_columns.ts)
 - [Leveraging this feature](./examples/insert_ephemeral_columns.ts) when working with
   [ephemeral columns](https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral)
   ([#217](https://github.com/ClickHouse/clickhouse-js/issues/217))

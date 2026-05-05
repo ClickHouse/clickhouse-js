@@ -1,79 +1,150 @@
 # ClickHouse JS client examples
 
-Examples located directly in `examples` directory should work with both Node.js and Web versions of the client.
-The only difference will be in the import statement - `@clickhouse/client` vs `@clickhouse/client-web`.
+Examples are split first by **client flavor**, then by **use case**:
 
-Node.JS-specific examples are located in the `examples/node` directory.
+```
+examples/
+├── node/                       # @clickhouse/client (Node.js)
+│   ├── coding/
+│   ├── performance/
+│   ├── troubleshooting/
+│   ├── security/
+│   ├── schema-and-deployments/
+│   └── resources/              # shared fixture data
+└── web/                        # @clickhouse/client-web
+    ├── coding/
+    ├── troubleshooting/
+    ├── security/
+    └── schema-and-deployments/
+```
 
-## Overview
+The use-case folders are intent-driven ("what is the agent or user trying to do?")
+so each folder is a tight, self-contained corpus that can back a focused AI agent
+skill. A few examples appear in more than one folder **on purpose** — duplication
+keeps each skill self-contained instead of forcing cross-folder references. When
+running examples, every duplicated file has one _primary_ location and the
+secondary copies are excluded from the Vitest runner (see
+[`examples/node/vitest.config.ts`](node/vitest.config.ts) and
+[`examples/web/vitest.config.ts`](web/vitest.config.ts)). When you edit a
+duplicated example, update **all** copies.
 
-We aim to cover various scenarios of client usage with these examples. You should be able to run any of these examples, see [How to run](#how-to-run) section below.
+`examples/web` does not have a `performance/` folder because every performance
+example depends on Node-only APIs (Node streams, `node:fs`, Parquet file I/O).
 
-If something is missing, or you found a mistake in one of these examples, please open an issue or a pull request, or [contact us](../README.md#contact-us).
+Most general-purpose examples (configuration, ping, inserts, selects, parameters,
+sessions, etc.) exist in both `node/` and `web/`. The only differences are the
+`import` statement and a few platform-specific adjustments (e.g.
+`globalThis.crypto.randomUUID()` for the Web client vs Node's `crypto` module).
 
-#### General usage
+If something is missing, or you found a mistake in one of these examples, please
+open an issue or a pull request, or [contact us](../README.md#contact-us).
 
-- [url_configuration.ts](url_configuration.ts) - client configuration using the URL parameters.
-- [clickhouse_settings.ts](clickhouse_settings.ts) - ClickHouse settings on the client side, both global and per operation.
-- [ping.ts](ping.ts) - sample checks if the server can be reached.
-- [abort_request.ts](abort_request.ts) - cancelling an outgoing request or a read-only query.
-- [cancel_query.ts](cancel_query.ts) - cancelling a potentially long-running query on the server side.
-- [long_running_queries_timeouts.ts](long_running_queries_timeouts.ts) - avoiding timeout errors for long-running queries (two different approaches).
-- [read_only_user.ts](read_only_user.ts) - an example of using the client with a read-only user, with possible read-only user limitations highlights.
-- [basic_tls.ts](node/basic_tls.ts) - (Node.js only) using certificates for basic TLS authentication.
-- [mutual_tls.ts](node/mutual_tls.ts) - (Node.js only) using certificates for mutual TLS authentication.
-- [custom_json_handling.ts](custom_json_handling.ts) - Customize JSON serialization/deserialization by providing a custom `parse` and `stringify` function. This is particularly useful when working with obscure data formats like `bigint`s.
+## Categories
 
-#### Creating tables
+### `coding/` — Day-to-day client API usage
 
-- [create_table_single_node.ts](create_table_single_node.ts) - creating a table on a single-node deployment.
-- [create_table_on_premise_cluster.ts](create_table_on_premise_cluster.ts) - creating a table on a multi-node deployment when macro values are required to be present in the DDL for Replicated tables.
-- [create_table_cloud.ts](create_table_cloud.ts) - creating a table in ClickHouse Cloud.
+"How do I do X with the client?" — connect, configure, ping, basic insert/select,
+parameter binding, sessions, data types, and custom JSON handling.
 
-#### Inserting data
+| Example                                        | Node                                                                                                                   | Web                                                                                                                  |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Client configuration via URL parameters        | [node/coding/url_configuration.ts](node/coding/url_configuration.ts)                                                   | [web/coding/url_configuration.ts](web/coding/url_configuration.ts)                                                   |
+| ClickHouse settings (global and per-request)   | [node/coding/clickhouse_settings.ts](node/coding/clickhouse_settings.ts)                                               | [web/coding/clickhouse_settings.ts](web/coding/clickhouse_settings.ts)                                               |
+| Default format setting (`exec` without FORMAT) | [node/coding/default_format_setting.ts](node/coding/default_format_setting.ts)                                         | [web/coding/default_format_setting.ts](web/coding/default_format_setting.ts)                                         |
+| Successful ping against an existing host       | [node/coding/ping_existing_host.ts](node/coding/ping_existing_host.ts)                                                 | [web/coding/ping_existing_host.ts](web/coding/ping_existing_host.ts)                                                 |
+| Ping against a host that does not exist        | [node/coding/ping_non_existing_host.ts](node/coding/ping_non_existing_host.ts)                                         | [web/coding/ping_non_existing_host.ts](web/coding/ping_non_existing_host.ts)                                         |
+| Array of values via `JSONEachRow`              | [node/coding/array_json_each_row.ts](node/coding/array_json_each_row.ts)                                               | [web/coding/array_json_each_row.ts](web/coding/array_json_each_row.ts)                                               |
+| Overview of insert data formats                | [node/coding/insert_data_formats_overview.ts](node/coding/insert_data_formats_overview.ts)                             | [web/coding/insert_data_formats_overview.ts](web/coding/insert_data_formats_overview.ts)                             |
+| Insert into a specific subset of columns       | [node/coding/insert_specific_columns.ts](node/coding/insert_specific_columns.ts)                                       | [web/coding/insert_specific_columns.ts](web/coding/insert_specific_columns.ts)                                       |
+| Insert excluding columns                       | [node/coding/insert_exclude_columns.ts](node/coding/insert_exclude_columns.ts)                                         | [web/coding/insert_exclude_columns.ts](web/coding/insert_exclude_columns.ts)                                         |
+| Insert into a table with ephemeral columns     | [node/coding/insert_ephemeral_columns.ts](node/coding/insert_ephemeral_columns.ts)                                     | [web/coding/insert_ephemeral_columns.ts](web/coding/insert_ephemeral_columns.ts)                                     |
+| Insert into a different database               | [node/coding/insert_into_different_db.ts](node/coding/insert_into_different_db.ts)                                     | [web/coding/insert_into_different_db.ts](web/coding/insert_into_different_db.ts)                                     |
+| `INSERT FROM SELECT`                           | [node/coding/insert_from_select.ts](node/coding/insert_from_select.ts)                                                 | [web/coding/insert_from_select.ts](web/coding/insert_from_select.ts)                                                 |
+| `INSERT INTO ... VALUES` with functions        | [node/coding/insert_values_and_functions.ts](node/coding/insert_values_and_functions.ts)                               | [web/coding/insert_values_and_functions.ts](web/coding/insert_values_and_functions.ts)                               |
+| Insert JS `Date` objects                       | [node/coding/insert_js_dates.ts](node/coding/insert_js_dates.ts)                                                       | [web/coding/insert_js_dates.ts](web/coding/insert_js_dates.ts)                                                       |
+| Insert decimals                                | [node/coding/insert_decimals.ts](node/coding/insert_decimals.ts)                                                       | [web/coding/insert_decimals.ts](web/coding/insert_decimals.ts)                                                       |
+| Async inserts (waiting for ack)                | [node/coding/async_insert.ts](node/coding/async_insert.ts)                                                             | [web/coding/async_insert.ts](web/coding/async_insert.ts)                                                             |
+| Simple select in `JSONEachRow`                 | [node/coding/select_json_each_row.ts](node/coding/select_json_each_row.ts)                                             | [web/coding/select_json_each_row.ts](web/coding/select_json_each_row.ts)                                             |
+| Overview of select data formats                | [node/coding/select_data_formats_overview.ts](node/coding/select_data_formats_overview.ts)                             | [web/coding/select_data_formats_overview.ts](web/coding/select_data_formats_overview.ts)                             |
+| Select with metadata (`JSON` format)           | [node/coding/select_json_with_metadata.ts](node/coding/select_json_with_metadata.ts)                                   | [web/coding/select_json_with_metadata.ts](web/coding/select_json_with_metadata.ts)                                   |
+| Query parameter binding                        | [node/coding/query_with_parameter_binding.ts](node/coding/query_with_parameter_binding.ts)                             | [web/coding/query_with_parameter_binding.ts](web/coding/query_with_parameter_binding.ts)                             |
+| Query parameter binding with special chars     | [node/coding/query_with_parameter_binding_special_chars.ts](node/coding/query_with_parameter_binding_special_chars.ts) | [web/coding/query_with_parameter_binding_special_chars.ts](web/coding/query_with_parameter_binding_special_chars.ts) |
+| Temporary tables with `session_id`             | [node/coding/session_id_and_temporary_tables.ts](node/coding/session_id_and_temporary_tables.ts)                       | [web/coding/session_id_and_temporary_tables.ts](web/coding/session_id_and_temporary_tables.ts)                       |
+| `SET` commands per `session_id`                | [node/coding/session_level_commands.ts](node/coding/session_level_commands.ts)                                         | [web/coding/session_level_commands.ts](web/coding/session_level_commands.ts)                                         |
+| Dynamic / Variant / JSON                       | [node/coding/dynamic_variant_json.ts](node/coding/dynamic_variant_json.ts)                                             | [web/coding/dynamic_variant_json.ts](web/coding/dynamic_variant_json.ts)                                             |
+| `Time` / `Time64` (ClickHouse 25.6+)           | [node/coding/time_time64.ts](node/coding/time_time64.ts)                                                               | [web/coding/time_time64.ts](web/coding/time_time64.ts)                                                               |
+| Custom JSON `parse`/`stringify`                | [node/coding/custom_json_handling.ts](node/coding/custom_json_handling.ts)                                             | [web/coding/custom_json_handling.ts](web/coding/custom_json_handling.ts)                                             |
 
-- [array_json_each_row.ts](array_json_each_row.ts) - a simple insert of an array of values using `JSONEachRow` format.
-- [insert_data_formats_overview.ts](insert_data_formats_overview.ts) - an overview of available data formats for inserting data.
-- [async_insert.ts](async_insert.ts) - server-side batching using async inserts; the client will be waiting for a written batch ack.
-- [async_insert_without_waiting.ts](async_insert_without_waiting.ts) - server-side batching using async inserts; the client will not be waiting for a written batch ack. This is a bit more advanced async insert example simulating an event listener.
-- [insert_exclude_columns.ts](insert_exclude_columns.ts) - inserting into specific columns only, or excluding certain columns from the INSERT statement.
-- [insert_from_select.ts](insert_from_select.ts) - `INSERT FROM SELECT` example, using the `command` method instead of the default `insert`.
-- [insert_into_different_db.ts](insert_into_different_db.ts) - inserting data into a table in a different database, regardless of the database provided in the connection settings.
-- [insert_decimals.ts](insert_decimals.ts) - inserting decimal values into ClickHouse using `JSONEachRow` format.
-- [insert_js_dates.ts](insert_js_dates.ts) - an example of inserting objects that contain JS Date into ClickHouse.
-- [insert_file_stream_csv.ts](node/insert_file_stream_csv.ts) - (Node.js only) stream a CSV file into ClickHouse.
-- [insert_file_stream_ndjson.ts](node/insert_file_stream_ndjson.ts) - (Node.js only) stream a NDJSON file into ClickHouse.
-- [insert_file_stream_parquet.ts](node/insert_file_stream_parquet.ts) - (Node.js only) stream a Parquet file into ClickHouse.
-- [insert_arbitrary_format_stream.ts](node/insert_arbitrary_format_stream.ts) - (Node.js only) stream in arbitrary format into ClickHouse. In this case, the input format is [AVRO](https://clickhouse.com/docs/interfaces/formats/Avro), inserting the data from an Avro data file generated ad-hoc.
-- [stream_created_from_array_raw.ts](node/stream_created_from_array_raw.ts) - (Node.js only) converting the string input into a stream and sending it to ClickHouse; in this scenario, the base input is a CSV string.
-- [insert_streaming_with_backpressure.ts](node/insert_streaming_with_backpressure.ts) - (Node.js only) advanced streaming INSERT example with proper backpressure handling, demonstrating how to handle high-throughput scenarios where your application pushes data to the stream.
-- [insert_streaming_backpressure_simple.ts](node/insert_streaming_backpressure_simple.ts) - (Node.js only) simple streaming INSERT example with backpressure handling, showing the essential pattern for streaming data from your application to ClickHouse.
-- [insert_values_and_functions.ts](insert_values_and_functions.ts) - generating an `INSERT INTO ... VALUES` statement that uses a combination of values and function calls.
-- [insert_ephemeral_columns.ts](insert_ephemeral_columns.ts) - inserting data into a table that has [ephemeral columns](https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral).
+### `performance/` — Streaming, batching, and high-throughput patterns
 
-#### Selecting data
+"How do I make ingestion or queries fast and scalable?" — async inserts without
+waiting, streaming inserts and selects with backpressure, file-stream ingestion,
+progress streaming, and server-side bulk moves. All performance examples are
+Node-only because they depend on Node streams, `node:fs`, or Parquet file I/O.
 
-- [select_json_each_row.ts](select_json_each_row.ts) - simple select of the data in the `JSONEachRow` format.
-- [select_data_formats_overview.ts](select_data_formats_overview.ts) - an overview of all available data formats for select queries.
-- [select_json_with_metadata.ts](select_json_with_metadata.ts) - select result as a JSON object with query metadata.
-- [query_with_parameter_binding.ts](query_with_parameter_binding.ts) - query parameter binding example.
-- [select_parquet_as_file.ts](node/select_parquet_as_file.ts) - (Node.js only) select data from ClickHouse and save it as a Parquet file. This example can be adjusted to save the data in other formats, such as CSV/TSV/TabSeparated, by changing the format in the query.
-- [select_streaming_json_each_row.ts](node/select_streaming_json_each_row.ts) - (Node.js only) streaming JSON\* formats from ClickHouse and processing it with `on('data')` event.
-- [select_streaming_json_each_row_for_await.ts](node/select_streaming_json_each_row_for_await.ts) - (Node.js only) similar to [select_streaming_json_each_row.ts](node/select_streaming_json_each_row.ts), but using the `for await` loop syntax.
-- [select_streaming_text_line_by_line.ts](node/select_streaming_text_line_by_line.ts) - (Node.js only) streaming text formats from ClickHouse and processing it line by line. In this example, CSV format is used.
-- [select_json_each_row_with_progress.ts](node/select_json_each_row_with_progress.ts) - streaming using `JSONEachRowWithProgress` format, checking for the progress rows in the stream.
+| Example                                      | Node                                                                                                                         |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Async inserts (waiting for ack)              | [node/performance/async_insert.ts](node/performance/async_insert.ts)                                                         |
+| Async inserts without waiting                | [node/performance/async_insert_without_waiting.ts](node/performance/async_insert_without_waiting.ts)                         |
+| Streaming insert with backpressure handling  | [node/performance/insert_streaming_with_backpressure.ts](node/performance/insert_streaming_with_backpressure.ts)             |
+| Simple streaming insert with backpressure    | [node/performance/insert_streaming_backpressure_simple.ts](node/performance/insert_streaming_backpressure_simple.ts)         |
+| Insert in arbitrary format via stream        | [node/performance/insert_arbitrary_format_stream.ts](node/performance/insert_arbitrary_format_stream.ts)                     |
+| Convert string input into a stream           | [node/performance/stream_created_from_array_raw.ts](node/performance/stream_created_from_array_raw.ts)                       |
+| Stream a CSV file                            | [node/performance/insert_file_stream_csv.ts](node/performance/insert_file_stream_csv.ts)                                     |
+| Stream an NDJSON file                        | [node/performance/insert_file_stream_ndjson.ts](node/performance/insert_file_stream_ndjson.ts)                               |
+| Stream a Parquet file                        | [node/performance/insert_file_stream_parquet.ts](node/performance/insert_file_stream_parquet.ts)                             |
+| Stream `JSONEachRow` via `on('data')`        | [node/performance/select_streaming_json_each_row.ts](node/performance/select_streaming_json_each_row.ts)                     |
+| Stream `JSONEachRow` via `for await`         | [node/performance/select_streaming_json_each_row_for_await.ts](node/performance/select_streaming_json_each_row_for_await.ts) |
+| Stream text formats line by line             | [node/performance/select_streaming_text_line_by_line.ts](node/performance/select_streaming_text_line_by_line.ts)             |
+| Save a select result as a Parquet file       | [node/performance/select_parquet_as_file.ts](node/performance/select_parquet_as_file.ts)                                     |
+| `JSONEachRowWithProgress` streaming          | [node/performance/select_json_each_row_with_progress.ts](node/performance/select_json_each_row_with_progress.ts)             |
+| `INSERT FROM SELECT` (server-side bulk move) | [node/performance/insert_from_select.ts](node/performance/insert_from_select.ts)                                             |
 
-#### Data types
+### `troubleshooting/` — Diagnose, recover, and cancel
 
-- [dynamic_variant_json.ts](./dynamic_variant_json.ts) - using experimental [Dynamic](https://clickhouse.com/docs/en/sql-reference/data-types/dynamic)/[Variant](https://clickhouse.com/docs/en/sql-reference/data-types/variant)/[JSON](https://clickhouse.com/docs/en/sql-reference/data-types/newjson) data types with [JSONEachRow](https://clickhouse.com/docs/en/interfaces/formats#jsoneachrow) format.
-- [time_time64.ts](./time_time64.ts) - using [Time](https://clickhouse.com/docs/en/sql-reference/data-types/time) and [Time64](https://clickhouse.com/docs/en/sql-reference/data-types/time64) data types with [JSONEachRow](https://clickhouse.com/docs/en/interfaces/formats#jsoneachrow) format (ClickHouse 25.6+).
+"Something is failing, slow, or hanging — how do I diagnose or recover?" —
+cancellation, timeouts, progress headers, server-side error surfaces, and number
+precision pitfalls.
 
-#### Special cases
+| Example                                           | Node                                                                                                                           | Web                                                                                                                          |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Ping against a host that does not exist           | [node/troubleshooting/ping_non_existing_host.ts](node/troubleshooting/ping_non_existing_host.ts)                               | [web/troubleshooting/ping_non_existing_host.ts](web/troubleshooting/ping_non_existing_host.ts)                               |
+| Ping that times out (Node.js only)                | [node/troubleshooting/ping_timeout.ts](node/troubleshooting/ping_timeout.ts)                                                   | —                                                                                                                            |
+| Cancelling an outgoing request                    | [node/troubleshooting/abort_request.ts](node/troubleshooting/abort_request.ts)                                                 | [web/troubleshooting/abort_request.ts](web/troubleshooting/abort_request.ts)                                                 |
+| Cancelling a query on the server                  | [node/troubleshooting/cancel_query.ts](node/troubleshooting/cancel_query.ts)                                                   | [web/troubleshooting/cancel_query.ts](web/troubleshooting/cancel_query.ts)                                                   |
+| Long-running queries via progress headers         | [node/troubleshooting/long_running_queries_progress_headers.ts](node/troubleshooting/long_running_queries_progress_headers.ts) | [web/troubleshooting/long_running_queries_progress_headers.ts](web/troubleshooting/long_running_queries_progress_headers.ts) |
+| Long-running queries via request cancellation     | [node/troubleshooting/long_running_queries_cancel_request.ts](node/troubleshooting/long_running_queries_cancel_request.ts)     | —                                                                                                                            |
+| Read-only user limitations (server error surface) | [node/troubleshooting/read_only_user.ts](node/troubleshooting/read_only_user.ts)                                               | [web/troubleshooting/read_only_user.ts](web/troubleshooting/read_only_user.ts)                                               |
+| Custom JSON `parse`/`stringify` (BigInt)          | [node/troubleshooting/custom_json_handling.ts](node/troubleshooting/custom_json_handling.ts)                                   | [web/troubleshooting/custom_json_handling.ts](web/troubleshooting/custom_json_handling.ts)                                   |
 
-- [default_format_setting.ts](default_format_setting.ts) - sending queries using `exec` method without a `FORMAT` clause; the default format will be set from the client settings.
-- [session_id_and_temporary_tables.ts](session_id_and_temporary_tables.ts) - creating a temporary table, which requires a session_id to be passed to the server.
-- [session_level_commands.ts](session_level_commands.ts) - using SET commands, memorized for the specific session_id.
-- [role.ts](role.ts) - using one or more roles without explicit `USE` commands or session IDs
+### `security/` — TLS, RBAC, and safe parameterization
+
+"How do I run securely?" — TLS (basic and mutual), role-based access, read-only
+users, and SQL-injection-safe parameter binding.
+
+| Example                                    | Node                                                                                                                       | Web                                                                                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Basic TLS authentication (Node.js only)    | [node/security/basic_tls.ts](node/security/basic_tls.ts)                                                                   | —                                                                                                                        |
+| Mutual TLS authentication (Node.js only)   | [node/security/mutual_tls.ts](node/security/mutual_tls.ts)                                                                 | —                                                                                                                        |
+| Read-only user limitations                 | [node/security/read_only_user.ts](node/security/read_only_user.ts)                                                         | [web/security/read_only_user.ts](web/security/read_only_user.ts)                                                         |
+| Using one or more roles                    | [node/security/role.ts](node/security/role.ts)                                                                             | [web/security/role.ts](web/security/role.ts)                                                                             |
+| Query parameter binding                    | [node/security/query_with_parameter_binding.ts](node/security/query_with_parameter_binding.ts)                             | [web/security/query_with_parameter_binding.ts](web/security/query_with_parameter_binding.ts)                             |
+| Query parameter binding with special chars | [node/security/query_with_parameter_binding_special_chars.ts](node/security/query_with_parameter_binding_special_chars.ts) | [web/security/query_with_parameter_binding_special_chars.ts](web/security/query_with_parameter_binding_special_chars.ts) |
+
+### `schema-and-deployments/` — DDL and target deployments
+
+"How do I create tables and target different deployments?" — single-node,
+on-premise cluster, ClickHouse Cloud, column-shape features, and
+deployment-shaped connection strings.
+
+| Example                                    | Node                                                                                                                             | Web                                                                                                                            |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Single-node deployment                     | [node/schema-and-deployments/create_table_single_node.ts](node/schema-and-deployments/create_table_single_node.ts)               | [web/schema-and-deployments/create_table_single_node.ts](web/schema-and-deployments/create_table_single_node.ts)               |
+| On-premise cluster                         | [node/schema-and-deployments/create_table_on_premise_cluster.ts](node/schema-and-deployments/create_table_on_premise_cluster.ts) | [web/schema-and-deployments/create_table_on_premise_cluster.ts](web/schema-and-deployments/create_table_on_premise_cluster.ts) |
+| ClickHouse Cloud                           | [node/schema-and-deployments/create_table_cloud.ts](node/schema-and-deployments/create_table_cloud.ts)                           | [web/schema-and-deployments/create_table_cloud.ts](web/schema-and-deployments/create_table_cloud.ts)                           |
+| Insert into a table with ephemeral columns | [node/schema-and-deployments/insert_ephemeral_columns.ts](node/schema-and-deployments/insert_ephemeral_columns.ts)               | [web/schema-and-deployments/insert_ephemeral_columns.ts](web/schema-and-deployments/insert_ephemeral_columns.ts)               |
+| Insert excluding columns                   | [node/schema-and-deployments/insert_exclude_columns.ts](node/schema-and-deployments/insert_exclude_columns.ts)                   | [web/schema-and-deployments/insert_exclude_columns.ts](web/schema-and-deployments/insert_exclude_columns.ts)                   |
+| Client configuration via URL parameters    | [node/schema-and-deployments/url_configuration.ts](node/schema-and-deployments/url_configuration.ts)                             | [web/schema-and-deployments/url_configuration.ts](web/schema-and-deployments/url_configuration.ts)                             |
 
 ## How to run
 
@@ -91,26 +162,42 @@ Run ClickHouse in Docker from the root folder of this repository:
 docker-compose up -d
 ```
 
-This will create two local ClickHouse instances: one with plain authentication and one that requires [TLS](#tls-examples).
+This will create two local ClickHouse instances: one with plain authentication
+and one that requires [TLS](#tls-examples).
 
 ### Any example except `create_table_*`
 
-Change the working directory to `examples` and install the dependencies:
+Each subdirectory (`node` and `web`) is a fully independent npm package with its
+own `package.json`, `tsconfig.json`, `eslint.config.mjs`, and Vitest runner
+config — they do not share any configuration with the repository root. Install
+dependencies in the subdirectory matching the example you want to run:
 
 ```sh
-cd examples
+# For Node.js examples
+cd examples/node
+npm i
+
+# For Web examples
+cd examples/web
 npm i
 ```
 
-Then, you should be able to run the sample programs, for example:
+Then, you should be able to run any sample program by pointing `tsx` at its
+category-relative path, for example:
 
 ```sh
-npx tsx --transpile-only array_json_each_row.ts
+# from examples/node
+npx tsx --transpile-only coding/array_json_each_row.ts
+npx tsx --transpile-only performance/insert_streaming_with_backpressure.ts
+
+# from examples/web
+npx tsx --transpile-only coding/array_json_each_row.ts
 ```
 
 ### TLS examples
 
-You will need to add `server.clickhouseconnect.test` to your `/etc/hosts` to make it work, as self-signed certificates are used in these examples.
+You will need to add `server.clickhouseconnect.test` to your `/etc/hosts` to
+make it work, as self-signed certificates are used in these examples.
 
 Execute the following command to add the required `/etc/hosts` entry:
 
@@ -118,44 +205,72 @@ Execute the following command to add the required `/etc/hosts` entry:
 sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 ```
 
-After that, you should be able to run the examples:
+After that, you should be able to run the examples (from `examples/node`):
 
 ```bash
-npx tsx --transpile-only node/basic_tls.ts
-npx tsx --transpile-only node/mutual_tls.ts
-```
-
-### On-premise cluster examples
-
-For `create_table_on_premise_cluster.ts`, you will need to start a local cluster first.
-
-Run this command from the root folder of this repository:
-
-```sh
-docker-compose -f docker-compose.cluster.yml up -d
-```
-
-Now, you should be able to run the example:
-
-```
-npx tsx --transpile-only create_table_on_premise_cluster.ts
+npx tsx --transpile-only security/basic_tls.ts
+npx tsx --transpile-only security/mutual_tls.ts
+npx tsx --transpile-only schema-and-deployments/create_table_on_premise_cluster.ts
 ```
 
 ### ClickHouse Cloud examples
 
-- for `*_cloud.ts` examples, Docker containers are not required, but you need to set some environment variables first:
+- for `*_cloud.ts` examples, Docker containers are not required, but you need to
+  set some environment variables first for the Node.js client:
 
 ```sh
-export CLICKHOUSE_URL=https://<your-clickhouse-cloud-hostname>:8443
-export CLICKHOUSE_PASSWORD=<your-clickhouse-cloud-password>
+export CLICKHOUSE_CLOUD_URL=https://<your-clickhouse-cloud-hostname>:8443
+export CLICKHOUSE_CLOUD_PASSWORD=<your-clickhouse-cloud-password>
 ```
 
-You can obtain these credentials in the ClickHouse Cloud console (check [the docs](https://clickhouse.com/docs/en/integrations/language-clients/javascript#gather-your-connection-details) for more information).
+and for the Web client, you need to set these variables in the examples
+themselves.
+
+You can obtain these credentials in the ClickHouse Cloud console (check
+[the docs](https://clickhouse.com/docs/en/integrations/language-clients/javascript#gather-your-connection-details)
+for more information).
 
 Cloud examples assume that you are using the `default` user and database.
 
-Run one of the Cloud examples:
+Run one of the Cloud examples (from `examples/node`):
 
 ```
-npx tsx --transpile-only create_table_cloud.ts
+npx tsx --transpile-only schema-and-deployments/create_table_cloud.ts
 ```
+
+### Environment variables for runnable examples
+
+The following environment variables control behavior when running examples in
+automated environments (e.g., CI):
+
+- `CLICKHOUSE_CLUSTER_URL` — Overrides the URL for on-premise cluster examples.
+  Default: `http://localhost:8127`.
+
+- `CLICKHOUSE_CLOUD_URL` / `CLICKHOUSE_CLOUD_PASSWORD` — When both are set, the
+  Cloud examples (`*_cloud.ts`) connect to the specified ClickHouse Cloud
+  instance. When unset, these examples do not skip automatically and will fail
+  because the required Cloud configuration is missing.
+
+## Editing duplicated examples
+
+A handful of examples live in more than one category folder so each category
+remains a self-contained skill corpus. The current duplicates are:
+
+| Logical example                                 | Primary location | Secondary copies           |
+| ----------------------------------------------- | ---------------- | -------------------------- |
+| `async_insert.ts`                               | `coding/`        | `performance/` (Node only) |
+| `insert_from_select.ts`                         | `coding/`        | `performance/` (Node only) |
+| `ping_non_existing_host.ts`                     | `coding/`        | `troubleshooting/`         |
+| `custom_json_handling.ts`                       | `coding/`        | `troubleshooting/`         |
+| `query_with_parameter_binding.ts`               | `coding/`        | `security/`                |
+| `query_with_parameter_binding_special_chars.ts` | `coding/`        | `security/`                |
+| `insert_ephemeral_columns.ts`                   | `coding/`        | `schema-and-deployments/`  |
+| `insert_exclude_columns.ts`                     | `coding/`        | `schema-and-deployments/`  |
+| `url_configuration.ts`                          | `coding/`        | `schema-and-deployments/`  |
+| `read_only_user.ts`                             | `security/`      | `troubleshooting/`         |
+
+When you change a duplicated example, update **every copy** in both `node/` and
+`web/` (where applicable). Only the primary copy is executed by the Vitest
+runner; the secondary copies are excluded in
+[`examples/node/vitest.config.ts`](node/vitest.config.ts) and
+[`examples/web/vitest.config.ts`](web/vitest.config.ts).
