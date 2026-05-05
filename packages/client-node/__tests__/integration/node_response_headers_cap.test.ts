@@ -116,7 +116,12 @@ describe('[Node.js] http client maxHeaderSize behavior', () => {
       )
       return { result, headerCount: headers.length, firstName, lastName }
     } finally {
-      server.close()
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => {
+          if (err) reject(err)
+          else resolve()
+        })
+      })
     }
   }
 
