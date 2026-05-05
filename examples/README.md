@@ -13,6 +13,7 @@ examples/
 │   └── resources/              # shared fixture data
 └── web/                        # @clickhouse/client-web
     ├── coding/
+    ├── performance/
     ├── troubleshooting/
     ├── security/
     └── schema-and-deployments/
@@ -28,8 +29,9 @@ secondary copies are excluded from the Vitest runner (see
 [`examples/web/vitest.config.ts`](web/vitest.config.ts)). When you edit a
 duplicated example, update **all** copies.
 
-`examples/web` does not have a `performance/` folder because every performance
-example depends on Node-only APIs (Node streams, `node:fs`, Parquet file I/O).
+`examples/web` only has a small `performance/` folder — most performance
+examples depend on Node-only APIs (Node streams, `node:fs`, Parquet file I/O)
+and live exclusively under `examples/node/performance/`.
 
 Most general-purpose examples (configuration, ping, inserts, selects, parameters,
 sessions, etc.) exist in both `node/` and `web/`. The only differences are the
@@ -79,26 +81,28 @@ parameter binding, sessions, data types, and custom JSON handling.
 
 "How do I make ingestion or queries fast and scalable?" — async inserts without
 waiting, streaming inserts and selects with backpressure, file-stream ingestion,
-progress streaming, and server-side bulk moves. All performance examples are
-Node-only because they depend on Node streams, `node:fs`, or Parquet file I/O.
+progress streaming, and server-side bulk moves. Most performance examples are
+Node-only because they depend on Node streams, `node:fs`, or Parquet file I/O;
+a small subset that uses only Web-platform APIs is also available under
+`examples/web/performance/`.
 
-| Example                                      | Node                                                                                                                         |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Async inserts (waiting for ack)              | [node/performance/async_insert.ts](node/performance/async_insert.ts)                                                         |
-| Async inserts without waiting                | [node/performance/async_insert_without_waiting.ts](node/performance/async_insert_without_waiting.ts)                         |
-| Streaming insert with backpressure handling  | [node/performance/insert_streaming_with_backpressure.ts](node/performance/insert_streaming_with_backpressure.ts)             |
-| Simple streaming insert with backpressure    | [node/performance/insert_streaming_backpressure_simple.ts](node/performance/insert_streaming_backpressure_simple.ts)         |
-| Insert in arbitrary format via stream        | [node/performance/insert_arbitrary_format_stream.ts](node/performance/insert_arbitrary_format_stream.ts)                     |
-| Convert string input into a stream           | [node/performance/stream_created_from_array_raw.ts](node/performance/stream_created_from_array_raw.ts)                       |
-| Stream a CSV file                            | [node/performance/insert_file_stream_csv.ts](node/performance/insert_file_stream_csv.ts)                                     |
-| Stream an NDJSON file                        | [node/performance/insert_file_stream_ndjson.ts](node/performance/insert_file_stream_ndjson.ts)                               |
-| Stream a Parquet file                        | [node/performance/insert_file_stream_parquet.ts](node/performance/insert_file_stream_parquet.ts)                             |
-| Stream `JSONEachRow` via `on('data')`        | [node/performance/select_streaming_json_each_row.ts](node/performance/select_streaming_json_each_row.ts)                     |
-| Stream `JSONEachRow` via `for await`         | [node/performance/select_streaming_json_each_row_for_await.ts](node/performance/select_streaming_json_each_row_for_await.ts) |
-| Stream text formats line by line             | [node/performance/select_streaming_text_line_by_line.ts](node/performance/select_streaming_text_line_by_line.ts)             |
-| Save a select result as a Parquet file       | [node/performance/select_parquet_as_file.ts](node/performance/select_parquet_as_file.ts)                                     |
-| `JSONEachRowWithProgress` streaming          | [node/performance/select_json_each_row_with_progress.ts](node/performance/select_json_each_row_with_progress.ts)             |
-| `INSERT FROM SELECT` (server-side bulk move) | [node/performance/insert_from_select.ts](node/performance/insert_from_select.ts)                                             |
+| Example                                      | Node                                                                                                                         | Web                                                                                                    |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Async inserts (waiting for ack)              | [node/performance/async_insert.ts](node/performance/async_insert.ts)                                                         | —                                                                                                      |
+| Async inserts without waiting                | [node/performance/async_insert_without_waiting.ts](node/performance/async_insert_without_waiting.ts)                         | —                                                                                                      |
+| Streaming insert with backpressure handling  | [node/performance/insert_streaming_with_backpressure.ts](node/performance/insert_streaming_with_backpressure.ts)             | —                                                                                                      |
+| Simple streaming insert with backpressure    | [node/performance/insert_streaming_backpressure_simple.ts](node/performance/insert_streaming_backpressure_simple.ts)         | —                                                                                                      |
+| Insert in arbitrary format via stream        | [node/performance/insert_arbitrary_format_stream.ts](node/performance/insert_arbitrary_format_stream.ts)                     | —                                                                                                      |
+| Convert string input into a stream           | [node/performance/stream_created_from_array_raw.ts](node/performance/stream_created_from_array_raw.ts)                       | —                                                                                                      |
+| Stream a CSV file                            | [node/performance/insert_file_stream_csv.ts](node/performance/insert_file_stream_csv.ts)                                     | —                                                                                                      |
+| Stream an NDJSON file                        | [node/performance/insert_file_stream_ndjson.ts](node/performance/insert_file_stream_ndjson.ts)                               | —                                                                                                      |
+| Stream a Parquet file                        | [node/performance/insert_file_stream_parquet.ts](node/performance/insert_file_stream_parquet.ts)                             | —                                                                                                      |
+| Stream `JSONEachRow` via `on('data')`        | [node/performance/select_streaming_json_each_row.ts](node/performance/select_streaming_json_each_row.ts)                     | [web/performance/select_streaming_json_each_row.ts](web/performance/select_streaming_json_each_row.ts) |
+| Stream `JSONEachRow` via `for await`         | [node/performance/select_streaming_json_each_row_for_await.ts](node/performance/select_streaming_json_each_row_for_await.ts) | —                                                                                                      |
+| Stream text formats line by line             | [node/performance/select_streaming_text_line_by_line.ts](node/performance/select_streaming_text_line_by_line.ts)             | —                                                                                                      |
+| Save a select result as a Parquet file       | [node/performance/select_parquet_as_file.ts](node/performance/select_parquet_as_file.ts)                                     | —                                                                                                      |
+| `JSONEachRowWithProgress` streaming          | [node/performance/select_json_each_row_with_progress.ts](node/performance/select_json_each_row_with_progress.ts)             | —                                                                                                      |
+| `INSERT FROM SELECT` (server-side bulk move) | [node/performance/insert_from_select.ts](node/performance/insert_from_select.ts)                                             | —                                                                                                      |
 
 ### `troubleshooting/` — Diagnose, recover, and cancel
 

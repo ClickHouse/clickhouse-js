@@ -1,8 +1,8 @@
+// See also:
+//  - https://clickhouse.com/docs/sql-reference/data-types/time
+//  - https://clickhouse.com/docs/sql-reference/data-types/time64
 import { createClient } from '@clickhouse/client'
 
-/** See also:
- *  - https://clickhouse.com/docs/sql-reference/data-types/time
- *  - https://clickhouse.com/docs/sql-reference/data-types/time64 */
 const tableName = `chjs_time_time64`
 const client = createClient({
   clickhouse_settings: {

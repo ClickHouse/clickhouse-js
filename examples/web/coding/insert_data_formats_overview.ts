@@ -1,3 +1,25 @@
+// An overview of available formats for inserting your data, mainly in different JSON formats.
+// For "raw" formats, such as:
+//  - CSV
+//  - CSVWithNames
+//  - CSVWithNamesAndTypes
+//  - TabSeparated
+//  - TabSeparatedRaw
+//  - TabSeparatedWithNames
+//  - TabSeparatedWithNamesAndTypes
+//  - CustomSeparated
+//  - CustomSeparatedWithNames
+//  - CustomSeparatedWithNamesAndTypes
+//  - Parquet
+//  insert method requires a Stream as its input; see the streaming examples:
+//  - streaming from a CSV file - node/insert_file_stream_csv.ts
+//  - streaming from a Parquet file - node/insert_file_stream_parquet.ts
+//
+// If some format is missing from the overview, you could help us by updating this example or submitting an issue.
+//
+// See also:
+// - ClickHouse formats documentation - https://clickhouse.com/docs/en/interfaces/formats
+// - SELECT formats overview - select_data_formats_overview.ts
 import {
   createClient,
   type DataFormat,
@@ -5,30 +27,6 @@ import {
   type InputJSONObjectEachRow,
 } from '@clickhouse/client-web'
 
-/**
- * An overview of available formats for inserting your data, mainly in different JSON formats.
- * For "raw" formats, such as:
- *  - CSV
- *  - CSVWithNames
- *  - CSVWithNamesAndTypes
- *  - TabSeparated
- *  - TabSeparatedRaw
- *  - TabSeparatedWithNames
- *  - TabSeparatedWithNamesAndTypes
- *  - CustomSeparated
- *  - CustomSeparatedWithNames
- *  - CustomSeparatedWithNamesAndTypes
- *  - Parquet
- *  insert method requires a Stream as its input; see the streaming examples:
- *  - streaming from a CSV file - node/insert_file_stream_csv.ts
- *  - streaming from a Parquet file - node/insert_file_stream_parquet.ts
- *
- * If some format is missing from the overview, you could help us by updating this example or submitting an issue.
- *
- * See also:
- * - ClickHouse formats documentation - https://clickhouse.com/docs/en/interfaces/formats
- * - SELECT formats overview - select_data_formats_overview.ts
- */
 const tableName = 'insert_data_formats_overview_web'
 const client = createClient()
 await prepareTestTable()

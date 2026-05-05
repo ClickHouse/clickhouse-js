@@ -1,13 +1,11 @@
+// Similar to `insert_js_dates.ts` but testing custom JSON handling
+//
+// JSON.stringify does not handle BigInt data types by default, so we'll provide
+// a custom serializer before passing it to the JSON.stringify function.
+//
+// This example also shows how you can serialize Date objects in a custom way.
 import { createClient } from '@clickhouse/client'
 
-/**
- * Similar to `insert_js_dates.ts` but testing custom JSON handling
- *
- * JSON.stringify does not handle BigInt data types by default, so we'll provide
- * a custom serializer before passing it to the JSON.stringify function.
- *
- * This example also shows how you can serialize Date objects in a custom way.
- */
 const valueSerializer = (value: unknown): unknown => {
   if (value instanceof Date) {
     // if you would have put this in the `replacer` parameter of JSON.stringify, (e.x: JSON.stringify(obj, replacerFn))

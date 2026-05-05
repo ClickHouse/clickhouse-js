@@ -1,9 +1,7 @@
+// Applying ClickHouse settings on the client or the operation level.
+// See also: {@link ClickHouseSettings} typings.
 import { createClient } from '@clickhouse/client-web'
 
-/**
- * Applying ClickHouse settings on the client or the operation level.
- * See also: {@link ClickHouseSettings} typings.
- */
 const client = createClient({
   // Settings applied in the client settings will be added to every request.
   clickhouse_settings: {
