@@ -61,12 +61,13 @@ A fixed allowlist of config fields can be set as URL query parameters
 the configuration object** — when they do, the client logs a warning.
 Unknown URL parameters cause `createClient` to throw
 `Unknown URL parameters: ...`
-(see [`packages/client-common/src/config.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/packages/client-common/src/config.ts)).
+(see [`packages/client-common/src/config.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/packages/client-common/src/config.ts) for the shared allowlist, and [`packages/client-node/src/config.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/packages/client-node/src/config.ts) for Node-specific URL parameters).
 
-Supported keys (non-prefixed): `application`, `session_id`, `pathname`,
-`access_token`, `request_timeout`, `max_open_connections`,
-`compression_request`, `compression_response`, `log_level`,
-`keep_alive_enabled`, `keep_alive_idle_socket_ttl` (Node-only).
+Supported non-prefixed keys parsed by `client-common`: `application`,
+`session_id`, `pathname`, `access_token`, `request_timeout`,
+`max_open_connections`, `compression_request`, `compression_response`,
+`log_level`, `keep_alive_enabled`. Additionally, Node supports
+`keep_alive_idle_socket_ttl` via the Node-specific config implementation.
 Anything else must be passed via the config object on `createClient`.
 
 Prefer explicit object fields in application code. Use the URL form when the
