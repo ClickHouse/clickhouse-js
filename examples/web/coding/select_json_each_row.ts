@@ -1,8 +1,7 @@
 // Query rows in JSONEachRow format and map them to a typed result shape via `rows.json<T>()`.
 // This is the simplest path for "give me all rows as JS objects" (Web variant). The Web client's
-// ResultSet also supports streaming via `.stream()` (returns a `ReadableStream<Row[]>`); there is
-// no dedicated Web streaming example file yet — see `node/performance/select_streaming_json_each_row.ts`
-// for the Node-side streaming pattern.
+// ResultSet also supports streaming via `.stream()` (returns a `ReadableStream<Row[]>`); see
+// `web/performance/select_streaming_json_each_row.ts` for the streaming counterpart.
 //
 // See also:
 //  - `select_json_with_metadata.ts` for metadata-aware JSON responses.
