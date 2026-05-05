@@ -9,6 +9,18 @@ Backing examples:
 [`examples/node/coding/insert_ephemeral_columns.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_ephemeral_columns.ts),
 [`examples/node/coding/insert_into_different_db.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_into_different_db.ts).
 
+## Answer checklist
+
+When explaining partial-column inserts:
+
+- Show `columns: ['col_a', 'col_b']` for the allowlist form.
+- Also mention the inverse `columns: { except: ['col_to_skip'] }` form so the
+  user knows both supported shapes.
+- Explain that omitted columns receive their server-side defaults
+  (`DEFAULT`, `MATERIALIZED`, `ALIAS`, nullable/type defaults) and inserts can
+  still fail or produce surprising zero/empty values if the table definition
+  has no appropriate defaults.
+
 ## Insert into specific columns
 
 Pass `columns: string[]` to limit the `INSERT` to a subset. Omitted columns

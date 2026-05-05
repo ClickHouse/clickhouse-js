@@ -14,6 +14,18 @@ Backing examples:
 [`examples/node/coding/dynamic_variant_json.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/dynamic_variant_json.ts),
 [`examples/node/coding/time_time64.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/time_time64.ts).
 
+## Answer checklist
+
+When answering about storing and reading JSON objects:
+
+- Use the new `JSON` column type, introduced in ClickHouse `>= 24.8`.
+- Say `JSON` is no longer experimental since ClickHouse `25.3`; on older
+  supported versions, enable `allow_experimental_json_type`.
+- Insert real JS objects with `format: 'JSONEachRow'`; do not
+  `JSON.stringify()` the column value.
+- Read with a JSON output format such as `JSONEachRow` and `resultSet.json()`;
+  `JSON` column values come back as parsed JS objects.
+
 ## `Dynamic`, `Variant(...)`, `JSON`
 
 ```ts

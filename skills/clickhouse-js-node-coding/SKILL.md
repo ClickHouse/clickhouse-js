@@ -32,7 +32,10 @@ Reference: https://clickhouse.com/docs/integrations/javascript
 ## How to Use This Skill
 
 1. **Match the user's intent** to a row in the Task Index below and read the
-   corresponding reference file before writing code.
+   corresponding reference file before writing code. After reading it, scan any
+   **Answer checklist** in that reference and make sure the final answer covers
+   each relevant item; those checklists capture details users usually need but
+   are easy to omit in short answers.
 2. **Always import from `@clickhouse/client`** (never `@clickhouse/client-web`)
    and create a single client with `createClient({ url })` or rely on
    supported defaults when appropriate. Close it with `await client.close()`

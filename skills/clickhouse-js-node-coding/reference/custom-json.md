@@ -6,6 +6,22 @@
 Backing example:
 [`examples/node/coding/custom_json_handling.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/custom_json_handling.ts).
 
+## Answer checklist
+
+When the user wants `UInt64`/`Int64` values back as `BigInt`:
+
+- State that configurable `json.parse` / `json.stringify` requires
+  `@clickhouse/client >= 1.14.0`.
+- Show the supported `createClient({ json: { parse, stringify } })` option,
+  usually with `json-bigint` and `useNativeBigInt: true`.
+- Combine it with `output_format_json_quote_64bit_integers: 0` so the server
+  emits unquoted 64-bit integers that the parser can turn into `BigInt`.
+- Mention that `output_format_json_quote_64bit_integers: 0` is the default
+  since ClickHouse `25.8`, but setting it explicitly is useful for older
+  servers or portable examples.
+- Warn that casting to JavaScript `Number` / `parseInt` / `parseFloat` loses
+  precision above `Number.MAX_SAFE_INTEGER`.
+
 ## Why customize?
 
 The default `JSON.stringify` / `JSON.parse`:

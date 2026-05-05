@@ -11,6 +11,22 @@ Backing examples:
 [`examples/node/coding/clickhouse_settings.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/clickhouse_settings.ts),
 [`examples/node/coding/default_format_setting.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/default_format_setting.ts).
 
+## Answer checklist
+
+When answering configuration questions, include the relevant points:
+
+- Show `createClient` from `@clickhouse/client` with explicit fields when the
+  user is writing code; this is easier to read and review than encoding
+  everything into a URL string.
+- Mention the URL form when useful for environment variables, DSNs, or config
+  files.
+- If URL parameters and object fields both set the same option, URL parameters
+  override the rest of the configuration object.
+- If `clickhouse_settings` appear on `createClient`, explain that they are
+  defaults for every request and can be overridden on individual `query()`,
+  `insert()`, `command()`, or `exec()` calls.
+- Remind long-running services to close the client during graceful shutdown.
+
 ## Minimal client
 
 ```ts
@@ -47,6 +63,10 @@ Supported keys (non-prefixed): `application`, `session_id`, `pathname`,
 `compression_request`, `compression_response`, `log_level`,
 `keep_alive_enabled`, `keep_alive_idle_socket_ttl` (Node-only).
 Anything else must be passed via the config object on `createClient`.
+
+Prefer explicit object fields in application code. Use this URL form when the
+application receives one connection string from an environment variable, secret
+manager, or config file.
 
 ```ts
 const url =

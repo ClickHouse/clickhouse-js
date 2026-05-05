@@ -12,6 +12,21 @@ Backing examples:
 > stream as input.** Those belong to the `clickhouse-js-node-performance`
 > skill — defer if the user wants to insert from a file or `Readable`.
 
+## Answer checklist
+
+When answering "what format/call should I use for an array of JS objects?":
+
+- Use `client.insert({ table, values, format: 'JSONEachRow' })`.
+- Say the array of plain objects can be passed directly as `values` for
+  ordinary in-memory batches such as a few thousand or tens of thousands of
+  rows.
+- Do not steer the user to streaming, Parquet, or file APIs unless their input
+  is already a stream/file or the task is explicitly about throughput.
+- Warn not to wrap `JSONEachRow` rows in a `{ data: [...] }` envelope; that
+  shape belongs to single-document formats.
+- Mention `JSONCompactEachRow*` as a denser alternative for larger payloads
+  when the caller can provide positional arrays or explicit names/types.
+
 ## Default choice: `JSONEachRow` with an array of objects
 
 This is the right answer for ~90% of inserts.

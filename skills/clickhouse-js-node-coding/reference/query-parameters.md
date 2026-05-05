@@ -10,6 +10,17 @@ Backing examples:
 [`examples/node/coding/query_with_parameter_binding.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/query_with_parameter_binding.ts),
 [`examples/node/coding/query_with_parameter_binding_special_chars.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/query_with_parameter_binding_special_chars.ts).
 
+## Answer checklist
+
+When the user passes user-controlled values into SQL:
+
+- Use ClickHouse `{name: Type}` placeholders and a `query_params` object.
+- Explicitly call template-literal/string interpolation of user input a
+  **SQL injection risk**.
+- Do not suggest PostgreSQL/MySQL-style `$1`, `?`, or `:name` placeholders.
+- Pick the placeholder type to match the ClickHouse column type (`String`,
+  `Date`, `DateTime`, `Nullable(T)`, etc.).
+
 ## Syntax: `{name: Type}`
 
 ClickHouse uses `{name: Type}` placeholders — **not** `$1`, `?`, or `:name`.
