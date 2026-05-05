@@ -120,6 +120,9 @@ const client = createClient({
     parse: bigJson.parse,
     stringify: bigJson.stringify,
   },
+  clickhouse_settings: {
+    output_format_json_quote_64bit_integers: 1,
+  },
 })
 ```
 
