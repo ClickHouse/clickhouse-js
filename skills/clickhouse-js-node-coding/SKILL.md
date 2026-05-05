@@ -42,7 +42,7 @@ Reference: https://clickhouse.com/docs/integrations/javascript
    during graceful shutdown.
 3. **Prefer `JSONEachRow` for typical row inserts/selects** unless the user
    has already chosen another format or is streaming raw bytes (CSV / TSV /
-   Parquet — those belong to the performance skill).
+   Parquet — see `examples/node/performance/`).
    **Note on `clickhouse_settings`:** settings passed to `createClient` are
    defaults for every request; they can be overridden per-call by passing
    `clickhouse_settings` directly to `insert()`, `query()`, or `command()`.
