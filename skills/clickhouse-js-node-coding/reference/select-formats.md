@@ -1,7 +1,8 @@
 # Select Data Formats
 
 > **Applies to:** all versions. `JSONEachRowWithProgress` requires client
-> `>= 1.7.0` (covered in the performance skill).
+> `>= 1.7.0`; see the in-repo performance examples under
+> `examples/node/performance/`.
 
 Backing examples:
 [`examples/node/coding/select_json_each_row.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/select_json_each_row.ts),
