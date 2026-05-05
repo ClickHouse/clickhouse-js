@@ -10,7 +10,8 @@
         "Uses createClient from @clickhouse/client (Node, not Web).",
         "Either passes a single URL string with auth + ?ch_async_insert=1&ch_wait_for_async_insert=0, or a config object with database, username, password, application, clickhouse_settings.",
         "Mentions or implies that URL parameters override the config object if both are provided.",
-        "Does not suggest using URL parameters in code and instead suggests that the URL form is suitable for env vars or config files, while the config object is more explicit and better for code.",
+        "Does not suggest using URL parameters in code and instead suggests that the URL should be read from environment variables or a config file.",
+        "Does not construct the URL with parameters directly in code neither using string concatenation nor query objects.",
         "Suggests using `await client.close()` during graceful shutdown.",
         "Suggests that settings in `clickhouse_settings` can be overridden per-query by passing them inside the individual `insert()` or `query()` call for finer control."
       ]
