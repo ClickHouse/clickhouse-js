@@ -132,6 +132,12 @@ Max duration ≈ http_headers_progress_interval_ms ÷ 1000 × 80
 3. **For queries 1–2 hours:** Use `120000` ms (120s) intervals
 4. **For queries over 2 hours:** Use the fire-and-forget pattern (see below)
 
+Use this command to experiment and debug:
+
+```bash
+curl -v "http://localhost:8123/?function_sleep_max_microseconds_per_block=10000000&wait_end_of_query=1&send_progress_in_http_headers=1&max_block_size=1&query=select+sum(sleepEachRow(1))+from+numbers(10)+FORMAT+JSONEachRow"
+```
+
 Experimenting with the exact load balancer stack might be required.
 
 **Important trade-offs:**
