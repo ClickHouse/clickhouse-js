@@ -72,27 +72,31 @@ const rs = await client.query({
 console.log(await rs.text())
 ```
 
-Streaming raw text/Parquet line-by-line belongs to the performance skill.
+Streaming raw text/Parquet line-by-line belongs in
+[`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance)
+— in particular, Parquet exports use `client.exec()` and pipe the raw
+response stream rather than `ResultSet.stream()` (see
+[`select_parquet_as_file.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/performance/select_parquet_as_file.ts)).
 
 ## Format chooser
 
-| Use case                                                 | Format                                             |
-| -------------------------------------------------------- | -------------------------------------------------- |
-| Read rows as JS objects                                  | `JSONEachRow` _(default)_                          |
-| Read rows as positional tuples (smaller payload)         | `JSONCompactEachRow`                               |
-| Need `meta` / `statistics` / `rows` envelope             | `JSON` or `JSONCompact` + `ResponseJSON<T>`        |
-| Read all values as strings (avoid number-precision loss) | `JSONStringsEachRow` / `JSONCompactStringsEachRow` |
-| Stream very large result                                 | `JSONEachRow` / `JSONCompactEachRow` (perf skill)  |
-| Export to CSV/TSV/Parquet                                | `CSV*`, `TabSeparated*`, `Parquet` (perf skill)    |
+| Use case                                                 | Format                                                                                                                                                     |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Read rows as JS objects                                  | `JSONEachRow` _(default)_                                                                                                                                  |
+| Read rows as positional tuples (smaller payload)         | `JSONCompactEachRow`                                                                                                                                       |
+| Need `meta` / `statistics` / `rows` envelope             | `JSON` or `JSONCompact` + `ResponseJSON<T>`                                                                                                                |
+| Read all values as strings (avoid number-precision loss) | `JSONStringsEachRow` / `JSONCompactStringsEachRow`                                                                                                         |
+| Stream very large result                                 | `JSONEachRow` / `JSONCompactEachRow` (see [`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance)) |
+| Export to CSV/TSV/Parquet                                | `CSV*`, `TabSeparated*`, `Parquet` (see [`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance))   |
 
 ## ResultSet methods
 
-| Method               | Returns                                          | Notes                                                                               |
-| -------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| `await rs.json<T>()` | `T[]` for `*EachRow`, single-doc shape otherwise | Buffers the full response                                                           |
-| `await rs.text()`    | `string`                                         | Buffers the full response — for textual formats only (CSV/TSV/etc.)                 |
-| `rs.stream()`        | Node `Readable` of `Row[]` chunks                | Use for large results or binary formats such as Parquet — see the performance skill |
-| `rs.close()`         | `void` (synchronous)                             | Always call if you obtained `stream()` and stop reading early                       |
+| Method               | Returns                                          | Notes                                                                                                                                                                                                                                                                                                                                |
+| -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `await rs.json<T>()` | `T[]` for `*EachRow`, single-doc shape otherwise | Buffers the full response                                                                                                                                                                                                                                                                                                            |
+| `await rs.text()`    | `string`                                         | Buffers the full response — for textual formats only (CSV/TSV/etc.)                                                                                                                                                                                                                                                                  |
+| `rs.stream()`        | Node `Readable` of `Row[]` chunks                | Use for large newline-delimited results (`JSONEachRow`/`JSONCompactEachRow`/`CSV`/`TSV`); **not** suitable for binary formats like `Parquet` — for those, use `client.exec()` and pipe the raw response stream (see [`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance)) |
+| `rs.close()`         | `void` (synchronous)                             | Always call if you obtained `stream()` and stop reading early                                                                                                                                                                                                                                                                        |
 
 ## Common pitfalls
 
