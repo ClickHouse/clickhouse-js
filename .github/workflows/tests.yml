@@ -104,7 +104,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: isbang/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.4.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -248,7 +248,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: isbang/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.4.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -306,7 +306,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: isbang/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.4.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -351,7 +351,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: isbang/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.4.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -389,7 +389,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: isbang/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.4.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -497,7 +497,7 @@ jobs:
           fetch-depth: 0
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: isbang/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.4.2
         with:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
@@ -539,7 +539,7 @@ jobs:
           fetch-depth: 0
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: isbang/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.4.2
         with:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
