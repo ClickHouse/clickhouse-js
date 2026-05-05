@@ -80,7 +80,7 @@
     },
     {
       "id": 7,
-      "prompt": "Our IDs are UInt64 and we don't want them coming back as strings or losing precision. Can I plug in JSONBig as the JSON parser for @clickhouse/client?",
+      "prompt": "Our IDs are UInt64 and we don't want them coming back as strings or losing precision.",
       "expected_output": "Yes — pass a custom { parse, stringify } via the json config option (>= 1.14.0). Show wiring up json-bigint (or similar) so 64-bit integers are parsed as BigInt. Mention output_format_json_quote_64bit_integers: 0 so the server emits unquoted ints. Note that switching to native Number would lose precision and is the wrong fix.",
       "files": [],
       "expectations": [
