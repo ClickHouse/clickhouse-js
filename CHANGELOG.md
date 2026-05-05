@@ -1,3 +1,47 @@
+# Unreleased
+
+## New features
+
+- **[Experimental]** Added SQL template literal API (`sql` tagged template function) for safe query parameterization with automatic type inference. This provides a more ergonomic alternative to ClickHouse's native `{name: Type}` parameter syntax, with familiar JavaScript template literal syntax and built-in SQL injection protection.
+
+```ts
+import { createClient, sql, identifier } from '@clickhouse/client'
+
+const client = createClient()
+
+// Basic usage with automatic type inference
+const userName = 'Alice'
+const age = 30
+const result = await client.query(
+  sql`SELECT * FROM users WHERE name = ${userName} AND age = ${age}`,
+)
+
+// Table and column identifiers
+const tableName = 'users'
+const columnName = 'name'
+const result = await client.query(
+  sql`SELECT ${identifier(columnName)} FROM ${identifier(tableName)}`,
+)
+
+// Works with all supported types: arrays, tuples, maps, dates, etc.
+const ids = [1, 2, 3]
+const result = await client.query(sql`SELECT * FROM users WHERE id IN ${ids}`)
+
+// Composable SQL fragments
+const whereClause = sql`status = ${'active'} AND role = ${'admin'}`
+const result = await client.query(sql`SELECT * FROM users WHERE ${whereClause}`)
+```
+
+Key features:
+
+- **Automatic type inference**: JavaScript types are automatically mapped to ClickHouse types (string → String, number → Int32/Float64, Date → DateTime, etc.)
+- **SQL injection protection**: All interpolated values are safely parameterized
+- **Identifier support**: Use `identifier()` helper for table/column names
+- **Composability**: Build complex queries from smaller template fragments
+- **Type safety**: Full TypeScript support with type checking
+
+Note: This is an experimental feature and the API may change in future versions based on feedback. The existing `query_params` API remains fully supported and unchanged.
+
 # 1.18.3
 
 ## Improvements
