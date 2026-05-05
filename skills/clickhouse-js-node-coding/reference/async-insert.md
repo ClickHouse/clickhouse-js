@@ -13,8 +13,8 @@ Backing example:
 
 > **When _not_ to use async inserts:** when you already build large batches
 > client-side (e.g., from a stream). Plain inserts are simpler and lower
-> latency. For raw throughput tuning of large async-insert workloads, defer
-> to `clickhouse-js-node-performance`.
+> latency. For raw throughput tuning of large async-insert workloads, see
+> `examples/node/performance/`.
 
 ## Setup
 
