@@ -9,7 +9,10 @@
       "expectations": [
         "Uses createClient from @clickhouse/client (Node, not Web).",
         "Either passes a single URL string with auth + ?ch_async_insert=1&ch_wait_for_async_insert=0, or a config object with database, username, password, application, clickhouse_settings.",
-        "Mentions or implies that URL parameters override the config object if both are provided."
+        "Mentions or implies that URL parameters override the config object if both are provided.",
+        "Does not suggest using URL parameters in code and instead suggests that the URL form is suitable for env vars or config files, while the config object is more explicit and better for code.",
+        "Suggests using `await client.close()` during graceful shutdown.",
+        "Suggests that settings in `clickhouse_settings` can be overridden per-query by passing them inside the individual `insert()` or `query()` call for finer control."
       ]
     },
     {
@@ -20,7 +23,8 @@
       "expectations": [
         "Uses await client.ping() and reads { success, error } directly — does NOT wrap it in try/catch as the only check.",
         "Maps success === true to 200 and success === false to 503.",
-        "Optionally suggests lowering request_timeout to make the probe fail fast."
+        "Suggests lowering request_timeout to make the probe fail fast.",
+        "Explains the difference between `client.ping()` (checks connectivity and auth) and `client.ping({ select: true })` (lightweight query, also checks query processing) and when to use each."
       ]
     },
     {
@@ -31,7 +35,9 @@
       "expectations": [
         "Uses client.insert({ table, values, format: 'JSONEachRow' }).",
         "Notes that the array can be passed directly to values — no need to stringify or stream for a few thousand rows.",
-        "Does NOT recommend a streaming/Parquet flow for this size."
+        "Does NOT recommend a streaming/Parquet flow for this size.",
+        "Mentions to not wrap in a `{ data: [...] }` envelope.",
+        "Mentions `JSONCompact*` formats as an alternative for bigger payloads"
       ]
     },
     {
@@ -64,7 +70,10 @@
       "expectations": [
         "Explains that temporary tables are scoped to a session and require a stable session_id across calls.",
         "Shows setting session_id either on createClient or via per-call session_id.",
-        "Mentions the load-balancer / ClickHouse Cloud caveat (sessions are pinned to a node; recommend replica-aware routing or a single-node connection)."
+        "Mentions the load-balancer / ClickHouse Cloud caveat (sessions are pinned to a node; recommend replica-aware routing or a single-node connection).",
+        "Explicitly explains that parallel calls with the same session_id will result in an error as ClickHouse does not allow concurrent queries within the same session_id.",
+        "Explicitly advises against using session_id in client configuration for a global / module static client",
+        "When session_id is used as a client option it should suggest configuring the maximum number of connections to 1 to minimize concurrency issues at the client level."
       ]
     },
     {
