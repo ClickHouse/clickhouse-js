@@ -73,6 +73,8 @@ const client = createClient({ url })
 The URL above is equivalent to:
 
 ```ts
+import { createClient, ClickHouseLogLevel } from '@clickhouse/client'
+
 createClient({
   url: 'https://my.host:8124',
   username: 'bob',
@@ -84,12 +86,16 @@ createClient({
   request_timeout: 60_000,
   max_open_connections: 10,
   compression: { request: true, response: false },
-  log_level: 'TRACE',
+  log: { level: ClickHouseLogLevel.TRACE },
   keep_alive: { enabled: false },
   clickhouse_settings: { async_insert: 1, wait_for_async_insert: 0 },
   http_headers: { 'X-CLICKHOUSE-AUTH': 'secret' },
 })
 ```
+
+> Note: the `log_level=TRACE` URL parameter above is the string form accepted
+> by URL parsing; the equivalent in the config object is the numeric
+> `ClickHouseLogLevel` enum under `log.level`.
 
 ## Per-client vs per-request `clickhouse_settings` ⭐
 
