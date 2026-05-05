@@ -24,7 +24,7 @@
         "Uses await client.ping() and reads { success, error } directly — does NOT wrap it in try/catch as the only check.",
         "Maps success === true to 200 and success === false to 503.",
         "Suggests lowering request_timeout to make the probe fail fast.",
-        "Explains the difference between `client.ping()` (checks connectivity and auth) and `client.ping({ select: true })` (lightweight query, also checks query processing) and when to use each."
+        "Explains the difference between `client.ping()` (checks connectivity only and ignores credentials by default) and `client.ping({ select: true })` (lightweight query that also checks auth and query processing) and when to use each."
       ]
     },
     {
