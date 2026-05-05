@@ -10,7 +10,6 @@ import { createClient } from '@clickhouse/client-web'
  *
  * See also:
  *  - `ping_non_existing_host.ts` - ping against a host that does not exist.
- *  - `ping_timeout.ts`           - ping that times out.
  */
 const client = createClient({
   // In a browser application, configure the URL/credentials directly here
@@ -20,7 +19,7 @@ const client = createClient({
 })
 const pingResult = await client.ping()
 if (pingResult.success) {
-  console.info('[ExistingHostPing] Ping to the existing host is successful')
+  console.log('[ExistingHostPing] Ping to the existing host is successful')
 } else {
   console.error(
     '[ExistingHostPing] Ping expected to succeed, but got:',

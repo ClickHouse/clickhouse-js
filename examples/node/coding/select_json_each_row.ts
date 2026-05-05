@@ -1,8 +1,14 @@
 import { createClient } from '@clickhouse/client'
 
-// Selecting rows in `JSONEachRow` format and parsing them into a typed array via `rows.json<T>()`.
-// This is the simplest path for "give me all rows as JS objects". For larger result sets,
-// stream instead — see node/select_streaming_json_each_row.ts.
+/**
+ * Query rows in JSONEachRow format and map them to a typed result shape via `rows.json<T>()`.
+ * This is the simplest path for "give me all rows as JS objects"; for larger result sets,
+ * stream instead — see `node/performance/select_streaming_json_each_row.ts`.
+ *
+ * See also:
+ *  - `select_json_with_metadata.ts` for metadata-aware JSON responses.
+ *  - `select_data_formats_overview.ts` for a broader format comparison.
+ */
 interface Data {
   number: string
 }

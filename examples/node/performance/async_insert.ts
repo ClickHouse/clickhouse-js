@@ -82,3 +82,4 @@ const resultSet = await client.query({
 const [{ count }] = await resultSet.json<{ count: string }>()
 // It is expected to have 10k records in the table.
 console.info('Select count result:', count)
+await client.close()

@@ -136,7 +136,7 @@ async function insertJSON<T = unknown>(
     console.log(`Successfully inserted data with format ${format}`)
   } catch (err) {
     console.error(`Failed to insert data with format ${format}, cause:`, err)
-    process.exit(1)
+    throw err
   }
 }
 

@@ -10,7 +10,7 @@ import { createClient } from '@clickhouse/client'
  *
  * See also:
  *  - `ping_non_existing_host.ts` - ping against a host that does not exist.
- *  - `ping_timeout.ts`           - ping that times out.
+ *  - `../troubleshooting/ping_timeout.ts` - Node.js-only ping timeout example.
  */
 const client = createClient({
   url: process.env['CLICKHOUSE_URL'], // defaults to 'http://localhost:8123'
@@ -18,7 +18,7 @@ const client = createClient({
 })
 const pingResult = await client.ping()
 if (pingResult.success) {
-  console.info('[ExistingHostPing] Ping to the existing host is successful')
+  console.log('[ExistingHostPing] Ping to the existing host is successful')
 } else {
   console.error(
     '[ExistingHostPing] Ping expected to succeed, but got:',
