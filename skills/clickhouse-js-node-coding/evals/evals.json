@@ -1,0 +1,103 @@
+{
+  "skill_name": "clickhouse-js-node-coding",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I'm setting up clickhouse client in a Node service. I want to point it at https://my.host:8124, use database 'analytics', user 'bob' / password 'secret', set application name 'my_app', and turn on async_insert without waiting for ack. What's the cleanest way to express that?",
+      "expected_output": "A createClient call (Node, not Web) that sets url, username/password (or embeds them in the URL), database, application, and clickhouse_settings: { async_insert: 1, wait_for_async_insert: 0 }. Optionally mentions the equivalent URL-parameter form (ch_async_insert=1&ch_wait_for_async_insert=0) and that URL params override the config object.",
+      "files": [],
+      "expectations": [
+        "Uses createClient from @clickhouse/client (Node, not Web).",
+        "Either passes a single URL string with auth + ?ch_async_insert=1&ch_wait_for_async_insert=0, or a config object with database, username, password, application, clickhouse_settings.",
+        "Mentions or implies that URL parameters override the config object if both are provided.",
+        "Does not suggest using URL parameters in code and instead suggests that the URL should be read from environment variables or a config file.",
+        "Does not construct the URL with parameters directly in code neither using string concatenation nor query objects.",
+        "Suggests using `await client.close()` during graceful shutdown.",
+        "Suggests that settings in `clickhouse_settings` can be overridden per-query by passing them inside the individual `insert()` or `query()` call for finer control."
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "How do I do a health check against ClickHouse from Node? I want to return 200/503 from an Express endpoint based on whether ClickHouse is reachable.",
+      "expected_output": "Use await client.ping(), branch on { success } (no try/catch needed) — return 200 on success and 503 on failure, optionally surfacing the error.",
+      "files": [],
+      "expectations": [
+        "Uses await client.ping() and reads { success, error } directly — does NOT wrap it in try/catch as the only check.",
+        "Maps success === true to 200 and success === false to 503.",
+        "Suggests lowering request_timeout to make the probe fail fast.",
+        "Explains the difference between `client.ping()` (checks connectivity only and ignores credentials by default) and `client.ping({ select: true })` (lightweight query that also checks auth and query processing) and when to use each."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have an array of about 10k plain JS objects I want to insert into a MergeTree table. What's the right format and call?",
+      "expected_output": "client.insert with format: 'JSONEachRow' and values: <array>. No streaming / Parquet needed for this size.",
+      "files": [],
+      "expectations": [
+        "Uses client.insert({ table, values, format: 'JSONEachRow' }).",
+        "Notes that the array can be passed directly to values — no need to stringify or stream for a few thousand rows.",
+        "Does NOT recommend a streaming/Parquet flow for this size.",
+        "Mentions `JSONCompact*` formats as an alternative for bigger payloads"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "My table has columns (id, name, created_at, internal_hash) but the rows I have only contain id and name. How do I insert just those two columns?",
+      "expected_output": "Use the columns option on client.insert: either columns: ['id', 'name'] (allowlist) or columns: { except: ['created_at', 'internal_hash'] } (excludelist). Omitted columns get their declared defaults.",
+      "files": [],
+      "expectations": [
+        "Uses client.insert with the columns: ['id', 'name'] option.",
+        "Mentions the alternative columns: { except: [...] } form.",
+        "Notes that omitted columns will receive their server-side defaults."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I want to call: SELECT * FROM users WHERE country = '<user input>' AND signup_date > '<user input>'. How should I pass those values from JS?",
+      "expected_output": "Use parameterized queries with the ClickHouse {name: Type} syntax and query_params: { country: ..., signup_date: ... }. Explicitly warn against template-literal interpolation (SQL injection).",
+      "files": [],
+      "expectations": [
+        "Uses {name: Type} parameter syntax (e.g., {country: String}, {signup_date: Date}) and query_params.",
+        "Explicitly warns against template-literal interpolation as a SQL injection risk.",
+        "Does NOT suggest $1/?/:name placeholders."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I'm doing CREATE TEMPORARY TABLE and then SELECT from it in a follow-up call. They keep disappearing between calls. What am I missing?",
+      "expected_output": "Temporary tables are scoped to a session — set a stable session_id (e.g., crypto.randomUUID()) on the client (or per-call) so consecutive requests share server-side state. Also flag the load-balancer/Cloud caveat (replica-aware routing).",
+      "files": [],
+      "expectations": [
+        "Explains that temporary tables are scoped to a session and require a stable session_id across calls.",
+        "Shows setting session_id either on createClient or via per-call session_id.",
+        "Mentions the load-balancer / ClickHouse Cloud caveat (sessions are pinned to a node; recommend replica-aware routing or a single-node connection).",
+        "Explicitly explains that parallel calls with the same session_id will result in an error as ClickHouse does not allow concurrent queries within the same session_id.",
+        "Explicitly advises against using session_id in client configuration for a global / module static client",
+        "When session_id is used as a client option it should suggest configuring the maximum number of connections to 1 to minimize concurrency issues at the client level."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I'm running 25.x ClickHouse. I want to store a JSON object per row and read it back as a real JS object, not a JSON string. How do I do that with the Node client?",
+      "expected_output": "Use the new JSON column type (>= 24.8, no longer experimental since 25.3). CREATE TABLE with a JSON column, insert with format: 'JSONEachRow' passing JS objects, select with JSONEachRow — values come back as parsed JS objects with no manual JSON.parse.",
+      "files": [],
+      "expectations": [
+        "Uses the JSON column type and format: 'JSONEachRow' for both insert and select.",
+        "Inserts a real JS object as the column value (no JSON.stringify) and shows it returns as a parsed object.",
+        "Mentions the relevant ClickHouse server version (>= 24.8 introduced; non-experimental since 25.3) and, if needed on older servers, allow_experimental_json_type."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Our IDs are UInt64 and we don't want them coming back as strings or losing precision.",
+      "expected_output": "Yes — pass a custom { parse, stringify } via the json config option (>= 1.14.0). Show wiring up json-bigint (or similar) so 64-bit integers are parsed as BigInt. Mention output_format_json_quote_64bit_integers: 0 so the server emits unquoted ints. Note that switching to native Number would lose precision and is the wrong fix.",
+      "files": [],
+      "expectations": [
+        "Shows passing custom { parse, stringify } via the json config option on createClient.",
+        "Notes the >= 1.14.0 client requirement for the json option.",
+        "Mentions output_format_json_quote_64bit_integers: 0 (default since 25.8) so 64-bit integers come back unquoted and parseable as BigInt.",
+        "Warns that switching to native Number would lose precision and is the wrong fix."
+      ]
+    }
+  ]
+}
