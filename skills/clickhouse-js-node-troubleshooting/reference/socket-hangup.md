@@ -142,7 +142,7 @@ NODE_OPTIONS="--max-http-header-size=65536" node app.js
 ```
 
 With `maxHeaderSize = 65536` (64 KB), the formula becomes:
-
+Max duration (seconds) ≈ http_headers_progress_interval_ms × 300 ÷ 1000
 ```
 Max duration ≈ http_headers_progress_interval_ms ÷ 1000 × 300
 ```
