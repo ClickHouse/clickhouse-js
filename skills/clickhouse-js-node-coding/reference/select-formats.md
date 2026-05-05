@@ -84,12 +84,12 @@ Streaming raw text/Parquet line-by-line belongs to the performance skill.
 
 ## ResultSet methods
 
-| Method               | Returns                                          | Notes                                                                         |
-| -------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `await rs.json<T>()` | `T[]` for `*EachRow`, single-doc shape otherwise | Buffers the full response                                                     |
-| `await rs.text()`    | `string`                                         | Buffers the full response — for textual formats only (CSV/TSV/etc.)           |
+| Method               | Returns                                          | Notes                                                                               |
+| -------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `await rs.json<T>()` | `T[]` for `*EachRow`, single-doc shape otherwise | Buffers the full response                                                           |
+| `await rs.text()`    | `string`                                         | Buffers the full response — for textual formats only (CSV/TSV/etc.)                 |
 | `rs.stream()`        | Node `Readable` of `Row[]` chunks                | Use for large results or binary formats such as Parquet — see the performance skill |
-| `await rs.close()`   | `void`                                           | Always call if you obtained `stream()` and stop reading early                 |
+| `rs.close()`         | `void` (synchronous)                             | Always call if you obtained `stream()` and stop reading early                       |
 
 ## Common pitfalls
 
@@ -98,7 +98,7 @@ Streaming raw text/Parquet line-by-line belongs to the performance skill.
   `.data`. Use `JSONEachRow` if you want a flat array.
 - **Leaving a `stream()` half-consumed.** This is a top cause of
   `ECONNRESET` on the _next_ request — fully iterate the stream or call
-  `await resultSet.close()`. (Diagnosis details live in the
+  `resultSet.close()` (synchronous — no `await`). (Diagnosis details live in the
   troubleshooting skill.)
 - **Reaching for `.json()` on a CSV/TSV result.** Use `.text()` (or
   `.stream()` for large results).
