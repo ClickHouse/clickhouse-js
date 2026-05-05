@@ -84,12 +84,12 @@ Streaming raw text/Parquet line-by-line belongs to the performance skill.
 
 ## ResultSet methods
 
-| Method               | Returns                                          | Notes                                                         |
-| -------------------- | ------------------------------------------------ | ------------------------------------------------------------- |
-| `await rs.json<T>()` | `T[]` for `*EachRow`, single-doc shape otherwise | Buffers the full response                                     |
-| `await rs.text()`    | `string`                                         | Buffers the full response — works for any format              |
-| `rs.stream()`        | Node `Readable` of `Row[]` chunks                | Use for large results — see the performance skill             |
-| `await rs.close()`   | `void`                                           | Always call if you obtained `stream()` and stop reading early |
+| Method               | Returns                                          | Notes                                                                         |
+| -------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `await rs.json<T>()` | `T[]` for `*EachRow`, single-doc shape otherwise | Buffers the full response                                                     |
+| `await rs.text()`    | `string`                                         | Buffers the full response — for textual formats only (CSV/TSV/etc.)           |
+| `rs.stream()`        | Node `Readable` of `Row[]` chunks                | Use for large results or binary formats such as Parquet — see the performance skill |
+| `await rs.close()`   | `void`                                           | Always call if you obtained `stream()` and stop reading early                 |
 
 ## Common pitfalls
 
