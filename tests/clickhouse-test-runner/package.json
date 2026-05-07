@@ -1,0 +1,32 @@
+{
+  "name": "@clickhouse/clickhouse-test-runner",
+  "private": true,
+  "description": "Node.js port of ClickHouse/clickhouse-java tests/clickhouse-client harness",
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "bin": {
+    "clickhouse-js-test-runner": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --max-warnings=0 .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@clickhouse/client": "*"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "25.5.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "3.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.0",
+    "vitest": "^4.0.16"
+  }
+}
