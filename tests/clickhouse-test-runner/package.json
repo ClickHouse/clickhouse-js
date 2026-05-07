@@ -3,7 +3,7 @@
   "private": true,
   "description": "Node.js port of ClickHouse/clickhouse-java tests/clickhouse-client harness",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19.0"
   },
   "type": "module",
   "bin": {
