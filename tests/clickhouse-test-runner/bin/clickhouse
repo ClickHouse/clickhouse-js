@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENTRYPOINT="${SCRIPT_DIR}/../dist/main.js"
+
+if [[ "${1:-}" == "extract-from-config" ]]; then
+  shift
+  key=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --key)     key="${2:-}"; shift 2 ;;
+      --key=*)   key="${1#--key=}"; shift ;;
+      *)         shift ;;
+    esac
+  done
+  if [[ "${key}" == "listen_host" ]]; then
+    echo "127.0.0.1"
+  fi
+  exit 0
+fi
+
+if [[ ! -f "${ENTRYPOINT}" ]]; then
+  echo "Entry point not found: ${ENTRYPOINT}" >&2
+  echo "Build it first: (cd ${SCRIPT_DIR}/.. && npm install && npm run build)" >&2
+  exit 1
+fi
+
+exec node "${ENTRYPOINT}" "$@"
