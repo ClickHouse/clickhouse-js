@@ -10,11 +10,11 @@
     "clickhouse-js-test-runner": "./dist/main.js"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc && chmod +x dist/main.js",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest run"
+    "test": "vitest run --root ."
   },
   "dependencies": {
     "@clickhouse/client": "*"
