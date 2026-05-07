@@ -166,9 +166,21 @@ export function parseArgs(argv: string[]): ParsedArgs {
       let value: string | undefined = inlineValue
       if (value === undefined) {
         const next = argv[i + 1]
-        if (next !== undefined && !next.startsWith('-')) {
-          value = next
-          i++
+        if (next !== undefined) {
+          const isNegativeNumber =
+            /^-(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(next)
+          const isKnownLongOption = (() => {
+            if (!next.startsWith('--')) return false
+            const nextEq = next.indexOf('=')
+            const nextName =
+              nextEq >= 0 ? next.substring(2, nextEq) : next.substring(2)
+            return nextName.length > 0 && LONG_HAS_ARG.has(nextName)
+          })()
+
+          if (!next.startsWith('-') || isNegativeNumber || !isKnownLongOption) {
+            value = next
+            i++
+          }
         }
       }
       const settingName = name.split('-').join('_')
