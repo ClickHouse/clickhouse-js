@@ -2,6 +2,7 @@ export type SettingScope = 'server' | 'client_only' | 'unknown'
 
 export const SERVER_SETTINGS: ReadonlySet<string> = new Set([
   'max_insert_threads',
+  'max_threads',
   'send_logs_level',
 ])
 
@@ -19,7 +20,6 @@ export const CLIENT_ONLY_SETTINGS: ReadonlySet<string> = new Set([
   'max_joined_block_size_rows',
   'joined_block_split_single_row',
   'join_output_by_rowlist_perkey_rows_threshold',
-  'max_threads',
   'optimize_append_index',
   'use_hedged_requests',
   'optimize_if_chain_to_multiif',

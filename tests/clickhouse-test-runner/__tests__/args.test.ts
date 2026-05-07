@@ -127,8 +127,14 @@ describe('parseArgs', () => {
     expect(a.query).toBeNull()
   })
 
-  it('silently drops a CLIENT_ONLY setting like --max_threads=4', () => {
+  it('forwards --max_threads=4 as a server setting', () => {
     const a = parseArgs(['--max_threads=4'])
+    expect(a.serverSettings).toEqual({ max_threads: '4' })
+    expect(a.query).toBeNull()
+  })
+
+  it('silently drops a CLIENT_ONLY setting like --max_block_size=1024', () => {
+    const a = parseArgs(['--max_block_size=1024'])
     expect(a.serverSettings).toEqual({})
     expect(a.query).toBeNull()
   })
@@ -139,8 +145,8 @@ describe('parseArgs', () => {
     expect(a.serverSettings).toEqual({})
   })
 
-  it('treats --max-threads=4 the same as --max_threads=4 (still dropped)', () => {
+  it('treats --max-threads=4 the same as --max_threads=4 (forwarded as server setting)', () => {
     const a = parseArgs(['--max-threads=4'])
-    expect(a.serverSettings).toEqual({})
+    expect(a.serverSettings).toEqual({ max_threads: '4' })
   })
 })
