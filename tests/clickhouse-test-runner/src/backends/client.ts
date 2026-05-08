@@ -1,4 +1,3 @@
-import { pipeline } from 'node:stream/promises'
 import { createClient } from '@clickhouse/client'
 import type { ParsedArgs } from '../args.js'
 import { appendLog } from '../log.js'
@@ -49,7 +48,9 @@ export async function executeWithClient(opts: BackendOptions): Promise<void> {
         query: q,
         clickhouse_settings,
       })
-      await pipeline(result.stream, process.stdout, { end: false })
+      for await (const chunk of result.stream) {
+        process.stdout.write(chunk)
+      }
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

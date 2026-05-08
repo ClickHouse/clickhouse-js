@@ -26,4 +26,4 @@ if [[ ! -f "${ENTRYPOINT}" ]]; then
   exit 1
 fi
 
-exec node --trace-warnings "${ENTRYPOINT}" "$@"
+exec node "${ENTRYPOINT}" "$@"
