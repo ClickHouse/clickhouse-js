@@ -1,0 +1,12 @@
+# Upstream ClickHouse SQL tests known/expected to pass through @clickhouse/client
+# via the tests/clickhouse-test-runner harness.
+#
+# Conventions:
+#   - One test name per line (matches the pattern argument of tests/clickhouse-test).
+#   - Lines starting with '#' and blank lines are ignored.
+#   - Add tests here once they reliably pass on both `client` and `http` backends.
+#   - Remove (or comment out with a reason) tests that begin to flake.
+#
+# To extend this list, see tests/clickhouse-test-runner/README.md.
+
+01428_hash_set_nan_key
