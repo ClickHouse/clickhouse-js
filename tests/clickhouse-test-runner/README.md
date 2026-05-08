@@ -49,7 +49,7 @@ export PATH="/path/to/clickhouse-js/tests/clickhouse-test-runner/bin:$PATH"
 | Variable                     | Default                                                      | Description                                                                                       |
 | ---------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | `CLICKHOUSE_CLIENT_CLI_IMPL` | `client`                                                     | Backend: `client` (uses `@clickhouse/client`) or `http` (uses Node `fetch` to talk to HTTP 8123). |
-| `CLICKHOUSE_CLIENT_CLI_LOG`  | `/tmp/clickhouse-client-cli.log`                             | Path to a log file used to record every shim invocation. Useful for troubleshooting.              |
+| `CLICKHOUSE_CLIENT_CLI_LOG`  | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log` | Path to a log file used to record every shim invocation. Useful for troubleshooting.              |
 | `UPSTREAM_CLICKHOUSE_DIR`    | `tests/clickhouse-test-runner/.upstream/ClickHouse`          | Path to a checkout of `ClickHouse/ClickHouse` containing the upstream test suite.                |
 | `UPSTREAM_TEST_LIST`         | `tests/clickhouse-test-runner/upstream-allowlist.txt`        | Path to a file listing the upstream tests to run (one test name per line, `#` for comments).     |
 
