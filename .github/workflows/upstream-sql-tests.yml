@@ -29,7 +29,6 @@ concurrency:
 
 env:
   UPSTREAM_REPO: 'ClickHouse/ClickHouse'
-  UPSTREAM_REF: 'master'
 
 jobs:
   upstream-sql-tests:
