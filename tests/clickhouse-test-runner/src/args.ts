@@ -21,8 +21,6 @@ interface OptionSpec {
   long: string
   short?: string
   hasArg: boolean
-  // Aliases stored as separate canonical names that resolve to the same value.
-  aliases?: string[]
 }
 
 const BASE_OPTIONS: readonly OptionSpec[] = [
@@ -32,11 +30,11 @@ const BASE_OPTIONS: readonly OptionSpec[] = [
   { long: 'password', hasArg: true },
   { long: 'database', short: 'd', hasArg: true },
   { long: 'query', short: 'q', hasArg: true },
-  { long: 'log_comment', hasArg: true, aliases: ['log-comment'] },
+  { long: 'log_comment', hasArg: true },
   { long: 'log-comment', hasArg: true },
-  { long: 'send_logs_level', hasArg: true, aliases: ['send-logs-level'] },
+  { long: 'send_logs_level', hasArg: true },
   { long: 'send-logs-level', hasArg: true },
-  { long: 'max_insert_threads', hasArg: true, aliases: ['max-insert-threads'] },
+  { long: 'max_insert_threads', hasArg: true },
   { long: 'max-insert-threads', hasArg: true },
   { long: 'secure', short: 's', hasArg: false },
   { long: 'multiline', short: 'n', hasArg: false },
