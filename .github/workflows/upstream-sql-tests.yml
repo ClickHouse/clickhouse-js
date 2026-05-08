@@ -82,10 +82,6 @@ jobs:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
-      - name: Install root dependencies
-        run: |
-          npm install
-
       - name: Build test runner
         working-directory: tests/clickhouse-test-runner
         run: |
