@@ -46,28 +46,59 @@ export PATH="/path/to/clickhouse-js/tests/clickhouse-test-runner/bin:$PATH"
 
 ## Environment variables
 
-| Variable                     | Default                          | Description                                                                                       |
-| ---------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `CLICKHOUSE_CLIENT_CLI_IMPL` | `client`                         | Backend: `client` (uses `@clickhouse/client`) or `http` (uses Node `fetch` to talk to HTTP 8123). |
-| `CLICKHOUSE_CLIENT_CLI_LOG`  | `/tmp/clickhouse-client-cli.log` | Path to a log file used to record every shim invocation. Useful for troubleshooting.              |
+| Variable                     | Default                                                      | Description                                                                                       |
+| ---------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `CLICKHOUSE_CLIENT_CLI_IMPL` | `client`                                                     | Backend: `client` (uses `@clickhouse/client`) or `http` (uses Node `fetch` to talk to HTTP 8123). |
+| `CLICKHOUSE_CLIENT_CLI_LOG`  | `/tmp/clickhouse-client-cli.log`                             | Path to a log file used to record every shim invocation. Useful for troubleshooting.              |
+| `UPSTREAM_CLICKHOUSE_DIR`    | `tests/clickhouse-test-runner/.upstream/ClickHouse`          | Path to a checkout of `ClickHouse/ClickHouse` containing the upstream test suite.                |
+| `UPSTREAM_TEST_LIST`         | `tests/clickhouse-test-runner/upstream-allowlist.txt`        | Path to a file listing the upstream tests to run (one test name per line, `#` for comments).     |
 
-## Examples
+## Running against the upstream test suite
+
+To avoid a full multi-GB clone of `ClickHouse/ClickHouse`, use a sparse + shallow clone:
 
 ```bash
-# Do NOT clone the full ClickHouse repo (too large). Download a zip instead, or
-# fetch only the test files you need from
-# https://github.com/ClickHouse/ClickHouse/tree/master/tests/queries
-
-cd ClickHouse-master
-CLICKHOUSE_CLIENT_CLI_LOG=./test-run.log \
-  PATH="$PATH:/path/to/clickhouse-js/tests/clickhouse-test-runner/bin/" \
-  tests/clickhouse-test 01428_hash_set_nan_key
-
-# Use the raw HTTP backend instead:
-CLICKHOUSE_CLIENT_CLI_IMPL=http CLICKHOUSE_CLIENT_CLI_LOG=./test-run.log \
-  PATH="$PATH:/path/to/clickhouse-js/tests/clickhouse-test-runner/bin/" \
-  tests/clickhouse-test 01428_hash_set_nan_key
+git clone --depth 1 --filter=blob:none --sparse https://github.com/ClickHouse/ClickHouse.git
+cd ClickHouse
+git sparse-checkout set tests/clickhouse-test tests/queries tests/config tests/ci
 ```
+
+Then run the helper script from the `clickhouse-js` repository:
+
+```bash
+cd /path/to/clickhouse-js
+UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
+  tests/clickhouse-test-runner/scripts/run-upstream-tests.sh
+```
+
+The helper script reads the tests listed in `upstream-allowlist.txt` and runs them through the wrapper. It honors the environment variables documented in the [Environment variables](#environment-variables) table above, including `UPSTREAM_CLICKHOUSE_DIR` and `UPSTREAM_TEST_LIST`.
+
+Extra positional arguments are forwarded to `tests/clickhouse-test`. For example:
+
+```bash
+UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
+  tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --print-time
+```
+
+To toggle the backend implementation, set `CLICKHOUSE_CLIENT_CLI_IMPL`:
+
+```bash
+CLICKHOUSE_CLIENT_CLI_IMPL=http \
+  tests/clickhouse-test-runner/scripts/run-upstream-tests.sh
+```
+
+### Extending the allowlist
+
+The file `upstream-allowlist.txt` contains the curated list of upstream tests known to pass through this harness. The file format is one test name per line; lines starting with `#` and blank lines are ignored.
+
+**Rule of thumb:** Only add tests that pass on both the `client` and `http` backends. Remove or comment out tests that begin to flake.
+
+### CI
+
+The workflow `.github/workflows/upstream-sql-tests.yml` runs this harness in CI:
+
+- Triggered on **workflow_dispatch**, **nightly at 05:00 UTC**, and on **pushes/PRs** that touch `tests/clickhouse-test-runner/**` or the workflow file itself.
+- The `workflow_dispatch` input `upstream_ref` can be used to pin a specific upstream commit or branch (defaults to `master`).
 
 ## Local development
 

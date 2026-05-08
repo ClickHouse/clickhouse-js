@@ -24,13 +24,18 @@ if [[ ! -x "${UPSTREAM_CLICKHOUSE_DIR}/tests/clickhouse-test" ]]; then
   exit 1
 fi
 
-# Read allowlist into array, skipping comments and blank lines
+# Read allowlist into array, skipping comments and blank lines.
+# Leading/trailing whitespace is trimmed so test names are passed cleanly
+# to tests/clickhouse-test even if the allowlist file is hand-edited.
 tests=()
 while IFS= read -r line || [[ -n "$line" ]]; do
-  # Skip blank lines
+  # Trim leading whitespace
+  line="${line#"${line%%[![:space:]]*}"}"
+  # Trim trailing whitespace
+  line="${line%"${line##*[![:space:]]}"}"
+  # Skip blank lines and comments
   [[ -z "${line}" ]] && continue
-  # Skip comments
-  [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+  [[ "${line}" == \#* ]] && continue
   tests+=("${line}")
 done < "${UPSTREAM_TEST_LIST}"
 

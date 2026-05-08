@@ -61,6 +61,13 @@ The goals of the refactor are:
    a duplicated example, update **all** copies. The current duplicates and their primary locations
    are listed in [`examples/README.md`](examples/README.md#editing-duplicated-examples).
 
+## Upstream SQL test harness
+
+The [`tests/clickhouse-test-runner`](tests/clickhouse-test-runner) harness is a Node.js port of `clickhouse-client` that allows the official ClickHouse Python test runner (`tests/clickhouse-test`) to drive a subset of the upstream SQL test suite against `@clickhouse/client`.
+
+- Refer to [`tests/clickhouse-test-runner/README.md`](tests/clickhouse-test-runner/README.md) for build, usage, and environment-variable documentation. The curated list of passing tests is maintained in [`upstream-allowlist.txt`](tests/clickhouse-test-runner/upstream-allowlist.txt).
+- When the harness's behavior changes—such as new wrapper flags, new short-circuited keys in `bin/clickhouse`, or new entries in the `SERVER_SETTINGS`/`CLIENT_ONLY_SETTINGS` allowlists in [`src/settings.ts`](tests/clickhouse-test-runner/src/settings.ts)—review the README and [`.github/workflows/upstream-sql-tests.yml`](.github/workflows/upstream-sql-tests.yml) to ensure they stay synchronized with the implementation.
+
 ## When reviewing code changes
 
 For every pull request review, make sure to provide an evaluation of the following aspects:
