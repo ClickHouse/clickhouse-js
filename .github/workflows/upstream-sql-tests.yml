@@ -10,11 +10,6 @@ on:
         required: false
         default: 'master'
         type: string
-      clickhouse_version:
-        description: 'ClickHouse server image tag'
-        required: false
-        default: 'head'
-        type: string
   schedule:
     - cron: '0 5 * * *'
   push:
