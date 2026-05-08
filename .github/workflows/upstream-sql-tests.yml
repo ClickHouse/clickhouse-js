@@ -102,7 +102,7 @@ jobs:
           CLICKHOUSE_CLIENT_CLI_IMPL: ${{ matrix.impl }}
           CLICKHOUSE_CLIENT_CLI_LOG: ${{ github.workspace }}/upstream-run.log
         run: |
-          bash tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --print-time --no-stateful
+          bash tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
 
       - name: Upload test artifacts
         if: always()

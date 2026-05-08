@@ -73,11 +73,11 @@ UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
 
 The helper script reads the tests listed in `upstream-allowlist.txt` and runs them through the wrapper. It honors the environment variables documented in the [Environment variables](#environment-variables) table above, including `UPSTREAM_CLICKHOUSE_DIR` and `UPSTREAM_TEST_LIST`.
 
-Extra positional arguments are forwarded to `tests/clickhouse-test`. For example:
+Extra positional arguments are forwarded to `tests/clickhouse-test`. For example, to skip the stateful tests:
 
 ```bash
 UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
-  tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --print-time
+  tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
 ```
 
 To toggle the backend implementation, set `CLICKHOUSE_CLIENT_CLI_IMPL`:
