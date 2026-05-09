@@ -1,3 +1,5 @@
+// An example how to send an INSERT INTO ... VALUES ... query that requires additional functions call.
+// Inspired by https://github.com/ClickHouse/clickhouse-js/issues/239
 import type { ClickHouseSettings } from '@clickhouse/client'
 import { createClient } from '@clickhouse/client'
 
@@ -8,10 +10,6 @@ interface Data {
   name: string | null
 }
 
-/**
- * An example how to send an INSERT INTO ... VALUES ... query that requires additional functions call.
- * Inspired by https://github.com/ClickHouse/clickhouse-js/issues/239
- */
 const tableName = 'insert_values_and_functions'
 const client = createClient()
 // Recommended for cluster usage to avoid situations where a query processing error occurred after the response code

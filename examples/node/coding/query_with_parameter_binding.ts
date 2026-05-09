@@ -1,11 +1,9 @@
+// Binding query parameters of various data types.
+//
+// For binding parameters that contain special characters (tabs, newlines, quotes, etc.),
+// see `query_with_parameter_binding_special_chars.ts`.
 import { createClient, TupleParam } from '@clickhouse/client'
 
-/**
- * Binding query parameters of various data types.
- *
- * For binding parameters that contain special characters (tabs, newlines, quotes, etc.),
- * see `query_with_parameter_binding_special_chars.ts`.
- */
 const client = createClient()
 const resultSet = await client.query({
   query: `

@@ -1,19 +1,17 @@
+// An overview of all available formats for selecting your data.
+// Run this example and see the shape of the parsed data for different formats.
+//
+// An example of console output is available here: https://gist.github.com/slvrtrn/3ad657c4e236e089a234d79b87600f76
+//
+// If some format is missing from the overview, you could help us by updating this example or submitting an issue.
+//
+// See also:
+// - ClickHouse formats documentation - https://clickhouse.com/docs/en/interfaces/formats
+// - INSERT formats overview - insert_data_formats_overview.ts
+// - JSON data streaming example - select_streaming_json_each_row.ts
+// - Streaming Parquet into a file - node/select_parquet_as_file.ts
 import { createClient, type DataFormat } from '@clickhouse/client'
 
-/**
- * An overview of all available formats for selecting your data.
- * Run this example and see the shape of the parsed data for different formats.
- *
- * An example of console output is available here: https://gist.github.com/slvrtrn/3ad657c4e236e089a234d79b87600f76
- *
- * If some format is missing from the overview, you could help us by updating this example or submitting an issue.
- *
- * See also:
- * - ClickHouse formats documentation - https://clickhouse.com/docs/en/interfaces/formats
- * - INSERT formats overview - insert_data_formats_overview.ts
- * - JSON data streaming example - select_streaming_json_each_row.ts
- * - Streaming Parquet into a file - node/select_parquet_as_file.ts
- */
 const tableName = 'select_data_formats_overview'
 const client = createClient()
 await prepareTestData()

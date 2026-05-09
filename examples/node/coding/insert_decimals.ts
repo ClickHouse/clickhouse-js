@@ -1,5 +1,9 @@
 import { createClient } from '@clickhouse/client'
 
+// Inserting and reading back values for all four `Decimal(P, S)` widths (32/64/128/256-bit).
+// Decimal values are passed as strings to avoid floating-point precision loss, and read back
+// using `toString(decN)` for the same reason. Reach for this when storing money or other
+// fixed-precision quantities.
 const client = createClient()
 const tableName = 'insert_decimals_example'
 await client.command({

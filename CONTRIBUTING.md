@@ -203,3 +203,7 @@ The average reported test coverage is above 90%. We generally aim towards this t
 
 Currently, automatic coverage reports are disabled.
 See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177), as it should be restored in the scope of that issue.
+
+## Running upstream ClickHouse SQL tests
+
+The [`tests/clickhouse-test-runner`](tests/clickhouse-test-runner) directory contains a Node.js port of `clickhouse-client` that lets `tests/clickhouse-test` from `ClickHouse/ClickHouse` exercise the JS client against the upstream SQL test suite. This harness helps validate that `@clickhouse/client` behaves correctly against real ClickHouse tests. See the [clickhouse-test-runner README](tests/clickhouse-test-runner/README.md) for setup and usage instructions.

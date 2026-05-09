@@ -1,7 +1,7 @@
 import { createClient, ClickHouseError } from '@clickhouse/client-web'
 
 // This example demonstrates how to use asynchronous inserts, avoiding client side batching of the incoming data.
-// Suitable for ClickHouse Cloud, too. Can be used with either Node.js or Web versions of the client.
+// Suitable for ClickHouse Cloud, too.
 // See https://clickhouse.com/docs/en/optimize/asynchronous-inserts
 const client = createClient({
   // In a browser application, configure the URL/credentials directly here

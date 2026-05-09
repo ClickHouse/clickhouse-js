@@ -72,6 +72,9 @@ jobs:
   latest:
     if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to push the release git tag
+      id-token: write # Required for npm OIDC authentication and provenance
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -86,9 +89,11 @@ jobs:
         run: npm ci
 
       - name: Get the release version
+        id: version
         run: |
           BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
           echo "Using version: $BASE_VERSION"
+          echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build packages
         run: npm --workspaces run build
@@ -98,3 +103,16 @@ jobs:
           npm --workspaces publish \
             --access public \
             --provenance
+
+      - name: Create and push release git tag
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "Tag ${RELEASE_VERSION} already exists on origin; skipping."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}"
+          git push origin "refs/tags/${RELEASE_VERSION}"

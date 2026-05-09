@@ -1,9 +1,7 @@
+// Excluding certain columns from the INSERT statement.
+// For the inverse (specifying the exact columns to insert into), see `insert_specific_columns.ts`.
 import { createClient } from '@clickhouse/client-web'
 
-/**
- * Excluding certain columns from the INSERT statement.
- * For the inverse (specifying the exact columns to insert into), see `insert_specific_columns.ts`.
- */
 const tableName = 'insert_exclude_columns_web'
 const client = createClient()
 

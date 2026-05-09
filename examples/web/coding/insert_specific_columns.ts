@@ -1,9 +1,7 @@
+// Explicitly specifying a list of columns to insert the data into.
+// For the inverse (excluding certain columns instead), see `insert_exclude_columns.ts`.
 import { createClient } from '@clickhouse/client-web'
 
-/**
- * Explicitly specifying a list of columns to insert the data into.
- * For the inverse (excluding certain columns instead), see `insert_exclude_columns.ts`.
- */
 const tableName = 'insert_specific_columns_web'
 const client = createClient()
 

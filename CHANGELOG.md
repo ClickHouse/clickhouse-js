@@ -15,6 +15,18 @@ const client = createClient({
 })
 ```
 
+- The `@clickhouse/client` npm package now ships an embedded AI-agent skill, `clickhouse-js-node-troubleshooting`, under `node_modules/@clickhouse/client/skills/`. The skill is also declared in the `agents.skills` field of the package manifest for discovery tools that scan `node_modules`. This allows agentic coding tools to load focused, Node-client-specific troubleshooting guidance without any additional setup. ([#682])
+
+[#682]: https://github.com/ClickHouse/clickhouse-js/pull/682
+
+# 1.18.4
+
+A release-infrastructure-only version bump (no user-facing changes). See 1.18.5 for the next release with user-facing improvements.
+
+# 1.18.3
+
+## Improvements
+
 - Added `keep_alive.eagerly_destroy_stale_sockets` option (Node.js only, default: `false`). When enabled, sockets that have been idle for longer than `idle_socket_ttl` are destroyed immediately before each request, rather than waiting for the idle timeout to fire. This helps reclaim stale sockets during event loop delays, where the timeout callback may not run on time.
 
 ```ts
