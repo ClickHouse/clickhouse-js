@@ -41,6 +41,16 @@ done < "${UPSTREAM_TEST_LIST}"
 
 echo "Selected ${#tests[@]} test(s) from ${UPSTREAM_TEST_LIST}" >&2
 
+if [[ ${#tests[@]} -eq 0 ]]; then
+  if [[ "${ALLOW_EMPTY_UPSTREAM_ALLOWLIST:-0}" != "1" ]]; then
+    echo "Error: no tests were selected from ${UPSTREAM_TEST_LIST}." >&2
+    echo "Refusing to run tests/clickhouse-test without explicit test names because an empty allowlist can run a large upstream suite." >&2
+    echo "If this is intentional, rerun with ALLOW_EMPTY_UPSTREAM_ALLOWLIST=1." >&2
+    exit 1
+  fi
+  echo "Warning: no tests were selected from ${UPSTREAM_TEST_LIST}; continuing because ALLOW_EMPTY_UPSTREAM_ALLOWLIST=1." >&2
+fi
+
 # Ensure log file directory exists
 mkdir -p "$(dirname "${CLICKHOUSE_CLIENT_CLI_LOG}")"
 
