@@ -113,7 +113,7 @@ const client = createClient({
 
 **Node.js defaults to a total received HTTP header limit of approximately 16 KB (this can be increased via the `--max-http-header-size` CLI flag[^max-header-size]).** ClickHouse sends a new progress header with each interval (~200 bytes), and after ~75 progress headers accumulate, Node.js will throw an exception and terminate the request unless that limit is raised.
 
-[^max-header-size]: Node.js also exposes a `maxHeaderSize` option on `http(s).request`, but the ClickHouse JS client currently does not forward it through `createClient`. For now, the practical workaround in clickhouse-js is to either use the `--max-http-header-size` CLI flag / `NODE_OPTIONS` (process-wide) or supply a custom `http.Agent` configured with `maxHeaderSize`. A dedicated client option is coming soon.
+[^max-header-size]: Since `>= 1.18.5`, the ClickHouse JS client also forwards a per-request limit via the `max_response_headers_size` (bytes) option on `createClient` (Node.js only — see the example below). On older versions, the practical workarounds are the `--max-http-header-size` CLI flag / `NODE_OPTIONS` (process-wide) or supplying a custom `http.Agent` configured with `maxHeaderSize`.
 
 **Maximum safe query duration formula:**
 
@@ -133,11 +133,23 @@ Max duration (seconds) ≈ http_headers_progress_interval_ms × 75 ÷ 1000
 
 If you need a longer max safe duration without lengthening the progress interval, raise Node's HTTP header limit. For example, increasing it from the default 16 KB to **64 KB** quadruples the max safe duration (≈300 progress headers instead of ≈75).
 
+```ts
+// Option 1 (recommended, since `>= 1.18.5`) — per-client, no process-wide flag needed
+const client = createClient({
+  request_timeout: 400_000,
+  max_response_headers_size: 65536, // 64 KB; lifts the per-request header cap
+  clickhouse_settings: {
+    send_progress_in_http_headers: 1,
+    http_headers_progress_interval_ms: '110000',
+  },
+})
+```
+
 ```bash
-# Option 1 — CLI flag when launching your app
+# Option 2 — CLI flag when launching your app (process-wide; older client versions)
 node --max-http-header-size=65536 app.js
 
-# Option 2 — environment variable (works with any Node entry point, including npm/ts-node)
+# Option 3 — environment variable (works with any Node entry point, including npm/ts-node)
 NODE_OPTIONS="--max-http-header-size=65536" node app.js
 ```
 
