@@ -282,5 +282,28 @@ describe('[Node.js] Config implementation details', () => {
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
     })
+
+    it('should forward max_response_headers_size to the connection factory', async () => {
+      const nodeConfig: NodeClickHouseClientConfigOptions = {
+        url: new URL('http://localhost:8123'),
+        max_response_headers_size: 64 * 1024,
+      }
+      const res = NodeConfigImpl.make_connection(nodeConfig as any, params)
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: undefined,
+        keep_alive: {
+          enabled: true,
+          idle_socket_ttl: 2500,
+        },
+        http_agent: undefined,
+        set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
+        eagerly_destroy_stale_sockets: false,
+        max_response_headers_size: 64 * 1024,
+      } satisfies CreateConnectionParams)
+      expect(createConnectionStub).toHaveBeenCalledTimes(1)
+      expect(res).toEqual(fakeConnection)
+    })
   })
 })

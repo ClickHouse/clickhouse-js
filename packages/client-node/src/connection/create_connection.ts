@@ -17,6 +17,7 @@ export interface CreateConnectionParams {
   set_basic_auth_header: boolean
   capture_enhanced_stack_trace: boolean
   eagerly_destroy_stale_sockets?: boolean
+  max_response_headers_size?: number
 }
 
 /** A factory for easier mocking after Node.js 22.18 */
@@ -30,6 +31,7 @@ export class NodeConnectionFactory {
     set_basic_auth_header,
     capture_enhanced_stack_trace,
     eagerly_destroy_stale_sockets = false,
+    max_response_headers_size,
   }: CreateConnectionParams): NodeBaseConnection {
     if (http_agent !== undefined) {
       return new NodeCustomAgentConnection({
@@ -39,6 +41,7 @@ export class NodeConnectionFactory {
         keep_alive, // only used to enforce proper KeepAlive headers
         http_agent,
         eagerly_destroy_stale_sockets,
+        max_response_headers_size,
       })
     }
     switch (connection_params.url.protocol) {
@@ -49,6 +52,7 @@ export class NodeConnectionFactory {
           capture_enhanced_stack_trace,
           keep_alive,
           eagerly_destroy_stale_sockets,
+          max_response_headers_size,
         })
       case 'https:':
         return new NodeHttpsConnection({
@@ -58,6 +62,7 @@ export class NodeConnectionFactory {
           keep_alive,
           tls,
           eagerly_destroy_stale_sockets,
+          max_response_headers_size,
         })
       default:
         throw new Error('Only HTTP and HTTPS protocols are supported')

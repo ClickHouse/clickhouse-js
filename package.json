@@ -14,7 +14,7 @@
   },
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "typecheck": "npm --workspaces run typecheck",
@@ -23,7 +23,6 @@
     "build": "npm run --workspaces build",
     "prettify": "prettier --write .",
     "test": "echo -e \"Please specify a test script to run. See \\033[1mnpm run\\033[0m for reference.\" && exit 1",
-    "run-examples": "vitest run -c vitest.examples.config.ts",
     "test:common:unit:node": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=common vitest -c vitest.node.config.ts",
     "test:common:unit:web": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=common vitest -c vitest.web.config.ts",
     "test:common:integration:node": "TEST_MODE=common-integration vitest -c vitest.node.config.ts",
@@ -47,7 +46,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "^10.0.1",
     "@faker-js/faker": "^10.3.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.71.0",
@@ -64,7 +63,7 @@
     "@vitest/coverage-istanbul": "^4.1.0",
     "@vitest/coverage-v8": "^4.1.0",
     "apache-arrow": "^21.0.0",
-    "eslint": "^9.39.4",
+    "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-expect-type": "^0.6.2",
     "eslint-plugin-prettier": "^5.5.5",
