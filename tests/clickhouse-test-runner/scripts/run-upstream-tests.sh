@@ -41,6 +41,36 @@ done < "${UPSTREAM_TEST_LIST}"
 
 echo "Selected ${#tests[@]} test(s) from ${UPSTREAM_TEST_LIST}" >&2
 
+# Optional sharding: pick a round-robin subset of the allowlist when
+# SHARD_TOTAL > 1. Tests at positions where (index % SHARD_TOTAL) ==
+# (SHARD_INDEX - 1) are kept (1-based SHARD_INDEX). Round-robin selection
+# keeps each shard a representative sample of the full allowlist regardless
+# of how the allowlist is ordered, so per-shard runtimes stay roughly even.
+SHARD_INDEX="${SHARD_INDEX:-1}"
+SHARD_TOTAL="${SHARD_TOTAL:-1}"
+if ! [[ "${SHARD_TOTAL}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: SHARD_TOTAL must be a positive integer (got: '${SHARD_TOTAL}')." >&2
+  exit 1
+fi
+if ! [[ "${SHARD_INDEX}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: SHARD_INDEX must be a positive integer (got: '${SHARD_INDEX}')." >&2
+  exit 1
+fi
+if (( SHARD_INDEX > SHARD_TOTAL )); then
+  echo "Error: SHARD_INDEX (${SHARD_INDEX}) must be <= SHARD_TOTAL (${SHARD_TOTAL})." >&2
+  exit 1
+fi
+if (( SHARD_TOTAL > 1 )); then
+  sharded=()
+  for i in "${!tests[@]}"; do
+    if (( i % SHARD_TOTAL == SHARD_INDEX - 1 )); then
+      sharded+=("${tests[$i]}")
+    fi
+  done
+  echo "Sharding: keeping ${#sharded[@]} test(s) for shard ${SHARD_INDEX}/${SHARD_TOTAL}" >&2
+  tests=("${sharded[@]}")
+fi
+
 if [[ ${#tests[@]} -eq 0 ]]; then
   if [[ "${ALLOW_EMPTY_UPSTREAM_ALLOWLIST:-0}" != "1" ]]; then
     echo "Error: no tests were selected from ${UPSTREAM_TEST_LIST}." >&2

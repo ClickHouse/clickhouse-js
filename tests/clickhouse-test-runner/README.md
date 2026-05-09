@@ -52,6 +52,8 @@ export PATH="/path/to/clickhouse-js/tests/clickhouse-test-runner/bin:$PATH"
 | `CLICKHOUSE_CLIENT_CLI_LOG`  | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log` | Path to a log file used to record every shim invocation. Useful for troubleshooting.              |
 | `UPSTREAM_CLICKHOUSE_DIR`    | `tests/clickhouse-test-runner/.upstream/ClickHouse`          | Path to a checkout of `ClickHouse/ClickHouse` containing the upstream test suite.                |
 | `UPSTREAM_TEST_LIST`         | `tests/clickhouse-test-runner/upstream-allowlist.txt`        | Path to a file listing the upstream tests to run (one test name per line, `#` for comments).     |
+| `SHARD_INDEX`                | `1`                                                          | 1-based index of the shard to run when sharding the allowlist (must be `<= SHARD_TOTAL`).        |
+| `SHARD_TOTAL`                | `1`                                                          | Total number of shards. When `> 1`, only tests at positions where `i % SHARD_TOTAL == SHARD_INDEX - 1` are run (round-robin selection). |
 
 ## Running against the upstream test suite
 
@@ -99,6 +101,7 @@ The workflow `.github/workflows/upstream-sql-tests.yml` runs this harness in CI:
 
 - Triggered on **workflow_dispatch**, **nightly at 05:00 UTC**, and on **pushes/PRs** that touch `tests/clickhouse-test-runner/**` or the workflow file itself.
 - The `workflow_dispatch` input `upstream_ref` can be used to pin a specific upstream commit or branch (defaults to `master`).
+- The matrix runs every combination of `{impl: client | http} × {clickhouse: head | latest} × {shard: 1..N}`. Sharding is round-robin across the allowlist (see `SHARD_INDEX` / `SHARD_TOTAL` above) so each shard takes roughly one minute. If the allowlist grows enough that per-shard runtime climbs back above ~1 minute, bump both the `shard` matrix values and the `SHARD_TOTAL` env value in the workflow together.
 
 ## Local development
 
