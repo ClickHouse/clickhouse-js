@@ -12,7 +12,7 @@
    }
    ```
 
-2. When adding new log messages with suggestions for users, make sure to create a unique documentation page in the `docs` directory with a detailed explanation of the issue and how to resolve it. Then, include a link to that documentation page in the log message. For example:
+2. When adding new log messages with suggestions for users, make sure to create a unique documentation page under the `docs/` directory (use `docs/howto/` for task-style guides; see `docs/socket_hang_up_econnreset.md` as a reference) with a detailed explanation of the issue and how to resolve it. Then, include a link to that documentation page in the log message. For example:
 
    ```ts
    if (some_condition) {
@@ -49,7 +49,8 @@ The goals of the refactor are:
    - `coding/` — day-to-day client API usage (configure, ping, basic insert/select, parameter
      binding, sessions, data types, custom JSON).
    - `performance/` — async inserts, streaming with backpressure, file/Parquet streams, progress
-     streaming, server-side bulk moves. Node-only (no `performance/` folder under `examples/web`).
+     streaming, server-side bulk moves. Mostly Node-only; `examples/web/performance/` exists for the
+     few perf scenarios that work in the browser (e.g. streaming `JSONEachRow`).
    - `troubleshooting/` — cancellation, timeouts, long-running query progress, server error surfaces,
      number-precision pitfalls.
    - `security/` — TLS, RBAC, SQL-injection-safe parameter binding.
@@ -60,6 +61,29 @@ The goals of the refactor are:
    copies are excluded from the Vitest runner via the per-package `vitest.config.ts`. When you edit
    a duplicated example, update **all** copies. The current duplicates and their primary locations
    are listed in [`examples/README.md`](examples/README.md#editing-duplicated-examples).
+
+## Skills
+
+The repository ships AI-agent skills from the repo-root [`skills/`](skills) directory (currently
+`clickhouse-js-node-coding/` and `clickhouse-js-node-troubleshooting/`). Each skill has a `SKILL.md`
+(with `name` + `description` frontmatter), a `reference/` folder, and `evals/evals.json`.
+
+- Keep skills at the repo root: the `client-node` package's `prepack` script copies `skills/` into
+  `@clickhouse/client` so it lands under `node_modules/@clickhouse/client/skills/` after install
+  (also declared via the `agents.skills` field in the package manifest). The `skills-e2e` workflow
+  asserts this.
+- Each skill is sourced from the matching `examples/node/<folder>/` corpus. When you add or change
+  examples in a folder that backs a skill, update the corresponding `reference/*.md` and consider
+  extending `evals/evals.json`.
+- For repo-local agent setup (Node version, installs, `docker compose up`, test/lint commands), use
+  the on-demand [`.claude/skills/setup/SKILL.md`](.claude/skills/setup/SKILL.md) skill rather than
+  re-introducing a `copilot-setup-steps.yml` workflow (intentionally removed).
+
+## Embedded docs
+
+The [`docs/`](docs) directory holds long-form troubleshooting / how-to pages that log messages and
+skill references can link to (e.g. `docs/socket_hang_up_econnreset.md`, `docs/howto/`). Prefer
+adding new pages here over linking out to external docs from log messages.
 
 ## Upstream SQL test harness
 
@@ -82,6 +106,6 @@ For every pull request review, make sure to provide an evaluation of the followi
 
 1. When reviewing code changes, it is important to consider the impact on the API quality and stability. For example, if the code changes involve modifying the library's public API surface (such as exported functions, classes, or types) or adding new public APIs, it is important to ensure that the changes are well-documented and do not break existing functionality for users of the library.
 
-2. When introducing new features or making changes to the API make sure to update the CHANGELOG.md file with a concise description of the changes followed with an example usage if applicable.
+2. When introducing new features or making changes to the API, make sure the PR description includes a concise, human-readable CHANGELOG entry (followed by an example usage if applicable) so it can be folded into `CHANGELOG.md` at release time. This matches the PR template checklist item ("A human-readable description of the changes was provided to include in CHANGELOG").
 
 3. Additionally, make sure that the official documentation is in sync with the changes.
