@@ -25,6 +25,9 @@ export class NodeHttpConnection extends NodeBaseConnection {
       timeout: this.params.request_timeout,
       signal: params.abort_signal,
       headers,
+      ...(this.params.max_response_headers_size !== undefined && {
+        maxHeaderSize: this.params.max_response_headers_size,
+      }),
     })
   }
 }
