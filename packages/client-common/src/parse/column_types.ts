@@ -285,18 +285,39 @@ export function parseDecimalType({
 
 /**
  * Unescape backslash escape sequences in enum names.
- * This implementation treats a backslash as escaping the next character:
- * when a backslash is followed by another character, the backslash is removed.
- * Examples: "f\\'" -> "f'", "b\\'\\'\\''" -> "b'''", "\\'" -> "'", "a\\nb" -> "anb"
+ * Recognized escapes are decoded using ClickHouse-style string escaping:
+ * `\\n` -> newline, `\\t` -> tab, `\\r` -> carriage return, `\\\\` -> `\\`,
+ * and `\\'` -> `'`.
+ * For any other escaped character, the backslash is removed and the following
+ * character is kept verbatim to preserve the previous permissive behavior.
  */
 function unescapeEnumName(escaped: string): string {
   let unescaped = ''
   let i = 0
   while (i < escaped.length) {
     if (escaped.charCodeAt(i) === BackslashASCII && i + 1 < escaped.length) {
-      // Skip the backslash and add the next character
       i++
-      unescaped += escaped[i]
+      switch (escaped[i]) {
+        case 'n':
+          unescaped += '\n'
+          break
+        case 't':
+          unescaped += '\t'
+          break
+        case 'r':
+          unescaped += '\r'
+          break
+        case '\\':
+          unescaped += '\\'
+          break
+        case "'":
+          unescaped += "'"
+          break
+        default:
+          // Preserve previous behavior for unknown escape sequences by
+          // dropping the backslash and keeping the escaped character.
+          unescaped += escaped[i]
+      }
     } else {
       unescaped += escaped[i]
     }
