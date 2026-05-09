@@ -109,7 +109,7 @@ const client = createClient({
 })
 ```
 
-> ⚠️ Node.js caps total received headers at ~16 KB. After ~70–80 progress headers, an exception is thrown. For a query running longer than roughly `http_headers_progress_interval_ms * 75`, this limit will be hit — use a longer interval, raise the limit per client (since `>= 1.18.3`) by passing `max_response_headers_size` (in bytes) to `createClient`, or use the fire-and-forget approach below.
+> ⚠️ Node.js caps total received headers at ~16 KB. After ~70–80 progress headers, an exception is thrown. For a query running longer than roughly `http_headers_progress_interval_ms * 75`, this limit will be hit — use a longer interval, raise the limit per client by passing `max_response_headers_size` (in bytes) to `createClient`, or use the fire-and-forget approach below.
 >
 > ```js
 > const client = createClient({
