@@ -13,6 +13,11 @@ class TestableHttpsConnection extends NodeHttpsConnection {
   ): Http.OutgoingHttpHeaders {
     return this.buildRequestHeaders(params)
   }
+  public testCreateClientRequest(
+    ...args: Parameters<NodeHttpsConnection['createClientRequest']>
+  ): Http.ClientRequest {
+    return this.createClientRequest(...args)
+  }
 }
 
 function buildHttpsConnectionParams(
@@ -165,6 +170,80 @@ describe('[Node.js] NodeHttpsConnection', () => {
         cert,
       })
       agentSpy.mockRestore()
+    })
+  })
+
+  describe('createClientRequest', () => {
+    it('should forward max_response_headers_size as maxHeaderSize when set', () => {
+      const mockRequest = {} as Http.ClientRequest
+      const httpsRequestSpy = vi
+        .spyOn(Https, 'request')
+        .mockReturnValue(mockRequest)
+
+      const connection = new TestableHttpsConnection(
+        buildHttpsConnectionParams({
+          max_response_headers_size: 64 * 1024,
+        }),
+      )
+
+      const url = new URL('https://localhost:8443/?query_id=test')
+      const abortController = new AbortController()
+      connection.testCreateClientRequest({
+        method: 'GET',
+        url,
+        headers: {},
+        abort_signal: abortController.signal,
+        query: 'SELECT 1',
+        query_id: 'test-query-id',
+        log_writer: new LogWriter(
+          new TestLogger(),
+          'HttpsConnectionTest',
+          ClickHouseLogLevel.OFF,
+        ),
+        log_level: ClickHouseLogLevel.OFF,
+      })
+
+      expect(httpsRequestSpy).toHaveBeenCalledTimes(1)
+      const calledOptions = httpsRequestSpy.mock
+        .calls[0][1] as Http.RequestOptions
+      expect(calledOptions.maxHeaderSize).toBe(64 * 1024)
+
+      httpsRequestSpy.mockRestore()
+    })
+
+    it('should not include maxHeaderSize when max_response_headers_size is undefined', () => {
+      const mockRequest = {} as Http.ClientRequest
+      const httpsRequestSpy = vi
+        .spyOn(Https, 'request')
+        .mockReturnValue(mockRequest)
+
+      const connection = new TestableHttpsConnection(
+        buildHttpsConnectionParams(),
+      )
+
+      const url = new URL('https://localhost:8443/?query_id=test')
+      const abortController = new AbortController()
+      connection.testCreateClientRequest({
+        method: 'GET',
+        url,
+        headers: {},
+        abort_signal: abortController.signal,
+        query: 'SELECT 1',
+        query_id: 'test-query-id',
+        log_writer: new LogWriter(
+          new TestLogger(),
+          'HttpsConnectionTest',
+          ClickHouseLogLevel.OFF,
+        ),
+        log_level: ClickHouseLogLevel.OFF,
+      })
+
+      expect(httpsRequestSpy).toHaveBeenCalledTimes(1)
+      const calledOptions = httpsRequestSpy.mock
+        .calls[0][1] as Http.RequestOptions
+      expect(calledOptions).not.toHaveProperty('maxHeaderSize')
+
+      httpsRequestSpy.mockRestore()
     })
   })
 })
