@@ -64,22 +64,11 @@ The goals of the refactor are:
 
 ## Skills
 
-The repository ships AI-agent skills from the repo-root [`skills/`](skills) directory (currently
-`clickhouse-js-node-coding/` and `clickhouse-js-node-troubleshooting/`). Each skill has a `SKILL.md`
-(with `name` + `description` frontmatter), a `reference/` folder, and `evals/evals.json`.
 
-- Keep skills at the repo root: the `client-node` package's `prepack` script copies `skills/` into
-  `@clickhouse/client` so it lands under `node_modules/@clickhouse/client/skills/` after install.
-  Each shipped skill must also be listed in the `agents.skills` array of
+- Each shipped skill must also be listed in the `agents.skills` array of
   [`packages/client-node/package.json`](packages/client-node/package.json) so downstream tooling can
   discover it. The [`Skills E2E`](.github/workflows/e2e-skills.yml) workflow
   (`tests/e2e/skills/check.js`) asserts that the packaged tarball contains the declared skills.
-- Each skill is sourced from the matching `examples/node/<folder>/` corpus. When you add or change
-  examples in a folder that backs a skill, update the corresponding `reference/*.md` and consider
-  extending `evals/evals.json`.
-- For repo-local agent setup (Node version, installs, `docker compose up`, test/lint commands), use
-  the on-demand [`.claude/skills/setup/SKILL.md`](.claude/skills/setup/SKILL.md) skill rather than
-  re-introducing a `copilot-setup-steps.yml` workflow (intentionally removed).
 
 ## Embedded docs
 
