@@ -105,14 +105,47 @@ jobs:
             --provenance
 
       - name: Create and push release git tag
+        id: tag
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_VERSION}" >/dev/null 2>&1; then
             echo "Tag ${RELEASE_VERSION} already exists on origin; skipping."
+            echo "tag_pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}"
           git push origin "refs/tags/${RELEASE_VERSION}"
+          echo "tag_pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release from CHANGELOG
+        if: steps.tag.outputs.tag_pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if gh release view "${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_VERSION} already exists; skipping."
+            exit 0
+          fi
+          # Extract the section for this version from CHANGELOG.md:
+          # everything between the matching `# <version>` heading and the
+          # next top-level `# ` heading (exclusive).
+          notes_file="$(mktemp)"
+          awk -v ver="${RELEASE_VERSION}" '
+            $0 == "# " ver { in_section = 1; next }
+            in_section && /^# / { exit }
+            in_section { print }
+          ' CHANGELOG.md \
+            | sed '/./,$!d' `# strip leading blank lines` \
+            > "${notes_file}"
+          if [ ! -s "${notes_file}" ]; then
+            echo "No CHANGELOG.md section found for version ${RELEASE_VERSION}; aborting." >&2
+            exit 1
+          fi
+          gh release create "${RELEASE_VERSION}" \
+            --title "${RELEASE_VERSION}" \
+            --notes-file "${notes_file}" \
+            --verify-tag
