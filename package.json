@@ -23,7 +23,6 @@
     "build": "npm run --workspaces build",
     "prettify": "prettier --write .",
     "test": "echo -e \"Please specify a test script to run. See \\033[1mnpm run\\033[0m for reference.\" && exit 1",
-    "run-examples": "vitest run -c vitest.examples.config.ts",
     "test:common:unit:node": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=common vitest -c vitest.node.config.ts",
     "test:common:unit:web": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=common vitest -c vitest.web.config.ts",
     "test:common:integration:node": "TEST_MODE=common-integration vitest -c vitest.node.config.ts",

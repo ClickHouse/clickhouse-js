@@ -1,0 +1,126 @@
+{
+  "skill_name": "clickhouse-js-node-troubleshooting",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I'm using @clickhouse/client in a Node.js API server and I get `socket hang up` errors, but only after the server has been idle for a while — if I hammer it with requests it's fine. Any idea what's going on? I'm on version 0.3.2.",
+      "expected_output": "Explanation that this is a Keep-Alive idle socket timeout mismatch. The server's keep-alive timeout is shorter than the client's idle_socket_ttl. Should recommend checking the server's keep-alive timeout with curl and setting idle_socket_ttl to ~500ms below it.",
+      "files": [],
+      "expectations": [
+        "Identifies the likely cause as a Keep-Alive idle timeout mismatch rather than a generic network problem.",
+        "Recommends checking the server or proxy Keep-Alive timeout, including the curl-based header check or equivalent.",
+        "Explains that idle_socket_ttl should be set slightly below the server timeout, around 500ms lower."
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "I keep getting ECONNRESET on literally every second request in my Node.js app. Here's my code:\n\n```js\nconst resultSet = await client.query({ query: 'SELECT count() FROM events' })\nconst stream = resultSet.stream()\n// then I do some stuff and run another query\nconst result2 = await client.query({ query: 'SELECT 1' })\n```\n\nThe first query always works, second always fails. What am I doing wrong?",
+      "expected_output": "Diagnosis of dangling stream — the stream from the first query is never fully iterated or closed, corrupting the Keep-Alive socket. Fix: either fully consume via for-await or call resultSet.close().",
+      "files": [],
+      "expectations": [
+        "Diagnoses the problem as an unconsumed or dangling ResultSet stream causing the next request to fail.",
+        "Explains that the first query response must be fully consumed or explicitly closed before reusing the client connection.",
+        "Provides at least one concrete fix using full stream consumption, resultSet.json/text, or resultSet.close()."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "My UInt64 column values are coming back as strings in JavaScript — like `\"9007199254740993\"` instead of a number. I'm using JSONEachRow format. Is there a way to get them as actual numbers?",
+      "expected_output": "Explanation that ClickHouse serializes 64-bit integers as strings in JSON formats to prevent overflow. Option 1: use output_format_json_quote_64bit_integers: 0 (with precision-loss warning). Option 2: use BigInt or a BigInt-safe JSON parser. Should mention the precision risk.",
+      "files": [],
+      "expectations": [
+        "Explains that 64-bit integers are returned as strings in JSON formats to avoid JavaScript precision issues.",
+        "Mentions output_format_json_quote_64bit_integers: 0 as a way to receive numeric JSON output.",
+        "Warns that converting these values to Number can lose precision and suggests a safer BigInt-oriented alternative."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We have ClickHouse sitting behind an nginx reverse proxy. The proxy URL is http://myproxy.internal:8123/clickhouse. I'm on @clickhouse/client 1.3.0 and creating the client like this:\n\n```js\nconst client = createClient({ url: 'http://myproxy.internal:8123/clickhouse' })\n```\n\nBut it seems to be selecting the wrong database — it's trying to use 'clickhouse' as the database name instead of going through the proxy path. What am I missing?",
+      "expected_output": "Explanation of the proxy/pathname confusion: the path in the URL is being interpreted as the database name. Fix: use the `pathname` option separately — createClient({ url: 'http://myproxy.internal:8123', pathname: '/clickhouse' }). Should note this requires >= 1.0.0.",
+      "files": [],
+      "expectations": [
+        "Explains that putting the path segment in url makes the client interpret it as the database name or otherwise mishandle the proxy path.",
+        "Shows the fix using a base url plus a separate pathname option.",
+        "Acknowledges the version dependency by either noting pathname requires >= 1.0.0 or asking for the client version before assuming that fix is available."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I'm getting this error when connecting to our self-hosted ClickHouse over HTTPS:\n\n```\nError: unable to verify the first certificate\n    at TLSSocket.onConnectEnd (_tls_wrap.js:1495:19)\n```\n\nWe use an internal certificate authority. I'm using @clickhouse/client 1.3.0 with Node.js 18. How do I fix this?",
+      "expected_output": "Diagnosis: private/internal CA not trusted by Node.js. Fix: pass the CA certificate via the tls.ca_cert option using fs.readFileSync. Should show the createClient({ url: 'https://...', tls: { ca_cert: fs.readFileSync('certs/CA.pem') } }) example.",
+      "files": [],
+      "expectations": [
+        "Diagnoses the error as Node.js not trusting the internal or private certificate authority.",
+        "Shows how to pass the CA certificate via tls.ca_cert with fs.readFileSync or an equivalent code example.",
+        "Avoids recommending insecure production advice such as disabling certificate verification without clearly marking it as development-only."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "My parameterized queries aren't working. I'm doing:\n\n```js\nawait client.query({\n  query: 'SELECT * FROM users WHERE id = $1 AND status = $2',\n  query_params: { 1: 42, 2: 'active' }\n})\n```\n\nThe values just don't get substituted. Coming from PostgreSQL and this was how params work there.",
+      "expected_output": "Explanation that ClickHouse JS client uses ClickHouse's native {name: type} syntax, not $1/$2 placeholders. Show the correct syntax: { query: 'SELECT * FROM users WHERE id = {id: UInt32} AND status = {status: String}', query_params: { id: 42, status: 'active' } }. Warn against template literal interpolation (SQL injection risk).",
+      "files": [],
+      "expectations": [
+        "Explains that the ClickHouse JS client does not use PostgreSQL-style $1 or $2 placeholders.",
+        "Provides a corrected example using ClickHouse's native {name: type} parameter syntax with query_params keys matching the names.",
+        "Warns against interpolating user values directly into the SQL string because of SQL injection risk."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I enabled response compression in @clickhouse/client for my readonly user, but I'm getting an error from ClickHouse that says something like 'Cannot modify setting enable_http_compression for user with readonly=1'. My client setup:\n\n```js\nconst client = createClient({\n  username: 'readonly_user',\n  password: 'secret',\n  compression: { response: true }\n})\n```",
+      "expected_output": "Explanation that readonly=1 users cannot change the enable_http_compression setting, which response compression requires. Fix: remove compression.response: true (or set to false). Note that request compression is unaffected. Mention that in >= 1.0.0, response compression is disabled by default.",
+      "files": [],
+      "expectations": [
+        "Explains that response compression toggles enable_http_compression, which a readonly=1 user cannot modify.",
+        "Recommends removing or disabling compression.response for this user.",
+        "Notes that request compression is a separate setting and is not blocked by the readonly restriction."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "I'm on @clickhouse/client 1.3.0 and trying to set up structured logging to pipe into our observability stack (we use pino). I want to forward all client log messages at INFO level and above to pino. How do I wire that up?",
+      "expected_output": "Should show how to implement the Logger interface with a class (MyLogger implements Logger) that forwards to pino, then pass it via createClient({ log: { LoggerClass: MyLogger, level: ClickHouseLogLevel.INFO } }). Should show the debug/info/warn/error/trace method signatures.",
+      "files": [],
+      "expectations": [
+        "Shows a custom Logger implementation or equivalent logger wiring that forwards client logs to pino.",
+        "Configures createClient with log.LoggerClass and ClickHouseLogLevel.INFO or an equivalent INFO-level setup.",
+        "Acknowledges the version dependency by either noting this logging API requires >= 0.2.0 or asking for the client version before assuming availability."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "I'm using `@clickhouse/client-web` inside a Next.js Edge route and trying to debug random request failures and TLS weirdness. Can you walk me through the Node.js client socket and certificate options I should tune?",
+      "expected_output": "Should explicitly reject applying the Node.js troubleshooting flow because this is an Edge/browser-style runtime using `@clickhouse/client-web`, not `@clickhouse/client`. Must redirect the user to the web client / runtime-appropriate guidance instead of suggesting Node-only socket, keep-alive, or tls options.",
+      "files": [],
+      "expectations": [
+        "Explicitly states that this skill's Node.js guidance does not apply to @clickhouse/client-web in a Next.js Edge runtime.",
+        "Avoids recommending Node-only configuration such as keep_alive, socket TTL tuning, custom HTTP agents, or tls.ca_cert for this case.",
+        "Redirects the user toward runtime-appropriate web or edge guidance instead of continuing with Node client troubleshooting."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "I'm on @clickhouse/client 1.6.0 talking to a self-hosted ClickHouse cluster over HTTP. I turned on `compression: { response: true }` but the responses still don't look compressed. This is not a readonly user, and there is no settings error from ClickHouse. What should I check?",
+      "expected_output": "Should explain that in >= 1.0.0 response compression is disabled by default unless enabled, but since it is already enabled here the next checks are whether the server has HTTP compression enabled and whether the user is confusing request compression with response compression. Should mention that only GZIP is supported and that request compression does not affect response bodies.",
+      "files": [],
+      "expectations": [
+        "Recognizes that this is not the readonly-user failure mode because there is no settings error and the user already enabled response compression.",
+        "Recommends checking whether the ClickHouse server has HTTP compression enabled.",
+        "Clarifies that request compression and response compression are separate, and that only GZIP is supported."
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "We run a long `INSERT INTO dst SELECT * FROM src` through @clickhouse/client in a Node.js worker. It can sit there for a couple minutes with no rows coming back, and then our AWS load balancer drops the connection around the 120 second mark. Smaller queries are fine. We're on client 1.4.0. How should we handle this?",
+      "expected_output": "Should diagnose this as a long-running query idle-timeout problem rather than a dangling stream issue. Must recommend increasing request_timeout and enabling periodic progress headers with send_progress_in_http_headers and http_headers_progress_interval_ms set below the load balancer idle timeout. Should also mention the Node.js response-header limit tradeoff for very long queries and optionally suggest the fire-and-forget mutation pattern.",
+      "files": [],
+      "expectations": [
+        "Diagnoses the issue as a long-running idle timeout at the load balancer rather than a dangling stream or ordinary per-request ECONNRESET problem.",
+        "Recommends increasing request_timeout and enabling send_progress_in_http_headers with http_headers_progress_interval_ms below the load balancer timeout.",
+        "Mentions the Node.js received-header limit tradeoff for very long-running progress-header use or offers the fire-and-forget mutation pattern as an alternative."
+      ]
+    }
+  ]
+}
