@@ -26,6 +26,10 @@
   "agents": {
     "skills": [
       {
+        "name": "clickhouse-js-node-coding",
+        "path": "./skills/clickhouse-js-node-coding"
+      },
+      {
         "name": "clickhouse-js-node-troubleshooting",
         "path": "./skills/clickhouse-js-node-troubleshooting"
       }

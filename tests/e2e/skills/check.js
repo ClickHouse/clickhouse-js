@@ -19,18 +19,21 @@ const nm = path.join(__dirname, 'node_modules')
 
 // @clickhouse/client (Node.js)
 const nodeRoot = path.join(nm, '@clickhouse', 'client')
-const nodeSkillRoot = path.join(
-  nodeRoot,
-  'skills',
+const nodeSkills = [
+  'clickhouse-js-node-coding',
   'clickhouse-js-node-troubleshooting',
-)
+]
 
 check('@clickhouse/client skills dir exists', () =>
   assert.ok(fs.existsSync(path.join(nodeRoot, 'skills'))),
 )
-check('@clickhouse/client SKILL.md exists', () =>
-  assert.ok(fs.existsSync(path.join(nodeSkillRoot, 'SKILL.md'))),
-)
+for (const skill of nodeSkills) {
+  check(`@clickhouse/client ${skill} SKILL.md exists`, () =>
+    assert.ok(
+      fs.existsSync(path.join(nodeRoot, 'skills', skill, 'SKILL.md')),
+    ),
+  )
+}
 check('@clickhouse/client package.json declares agents.skills', () => {
   const pkg = JSON.parse(
     fs.readFileSync(path.join(nodeRoot, 'package.json'), 'utf8'),
@@ -39,12 +42,12 @@ check('@clickhouse/client package.json declares agents.skills', () => {
     Array.isArray(pkg.agents?.skills),
     'agents.skills should be an array',
   )
-  assert.ok(
-    pkg.agents.skills.some(
-      (s) => s.name === 'clickhouse-js-node-troubleshooting',
-    ),
-    'agents.skills should include clickhouse-js-node-troubleshooting',
-  )
+  for (const skill of nodeSkills) {
+    assert.ok(
+      pkg.agents.skills.some((s) => s.name === skill),
+      `agents.skills should include ${skill}`,
+    )
+  }
 })
 
 // @clickhouse/client-web — no skills yet; verify the package installed cleanly and does not ship skills
