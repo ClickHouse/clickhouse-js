@@ -37,6 +37,10 @@ const repoRoot = path.resolve(__dirname, '..', '..', '..')
 const skillsSrcDir = path.join(repoRoot, 'skills')
 
 // Discover skills from the source-of-truth `skills/` directory.
+assert.ok(
+  fs.existsSync(skillsSrcDir),
+  `source-of-truth skills directory not found at ${skillsSrcDir}; this script is meant to run from tests/e2e/skills inside the clickhouse-js repo`,
+)
 const expectedSkills = fs
   .readdirSync(skillsSrcDir, { withFileTypes: true })
   .filter((d) => d.isDirectory() && fs.existsSync(path.join(skillsSrcDir, d.name, 'SKILL.md')))
@@ -125,23 +129,26 @@ check('skills-npm creates a skills/ directory', () => {
   )
 })
 
-const npmLinks = fs.existsSync(skillsLinkDir)
-  ? fs.readdirSync(skillsLinkDir).filter((e) => e.startsWith('npm-'))
-  : []
+const npmLinks = () =>
+  fs.existsSync(skillsLinkDir)
+    ? fs.readdirSync(skillsLinkDir).filter((e) => e.startsWith('npm-'))
+    : []
 
 check('skills-npm creates at least one npm-* symlink', () => {
+  const links = npmLinks()
   assert.ok(
-    npmLinks.length > 0,
+    links.length > 0,
     'skills/ should contain at least one npm-* symlink',
   )
 })
 
 for (const skill of declaredSkills) {
   check(`skills-npm symlinks ${skill.name}`, () => {
-    const link = npmLinks.find((e) => e.includes(skill.name))
+    const links = npmLinks()
+    const link = links.find((e) => e.includes(skill.name))
     assert.ok(
       link,
-      `skills/ should contain a symlink for ${skill.name}, found: [${npmLinks.join(', ')}]`,
+      `skills/ should contain a symlink for ${skill.name}, found: [${links.join(', ')}]`,
     )
     const linkPath = path.join(skillsLinkDir, link)
     assert.ok(
