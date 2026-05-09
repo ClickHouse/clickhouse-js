@@ -108,8 +108,8 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          if git rev-parse -q --verify "refs/tags/${RELEASE_VERSION}" >/dev/null; then
-            echo "Tag ${RELEASE_VERSION} already exists; skipping."
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "Tag ${RELEASE_VERSION} already exists on origin; skipping."
             exit 0
           fi
           git config user.name "github-actions[bot]"
