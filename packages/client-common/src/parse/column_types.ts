@@ -317,6 +317,7 @@ function unescapeEnumName(escaped: string): string {
           // Preserve previous behavior for unknown escape sequences by
           // dropping the backslash and keeping the escaped character.
           unescaped += escaped[i]
+          break
       }
     } else {
       unescaped += escaped[i]

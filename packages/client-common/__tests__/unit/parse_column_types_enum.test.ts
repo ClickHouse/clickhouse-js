@@ -102,5 +102,20 @@ describe('Columns types parser - Enum', () => {
       intSize: 8,
       sourceType: "Enum8('f\\'' = 1)",
     })
+
+    // Test various escape sequences
+    const testCases: Array<[string, string]> = [
+      ["Enum8('\\n' = 1)", '\n'], // newline
+      ["Enum8('\\t' = 1)", '\t'], // tab
+      ["Enum8('\\r' = 1)", '\r'], // carriage return
+      ["Enum8('\\\\' = 1)", '\\'], // backslash
+      ["Enum8('a\\nb' = 1)", 'a\nb'], // newline in middle
+      ["Enum8('\\t\\n\\r' = 1)", '\t\n\r'], // multiple escapes
+    ]
+
+    testCases.forEach(([sourceType, expectedName]) => {
+      const parsed = parseEnumType({ columnType: sourceType, sourceType })
+      expect(parsed.values[1]).toBe(expectedName)
+    })
   })
 })
