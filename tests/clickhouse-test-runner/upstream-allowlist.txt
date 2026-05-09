@@ -6,6 +6,9 @@
 #   - Lines starting with '#' and blank lines are ignored.
 #   - Add tests here once they reliably pass on both `client` and `http` backends.
 #   - Remove (or comment out with a reason) tests that begin to flake.
+#   - Avoid bare prefixes that overlap with failing tests: `tests/clickhouse-test`
+#     treats positional arguments as substring matches, so e.g. `00396_uuid` would
+#     also pull in `00396_uuid_v7`.
 #
 # To extend this list, see tests/clickhouse-test-runner/README.md.
 
@@ -44,7 +47,49 @@
 00054_join_string
 00055_join_two_numbers
 00056_join_number_string
-01428_hash_set_nan_key
+00067_replicate_segfault
+00068_empty_tiny_log
+00069_date_arithmetic
+00077_set_keys_fit_128_bits_many_blocks
+00078_string_concat
+00087_distinct_of_empty_arrays
+00087_math_functions
+00088_distinct_of_arrays_of_strings
+00089_group_by_arrays_of_fixed
+00098_1_union_all
+00098_2_union_all
+00098_3_union_all
+00098_4_union_all
+00098_5_union_all
+00098_6_union_all
+00098_7_union_all
+00098_8_union_all
+00098_9_union_all
+00098_a_union_all
+00098_b_union_all
+00098_c_union_all
+00098_d_union_all
+00098_e_union_all
+00098_f_union_all
+00098_g_union_all
+00098_h_union_all
+00098_j_union_all
+00098_l_union_all
+00099_join_many_blocks_segfault
+00103_ipv4_num_to_string_class_c
+00114_float_type_result_of_division
+00116_storage_set
+00117_parsing_arrays
+00119_storage_join
+00120_join_and_group_by
+00122_join_with_subquery_with_subquery
+00125_array_element_of_array_of_tuple
+00127_group_by_concat
+00128_group_by_number_and_fixed_string
+00129_quantile_timing_weighted
+00131_set_hashed
+00132_sets
+00134_aggregation_by_fixed_string_of_size_1_2_4_8
 00136_duplicate_order_by_elems
 00137_in_constants
 00138_table_aliases
@@ -64,12 +109,15 @@
 00165_transform_non_const_default
 00167_settings_inside_query
 00169_join_constant_keys
+00170_lower_upper_utf8
+00170_lower_upper_utf8_memleak
 00172_constexprs_in_set
 00173_compare_date_time_with_constant_string
 00174_compare_date_time_with_constant_string_in_in
 00175_if_num_arrays
 00175_partition_by_ignore
 00176_if_string_arrays
+00178_function_replicate
 00178_query_datetime64_index
 00179_lambdas_with_common_expressions_and_filter
 00180_attach_materialized_view
@@ -99,6 +147,7 @@
 00231_format_vertical_raw
 00232_format_readable_decimal_size
 00232_format_readable_size
+00233_position_function_family
 00233_position_function_sql_comparibilty
 00234_disjunctive_equality_chains_optimization
 00237_group_by_arrays
@@ -111,6 +160,8 @@
 00255_array_concat_string
 00256_reverse
 00258_materializing_tuples
+00259_hashing_tuples
+00260_like_and_curly_braces
 00263_merge_aggregates_and_overflow
 00264_uniq_many_args
 00266_read_overflow_mode
@@ -137,10 +188,13 @@
 00317_in_tuples_and_out_of_range_values
 00320_between
 00323_quantiles_timing_bug
+00324_hashing_enums
 00330_view_subqueries
 00331_final_and_prewhere_condition_ver_column
+00332_quantile_timing_memory_leak
 00333_parser_number_bug
 00334_column_aggregate_function_limit
+00338_replicate_array_of_strings
 00342_escape_sequences
 00343_array_element_generic
 00346_if_tuple
@@ -186,6 +240,7 @@
 00433_ifnull
 00434_tonullable
 00435_coalesce
+00436_convert_charset
 00436_fixed_string_16_comparisons
 00437_nulls_first_last
 00438_bit_rotate
@@ -194,6 +249,7 @@
 00442_filter_by_nullable
 00445_join_nullable_keys
 00447_foreach_modifier
+00448_replicate_nullable_tuple_generic
 00448_to_string_cut_to_zero
 00449_filter_array_nullable_tuple
 00450_higher_order_and_nullable
@@ -203,6 +259,7 @@
 00457_log_tinylog_stripelog_nullable
 00459_group_array_insert_at
 00461_default_value_of_argument_type
+00462_json_true_false_literals
 00464_array_element_out_of_range
 00464_sort_all_constant_columns
 00465_nullable_default
@@ -224,9 +281,11 @@
 00487_if_array_fixed_string
 00488_column_name_primary
 00488_non_ascii_column_names
+00490_special_line_separators_and_characters_outside_of_bmp
 00490_with_select
 00498_array_functions_concat_slice_push_pop
 00498_bitwise_aggregate_functions
+00499_json_enum_insert
 00500_point_in_polygon_2d_const
 00500_point_in_polygon_3d_const
 00500_point_in_polygon_bug_2
@@ -433,3 +492,4 @@
 00807_regexp_quote_meta
 00810_in_operators_segfault
 00812_prewhere_alias_array
+01428_hash_set_nan_key
