@@ -12,13 +12,13 @@
    }
    ```
 
-2. When adding new log messages with suggestions for users, make sure to create a unique documentation page in the `docs` directory with a detailed explanation of the issue and how to resolve it. Then, include a link to that documentation page in the log message. For example:
+2. When adding new log messages with suggestions for users, make sure to create a unique documentation page under the `docs/` directory (use `docs/howto/` for task-style guides; see `docs/socket_hang_up_econnreset.md` as a reference) with a detailed explanation of the issue and how to resolve it. Then, include a link to that documentation page in the log message. For example:
 
    ```ts
    if (some_condition) {
      log_writer.warn({
        message:
-         'Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/example-log-message.md',
+         'Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/socket_hang_up_econnreset.md',
      })
    }
    ```
@@ -49,7 +49,8 @@ The goals of the refactor are:
    - `coding/` — day-to-day client API usage (configure, ping, basic insert/select, parameter
      binding, sessions, data types, custom JSON).
    - `performance/` — async inserts, streaming with backpressure, file/Parquet streams, progress
-     streaming, server-side bulk moves. Node-only (no `performance/` folder under `examples/web`).
+     streaming, server-side bulk moves. Mostly Node-only; `examples/web/performance/` exists for the
+     few perf scenarios that work in the browser (e.g. streaming `JSONEachRow`).
    - `troubleshooting/` — cancellation, timeouts, long-running query progress, server error surfaces,
      number-precision pitfalls.
    - `security/` — TLS, RBAC, SQL-injection-safe parameter binding.
@@ -60,6 +61,20 @@ The goals of the refactor are:
    copies are excluded from the Vitest runner via the per-package `vitest.config.ts`. When you edit
    a duplicated example, update **all** copies. The current duplicates and their primary locations
    are listed in [`examples/README.md`](examples/README.md#editing-duplicated-examples).
+
+## Skills
+
+
+- Each shipped skill must also be listed in the `agents.skills` array of
+  [`packages/client-node/package.json`](packages/client-node/package.json) so downstream tooling can
+  discover it. The [`Skills E2E`](.github/workflows/e2e-skills.yml) workflow
+  (`tests/e2e/skills/check.js`) asserts that the packaged tarball contains the declared skills.
+
+## Embedded docs
+
+The [`docs/`](docs) directory holds long-form troubleshooting / how-to pages that log messages and
+skill references can link to (e.g. `docs/socket_hang_up_econnreset.md`, `docs/howto/`). Prefer
+adding new pages here over linking out to external docs from log messages.
 
 ## Upstream SQL test harness
 
@@ -98,6 +113,6 @@ For every pull request review, make sure to provide an evaluation of the followi
 
 1. When reviewing code changes, it is important to consider the impact on the API quality and stability. For example, if the code changes involve modifying the library's public API surface (such as exported functions, classes, or types) or adding new public APIs, it is important to ensure that the changes are well-documented and do not break existing functionality for users of the library.
 
-2. When introducing new features or making changes to the API make sure to update the CHANGELOG.md file with a concise description of the changes followed with an example usage if applicable.
+2. When introducing new features or making changes to the API, make sure the PR description includes a concise, human-readable CHANGELOG entry (followed by an example usage if applicable) so it can be folded into `CHANGELOG.md` at release time. This matches the PR template checklist item ("A human-readable description of the changes was provided to include in CHANGELOG").
 
 3. Additionally, make sure that the official documentation is in sync with the changes.

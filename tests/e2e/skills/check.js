@@ -66,7 +66,6 @@ const declaredSkills = Array.isArray(nodePkg.agents?.skills)
 check('@clickhouse/client skills dir exists', () =>
   assert.ok(fs.existsSync(path.join(nodeRoot, 'skills'))),
 )
-
 check(
   '@clickhouse/client agents.skills declares every skill from skills/',
   () => {
