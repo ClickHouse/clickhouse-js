@@ -7,7 +7,6 @@ RUNNER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Read environment variables with defaults
 UPSTREAM_CLICKHOUSE_DIR="${UPSTREAM_CLICKHOUSE_DIR:-${RUNNER_DIR}/.upstream/ClickHouse}"
-CLICKHOUSE_CLIENT_CLI_IMPL="${CLICKHOUSE_CLIENT_CLI_IMPL:-}"
 CLICKHOUSE_CLIENT_CLI_LOG="${CLICKHOUSE_CLIENT_CLI_LOG:-${RUNNER_DIR}/.upstream/clickhouse-client-cli.log}"
 UPSTREAM_TEST_LIST="${UPSTREAM_TEST_LIST:-${RUNNER_DIR}/upstream-allowlist.txt}"
 
@@ -87,9 +86,6 @@ mkdir -p "$(dirname "${CLICKHOUSE_CLIENT_CLI_LOG}")"
 # Export environment for the wrapper
 export PATH="${RUNNER_DIR}/bin:${PATH}"
 export CLICKHOUSE_CLIENT_CLI_LOG
-if [[ -n "${CLICKHOUSE_CLIENT_CLI_IMPL}" ]]; then
-  export CLICKHOUSE_CLIENT_CLI_IMPL
-fi
 
 # Run the upstream test runner
 cd "${UPSTREAM_CLICKHOUSE_DIR}"
