@@ -977,7 +977,6 @@
 01659_array_aggregation_ubsan
 01659_test_base64Decode_mysql_compatibility
 01660_join_or_all
-01660_join_or_inner
 01660_test_toDayOfYear_mysql_compatibility
 01661_join_complex
 01661_test_toDayOfWeek_mysql_compatibility
@@ -2307,7 +2306,6 @@
 03652_coalescing_merge_tree_fix_empty_tuple
 03652_union_columns_2
 03653_fractional_limit_offset
-03653_updating_minmax_idx_after_mutation
 03654_case_non_constant_null
 03654_grouping_sets_any_min_max
 03656_nan_comparison
