@@ -42,7 +42,7 @@ jobs:
         # upstream SQL tests no longer dominate PR CI runtime. Bump
         # `shard` and `SHARD_TOTAL` together if the allowlist grows enough
         # that per-shard runtime climbs back above ~1 minute.
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Checkout clickhouse-js
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -100,7 +100,7 @@ jobs:
         env:
           CLICKHOUSE_CLIENT_CLI_LOG: ${{ github.workspace }}/upstream-run.log
           SHARD_INDEX: ${{ matrix.shard }}
-          SHARD_TOTAL: 3
+          SHARD_TOTAL: 10
         run: |
           bash tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
 
