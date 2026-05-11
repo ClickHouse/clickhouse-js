@@ -5,7 +5,6 @@ import { appendLog, resolveLogPath, safeForLog } from './log.js'
 import { splitQueries } from './split-queries.js'
 import { handleExtractFromConfig } from './extract-from-config.js'
 import { executeWithClient } from './backends/client.js'
-import { executeWithHttp } from './backends/http.js'
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2)
@@ -62,16 +61,6 @@ async function main(): Promise<void> {
     return
   }
 
-  const impl = process.env.CLICKHOUSE_CLIENT_CLI_IMPL ?? 'client'
-  if (impl !== 'client' && impl !== 'http') {
-    process.stderr.write(
-      `Unknown CLICKHOUSE_CLIENT_CLI_IMPL value: ${impl}. Supported: client, http\n`,
-    )
-    process.exitCode = 1
-    return
-  }
-
-  appendLog(logPath, 'impl=' + impl)
   appendLog(logPath, 'database=' + args.database)
   appendLog(logPath, 'user=' + args.user)
   appendLog(logPath, 'secure=' + String(args.secure))
@@ -86,11 +75,7 @@ async function main(): Promise<void> {
   }
 
   try {
-    if (impl === 'client') {
-      await executeWithClient({ args, queries, logPath })
-    } else {
-      await executeWithHttp({ args, queries, logPath })
-    }
+    await executeWithClient({ args, queries, logPath })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     appendLog(logPath, 'error=' + msg)
