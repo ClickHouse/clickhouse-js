@@ -82,7 +82,6 @@ const USAGE_TEXT = [
   '      --help                   Print this help',
   '',
   'Environment variables:',
-  "  CLICKHOUSE_CLIENT_CLI_IMPL   Backend implementation: 'client' (default) or 'http'",
   '  CLICKHOUSE_CLIENT_CLI_LOG    Path to log file for troubleshooting',
   '',
 ].join('\n')

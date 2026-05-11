@@ -46,14 +46,13 @@ export PATH="/path/to/clickhouse-js/tests/clickhouse-test-runner/bin:$PATH"
 
 ## Environment variables
 
-| Variable                     | Default                                                      | Description                                                                                       |
-| ---------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `CLICKHOUSE_CLIENT_CLI_IMPL` | `client`                                                     | Backend: `client` (uses `@clickhouse/client`) or `http` (uses Node `fetch` to talk to HTTP 8123). |
-| `CLICKHOUSE_CLIENT_CLI_LOG`  | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log` | Path to a log file used to record every shim invocation. Useful for troubleshooting.              |
-| `UPSTREAM_CLICKHOUSE_DIR`    | `tests/clickhouse-test-runner/.upstream/ClickHouse`          | Path to a checkout of `ClickHouse/ClickHouse` containing the upstream test suite.                |
-| `UPSTREAM_TEST_LIST`         | `tests/clickhouse-test-runner/upstream-allowlist.txt`        | Path to a file listing the upstream tests to run (one test name per line, `#` for comments).     |
-| `SHARD_INDEX`                | `1`                                                          | 1-based index of the shard to run when sharding the allowlist (must be `<= SHARD_TOTAL`).        |
-| `SHARD_TOTAL`                | `1`                                                          | Total number of shards. When `> 1`, only tests at positions where `i % SHARD_TOTAL == SHARD_INDEX - 1` are run (round-robin selection). |
+| Variable                    | Default                                                            | Description                                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLICKHOUSE_CLIENT_CLI_LOG` | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log` | Path to a log file used to record every shim invocation. Useful for troubleshooting.                                                    |
+| `UPSTREAM_CLICKHOUSE_DIR`   | `tests/clickhouse-test-runner/.upstream/ClickHouse`                | Path to a checkout of `ClickHouse/ClickHouse` containing the upstream test suite.                                                       |
+| `UPSTREAM_TEST_LIST`        | `tests/clickhouse-test-runner/upstream-allowlist.txt`              | Path to a file listing the upstream tests to run (one test name per line, `#` for comments).                                            |
+| `SHARD_INDEX`               | `1`                                                                | 1-based index of the shard to run when sharding the allowlist (must be `<= SHARD_TOTAL`).                                               |
+| `SHARD_TOTAL`               | `1`                                                                | Total number of shards. When `> 1`, only tests at positions where `i % SHARD_TOTAL == SHARD_INDEX - 1` are run (round-robin selection). |
 
 ## Running against the upstream test suite
 
@@ -82,18 +81,11 @@ UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
   tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
 ```
 
-To toggle the backend implementation, set `CLICKHOUSE_CLIENT_CLI_IMPL`:
-
-```bash
-CLICKHOUSE_CLIENT_CLI_IMPL=http \
-  tests/clickhouse-test-runner/scripts/run-upstream-tests.sh
-```
-
 ### Extending the allowlist
 
 The file `upstream-allowlist.txt` contains the curated list of upstream tests known to pass through this harness. The file format is one test name per line; lines starting with `#` and blank lines are ignored.
 
-**Rule of thumb:** Only add tests that pass on both the `client` and `http` backends. Remove or comment out tests that begin to flake.
+**Rule of thumb:** Only add tests that pass reliably. Remove or comment out tests that begin to flake.
 
 ### CI
 
@@ -101,7 +93,7 @@ The workflow `.github/workflows/upstream-sql-tests.yml` runs this harness in CI:
 
 - Triggered on **workflow_dispatch**, **nightly at 05:00 UTC**, and on **pushes/PRs** that touch `tests/clickhouse-test-runner/**` or the workflow file itself.
 - The `workflow_dispatch` input `upstream_ref` can be used to pin a specific upstream commit or branch (defaults to `master`).
-- The matrix runs every combination of `{impl: client | http} × {clickhouse: head | latest} × {shard: 1..N}`. Sharding is round-robin across the allowlist (see `SHARD_INDEX` / `SHARD_TOTAL` above) so each shard takes roughly one minute. If the allowlist grows enough that per-shard runtime climbs back above ~1 minute, bump both the `shard` matrix values and the `SHARD_TOTAL` env value in the workflow together.
+- The matrix runs every combination of `{clickhouse: head | latest} × {shard: 1..N}`. Sharding is round-robin across the allowlist (see `SHARD_INDEX` / `SHARD_TOTAL` above) so each shard takes roughly one minute. If the allowlist grows enough that per-shard runtime climbs back above ~1 minute, bump both the `shard` matrix values and the `SHARD_TOTAL` env value in the workflow together.
 
 ## Local development
 

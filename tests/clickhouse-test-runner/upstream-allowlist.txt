@@ -4,7 +4,7 @@
 # Conventions:
 #   - One test name per line (matches the pattern argument of tests/clickhouse-test).
 #   - Lines starting with '#' and blank lines are ignored.
-#   - Add tests here once they reliably pass on both `client` and `http` backends.
+#   - Add tests here once they reliably pass through the harness.
 #   - Remove (or comment out with a reason) tests that begin to flake.
 #   - Avoid bare prefixes that overlap with failing tests: `tests/clickhouse-test`
 #     treats positional arguments as substring matches, so e.g. `00396_uuid` would
