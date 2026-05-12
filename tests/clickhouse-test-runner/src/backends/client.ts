@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { createClient } from '@clickhouse/client'
 import type { ParsedArgs } from '../args.js'
 import { appendLog } from '../log.js'
@@ -32,11 +33,21 @@ export async function executeWithClient(opts: BackendOptions): Promise<void> {
   const { args, queries, logPath } = opts
   const proto = args.secure ? 'https' : 'http'
   const url = `${proto}://${args.host}:${args.port}`
+  // Use a dedicated per-invocation session_id so that settings applied via
+  // `SET ...` in one statement persist for subsequent statements within the
+  // same .sql script. Without a session, every `client.exec(...)` call is an
+  // independent HTTP request and `SET` has no effect on later requests, which
+  // breaks upstream tests that rely on patterns like
+  //   SET allow_deprecated_syntax_for_merge_tree = 1;
+  //   CREATE TABLE ... ENGINE = MergeTree(d, k, 8192);
+  const sessionId = `clickhouse-js-test-runner-${randomUUID()}`
+  appendLog(logPath, 'session_id=' + sessionId)
   const client = createClient({
     url,
     username: args.user,
     password: args.password,
     database: args.database,
+    session_id: sessionId,
   })
 
   const clickhouse_settings = buildClickHouseSettings(args)
