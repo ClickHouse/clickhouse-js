@@ -15,4 +15,4 @@ In other cases when you've found a meaningful change to make, make it and push c
 
 ## Review focus
 
-When reviewing PRs to the `release` branch focus on flagging breaking changes and security issues in the broader context, as PRs to the `release` branch are normally bigger and include a cummulative change from a number of PRs.
+When reviewing PRs to the `release` branch focus on flagging breaking changes and security issues in the broader context, as PRs to the `release` branch are normally bigger and include a cumulative change from a number of PRs.
