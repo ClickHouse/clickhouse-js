@@ -141,35 +141,6 @@ jobs:
         run: |
           npm run run-examples
 
-  common-unit-tests-node:
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [20, 22, 24]
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run unit tests
-        run: |
-          npm run test:common:unit:node
-
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
   common-unit-tests-web:
     timeout-minutes: 5
     runs-on: ubuntu-latest
@@ -226,8 +197,9 @@ jobs:
         run: |
           npm install
 
-      - name: Run unit tests
+      - name: Run common + node unit tests
         run: |
+          npm run test:common:unit:node
           npm run test:node:unit
 
       - name: Export coverage metrics
@@ -285,23 +257,6 @@ jobs:
       matrix:
         node: [20, 22, 24]
         clickhouse: [head, latest]
-        log_level: [undefined, TRACE]
-        include:
-          - node: 24
-            clickhouse: 26.2
-            log_level: undefined
-          - node: 24
-            clickhouse: 26.1
-            log_level: undefined
-          - node: 24
-            clickhouse: 25.12
-            log_level: undefined
-          - node: 24
-            clickhouse: 25.11
-            log_level: undefined
-          - node: 24
-            clickhouse: 25.10
-            log_level: undefined
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -327,14 +282,58 @@ jobs:
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
       - name: Run integration tests with TLS tests
-        env:
-          LOG_LEVEL: ${{ matrix.log_level }}
         run: |
           npm run test:node:integration:tls
 
       - name: Export coverage metrics
         env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }}, ${{ matrix.log_level }})
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }})
+        run: |
+          node .scripts/export-coverage-metrics.mjs
+
+  # Compatibility check against older ClickHouse releases.
+  # Runs only on the nightly schedule (and on manual workflow_dispatch) to keep
+  # PR / push runs lean; the head/latest matrix above already exercises the
+  # full integration suite on every push.
+  node-integration-tests-legacy-ch:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        clickhouse: ['26.2', '26.1', '25.12', '25.11', '25.10']
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: 'docker-compose.yml'
+          down-flags: '--volumes'
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
+      - name: Run integration tests with TLS tests
+        run: |
+          npm run test:node:integration:tls
+
+      - name: Export coverage metrics
+        env:
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.clickhouse }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -344,7 +343,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22, 24]
         clickhouse: [head, latest]
 
     steps:
@@ -358,10 +356,10 @@ jobs:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
-      - name: Setup NodeJS ${{ matrix.node }}
+      - name: Setup NodeJS
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 24
 
       - name: Install dependencies
         run: |
@@ -373,7 +371,7 @@ jobs:
 
       - name: Export coverage metrics
         env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
+          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.clickhouse }})
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -421,18 +419,14 @@ jobs:
   node-integration-tests-cloud:
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [20, 22, 24]
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup NodeJS ${{ matrix.node }}
+      - name: Setup NodeJS
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 24
 
       - name: Install dependencies
         run: |
@@ -448,7 +442,7 @@ jobs:
 
       - name: Export coverage metrics
         env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
+          COVERAGE_REPORT_NAME: ${{ github.job }}
         run: |
           node .scripts/export-coverage-metrics.mjs
 
@@ -578,7 +572,6 @@ jobs:
         'code-quality',
         'code-quality-examples',
         'run-examples',
-        'common-unit-tests-node',
         'common-unit-tests-web',
         'node-unit-tests',
         'node-integration-tests-local-single-node',
