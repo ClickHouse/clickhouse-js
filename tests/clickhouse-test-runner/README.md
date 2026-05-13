@@ -17,14 +17,21 @@ itself.
 
 ## Build
 
+This package is a workspace of the root `clickhouse-js` repository, so it
+installs alongside (and is linked against) the local `@clickhouse/client` and
+`@clickhouse/client-common` packages. Install + build everything from the
+repo root:
+
 ```bash
-cd tests/clickhouse-test-runner
+cd /path/to/clickhouse-js
 npm install
 npm run build
 ```
 
-The build emits `dist/main.js`, which is the entry point used by the
-`bin/clickhouse` shim.
+The build emits `tests/clickhouse-test-runner/dist/main.js`, which is the
+entry point used by the `bin/clickhouse` shim. Building from the root also
+compiles `@clickhouse/client` and `@clickhouse/client-common` so the harness
+exercises the local checkout instead of the last published version on npm.
 
 ## Wrapper executable
 
@@ -35,6 +42,12 @@ The build emits `dist/main.js`, which is the entry point used by the
   ever asks for `listen_host` (we always answer `127.0.0.1`).
 - Forwards every other invocation to `node dist/main.js` with the original
   arguments.
+
+`bin/clickhouse-client` is a symlink to `bin/clickhouse` so that the upstream
+runner's `clickhouse-client` invocations resolve to the same shim. Both names
+must be on `PATH` because `tests/clickhouse-test` calls
+`clickhouse extract-from-config` during setup but uses `clickhouse-client` to
+actually run queries.
 
 To make the official runner use this shim, prepend `bin/` to `PATH` **only in
 the shell session that runs the tests** so you don't shadow a real
@@ -97,7 +110,10 @@ The workflow `.github/workflows/upstream-sql-tests.yml` runs this harness in CI:
 
 ## Local development
 
-From this directory:
+This package is a workspace of the root `clickhouse-js` repository. Install
+dependencies once from the repo root (`npm install`) so that
+`@clickhouse/client` and `@clickhouse/client-common` are linked from the
+local checkout. The following scripts can then be run from this directory:
 
 - `npm run build` — compile TypeScript to `dist/`.
 - `npm run typecheck` — run `tsc --noEmit`.

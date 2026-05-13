@@ -10,12 +10,6 @@ UPSTREAM_CLICKHOUSE_DIR="${UPSTREAM_CLICKHOUSE_DIR:-${RUNNER_DIR}/.upstream/Clic
 CLICKHOUSE_CLIENT_CLI_LOG="${CLICKHOUSE_CLIENT_CLI_LOG:-${RUNNER_DIR}/.upstream/clickhouse-client-cli.log}"
 UPSTREAM_TEST_LIST="${UPSTREAM_TEST_LIST:-${RUNNER_DIR}/upstream-allowlist.txt}"
 
-# Build the runner if needed
-if [[ ! -f "${RUNNER_DIR}/dist/main.js" ]]; then
-  echo "Building clickhouse-test-runner..." >&2
-  (cd "$RUNNER_DIR" && npm install && npm run build)
-fi
-
 # Verify upstream ClickHouse directory
 if [[ ! -x "${UPSTREAM_CLICKHOUSE_DIR}/tests/clickhouse-test" ]]; then
   echo "Error: ${UPSTREAM_CLICKHOUSE_DIR}/tests/clickhouse-test not found or not executable." >&2
