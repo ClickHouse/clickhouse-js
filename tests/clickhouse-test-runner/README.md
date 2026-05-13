@@ -43,6 +43,12 @@ exercises the local checkout instead of the last published version on npm.
 - Forwards every other invocation to `node dist/main.js` with the original
   arguments.
 
+`bin/clickhouse-client` is a symlink to `bin/clickhouse` so that the upstream
+runner's `clickhouse-client` invocations resolve to the same shim. Both names
+must be on `PATH` because `tests/clickhouse-test` calls
+`clickhouse extract-from-config` during setup but uses `clickhouse-client` to
+actually run queries.
+
 To make the official runner use this shim, prepend `bin/` to `PATH` **only in
 the shell session that runs the tests** so you don't shadow a real
 `clickhouse-client` binary you may have installed system-wide:
