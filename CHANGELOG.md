@@ -15,7 +15,7 @@ const client = createClient({
 })
 ```
 
-- The `@clickhouse/client` npm package now ships an embedded AI-agent skill, `clickhouse-js-node-troubleshooting`, under `node_modules/@clickhouse/client/skills/`. The skill is also declared in the `agents.skills` field of the package manifest for discovery tools that scan `node_modules`. This allows agentic coding tools to load focused, Node-client-specific troubleshooting guidance without any additional setup. ([#682])
+- The `@clickhouse/client` npm package now ships embedded AI-agent skills, `clickhouse-js-node-coding` and `clickhouse-js-node-troubleshooting`, under `node_modules/@clickhouse/client/skills/`. These skills are also declared in the `agents.skills` field of the package manifest for discovery tools that scan `node_modules`. This allows agentic coding tools to load focused, Node-client-specific coding and troubleshooting guidance without any additional setup. ([#682])
 
 [#682]: https://github.com/ClickHouse/clickhouse-js/pull/682
 
