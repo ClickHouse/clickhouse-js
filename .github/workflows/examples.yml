@@ -17,9 +17,6 @@ on:
       - 'LICENSE'
       - 'benchmarks/**'
 
-  schedule:
-    - cron: '0 9 * * *'
-
 concurrency:
   group: '${{ github.workflow }}-${{ github.ref }}'
   cancel-in-progress: true
