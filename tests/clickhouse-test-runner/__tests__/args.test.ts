@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseArgs } from '../src/args.js'
+import { parseArgs, extractKnownArgv } from '../src/args.js'
 import { SERVER_SETTINGS } from '../src/settings.js'
 
 describe('parseArgs', () => {
@@ -148,5 +148,67 @@ describe('parseArgs', () => {
   it('treats --max-threads=4 the same as --max_threads=4 (forwarded as server setting)', () => {
     const a = parseArgs(['--max-threads=4'])
     expect(a.serverSettings).toEqual({ max_threads: '4' })
+  })
+})
+
+describe('extractKnownArgv', () => {
+  it('returns an empty array when nothing is recognized', () => {
+    expect(extractKnownArgv([])).toEqual([])
+    expect(
+      extractKnownArgv([
+        '--max_threads=4',
+        '--brand-new-thing',
+        'xyz',
+        '00001_some_test',
+      ]),
+    ).toEqual([])
+  })
+
+  it('keeps known long options with their separate values', () => {
+    expect(
+      extractKnownArgv([
+        '--host',
+        'other',
+        '--port',
+        '9000',
+        '--max_threads=4',
+        '--user',
+        'u',
+      ]),
+    ).toEqual(['--host', 'other', '--port', '9000', '--user', 'u'])
+  })
+
+  it('keeps known long options with inline values without consuming the next token', () => {
+    expect(
+      extractKnownArgv([
+        '--host=other',
+        '--max_threads=4',
+        '--database=d',
+        'positional',
+      ]),
+    ).toEqual(['--host=other', '--database=d'])
+  })
+
+  it('keeps known short options with their values', () => {
+    expect(
+      extractKnownArgv(['-h', 'other', '-q', 'SELECT 1', '-s', '-X', 'drop']),
+    ).toEqual(['-h', 'other', '-q', 'SELECT 1', '-s'])
+  })
+
+  it('keeps boolean long options without consuming a following token', () => {
+    expect(extractKnownArgv(['--secure', '00001_some_test'])).toEqual([
+      '--secure',
+    ])
+    expect(extractKnownArgv(['--multiquery', '--multi-query'])).toEqual([
+      '--multiquery',
+      '--multi-query',
+    ])
+  })
+
+  it('stops at the -- separator', () => {
+    expect(extractKnownArgv(['--host', 'other', '--', '--user', 'u'])).toEqual([
+      '--host',
+      'other',
+    ])
   })
 })

@@ -92,6 +92,70 @@ export function printUsage(
   stream.write(USAGE_TEXT)
 }
 
+/**
+ * Returns the subset of `argv` that corresponds to recognized options
+ * (long forms in {@link KNOWN_LONG_OPTIONS} and their short aliases),
+ * preserving original token order. Tokens for unknown / dynamic options
+ * (server settings, client-only settings, positional arguments) are dropped.
+ *
+ * Used for diagnostic logging so we don't blanket-log every argument
+ * passed to the harness.
+ */
+export function extractKnownArgv(argv: string[]): string[] {
+  const out: string[] = []
+  let i = 0
+  while (i < argv.length) {
+    const arg = argv[i]
+    if (arg === undefined) {
+      i++
+      continue
+    }
+    if (arg === '--') {
+      break
+    }
+
+    if (arg.startsWith('--')) {
+      const eq = arg.indexOf('=')
+      const name = eq >= 0 ? arg.substring(2, eq) : arg.substring(2)
+      if (name.length > 0 && LONG_HAS_ARG.has(name)) {
+        out.push(arg)
+        const hasArg = LONG_HAS_ARG.get(name) === true
+        if (hasArg && eq < 0) {
+          const next = argv[i + 1]
+          if (next !== undefined) {
+            out.push(next)
+            i++
+          }
+        }
+      }
+      i++
+      continue
+    }
+
+    if (arg.startsWith('-') && arg.length > 1) {
+      const shortName = arg.substring(1)
+      const longName = SHORT_TO_LONG.get(shortName)
+      if (longName !== undefined) {
+        out.push(arg)
+        const hasArg = LONG_HAS_ARG.get(longName) === true
+        if (hasArg) {
+          const next = argv[i + 1]
+          if (next !== undefined) {
+            out.push(next)
+            i++
+          }
+        }
+      }
+      i++
+      continue
+    }
+
+    // Positional: ignored.
+    i++
+  }
+  return out
+}
+
 export function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = {
     host: 'localhost',

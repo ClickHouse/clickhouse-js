@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs'
-import { parseArgs, printUsage } from './args.js'
+import { parseArgs, printUsage, extractKnownArgv } from './args.js'
 import { appendLog, resolveLogPath, safeForLog } from './log.js'
 import { splitQueries } from './split-queries.js'
 import { handleExtractFromConfig } from './extract-from-config.js'
@@ -17,7 +17,10 @@ async function main(): Promise<void> {
   const logPath = resolveLogPath()
   appendLog(logPath, '=== clickhouse-client invocation ===')
   appendLog(logPath, 'timestamp=' + new Date().toISOString())
-  appendLog(logPath, 'argv=' + JSON.stringify(argv))
+  const knownArgv = extractKnownArgv(argv)
+  if (knownArgv.length > 0) {
+    appendLog(logPath, 'known_argv=' + JSON.stringify(knownArgv))
+  }
 
   let args
   try {
