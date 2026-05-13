@@ -79,7 +79,8 @@
     "vitest": "^4.0.16"
   },
   "workspaces": [
-    "./packages/*"
+    "./packages/*",
+    "./tests/clickhouse-test-runner"
   ],
   "files": [
     "dist"

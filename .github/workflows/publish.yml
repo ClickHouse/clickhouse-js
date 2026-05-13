@@ -1,9 +1,10 @@
 name: 'publish'
 
 # As NPM only supports a single workflow for publishing packages,
-# this workflow is both triggered on push to main and manually.
+# this workflow is both triggered on push to the `release` branch and manually.
 # When triggered manually, it will publish with the "latest" tag,
-# and when triggered on push to main, it will publish with the "head" tag.
+# and when triggered on push to `release`, it will publish with the "head" tag.
+# The `main` branch is reserved for development and does not publish.
 # For both it uses NPM OIDC authentication with provenance support
 
 permissions:
@@ -19,7 +20,7 @@ on:
   # for the head workflow
   push:
     branches:
-      - main
+      - release
     # Only run the head publishing workflow when files relevant to the
     # published packages change. The web and node packages depend on the
     # common package, so any change under packages/** triggers an
@@ -37,7 +38,7 @@ on:
 
 jobs:
   head:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/release' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -70,7 +71,7 @@ jobs:
             --tag head
 
   latest:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/release' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required to push the release git tag
