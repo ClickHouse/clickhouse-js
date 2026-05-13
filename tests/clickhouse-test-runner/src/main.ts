@@ -17,7 +17,6 @@ async function main(): Promise<void> {
   const logPath = resolveLogPath()
   appendLog(logPath, '=== clickhouse-client invocation ===')
   appendLog(logPath, 'timestamp=' + new Date().toISOString())
-  appendLog(logPath, 'argv=' + JSON.stringify(argv))
 
   let args
   try {

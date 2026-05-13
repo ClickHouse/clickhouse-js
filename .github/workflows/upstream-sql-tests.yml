@@ -86,7 +86,6 @@ jobs:
           down-flags: '--volumes'
 
       - name: Build test runner
-        working-directory: tests/clickhouse-test-runner
         run: |
           npm install
           npm run build
