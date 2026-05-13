@@ -78,8 +78,15 @@ export function createTestClient<Stream = unknown>(
       clickhouse_settings: clickHouseSettings,
     }) as ClickHouseClient<Stream>
   } else {
+    // The local cluster entrypoint (nginx round-robin LB) is exposed on a different
+    // host port than the single-node setup so both can run side by side.
+    // See docker-compose.yml for the full port mapping.
+    const url =
+      env === TestEnv.LocalCluster
+        ? 'http://127.0.0.1:8127'
+        : 'http://127.0.0.1:8123'
     return (globalThis as any).environmentSpecificCreateClient({
-      url: 'http://127.0.0.1:8123',
+      url,
       database: databaseName,
       log,
       ...config,

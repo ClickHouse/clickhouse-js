@@ -1,3 +1,63 @@
+# 1.18.5
+
+## Improvements
+
+- (Node.js only) Added `max_response_headers_size` client option that forwards the [`maxHeaderSize`](https://nodejs.org/api/http.html#httprequesturl-options-callback) option to the underlying `http(s).request` call. This raises the per-request limit on the total size of HTTP response headers received from the server (Node.js default is ~16 KB). It is most useful when running long-running queries with `send_progress_in_http_headers` enabled — the `X-ClickHouse-Progress` headers accumulate over the lifetime of the request and can exceed the default limit, causing the request to fail with `HPE_HEADER_OVERFLOW`. Setting this option avoids the need to use the global `--max-http-header-size` Node.js CLI flag or the `NODE_OPTIONS` environment variable. Has no effect for the Web client (which uses `fetch`) and no effect when a custom `http_agent` is configured with a request implementation that does not honor the option.
+
+```ts
+const client = createClient({
+  request_timeout: 400_000,
+  max_response_headers_size: 1024 * 1024, // accept up to 1 MiB of response headers
+  clickhouse_settings: {
+    send_progress_in_http_headers: 1,
+    http_headers_progress_interval_ms: '110000',
+  },
+})
+```
+
+- The `@clickhouse/client` npm package now ships embedded AI-agent skills, `clickhouse-js-node-coding` and `clickhouse-js-node-troubleshooting`, under `node_modules/@clickhouse/client/skills/`. These skills are also declared in the `agents.skills` field of the package manifest for discovery tools that scan `node_modules`. This allows agentic coding tools to load focused, Node-client-specific coding and troubleshooting guidance without any additional setup. ([#682])
+
+[#682]: https://github.com/ClickHouse/clickhouse-js/pull/682
+
+# 1.18.4
+
+A release-infrastructure-only version bump (no user-facing changes). See 1.18.5 for the next release with user-facing improvements.
+
+# 1.18.3
+
+## Improvements
+
+- Added `keep_alive.eagerly_destroy_stale_sockets` option (Node.js only, default: `false`). When enabled, sockets that have been idle for longer than `idle_socket_ttl` are destroyed immediately before each request, rather than waiting for the idle timeout to fire. This helps reclaim stale sockets during event loop delays, where the timeout callback may not run on time.
+
+```ts
+const client = createClient({
+  keep_alive: {
+    enabled: true,
+    idle_socket_ttl: 2500,
+    eagerly_destroy_stale_sockets: true,
+  },
+})
+```
+
+- Added auto-detection and warning when `request_timeout` is high (> 60 seconds) but progress headers are not configured. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. The client now warns users to enable `send_progress_in_http_headers` and `http_headers_progress_interval_ms` settings to prevent such issues.
+
+```ts
+// This will now trigger a warning
+const client = createClient({
+  request_timeout: 120_000, // 120 seconds
+  // send_progress_in_http_headers is not configured
+})
+
+// ✓ Properly configured to avoid load balancer timeouts
+const client = createClient({
+  request_timeout: 400_000,
+  clickhouse_settings: {
+    send_progress_in_http_headers: 1,
+    http_headers_progress_interval_ms: '110000', // ~10s below LB timeout
+  },
+})
+```
+
 # 1.18.2
 
 ## Improvements
@@ -40,7 +100,7 @@ Example log message:
 
 ```json
 {
-  "message": "Ping: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://c.house/js_keep_alive_econnreset for more details.",
+  "message": "Ping: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/keep_alive_timeout.md for more details.",
   "args": {
     "operation": "Ping",
     "connection_id": "8dc1c9bd-7895-49b1-8a95-276470151c65",
@@ -570,7 +630,7 @@ Complete reference:
 | ------------------------------- | --------------------- | --------------------------- | ----------------- | --------------- |
 | JSON                            | ResponseJSON\<T\>     | never                       | never             | never           |
 | JSONObjectEachRow               | Record\<string, T\>   | never                       | never             | never           |
-| All other JSON\*EachRow         | Array\<T\>            | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | T               |
+| All other `JSON*EachRow`        | Array\<T\>            | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | T               |
 | CSV/TSV/CustomSeparated/Parquet | never                 | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | never           |
 
 By default, `T` (which represents `JSONType`) is still `unknown`. However, considering `JSONObjectsEachRow` example: prior to 1.0.0, you had to specify the entire type hint, including the shape of the data, manually:
@@ -843,7 +903,7 @@ await client.insert({
 
 See also the new examples:
 
-- [Including specific columns or excluding certain ones instead](./examples/insert_exclude_columns.ts)
+- [Including specific columns](./examples/insert_specific_columns.ts) or [excluding certain ones instead](./examples/insert_exclude_columns.ts)
 - [Leveraging this feature](./examples/insert_ephemeral_columns.ts) when working with
   [ephemeral columns](https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral)
   ([#217](https://github.com/ClickHouse/clickhouse-js/issues/217))
