@@ -22,7 +22,7 @@ fi
 
 if [[ ! -f "${ENTRYPOINT}" ]]; then
   echo "Entry point not found: ${ENTRYPOINT}" >&2
-  echo "Build it first: (cd ${SCRIPT_DIR}/.. && npm install && npm run build)" >&2
+  echo "Build it first from the repo root: (cd ${SCRIPT_DIR}/../../.. && npm install && npm run build)" >&2
   exit 1
 fi
 

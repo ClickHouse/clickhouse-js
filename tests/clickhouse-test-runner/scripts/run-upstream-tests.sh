@@ -10,10 +10,14 @@ UPSTREAM_CLICKHOUSE_DIR="${UPSTREAM_CLICKHOUSE_DIR:-${RUNNER_DIR}/.upstream/Clic
 CLICKHOUSE_CLIENT_CLI_LOG="${CLICKHOUSE_CLIENT_CLI_LOG:-${RUNNER_DIR}/.upstream/clickhouse-client-cli.log}"
 UPSTREAM_TEST_LIST="${UPSTREAM_TEST_LIST:-${RUNNER_DIR}/upstream-allowlist.txt}"
 
-# Build the runner if needed
+# Build the runner if needed. The runner is a workspace of the root
+# clickhouse-js package, so install + build from the repo root to ensure
+# @clickhouse/client and @clickhouse/client-common are linked from the
+# local checkout (and built) instead of resolved from the npm registry.
+REPO_ROOT="$(cd "${RUNNER_DIR}/../.." && pwd)"
 if [[ ! -f "${RUNNER_DIR}/dist/main.js" ]]; then
   echo "Building clickhouse-test-runner..." >&2
-  (cd "$RUNNER_DIR" && npm install && npm run build)
+  (cd "$REPO_ROOT" && npm install && npm run build)
 fi
 
 # Verify upstream ClickHouse directory
