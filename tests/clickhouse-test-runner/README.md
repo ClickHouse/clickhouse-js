@@ -38,9 +38,9 @@ The build emits `dist/main.js`, which is the entry point used by the
 
 `bin/clickhouse-client` is a symlink to `bin/clickhouse` so that the upstream
 runner's `clickhouse-client` invocations resolve to the same shim. Both names
-must be on `PATH` because `tests/clickhouse-test` calls `clickhouse
-extract-from-config` during setup but uses `clickhouse-client` to actually run
-queries.
+must be on `PATH` because `tests/clickhouse-test` calls
+`clickhouse extract-from-config` during setup but uses `clickhouse-client` to
+actually run queries.
 
 To make the official runner use this shim, prepend `bin/` to `PATH` **only in
 the shell session that runs the tests** so you don't shadow a real
