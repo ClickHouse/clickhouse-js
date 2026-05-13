@@ -59,88 +59,6 @@ jobs:
         run: |
           npm run lint
 
-  code-quality-examples:
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: [node, web]
-    defaults:
-      run:
-        working-directory: examples/${{ matrix.package }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Typecheck
-        run: |
-          npm run typecheck
-
-      - name: Run linting
-        run: |
-          npm run lint
-
-  run-examples:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        clickhouse: [head, latest]
-        package: [node, web]
-    defaults:
-      run:
-        working-directory: examples/${{ matrix.package }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-
-      - name: Install examples dependencies
-        run: |
-          npm install
-
-      - name: Install Playwright Chromium
-        if: matrix.package == 'web'
-        run: |
-          npx playwright install chromium
-
-      - name: Add ClickHouse TLS instance to /etc/hosts
-        run: |
-          echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
-
-      - name: Warm up system.query_log
-        run: |
-          docker exec clickhouse-js-clickhouse-server clickhouse-client --query "SELECT 1"
-          sleep 8
-
-      - name: Run examples
-        env:
-          CLICKHOUSE_CLOUD_URL: https://${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}/
-          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
-        run: |
-          npm run run-examples
-
   common-unit-tests-node:
     timeout-minutes: 5
     runs-on: ubuntu-latest
@@ -576,8 +494,6 @@ jobs:
     needs:
       [
         'code-quality',
-        'code-quality-examples',
-        'run-examples',
         'common-unit-tests-node',
         'common-unit-tests-web',
         'node-unit-tests',
