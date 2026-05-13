@@ -37,13 +37,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        impl: [client, http]
         clickhouse: [head, latest]
         # Round-robin shards keep each job at roughly one minute so the
         # upstream SQL tests no longer dominate PR CI runtime. Bump
         # `shard` and `SHARD_TOTAL` together if the allowlist grows enough
         # that per-shard runtime climbs back above ~1 minute.
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Checkout clickhouse-js
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -87,7 +86,6 @@ jobs:
           down-flags: '--volumes'
 
       - name: Build test runner
-        working-directory: tests/clickhouse-test-runner
         run: |
           npm install
           npm run build
@@ -99,10 +97,9 @@ jobs:
       - name: Run upstream SQL tests
         id: run-tests
         env:
-          CLICKHOUSE_CLIENT_CLI_IMPL: ${{ matrix.impl }}
           CLICKHOUSE_CLIENT_CLI_LOG: ${{ github.workspace }}/upstream-run.log
           SHARD_INDEX: ${{ matrix.shard }}
-          SHARD_TOTAL: 3
+          SHARD_TOTAL: 10
         run: |
           bash tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
 
@@ -110,7 +107,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: upstream-sql-tests-${{ matrix.impl }}-${{ matrix.clickhouse }}-shard-${{ matrix.shard }}
+          name: upstream-sql-tests-${{ matrix.clickhouse }}-shard-${{ matrix.shard }}
           retention-days: 14
           if-no-files-found: ignore
           path: |
