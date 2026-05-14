@@ -544,7 +544,7 @@ export class SocketPool {
         } catch (e) {
           if (log_level <= ClickHouseLogLevel.ERROR) {
             log_writer.error({
-              message: `${op}: an error occurred while housekeeping the idle sockets`,
+              message: `${op}: An error occurred while housekeeping the idle sockets`,
               err: e as Error,
               args: {
                 operation: op,
@@ -686,7 +686,7 @@ export class SocketPool {
         } catch (e) {
           if (log_level <= ClickHouseLogLevel.ERROR) {
             log_writer.error({
-              message: `${op}: an error occurred while ending the request without body`,
+              message: `${op}: An error occurred while ending the request without body`,
               err: e as Error,
               args: {
                 operation: op,
