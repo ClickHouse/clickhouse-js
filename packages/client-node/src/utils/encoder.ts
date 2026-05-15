@@ -1,10 +1,11 @@
-import type {
-  DataFormat,
-  InsertValues,
-  JSONHandling,
-  ValuesEncoder,
-} from '@clickhouse/client-common'
-import { encodeJSON, isSupportedRawFormat } from '@clickhouse/client-common'
+import type { DataFormat } from '../common/data_formatter/formatter'
+import type { InsertValues } from '../common/clickhouse_types'
+import type { JSONHandling } from '../common/parse/json_handling'
+import type { ValuesEncoder } from '../common/config'
+import {
+  encodeJSON,
+  isSupportedRawFormat,
+} from '../common/data_formatter/formatter'
 import Stream from 'stream'
 import { isStream, mapStream } from './stream'
 
