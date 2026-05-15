@@ -74,6 +74,10 @@ describe('toSearchParams', () => {
         extremes: 1,
         enable_optimize_predicate_expression: 0,
         wait_end_of_query: 1,
+        compress: 1,
+        decompress: 1,
+        quota_key: 'my-quota-key',
+        buffer_size: 1048576,
       },
       query_params: {
         qaz: 'qux',
@@ -85,12 +89,16 @@ describe('toSearchParams', () => {
     })!
     const result = toSortedArray(params)
     expect(result).toEqual([
+      ['buffer_size', '1048576'],
+      ['compress', '1'],
       ['database', 'some_db'],
+      ['decompress', '1'],
       ['enable_optimize_predicate_expression', '0'],
       ['extremes', '1'],
       ['param_qaz', 'qux'],
       ['query', 'SELECT * FROM system.query_log'],
       ['query_id', 'my-query-id'],
+      ['quota_key', 'my-quota-key'],
       ['role', 'my-role-1'],
       ['role', 'my-role-2'],
       ['session_id', 'my-session-id'],
