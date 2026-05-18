@@ -1,0 +1,34 @@
+{
+  "name": "clickhouse-js-node-troubleshooting",
+  "version": "0.1.0",
+  "description": "Troubleshoot common issues with the ClickHouse Node.js client (@clickhouse/client): socket hang-up errors, ECONNRESET, type mismatches, read-only users, proxy paths, TLS, compression, logging, and query parameters.",
+  "author": {
+    "name": "ClickHouse Inc",
+    "url": "https://clickhouse.com"
+  },
+  "homepage": "https://clickhouse.com/docs/integrations/javascript",
+  "repository": "https://github.com/ClickHouse/clickhouse-js",
+  "license": "Apache-2.0",
+  "keywords": [
+    "clickhouse",
+    "javascript",
+    "nodejs",
+    "client",
+    "troubleshooting"
+  ],
+  "skills": "./",
+  "interface": {
+    "displayName": "ClickHouse JS Node Troubleshooting",
+    "shortDescription": "Troubleshoot @clickhouse/client Node.js issues.",
+    "longDescription": "Use ClickHouse JS Node Troubleshooting for Node.js client failures such as socket hang-ups, ECONNRESET, type mismatches, read-only user compression issues, proxy/pathname confusion, TLS errors, logging gaps, and query parameter problems.",
+    "developerName": "ClickHouse Inc",
+    "category": "Database",
+    "capabilities": ["Read"],
+    "websiteURL": "https://clickhouse.com/docs/integrations/javascript",
+    "defaultPrompt": [
+      "Troubleshoot this ClickHouse Node.js client error.",
+      "Diagnose why @clickhouse/client is failing in Node.js."
+    ],
+    "brandColor": "#FFCC01"
+  }
+}

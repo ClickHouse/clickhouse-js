@@ -1,0 +1,28 @@
+{
+  "name": "clickhouse-js-node-coding",
+  "version": "0.1.0",
+  "description": "Write idiomatic application code with the ClickHouse Node.js client (@clickhouse/client): configuration, inserts, selects, query parameters, sessions, and modern data types.",
+  "author": {
+    "name": "ClickHouse Inc",
+    "url": "https://clickhouse.com"
+  },
+  "homepage": "https://clickhouse.com/docs/integrations/javascript",
+  "repository": "https://github.com/ClickHouse/clickhouse-js",
+  "license": "Apache-2.0",
+  "keywords": ["clickhouse", "javascript", "nodejs", "client", "database"],
+  "skills": "./",
+  "interface": {
+    "displayName": "ClickHouse JS Node Coding",
+    "shortDescription": "Write application code with @clickhouse/client.",
+    "longDescription": "Use ClickHouse JS Node Coding for idiomatic Node.js client usage, including client configuration, inserts, selects, formats, query parameters, sessions, and modern ClickHouse data types.",
+    "developerName": "ClickHouse Inc",
+    "category": "Database",
+    "capabilities": ["Read"],
+    "websiteURL": "https://clickhouse.com/docs/integrations/javascript",
+    "defaultPrompt": [
+      "Write Node.js code using the ClickHouse client.",
+      "Show how to query ClickHouse from Node.js."
+    ],
+    "brandColor": "#FFCC01"
+  }
+}

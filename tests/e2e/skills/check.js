@@ -47,6 +47,10 @@ const expectedSkills = fs
   .map((d) => d.name)
   .sort()
 
+function readJson(file) {
+  return JSON.parse(fs.readFileSync(file, 'utf8'))
+}
+
 check('repo skills/ directory contains at least one skill', () => {
   assert.ok(
     expectedSkills.length > 0,
@@ -54,11 +58,32 @@ check('repo skills/ directory contains at least one skill', () => {
   )
 })
 
+for (const skill of expectedSkills) {
+  check(`repo skill "${skill}" has Codex plugin metadata`, () => {
+    const manifestPath = path.join(skillsSrcDir, skill, '.codex-plugin', 'plugin.json')
+    assert.ok(
+      fs.existsSync(manifestPath),
+      `expected Codex plugin manifest at ${manifestPath}`,
+    )
+
+    const manifest = readJson(manifestPath)
+    assert.strictEqual(manifest.name, skill)
+    assert.strictEqual(manifest.skills, './')
+    assert.strictEqual(
+      manifest.interface?.category,
+      'Database',
+      `${skill} should use Database install-surface category`,
+    )
+    assert.ok(
+      fs.existsSync(path.join(skillsSrcDir, skill, manifest.skills, 'SKILL.md')),
+      `${skill} Codex skills path should resolve to SKILL.md`,
+    )
+  })
+}
+
 // @clickhouse/client (Node.js) — ships every skill from the repo `skills/` tree.
 const nodeRoot = path.join(nm, '@clickhouse', 'client')
-const nodePkg = JSON.parse(
-  fs.readFileSync(path.join(nodeRoot, 'package.json'), 'utf8'),
-)
+const nodePkg = readJson(path.join(nodeRoot, 'package.json'))
 const declaredSkills = Array.isArray(nodePkg.agents?.skills)
   ? nodePkg.agents.skills
   : []
@@ -100,6 +125,10 @@ for (const skill of declaredSkills) {
       assert.ok(
         fs.existsSync(path.join(resolved, 'SKILL.md')),
         `declared skill at ${skill.path} should contain SKILL.md`,
+      )
+      assert.ok(
+        fs.existsSync(path.join(resolved, '.codex-plugin', 'plugin.json')),
+        `declared skill at ${skill.path} should include Codex plugin metadata`,
       )
     },
   )
