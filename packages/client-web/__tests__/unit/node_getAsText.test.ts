@@ -97,7 +97,7 @@ describe('getAsText', () => {
   it('should flush the decoder at the end of the stream', async () => {
     const stream = makeStreamFromBuffers([
       new Uint8Array([0x61, 0x20, 0xe2, 0x82]), // first 2 bytes of '€'
-      // no more bytes, but the decoder should be flushed and return the butes it has buffered
+      // no more bytes, but the decoder should be flushed and return the bytes it has buffered
     ])
     const text = 'a \ufffd'
     expect(await getAsText(stream)).toBe(text)
