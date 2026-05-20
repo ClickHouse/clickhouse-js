@@ -6,11 +6,6 @@
 > - `clickhouse_setting_*` / `ch_*` URL parameters: client `>= 1.0.0`.
 > - `keep_alive.idle_socket_ttl` (Node-only): client `>= 1.0.0`.
 
-Backing examples:
-[`examples/node/coding/url_configuration.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/url_configuration.ts),
-[`examples/node/coding/clickhouse_settings.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/clickhouse_settings.ts),
-[`examples/node/coding/default_format_setting.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/default_format_setting.ts).
-
 ## Answer checklist
 
 When answering configuration questions, include the relevant points:
@@ -53,22 +48,7 @@ await client.close()
 http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]
 ```
 
-## Configuration via URL parameters
-
-A fixed allowlist of config fields can be set as URL query parameters
-(plus any key prefixed with `clickhouse_setting_` / `ch_` / `http_header_`).
-**Supported URL parameters override the corresponding values in the rest of
-the configuration object** — when they do, the client logs a warning.
-Unknown URL parameters cause `createClient` to throw
-`Unknown URL parameters: ...`
-(see [`packages/client-common/src/config.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/packages/client-common/src/config.ts) for the shared allowlist, and [`packages/client-node/src/config.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/packages/client-node/src/config.ts) for Node-specific URL parameters).
-
-Supported non-prefixed keys parsed by `client-common`: `application`,
-`session_id`, `pathname`, `access_token`, `request_timeout`,
-`max_open_connections`, `compression_request`, `compression_response`,
-`log_level`, `keep_alive_enabled`. Additionally, Node supports
-`keep_alive_idle_socket_ttl` via the Node-specific config implementation.
-Anything else must be passed via the config object on `createClient`.
+## Configuration via URL
 
 Prefer explicit object fields in application code. Use the URL form when the
 application receives one connection string from an environment variable, secret
@@ -77,27 +57,12 @@ source code — show it as a shell export and read it in Node:
 
 ```bash
 # In your shell environment / deployment config (e.g. .env, Kubernetes secret):
-export CLICKHOUSE_URL='https://bob:secret@my.host:8124/analytics?application=my_analytics_app&ch_async_insert=1&ch_wait_for_async_insert=0'
+export CLICKHOUSE_URL='https://bob:secret@my.host:8124/analytics'
 ```
 
 ```ts
 // In your Node.js code — no URL construction needed:
 const client = createClient({ url: process.env.CLICKHOUSE_URL })
-```
-
-The same connection can also be expressed as an explicit config object (useful when you want to document each field individually):
-
-```ts
-import { createClient } from '@clickhouse/client'
-
-createClient({
-  url: 'https://my.host:8124',
-  username: 'bob',
-  password: 'secret',
-  database: 'analytics',
-  application: 'my_analytics_app',
-  clickhouse_settings: { async_insert: 1, wait_for_async_insert: 0 },
-})
 ```
 
 ## Per-client vs per-request `clickhouse_settings` ⭐
@@ -112,13 +77,12 @@ for **that call only**.
 ```ts
 const client = createClient({
   clickhouse_settings: {
-    date_time_input_format: 'best_effort', // applied to every request
+    output_format_json_quote_64bit_integers: 0, // applied to every request
   },
 })
 
 const rows = await client.query({
-  query: 'SELECT number FROM system.numbers LIMIT 2',
-  format: 'JSONEachRow',
+  query: 'SELECT number FROM system.numbers LIMIT 2 FORMAT JSONEachRow',
   clickhouse_settings: {
     output_format_json_quote_64bit_integers: 1, // overrides client default for this call
   },
@@ -155,5 +119,5 @@ only needed for raw `exec()`.
   for the DB. (Symptom: "wrong database selected.") See the
   troubleshooting skill for diagnosis.
 - **Don't create a client per request.** `createClient` opens a connection
-  pool; share one client across the process and `close()` on shutdown.
+  pool; share one client across requests and `close()` on shutdown.
 - **`max_open_connections` must be `>= 1`** when set explicitly.

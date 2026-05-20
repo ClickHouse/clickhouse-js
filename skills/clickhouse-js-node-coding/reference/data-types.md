@@ -10,10 +10,6 @@
 > - `Time` / `Time64`: ClickHouse `>= 25.6` and require
 >   `enable_time_time64_type: 1`.
 
-Backing examples:
-[`examples/node/coding/dynamic_variant_json.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/dynamic_variant_json.ts),
-[`examples/node/coding/time_time64.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/time_time64.ts).
-
 ## Answer checklist
 
 When answering about storing and reading JSON objects:
@@ -21,6 +17,29 @@ When answering about storing and reading JSON objects:
 - Use the new `JSON` column type, introduced in ClickHouse `>= 24.8`.
 - Say `JSON` is no longer experimental since ClickHouse `25.3`; on older
   supported versions, enable `allow_experimental_json_type`.
+- **State the version policy in your explanation AND inline in the code.**
+  When you set `allow_experimental_json_type` (or any `allow_experimental_*_type`)
+  in code, you must do BOTH of the following:
+  1. Put an inline comment directly above the setting that names the version
+     where the type was introduced and the version where it became
+     non-experimental. The comment is the durable version provenance — it
+     lives in the user's source file long after the chat reply is gone.
+  2. Repeat the version policy in your prose reply.
+
+  For the `JSON` column type the inline comment must look like:
+
+  ```ts
+  clickhouse_settings: {
+    // JSON type introduced in ClickHouse 24.8, non-experimental since 25.3.
+    // This setting is required only on 24.8–25.2; harmless on >= 25.3.
+    allow_experimental_json_type: 1,
+  }
+  ```
+
+  Without the inline comment, a reader on a newer server has no idea the
+  setting is a no-op and a reader on an older server has no idea why it's
+  required.
+
 - Insert real JS objects with `format: 'JSONEachRow'`; do not
   `JSON.stringify()` the column value.
 - Read with a JSON output format such as `JSONEachRow` and `resultSet.json()`;
@@ -32,8 +51,10 @@ When answering about storing and reading JSON objects:
 import { createClient } from '@clickhouse/client'
 
 const client = createClient({
-  // Required only on ClickHouse < 25.3 — harmless to leave on
   clickhouse_settings: {
+    // Variant introduced in 24.1, Dynamic in 24.5, JSON in 24.8.
+    // All three are non-experimental since 25.3; these settings are
+    // required only on 24.1–25.2 and are harmless on >= 25.3.
     allow_experimental_variant_type: 1,
     allow_experimental_dynamic_type: 1,
     allow_experimental_json_type: 1,
@@ -75,6 +96,33 @@ const rs = await client.query({
   format: 'JSONEachRow',
 })
 console.log(await rs.json())
+```
+
+Outputs:
+
+```js
+;[
+  {
+    id: '1',
+    var: '42',
+    dynamic: 'foo',
+    json: { foo: 'x' },
+    'variantType(var)': 'Int64',
+    'dynamicType(dynamic)': 'String',
+    'dynamicType(json.foo)': 'String',
+    'dynamicType(json.bar)': 'None',
+  },
+  {
+    id: '2',
+    var: 'str',
+    dynamic: '144',
+    json: { bar: '10' },
+    'variantType(var)': 'String',
+    'dynamicType(dynamic)': 'Int64',
+    'dynamicType(json.foo)': 'None',
+    'dynamicType(json.bar)': 'Int64',
+  },
+]
 ```
 
 ### Notes
@@ -154,7 +202,8 @@ await client.insert({
 - Pass values as **strings** in the `HH:MM:SS[.fraction]` format. Negatives
   are supported; the magnitude can exceed 24 hours.
 - For `Time64(p)` with `p > 3`, do not use JS `Date` — it tops out at
-  millisecond precision and will silently truncate.
+  millisecond precision and will silently truncate. Store nanosecond values
+  separately and provide on stringify as needed.
 
 ## Common pitfalls
 
@@ -167,3 +216,6 @@ await client.insert({
 - **Reading a `Variant`/`Dynamic` value of type `Int64` and being surprised
   it's a string.** That's the standard 64-bit-integers-in-JSON behavior;
   see the troubleshooting skill if you need to change it.
+- **Avoid parsing Variant/Dynamic/JSON columns that mix strings and 64-bit**
+  without checking their returned types first. Otherwise a number stored in
+  a string will come back as a number or vice versa.

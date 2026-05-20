@@ -3,12 +3,6 @@
 > **Applies to:** all versions. `wait_end_of_query: 1` is a server-side
 > setting available on every supported ClickHouse version.
 
-Backing examples:
-[`examples/node/coding/insert_from_select.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_from_select.ts),
-[`examples/node/coding/insert_values_and_functions.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_values_and_functions.ts),
-[`examples/node/coding/insert_js_dates.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_js_dates.ts),
-[`examples/node/coding/insert_decimals.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_decimals.ts).
-
 ## `INSERT … SELECT` (no values payload)
 
 When the data already lives in ClickHouse, use `client.command()` with a raw
@@ -18,7 +12,7 @@ When the data already lives in ClickHouse, use `client.command()` with a raw
 await client.command({
   query: `
     INSERT INTO target
-    SELECT '42', quantilesBFloat16State(0.5)(arrayJoin([toFloat32(10), toFloat32(20)]))
+    SELECT * FROM source
   `,
 })
 ```
@@ -71,7 +65,7 @@ await client.insert({
   format: 'JSONEachRow',
   values: [{ id: '42', dt: new Date() }],
   clickhouse_settings: {
-    date_time_input_format: 'best_effort',
+    date_time_input_format: 'best_effort', // default on the Cloud
   },
 })
 ```
@@ -80,6 +74,13 @@ await client.insert({
 > `'YYYY-MM-DD'` strings for that.
 
 ## Inserting `Decimal*` values
+
+**IMPORTANT:** Make sure that the application code you're working on or the user
+prompt clearly indicates that floats are not used anywhere for decimal values.
+The most common scenario is using floats for money amounts in the app while the
+database uses `Decimal` for them. In that case, the app code should be changed
+to use a proper decimal library and serialization strategy (custom serializer
+or a class using `toJSON()`) to `string` instead of JS `number`.
 
 Decimals must be passed as **strings** in JSON formats to avoid precision
 loss in JavaScript:
@@ -130,8 +131,6 @@ const rs = await client.query({
 
 ## Common pitfalls
 
-- **Passing decimals as JS `number`s.** Anything beyond `Number.MAX_SAFE_INTEGER`
-  silently loses precision before it ever reaches the server.
 - **Using `client.insert()` for `INSERT … SELECT`.** There's nothing to
   upload — use `client.command()` with the full SQL.
 - **Forgetting `date_time_input_format: 'best_effort'`** when inserting
@@ -139,3 +138,4 @@ const rs = await client.query({
   ISO-8601 with the `T`/`Z` separators.
 - **Hand-building `VALUES` with user input.** Always parameterize user data;
   see `reference/query-parameters.md`.
+- **Using floats in the app and expect `Decimal` columns to store them safely.** Use a proper decimal library and pass them as strings to avoid precision loss.
