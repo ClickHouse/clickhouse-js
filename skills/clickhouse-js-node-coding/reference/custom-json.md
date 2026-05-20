@@ -3,9 +3,6 @@
 > **Requires:** client `>= 1.14.0` (configurable `json.parse` and
 > `json.stringify`). Earlier versions cannot swap the JSON implementation.
 
-Backing example:
-[`examples/node/coding/custom_json_handling.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/custom_json_handling.ts).
-
 ## Answer checklist
 
 When the user wants `UInt64`/`Int64` values back as `BigInt`:
@@ -66,7 +63,7 @@ const valueSerializer = (value: unknown): unknown => {
 
 const client = createClient({
   json: {
-    parse: JSON.parse,
+    parse: JSON.parse, // use default parsing
     stringify: (obj: unknown) => JSON.stringify(valueSerializer(obj)),
   },
 })
@@ -85,17 +82,12 @@ await client.insert({
   format: 'JSONEachRow',
   values: [
     {
-      id: BigInt(250000000000000200), // serialized as a string
+      id: BigInt('250000000000000200'), // serialized as a string
       dt: new Date(), // serialized as ms since epoch
     },
   ],
 })
 
-const rows = await client.query({
-  query: 'SELECT * FROM inserts_custom_json_handling',
-  format: 'JSONEachRow',
-})
-console.info(await rows.json())
 await client.close()
 ```
 
@@ -126,16 +118,64 @@ const client = createClient({
 })
 ```
 
-This applies to **both** outgoing JSON bodies and incoming JSON-format
-responses. Combine with `output_format_json_quote_64bit_integers: 0` (the
-default since CH 25.8) so the server emits unquoted 64-bit integers that
-`json-bigint` can parse to `BigInt`.
+`output_format_json_quote_64bit_integers: 0` is the default since
+ClickHouse `25.8`; setting it explicitly is useful for older servers and
+makes the example self-contained. With it off, the server emits unquoted
+64-bit integers that `json-bigint` parses straight to `BigInt`. The
+`json` option applies to **both** outgoing JSON bodies and incoming
+JSON-format responses.
+
+## Recipe: Zero-dep BigInt parsing (no `npm install`)
+
+If adding a dependency is awkward (locked lockfile, restricted environment,
+or you just don't want to pull in `json-bigint`), you can plug in a
+hand-rolled reviver. This uses the `context.source` argument that
+`JSON.parse` revivers gained in Node `>= 20.16` / `>= 21.7`, so the raw
+numeric literal is available before it's coerced to a JS `number`:
+
+```ts
+import { createClient } from '@clickhouse/client'
+
+const parseBigInt = (text: string) =>
+  JSON.parse(text, function (key, value, context) {
+    if (key.endsWith('__bigint')) {
+      return BigInt(context.source)
+    }
+    return value
+  })
+
+const client = createClient({
+  json: {
+    parse: parseBigInt,
+    stringify: JSON.stringify, // use default stringify
+  },
+  clickhouse_settings: { output_format_json_quote_64bit_integers: 0 },
+})
+
+const { data } = await client.query({
+  query: 'SELECT toUInt64(250000000000000200) AS id__bigint FORMAT JSONEachRow',
+})
+console.log(data[0].id__bigint) // 250000000000000200
+
+await client.close()
+```
+
+Trade-offs versus `json-bigint`:
+
+- ✓ No new dependency to install.
+- ✓ Only promotes known to be 64-bit integers to `BigInt`.
+- ✗ Requires Node `>= 20.16` / `>= 21.7` for the reviver `context.source`.
+  On older Node, prefer `json-bigint` or upgrade Node.
+- ✗ Outgoing `stringify` still uses default `JSON.stringify`, which throws
+  on `BigInt`. Pair with the `valueSerializer` pattern above if your
+  inserts contain `BigInt` values.
 
 ## Common pitfalls
 
 - **Setting `json.parse` only.** That only affects reading JSON responses;
   outgoing JSON bodies use `json.stringify`. If you want consistent custom
-  handling in both directions, generally provide a matching `stringify` too.
+  handling in both directions, generally provide a matching `stringify` too
+  or a throwing serializer that prevents mismatches.
 - **Forgetting `bigint` handling in `stringify`.** Default `JSON.stringify`
   throws on `BigInt`; if your data ever contains one, the insert will fail
   with `TypeError: Do not know how to serialize a BigInt`.
@@ -147,3 +187,6 @@ default since CH 25.8) so the server emits unquoted 64-bit integers that
   are silently rounded. Do **not** try to fix precision loss by calling
   `Number()`, `parseInt()`, or `parseFloat()` on the value. The correct fix
   is a `BigInt`-aware parser (shown above), not a lossy cast.
+- **Mixing BigInt and number for the same column.** If some values are `BigInt` and
+  others are `number`, your app code needs to handle both types. Otherwise
+  JavaScript will throw a `TypeError: Cannot mix BigInt and other types`.
