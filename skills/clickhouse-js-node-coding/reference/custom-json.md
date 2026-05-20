@@ -152,9 +152,11 @@ const client = createClient({
   clickhouse_settings: { output_format_json_quote_64bit_integers: 0 },
 })
 
-const { data } = await client.query({
-  query: 'SELECT toUInt64(250000000000000200) AS id__bigint FORMAT JSONEachRow',
+const resultSet = await client.query({
+  query: 'SELECT toUInt64(250000000000000200) AS id__bigint',
+  format: 'JSONEachRow',
 })
+const data = await resultSet.json()
 console.log(data[0].id__bigint) // 250000000000000200
 
 await client.close()
