@@ -11,6 +11,7 @@
     "clickhouse-js-test-runner": "./dist/main.js"
   },
   "scripts": {
+    "pack": "true",
     "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
