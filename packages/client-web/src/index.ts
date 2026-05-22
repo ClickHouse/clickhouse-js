@@ -36,6 +36,7 @@ export {
   type InputJSONObjectEachRow,
   type BaseResultSet,
   type PingResult,
+  type ResponseHeaders,
   ClickHouseError,
   parseError,
   ClickHouseLogLevel,
