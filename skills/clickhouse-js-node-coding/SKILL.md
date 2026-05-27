@@ -5,14 +5,8 @@ description: >
   (`@clickhouse/client`). Use this skill whenever a user is *building* against
   the Node.js client — configuring the client, pinging, inserting rows in JSON
   or raw formats, selecting and parsing results, binding query parameters,
-  managing sessions and temporary tables, working with data types like
-  `Date`/`DateTime`/`Decimal`/`Time`/`Time64`/`Dynamic`/`Variant`/`JSON`, or
-  customizing JSON parsing. Trigger on phrases like "how do I insert…", "how
-  do I select…", "what format should I use…", "how do I parameterize…", "how
-  do I configure the client…". Do NOT use for browser/Web client code, for
-  performance/streaming/Parquet questions (see `examples/node/performance/`),
-  or for diagnosing errors and unexpected behavior (see
-  clickhouse-js-node-troubleshooting).
+  managing sessions and temporary tables, working with data types or
+  customizing JSON parsing. Do NOT use for browser/Web client code.
 ---
 
 # ClickHouse Node.js Client — Coding
@@ -37,9 +31,9 @@ Reference: https://clickhouse.com/docs/integrations/javascript
    each relevant item; those checklists capture details users usually need but
    are easy to omit in short answers.
 2. **Always import from `@clickhouse/client`** (never `@clickhouse/client-web`)
-   and create a single client with `createClient({ url })` or rely on
+   and create a client with `createClient({ url })` or rely on
    supported defaults when appropriate. Close it with `await client.close()`
-   during graceful shutdown.
+   preferably when it's no longer needed or during graceful shutdown for global resources.
 3. **Prefer `JSONEachRow` for typical row inserts/selects** unless the user
    has already chosen another format or is streaming raw bytes (CSV / TSV /
    Parquet — see `examples/node/performance/`).
@@ -49,6 +43,12 @@ Reference: https://clickhouse.com/docs/integrations/javascript
    Always mention this when the user configures settings at the client level.
 4. **Always use `query_params` for user-supplied values** — never template-
    literal-interpolate them into SQL. See `reference/query-parameters.md`.
+   **When answering a parameter-binding question, your response must
+   explicitly name template-literal interpolation as a "SQL injection
+   risk"** — even when the user only asked about syntax and did not raise
+   security. The literal phrase "SQL injection" needs to appear; this is
+   the most common mistake from PostgreSQL/MySQL users and the security
+   framing is part of the correct answer, not an optional aside.
 5. **Pick the right method for the job:**
    - `client.insert()` — write rows.
    - `client.query()` + `resultSet.json()` / `.text()` / `.stream()` — read
@@ -67,10 +67,6 @@ Reference: https://clickhouse.com/docs/integrations/javascript
    - `Time` / `Time64` data types: ClickHouse server `>= 25.6`.
    - `Dynamic` / `Variant` / new `JSON` types: ClickHouse server `>= 24.1` /
      `24.5` / `24.8` (no longer experimental since `25.3`).
-7. **Show a runnable snippet**, not pseudo-code. The examples in
-   [`examples/node/coding/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/coding)
-   are all self-contained and runnable against the repo's `docker-compose up`
-   setup — pattern your snippet after them.
 
 ---
 
@@ -97,16 +93,13 @@ Identify the user's task and read the matching reference file.
 ## Conventions used in answers
 
 - Always show `import { createClient } from '@clickhouse/client'` (Node, never
-  Web). For things that require a runtime API, prefer `node:` built-ins
-  (e.g., `import * as crypto from 'node:crypto'`).
+  Web).
 - Always `await client.close()` at the end of self-contained snippets; in
   long-running services, close on graceful shutdown.
-- Prefer top-level `await` in snippets to match the style of
-  `examples/node/coding/*.ts`.
 - For inserts, prefer `format: 'JSONEachRow'` and `values: [...]` unless the
   user's scenario requires otherwise.
 - For selects, prefer `await (await client.query({...})).json<RowType>()` for
-  small / medium result sets; for streaming, see `examples/node/performance/`.
+  small / medium result sets; for bigger results suggest streaming.
 - When showing parameter binding, use ClickHouse's native `{name: Type}`
   syntax — never `$1`, `?`, or `:name`.
 - For DDL inside a cluster or behind a load balancer, set

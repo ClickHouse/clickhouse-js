@@ -1,3 +1,27 @@
+# 1.19.0
+
+## Breaking Changes
+
+- **Enum type parsing now correctly unescapes backslash escape sequences in enum names.** Previously, `parseEnumType` returned enum names with raw escape sequences (e.g., `f\'` instead of `f'`). Now it properly decodes escape sequences including `\'` (single quote), `\\` (backslash), `\n` (newline), `\t` (tab), and `\r` (carriage return). This matches the behavior of ClickHouse string literals and ensures consistency with how the client encodes strings when sending data to the server. If you were relying on the previous incorrect behavior where backslash escape sequences were preserved in enum names, you will need to update your code to handle properly unescaped values.
+
+Example:
+
+```ts
+// Before (incorrect):
+parseEnumType({
+  columnType: "Enum8('f\\'' = 1)",
+  sourceType: "Enum8('f\\'' = 1)",
+})
+// returned: { values: { 1: "f\\'" } }  // with backslash
+
+// After (correct):
+parseEnumType({
+  columnType: "Enum8('f\\'' = 1)",
+  sourceType: "Enum8('f\\'' = 1)",
+})
+// returns: { values: { 1: "f'" } }     // unescaped
+```
+
 # 1.18.5
 
 ## Improvements

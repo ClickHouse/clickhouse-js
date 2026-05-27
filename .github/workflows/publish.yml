@@ -5,7 +5,11 @@ name: 'publish'
 # When triggered manually, it will publish with the "latest" tag,
 # and when triggered on push to `release`, it will publish with the "head" tag.
 # The `main` branch is reserved for development and does not publish.
-# For both it uses NPM OIDC authentication with provenance support
+# For both it uses NPM OIDC authentication with provenance support.
+#
+# After a successful publish, the `e2e` job waits for the freshly published
+# version to become available on the npm registry, installs that exact
+# version into a tiny downstream project, and verifies it is usable.
 
 permissions:
   contents: read
@@ -40,6 +44,8 @@ jobs:
   head:
     if: github.ref == 'refs/heads/release' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -54,11 +60,13 @@ jobs:
         run: npm ci
 
       - name: Set head pre-release version
+        id: version
         run: |
           BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
           HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
           echo "Setting version to: $HEAD_VERSION"
           .scripts/update_version.sh "$HEAD_VERSION"
+          echo "version=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build packages
         run: npm --workspaces run build
@@ -76,6 +84,8 @@ jobs:
     permissions:
       contents: write # Required to push the release git tag
       id-token: write # Required for npm OIDC authentication and provenance
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -117,3 +127,82 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}"
           git push origin "refs/tags/${RELEASE_VERSION}"
+
+  e2e:
+    name: e2e (node ${{ matrix.node }})
+    needs: [head, latest]
+    # Run when at least one of the publish jobs succeeded. The other one is
+    # skipped (not failed) by its `if:` condition for this trigger.
+    if: |
+      always() &&
+      (needs.head.result == 'success' || needs.latest.result == 'success')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        node: [20, 22, 24]
+    defaults:
+      run:
+        working-directory: tests/e2e/install
+    env:
+      PUBLISHED_VERSION: ${{ needs.head.outputs.version || needs.latest.outputs.version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: ${{ matrix.node }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Wait for ${{ needs.head.outputs.version || needs.latest.outputs.version }} to be available on npm
+        run: |
+          set -euo pipefail
+          if [ -z "${PUBLISHED_VERSION}" ]; then
+            echo "PUBLISHED_VERSION is empty; cannot wait for npm publication." >&2
+            exit 1
+          fi
+          packages=(
+            "@clickhouse/client-common"
+            "@clickhouse/client"
+            "@clickhouse/client-web"
+          )
+          # Poll the registry for up to ~5 minutes per package. New versions
+          # usually surface in seconds, but the registry CDN can lag.
+          max_attempts=60
+          sleep_seconds=5
+          for pkg in "${packages[@]}"; do
+            echo "Waiting for ${pkg}@${PUBLISHED_VERSION} to be available on npm..."
+            attempt=1
+            while true; do
+              if npm view "${pkg}@${PUBLISHED_VERSION}" version >/dev/null 2>&1; then
+                echo "  ${pkg}@${PUBLISHED_VERSION} is available."
+                break
+              fi
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Timed out waiting for ${pkg}@${PUBLISHED_VERSION} on npm" >&2
+                exit 1
+              fi
+              echo "  attempt ${attempt}/${max_attempts}: not available yet, sleeping ${sleep_seconds}s..."
+              attempt=$((attempt + 1))
+              sleep "$sleep_seconds"
+            done
+          done
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install the packages at the published version
+        run: |
+          npm install \
+            "@clickhouse/client@${PUBLISHED_VERSION}" \
+            "@clickhouse/client-common@${PUBLISHED_VERSION}" \
+            "@clickhouse/client-web@${PUBLISHED_VERSION}"
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run client code
+        env:
+          EXPECTED_VERSION: ${{ env.PUBLISHED_VERSION }}
+        run: node src/index.ts

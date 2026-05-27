@@ -3,18 +3,19 @@ const { createClient } = require('@clickhouse/client')
 const version = require('@clickhouse/client/dist/version')
 
 async function main() {
-  const tags = await (
-    await fetch(
-      'https://registry.npmjs.org/-/package/@clickhouse/client/dist-tags',
-    )
-  ).json()
+  const expectedVersion = process.env.EXPECTED_VERSION
+  assert.ok(
+    expectedVersion,
+    'EXPECTED_VERSION environment variable must be set to the published version',
+  )
 
-  console.log(`Latest "latest" version on npm: ${tags.latest}`)
+  console.log(`Expected published version: ${expectedVersion}`)
+  console.log(`Installed @clickhouse/client version: ${version.default}`)
 
   assert.strictEqual(
     version.default,
-    tags.latest,
-    'Version should be the latest "latest" version on npm',
+    expectedVersion,
+    'Installed version should match the version published by the workflow',
   )
 
   assert.strictEqual(
