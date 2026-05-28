@@ -183,8 +183,15 @@ export class ResultSet<
     return pipeline as any
   }
 
-  async close(): Promise<void> {
+  /** See {@link BaseResultSet.rawStream}. */
+  rawStream(): ReadableStream {
     this.markAsConsumed()
+    return this._stream
+  }
+
+  async close(): Promise<void> {
+    // close() should be safe to call even after a consumer method (rawStream, stream, etc.)
+    this.isAlreadyConsumed = true
     await this._stream.cancel()
   }
 
