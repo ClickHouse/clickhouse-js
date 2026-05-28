@@ -4,14 +4,8 @@
 > ClickHouse feature; the JSON _formats_ listed here are universally supported
 > by the client.
 
-Backing examples:
-[`examples/node/coding/array_json_each_row.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/array_json_each_row.ts),
-[`examples/node/coding/insert_data_formats_overview.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_data_formats_overview.ts).
-
 > **Raw / binary formats (CSV, TSV, CustomSeparated, Parquet) require a Node
-> stream as input.** See
-> [`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance)
-> — defer if the user wants to insert from a file or `Readable`.
+> stream as input.** Suggest streaming when the user wants to insert from a file or `Readable`.
 
 ## Answer checklist
 
@@ -125,12 +119,12 @@ await client.insert({
 
 ## Quick chooser
 
-| Use case                                     | Format                                            |
-| -------------------------------------------- | ------------------------------------------------- |
-| Insert plain JS objects                      | `JSONEachRow` _(default)_                         |
-| Insert tuples / column-positional rows       | `JSONCompactEachRow`                              |
-| Insert with explicit column ordering / types | `JSONCompactEachRow*WithNames…`                   |
-| Insert a single document with metadata       | `JSON`, `JSONCompact`                             |
+| Use case                                     | Format                                                  |
+| -------------------------------------------- | ------------------------------------------------------- |
+| Insert plain JS objects                      | `JSONEachRow` _(default)_                               |
+| Insert tuples / column-positional rows       | `JSONCompactEachRow`                                    |
+| Insert with explicit column ordering / types | `JSONCompactEachRow*WithNames…`                         |
+| Insert a single document with metadata       | `JSON`, `JSONCompact`                                   |
 | Insert from a CSV / TSV / Parquet file       | Raw format + Node stream → `examples/node/performance/` |
 
 ## Common pitfalls
@@ -143,3 +137,6 @@ await client.insert({
   `JSONColumnsWithMetadata`).
 - For type guidance (`Decimal` strings, `Date` objects, `BigInt`), see
   `insert-values.md` and `custom-json.md`.
+- **Use runtime type checkers like `zod` or `io-ts` if your app ingests untrusted JSON.**
+  It's easier to debug mismatches between your data and the format's expected shape with a validation library used at the place of ingestion than with ClickHouse errors.
+  This is especially true in the middle of a large insert batch or streaming operation.

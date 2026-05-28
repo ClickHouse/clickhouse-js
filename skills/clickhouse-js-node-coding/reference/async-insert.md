@@ -3,9 +3,6 @@
 > **Applies to:** all client versions; the relevant settings are server-side.
 > See https://clickhouse.com/docs/en/optimize/asynchronous-inserts.
 
-Backing example:
-[`examples/node/coding/async_insert.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/async_insert.ts).
-
 > **When to use async inserts:** when many small inserts arrive concurrently
 > (e.g., one per HTTP request) and you don't want to maintain a client-side
 > batching layer. ClickHouse will batch them server-side. This is also the
@@ -13,12 +10,11 @@ Backing example:
 
 > **When _not_ to use async inserts:** when you already build large batches
 > client-side (e.g., from a stream). Plain inserts are simpler and lower
-> latency. For raw throughput tuning of large async-insert workloads, see
-> [`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance).
+> latency.
 
 ## Setup
 
-Enable on the client (or per-request) via `clickhouse_settings`:
+Enable on the client level or per-request via `clickhouse_settings`:
 
 ```ts
 import { createClient, ClickHouseError } from '@clickhouse/client'
@@ -89,6 +85,9 @@ await client.command({
 })
 ```
 
+Even better is to create a specialized client for inserts with the appropriate async
+settings and a separate client for DDL and other queries.
+
 ## Common pitfalls
 
 - **Setting `async_insert` per call but expecting client-side batching.**
@@ -101,3 +100,8 @@ await client.command({
   failures will not surface to the client.
 - **Not handling `ClickHouseError`.** It exposes `err.code`, which maps to
   rows in the `system.errors` table — use it to decide whether to retry.
+
+## See also
+
+- For raw throughput tuning of large async-insert workloads,
+  see [`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance).

@@ -4,11 +4,6 @@
 > `>= 1.7.0`; see the in-repo performance examples under
 > `examples/node/performance/`.
 
-Backing examples:
-[`examples/node/coding/select_json_each_row.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/select_json_each_row.ts),
-[`examples/node/coding/select_data_formats_overview.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/select_data_formats_overview.ts),
-[`examples/node/coding/select_json_with_metadata.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/select_json_with_metadata.ts).
-
 ## Default choice: `JSONEachRow` → `.json<T>()`
 
 Right answer for ~90% of selects when the result fits in memory.
@@ -27,6 +22,9 @@ const rows = await client.query({
 })
 const result = await rows.json<Row>() // Row[]
 result.forEach((r) => console.log(r))
+// { number: '0' }
+// { number: '1' }
+// ...
 await client.close()
 ```
 

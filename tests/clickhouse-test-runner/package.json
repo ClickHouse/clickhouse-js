@@ -1,6 +1,7 @@
 {
   "name": "@clickhouse/clickhouse-test-runner",
   "private": true,
+  "version": "0.0.0",
   "description": "Node.js port of ClickHouse/clickhouse-java tests/clickhouse-client harness",
   "engines": {
     "node": ">=20.19.0"
@@ -10,6 +11,7 @@
     "clickhouse-js-test-runner": "./dist/main.js"
   },
   "scripts": {
+    "pack": "true",
     "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",

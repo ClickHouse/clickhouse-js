@@ -6,17 +6,16 @@
 > `Array`/`Tuple`/`Map` parameters fixed in `>= 1.13.0`. `BigInt` query
 > parameters `>= 1.15.0`.
 
-Backing examples:
-[`examples/node/coding/query_with_parameter_binding.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/query_with_parameter_binding.ts),
-[`examples/node/coding/query_with_parameter_binding_special_chars.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/query_with_parameter_binding_special_chars.ts).
-
 ## Answer checklist
 
 When the user passes user-controlled values into SQL:
 
 - Use ClickHouse `{name: Type}` placeholders and a `query_params` object.
-- Explicitly call template-literal/string interpolation of user input a
-  **SQL injection risk**.
+- **Your response must explicitly name template-literal / string
+  interpolation of user input as a SQL injection risk** — even when the
+  user only asked "how do I bind values" and did not mention security.
+  This is non-negotiable: the security framing is part of the right
+  answer, not an optional aside.
 - Do not suggest PostgreSQL/MySQL-style `$1`, `?`, or `:name` placeholders.
 - Pick the placeholder type to match the ClickHouse column type (`String`,
   `Date`, `DateTime`, `Nullable(T)`, etc.).
@@ -42,8 +41,9 @@ Interpolating user input into the SQL string bypasses server-side escaping
 and opens the door to SQL injection:
 
 ```ts
-// ❌ Dangerous — never do this with user-controlled values
 const userId = req.params.id
+
+// ❌ Dangerous — never do this with user-controlled values
 await client.query({ query: `SELECT * FROM users WHERE id = ${userId}` })
 
 // ✓ Safe — parameterized
