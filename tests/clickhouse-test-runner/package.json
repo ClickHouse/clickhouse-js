@@ -1,7 +1,7 @@
 {
   "name": "@clickhouse/clickhouse-test-runner",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.20.0",
   "description": "Node.js port of ClickHouse/clickhouse-java tests/clickhouse-client harness",
   "engines": {
     "node": ">=20.19.0"
