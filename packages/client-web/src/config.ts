@@ -3,7 +3,7 @@ import type {
   ConnectionParams,
   DataFormat,
   ImplementationDetails,
-  JSONHandling,
+  ResolvedJSONHandling,
   ResponseHeaders,
 } from '@clickhouse/client-common'
 import { WebConnection } from './connection'
@@ -33,6 +33,6 @@ export const WebImpl: ImplementationDetails<ReadableStream>['impl'] = {
     _log_error: (err: Error) => void,
     response_headers: ResponseHeaders,
   ) => new ResultSet(stream, format, query_id, response_headers)) as any,
-  values_encoder: (jsonHandling: JSONHandling) =>
+  values_encoder: (jsonHandling: ResolvedJSONHandling) =>
     new WebValuesEncoder(jsonHandling),
 }

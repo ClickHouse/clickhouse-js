@@ -1,4 +1,4 @@
-import type { JSONHandling } from '../parse'
+import type { ResolvedJSONHandling } from '../parse'
 
 export const StreamableJSONFormats = [
   'JSONEachRow',
@@ -117,7 +117,7 @@ export function validateStreamFormat(
 export function encodeJSON(
   value: any,
   format: DataFormat,
-  stringifyFn: JSONHandling['stringify'],
+  stringifyFn: ResolvedJSONHandling['stringify'],
 ): string {
   if ((SupportedJSONFormats as readonly string[]).includes(format)) {
     return stringifyFn(value) + '\n'

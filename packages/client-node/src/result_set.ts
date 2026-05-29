@@ -2,6 +2,7 @@ import type {
   BaseResultSet,
   DataFormat,
   JSONHandling,
+  ResolvedJSONHandling,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
@@ -66,7 +67,7 @@ export class ResultSet<
 
   private readonly exceptionTag: string | undefined = undefined
   private readonly log_error: (error: Error) => void
-  private readonly jsonHandling: JSONHandling
+  private readonly jsonHandling: ResolvedJSONHandling
   private _consumed = false
 
   constructor(
@@ -156,8 +157,10 @@ export class ResultSet<
    * and format validation. Used by `json()` which has already called
    * `markAsConsumed()` and validated the format via `isStreamableJSONFamily`.
    */
-  private _streamImpl<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
-
+  private _streamImpl<T>(): ResultStream<
+    Format,
+    StreamReadable<Row<T, Format>[]>
+  > {
     const incompleteChunks: Buffer[] = []
     const logError = this.log_error
     const exceptionTag = this.exceptionTag

@@ -6,7 +6,7 @@ export interface JSONHandling {
    * @default JSON.parse // See {@link JSON.parse}
    * @returns parsed object
    */
-  parse: <T>(input: string) => T
+  parse?: <T>(input: string) => T
   /**
    * Custom stringifier for JSON objects
    *
@@ -14,10 +14,17 @@ export interface JSONHandling {
    * @default JSON.stringify // See {@link JSON.stringify}
    * @returns stringified JSON
    */
-  stringify: <T = any>(input: T) => string // T is any because it can LITERALLY be anything
+  stringify?: <T = any>(input: T) => string // T is any because it can LITERALLY be anything
 }
 
-export const defaultJSONHandling: JSONHandling = {
+/**
+ * Internal representation of {@link JSONHandling} where every member is
+ * guaranteed to be defined — typically the result of merging a user-supplied
+ * partial {@link JSONHandling} with {@link defaultJSONHandling}.
+ */
+export type ResolvedJSONHandling = Required<JSONHandling>
+
+export const defaultJSONHandling: ResolvedJSONHandling = {
   parse: JSON.parse,
   stringify: JSON.stringify,
 }

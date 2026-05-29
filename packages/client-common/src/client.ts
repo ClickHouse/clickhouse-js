@@ -19,7 +19,7 @@ import type {
 import type { ImplementationDetails, ValuesEncoder } from './config'
 import { getConnectionParams, prepareConfigWithURL } from './config'
 import type { ConnPingResult } from './connection'
-import type { JSONHandling } from './parse/json_handling'
+import type { ResolvedJSONHandling } from './parse/json_handling'
 import type { BaseResultSet } from './result'
 
 export interface BaseQueryParams {
@@ -187,7 +187,7 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly sessionId?: string
   private readonly role?: string | Array<string>
-  private readonly jsonHandling: JSONHandling
+  private readonly jsonHandling: ResolvedJSONHandling
 
   constructor(
     config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,

@@ -2,6 +2,7 @@ import type {
   BaseResultSet,
   DataFormat,
   JSONHandling,
+  ResolvedJSONHandling,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
@@ -9,6 +10,7 @@ import type {
 } from '@clickhouse/client-common'
 import {
   CARET_RETURN,
+  defaultJSONHandling,
   extractErrorAtTheEndOfChunk,
 } from '@clickhouse/client-common'
 import {
@@ -27,17 +29,14 @@ export class ResultSet<
 
   private readonly exceptionTag: string | undefined = undefined
   private isAlreadyConsumed = false
-  private readonly jsonHandling: JSONHandling
+  private readonly jsonHandling: ResolvedJSONHandling
 
   constructor(
     private _stream: ReadableStream,
     private readonly format: Format,
     public readonly query_id: string,
     _response_headers?: ResponseHeaders,
-    jsonHandling: JSONHandling = {
-      parse: JSON.parse,
-      stringify: JSON.stringify,
-    },
+    jsonHandling?: JSONHandling,
   ) {
     this.response_headers =
       _response_headers !== undefined ? Object.freeze(_response_headers) : {}
@@ -45,7 +44,10 @@ export class ResultSet<
       | string
       | undefined
 
-    this.jsonHandling = jsonHandling
+    this.jsonHandling = {
+      ...defaultJSONHandling,
+      ...jsonHandling,
+    }
   }
 
   /** See {@link BaseResultSet.text} */

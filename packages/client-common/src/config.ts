@@ -3,7 +3,11 @@ import type { Connection, ConnectionParams } from './connection'
 import type { DataFormat } from './data_formatter'
 import type { Logger } from './logger'
 import { ClickHouseLogLevel, LogWriter } from './logger'
-import { defaultJSONHandling, type JSONHandling } from './parse/json_handling'
+import {
+  defaultJSONHandling,
+  type JSONHandling,
+  type ResolvedJSONHandling,
+} from './parse/json_handling'
 import type { BaseResultSet } from './result'
 import type { ClickHouseSettings } from './settings'
 
@@ -90,9 +94,10 @@ export interface BaseClickHouseClientConfigOptions {
   /**
    * Custom parsing when handling with JSON objects
    *
-   * Defaults to using standard `JSON.parse` and `JSON.stringify`
+   * Defaults to using standard `JSON.parse` and `JSON.stringify`.
+   * Both `parse` and `stringify` are optional, so you can pass only one of them.
    */
-  json?: Partial<JSONHandling>
+  json?: JSONHandling
 }
 
 export type MakeConnection<
@@ -109,11 +114,11 @@ export type MakeResultSet<Stream> = <
   query_id: string,
   log_error: (err: Error) => void,
   response_headers: ResponseHeaders,
-  jsonHandling: JSONHandling,
+  jsonHandling: ResolvedJSONHandling,
 ) => ResultSet
 
 export type MakeValuesEncoder<Stream> = (
-  jsonHandling: JSONHandling,
+  jsonHandling: ResolvedJSONHandling,
 ) => ValuesEncoder<Stream>
 
 export interface ValuesEncoder<Stream> {

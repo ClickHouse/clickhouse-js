@@ -1,7 +1,7 @@
 import type {
   DataFormat,
   ImplementationDetails,
-  JSONHandling,
+  ResolvedJSONHandling,
   ResponseHeaders,
 } from '@clickhouse/client-common'
 import {
@@ -158,7 +158,7 @@ export const NodeConfigImpl: Required<
       max_response_headers_size: nodeConfig.max_response_headers_size,
     })
   },
-  values_encoder: (jsonHandling: JSONHandling) =>
+  values_encoder: (jsonHandling: ResolvedJSONHandling) =>
     new NodeValuesEncoder(jsonHandling),
   make_result_set: ((
     stream: Stream.Readable,
@@ -166,7 +166,7 @@ export const NodeConfigImpl: Required<
     query_id: string,
     log_error: (err: Error) => void,
     response_headers: ResponseHeaders,
-    jsonHandling: JSONHandling,
+    jsonHandling: ResolvedJSONHandling,
   ) =>
     ResultSet.instance({
       stream,

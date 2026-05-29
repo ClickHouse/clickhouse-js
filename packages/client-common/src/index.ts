@@ -83,6 +83,7 @@ export type {
   ParsedColumnMap,
   ParsedColumnType,
   JSONHandling,
+  ResolvedJSONHandling,
 } from './parse'
 export {
   SimpleColumnTypes,

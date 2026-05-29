@@ -1,7 +1,7 @@
 import type {
   DataFormat,
   InsertValues,
-  JSONHandling,
+  ResolvedJSONHandling,
   ValuesEncoder,
 } from '@clickhouse/client-common'
 import { encodeJSON, isSupportedRawFormat } from '@clickhouse/client-common'
@@ -9,9 +9,9 @@ import Stream from 'stream'
 import { isStream, mapStream } from './stream'
 
 export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
-  private readonly json: JSONHandling
+  private readonly json: ResolvedJSONHandling
 
-  constructor(customJSONConfig: JSONHandling) {
+  constructor(customJSONConfig: ResolvedJSONHandling) {
     this.json = customJSONConfig
   }
 

@@ -9,11 +9,12 @@ import {
   parseError,
   sleep,
   ClickHouseLogLevel,
+  defaultJSONHandling,
   type LogWriter,
   type ConnOperation,
   type ResponseHeaders,
   type ClickHouseSummary,
-  type JSONHandling,
+  type ResolvedJSONHandling,
 } from '@clickhouse/client-common'
 import { getAsText, isStream } from '../utils'
 import { decompressResponse, isDecompressionError } from './compression'
@@ -57,7 +58,7 @@ interface SocketInfo {
 type CreateClientRequest = (params: RequestParams) => Http.ClientRequest
 
 export class SocketPool {
-  private readonly jsonHandling: JSONHandling
+  private readonly jsonHandling: ResolvedJSONHandling
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>()
 
   // For overflow concerns:
@@ -82,10 +83,7 @@ export class SocketPool {
     private readonly createClientRequest: CreateClientRequest,
     private readonly agent: Http.Agent,
   ) {
-    this.jsonHandling = params.json ?? {
-      parse: JSON.parse,
-      stringify: JSON.stringify,
-    }
+    this.jsonHandling = params.json ?? defaultJSONHandling
   }
 
   async request(

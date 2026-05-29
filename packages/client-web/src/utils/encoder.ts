@@ -1,20 +1,16 @@
 import type {
   DataFormat,
   InsertValues,
+  ResolvedJSONHandling,
   ValuesEncoder,
 } from '@clickhouse/client-common'
-import { encodeJSON, type JSONHandling } from '@clickhouse/client-common'
+import { defaultJSONHandling, encodeJSON } from '@clickhouse/client-common'
 import { isStream } from './stream'
 
 export class WebValuesEncoder implements ValuesEncoder<ReadableStream> {
-  private readonly json: JSONHandling
+  private readonly json: ResolvedJSONHandling
 
-  constructor(
-    jsonHandling: JSONHandling = {
-      parse: JSON.parse,
-      stringify: JSON.stringify,
-    },
-  ) {
+  constructor(jsonHandling: ResolvedJSONHandling = defaultJSONHandling) {
     this.json = jsonHandling
   }
 
