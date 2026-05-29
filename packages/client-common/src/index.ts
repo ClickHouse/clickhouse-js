@@ -89,6 +89,13 @@ export {
   parseColumnType,
   defaultJSONHandling,
 } from './parse'
+export {
+  type ClickHouseTracer,
+  type ClickHouseTracerSpanAttributes,
+  type ClickHouseTracerSpanStatus,
+  type ClickHouseSpanName,
+  ClickHouseSpanNames,
+} from './tracing'
 
 /** For implementation usage only - should not be re-exported */
 export {

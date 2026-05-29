@@ -1,5 +1,22 @@
 # 1.20.0
 
+## New Features
+
+- Added an optional **tracer-hooks API** that the user can pass through the client config (`tracer`) and that gets called at key lifecycle events (`query`, `command`, `exec`, `insert`, `ping`). The hook surface mirrors the OpenTelemetry `Span` API (`startSpan`, `setAttributes`, `setStatus`, `recordException`, `endSpan`) so an OTEL adapter is a trivial wrapper - but the client itself ships no tracing dependency. Hook exceptions are caught and logged at WARN level so a broken tracer cannot break client operations. See [`docs/howto/tracing.md`](./docs/howto/tracing.md) for an OpenTelemetry adapter example. ([#776])
+
+```ts
+import { createClient, type ClickHouseTracer } from '@clickhouse/client'
+
+const tracer: ClickHouseTracer = {
+  startSpan: (name, attrs) => console.log('start', name, attrs),
+  setAttributes: (_span, attrs) => console.log('attrs', attrs),
+  setStatus: (_span, status) => console.log('status', status),
+  recordException: (_span, err) => console.error('exception', err),
+  endSpan: () => console.log('end'),
+}
+const client = createClient({ url: 'http://localhost:8123', tracer })
+```
+
 ## Bug Fixes
 
 - (Node.js only) Fixed a race condition in `ResultSet.json()` and `ResultSet.stream()` on `JSONEachRow` (and other streamable) result sets where calling `json()` on a fast/small response could throw `Stream has been already consumed` if the underlying stream ended between internal `readableEnded` checks. The consumption guard has been hardened: the stream is now shielded through a single `consume()` path that marks the result set as consumed in the appropriate branches, after format validation, so a successful `json()` call no longer races against the stream finishing. ([#603])
@@ -10,6 +27,7 @@
 
 [#603]: https://github.com/ClickHouse/clickhouse-js/pull/603
 [#758]: https://github.com/ClickHouse/clickhouse-js/pull/758
+[#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
 
 # 1.19.0
 

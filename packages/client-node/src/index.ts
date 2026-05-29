@@ -71,4 +71,9 @@ export {
   type ClickHouseJWTAuth,
   type ClickHouseCredentialsAuth,
   TupleParam,
+  type ClickHouseTracer,
+  type ClickHouseTracerSpanAttributes,
+  type ClickHouseTracerSpanStatus,
+  type ClickHouseSpanName,
+  ClickHouseSpanNames,
 } from '@clickhouse/client-common'

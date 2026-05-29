@@ -6,6 +6,7 @@ import { ClickHouseLogLevel, LogWriter } from './logger'
 import { defaultJSONHandling, type JSONHandling } from './parse/json_handling'
 import type { BaseResultSet } from './result'
 import type { ClickHouseSettings } from './settings'
+import type { ClickHouseTracer } from './tracing'
 
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
@@ -93,6 +94,20 @@ export interface BaseClickHouseClientConfigOptions {
    * Defaults to using standard `JSON.parse` and `JSON.stringify`
    */
   json?: Partial<JSONHandling>
+  /**
+   * Optional tracer hooks called by the client at key lifecycle events
+   * (e.g. query / command / exec / insert / ping start, completion, and
+   * error). The hook surface deliberately mirrors the OpenTelemetry `Span`
+   * API so it can be implemented as a trivial wrapper over an OTEL tracer,
+   * but the client itself does not depend on any tracing library.
+   *
+   * Any exception thrown by a hook is swallowed and logged at WARN level -
+   * a broken tracer cannot break client operations.
+   *
+   * @see {@link ClickHouseTracer}
+   * @default undefined (tracing disabled)
+   */
+  tracer?: ClickHouseTracer<unknown>
 }
 
 export type MakeConnection<
