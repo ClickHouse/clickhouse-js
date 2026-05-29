@@ -55,6 +55,8 @@ export class WebConnection implements Connection<ReadableStream> {
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings,
+      query: params.query,
+      query_in_url: false,
       query_params: params.query_params,
       session_id: params.session_id,
       role: params.role,
@@ -239,6 +241,8 @@ export class WebConnection implements Connection<ReadableStream> {
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
+      query: params.query,
+      query_in_url: false,
       query_params: params.query_params,
       session_id: params.session_id,
       role: params.role,

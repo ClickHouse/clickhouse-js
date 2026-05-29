@@ -129,6 +129,42 @@ describe('formatQueryParams', () => {
     ).toBe('1659081134.005')
   })
 
+  it('truncates millis for DateTime/DateTime32 parameter types', () => {
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123))
+    expect(formatQueryParams({ value: date, type: 'DateTime' })).toBe(
+      '1659081134',
+    )
+    expect(formatQueryParams({ value: date, type: 'DateTime32' })).toBe(
+      '1659081134',
+    )
+    expect(
+      formatQueryParams({ value: date, type: "DateTime('Europe/Amsterdam')" }),
+    ).toBe('1659081134')
+    expect(formatQueryParams({ value: date, type: 'Nullable(DateTime)' })).toBe(
+      '1659081134',
+    )
+  })
+
+  it('keeps millis for DateTime64 parameter types', () => {
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123))
+    expect(formatQueryParams({ value: date, type: 'DateTime64(3)' })).toBe(
+      '1659081134.123',
+    )
+    expect(
+      formatQueryParams({ value: date, type: "DateTime64(9, 'UTC')" }),
+    ).toBe('1659081134.123')
+  })
+
+  it('truncates millis for Dates nested in a DateTime container type', () => {
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123))
+    expect(formatQueryParams({ value: [date], type: 'Array(DateTime)' })).toBe(
+      '[1659081134]',
+    )
+    expect(
+      formatQueryParams({ value: [date], type: 'Array(DateTime64(3))' }),
+    ).toBe('[1659081134.123]')
+  })
+
   it('does not wrap a string in quotes', () => {
     expect(
       formatQueryParams({

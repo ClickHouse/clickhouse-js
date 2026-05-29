@@ -35,6 +35,10 @@ interface ToSearchParamsOptions {
   clickhouse_settings?: ClickHouseSettings
   query_params?: Record<string, unknown>
   query?: string
+  // Whether to include the query in the URL search params. Defaults to true when
+  // a query is provided. When the query is sent in the request body instead, set
+  // this to false so the query is only used to infer query parameter types.
+  query_in_url?: boolean
   session_id?: string
   query_id: string
   role?: string | Array<string>
@@ -45,6 +49,7 @@ interface ToSearchParamsOptions {
 export function toSearchParams({
   database,
   query,
+  query_in_url,
   query_params,
   clickhouse_settings,
   session_id,
@@ -55,7 +60,10 @@ export function toSearchParams({
 
   if (query_params !== undefined) {
     for (const [key, value] of Object.entries(query_params)) {
-      const formattedParam = formatQueryParams({ value })
+      const formattedParam = formatQueryParams({
+        value,
+        type: getQueryParamType(query, key),
+      })
       entries.push([`param_${key}`, formattedParam])
     }
   }
@@ -72,7 +80,7 @@ export function toSearchParams({
     entries.push(['database', database])
   }
 
-  if (query) {
+  if (query && (query_in_url ?? true)) {
     entries.push(['query', query])
   }
 
@@ -91,4 +99,20 @@ export function toSearchParams({
   }
 
   return new URLSearchParams(entries)
+}
+
+// Extracts the declared ClickHouse type of a `{name:Type}` query parameter
+// placeholder from the query string, allowing for optional whitespace around
+// the name and type (e.g. `{ ts : DateTime64(3) }`). Returns undefined if the
+// query is not available or the placeholder cannot be found.
+function getQueryParamType(
+  query: string | undefined,
+  name: string,
+): string | undefined {
+  if (!query) return undefined
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = query.match(
+    new RegExp(`\\{\\s*${escapedName}\\s*:\\s*([^}]*?)\\s*\\}`),
+  )
+  return match?.[1]
 }

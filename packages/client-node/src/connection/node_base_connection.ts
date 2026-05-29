@@ -185,6 +185,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     )
     const searchParams = toSearchParams({
       database: this.params.database,
+      query: params.query,
+      query_in_url: false,
       query_params: params.query_params,
       session_id: params.session_id,
       clickhouse_settings,
@@ -492,7 +494,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.params.compression.decompress_response,
     )
     const toSearchParamsOptions = {
-      query: sendQueryInParams ? params.query : undefined,
+      query: params.query,
+      query_in_url: sendQueryInParams,
       database: this.params.database,
       query_params: params.query_params,
       session_id: params.session_id,

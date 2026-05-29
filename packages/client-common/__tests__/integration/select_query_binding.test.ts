@@ -230,6 +230,21 @@ describe('select with query binding', () => {
       expect(response).toBe('"2022-05-02 13:25:55"\n')
     })
 
+    it('handles a Date with milliseconds in a DateTime parameterized query', async () => {
+      // DateTime only has second precision and rejects fractional timestamps;
+      // the client drops the sub-second part for this parameter type. See #628.
+      const rs = await client.query({
+        query: 'SELECT toDateTime({min_time: DateTime})',
+        format: 'CSV',
+        query_params: {
+          min_time: new Date(Date.UTC(2022, 4, 2, 13, 25, 55, 789)),
+        },
+      })
+
+      const response = await rs.text()
+      expect(response).toBe('"2022-05-02 13:25:55"\n')
+    })
+
     it('handles DateTime64(3) in a parameterized query', async () => {
       const rs = await client.query({
         query: 'SELECT toDateTime64({min_time: DateTime64(3)}, 3)',

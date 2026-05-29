@@ -2,6 +2,8 @@
 
 ## Bug Fixes
 
+- Fixed serialization of `Date` objects with non-zero milliseconds when used as `DateTime`/`DateTime32` query parameters. Previously, a `Date` such as `new Date('2025-03-19T10:30:00.500Z')` was always encoded as a fractional Unix timestamp (e.g. `1742553000.500`), which the server rejects for `DateTime` parameters with `Value ... cannot be parsed as DateTime ... because it isn't parsed completely`. The client now inspects the declared parameter type in the query and drops the sub-second part for `DateTime`/`DateTime32` parameters, while still preserving milliseconds for `DateTime64`. ([#628])
+
 - (Node.js only) Fixed a race condition in `ResultSet.json()` and `ResultSet.stream()` on `JSONEachRow` (and other streamable) result sets where calling `json()` on a fast/small response could throw `Stream has been already consumed` if the underlying stream ended between internal `readableEnded` checks. The consumption guard has been hardened: the stream is now shielded through a single `consume()` path that marks the result set as consumed in the appropriate branches, after format validation, so a successful `json()` call no longer races against the stream finishing. ([#603])
 
 ## Improvements
@@ -9,6 +11,7 @@
 - Re-exported the `ResponseHeaders` type from `@clickhouse/client` and `@clickhouse/client-web`. Previously this type was only available from `@clickhouse/client-common`; it is now part of the public re-export surface of both flavored packages, alongside the other commonly used types. This is part of an ongoing effort to make `@clickhouse/client-common` an internal-only package so downstream consumers can depend solely on `@clickhouse/client` or `@clickhouse/client-web`. ([#758])
 
 [#603]: https://github.com/ClickHouse/clickhouse-js/pull/603
+[#628]: https://github.com/ClickHouse/clickhouse-js/issues/628
 [#758]: https://github.com/ClickHouse/clickhouse-js/pull/758
 
 # 1.19.0

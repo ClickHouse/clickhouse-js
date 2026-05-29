@@ -98,6 +98,49 @@ describe('toSearchParams', () => {
     ])
   })
 
+  it('should drop Date sub-seconds for a DateTime query parameter', async () => {
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123))
+    const params = toSearchParams({
+      database: 'default',
+      query_id: 'foo',
+      query: 'SELECT {d: DateTime} AS d',
+      query_params: { d: date },
+    })!
+    expect(toSortedArray(params)).toEqual([
+      ['param_d', '1659081134'],
+      ['query', 'SELECT {d: DateTime} AS d'],
+      ['query_id', 'foo'],
+    ])
+  })
+
+  it('should keep Date sub-seconds for a DateTime64 query parameter', async () => {
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123))
+    const params = toSearchParams({
+      database: 'default',
+      query_id: 'foo',
+      query: 'SELECT {d:DateTime64(3)} AS d',
+      query_params: { d: date },
+    })!
+    expect(toSortedArray(params)).toEqual([
+      ['param_d', '1659081134.123'],
+      ['query', 'SELECT {d:DateTime64(3)} AS d'],
+      ['query_id', 'foo'],
+    ])
+  })
+
+  it('should keep Date sub-seconds when the query is not available', async () => {
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123))
+    const params = toSearchParams({
+      database: 'default',
+      query_id: 'foo',
+      query_params: { d: date },
+    })!
+    expect(toSortedArray(params)).toEqual([
+      ['param_d', '1659081134.123'],
+      ['query_id', 'foo'],
+    ])
+  })
+
   it('should set a single role', async () => {
     const query = 'SELECT * FROM system.query_log'
     const params = toSearchParams({
