@@ -219,7 +219,7 @@ export class ResultSet<
 
   /** See {@link BaseResultSet.close}. */
   close() {
-    this.consume().destroy(new Error(resultSetClosedMessage))
+    this._stream.destroy(new Error(resultSetClosedMessage))
   }
 
   /**
