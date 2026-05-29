@@ -8,26 +8,39 @@ export function isStream(obj: any): obj is ReadableStream {
 }
 
 export async function getAsText(stream: ReadableStream): Promise<string> {
-  let result = ''
-  let isDone = false
+  let text = ''
 
   const textDecoder = new TextDecoder()
   const reader = stream.getReader()
 
-  while (!isDone) {
+  while (true) {
     const { done, value } = await reader.read()
     const decoded = textDecoder.decode(value, { stream: true })
-    if (decoded.length + result.length > MaxStringLength) {
+    if (decoded.length + text.length > MaxStringLength) {
+      // The error message is crafted to be similar to the one thrown by Node's implementation.
+      // A simple try/catch block around the concatenation of the decoded chunk would not work
+      // as different browsers throw profoundly different errors including "out of memory"
+      // in tests. Somehow using manual length checks seems to be the only way to reliably
+      // detect this condition across browsers.
+      // Also, Vitest crashes while running the try/catch implementatioin in Firefox.
       throw new Error(
         'The response length exceeds the maximum allowed size of V8 String: ' +
           `${MaxStringLength}; consider limiting the amount of requested rows.`,
       )
     }
-    result += decoded
-    isDone = done
+    text += decoded
+    if (done) break
   }
 
-  // flush
-  result += textDecoder.decode()
-  return result
+  // flush unfinished multi-byte characters
+  const decoded = textDecoder.decode()
+  if (decoded.length + text.length > MaxStringLength) {
+    throw new Error(
+      'The response length exceeds the maximum allowed size of V8 String: ' +
+        `${MaxStringLength}; consider limiting the amount of requested rows.`,
+    )
+  }
+  text += decoded
+
+  return text
 }

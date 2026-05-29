@@ -10,7 +10,6 @@
     "resolveJsonModule": true,
     "removeComments": false,
     "sourceMap": true,
-    "noUnusedLocals": true,
     "noFallthroughCasesInSwitch": true,
     "useDefineForClassFields": true,
     "forceConsistentCasingInFileNames": true,

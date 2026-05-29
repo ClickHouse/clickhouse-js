@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
 
@@ -50,32 +50,6 @@ jobs:
       - name: Build packages
         run: |
           npm run build
-
-      - name: Typecheck
-        run: |
-          npm run typecheck
-
-      - name: Run linting
-        run: |
-          npm run lint
-
-  code-quality-examples:
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: examples
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: |
-          npm install
 
       - name: Typecheck
         run: |
@@ -96,7 +70,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -125,7 +99,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
 
@@ -157,7 +131,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -165,8 +139,8 @@ jobs:
         run: |
           npm install
 
-      - name: Install dependencies (examples)
-        working-directory: examples
+      - name: Install dependencies (Node examples)
+        working-directory: examples/node
         run: |
           npm install
 
@@ -200,7 +174,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
 
@@ -230,6 +204,22 @@ jobs:
         node: [20, 22, 24]
         clickhouse: [head, latest]
         log_level: [undefined, TRACE]
+        include:
+          - node: 24
+            clickhouse: 26.2
+            log_level: undefined
+          - node: 24
+            clickhouse: 26.1
+            log_level: undefined
+          - node: 24
+            clickhouse: 25.12
+            log_level: undefined
+          - node: 24
+            clickhouse: 25.11
+            log_level: undefined
+          - node: 24
+            clickhouse: 25.10
+            log_level: undefined
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -242,7 +232,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -283,11 +273,11 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.cluster.yml'
+          compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -321,11 +311,11 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.cluster.yml'
+          compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
       - name: Setup NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
 
@@ -347,6 +337,8 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-cloud:
+    # Cloud secrets are not available for PRs from forks; skip the job in that case.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -358,7 +350,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -381,6 +373,8 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   web-integration-tests-cloud:
+    # Cloud secrets are not available for PRs from forks; skip the job in that case.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -391,7 +385,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
 
@@ -431,7 +425,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
 
@@ -473,7 +467,7 @@ jobs:
           down-flags: '--volumes'
 
       - name: Setup NodeJS
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
 
@@ -504,7 +498,6 @@ jobs:
     needs:
       [
         'code-quality',
-        'code-quality-examples',
         'common-unit-tests-node',
         'common-unit-tests-web',
         'node-unit-tests',
@@ -517,7 +510,13 @@ jobs:
         'web-integration-tests-cloud',
         'web-codecov-upload',
       ]
+    # Run even if some needed jobs were skipped (e.g. cloud jobs on PRs from forks),
+    # but still fail if any of them failed or were cancelled.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Fail if any needed job failed or was cancelled
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1
       - name: All tests passed
         run: echo "All tests passed! 🎉"

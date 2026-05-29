@@ -1,3 +1,143 @@
+# 1.19.0
+
+## Breaking Changes
+
+- **Enum type parsing now correctly unescapes backslash escape sequences in enum names.** Previously, `parseEnumType` returned enum names with raw escape sequences (e.g., `f\'` instead of `f'`). Now it properly decodes escape sequences including `\'` (single quote), `\\` (backslash), `\n` (newline), `\t` (tab), and `\r` (carriage return). This matches the behavior of ClickHouse string literals and ensures consistency with how the client encodes strings when sending data to the server. If you were relying on the previous incorrect behavior where backslash escape sequences were preserved in enum names, you will need to update your code to handle properly unescaped values.
+
+Example:
+
+```ts
+// Before (incorrect):
+parseEnumType({
+  columnType: "Enum8('f\\'' = 1)",
+  sourceType: "Enum8('f\\'' = 1)",
+})
+// returned: { values: { 1: "f\\'" } }  // with backslash
+
+// After (correct):
+parseEnumType({
+  columnType: "Enum8('f\\'' = 1)",
+  sourceType: "Enum8('f\\'' = 1)",
+})
+// returns: { values: { 1: "f'" } }     // unescaped
+```
+
+# 1.18.5
+
+## Improvements
+
+- (Node.js only) Added `max_response_headers_size` client option that forwards the [`maxHeaderSize`](https://nodejs.org/api/http.html#httprequesturl-options-callback) option to the underlying `http(s).request` call. This raises the per-request limit on the total size of HTTP response headers received from the server (Node.js default is ~16 KB). It is most useful when running long-running queries with `send_progress_in_http_headers` enabled — the `X-ClickHouse-Progress` headers accumulate over the lifetime of the request and can exceed the default limit, causing the request to fail with `HPE_HEADER_OVERFLOW`. Setting this option avoids the need to use the global `--max-http-header-size` Node.js CLI flag or the `NODE_OPTIONS` environment variable. Has no effect for the Web client (which uses `fetch`) and no effect when a custom `http_agent` is configured with a request implementation that does not honor the option.
+
+```ts
+const client = createClient({
+  request_timeout: 400_000,
+  max_response_headers_size: 1024 * 1024, // accept up to 1 MiB of response headers
+  clickhouse_settings: {
+    send_progress_in_http_headers: 1,
+    http_headers_progress_interval_ms: '110000',
+  },
+})
+```
+
+- The `@clickhouse/client` npm package now ships embedded AI-agent skills, `clickhouse-js-node-coding` and `clickhouse-js-node-troubleshooting`, under `node_modules/@clickhouse/client/skills/`. These skills are also declared in the `agents.skills` field of the package manifest for discovery tools that scan `node_modules`. This allows agentic coding tools to load focused, Node-client-specific coding and troubleshooting guidance without any additional setup. ([#682])
+
+[#682]: https://github.com/ClickHouse/clickhouse-js/pull/682
+
+# 1.18.4
+
+A release-infrastructure-only version bump (no user-facing changes). See 1.18.5 for the next release with user-facing improvements.
+
+# 1.18.3
+
+## Improvements
+
+- Added `keep_alive.eagerly_destroy_stale_sockets` option (Node.js only, default: `false`). When enabled, sockets that have been idle for longer than `idle_socket_ttl` are destroyed immediately before each request, rather than waiting for the idle timeout to fire. This helps reclaim stale sockets during event loop delays, where the timeout callback may not run on time.
+
+```ts
+const client = createClient({
+  keep_alive: {
+    enabled: true,
+    idle_socket_ttl: 2500,
+    eagerly_destroy_stale_sockets: true,
+  },
+})
+```
+
+- Added auto-detection and warning when `request_timeout` is high (> 60 seconds) but progress headers are not configured. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. The client now warns users to enable `send_progress_in_http_headers` and `http_headers_progress_interval_ms` settings to prevent such issues.
+
+```ts
+// This will now trigger a warning
+const client = createClient({
+  request_timeout: 120_000, // 120 seconds
+  // send_progress_in_http_headers is not configured
+})
+
+// ✓ Properly configured to avoid load balancer timeouts
+const client = createClient({
+  request_timeout: 400_000,
+  clickhouse_settings: {
+    send_progress_in_http_headers: 1,
+    http_headers_progress_interval_ms: '110000', // ~10s below LB timeout
+  },
+})
+```
+
+# 1.18.2
+
+## Improvements
+
+- Added a helping `WARN` level log message with a suggestion to check the `keep_alive` configuration if the client receives an `ECONNRESET` error from the server, which can happen when the server closes idle connections after a certain timeout, and the client tries to reuse such a connection from the pool. This can be especially helpful for new users who might not be aware of this aspect of HTTP connection management. The log message is only emitted if the `keep_alive` option is enabled in the client configuration, and it includes the server's keep-alive timeout value (if available) to assist with troubleshooting. ([#597](https://github.com/ClickHouse/clickhouse-js/pull/597))
+
+How to reproduce the issue that triggers the log message:
+
+```ts
+const client = createClient({
+  // ...
+  keep_alive: {
+    enabled: true,
+    // ❌ DON'T SET THIS VALUE SO HIGH IN PRODUCTION
+    idle_socket_ttl: 1_000_000,
+  },
+  log: {
+    level: ClickHouseLogLevel.WARN, // to see the warning logs
+  },
+})
+
+for (let i = 0; i < 1000; i++) {
+  await client.ping({
+    // To use a regular query instead of the /ping endpoint
+    // which might be configured differently on the server side
+    // and have different timeout settings.
+    select: true,
+  })
+
+  // Wait long enough to let the server close the idle connection,
+  // but not too long to let the client remove it from the pool,
+  // in other words try to hit the scenario when the race condition
+  // happens between the server closing the connection and the client
+  // trying to reuse it.
+  await sleep(SERVER_KEEP_ALIVE_TIMEOUT_MS - 100)
+}
+```
+
+Example log message:
+
+```json
+{
+  "message": "Ping: idle socket TTL is greater than server keep-alive timeout, try setting idle socket TTL to a value lower than the server keep-alive timeout to prevent unexpected connection resets, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/keep_alive_timeout.md for more details.",
+  "args": {
+    "operation": "Ping",
+    "connection_id": "8dc1c9bd-7895-49b1-8a95-276470151c65",
+    "query_id": "beee95af-2e83-4dcb-8e1e-045bd61f4985",
+    "request_id": "8dc1c9bd-7895-49b1-8a95-276470151c65:2",
+    "socket_id": "8dc1c9bd-7895-49b1-8a95-276470151c65:1",
+    "server_keep_alive_timeout_ms": 10000,
+    "idle_socket_ttl": 15000
+  },
+  "module": "HTTP Adapter"
+}
+```
+
 # 1.18.1
 
 ## Improvements
@@ -81,6 +221,33 @@ A beta version. See 1.18.1 for the stable release.
 - Added support for the new [Disposable API] (a.k.a the `using` keyword) (#500)
 
 [Disposable API]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
+
+```ts
+async function main() {
+  using resultSet = await client.query(…);
+
+  // some code that can throw
+  // but thanks to `using` the resultSet will still get disposed
+
+  // resultSet is also automatically disposed here by calling [Symbol.dispose]
+}
+```
+
+Without the new `using` keyword it is required to wrap the code that might leak expensive resources like sockets and big buffers in ` try / finally`
+
+```ts
+async function main() {
+  let client
+  try {
+    client = await createClient(…);
+    // some code that can throw
+  } finally {
+    if (client) {
+      await client.close()
+    }
+  }
+}
+```
 
 # 1.15.0
 
@@ -487,7 +654,7 @@ Complete reference:
 | ------------------------------- | --------------------- | --------------------------- | ----------------- | --------------- |
 | JSON                            | ResponseJSON\<T\>     | never                       | never             | never           |
 | JSONObjectEachRow               | Record\<string, T\>   | never                       | never             | never           |
-| All other JSON\*EachRow         | Array\<T\>            | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | T               |
+| All other `JSON*EachRow`        | Array\<T\>            | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | T               |
 | CSV/TSV/CustomSeparated/Parquet | never                 | Stream\<Array\<Row\<T\>\>\> | Array\<Row\<T\>\> | never           |
 
 By default, `T` (which represents `JSONType`) is still `unknown`. However, considering `JSONObjectsEachRow` example: prior to 1.0.0, you had to specify the entire type hint, including the shape of the data, manually:
@@ -760,7 +927,7 @@ await client.insert({
 
 See also the new examples:
 
-- [Including specific columns or excluding certain ones instead](./examples/insert_exclude_columns.ts)
+- [Including specific columns](./examples/insert_specific_columns.ts) or [excluding certain ones instead](./examples/insert_exclude_columns.ts)
 - [Leveraging this feature](./examples/insert_ephemeral_columns.ts) when working with
   [ephemeral columns](https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral)
   ([#217](https://github.com/ClickHouse/clickhouse-js/issues/217))

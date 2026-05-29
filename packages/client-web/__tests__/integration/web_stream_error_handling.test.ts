@@ -20,7 +20,7 @@ describe('[Web] Stream error handling', () => {
   })
 
   it('with reader', async ({ skip }) => {
-    if (!isClickHouseVersionAtLeast(25, 11)) {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
       skip()
     }
 

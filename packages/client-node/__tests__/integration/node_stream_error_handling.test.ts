@@ -20,7 +20,7 @@ describe('[Node.js] Stream error handling', () => {
   })
 
   it('with promise listeners', async ({ skip }) => {
-    if (!isClickHouseVersionAtLeast(25, 11)) {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
       skip()
     }
 
@@ -52,7 +52,7 @@ describe('[Node.js] Stream error handling', () => {
   })
 
   it('with async iterators', async ({ skip }) => {
-    if (!isClickHouseVersionAtLeast(25, 11)) {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
       skip()
     }
 
