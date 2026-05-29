@@ -12,6 +12,7 @@ import {
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
+  RawStreamExceptionDetector,
 } from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
@@ -61,7 +62,11 @@ export interface ResultSetOptions<Format extends DataFormat> {
 
 export class ResultSet<
   Format extends DataFormat | unknown,
-> implements BaseResultSet<Stream.Readable, Format> {
+> implements BaseResultSet<
+  Stream.Readable,
+  Format,
+  StreamReadable<Uint8Array>
+> {
   public readonly response_headers: ResponseHeaders = {}
 
   private readonly exceptionTag: string | undefined = undefined
@@ -204,6 +209,58 @@ export class ResultSet<
     const pipeline = Stream.pipeline(
       this.consume(),
       toRows,
+      function pipelineCb(err) {
+        if (
+          err &&
+          err.name !== 'AbortError' &&
+          err.message !== resultSetClosedMessage
+        ) {
+          logError(err)
+        }
+      },
+    )
+    return pipeline as any
+  }
+
+  /** See {@link BaseResultSet.rawStream}. */
+  rawStream(): StreamReadable<Uint8Array> {
+    const logError = this.log_error
+    const exceptionTag = this.exceptionTag
+    const detector =
+      exceptionTag !== undefined
+        ? new RawStreamExceptionDetector(exceptionTag)
+        : undefined
+    const toRawBytes = new Transform({
+      transform(
+        chunk: Buffer,
+        _encoding: BufferEncoding,
+        callback: TransformCallback,
+      ) {
+        if (detector === undefined) {
+          callback(null, chunk)
+          return
+        }
+        const data = detector.push(chunk)
+        callback(null, data.length > 0 ? Buffer.from(data) : undefined)
+      },
+      flush(callback: TransformCallback) {
+        if (detector === undefined) {
+          callback()
+          return
+        }
+        const { data, error } = detector.flush()
+        if (error !== undefined) {
+          callback(error)
+          return
+        }
+        callback(null, data.length > 0 ? Buffer.from(data) : undefined)
+      },
+      autoDestroy: true,
+    })
+
+    const pipeline = Stream.pipeline(
+      this.consume(),
+      toRawBytes,
       function pipelineCb(err) {
         if (
           err &&

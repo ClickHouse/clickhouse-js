@@ -122,8 +122,10 @@ export {
   isCredentialsAuth,
   isJWTAuth,
   extractErrorAtTheEndOfChunk,
+  RawStreamExceptionDetector,
   CARET_RETURN,
 } from './utils'
+export type { RawStreamChunkResult } from './utils'
 export { LogWriter, DefaultLogger, type LogWriterParams } from './logger'
 export { getCurrentStackTrace, enhanceStackTrace } from './error'
 export type {

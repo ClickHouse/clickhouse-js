@@ -74,7 +74,11 @@ export interface Row<
   json<T = JSONType>(): RowJSONType<T, Format>
 }
 
-export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
+export interface BaseResultSet<
+  Stream,
+  Format extends DataFormat | unknown,
+  RawStream = Stream,
+> {
   /**
    * The method waits for all the rows to be fully loaded
    * and returns the result as a string.
@@ -140,6 +144,30 @@ export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
    * by calling the other methods.
    */
   stream(): ResultStream<Format, Stream>
+
+  /**
+   * Returns a readable stream of the raw response body bytes, without splitting
+   * it into rows.
+   *
+   * This is the correct way to consume binary formats such as `Parquet`,
+   * `ORC`, `Arrow`, `ArrowStream`, or `Native`, where the row-oriented
+   * {@link stream} method would corrupt the payload (it splits the body on
+   * newline characters, which are meaningless in binary data and can be
+   * misinterpreted as row or exception boundaries).
+   *
+   * Unlike calling {@link ClickHouseClient.exec} directly, this method still
+   * detects a mid-stream exception appended by the server and propagates it as
+   * a stream error.
+   *
+   * Each iteration provides a chunk of raw bytes (`Buffer` in Node.js,
+   * `Uint8Array` in the Web client).
+   *
+   * Should be called only once.
+   *
+   * The method should throw if the underlying stream was already consumed
+   * by calling the other methods.
+   */
+  rawStream(): RawStream
 
   /** Close the underlying stream. */
   close(): void
