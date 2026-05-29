@@ -71,9 +71,12 @@ jobs:
       - name: Build packages
         run: npm --workspaces run build
 
-      - name: Publish packages with head tag
+      - name: Stage publish packages with head tag
+        # Uses npm staged publishing: the version is uploaded to the registry
+        # but is not installable until it is promoted. See
+        # https://github.blog/changelog/2026-05-22-staged-publishing-and-new-install-time-controls-for-npm/
         run: |
-          npm --workspaces publish \
+          npm --workspaces stage publish \
             --access public \
             --provenance \
             --tag head
@@ -109,9 +112,12 @@ jobs:
       - name: Build packages
         run: npm --workspaces run build
 
-      - name: Publish packages to the latest tag (implicit)
+      - name: Stage publish packages to the latest tag (implicit)
+        # Uses npm staged publishing: the version is uploaded to the registry
+        # but is not installable until it is promoted. See
+        # https://github.blog/changelog/2026-05-22-staged-publishing-and-new-install-time-controls-for-npm/
         run: |
-          npm --workspaces publish \
+          npm --workspaces stage publish \
             --access public \
             --provenance
 
