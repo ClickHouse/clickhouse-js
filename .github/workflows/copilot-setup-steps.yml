@@ -1,14 +1,8 @@
-name: 'Copilot Setup Steps'
+name: "Copilot Setup Steps"
+permissions: {}
 
-# Set the permissions to the lowest permissions possible needed for your steps.
-# Copilot will be given its own token for its operations.
-permissions:
-  # If you want to clone the repository as part of your setup steps, for example to install dependencies, you'll need the `contents: read` permission.
-  # If you don't clone the repository in your setup steps, Copilot will do this for you automatically after the steps complete.
-  contents: read
-
-# Automatically run the setup steps when they are changed to allow for easy validation, and
-# allow manual testing through the repository's "Actions" tab
+# Automatically run the setup steps when they are changed to allow for easy validation,
+# and allow manual testing through the repository's "Actions" tab.
 on:
   workflow_dispatch:
   push:
@@ -21,35 +15,5 @@ on:
 jobs:
   # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
   copilot-setup-steps:
-    runs-on: ubuntu-latest
-
-    # You can define any steps you want, and they will run before the agent starts.
-    # If you do not check out your code, Copilot will do this for you.
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-
-      - name: Install dependencies (examples)
-        working-directory: examples
-        run: |
-          npm install
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Build packages
-        run: |
-          npm run build
-
-      - name: Start ClickHouse
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
-        env:
-          CLICKHOUSE_VERSION: 'latest'
-        with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
+    runs-on: medium-runner-ubuntu-x64
+    permissions: {}

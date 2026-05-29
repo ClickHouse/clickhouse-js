@@ -12,6 +12,7 @@ export default defineConfig(
   {
     rules: {
       '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-unused-expressions': 'warn',
     },
   },
   typescriptEslintConfig(import.meta.dirname),

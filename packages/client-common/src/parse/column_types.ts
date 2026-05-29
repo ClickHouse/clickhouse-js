@@ -283,6 +283,50 @@ export function parseDecimalType({
   }
 }
 
+/**
+ * Unescape backslash escape sequences in enum names.
+ * Recognized escapes are decoded using ClickHouse-style string escaping:
+ * `\\n` -> newline, `\\t` -> tab, `\\r` -> carriage return, `\\\\` -> `\\`,
+ * and `\\'` -> `'`.
+ * For any other escaped character, the backslash is removed and the following
+ * character is kept verbatim to preserve the previous permissive behavior.
+ */
+function unescapeEnumName(escaped: string): string {
+  let unescaped = ''
+  let i = 0
+  while (i < escaped.length) {
+    if (escaped.charCodeAt(i) === BackslashASCII && i + 1 < escaped.length) {
+      i++
+      switch (escaped[i]) {
+        case 'n':
+          unescaped += '\n'
+          break
+        case 't':
+          unescaped += '\t'
+          break
+        case 'r':
+          unescaped += '\r'
+          break
+        case '\\':
+          unescaped += '\\'
+          break
+        case "'":
+          unescaped += "'"
+          break
+        default:
+          // Preserve previous behavior for unknown escape sequences by
+          // dropping the backslash and keeping the escaped character.
+          unescaped += escaped[i]
+          break
+      }
+    } else {
+      unescaped += escaped[i]
+    }
+    i++
+  }
+  return unescaped
+}
+
 export function parseEnumType({
   columnType,
   sourceType,
@@ -327,7 +371,9 @@ export function parseEnumType({
           charEscaped = true
         } else if (columnType.charCodeAt(i) === SingleQuoteASCII) {
           // non-escaped closing tick - push the name
-          const name = columnType.slice(startIndex, i)
+          const rawName = columnType.slice(startIndex, i)
+          // Unescape the name by removing backslash escape sequences
+          const name = unescapeEnumName(rawName)
           if (names.includes(name)) {
             throw new ColumnTypeParseError('Duplicate Enum name', {
               columnType,
