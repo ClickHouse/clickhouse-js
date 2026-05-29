@@ -28,17 +28,23 @@ export class ResultSet<
   private readonly exceptionTag: string | undefined = undefined
   private isAlreadyConsumed = false
   private readonly jsonHandling: JSONHandling
+  private _stream: ReadableStream
+  private readonly format: Format
+  public readonly query_id: string
 
   constructor(
-    private _stream: ReadableStream,
-    private readonly format: Format,
-    public readonly query_id: string,
+    _stream: ReadableStream,
+    format: Format,
+    query_id: string,
     _response_headers?: ResponseHeaders,
     jsonHandling: JSONHandling = {
       parse: JSON.parse,
       stringify: JSON.stringify,
     },
   ) {
+    this._stream = _stream
+    this.format = format
+    this.query_id = query_id
     this.response_headers =
       _response_headers !== undefined ? Object.freeze(_response_headers) : {}
     this.exceptionTag = this.response_headers['x-clickhouse-exception-tag'] as

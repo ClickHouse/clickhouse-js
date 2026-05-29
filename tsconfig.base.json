@@ -15,7 +15,8 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": false,
     "esModuleInterop": true,
-    "importHelpers": false
+    "importHelpers": false,
+    "erasableSyntaxOnly": true
   },
   "exclude": ["node_modules"]
 }

@@ -34,7 +34,9 @@ export type WebConnectionParams = ConnectionParams & {
 
 export class WebConnection implements Connection<ReadableStream> {
   private readonly defaultAuthHeader: string
-  constructor(private readonly params: WebConnectionParams) {
+  private readonly params: WebConnectionParams
+  constructor(params: WebConnectionParams) {
+    this.params = params
     if (params.auth.type === 'JWT') {
       this.defaultAuthHeader = `Bearer ${params.auth.access_token}`
     } else if (params.auth.type === 'Credentials') {

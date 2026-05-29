@@ -68,15 +68,21 @@ export class ResultSet<
   private readonly log_error: (error: Error) => void
   private readonly jsonHandling: JSONHandling
   private _consumed = false
+  private _stream: Stream.Readable
+  private readonly format: Format
+  public readonly query_id: string
 
   constructor(
-    private _stream: Stream.Readable,
-    private readonly format: Format,
-    public readonly query_id: string,
+    _stream: Stream.Readable,
+    format: Format,
+    query_id: string,
     log_error?: (error: Error) => void,
     _response_headers?: ResponseHeaders,
     jsonHandling?: JSONHandling,
   ) {
+    this._stream = _stream
+    this.format = format
+    this.query_id = query_id
     this.jsonHandling = {
       ...defaultJSONHandling,
       ...jsonHandling,
@@ -156,8 +162,10 @@ export class ResultSet<
    * and format validation. Used by `json()` which has already called
    * `markAsConsumed()` and validated the format via `isStreamableJSONFamily`.
    */
-  private _streamImpl<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
-
+  private _streamImpl<T>(): ResultStream<
+    Format,
+    StreamReadable<Row<T, Format>[]>
+  > {
     const incompleteChunks: Buffer[] = []
     const logError = this.log_error
     const exceptionTag = this.exceptionTag
