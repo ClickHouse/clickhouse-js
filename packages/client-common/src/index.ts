@@ -111,6 +111,7 @@ export {
   SimpleColumnTypes,
   /** @deprecated Import `parseColumnType` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   parseColumnType,
+  /** @deprecated Import `defaultJSONHandling` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   defaultJSONHandling,
 } from './parse'
 

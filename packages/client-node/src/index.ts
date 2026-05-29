@@ -81,6 +81,7 @@ import {
   isRow as isRow_,
   isException as isException_,
   TupleParam as TupleParam_,
+  defaultJSONHandling as defaultJSONHandling_,
 } from '@clickhouse/client-common'
 
 export const ClickHouseError = ClickHouseError_
@@ -103,3 +104,4 @@ export const isRow = isRow_
 export const isException = isException_
 export const TupleParam = TupleParam_
 export type TupleParam = TupleParam_
+export const defaultJSONHandling = defaultJSONHandling_
