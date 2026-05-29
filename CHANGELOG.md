@@ -2,6 +2,8 @@
 
 ## Bug Fixes
 
+- `client.query` no longer appends a second `FORMAT` clause when the supplied query already ends with one. Previously, the client unconditionally appended `\nFORMAT <format>` to every query, which produced invalid statements like `SELECT 1 FORMAT CSV \nFORMAT JSON` and surfaced server-side parser issues (e.g., `SHOW ROW POLICIES FORMAT JSON` failing with a `SYNTAX_ERROR` when no row policies are defined). The client now detects an existing trailing `FORMAT` clause and leaves the query untouched. Note that some statements such as `SHOW ROW POLICIES` are rejected by the server's parser when any trailing `FORMAT` clause is present and an empty result is returned; prefer an equivalent query like `SELECT * FROM system.row_policies` in that case. ([#759])
+
 - (Node.js only) Fixed a race condition in `ResultSet.json()` and `ResultSet.stream()` on `JSONEachRow` (and other streamable) result sets where calling `json()` on a fast/small response could throw `Stream has been already consumed` if the underlying stream ended between internal `readableEnded` checks. The consumption guard has been hardened: the stream is now shielded through a single `consume()` path that marks the result set as consumed in the appropriate branches, after format validation, so a successful `json()` call no longer races against the stream finishing. ([#603])
 
 ## Improvements
@@ -10,6 +12,7 @@
 
 [#603]: https://github.com/ClickHouse/clickhouse-js/pull/603
 [#758]: https://github.com/ClickHouse/clickhouse-js/pull/758
+[#759]: https://github.com/ClickHouse/clickhouse-js/pull/759
 
 # 1.19.0
 

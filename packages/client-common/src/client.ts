@@ -226,6 +226,12 @@ export class ClickHouseClient<Stream = unknown> {
    * Returns an implementation of {@link BaseResultSet}.
    *
    * See {@link DataFormat} for the formats supported by the client.
+   *
+   * NB: the client appends a `FORMAT` clause derived from {@link QueryParams.format}
+   * to the query, unless the query already ends with its own `FORMAT` clause.
+   * A few statements (most notably `SHOW ROW POLICIES` with an empty result set) are
+   * rejected by the server's parser when a trailing `FORMAT` clause is present; prefer
+   * an equivalent query such as `SELECT * FROM system.row_policies` in that case.
    */
   async query<Format extends DataFormat = 'JSON'>(
     params: QueryParamsWithFormat<Format>,
@@ -386,7 +392,20 @@ export class ClickHouseClient<Stream = unknown> {
 function formatQuery(query: string, format: DataFormat): string {
   query = query.trim()
   query = removeTrailingSemi(query)
+  // If the query already ends with a FORMAT clause, do not append another one,
+  // as that would produce an invalid `... FORMAT X FORMAT JSON` statement.
+  if (hasTrailingFormatClause(query)) {
+    return query
+  }
   return query + ' \nFORMAT ' + format
+}
+
+/**
+ * Detects whether a query already ends with a `FORMAT <Name>` clause,
+ * so that the client does not append a second, conflicting FORMAT clause.
+ */
+function hasTrailingFormatClause(query: string): boolean {
+  return /(?:^|\s)FORMAT\s+[A-Za-z][A-Za-z0-9]*\s*$/i.test(query)
 }
 
 function removeTrailingSemi(query: string) {
