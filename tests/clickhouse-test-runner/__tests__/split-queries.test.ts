@@ -56,4 +56,22 @@ describe('splitQueries', () => {
       'SELECT 2',
     ])
   })
+
+  it('ignores apostrophes and semicolons inside line comments', () => {
+    const sql =
+      "-- defeat the test's purpose; really\nSELECT 1;\nSYSTEM FLUSH LOGS query_log;\nSELECT 2"
+    expect(splitQueries(sql)).toEqual([
+      "-- defeat the test's purpose; really\nSELECT 1",
+      'SYSTEM FLUSH LOGS query_log',
+      'SELECT 2',
+    ])
+  })
+
+  it('ignores apostrophes and semicolons inside block comments', () => {
+    const sql = "/* it's a; trap */ SELECT 1; SELECT 2"
+    expect(splitQueries(sql)).toEqual([
+      "/* it's a; trap */ SELECT 1",
+      'SELECT 2',
+    ])
+  })
 })
