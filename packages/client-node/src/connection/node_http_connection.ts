@@ -1,4 +1,4 @@
-import { withCompressionHeaders } from '@clickhouse/client-common'
+import { withCompressionHeaders } from '../common'
 import Http from 'http'
 import type { NodeConnectionParams } from './node_base_connection'
 import type { RequestParams } from './socket_pool'

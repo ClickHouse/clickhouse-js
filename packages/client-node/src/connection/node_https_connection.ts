@@ -2,7 +2,7 @@ import {
   type ConnBaseQueryParams,
   isCredentialsAuth,
   withCompressionHeaders,
-} from '@clickhouse/client-common'
+} from '../common'
 import type Http from 'http'
 import Https from 'https'
 import type { NodeConnectionParams } from './node_base_connection'

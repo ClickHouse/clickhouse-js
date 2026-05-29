@@ -8,7 +8,7 @@ import type {
   ConnPingResult,
   ConnQueryResult,
   ResponseHeaders,
-} from '@clickhouse/client-common'
+} from '../common'
 import {
   isCredentialsAuth,
   isJWTAuth,
@@ -18,7 +18,7 @@ import {
   transformUrl,
   withCompressionHeaders,
   withHttpSettings,
-} from '@clickhouse/client-common'
+} from '../common'
 import { getAsText } from '../utils'
 
 type WebInsertParams<T> = Omit<

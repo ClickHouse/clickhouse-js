@@ -5,7 +5,7 @@ import type {
   ImplementationDetails,
   JSONHandling,
   ResponseHeaders,
-} from '@clickhouse/client-common'
+} from './common'
 import { WebConnection } from './connection'
 import { ResultSet } from './result_set'
 import { WebValuesEncoder } from './utils'

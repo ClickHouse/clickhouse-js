@@ -1,9 +1,5 @@
-import type {
-  DataFormat,
-  IsSame,
-  QueryParamsWithFormat,
-} from '@clickhouse/client-common'
-import { ClickHouseClient } from '@clickhouse/client-common'
+import type { DataFormat, IsSame, QueryParamsWithFormat } from './common'
+import { ClickHouseClient } from './common'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from './config'
 import { NodeConfigImpl } from './config'

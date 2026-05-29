@@ -2,7 +2,7 @@ import {
   type LogWriter,
   type ConnOperation,
   ClickHouseLogLevel,
-} from '@clickhouse/client-common'
+} from '../common'
 import type Stream from 'stream'
 
 export interface Context {

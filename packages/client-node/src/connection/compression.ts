@@ -1,5 +1,5 @@
-import type { LogWriter } from '@clickhouse/client-common'
-import { ClickHouseLogLevel } from '@clickhouse/client-common'
+import type { LogWriter } from '../common'
+import { ClickHouseLogLevel } from '../common'
 import type Http from 'http'
 import Stream from 'stream'
 import Zlib from 'zlib'

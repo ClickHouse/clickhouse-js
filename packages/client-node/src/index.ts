@@ -71,4 +71,4 @@ export {
   type ClickHouseJWTAuth,
   type ClickHouseCredentialsAuth,
   TupleParam,
-} from '@clickhouse/client-common'
+} from './common'

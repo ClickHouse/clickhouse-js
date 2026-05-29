@@ -6,18 +6,18 @@ import type {
   ResultJSONType,
   ResultStream,
   Row,
-} from '@clickhouse/client-common'
+} from './common'
 import {
   extractErrorAtTheEndOfChunk,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
-} from '@clickhouse/client-common'
+} from './common'
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
   validateStreamFormat,
-} from '@clickhouse/client-common'
+} from './common'
 import { Buffer } from 'buffer'
 import type { Readable, TransformCallback } from 'stream'
 import Stream, { Transform } from 'stream'

@@ -12,7 +12,7 @@ import type {
   ConnPingResult,
   ConnQueryResult,
   ResponseHeaders,
-} from '@clickhouse/client-common'
+} from '../common'
 import {
   isCredentialsAuth,
   isJWTAuth,
@@ -20,8 +20,8 @@ import {
   transformUrl,
   withHttpSettings,
   ClickHouseLogLevel,
-} from '@clickhouse/client-common'
-import { type ConnPingParams } from '@clickhouse/client-common'
+} from '../common'
+import { type ConnPingParams } from '../common'
 import crypto from 'crypto'
 import type Http from 'http'
 import type Https from 'node:https'

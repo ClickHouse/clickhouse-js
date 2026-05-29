@@ -6,16 +6,13 @@ import type {
   ResultJSONType,
   ResultStream,
   Row,
-} from '@clickhouse/client-common'
-import {
-  CARET_RETURN,
-  extractErrorAtTheEndOfChunk,
-} from '@clickhouse/client-common'
+} from './common'
+import { CARET_RETURN, extractErrorAtTheEndOfChunk } from './common'
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
   validateStreamFormat,
-} from '@clickhouse/client-common'
+} from './common'
 import { getAsText } from './utils'
 
 const NEWLINE = 0x0a as const
