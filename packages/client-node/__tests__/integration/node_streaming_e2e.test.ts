@@ -130,6 +130,57 @@ describe('[Node.js] streaming e2e', () => {
     ])
   })
 
+  // Regression test for https://github.com/ClickHouse/clickhouse-js/issues/607
+  // ResultSet.rawStream() must yield the Parquet binary payload intact, even
+  // when it contains \r\n byte sequences that the row-oriented stream() parser
+  // would otherwise misinterpret as an exception marker.
+  it('should stream Parquet output via ResultSet.rawStream()', async () => {
+    const streamParquetSettings: ClickHouseSettings = {
+      output_format_parquet_compression_method: 'none',
+      output_format_parquet_version: '2.6',
+      output_format_parquet_string_as_string: 1,
+    }
+
+    const filename =
+      'packages/client-common/__tests__/fixtures/streaming_e2e_data.parquet'
+    await client.insert({
+      table: tableName,
+      values: Fs.createReadStream(filename),
+      format: 'Parquet',
+    })
+
+    const rs = await client.query({
+      query: `SELECT * from ${tableName}`,
+      format: 'Parquet',
+      clickhouse_settings: streamParquetSettings,
+    })
+
+    const parquetChunks: Buffer[] = []
+    for await (const chunk of rs.rawStream()) {
+      parquetChunks.push(chunk)
+    }
+
+    const table = tableFromIPC(
+      readParquet(Buffer.concat(parquetChunks)).intoIPCStream(),
+    )
+    expect(table.schema.toString()).toEqual(
+      'Schema<{ 0: id: Uint64, 1: name: Utf8, 2: sku: List<Uint8> }>',
+    )
+    const actualParquetData: unknown[] = []
+    table.toArray().map((v) => {
+      const row: Record<string, unknown> = {}
+      row['id'] = v.id
+      row['name'] = v.name
+      row['sku'] = Array.from(v.sku.toArray())
+      actualParquetData.push(row)
+    })
+    expect(actualParquetData).toEqual([
+      { id: 0n, name: 'a', sku: [1, 2] },
+      { id: 1n, name: 'b', sku: [3, 4] },
+      { id: 2n, name: 'c', sku: [5, 6] },
+    ])
+  })
+
   it('should stream a stream created in-place', async () => {
     await client.insert({
       table: tableName,

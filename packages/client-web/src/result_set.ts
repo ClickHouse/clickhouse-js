@@ -10,6 +10,7 @@ import type {
 import {
   CARET_RETURN,
   extractErrorAtTheEndOfChunk,
+  RawStreamExceptionDetector,
 } from '@clickhouse/client-common'
 import {
   isNotStreamableJSONFamily,
@@ -22,7 +23,11 @@ const NEWLINE = 0x0a as const
 
 export class ResultSet<
   Format extends DataFormat | unknown,
-> implements BaseResultSet<ReadableStream<Row[]>, Format> {
+> implements BaseResultSet<
+  ReadableStream<Row[]>,
+  Format,
+  ReadableStream<Uint8Array>
+> {
   public readonly response_headers: ResponseHeaders
 
   private readonly exceptionTag: string | undefined = undefined
@@ -181,6 +186,52 @@ export class ResultSet<
       preventCancel: false,
     })
     return pipeline as any
+  }
+
+  /** See {@link BaseResultSet.rawStream} */
+  rawStream(): ReadableStream<Uint8Array> {
+    this.markAsConsumed()
+
+    const exceptionTag = this.exceptionTag
+    const detector =
+      exceptionTag !== undefined
+        ? new RawStreamExceptionDetector(exceptionTag)
+        : undefined
+    const transform = new TransformStream<Uint8Array, Uint8Array>({
+      transform: (chunk, controller) => {
+        if (chunk === null) {
+          controller.terminate()
+          return
+        }
+        if (detector === undefined) {
+          controller.enqueue(chunk)
+          return
+        }
+        const data = detector.push(chunk)
+        if (data.length > 0) {
+          controller.enqueue(data)
+        }
+      },
+      flush: (controller) => {
+        if (detector === undefined) {
+          return
+        }
+        const { data, error } = detector.flush()
+        if (error !== undefined) {
+          controller.error(error)
+          return
+        }
+        if (data.length > 0) {
+          controller.enqueue(data)
+        }
+      },
+    })
+
+    return this._stream.pipeThrough(transform, {
+      preventClose: false,
+      preventAbort: false,
+      preventCancel: false,
+    })
   }
 
   async close(): Promise<void> {
