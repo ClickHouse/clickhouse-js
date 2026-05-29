@@ -67,6 +67,7 @@ export class ResultSet<
   private readonly exceptionTag: string | undefined = undefined
   private readonly log_error: (error: Error) => void
   private readonly jsonHandling: JSONHandling
+  private _consumed = false
 
   constructor(
     /**
@@ -97,33 +98,38 @@ export class ResultSet<
     }
   }
 
+  private consume() {
+    if (this._consumed) {
+      throw new Error(streamAlreadyConsumedMessage)
+    }
+    this._consumed = true
+    return this._stream
+  }
+
   /** See {@link BaseResultSet.text}. */
   async text(): Promise<string> {
-    if (this._stream.readableEnded) {
-      throw Error(streamAlreadyConsumedMessage)
-    }
-    return await getAsText(this._stream)
+    return await getAsText(this.consume())
   }
 
   /** See {@link BaseResultSet.json}. */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
-    if (this._stream.readableEnded) {
-      throw Error(streamAlreadyConsumedMessage)
-    }
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
       const result: T[] = []
+      // Using the stream() instead of _stream directly to leverage the existing logic
+      // for handling incomplete chunks and exception tags.
+      // TODO: consider using stream() for all formats to unify the logic and error handling.
       const stream = this.stream<T>()
       for await (const rows of stream) {
         for (const row of rows) {
           result.push(row.json() as T)
         }
       }
-      return result as any
+      return result as ResultJSONType<T, Format>
     }
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
-      const text = await getAsText(this._stream)
+      const text = await getAsText(this.consume())
       return this.jsonHandling.parse(text)
     }
     // should not be called for CSV, etc.
@@ -132,13 +138,6 @@ export class ResultSet<
 
   /** See {@link BaseResultSet.stream}. */
   stream<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
-    // If the underlying stream has already ended by calling `text` or `json`,
-    // Stream.pipeline will create a new empty stream
-    // but without "readableEnded" flag set to true
-    if (this._stream.readableEnded) {
-      throw new Error(streamAlreadyConsumedMessage)
-    }
-
     validateStreamFormat(this.format)
 
     const incompleteChunks: Buffer[] = []
@@ -203,7 +202,7 @@ export class ResultSet<
     })
 
     const pipeline = Stream.pipeline(
-      this._stream,
+      this.consume(),
       toRows,
       function pipelineCb(err) {
         if (
@@ -220,7 +219,7 @@ export class ResultSet<
 
   /** See {@link BaseResultSet.close}. */
   close() {
-    this._stream.destroy(new Error(resultSetClosedMessage))
+    this.consume().destroy(new Error(resultSetClosedMessage))
   }
 
   /**
