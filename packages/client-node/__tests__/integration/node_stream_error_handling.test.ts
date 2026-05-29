@@ -74,4 +74,40 @@ describe('[Node.js] Stream error handling', () => {
 
     assertError(caughtError)
   })
+
+  it.skip('with .json()', async ({ skip }) => {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
+      skip()
+    }
+
+    let caughtError: ClickHouseError | null = null
+
+    try {
+      const queryParams = streamErrorQueryParams()
+      const rs = await client.query(queryParams)
+      await rs.json()
+    } catch (err) {
+      caughtError = err as ClickHouseError
+    }
+
+    assertError(caughtError)
+  })
+
+  it.skip('with .text()', async ({ skip }) => {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
+      skip()
+    }
+
+    let caughtError: ClickHouseError | null = null
+
+    try {
+      const queryParams = streamErrorQueryParams()
+      const rs = await client.query(queryParams)
+      await rs.text()
+    } catch (err) {
+      caughtError = err as ClickHouseError
+    }
+
+    assertError(caughtError)
+  })
 })

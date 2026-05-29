@@ -36,6 +36,7 @@ export {
   type InputJSONObjectEachRow,
   type BaseResultSet,
   type PingResult,
+  type ResponseHeaders,
   type SimpleColumnType,
   type ParsedColumnSimple,
   type ParsedColumnEnum,

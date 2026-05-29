@@ -3,12 +3,6 @@
 > **Applies to:** all versions. The `columns` option (both forms) and the
 > `database` config field are universally supported.
 
-Backing examples:
-[`examples/node/coding/insert_specific_columns.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_specific_columns.ts),
-[`examples/node/coding/insert_exclude_columns.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_exclude_columns.ts),
-[`examples/node/coding/insert_ephemeral_columns.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_ephemeral_columns.ts),
-[`examples/node/coding/insert_into_different_db.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/insert_into_different_db.ts).
-
 ## Answer checklist
 
 When explaining partial-column inserts:
@@ -29,9 +23,9 @@ get their declared default.
 ```ts
 await client.insert({
   table: 'events',
+  columns: ['message'], // the rest of the events table columns get their DEFAULTs
   format: 'JSONEachRow',
   values: [{ message: 'foo' }],
-  columns: ['message'], // `id` will get its default (0 for UInt32)
 })
 ```
 

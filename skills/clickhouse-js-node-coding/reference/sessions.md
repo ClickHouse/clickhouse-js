@@ -3,9 +3,30 @@
 > **Applies to:** all versions. `session_id` is a server-level concept; the
 > client just forwards it on every request that names it.
 
-Backing examples:
-[`examples/node/coding/session_id_and_temporary_tables.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/session_id_and_temporary_tables.ts),
-[`examples/node/coding/session_level_commands.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/session_level_commands.ts).
+## Answer checklist
+
+When answering "temp table disappears between calls" / "how do I share a
+session" / anything involving `session_id`:
+
+- State plainly that **temporary tables and session-scoped state are tied
+  to a `session_id`** — without a stable `session_id` across calls, every
+  request gets a fresh server-side session and the temp table is gone.
+- Set `session_id` via `crypto.randomUUID()` either on `createClient` or
+  per-call.
+- Warn that **`session_id` on a global / module-static client is an
+  anti-pattern** in any concurrent app (Express, server actions, workers,
+  etc.) — concurrent requests will share the same session and trip
+  `"Session is locked by a concurrent client"`. Recommend a short-lived
+  per-workflow client or per-call `session_id` instead.
+- If `session_id` is set on the client, also set `max_open_connections: 1`
+  to serialize calls and avoid the concurrent-session error.
+- For ClickHouse Cloud or any load-balanced deployment: **explicitly
+  recommend replica-aware routing or a single-node hostname** as the
+  primary remedy when sessions are needed. Sessions are pinned to one
+  node; behind an LB, consecutive requests may land on different nodes
+  and the temp table will appear to vanish. "Just collapse the workflow
+  into one handler" or "use a non-temporary table" are valid fallbacks
+  but secondary — name the routing fix first.
 
 ## When you need a session
 
@@ -40,8 +61,8 @@ the entire process.
 ## Per-client `session_id`
 
 Appropriate when **one client handles exactly one sequential workflow** (a
-script, a background job, a single user's session that you've already
-serialized).
+script, a background job, a single user's session that you've already manually
+serialized in the code).
 
 ```ts
 import { createClient } from '@clickhouse/client'
@@ -49,7 +70,7 @@ import * as crypto from 'node:crypto'
 
 const client = createClient({
   session_id: crypto.randomUUID(),
-  max_open_connections: 1, // prevent concurrent-session errors
+  max_open_connections: 1, // safeguard against concurrent-session errors
 })
 
 await client.command({
@@ -81,7 +102,7 @@ import * as crypto from 'node:crypto'
 
 const client = createClient({
   session_id: crypto.randomUUID(),
-  max_open_connections: 1, // prevent concurrent-session errors
+  max_open_connections: 1, // safe-guard against concurrent-session errors
 })
 
 await client.command({
@@ -125,13 +146,18 @@ front of ClickHouse routes consecutive requests to different nodes, the
 temporary table / `SET` won't be visible — you'll get
 `UNKNOWN_TABLE` / surprising results.
 
-Mitigations:
+Mitigations (in order of preference):
 
-- Talk to a single node directly.
-- For ClickHouse Cloud, use [replica-aware
-  routing](https://clickhouse.com/docs/manage/replica-aware-routing).
-- Avoid sessions for cross-node workflows; persist intermediate state in a
-  regular (non-temporary) table instead.
+- **For ClickHouse Cloud, use [replica-aware
+  routing](https://clickhouse.com/docs/manage/replica-aware-routing)** so
+  consecutive requests in the same session land on the same node. This is
+  the right primary fix when you need sessions in a Cloud deployment.
+- Talk to a single node directly (e.g., a node-pinned hostname) when
+  routing isn't an option.
+- As a fallback only: avoid sessions for cross-node workflows and persist
+  intermediate state in a regular (non-temporary) table instead. This
+  trades the session requirement away rather than fixing it — use it only
+  if replica-aware routing / single-node connections aren't available.
 
 ## Common pitfalls
 

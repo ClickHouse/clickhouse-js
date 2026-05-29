@@ -337,6 +337,8 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-cloud:
+    # Cloud secrets are not available for PRs from forks; skip the job in that case.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -371,6 +373,8 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   web-integration-tests-cloud:
+    # Cloud secrets are not available for PRs from forks; skip the job in that case.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -506,7 +510,13 @@ jobs:
         'web-integration-tests-cloud',
         'web-codecov-upload',
       ]
+    # Run even if some needed jobs were skipped (e.g. cloud jobs on PRs from forks),
+    # but still fail if any of them failed or were cancelled.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Fail if any needed job failed or was cancelled
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1
       - name: All tests passed
         run: echo "All tests passed! 🎉"
