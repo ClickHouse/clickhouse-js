@@ -23,13 +23,15 @@ describe('[Node.js] SELECT streaming', () => {
       })
       expect(await rs.json()).toEqual([{ number: '0' }])
       // wrap in a func to avoid changing inner "this"
-      await expect(() => rs.json()).rejects.toMatchObject({
-        message: 'Stream has been already consumed',
-      })
-      await expect(() => rs.text()).rejects.toMatchObject({
-        message: 'Stream has been already consumed',
-      })
-      assertAlreadyConsumed(() => rs.stream())
+      await expect(async () => rs.json()).rejects.toThrow(
+        /Stream has been already consumed/,
+      )
+      await expect(async () => rs.text()).rejects.toThrow(
+        /Stream has been already consumed/,
+      )
+      await expect(async () => rs.stream()).rejects.toThrow(
+        /Stream has been already consumed/,
+      )
     })
 
     it('should consume a text response only once', async () => {
@@ -39,13 +41,15 @@ describe('[Node.js] SELECT streaming', () => {
       })
       expect(await rs.text()).toEqual('0\n')
       // wrap in a func to avoid changing inner "this"
-      await expect(() => rs.json()).rejects.toMatchObject({
-        message: 'Stream has been already consumed',
-      })
-      await expect(() => rs.text()).rejects.toMatchObject({
-        message: 'Stream has been already consumed',
-      })
-      assertAlreadyConsumed(() => rs.stream())
+      await expect(async () => rs.json()).rejects.toThrow(
+        /Stream has been already consumed/,
+      )
+      await expect(async () => rs.text()).rejects.toThrow(
+        /Stream has been already consumed/,
+      )
+      await expect(async () => rs.stream()).rejects.toThrow(
+        /Stream has been already consumed/,
+      )
     })
 
     it('should consume a stream response only once', async () => {
@@ -61,15 +65,15 @@ describe('[Node.js] SELECT streaming', () => {
       }
       expect(result).toEqual('0')
       // wrap in a func to avoid changing inner "this"
-      await expect(() => rs.json()).rejects.toMatchObject({
-        message: 'Stream has been already consumed',
-      })
-      await expect(() => rs.text()).rejects.toMatchObject({
-        message: 'Stream has been already consumed',
-      })
-      await expect(() => rs.stream()).rejects.toMatchObject({
-        message: 'Stream has been already consumed',
-      })
+      await expect(async () => rs.json()).rejects.toThrow(
+        /Stream has been already consumed/,
+      )
+      await expect(async () => rs.text()).rejects.toThrow(
+        /Stream has been already consumed/,
+      )
+      await expect(async () => rs.stream()).rejects.toThrow(
+        /Stream has been already consumed/,
+      )
     })
   })
 
@@ -80,9 +84,9 @@ describe('[Node.js] SELECT streaming', () => {
         format: 'JSON',
       })
       try {
-        await expect(async () => result.stream()).rejects.toMatchObject({
-          message: expect.stringContaining('JSON format is not streamable'),
-        })
+        await expect(async () => result.stream()).rejects.toThrow(
+          /JSON format is not streamable/,
+        )
       } finally {
         result.close()
       }
