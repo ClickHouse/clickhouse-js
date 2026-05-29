@@ -96,7 +96,7 @@ export class ResultSet<
     if (this._stream.readableEnded) {
       throw Error(streamAlreadyConsumedMessage)
     }
-    return (await getAsText(this._stream)).toString()
+    return await getAsText(this._stream)
   }
 
   /** See {@link BaseResultSet.json}. */
