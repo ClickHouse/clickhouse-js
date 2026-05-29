@@ -13,11 +13,6 @@ describe('[Node.js] SELECT streaming', () => {
   })
 
   describe('consume the response only once', () => {
-    async function assertAlreadyConsumed$<T>(fn: () => Promise<T>) {
-      await expect(fn()).rejects.toMatchObject({
-        message: 'Stream has been already consumed',
-      })
-    }
     function assertAlreadyConsumed<T>(fn: () => T) {
       expect(fn).toThrow('Stream has been already consumed')
     }
@@ -28,8 +23,12 @@ describe('[Node.js] SELECT streaming', () => {
       })
       expect(await rs.json()).toEqual([{ number: '0' }])
       // wrap in a func to avoid changing inner "this"
-      await assertAlreadyConsumed$(() => rs.json())
-      await assertAlreadyConsumed$(() => rs.text())
+      await expect(() => rs.json()).rejects.toMatchObject({
+        message: 'Stream has been already consumed',
+      })
+      await expect(() => rs.text()).rejects.toMatchObject({
+        message: 'Stream has been already consumed',
+      })
       assertAlreadyConsumed(() => rs.stream())
     })
 
@@ -40,8 +39,12 @@ describe('[Node.js] SELECT streaming', () => {
       })
       expect(await rs.text()).toEqual('0\n')
       // wrap in a func to avoid changing inner "this"
-      await assertAlreadyConsumed$(() => rs.json())
-      await assertAlreadyConsumed$(() => rs.text())
+      await expect(() => rs.json()).rejects.toMatchObject({
+        message: 'Stream has been already consumed',
+      })
+      await expect(() => rs.text()).rejects.toMatchObject({
+        message: 'Stream has been already consumed',
+      })
       assertAlreadyConsumed(() => rs.stream())
     })
 
@@ -58,9 +61,15 @@ describe('[Node.js] SELECT streaming', () => {
       }
       expect(result).toEqual('0')
       // wrap in a func to avoid changing inner "this"
-      await assertAlreadyConsumed$(() => rs.json())
-      await assertAlreadyConsumed$(() => rs.text())
-      assertAlreadyConsumed(() => rs.stream())
+      await expect(() => rs.json()).rejects.toMatchObject({
+        message: 'Stream has been already consumed',
+      })
+      await expect(() => rs.text()).rejects.toMatchObject({
+        message: 'Stream has been already consumed',
+      })
+      await expect(() => rs.stream()).rejects.toMatchObject({
+        message: 'Stream has been already consumed',
+      })
     })
   })
 
