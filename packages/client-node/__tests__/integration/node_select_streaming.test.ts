@@ -37,9 +37,9 @@ describe('[Node.js] SELECT streaming', () => {
     it('should consume a text response only once', async () => {
       const rs = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
-        format: 'TabSeparated',
+        format: 'JSONEachRow',
       })
-      expect(await rs.text()).toEqual('0\n')
+      expect(await rs.text()).toEqual('{"number":"0"}\n')
       // wrap in a func to avoid changing inner "this"
       await expect(async () => rs.json()).rejects.toThrow(
         /Stream has been already consumed/,
@@ -55,7 +55,7 @@ describe('[Node.js] SELECT streaming', () => {
     it('should consume a stream response only once', async () => {
       const rs = await client.query({
         query: 'SELECT * FROM system.numbers LIMIT 1',
-        format: 'TabSeparated',
+        format: 'JSONEachRow',
       })
       let result = ''
       for await (const rows of rs.stream()) {
@@ -63,7 +63,7 @@ describe('[Node.js] SELECT streaming', () => {
           result += row.text
         })
       }
-      expect(result).toEqual('0')
+      expect(result).toEqual('{"number":"0"}')
       // wrap in a func to avoid changing inner "this"
       await expect(async () => rs.json()).rejects.toThrow(
         /Stream has been already consumed/,
@@ -77,7 +77,7 @@ describe('[Node.js] SELECT streaming', () => {
     })
   })
 
-  describe('select result asStream()', () => {
+  describe('select result as stream()', () => {
     it('throws an exception if format is not stream-able', async () => {
       const result = await client.query({
         query: 'SELECT number FROM system.numbers LIMIT 5',
