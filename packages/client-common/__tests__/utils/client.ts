@@ -1,13 +1,13 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
 import { beforeAll } from 'vitest'
 import {
-  ClickHouseLogLevel,
   type BaseClickHouseClientConfigOptions,
   type ClickHouseClient,
   type ClickHouseSettings,
 } from '@clickhouse/client-common'
 import { EnvKeys, getFromEnv } from './env'
 import { guid } from './guid'
+import { createSimpleTestClient, getTestLogConfig } from './simple_client'
 import {
   getClickHouseTestEnvironment,
   isCloudTestEnv,
@@ -15,34 +15,41 @@ import {
   SKIP_INIT,
   TestEnv,
 } from './test_env'
-import { TestLogger } from './test_logger'
+
+export { createSimpleTestClient }
 
 let databaseName: string
-beforeAll(async () => {
-  if (SKIP_INIT) {
-    // it will be skipped for unit tests that don't require DB setup
-    console.log('\nSkipping test environment initialization')
-    return
-  }
-
-  console.log(
-    `\nTest environment: ${getClickHouseTestEnvironment()}, database: ${
-      databaseName ?? 'default'
-    }`,
-  )
-  const initClient = createTestClient({
-    request_timeout: 10_000,
+// Only register the shared test-environment initializer when it is actually
+// needed. Skipping the registration entirely (instead of returning early from
+// the hook) ensures that importing this module never couples a test suite to a
+// reachable ClickHouse instance when init is skipped.
+if (!SKIP_INIT) {
+  beforeAll(async () => {
+    console.log(
+      `\nTest environment: ${getClickHouseTestEnvironment()}, database: ${
+        databaseName ?? 'default'
+      }`,
+    )
+    const initClient = createTestClient({
+      request_timeout: 10_000,
+    })
+    if (isCloudTestEnv() && databaseName === undefined) {
+      await wakeUpPing(initClient)
+      databaseName = await createRandomDatabase(initClient)
+    }
+    await initClient.close()
   })
-  if (isCloudTestEnv() && databaseName === undefined) {
-    await wakeUpPing(initClient)
-    databaseName = await createRandomDatabase(initClient)
-  }
-  await initClient.close()
-})
+}
 
 export function createTestClient<Stream = unknown>(
   config: BaseClickHouseClientConfigOptions = {},
 ): ClickHouseClient<Stream> {
+  // When the shared test-environment init is skipped, there is no ClickHouse
+  // instance to talk to; fall back to a client that requires no server.
+  if (SKIP_INIT) {
+    return createSimpleTestClient<Stream>(config)
+  }
+
   const env = getClickHouseTestEnvironment()
   const clickHouseSettings: ClickHouseSettings = {
     // (U)Int64 are not quoted by default since 25.8
@@ -55,17 +62,7 @@ export function createTestClient<Stream = unknown>(
   }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
-  const level =
-    config.log?.level ??
-    (!process.env.LOG_LEVEL || process.env.LOG_LEVEL === 'undefined'
-      ? undefined
-      : ClickHouseLogLevel[
-          process.env.LOG_LEVEL as keyof typeof ClickHouseLogLevel
-        ])
-  const log: BaseClickHouseClientConfigOptions['log'] = {
-    LoggerClass: TestLogger,
-    level,
-  }
+  const log = getTestLogConfig(config)
 
   if (isCloudTestEnv()) {
     return (globalThis as any).environmentSpecificCreateClient({

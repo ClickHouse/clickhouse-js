@@ -16,8 +16,17 @@ import {
 } from '../../src/connection'
 import { sleep } from '../utils/sleep'
 import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
+import { createSimpleNodeTestClient } from '../utils/simple_node_client'
 
 describe('[Node.js] createClient', () => {
+  it('createSimpleNodeTestClient creates a client without requiring ClickHouse', async () => {
+    // Imported from the side-effect-free `simple_node_client` module, so it does
+    // not register the shared `beforeAll` test-env init and needs no ClickHouse.
+    const client = createSimpleNodeTestClient()
+    expect(client).toBeDefined()
+    await client.close()
+  })
+
   it('throws on incorrect "url" config value', () => {
     expect(() => createClient({ url: 'foobar' })).toThrow(
       expect.objectContaining({
