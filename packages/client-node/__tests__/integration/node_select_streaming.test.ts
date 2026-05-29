@@ -29,7 +29,7 @@ describe('[Node.js] SELECT streaming', () => {
       await expect(rs.text()).rejects.toThrow(
         /Stream has been already consumed/,
       )
-      await expect(rs.stream()).rejects.toThrow(
+      await expect(async () => rs.stream()).rejects.toThrow(
         /Stream has been already consumed/,
       )
     })
@@ -47,7 +47,7 @@ describe('[Node.js] SELECT streaming', () => {
       await expect(rs.text()).rejects.toThrow(
         /Stream has been already consumed/,
       )
-      await expect(rs.stream()).rejects.toThrow(
+      await expect(async () => rs.stream()).rejects.toThrow(
         /Stream has been already consumed/,
       )
     })
@@ -71,7 +71,7 @@ describe('[Node.js] SELECT streaming', () => {
       await expect(rs.text()).rejects.toThrow(
         /Stream has been already consumed/,
       )
-      await expect(rs.stream()).rejects.toThrow(
+      await expect(async () => rs.stream()).rejects.toThrow(
         /Stream has been already consumed/,
       )
     })
@@ -84,7 +84,7 @@ describe('[Node.js] SELECT streaming', () => {
         format: 'JSON',
       })
       try {
-        await expect(result.stream()).rejects.toThrow(
+        await expect(async () => result.stream()).rejects.toThrow(
           /JSON format is not streamable/,
         )
       } finally {
