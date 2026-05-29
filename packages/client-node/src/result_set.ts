@@ -69,6 +69,12 @@ export class ResultSet<
   private readonly jsonHandling: JSONHandling
 
   constructor(
+    /**
+     * The stream of the response body.
+     *
+     * It is expected that the stream is passed directly from the response of the HTTP request
+     * and has not been consumed or altered yet.
+     */
     private _stream: Stream.Readable,
     private readonly format: Format,
     public readonly query_id: string,
