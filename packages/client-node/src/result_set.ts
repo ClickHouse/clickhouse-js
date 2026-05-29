@@ -130,7 +130,7 @@ export class ResultSet<
     // Stream.pipeline will create a new empty stream
     // but without "readableEnded" flag set to true
     if (this._stream.readableEnded) {
-      throw Error(streamAlreadyConsumedMessage)
+      throw new Error(streamAlreadyConsumedMessage)
     }
 
     validateStreamFormat(this.format)
