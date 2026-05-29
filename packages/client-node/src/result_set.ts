@@ -70,6 +70,12 @@ export class ResultSet<
   private _consumed = false
 
   constructor(
+    /**
+     * The stream of the response body.
+     *
+     * It is expected that the stream is passed directly from the response of the HTTP request
+     * and has not been consumed or altered yet.
+     */
     private _stream: Stream.Readable,
     private readonly format: Format,
     public readonly query_id: string,
@@ -92,71 +98,47 @@ export class ResultSet<
     }
   }
 
-  /**
-   * Mark the result set as consumed and throw if it was already consumed.
-   * Uses a boolean flag instead of checking `readableEnded` to avoid a race
-   * condition where the stream's 'end' event fires between two separate
-   * `readableEnded` checks (e.g. when `json()` calls `stream()` internally
-   * for JSONEachRow). See: https://github.com/ClickHouse/clickhouse-js/issues/575
-   *
-   * We intentionally do NOT check `readableEnded` here. A stream can have
-   * `readableEnded=true` (the 'end' event fired) while its data is still
-   * buffered and available for reading. Checking readableEnded would falsely
-   * reject the first consumption call for fast/small responses.
-   */
-  private markAsConsumed(): void {
+  private consume() {
     if (this._consumed) {
-      throw Error(streamAlreadyConsumedMessage)
+      throw new Error(streamAlreadyConsumedMessage)
     }
     this._consumed = true
+    return this._stream
   }
 
   /** See {@link BaseResultSet.text}. */
   async text(): Promise<string> {
-    this.markAsConsumed()
-    return (await getAsText(this._stream)).toString()
+    return await getAsText(this.consume())
   }
 
   /** See {@link BaseResultSet.json}. */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
-      this.markAsConsumed()
       const result: T[] = []
-      const stream = this._streamImpl<T>()
+      // Using the stream() instead of _stream directly to leverage the existing logic
+      // for handling incomplete chunks and exception tags.
+      // TODO: consider using stream() for all formats to unify the logic and error handling.
+      const stream = this.stream<T>()
       for await (const rows of stream) {
         for (const row of rows) {
           result.push(row.json() as T)
         }
       }
-      return result as any
+      return result as ResultJSONType<T, Format>
     }
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
-      this.markAsConsumed()
-      const text = await getAsText(this._stream)
+      const text = await getAsText(this.consume())
       return this.jsonHandling.parse(text)
     }
     // should not be called for CSV, etc.
-    // Do NOT mark as consumed here — the caller can still use text() instead.
     throw new Error(`Cannot decode ${this.format} as JSON`)
   }
 
   /** See {@link BaseResultSet.stream}. */
   stream<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
-    // Validate format before marking as consumed, so that if the format is
-    // invalid, the ResultSet can still be consumed via text() afterwards.
     validateStreamFormat(this.format)
-    this.markAsConsumed()
-    return this._streamImpl<T>()
-  }
-
-  /**
-   * Internal stream implementation that skips the consumption check
-   * and format validation. Used by `json()` which has already called
-   * `markAsConsumed()` and validated the format via `isStreamableJSONFamily`.
-   */
-  private _streamImpl<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
 
     const incompleteChunks: Buffer[] = []
     const logError = this.log_error
@@ -220,7 +202,7 @@ export class ResultSet<
     })
 
     const pipeline = Stream.pipeline(
-      this._stream,
+      this.consume(),
       toRows,
       function pipelineCb(err) {
         if (
