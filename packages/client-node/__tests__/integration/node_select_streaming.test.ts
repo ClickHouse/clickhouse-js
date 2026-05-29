@@ -23,13 +23,13 @@ describe('[Node.js] SELECT streaming', () => {
       })
       expect(await rs.json()).toEqual([{ number: '0' }])
       // wrap in a func to avoid changing inner "this"
-      await expect(async () => rs.json()).rejects.toThrow(
+      await expect(rs.json()).rejects.toThrow(
         /Stream has been already consumed/,
       )
-      await expect(async () => rs.text()).rejects.toThrow(
+      await expect(rs.text()).rejects.toThrow(
         /Stream has been already consumed/,
       )
-      await expect(async () => rs.stream()).rejects.toThrow(
+      await expect(rs.stream()).rejects.toThrow(
         /Stream has been already consumed/,
       )
     })
@@ -41,13 +41,13 @@ describe('[Node.js] SELECT streaming', () => {
       })
       expect(await rs.text()).toEqual('{"number":"0"}\n')
       // wrap in a func to avoid changing inner "this"
-      await expect(async () => rs.json()).rejects.toThrow(
+      await expect(rs.json()).rejects.toThrow(
         /Stream has been already consumed/,
       )
-      await expect(async () => rs.text()).rejects.toThrow(
+      await expect(rs.text()).rejects.toThrow(
         /Stream has been already consumed/,
       )
-      await expect(async () => rs.stream()).rejects.toThrow(
+      await expect(rs.stream()).rejects.toThrow(
         /Stream has been already consumed/,
       )
     })
@@ -65,13 +65,13 @@ describe('[Node.js] SELECT streaming', () => {
       }
       expect(result).toEqual('{"number":"0"}')
       // wrap in a func to avoid changing inner "this"
-      await expect(async () => rs.json()).rejects.toThrow(
+      await expect(rs.json()).rejects.toThrow(
         /Stream has been already consumed/,
       )
-      await expect(async () => rs.text()).rejects.toThrow(
+      await expect(rs.text()).rejects.toThrow(
         /Stream has been already consumed/,
       )
-      await expect(async () => rs.stream()).rejects.toThrow(
+      await expect(rs.stream()).rejects.toThrow(
         /Stream has been already consumed/,
       )
     })
@@ -84,7 +84,7 @@ describe('[Node.js] SELECT streaming', () => {
         format: 'JSON',
       })
       try {
-        await expect(async () => result.stream()).rejects.toThrow(
+        await expect(result.stream()).rejects.toThrow(
           /JSON format is not streamable/,
         )
       } finally {
