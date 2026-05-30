@@ -10,7 +10,8 @@ counters, a plain `EventEmitter`, or your own logger.
 
 OpenTelemetry's full Node.js distribution (`@opentelemetry/sdk-node` +
 `@opentelemetry/sdk-metrics`) adds several megabytes of dependencies on top of
-the ~500&nbsp;KB client and is undesirable for many users. The client
+the ~500&nbsp;KB OpenTelemetry API package (`@opentelemetry/api`) and is
+undesirable for many users. The client
 therefore ships **only the hook shape**, which mirrors the OpenTelemetry
 [`Span` API](https://opentelemetry.io/docs/specs/otel/trace/api/#span) so an
 OTEL adapter is a trivial wrapper.
