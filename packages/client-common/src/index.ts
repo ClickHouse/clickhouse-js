@@ -5,7 +5,7 @@ export {
   type QueryResult,
   type ExecParams,
   type InsertParams,
-  /** @deprecated Import `ClickHouseClient` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
+  /** @deprecated Import `ClickHouseClient` from `@clickhouse/client` instead. In Web projects, use `import type { ClickHouseClient } from '@clickhouse/client-web'`. Importing it from `@clickhouse/client-common` is deprecated. */
   ClickHouseClient,
   type CommandParams,
   type CommandResult,
