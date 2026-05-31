@@ -1602,6 +1602,12 @@ interface ClickHouseServerSettings {
 
 /** @see https://clickhouse.com/docs/en/interfaces/http */
 interface ClickHouseHTTPSettings {
+  /** A quota key to use with keyed quota intervals. */
+  quota_key: string
+  /** Include stack traces in exception responses when enabled on the server. */
+  stacktrace: Bool
+  /** Deprecated HTTP response memory buffer size in bytes. Prefer `http_response_buffer_size`. */
+  buffer_size: UInt64
   /** Ensures that the entire response is buffered.
    *  In this case, the data that is not stored in memory will be buffered in a temporary server file.
    *  This could help prevent errors that might occur during the streaming of SELECT queries.
@@ -1621,6 +1627,8 @@ interface ClickHouseHTTPSettings {
    *  Due to each particular session not being shared across the cluster, sessions won't work well in a multi-node environment with a load balancer,
    *  as there will be no guarantee that each consequent request will be received on the same node. */
   session_check: Bool
+  /** Close the HTTP session after processing the request. Requires `session_id`. */
+  close_session: Bool
 }
 
 export type ClickHouseSettings = Partial<ClickHouseServerSettings> &
