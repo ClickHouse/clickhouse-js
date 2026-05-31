@@ -671,8 +671,10 @@
 01029_early_constant_folding
 01030_concatenate_equal_fixed_strings
 01030_final_mark_empty_primary_key
-01031_pmj_new_any_semi_join
-01031_semi_anti_join
+# 01031_pmj_new_any_semi_join: reference output drifts on released CH (`latest`) vs upstream master due to join optimizer changes; passes on `head`.
+# 01031_pmj_new_any_semi_join
+# 01031_semi_anti_join: same upstream version-skew as above (join optimizer reference drift on `latest`).
+# 01031_semi_anti_join
 01032_cityHash64_for_UUID
 01032_cityHash64_for_decimal
 01034_order_by_pk_prefix
@@ -2269,7 +2271,8 @@
 03210_lag_lead_inframe_types
 03210_nested_short_circuit_functions_bug
 03210_variant_with_aggregate_function_type
-03211_convert_outer_join_to_inner_join_anti_join
+# 03211_convert_outer_join_to_inner_join_anti_join: reference output drifts on released CH (`latest`) vs upstream master due to join optimizer changes; passes on `head`.
+# 03211_convert_outer_join_to_inner_join_anti_join
 03213_array_element_msan
 03213_denseRank_percentRank_alias
 03214_join_on_tuple_comparison_elimination_bug
@@ -2687,7 +2690,8 @@
 03641_json_array_of_float_and_bool
 03642_column_ttl_sparse
 03643_paste_join_disable_filter_pushdown
-03643_system_instrumentation_no_suspicious_lowcardinality
+# 03643_system_instrumentation_no_suspicious_lowcardinality: requires `system.instrumentation.arguments` column not yet in released CH (`latest`); passes on `head`.
+# 03643_system_instrumentation_no_suspicious_lowcardinality
 03644_explain_indices
 03644_join_order_mixed_comma_and_left
 03644_min_level_for_wide_part
@@ -2712,7 +2716,8 @@
 03699_reverse_utf8
 03700_vertical_format_pretty_print_json
 03701_distinct_but_no_group_by_projection_table_use_check
-03701_limit_by_in_order
+# 03701_limit_by_in_order: uses setting `query_plan_push_limit_by_into_sort` not present in released CH (`latest`); passes on `head`.
+# 03701_limit_by_in_order
 03702_encode_decode_memory_usage
 03702_json_datetime_format_settings
 03702_optimize_inverse_dictionary_lookup_composite_and_layouts

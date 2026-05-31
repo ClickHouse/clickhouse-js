@@ -1,4 +1,18 @@
+# 1.20.0
+
+## Bug Fixes
+
+- (Node.js only) Fixed a race condition in `ResultSet.json()` and `ResultSet.stream()` on `JSONEachRow` (and other streamable) result sets where calling `json()` on a fast/small response could throw `Stream has been already consumed` if the underlying stream ended between internal `readableEnded` checks. The consumption guard has been hardened: the stream is now shielded through a single `consume()` path that marks the result set as consumed in the appropriate branches, after format validation, so a successful `json()` call no longer races against the stream finishing. ([#603])
+
+[#603]: https://github.com/ClickHouse/clickhouse-js/pull/603
+
 # 1.19.0
+
+## Improvements
+
+- Re-exported the `ResponseHeaders` type from `@clickhouse/client` and `@clickhouse/client-web`. Previously this type was only available from `@clickhouse/client-common`; it is now part of the public re-export surface of both flavored packages, alongside the other commonly used types. This is part of an ongoing effort to make `@clickhouse/client-common` an internal-only package so downstream consumers can depend solely on `@clickhouse/client` or `@clickhouse/client-web`. ([#758])
+
+[#758]: https://github.com/ClickHouse/clickhouse-js/pull/758
 
 ## Breaking Changes
 

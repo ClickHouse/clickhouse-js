@@ -10,7 +10,8 @@ import type {
   WithResponseHeaders,
   DataFormat,
 } from './index'
-import { defaultJSONHandling, DefaultLogger, ClickHouseLogLevel } from './index'
+import { defaultJSONHandling } from './parse'
+import { DefaultLogger, ClickHouseLogLevel } from './logger'
 import type {
   InsertValues,
   NonEmptyArray,
