@@ -26,6 +26,14 @@ describe('[Node.js] ResultSet', () => {
     message: expect.stringContaining(errMsg),
   })
 
+  async function collect(stream: Stream.Readable): Promise<Buffer> {
+    const chunks: Buffer[] = []
+    for await (const chunk of stream) {
+      chunks.push(chunk as Buffer)
+    }
+    return Buffer.concat(chunks)
+  }
+
   it('should consume the response as text only once', async () => {
     const rs = makeResultSet(getDataStream())
 
@@ -194,7 +202,7 @@ describe('[Node.js] ResultSet', () => {
     })
   })
 
-  describe('rawStream', () => {
+  describe('binaryStream', () => {
     // Regression test for https://github.com/ClickHouse/clickhouse-js/issues/607
     // Binary formats such as Parquet contain \r\n byte sequences that the
     // row-oriented stream() parser misinterprets as the exception marker.
@@ -203,25 +211,17 @@ describe('[Node.js] ResultSet', () => {
     ])
     const exceptionTag = 'FOOBAR'
 
-    async function collect(stream: Stream.Readable): Promise<Buffer> {
-      const chunks: Buffer[] = []
-      for await (const chunk of stream) {
-        chunks.push(chunk as Buffer)
-      }
-      return Buffer.concat(chunks)
-    }
-
     it('should yield raw binary chunks without splitting on newlines', async () => {
       const rs = makeResultSet(Readable.from([binaryWithCRLF]), 'Parquet', {
         'x-clickhouse-exception-tag': exceptionTag,
       })
-      const result = await collect(rs.rawStream())
+      const result = await collect(rs.binaryStream())
       expect(Array.from(result)).toEqual(Array.from(binaryWithCRLF))
     })
 
     it('should pass data through unchanged without an exception tag', async () => {
       const rs = makeResultSet(Readable.from([binaryWithCRLF]), 'Parquet')
-      const result = await collect(rs.rawStream())
+      const result = await collect(rs.binaryStream())
       expect(Array.from(result)).toEqual(Array.from(binaryWithCRLF))
     })
 
@@ -243,13 +243,46 @@ describe('[Node.js] ResultSet', () => {
         'Parquet',
         { 'x-clickhouse-exception-tag': exceptionTag },
       )
-      await expect(collect(rs.rawStream())).rejects.toThrow(errMsg)
+      await expect(collect(rs.binaryStream())).rejects.toThrow(errMsg)
     })
 
     it('should mark the ResultSet as consumed', async () => {
       const rs = makeResultSet(Readable.from([binaryWithCRLF]), 'Parquet')
-      await collect(rs.rawStream())
+      await collect(rs.binaryStream())
       await expect(rs.text()).rejects.toEqual(err)
+    })
+  })
+
+  describe('rawStream', () => {
+    it('should return the underlying stream as-is', async () => {
+      const stream = Readable.from([Buffer.from([1, 2, 3])])
+      const rs = makeResultSet(stream, 'Parquet')
+
+      expect(rs.rawStream()).toBe(stream)
+      await expect(rs.text()).rejects.toEqual(err)
+    })
+
+    it('should not intercept a trailing exception block', async () => {
+      const exceptionTag = 'FOOBAR'
+      const errMsg = 'boom'
+      const exceptionBlock = Buffer.from(
+        '\r\n__exception__\r\n' +
+          exceptionTag +
+          '\n' +
+          errMsg +
+          '\n' +
+          (errMsg.length + 1) +
+          ' ' +
+          exceptionTag +
+          '\r\n__exception__\r\n',
+      )
+      const stream = Readable.from([exceptionBlock])
+      const rs = makeResultSet(stream, 'Parquet', {
+        'x-clickhouse-exception-tag': exceptionTag,
+      })
+
+      const result = await collect(rs.rawStream())
+      expect(Array.from(result)).toEqual(Array.from(exceptionBlock))
     })
   })
 

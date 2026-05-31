@@ -77,7 +77,8 @@ export interface Row<
 export interface BaseResultSet<
   Stream,
   Format extends DataFormat | unknown,
-  RawStream = Stream,
+  BinaryStream = Stream,
+  RawStream = BinaryStream,
 > {
   /**
    * The method waits for all the rows to be fully loaded
@@ -126,6 +127,10 @@ export interface BaseResultSet<
    *   * CustomSeparatedWithNamesAndTypes
    *   * Parquet
    *
+   * For binary formats such as `Parquet`, `ORC`, `Arrow`, `ArrowStream`,
+   * and `Native`, prefer {@link binaryStream}. This method is row-oriented
+   * and splits the response on newline bytes.
+   *
    * Formats that CANNOT be streamed (the method returns "never" in TS):
    *   * JSON
    *   * JSONStrings
@@ -146,8 +151,8 @@ export interface BaseResultSet<
   stream(): ResultStream<Format, Stream>
 
   /**
-   * Returns a readable stream of the raw response body bytes, without splitting
-   * it into rows.
+   * Returns a readable stream of binary response bytes, without splitting it
+   * into rows.
    *
    * This is the correct way to consume binary formats such as `Parquet`,
    * `ORC`, `Arrow`, `ArrowStream`, or `Native`, where the row-oriented
@@ -161,6 +166,25 @@ export interface BaseResultSet<
    *
    * Each iteration provides a chunk of raw bytes (`Buffer` in Node.js,
    * `Uint8Array` in the Web client).
+   *
+   * Should be called only once.
+   *
+   * The method should throw if the underlying stream was already consumed
+   * by calling the other methods.
+   */
+  binaryStream(): BinaryStream
+
+  /**
+   * Returns the underlying raw response stream as provided by the transport.
+   *
+   * Unlike {@link binaryStream}, this method does not inspect the trailing
+   * bytes for a ClickHouse exception marker and does not apply any row or
+   * binary framing logic. If the server appends a mid-stream exception, it
+   * will be delivered as raw bytes and must be handled by the caller.
+   *
+   * Use this only for low-level piping or when you explicitly need the exact
+   * underlying stream object and accept the responsibility for parsing,
+   * validation, and error handling yourself.
    *
    * Should be called only once.
    *

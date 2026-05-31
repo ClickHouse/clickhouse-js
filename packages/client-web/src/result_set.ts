@@ -26,6 +26,7 @@ export class ResultSet<
 > implements BaseResultSet<
   ReadableStream<Row[]>,
   Format,
+  ReadableStream<Uint8Array>,
   ReadableStream<Uint8Array>
 > {
   public readonly response_headers: ResponseHeaders
@@ -188,8 +189,8 @@ export class ResultSet<
     return pipeline as any
   }
 
-  /** See {@link BaseResultSet.rawStream} */
-  rawStream(): ReadableStream<Uint8Array> {
+  /** See {@link BaseResultSet.binaryStream} */
+  binaryStream(): ReadableStream<Uint8Array> {
     this.markAsConsumed()
 
     const exceptionTag = this.exceptionTag
@@ -232,6 +233,12 @@ export class ResultSet<
       preventAbort: false,
       preventCancel: false,
     })
+  }
+
+  /** See {@link BaseResultSet.rawStream} */
+  rawStream(): ReadableStream<Uint8Array> {
+    this.markAsConsumed()
+    return this._stream
   }
 
   async close(): Promise<void> {

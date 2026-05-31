@@ -131,10 +131,10 @@ describe('[Node.js] streaming e2e', () => {
   })
 
   // Regression test for https://github.com/ClickHouse/clickhouse-js/issues/607
-  // ResultSet.rawStream() must yield the Parquet binary payload intact, even
+  // ResultSet.binaryStream() must yield the Parquet binary payload intact, even
   // when it contains \r\n byte sequences that the row-oriented stream() parser
   // would otherwise misinterpret as an exception marker.
-  it('should stream Parquet output via ResultSet.rawStream()', async () => {
+  it('should stream Parquet output via ResultSet.binaryStream()', async () => {
     const streamParquetSettings: ClickHouseSettings = {
       output_format_parquet_compression_method: 'none',
       output_format_parquet_version: '2.6',
@@ -156,7 +156,7 @@ describe('[Node.js] streaming e2e', () => {
     })
 
     const parquetChunks: Buffer[] = []
-    for await (const chunk of rs.rawStream()) {
+    for await (const chunk of rs.binaryStream()) {
       parquetChunks.push(chunk)
     }
 
@@ -167,7 +167,7 @@ describe('[Node.js] streaming e2e', () => {
       'Schema<{ 0: id: Uint64, 1: name: Utf8, 2: sku: List<Uint8> }>',
     )
     const actualParquetData: unknown[] = []
-    table.toArray().map((v) => {
+    table.toArray().forEach((v) => {
       const row: Record<string, unknown> = {}
       row['id'] = v.id
       row['name'] = v.name

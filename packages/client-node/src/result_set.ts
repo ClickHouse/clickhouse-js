@@ -65,7 +65,8 @@ export class ResultSet<
 > implements BaseResultSet<
   Stream.Readable,
   Format,
-  StreamReadable<Uint8Array>
+  StreamReadable<Uint8Array>,
+  Stream.Readable
 > {
   public readonly response_headers: ResponseHeaders = {}
 
@@ -222,8 +223,8 @@ export class ResultSet<
     return pipeline as any
   }
 
-  /** See {@link BaseResultSet.rawStream}. */
-  rawStream(): StreamReadable<Uint8Array> {
+  /** See {@link BaseResultSet.binaryStream}. */
+  binaryStream(): StreamReadable<Uint8Array> {
     const logError = this.log_error
     const exceptionTag = this.exceptionTag
     const detector =
@@ -241,7 +242,14 @@ export class ResultSet<
           return
         }
         const data = detector.push(chunk)
-        callback(null, data.length > 0 ? Buffer.from(data) : undefined)
+        if (data.length > 0) {
+          callback(
+            null,
+            Buffer.from(data.buffer, data.byteOffset, data.byteLength),
+          )
+          return
+        }
+        callback()
       },
       flush(callback: TransformCallback) {
         if (detector === undefined) {
@@ -253,7 +261,14 @@ export class ResultSet<
           callback(error)
           return
         }
-        callback(null, data.length > 0 ? Buffer.from(data) : undefined)
+        if (data.length > 0) {
+          callback(
+            null,
+            Buffer.from(data.buffer, data.byteOffset, data.byteLength),
+          )
+          return
+        }
+        callback()
       },
       autoDestroy: true,
     })
@@ -272,6 +287,11 @@ export class ResultSet<
       },
     )
     return pipeline as any
+  }
+
+  /** See {@link BaseResultSet.rawStream}. */
+  rawStream(): Stream.Readable {
+    return this.consume()
   }
 
   /** See {@link BaseResultSet.close}. */

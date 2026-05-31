@@ -14,6 +14,35 @@ describe('[Web] ResultSet', () => {
     message: expect.stringContaining(errMsg),
   })
 
+  function streamOf(...chunks: Uint8Array[]): ReadableStream<Uint8Array> {
+    return new ReadableStream({
+      start(controller) {
+        chunks.forEach((chunk) => controller.enqueue(chunk))
+        controller.close()
+      },
+    })
+  }
+
+  function makeRawResultSet(
+    stream: ReadableStream<Uint8Array>,
+    response_headers: Record<string, string> = {},
+  ) {
+    return new ResultSet(stream, 'Parquet', guid(), response_headers)
+  }
+
+  async function collect(
+    stream: ReadableStream<Uint8Array>,
+  ): Promise<Uint8Array> {
+    const reader = stream.getReader()
+    const chunks: number[] = []
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push(...value)
+    }
+    return new Uint8Array(chunks)
+  }
+
   it('should consume the response as text only once', async () => {
     const rs = makeResultSet()
 
@@ -106,53 +135,24 @@ describe('[Web] ResultSet', () => {
     expect(isClosed).toBeTruthy()
   })
 
-  describe('rawStream', () => {
+  describe('binaryStream', () => {
     // Regression test for https://github.com/ClickHouse/clickhouse-js/issues/607
     const binaryWithCRLF = new Uint8Array([
       1, 2, 0x0d, 0x0a, 3, 4, 0x0d, 0x0a, 0x0d, 0x0a, 5, 6, 7, 8, 9, 10,
     ])
     const exceptionTag = 'FOOBAR'
 
-    function streamOf(...chunks: Uint8Array[]): ReadableStream<Uint8Array> {
-      return new ReadableStream({
-        start(controller) {
-          chunks.forEach((chunk) => controller.enqueue(chunk))
-          controller.close()
-        },
-      })
-    }
-
-    function makeRawResultSet(
-      stream: ReadableStream<Uint8Array>,
-      response_headers: Record<string, string> = {},
-    ) {
-      return new ResultSet(stream, 'Parquet', guid(), response_headers)
-    }
-
-    async function collect(
-      stream: ReadableStream<Uint8Array>,
-    ): Promise<Uint8Array> {
-      const reader = stream.getReader()
-      const chunks: number[] = []
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        chunks.push(...value)
-      }
-      return new Uint8Array(chunks)
-    }
-
     it('should yield raw binary chunks without splitting on newlines', async () => {
       const rs = makeRawResultSet(streamOf(binaryWithCRLF), {
         'x-clickhouse-exception-tag': exceptionTag,
       })
-      const result = await collect(rs.rawStream())
+      const result = await collect(rs.binaryStream())
       expect(Array.from(result)).toEqual(Array.from(binaryWithCRLF))
     })
 
     it('should pass data through unchanged without an exception tag', async () => {
       const rs = makeRawResultSet(streamOf(binaryWithCRLF))
-      const result = await collect(rs.rawStream())
+      const result = await collect(rs.binaryStream())
       expect(Array.from(result)).toEqual(Array.from(binaryWithCRLF))
     })
 
@@ -175,13 +175,45 @@ describe('[Web] ResultSet', () => {
       const rs = makeRawResultSet(streamOf(full), {
         'x-clickhouse-exception-tag': exceptionTag,
       })
-      await expect(collect(rs.rawStream())).rejects.toThrow(errMsg)
+      await expect(collect(rs.binaryStream())).rejects.toThrow(errMsg)
     })
 
     it('should mark the ResultSet as consumed', async () => {
       const rs = makeRawResultSet(streamOf(binaryWithCRLF))
-      await collect(rs.rawStream())
+      await collect(rs.binaryStream())
       await expect(rs.text()).rejects.toMatchObject(err)
+    })
+  })
+
+  describe('rawStream', () => {
+    it('should return the underlying stream as-is', async () => {
+      const stream = streamOf(new Uint8Array([1, 2, 3]))
+      const rs = makeRawResultSet(stream)
+
+      expect(rs.rawStream()).toBe(stream)
+      await expect(rs.text()).rejects.toMatchObject(err)
+    })
+
+    it('should not intercept a trailing exception block', async () => {
+      const exceptionTag = 'FOOBAR'
+      const errMsg = 'boom'
+      const exceptionBlock = new TextEncoder().encode(
+        '\r\n__exception__\r\n' +
+          exceptionTag +
+          '\n' +
+          errMsg +
+          '\n' +
+          (errMsg.length + 1) +
+          ' ' +
+          exceptionTag +
+          '\r\n__exception__\r\n',
+      )
+      const rs = makeRawResultSet(streamOf(exceptionBlock), {
+        'x-clickhouse-exception-tag': exceptionTag,
+      })
+
+      const result = await collect(rs.rawStream())
+      expect(Array.from(result)).toEqual(Array.from(exceptionBlock))
     })
   })
 
