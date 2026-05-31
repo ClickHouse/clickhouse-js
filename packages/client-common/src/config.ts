@@ -99,13 +99,14 @@ export interface BaseClickHouseClientConfigOptions {
    * (e.g. query / command / exec / insert / ping start, completion, and
    * error). The hook surface deliberately mirrors the OpenTelemetry `Span`
    * API so it can be implemented as a trivial wrapper over an OTEL tracer,
-   * but the client itself does not depend on any tracing library.
+   * but the client itself depends on no tracing library.
    *
-   * Any exception thrown by a hook is swallowed and logged at WARN level -
-   * a broken tracer cannot break client operations.
+   * Hook calls are inlined into the client's hot path with no defensive
+   * wrapper: exceptions thrown by a hook propagate to the caller. Make
+   * sure your tracer doesn't throw - a simple e2e test is enough.
    *
    * @see {@link ClickHouseTracer}
-   * @default undefined (tracing disabled)
+   * @default undefined (tracing disabled, zero per-operation overhead)
    */
   tracer?: ClickHouseTracer<unknown>
 }

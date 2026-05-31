@@ -214,39 +214,28 @@ describe('tracer hooks', () => {
     expect(result).toBeDefined()
   })
 
-  it('swallows tracer hook errors without breaking the call', async () => {
+  it('propagates tracer hook exceptions to the caller (no defensive wrapper)', async () => {
     const brokenTracer: ClickHouseTracer<unknown> = {
       startSpan: () => {
         throw new Error('start failed')
       },
-      setAttributes: () => {
-        throw new Error('attrs failed')
-      },
-      setStatus: () => {
-        throw new Error('status failed')
-      },
-      recordException: () => {
-        throw new Error('exc failed')
-      },
-      endSpan: () => {
-        throw new Error('end failed')
-      },
+      setAttributes: () => {},
+      setStatus: () => {},
+      recordException: () => {},
+      endSpan: () => {},
     }
     const client = buildClient(brokenTracer)
-    // Even though every tracer hook throws, query() should still succeed.
-    await expect(client.query({ query: 'SELECT 1' })).resolves.toBeDefined()
+    await expect(client.query({ query: 'SELECT 1' })).rejects.toThrow(
+      'start failed',
+    )
   })
 
-  it('still ends the span when a downstream hook throws', async () => {
-    // Use a tracer that throws on setStatus but not on endSpan, and confirm
-    // the span is still ended.
+  it('still ends the span on success even when setStatus is a no-op', async () => {
     let ended = false
     const tracer: ClickHouseTracer<{ id: number }> = {
       startSpan: () => ({ id: 1 }),
       setAttributes: () => {},
-      setStatus: () => {
-        throw new Error('status failed')
-      },
+      setStatus: () => {},
       recordException: () => {},
       endSpan: () => {
         ended = true

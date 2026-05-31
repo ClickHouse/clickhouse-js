@@ -19,10 +19,12 @@
  * a Prometheus adapter return a timer handle, an `EventEmitter`-based adapter
  * return an event id, etc.
  *
- * All hook invocations are best-effort: any exception thrown by a hook is
- * caught and logged at WARN level by the client, but never propagated to the
- * caller. This guarantees that a broken tracer implementation cannot break
- * client operations.
+ * Hook calls are inlined directly into the client's hot path - there is no
+ * defensive wrapper around them. Any exception thrown by a hook will
+ * propagate up to the caller of the corresponding client method
+ * (`query`/`command`/`exec`/`insert`/`ping`). Implementations are therefore
+ * expected to be non-throwing; a trivial e2e test against your tracer is
+ * usually enough to catch regressions.
  */
 export interface ClickHouseTracer<TSpan = unknown> {
   /** Called when a tracked operation begins.

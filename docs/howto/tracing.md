@@ -1,20 +1,26 @@
 # Tracing the ClickHouse client with the `tracer` hooks API
 
-`@clickhouse/client` (and `@clickhouse/client-web`) exposes a small,
-**dependency-free** `tracer` configuration option you can use to plug the
+`@clickhouse/client` (and `@clickhouse/client-web`) ships a small,
+**zero-dependency** `tracer` configuration option you can use to plug the
 client's per-operation lifecycle into any tracing or metrics backend - most
 notably [OpenTelemetry](https://opentelemetry.io/), but also Prometheus
 counters, a plain `EventEmitter`, or your own logger.
+
+The tracer hook surface lives entirely inside the client (no extra packages
+on `npm install`, nothing to add to your bundle) and the hot path is just a
+handful of direct method calls when a tracer is configured, and literally
+nothing when it is not.
 
 ## Why hooks instead of a built-in dependency
 
 OpenTelemetry's full Node.js distribution (`@opentelemetry/sdk-node` +
 `@opentelemetry/sdk-metrics`) adds several megabytes of dependencies on top of
 the ~500&nbsp;KB OpenTelemetry API package (`@opentelemetry/api`) and is
-undesirable for many users. The client
-therefore ships **only the hook shape**, which mirrors the OpenTelemetry
+undesirable for many users. The client therefore ships **only the hook
+shape**, which mirrors the OpenTelemetry
 [`Span` API](https://opentelemetry.io/docs/specs/otel/trace/api/#span) so an
-OTEL adapter is a trivial wrapper.
+OTEL adapter is a trivial wrapper - and users who don't want tracing pay
+nothing for it, on disk or at runtime.
 
 ## Hook surface
 
@@ -59,8 +65,11 @@ before talking to the server), the client invokes:
    `setStatus(span, { code: 'ERROR', message })` on failure.
 4. `endSpan(span)` - always, in a `finally` block.
 
-Hook exceptions are caught and logged at WARN level - **a broken tracer cannot
-break client operations**.
+Hook calls are inlined directly on the client's hot path and are **not**
+wrapped in defensive try/catch - if your tracer throws, the exception
+propagates to the caller of `query` / `command` / `exec` / `insert` /
+`ping`. Make sure your tracer implementation doesn't throw; a trivial e2e
+test against it is usually enough to catch regressions.
 
 > **Stream lifecycle:** for `query`/`exec`, the span ends when the request
 > promise settles (i.e. headers received, stream handed to the caller). The
@@ -129,4 +138,5 @@ const tracer: ClickHouseTracer<RecordedSpan> = {
 ## Disabling tracing
 
 Omit the `tracer` option (or set it to `undefined`) and the client does no
-tracing work and pays no per-operation overhead.
+tracing work and pays no per-operation overhead - the hooks compile down to
+a couple of `undefined` checks on the hot path.
