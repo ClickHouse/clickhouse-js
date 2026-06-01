@@ -58,7 +58,7 @@ in-tree and iterate on it**:
      runtimes (Cloudflare Workers, Vercel Edge, Deno Deploy, browser
      extensions, etc.).
 2. Edit that package in place until you have something working end-to-end for
-   your target runtime/protocol. Run the existing tests against it, adjust
+   your target runtime/protocol. Run the existing tests (where applicable) against it, adjust
    them as needed, and prove the approach out.
 3. Once it works, **rename the package directory** to something descriptive,
    for example `packages/my-native-client` or `packages/client-bun`, update
