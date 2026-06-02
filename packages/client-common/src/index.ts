@@ -5,6 +5,7 @@ export {
   type QueryResult,
   type ExecParams,
   type InsertParams,
+  /** @deprecated Import `ClickHouseClient` from `@clickhouse/client` instead. In Web projects, use `import type { ClickHouseClient } from '@clickhouse/client-web'`. Importing it from `@clickhouse/client-common` is deprecated. */
   ClickHouseClient,
   type CommandParams,
   type CommandResult,
@@ -33,16 +34,29 @@ export type {
   SingleDocumentJSONFormat,
 } from './data_formatter'
 export {
+  /** @deprecated Import `SupportedJSONFormats` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   SupportedJSONFormats,
+  /** @deprecated Import `SupportedRawFormats` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   SupportedRawFormats,
+  /** @deprecated Import `StreamableFormats` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   StreamableFormats,
+  /** @deprecated Import `StreamableJSONFormats` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   StreamableJSONFormats,
+  /** @deprecated Import `SingleDocumentJSONFormats` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   SingleDocumentJSONFormats,
+  /** @deprecated Import `RecordsJSONFormats` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   RecordsJSONFormats,
+  /** @deprecated Import `TupleParam` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   TupleParam,
 } from './data_formatter'
-export { ClickHouseError, parseError } from './error'
 export {
+  /** @deprecated Import `ClickHouseError` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
+  ClickHouseError,
+  /** @deprecated Import `parseError` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
+  parseError,
+} from './error'
+export {
+  /** @deprecated Import `ClickHouseLogLevel` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   ClickHouseLogLevel,
   type ErrorLogParams,
   type WarnLogParams,
@@ -63,10 +77,18 @@ export type {
   ClickHouseJWTAuth,
   ClickHouseCredentialsAuth,
 } from './clickhouse_types'
-export { isProgressRow, isRow, isException } from './clickhouse_types'
+export {
+  /** @deprecated Import `isProgressRow` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
+  isProgressRow,
+  /** @deprecated Import `isRow` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
+  isRow,
+  /** @deprecated Import `isException` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
+  isException,
+} from './clickhouse_types'
 export {
   type ClickHouseSettings,
   type MergeTreeSettings,
+  /** @deprecated Import `SettingsMap` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   SettingsMap,
 } from './settings'
 export type {
@@ -85,8 +107,11 @@ export type {
   JSONHandling,
 } from './parse'
 export {
+  /** @deprecated Import `SimpleColumnTypes` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   SimpleColumnTypes,
+  /** @deprecated Import `parseColumnType` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   parseColumnType,
+  /** @deprecated Import `defaultJSONHandling` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   defaultJSONHandling,
 } from './parse'
 export {
