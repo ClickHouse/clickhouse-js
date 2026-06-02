@@ -68,8 +68,7 @@ before talking to the server), the client invokes:
 Hook calls are inlined directly on the client's hot path and are **not**
 wrapped in defensive try/catch - if your tracer throws, the exception
 propagates to the caller of `query` / `command` / `exec` / `insert` /
-`ping`. Make sure your tracer implementation doesn't throw; a trivial e2e
-test against it is usually enough to catch regressions.
+`ping`. Make sure your tracer implementation doesn't throw.
 
 > **Stream lifecycle:** for `query`/`exec`, the span ends when the request
 > promise settles (i.e. headers received, stream handed to the caller). The

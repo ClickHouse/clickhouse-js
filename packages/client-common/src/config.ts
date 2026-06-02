@@ -103,7 +103,7 @@ export interface BaseClickHouseClientConfigOptions {
    *
    * Hook calls are inlined into the client's hot path with no defensive
    * wrapper: exceptions thrown by a hook propagate to the caller. Make
-   * sure your tracer doesn't throw - a simple e2e test is enough.
+   * sure your tracer doesn't throw.
    *
    * @see {@link ClickHouseTracer}
    * @default undefined (tracing disabled, zero per-operation overhead)

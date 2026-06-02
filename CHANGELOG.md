@@ -2,7 +2,7 @@
 
 ## New Features
 
-- Added an optional **tracer-hooks API** that the user can pass through the client config (`tracer`) and that gets called at key lifecycle events (`query`, `command`, `exec`, `insert`, `ping`). The hook surface mirrors the OpenTelemetry `Span` API (`startSpan`, `setAttributes`, `setStatus`, `recordException`, `endSpan`) so an OTEL adapter is a trivial wrapper - but the client itself ships no tracing dependency. Hook exceptions are caught and logged at WARN level so a broken tracer cannot break client operations. See [`docs/howto/tracing.md`](./docs/howto/tracing.md) for an OpenTelemetry adapter example. ([#776])
+- Added an optional **tracer-hooks API** that the user can pass through the client config (`tracer`) and that gets called at key lifecycle events (`query`, `command`, `exec`, `insert`, `ping`). The hook surface mirrors the OpenTelemetry `Span` API (`startSpan`, `setAttributes`, `setStatus`, `recordException`, `endSpan`) so an OTEL adapter is a trivial wrapper - but the client itself ships no tracing dependency. Hook exceptions are NOT caught so a broken tracer will break client operations. See [`docs/howto/tracing.md`](./docs/howto/tracing.md) for an OpenTelemetry adapter example. ([#776])
 
 ```ts
 import { createClient, type ClickHouseTracer } from '@clickhouse/client'
