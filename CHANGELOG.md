@@ -14,7 +14,7 @@
 
 [#758]: https://github.com/ClickHouse/clickhouse-js/pull/758
 
-## Breaking Changes
+## Bug Fixes
 
 - **Enum type parsing now correctly unescapes backslash escape sequences in enum names.** Previously, `parseEnumType` returned enum names with raw escape sequences (e.g., `f\'` instead of `f'`). Now it properly decodes escape sequences including `\'` (single quote), `\\` (backslash), `\n` (newline), `\t` (tab), and `\r` (carriage return). This matches the behavior of ClickHouse string literals and ensures consistency with how the client encodes strings when sending data to the server. If you were relying on the previous incorrect behavior where backslash escape sequences were preserved in enum names, you will need to update your code to handle properly unescaped values.
 
