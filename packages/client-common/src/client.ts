@@ -244,7 +244,7 @@ export class ClickHouseClient<Stream = unknown> {
     const { log_writer, log_level } = this.connectionParams
     const span = this.tracer?.startSpan(
       ClickHouseSpanNames.query,
-      this.baseSpanAttributes({
+      this.withBaseSpanAttributes({
         'clickhouse.format': format,
         'clickhouse.query_id': queryParams.query_id,
         'clickhouse.session_id': queryParams.session_id,
@@ -307,7 +307,7 @@ export class ClickHouseClient<Stream = unknown> {
     const queryParams = this.withClientQueryParams(params)
     const span = this.tracer?.startSpan(
       ClickHouseSpanNames.command,
-      this.baseSpanAttributes({
+      this.withBaseSpanAttributes({
         'clickhouse.query_id': queryParams.query_id,
         'clickhouse.session_id': queryParams.session_id,
       }),
@@ -353,7 +353,7 @@ export class ClickHouseClient<Stream = unknown> {
     const queryParams = this.withClientQueryParams(params)
     const span = this.tracer?.startSpan(
       ClickHouseSpanNames.exec,
-      this.baseSpanAttributes({
+      this.withBaseSpanAttributes({
         'clickhouse.query_id': queryParams.query_id,
         'clickhouse.session_id': queryParams.session_id,
       }),
@@ -404,7 +404,7 @@ export class ClickHouseClient<Stream = unknown> {
     const queryParams = this.withClientQueryParams(params)
     const span = this.tracer?.startSpan(
       ClickHouseSpanNames.insert,
-      this.baseSpanAttributes({
+      this.withBaseSpanAttributes({
         'clickhouse.table': params.table,
         'clickhouse.format': format,
         'clickhouse.query_id': queryParams.query_id,
@@ -444,13 +444,13 @@ export class ClickHouseClient<Stream = unknown> {
    * **NOTE**: Since the `/ping` endpoint does not support CORS, the Web version always uses a `SELECT` query.
    */
   async ping(params?: PingParams): Promise<PingResult> {
-    const select = params?.select === true
+    const select = params?.select ?? false
     const span = this.tracer?.startSpan(
       ClickHouseSpanNames.ping,
-      this.baseSpanAttributes({ 'clickhouse.ping.select': select }),
+      this.withBaseSpanAttributes({ 'clickhouse.ping.select': select }),
     )
     try {
-      const result = await this.connection.ping(params ?? { select: false })
+      const result = await this.connection.ping({ select })
       this.tracer?.setStatus(span, { code: 'OK' })
       return result
     } catch (err) {
@@ -485,7 +485,7 @@ export class ClickHouseClient<Stream = unknown> {
     await this.close()
   }
 
-  private baseSpanAttributes(
+  private withBaseSpanAttributes(
     extra: ClickHouseTracerSpanAttributes,
   ): ClickHouseTracerSpanAttributes {
     const attrs: ClickHouseTracerSpanAttributes = {
