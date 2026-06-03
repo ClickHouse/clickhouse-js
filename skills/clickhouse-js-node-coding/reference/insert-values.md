@@ -129,6 +129,69 @@ const rs = await client.query({
 })
 ```
 
+## Inserting a `UUID` into a `UInt128` column
+
+ClickHouse converts a `UUID` into `UInt128` implicitly **only for the `VALUES`
+clause**. With the row-oriented JSON formats the client uses (e.g.
+`JSONEachRow`), sending a UUID string such as
+`'019982cb-3abf-7e12-9668-c788a9e3639c'` for a `UInt128` column fails with
+`CANNOT_PARSE_INPUT_ASSERTION_FAILED`. Use one of two patterns instead.
+
+**Pattern 1 — convert the UUID on the client and send it as a decimal string**
+(recommended). A JS `number` cannot hold 128 bits without precision loss, so
+always pass `UInt128` as a string:
+
+```ts
+function uuidToUInt128(uuid: string): string {
+  // 8-4-4-4-12 hex digits → 32 hex digits → BigInt → decimal string
+  return BigInt('0x' + uuid.replace(/-/g, '')).toString()
+}
+
+await client.command({
+  query: `
+    CREATE OR REPLACE TABLE events (id UInt128, description String)
+    ENGINE MergeTree ORDER BY id
+  `,
+})
+
+await client.insert({
+  table: 'events',
+  format: 'JSONEachRow',
+  values: [{ id: uuidToUInt128(uuid), description: 'converted on the client' }],
+})
+```
+
+`UInt128` values are also too wide for a JS `number` when reading back — cast
+them with `toString(id)` in the `SELECT` to avoid precision loss.
+
+**Pattern 2 — declare the UUID column as `EPHEMERAL`** and let ClickHouse
+populate the `UInt128` column via its `DEFAULT` expression:
+
+```ts
+await client.command({
+  query: `
+    CREATE OR REPLACE TABLE events
+    (
+      id          UInt128 DEFAULT id_uuid,
+      id_uuid     UUID EPHEMERAL,
+      description String
+    )
+    ENGINE MergeTree ORDER BY id
+  `,
+})
+
+await client.insert({
+  table: 'events',
+  format: 'JSONEachRow',
+  values: [{ id_uuid: uuid, description: 'populated via EPHEMERAL column' }],
+  // The ephemeral column must be listed so the DEFAULT on `id` is evaluated.
+  columns: ['id_uuid', 'description'],
+})
+```
+
+See `reference/insert-columns.md` for more on `EPHEMERAL` columns and why they
+must appear in `columns`.
+
 ## Common pitfalls
 
 - **Using `client.insert()` for `INSERT … SELECT`.** There's nothing to
@@ -139,3 +202,7 @@ const rs = await client.query({
 - **Hand-building `VALUES` with user input.** Always parameterize user data;
   see `reference/query-parameters.md`.
 - **Using floats in the app and expect `Decimal` columns to store them safely.** Use a proper decimal library and pass them as strings to avoid precision loss.
+- **Sending a UUID string for a `UInt128` column in `JSONEachRow`.** The
+  implicit UUID → UInt128 cast only happens in the `VALUES` clause; in JSON
+  formats convert the UUID to its 128-bit decimal string on the client (or use
+  an `EPHEMERAL` UUID column with a `UInt128` `DEFAULT`).

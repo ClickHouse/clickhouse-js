@@ -44,6 +44,43 @@ await client.insert({
 })
 ```
 
+## Inserting a UUID into a `UInt128` column fails (`CANNOT_PARSE_INPUT_ASSERTION_FAILED`)
+
+> **Applies to:** all versions. This is a ClickHouse input-parsing behavior, not a client bug.
+
+ClickHouse converts a `UUID` into `UInt128` implicitly **only for the `VALUES` clause**. With the row-oriented JSON formats the client uses (e.g. `JSONEachRow`), sending a UUID string such as `'019982cb-3abf-7e12-9668-c788a9e3639c'` for a `UInt128` column fails with `CANNOT_PARSE_INPUT_ASSERTION_FAILED`.
+
+Fix it with one of two patterns:
+
+**Pattern 1 — convert the UUID on the client and send it as a decimal string** (recommended). A JS `number` cannot hold 128 bits without precision loss, so always pass `UInt128` as a string:
+
+```js
+function uuidToUInt128(uuid) {
+  // 8-4-4-4-12 hex digits → 32 hex digits → BigInt → decimal string
+  return BigInt('0x' + uuid.replace(/-/g, '')).toString()
+}
+
+await client.insert({
+  table: 'events',
+  format: 'JSONEachRow',
+  values: [{ id: uuidToUInt128(uuid), description: 'converted on the client' }],
+})
+```
+
+Read `UInt128` back with `toString(id)` in the `SELECT` to avoid the same precision loss.
+
+**Pattern 2 — declare the UUID column as `EPHEMERAL`** and let ClickHouse populate the `UInt128` column via its `DEFAULT` expression. The ephemeral column must be listed in `columns` so the `DEFAULT` is evaluated:
+
+```js
+// CREATE TABLE events (id UInt128 DEFAULT id_uuid, id_uuid UUID EPHEMERAL, description String) ...
+await client.insert({
+  table: 'events',
+  format: 'JSONEachRow',
+  values: [{ id_uuid: uuid, description: 'populated via EPHEMERAL column' }],
+  columns: ['id_uuid', 'description'],
+})
+```
+
 ## Format Selection Quick Reference
 
 | Use case                    | Recommended format                  | Min version                           |
