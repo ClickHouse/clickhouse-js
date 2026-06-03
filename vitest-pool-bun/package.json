@@ -1,0 +1,40 @@
+{
+  "name": "vitest-pool-bun",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Proof-of-concept Vitest 4.1 custom pool that executes test files inside the Bun runtime.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "spike": "bun run spikes/m0-runner.ts",
+    "demo": "npm run build && node node_modules/vitest/vitest.mjs run --root examples",
+    "demo:bun-api": "npm run build && node node_modules/vitest/vitest.mjs run --root examples bun-api.test.ts"
+  },
+  "dependencies": {
+    "flatted": "^3.3.1"
+  },
+  "peerDependencies": {
+    "vitest": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0"
+  }
+}
