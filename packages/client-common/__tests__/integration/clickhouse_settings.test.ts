@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { ClickHouseClient, InsertParams } from '@clickhouse/client-common'
 import { SettingsMap } from '@clickhouse/client-common'
 import { createSimpleTable } from '../fixtures/simple_table'

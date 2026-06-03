@@ -1,8 +1,9 @@
+import { describe, it, expect, afterEach } from 'vitest'
 import type {
   ClickHouseClient,
   ClickHouseError,
 } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { createTestClient } from '@test/utils/client'
 
 describe('[Node.js] ping', () => {
   let client: ClickHouseClient
@@ -17,10 +18,10 @@ describe('[Node.js] ping', () => {
     })
 
     const result = await client.ping()
-    expect(result.success).toBeFalse()
+    expect(result.success).toBeFalsy()
     // @ts-expect-error
     expect(result.error).toEqual(
-      jasmine.objectContaining({
+      expect.objectContaining({
         code: 'ECONNREFUSED',
       }),
     )
@@ -47,7 +48,7 @@ describe('[Node.js] ping', () => {
     expect(err.code).toEqual('516')
     expect(err.type).toEqual('AUTHENTICATION_FAILED')
     expect(err.message).toEqual(
-      jasmine.stringContaining('Authentication failed'),
+      expect.stringContaining('Authentication failed'),
     )
   })
 })

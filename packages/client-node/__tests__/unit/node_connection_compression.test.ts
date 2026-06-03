@@ -1,4 +1,5 @@
-import { sleep } from '@test/utils'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { sleep } from '../utils/sleep'
 import Http, { type ClientRequest } from 'http'
 import Stream from 'stream'
 import Zlib from 'zlib'
@@ -12,16 +13,17 @@ import {
   stubClientRequest,
 } from '../utils/http_stubs'
 
-describe('Node.js Connection compression', () => {
-  let httpRequestStub: jasmine.Spy<typeof Http.request>
-  beforeEach(() => {
-    httpRequestStub = spyOn(Http, 'request')
-  })
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
+const httpRequestStub = vi.spyOn(Http, 'request')
+
+describe('Node.js Connection compression', () => {
   describe('response decompression', () => {
     it('hints ClickHouse server to send a gzip compressed response if compress_request: true', async () => {
       const request = stubClientRequest()
-      httpRequestStub.and.returnValue(request)
+      httpRequestStub.mockReturnValue(request)
 
       const adapter = buildHttpConnection({
         compression: {
@@ -40,7 +42,8 @@ describe('Node.js Connection compression', () => {
       await selectPromise
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      const calledWith =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1]
       expect(
         (calledWith.headers as Record<string, string>)['Accept-Encoding'],
       ).toBe('gzip')
@@ -48,7 +51,7 @@ describe('Node.js Connection compression', () => {
 
     it('does not send a compression algorithm hint if compress_request: false', async () => {
       const request = stubClientRequest()
-      httpRequestStub.and.returnValue(request)
+      httpRequestStub.mockReturnValue(request)
 
       const adapter = buildHttpConnection({
         compression: {
@@ -68,7 +71,8 @@ describe('Node.js Connection compression', () => {
       await assertConnQueryResult(queryResult, responseBody)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      const calledWith =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1]
       expect(
         (calledWith.headers as Record<string, string | undefined>)[
           'Accept-Encoding'
@@ -78,7 +82,7 @@ describe('Node.js Connection compression', () => {
 
     it('uses request-specific settings over config settings', async () => {
       const request = stubClientRequest()
-      httpRequestStub.and.returnValue(request)
+      httpRequestStub.mockReturnValue(request)
 
       const adapter = buildHttpConnection({
         compression: {
@@ -101,7 +105,8 @@ describe('Node.js Connection compression', () => {
       await assertConnQueryResult(queryResult, responseBody)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      const calledWith =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1]
       expect(
         (calledWith.headers as Record<string, string>)['Accept-Encoding'],
       ).toBe('gzip')
@@ -109,7 +114,7 @@ describe('Node.js Connection compression', () => {
 
     it('decompresses a gzip response', async () => {
       const request = stubClientRequest()
-      httpRequestStub.and.returnValue(request)
+      httpRequestStub.mockReturnValue(request)
 
       const adapter = buildHttpConnection({
         compression: {
@@ -131,7 +136,7 @@ describe('Node.js Connection compression', () => {
 
     it('throws on an unexpected encoding', async () => {
       const request = stubClientRequest()
-      httpRequestStub.and.returnValue(request)
+      httpRequestStub.mockReturnValue(request)
       const adapter = buildHttpConnection({
         compression: {
           decompress_response: true,
@@ -145,8 +150,8 @@ describe('Node.js Connection compression', () => {
 
       await emitCompressedBody(request, 'abc', 'br')
 
-      await expectAsync(selectPromise).toBeRejectedWith(
-        jasmine.objectContaining({
+      await expect(selectPromise).rejects.toEqual(
+        expect.objectContaining({
           message: 'Unexpected encoding: br',
         }),
       )
@@ -154,7 +159,7 @@ describe('Node.js Connection compression', () => {
 
     it('provides decompression error to a stream consumer', async () => {
       const request = stubClientRequest()
-      httpRequestStub.and.returnValue(request)
+      httpRequestStub.mockReturnValue(request)
       const adapter = buildHttpConnection({
         compression: {
           decompress_response: true,
@@ -185,8 +190,8 @@ describe('Node.js Connection compression', () => {
         }
       }
 
-      await expectAsync(readStream()).toBeRejectedWith(
-        jasmine.objectContaining({
+      await expect(readStream()).rejects.toEqual(
+        expect.objectContaining({
           message: 'incorrect header check',
           code: 'Z_DATA_ERROR',
         }),
@@ -218,7 +223,7 @@ describe('Node.js Connection compression', () => {
           })
         },
       }) as ClientRequest
-      httpRequestStub.and.returnValue(request)
+      httpRequestStub.mockReturnValue(request)
 
       void adapter.insert({
         query: 'INSERT INTO insert_compression_table',
@@ -232,7 +237,8 @@ describe('Node.js Connection compression', () => {
 
       expect(finalResult!.toString('utf8')).toEqual(values)
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const calledWith = httpRequestStub.calls.mostRecent().args[1]
+      const calledWith =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1]
       expect(
         (calledWith.headers as Record<string, string>)['Content-Encoding'],
       ).toBe('gzip')

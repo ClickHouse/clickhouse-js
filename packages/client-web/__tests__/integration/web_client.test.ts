@@ -1,12 +1,14 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { getHeadersTestParams } from '@test/utils/parametrized'
 import { createClient } from '../../src'
 
 describe('[Web] Client', () => {
-  let fetchSpy: jasmine.Spy<typeof window.fetch>
+  let fetchSpy: ReturnType<typeof vi.spyOn>
   beforeEach(() => {
-    fetchSpy = spyOn(window, 'fetch').and.returnValue(
-      Promise.resolve(new Response()),
-    )
+    fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockReturnValue(Promise.resolve(new Response()))
+    vi.clearAllMocks()
   })
 
   describe('HTTP headers', () => {
@@ -44,25 +46,24 @@ describe('[Web] Client', () => {
       const testParams = getHeadersTestParams(client)
       for (const param of testParams) {
         await param.methodCall({ FromMethod: 'bar' })
-        expect(getFetchRequestInit(fetchCalls++).headers)
-          .withContext(
-            `${param.methodName}: merges custom HTTP headers from both method and instance`,
-          )
-          .toEqual({
-            ...defaultHeaders,
-            FromInstance: 'foo',
-            FromMethod: 'bar',
-          })
+        // ${param.methodName}: merges custom HTTP headers from both method and instance
+        expect(
+          getFetchRequestInit(fetchCalls++).headers,
+          `${param.methodName}: merges custom HTTP headers from both method and instance`,
+        ).toEqual({
+          ...defaultHeaders,
+          FromInstance: 'foo',
+          FromMethod: 'bar',
+        })
 
         await param.methodCall({ FromInstance: 'bar' })
-        expect(getFetchRequestInit(fetchCalls++).headers)
-          .withContext(
-            `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
-          )
-          .toEqual({
-            ...defaultHeaders,
-            FromInstance: 'bar',
-          })
+        expect(
+          getFetchRequestInit(fetchCalls++).headers,
+          `${param.methodName}: overrides HTTP headers from the instance with the values from the method call`,
+        ).toEqual({
+          ...defaultHeaders,
+          FromInstance: 'bar',
+        })
       }
     })
   })
@@ -107,7 +108,7 @@ describe('[Web] Client', () => {
 
   function getFetchRequestInit(fetchSpyCalledTimes = 1) {
     expect(fetchSpy).toHaveBeenCalledTimes(fetchSpyCalledTimes)
-    const [, requestInit] = fetchSpy.calls.mostRecent().args
+    const [, requestInit] = fetchSpy.mock.calls[fetchSpyCalledTimes - 1]
     return requestInit!
   }
 

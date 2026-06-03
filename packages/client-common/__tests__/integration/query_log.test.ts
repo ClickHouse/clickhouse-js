@@ -1,6 +1,7 @@
+import { describe, it, expect, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createSimpleTable } from '../fixtures/simple_table'
-import { createTestClient, guid, TestEnv, whenOnEnv } from '../utils'
+import { createTestClient, guid, TestEnv, isOnEnv } from '../utils'
 import { sleep } from '../utils/sleep'
 
 // these tests are very flaky in the Cloud environment
@@ -16,7 +17,7 @@ describe('query_log', () => {
     }
   })
 
-  whenOnEnv(...testEnvs).it(
+  it.skipIf(!isOnEnv(...testEnvs))(
     'can use query_id to fetch query_log table with select',
     async () => {
       client = createTestClient()
@@ -31,7 +32,7 @@ describe('query_log', () => {
     },
   )
 
-  whenOnEnv(...testEnvs).it(
+  it.skipIf(!isOnEnv(...testEnvs))(
     'can use query_id to fetch query_log table with exec',
     async () => {
       client = createTestClient()
@@ -44,7 +45,7 @@ describe('query_log', () => {
     },
   )
 
-  whenOnEnv(...testEnvs).it(
+  it.skipIf(!isOnEnv(...testEnvs))(
     'can use query_id to fetch query_log table with insert',
     async () => {
       client = createTestClient()
@@ -71,7 +72,8 @@ describe('query_log', () => {
   }) {
     // query_log is flushed every ~1000 milliseconds
     // so this might fail a couple of times
-    // FIXME: jasmine does not throw. RetryOnFailure does not work
+    // FIXME: jasmine did not throw, maybe Vitest does.
+    // RetryOnFailure does not work
     await sleep(1200)
     const logResultSet = await client.query({
       query: `
@@ -85,21 +87,21 @@ describe('query_log', () => {
       format: 'JSONEachRow',
     })
     expect(await logResultSet.json()).toEqual([
-      jasmine.objectContaining({
+      expect.objectContaining({
         type: 'QueryStart',
         query: formattedQuery,
         initial_query_id: query_id,
-        query_duration_ms: jasmine.any(String),
-        read_rows: jasmine.any(String),
-        read_bytes: jasmine.any(String),
+        query_duration_ms: expect.any(String),
+        read_rows: expect.any(String),
+        read_bytes: expect.any(String),
       }),
-      jasmine.objectContaining({
+      expect.objectContaining({
         type: 'QueryFinish',
         query: formattedQuery,
         initial_query_id: query_id,
-        query_duration_ms: jasmine.any(String),
-        read_rows: jasmine.any(String),
-        read_bytes: jasmine.any(String),
+        query_duration_ms: expect.any(String),
+        read_rows: expect.any(String),
+        read_bytes: expect.any(String),
       }),
     ])
   }

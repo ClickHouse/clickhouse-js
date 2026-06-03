@@ -1,8 +1,14 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+
 import type {
   BaseClickHouseClientConfigOptions,
   ConnectionParams,
 } from '@clickhouse/client-common'
-import { DefaultLogger, LogWriter } from '@clickhouse/client-common'
+import {
+  DefaultLogger,
+  LogWriter,
+  ClickHouseLogLevel,
+} from '@clickhouse/client-common'
 import { createClient } from '../../src'
 import {
   type CreateConnectionParams,
@@ -10,12 +16,21 @@ import {
 } from '../../src/connection'
 import { sleep } from '../utils/sleep'
 import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
+import { createSimpleNodeTestClient } from '../utils/simple_node_client'
 
 describe('[Node.js] createClient', () => {
+  it('createSimpleNodeTestClient creates a client without requiring ClickHouse', async () => {
+    // Imported from the side-effect-free `simple_node_client` module, so it does
+    // not register the shared `beforeAll` test-env init and needs no ClickHouse.
+    const client = createSimpleNodeTestClient()
+    expect(client).toBeDefined()
+    await client.close()
+  })
+
   it('throws on incorrect "url" config value', () => {
     expect(() => createClient({ url: 'foobar' })).toThrow(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+      expect.objectContaining({
+        message: expect.stringContaining('ClickHouse URL is malformed.'),
       }),
     )
   })
@@ -44,7 +59,12 @@ describe('[Node.js] createClient', () => {
       auth: { username: 'bob', password: 'secret', type: 'Credentials' },
       database: 'analytics',
       clickhouse_settings: {},
-      log_writer: new LogWriter(new DefaultLogger(), 'Connection'),
+      log_writer: new LogWriter(
+        new DefaultLogger(),
+        'Connection',
+        ClickHouseLogLevel.WARN,
+      ),
+      log_level: ClickHouseLogLevel.WARN,
       keep_alive: { enabled: true },
       http_headers: {
         'X-ClickHouse-Auth': 'secret_token',
@@ -52,12 +72,9 @@ describe('[Node.js] createClient', () => {
       application_id: 'my_app',
     }
 
-    let createConnectionStub: jasmine.Spy
+    const createConnectionStub = vi.spyOn(NodeConnectionFactory, 'create')
     beforeEach(() => {
-      createConnectionStub = spyOn(
-        NodeConnectionFactory,
-        'create',
-      ).and.callThrough()
+      vi.clearAllMocks()
     })
 
     it('should parse URL parameters and create a valid connection', async () => {
@@ -86,6 +103,7 @@ describe('[Node.js] createClient', () => {
           enabled: true,
           idle_socket_ttl: 1500,
         },
+        eagerly_destroy_stale_sockets: false,
         set_basic_auth_header: true,
         http_agent: undefined,
         capture_enhanced_stack_trace: false,
@@ -121,6 +139,7 @@ describe('[Node.js] createClient', () => {
           enabled: true,
           idle_socket_ttl: 1500,
         },
+        eagerly_destroy_stale_sockets: false,
         set_basic_auth_header: true,
         http_agent: undefined,
         capture_enhanced_stack_trace: false,
@@ -160,6 +179,7 @@ describe('[Node.js] createClient', () => {
           enabled: true,
           idle_socket_ttl: 1500,
         },
+        eagerly_destroy_stale_sockets: false,
         set_basic_auth_header: true,
         http_agent: undefined,
         capture_enhanced_stack_trace: false,
@@ -168,14 +188,14 @@ describe('[Node.js] createClient', () => {
     })
   })
 
-  it('closes the client when used with using statement', async () => {
+  it('closes the client when used with using statement', async (context) => {
     if (!isAwaitUsingStatementSupported()) {
-      pending('using statement is not supported in this environment')
+      context.skip('using statement is not supported in this environment')
       return
     }
     const client = createClient()
     let isClosed = false
-    spyOn(client, 'close').and.callFake(async () => {
+    vi.spyOn(client, 'close').mockImplementation(async () => {
       // Simulate some delay in closing
       await sleep(0)
       isClosed = true
@@ -191,6 +211,6 @@ describe('[Node.js] createClient', () => {
       })
     `)(client)
 
-    expect(isClosed).toBeTrue()
+    expect(isClosed).toBe(true)
   })
 })

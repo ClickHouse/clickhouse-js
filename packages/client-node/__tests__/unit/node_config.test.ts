@@ -1,9 +1,11 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+
 import type {
   BaseClickHouseClientConfigOptions,
   ConnectionParams,
 } from '@clickhouse/client-common'
-import { LogWriter } from '@clickhouse/client-common'
-import { TestLogger } from '@test/utils'
+import { ClickHouseLogLevel, LogWriter } from '@clickhouse/client-common'
+import { TestLogger } from '../../../client-common/__tests__/utils/test_logger'
 import { Buffer } from 'buffer'
 import http from 'http'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
@@ -78,17 +80,21 @@ describe('[Node.js] Config implementation details', () => {
       },
       database: 'default',
       clickhouse_settings: {},
-      log_writer: new LogWriter(new TestLogger(), 'MakeConnectionTest'),
+      log_writer: new LogWriter(
+        new TestLogger(),
+        'MakeConnectionTest',
+        ClickHouseLogLevel.OFF,
+      ),
+      log_level: ClickHouseLogLevel.OFF,
       keep_alive: { enabled: false },
     }
 
-    let createConnectionStub: jasmine.Spy
     const fakeConnection = { test: true } as unknown as NodeBaseConnection
+    const createConnectionStub = vi
+      .spyOn(NodeConnectionFactory, 'create')
+      .mockReturnValue(fakeConnection)
     beforeEach(() => {
-      createConnectionStub = spyOn(
-        NodeConnectionFactory,
-        'create',
-      ).and.returnValue(fakeConnection)
+      vi.clearAllMocks()
     })
 
     it('should create a connection with default KeepAlive settings', async () => {
@@ -106,6 +112,7 @@ describe('[Node.js] Config implementation details', () => {
         http_agent: undefined,
         set_basic_auth_header: true,
         capture_enhanced_stack_trace: false,
+        eagerly_destroy_stale_sockets: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -132,6 +139,7 @@ describe('[Node.js] Config implementation details', () => {
         http_agent: undefined,
         set_basic_auth_header: true,
         capture_enhanced_stack_trace: false,
+        eagerly_destroy_stale_sockets: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -162,6 +170,7 @@ describe('[Node.js] Config implementation details', () => {
         http_agent: undefined,
         set_basic_auth_header: true,
         capture_enhanced_stack_trace: false,
+        eagerly_destroy_stale_sockets: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -192,6 +201,7 @@ describe('[Node.js] Config implementation details', () => {
         http_agent: undefined,
         set_basic_auth_header: true,
         capture_enhanced_stack_trace: false,
+        eagerly_destroy_stale_sockets: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -221,6 +231,7 @@ describe('[Node.js] Config implementation details', () => {
         http_agent: agent,
         set_basic_auth_header: false,
         capture_enhanced_stack_trace: false,
+        eagerly_destroy_stale_sockets: false,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)
@@ -242,6 +253,54 @@ describe('[Node.js] Config implementation details', () => {
         http_agent: undefined,
         set_basic_auth_header: true,
         capture_enhanced_stack_trace: true,
+        eagerly_destroy_stale_sockets: false,
+      } satisfies CreateConnectionParams)
+      expect(createConnectionStub).toHaveBeenCalledTimes(1)
+      expect(res).toEqual(fakeConnection)
+    })
+
+    it('should create a connection with eagerly_destroy_stale_sockets enabled', async () => {
+      const nodeConfig: NodeClickHouseClientConfigOptions = {
+        url: new URL('http://localhost:8123'),
+        keep_alive: {
+          eagerly_destroy_stale_sockets: true,
+        },
+      }
+      const res = NodeConfigImpl.make_connection(nodeConfig as any, params)
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: undefined,
+        keep_alive: {
+          enabled: true,
+          idle_socket_ttl: 2500,
+        },
+        http_agent: undefined,
+        set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
+        eagerly_destroy_stale_sockets: true,
+      } satisfies CreateConnectionParams)
+      expect(createConnectionStub).toHaveBeenCalledTimes(1)
+      expect(res).toEqual(fakeConnection)
+    })
+
+    it('should forward max_response_headers_size to the connection factory', async () => {
+      const nodeConfig: NodeClickHouseClientConfigOptions = {
+        url: new URL('http://localhost:8123'),
+        max_response_headers_size: 64 * 1024,
+      }
+      const res = NodeConfigImpl.make_connection(nodeConfig as any, params)
+      expect(createConnectionStub).toHaveBeenCalledWith({
+        connection_params: params,
+        tls: undefined,
+        keep_alive: {
+          enabled: true,
+          idle_socket_ttl: 2500,
+        },
+        http_agent: undefined,
+        set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
+        eagerly_destroy_stale_sockets: false,
+        max_response_headers_size: 64 * 1024,
       } satisfies CreateConnectionParams)
       expect(createConnectionStub).toHaveBeenCalledTimes(1)
       expect(res).toEqual(fakeConnection)

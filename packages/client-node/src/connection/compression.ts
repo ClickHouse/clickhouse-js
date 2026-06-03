@@ -1,4 +1,5 @@
 import type { LogWriter } from '@clickhouse/client-common'
+import { ClickHouseLogLevel } from '@clickhouse/client-common'
 import type Http from 'http'
 import Stream from 'stream'
 import Zlib from 'zlib'
@@ -7,7 +8,8 @@ type DecompressResponseResult = { response: Stream.Readable } | { error: Error }
 
 export function decompressResponse(
   response: Http.IncomingMessage,
-  logWriter: LogWriter,
+  log_writer: LogWriter,
+  log_level: ClickHouseLogLevel,
 ): DecompressResponseResult {
   const encoding = response.headers['content-encoding']
 
@@ -18,10 +20,12 @@ export function decompressResponse(
         Zlib.createGunzip(),
         function pipelineCb(err) {
           if (err) {
-            logWriter.error({
-              message: 'An error occurred while decompressing the response',
-              err,
-            })
+            if (log_level <= ClickHouseLogLevel.ERROR) {
+              log_writer.error({
+                message: 'An error occurred while decompressing the response',
+                err,
+              })
+            }
           }
         },
       ),

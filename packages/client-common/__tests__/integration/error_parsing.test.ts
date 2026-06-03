@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient, getTestDatabaseName } from '../utils'
 
@@ -18,13 +19,13 @@ describe('ClickHouse server errors parsing', () => {
     const errorMessagePattern =
       `((?:Missing columns: 'number' while processing query: 'SELECT number AS FR', required columns: 'number')|` +
       `(?:Unknown expression identifier ('|\`)number('|\`) in scope SELECT number AS FR))`
-    await expectAsync(
+    await expect(
       client.query({
         query: 'SELECT number FR',
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringMatching(errorMessagePattern),
+    ).rejects.toMatchObject(
+      expect.objectContaining({
+        message: expect.stringMatching(errorMessagePattern),
         code: '47',
         type: 'UNKNOWN_IDENTIFIER',
       }),
@@ -39,13 +40,13 @@ describe('ClickHouse server errors parsing', () => {
     const errorMessagePattern =
       `((?:^Table ${dbName}.unknown_table does not exist.*)|` +
       `(?:Unknown table expression identifier ('|\`)unknown_table('|\`) in scope))`
-    await expectAsync(
+    await expect(
       client.query({
         query: 'SELECT * FROM unknown_table',
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringMatching(errorMessagePattern),
+    ).rejects.toMatchObject(
+      expect.objectContaining({
+        message: expect.stringMatching(errorMessagePattern),
         code: '60',
         type: 'UNKNOWN_TABLE',
       }),
@@ -53,13 +54,13 @@ describe('ClickHouse server errors parsing', () => {
   })
 
   it('returns "syntax error" error', async () => {
-    await expectAsync(
+    await expect(
       client.query({
         query: 'SELECT * FRON unknown_table',
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('Syntax error: failed at position'),
+    ).rejects.toMatchObject(
+      expect.objectContaining({
+        message: expect.stringContaining('Syntax error: failed at position'),
         code: '62',
         type: 'SYNTAX_ERROR',
       }),
@@ -67,7 +68,7 @@ describe('ClickHouse server errors parsing', () => {
   })
 
   it('returns "syntax error" error in a multiline query', async () => {
-    await expectAsync(
+    await expect(
       client.query({
         query: `
         SELECT *
@@ -77,9 +78,9 @@ describe('ClickHouse server errors parsing', () => {
         FRON unknown_table
         `,
       }),
-    ).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('Syntax error: failed at position'),
+    ).rejects.toMatchObject(
+      expect.objectContaining({
+        message: expect.stringContaining('Syntax error: failed at position'),
         code: '62',
         type: 'SYNTAX_ERROR',
       }),

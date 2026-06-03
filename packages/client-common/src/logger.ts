@@ -76,13 +76,11 @@ export type LogWriterParams<Method extends keyof Logger> = Omit<
 > & { module?: string }
 
 export class LogWriter {
-  private readonly logLevel: ClickHouseLogLevel
   constructor(
     private readonly logger: Logger,
     private readonly module: string,
-    logLevel?: ClickHouseLogLevel,
+    private readonly logLevel: ClickHouseLogLevel,
   ) {
-    this.logLevel = logLevel ?? ClickHouseLogLevel.OFF
     this.info({
       message: `Log level is set to ${ClickHouseLogLevel[this.logLevel]}`,
     })
@@ -135,11 +133,29 @@ export class LogWriter {
 }
 
 export enum ClickHouseLogLevel {
+  /**
+   * A fine-grained debugging event. Might produce a lot of logs, so use with caution.
+   */
   TRACE = 0,
+  /**
+   * A debugging event. Useful for debugging, but generally not needed in production. Includes technical values that might require redacting.
+   */
   DEBUG = 1,
+  /**
+   * An informational event. Indicates that an event happened.
+   */
   INFO = 2,
+  /**
+   * A warning event. Not an error, but is likely more important than an informational event. Addressing should help prevent potential issues.
+   */
   WARN = 3,
+  /**
+   * An error event. Something went wrong.
+   */
   ERROR = 4,
+  /**
+   * Logging is turned off.
+   */
   OFF = 127,
 }
 

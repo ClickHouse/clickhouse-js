@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Row } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
 import type { WebClickHouseClient } from '../../src/client'
@@ -23,9 +24,9 @@ describe('[Web] abort request', () => {
     })
     controller.abort()
 
-    await expectAsync(selectPromise).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringMatching('The user aborted a request'),
+    await expect(selectPromise).rejects.toMatchObject(
+      expect.objectContaining({
+        message: expect.stringMatching('The user aborted a request'),
       }),
     )
   })
@@ -63,9 +64,10 @@ describe('[Web] abort request', () => {
     }
 
     expect(caughtError).not.toBeNull()
-    expect(caughtError?.message)
-      .withContext(`after fetching ${rowCount} rows`)
-      .toContain('aborted')
+    // after fetching ${rowCount} rows
+    expect(caughtError?.message, `after fetching ${rowCount} rows`).toContain(
+      'aborted',
+    )
   })
 
   it('cancels a select query while reading response by closing response stream', async () => {
@@ -93,9 +95,9 @@ describe('[Web] abort request', () => {
           }
         }
       })
-    await expectAsync(selectPromise).toBeRejectedWith(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('Stream has been already consumed'),
+    await expect(selectPromise).rejects.toMatchObject(
+      expect.objectContaining({
+        message: expect.stringContaining('Stream has been already consumed'),
       }),
     )
   })

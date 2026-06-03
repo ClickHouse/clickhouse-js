@@ -1,15 +1,15 @@
-import sinon from 'sinon'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { getUserAgent } from '../../src/utils'
 import { Runtime } from '../../src/utils/runtime'
 
-describe('[Node.js] User-Agent', () => {
-  const sandbox = sinon.createSandbox()
-  beforeEach(() => {
-    sandbox.stub(Runtime, 'package').value('0.0.42')
-    sandbox.stub(Runtime, 'node').value('v16.144')
-    sandbox.stub(Runtime, 'os').value('freebsd')
-  })
+beforeAll(() => {
+  // Mock Runtime to have a fixed package version and node version for testing
+  vi.spyOn(Runtime, 'package', 'get').mockReturnValue('0.0.42')
+  vi.spyOn(Runtime, 'node', 'get').mockReturnValue('v16.144')
+  vi.spyOn(Runtime, 'os', 'get').mockReturnValue('freebsd')
+})
 
+describe('[Node.js] User-Agent', () => {
   it('should generate a user agent without app id', async () => {
     const userAgent = getUserAgent()
     expect(userAgent).toEqual(

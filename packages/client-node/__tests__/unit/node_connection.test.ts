@@ -1,5 +1,7 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+
 import type { QueryParams } from '@clickhouse/client-common'
-import { guid } from '@test/utils'
+import { guid } from '../../../client-common/__tests__/utils/guid'
 import Http from 'http'
 import { getAsText } from '../../src/utils'
 import { assertQueryId, assertConnQueryResult } from '../utils/assert'
@@ -9,6 +11,10 @@ import {
   MyTestHttpConnection,
   stubClientRequest,
 } from '../utils/http_stubs'
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe('[Node.js] Connection', () => {
   describe('User-Agent', () => {
@@ -44,10 +50,10 @@ describe('[Node.js] Connection', () => {
         },
       })
 
-      const httpRequestStub = spyOn(Http, 'request')
+      const httpRequestStub = vi.spyOn(Http, 'request')
 
       const request1 = stubClientRequest()
-      httpRequestStub.and.returnValue(request1)
+      httpRequestStub.mockReturnValue(request1)
 
       const selectPromise1 = adapter.query({
         query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -57,7 +63,7 @@ describe('[Node.js] Connection', () => {
       const queryResult1 = await selectPromise1
 
       const request2 = stubClientRequest()
-      httpRequestStub.and.returnValue(request2)
+      httpRequestStub.mockReturnValue(request2)
 
       const selectPromise2 = adapter.query({
         query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -70,10 +76,10 @@ describe('[Node.js] Connection', () => {
       await assertConnQueryResult(queryResult2, responseBody2)
       expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
 
-      const url1 = httpRequestStub.calls.all()[0].args[0]
+      const url1 = httpRequestStub.mock.calls[0][0]
       expect(url1.search).toContain(`?query_id=${queryResult1.query_id}`)
 
-      const url2 = httpRequestStub.calls.all()[1].args[0]
+      const url2 = httpRequestStub.mock.calls[1][0]
       expect(url2.search).toContain(`?query_id=${queryResult2.query_id}`)
     })
 
@@ -86,7 +92,7 @@ describe('[Node.js] Connection', () => {
       })
 
       const request = stubClientRequest()
-      const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
+      const httpRequestStub = vi.spyOn(Http, 'request').mockReturnValue(request)
 
       const query_id = guid()
       const selectPromise = adapter.query({
@@ -99,7 +105,8 @@ describe('[Node.js] Connection', () => {
       expect(await getAsText(stream)).toBe(responseBody)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [url] = httpRequestStub.calls.mostRecent().args
+      const [url] =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1]
       expect(url.search).toContain(`?query_id=${query_id}`)
     })
 
@@ -111,10 +118,10 @@ describe('[Node.js] Connection', () => {
         },
       })
 
-      const httpRequestStub = spyOn(Http, 'request')
+      const httpRequestStub = vi.spyOn(Http, 'request')
 
       const request1 = stubClientRequest()
-      httpRequestStub.and.returnValue(request1)
+      httpRequestStub.mockReturnValue(request1)
 
       const execPromise1 = adapter.exec({
         query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -124,7 +131,7 @@ describe('[Node.js] Connection', () => {
       const queryResult1 = await execPromise1
 
       const request2 = stubClientRequest()
-      httpRequestStub.and.returnValue(request2)
+      httpRequestStub.mockReturnValue(request2)
 
       const execPromise2 = adapter.exec({
         query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -137,11 +144,11 @@ describe('[Node.js] Connection', () => {
       await assertConnQueryResult(queryResult2, responseBody2)
       expect(queryResult1.query_id).not.toEqual(queryResult2.query_id)
 
-      const [url1] = httpRequestStub.calls.all()[0].args
+      const [url1] = httpRequestStub.mock.calls[0]
 
       expect(url1.search).toContain(`?query_id=${queryResult1.query_id}`)
 
-      const [url2] = httpRequestStub.calls.all()[1].args
+      const [url2] = httpRequestStub.mock.calls[1]
       expect(url2.search).toContain(`?query_id=${queryResult2.query_id}`)
     })
 
@@ -153,9 +160,9 @@ describe('[Node.js] Connection', () => {
         },
       })
 
-      const httpRequestStub = spyOn(Http, 'request')
+      const httpRequestStub = vi.spyOn(Http, 'request')
       const request = stubClientRequest()
-      httpRequestStub.and.returnValue(request)
+      httpRequestStub.mockReturnValue(request)
 
       const query_id = guid()
       const execPromise = adapter.exec({
@@ -168,7 +175,8 @@ describe('[Node.js] Connection', () => {
       expect(await getAsText(stream)).toBe(responseBody)
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [url] = httpRequestStub.calls.mostRecent().args
+      const [url] =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1]
       expect(url.search).toContain(`?query_id=${query_id}`)
     })
 
@@ -180,10 +188,10 @@ describe('[Node.js] Connection', () => {
         },
       })
 
-      const httpRequestStub = spyOn(Http, 'request')
+      const httpRequestStub = vi.spyOn(Http, 'request')
 
       const request1 = stubClientRequest()
-      httpRequestStub.and.returnValue(request1)
+      httpRequestStub.mockReturnValue(request1)
 
       const cmdPromise = adapter.command({
         query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -192,7 +200,7 @@ describe('[Node.js] Connection', () => {
       const { query_id } = await cmdPromise
 
       const request2 = stubClientRequest()
-      httpRequestStub.and.returnValue(request2)
+      httpRequestStub.mockReturnValue(request2)
 
       const cmdPromise2 = adapter.command({
         query: 'SELECT * FROM system.numbers LIMIT 5',
@@ -201,9 +209,9 @@ describe('[Node.js] Connection', () => {
       const { query_id: query_id2 } = await cmdPromise2
 
       expect(query_id).not.toEqual(query_id2)
-      const [url1] = httpRequestStub.calls.all()[0].args
+      const [url1] = httpRequestStub.mock.calls[0]
       expect(url1.search).toContain(`?query_id=${query_id}`)
-      const [url2] = httpRequestStub.calls.all()[1].args
+      const [url2] = httpRequestStub.mock.calls[1]
       expect(url2.search).toContain(`?query_id=${query_id2}`)
     })
 
@@ -215,9 +223,9 @@ describe('[Node.js] Connection', () => {
         },
       })
 
-      const httpRequestStub = spyOn(Http, 'request')
+      const httpRequestStub = vi.spyOn(Http, 'request')
       const request = stubClientRequest()
-      httpRequestStub.and.returnValue(request)
+      httpRequestStub.mockReturnValue(request)
 
       const query_id = guid()
       const cmdPromise = adapter.command({
@@ -228,7 +236,8 @@ describe('[Node.js] Connection', () => {
       const { query_id: result_query_id } = await cmdPromise
 
       expect(httpRequestStub).toHaveBeenCalledTimes(1)
-      const [url] = httpRequestStub.calls.mostRecent().args
+      const [url] =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1]
       expect(url.search).toContain(`?query_id=${query_id}`)
       expect(query_id).toEqual(result_query_id)
     })
@@ -241,10 +250,10 @@ describe('[Node.js] Connection', () => {
         },
       })
 
-      const httpRequestStub = spyOn(Http, 'request')
+      const httpRequestStub = vi.spyOn(Http, 'request')
 
       const request1 = stubClientRequest()
-      httpRequestStub.and.returnValue(request1)
+      httpRequestStub.mockReturnValue(request1)
 
       const insertPromise1 = adapter.insert({
         query: 'INSERT INTO default.foo VALUES (42)',
@@ -255,7 +264,7 @@ describe('[Node.js] Connection', () => {
       const { query_id: queryId1 } = await insertPromise1
 
       const request2 = stubClientRequest()
-      httpRequestStub.and.returnValue(request2)
+      httpRequestStub.mockReturnValue(request2)
 
       const insertPromise2 = adapter.insert({
         query: 'INSERT INTO default.foo VALUES (42)',
@@ -269,10 +278,10 @@ describe('[Node.js] Connection', () => {
       assertQueryId(queryId2)
       expect(queryId1).not.toEqual(queryId2)
 
-      const [url1] = httpRequestStub.calls.all()[0].args
+      const [url1] = httpRequestStub.mock.calls[0]
       expect(url1.search).toContain(`?query_id=${queryId1}`)
 
-      const [url2] = httpRequestStub.calls.all()[1].args
+      const [url2] = httpRequestStub.mock.calls[1]
       expect(url2.search).toContain(`?query_id=${queryId2}`)
     })
 
@@ -285,7 +294,7 @@ describe('[Node.js] Connection', () => {
       })
 
       const request = stubClientRequest()
-      const httpRequestStub = spyOn(Http, 'request').and.returnValue(request)
+      const httpRequestStub = vi.spyOn(Http, 'request').mockReturnValue(request)
 
       const query_id = guid()
       const insertPromise = adapter.insert({
@@ -297,7 +306,8 @@ describe('[Node.js] Connection', () => {
       await emitResponseBody(request, responseBody)
       await insertPromise
 
-      const [url] = httpRequestStub.calls.mostRecent().args
+      const [url] =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1]
       expect(url.search).toContain(`?query_id=${query_id}`)
     })
   })
@@ -310,14 +320,15 @@ describe('[Node.js] Connection', () => {
       },
     })
 
-    const httpRequestStub = spyOn(Http, 'request')
+    const httpRequestStub = vi.spyOn(Http, 'request')
+    vi.clearAllMocks()
 
     const traceparent =
       '00-12345678901234567890123456789012-1234567890123456-01'
     const tracestate = 'rojo=00f067aa0ba902b7'
 
     const assertHeaders = (i: number, op: string) => {
-      const callArgs = httpRequestStub.calls.argsFor(i)[1]
+      const callArgs = httpRequestStub.mock.calls[i][1]
       const headers = callArgs.headers as Record<string, string>
       expect(headers['traceparent']).toBe(traceparent)
       expect(headers['tracestate']).toBe(tracestate)
@@ -346,7 +357,7 @@ describe('[Node.js] Connection', () => {
 
     // Query
     const queryRequest = stubClientRequest()
-    httpRequestStub.and.returnValue(queryRequest)
+    httpRequestStub.mockReturnValue(queryRequest)
     const queryPromise = connection.query(
       getQueryParamsWithCustomHeaders('query'),
     )
@@ -356,7 +367,7 @@ describe('[Node.js] Connection', () => {
 
     // Command
     const cmdRequest = stubClientRequest()
-    httpRequestStub.and.returnValue(cmdRequest)
+    httpRequestStub.mockReturnValue(cmdRequest)
     const cmdPromise = connection.command(
       getQueryParamsWithCustomHeaders('command'),
     )
@@ -366,7 +377,7 @@ describe('[Node.js] Connection', () => {
 
     // Exec
     const execRequest = stubClientRequest()
-    httpRequestStub.and.returnValue(execRequest)
+    httpRequestStub.mockReturnValue(execRequest)
     const execPromise = connection.exec(getQueryParamsWithCustomHeaders('exec'))
     await emitResponseBody(execRequest, 'Ok.')
     const { stream } = await execPromise
@@ -375,7 +386,7 @@ describe('[Node.js] Connection', () => {
 
     // Insert
     const insertRequest = stubClientRequest()
-    httpRequestStub.and.returnValue(insertRequest)
+    httpRequestStub.mockReturnValue(insertRequest)
     const insertPromise = connection.insert({
       ...getQueryParamsWithCustomHeaders('insert'),
       values: 'foobar\n',

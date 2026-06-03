@@ -5,12 +5,13 @@ import type {
   ConnectionParams,
   ConnExecResult,
   IsSame,
-  LogWriter,
   MakeResultSet,
   WithClickHouseSummary,
   WithResponseHeaders,
+  DataFormat,
 } from './index'
-import { type DataFormat, defaultJSONHandling, DefaultLogger } from './index'
+import { defaultJSONHandling } from './parse'
+import { DefaultLogger, ClickHouseLogLevel } from './logger'
 import type {
   InsertValues,
   NonEmptyArray,
@@ -187,7 +188,6 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly valuesEncoder: ValuesEncoder<Stream>
   private readonly sessionId?: string
   private readonly role?: string | Array<string>
-  private readonly logWriter: LogWriter
   private readonly jsonHandling: JSONHandling
 
   constructor(
@@ -202,7 +202,6 @@ export class ClickHouseClient<Stream = unknown> {
       config.impl.handle_specific_url_params ?? null,
     )
     this.connectionParams = getConnectionParams(configWithURL, logger)
-    this.logWriter = this.connectionParams.log_writer
     this.clientClickHouseSettings = this.connectionParams.clickhouse_settings
     this.sessionId = config.session_id
     this.role = config.role
@@ -210,6 +209,8 @@ export class ClickHouseClient<Stream = unknown> {
       configWithURL,
       this.connectionParams,
     )
+    // Using the connection params log level as it does the parsing.
+    // TODO: it would be better to parse the log level in the client itself.
     this.makeResultSet = config.impl.make_result_set
     this.jsonHandling = {
       ...defaultJSONHandling,
@@ -237,22 +238,24 @@ export class ClickHouseClient<Stream = unknown> {
       query,
       ...queryParams,
     })
+    const { log_writer, log_level } = this.connectionParams
     return this.makeResultSet(
       stream,
       format,
       query_id,
       (err) => {
-        this.logWriter.error({
-          err,
-          module: 'Client',
-          message: 'Error while processing the ResultSet.',
-          args: {
-            session_id: queryParams.session_id,
-            role: queryParams.role,
-            query,
-            query_id,
-          },
-        })
+        if (log_level <= ClickHouseLogLevel.ERROR) {
+          log_writer.error({
+            err,
+            module: 'Client',
+            message: 'Error while processing the ResultSet.',
+            args: {
+              session_id: queryParams.session_id,
+              role: queryParams.role,
+              query_id,
+            },
+          })
+        }
       },
       response_headers,
       this.jsonHandling,
@@ -270,9 +273,12 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async command(params: CommandParams): Promise<CommandResult> {
     const query = removeTrailingSemi(params.query.trim())
+    const ignore_error_response = params.ignore_error_response ?? false
+    const queryParams = this.withClientQueryParams(params)
     return await this.connection.command({
       query,
-      ...this.withClientQueryParams(params),
+      ignore_error_response,
+      ...queryParams,
     })
   }
 
@@ -291,12 +297,13 @@ export class ClickHouseClient<Stream = unknown> {
     const values = 'values' in params ? params.values : undefined
     const decompress_response_stream = params.decompress_response_stream ?? true
     const ignore_error_response = params.ignore_error_response ?? false
+    const queryParams = this.withClientQueryParams(params)
     return await this.connection.exec({
       query,
       values,
       decompress_response_stream,
       ignore_error_response,
-      ...this.withClientQueryParams(params),
+      ...queryParams,
     })
   }
 
@@ -318,10 +325,11 @@ export class ClickHouseClient<Stream = unknown> {
     this.valuesEncoder.validateInsertValues(params.values, format)
 
     const query = getInsertQuery(params, format)
+    const queryParams = this.withClientQueryParams(params)
     const result = await this.connection.insert({
       query,
       values: this.valuesEncoder.encodeValues(params.values, format),
-      ...this.withClientQueryParams(params),
+      ...queryParams,
     })
     return { ...result, executed: true }
   }

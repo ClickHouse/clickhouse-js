@@ -1,15 +1,19 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { Row } from '@clickhouse/client-common'
 import {
   type ClickHouseClient,
   type ClickHouseSettings,
 } from '@clickhouse/client-common'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient, guid } from '@test/utils'
+import { createTestClient } from '@test/utils/client'
+import { guid } from '@test/utils/guid'
 import { genLargeStringsDataset } from '@test/utils/datasets'
 import { tableFromIPC } from 'apache-arrow'
 import { Buffer } from 'buffer'
 import Fs from 'fs'
-import { readParquet } from 'parquet-wasm'
+// Not working out of the box with ESM. See out package.json for the workaround.
+// Also, see https://github.com/kylebarron/parquet-wasm/issues/798
+import { readParquet } from 'parquet-wasm/node'
 import split from 'split2'
 import Stream from 'stream'
 

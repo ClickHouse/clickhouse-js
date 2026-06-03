@@ -1,3 +1,4 @@
+import { expect } from 'vitest'
 import type { ClickHouseClient } from '@clickhouse/client-common'
 import { sleep } from '../utils'
 

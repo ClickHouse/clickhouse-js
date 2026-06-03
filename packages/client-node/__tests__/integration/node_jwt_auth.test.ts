@@ -1,22 +1,27 @@
-import { TestEnv, whenOnEnv } from '@test/utils'
-import { EnvKeys, getFromEnv } from '@test/utils/env'
+import { describe, it, expect, beforeAll, afterEach } from 'vitest'
+import { TestEnv, isOnEnv } from '@test/utils/test_env'
+import { EnvKeys, getFromEnv, maybeGetFromEnv } from '@test/utils/env'
 import { createClient } from '../../src'
 import type { NodeClickHouseClient } from '../../src/client'
 
-whenOnEnv(TestEnv.Cloud).describe('[Node.js] JWT auth', () => {
+describe.skipIf(!isOnEnv(TestEnv.Cloud))('[Node.js] JWT auth', () => {
   let jwtClient: NodeClickHouseClient
   let url: string
-  let jwt: string
+  let jwt: string | undefined
 
   beforeAll(() => {
     url = `https://${getFromEnv(EnvKeys.host)}:8443`
-    jwt = getFromEnv(EnvKeys.jwt_access_token)
+    jwt = maybeGetFromEnv(EnvKeys.jwt_access_token)
   })
   afterEach(async () => {
-    await jwtClient.close()
+    await jwtClient?.close()
   })
 
-  it('should work with client configuration', async () => {
+  it('should work with client configuration', async ({ skip }) => {
+    if (!jwt) {
+      skip(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+    }
+
     jwtClient = createClient({
       url,
       access_token: jwt,
@@ -28,7 +33,13 @@ whenOnEnv(TestEnv.Cloud).describe('[Node.js] JWT auth', () => {
     expect(await rs.json()).toEqual([{ result: 42 }])
   })
 
-  it('should override the client instance auth', async () => {
+  it('should override the client instance auth', async ({ skip }) => {
+    if (!jwt) {
+      skip(`Environment variable ${EnvKeys.jwt_access_token} is not set`)
+      // return is needed to satisfy typescript, it does not mark skip() as terminating
+      return
+    }
+
     jwtClient = createClient({
       url,
       username: 'gibberish',

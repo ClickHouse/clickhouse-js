@@ -1,5 +1,6 @@
+import { expect } from 'vitest'
 import type { ConnQueryResult } from '@clickhouse/client-common'
-import { validateUUID } from '@test/utils'
+import { validateUUID } from '../../../client-common/__tests__/utils/guid'
 import type Stream from 'stream'
 import { getAsText } from '../../src/utils'
 

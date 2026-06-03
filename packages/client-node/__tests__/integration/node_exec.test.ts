@@ -1,15 +1,29 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
+import {
+  DefaultLogger,
+  LogWriter,
+  type ClickHouseClient,
+  ClickHouseLogLevel,
+} from '@clickhouse/client-common'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { createSimpleTable } from '@test/fixtures/simple_table'
-import { createTestClient, guid } from '@test/utils'
+import { createTestClient } from '@test/utils/client'
+import { guid } from '@test/utils/guid'
 import Stream from 'stream'
 import Zlib from 'zlib'
-import { drainStream, ResultSet } from '../../src'
+import { ResultSet } from '../../src'
+import { drainStreamInternal } from '../../src/connection/stream'
 import { getAsText } from '../../src/utils'
 
 describe('[Node.js] exec', () => {
   let client: ClickHouseClient<Stream.Readable>
+  let log_writer: LogWriter
   beforeEach(() => {
     client = createTestClient()
+    log_writer = new LogWriter(
+      new DefaultLogger(),
+      'Connection',
+      ClickHouseLogLevel.OFF,
+    )
   })
   afterEach(async () => {
     await client.close()
@@ -85,7 +99,15 @@ describe('[Node.js] exec', () => {
         values: stream,
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
-      await drainStream(execResult.stream)
+      await drainStreamInternal(
+        {
+          op: 'Insert',
+          query_id: execResult.query_id,
+          log_writer,
+          log_level: ClickHouseLogLevel.OFF,
+        },
+        execResult.stream,
+      )
       await checkInsertedValues([
         {
           id: '42',
@@ -110,7 +132,15 @@ describe('[Node.js] exec', () => {
       stream.push(null)
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
       const execResult = await execPromise
-      await drainStream(execResult.stream)
+      await drainStreamInternal(
+        {
+          op: 'Insert',
+          query_id: execResult.query_id,
+          log_writer,
+          log_level: ClickHouseLogLevel.OFF,
+        },
+        execResult.stream,
+      )
       await checkInsertedValues([])
     })
 
@@ -129,7 +159,15 @@ describe('[Node.js] exec', () => {
         values: stream,
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
-      await drainStream(execResult.stream)
+      await drainStreamInternal(
+        {
+          op: 'Insert',
+          query_id: execResult.query_id,
+          log_writer,
+          log_level: ClickHouseLogLevel.OFF,
+        },
+        execResult.stream,
+      )
       await checkInsertedValues([
         {
           id: '42',
@@ -153,7 +191,15 @@ describe('[Node.js] exec', () => {
         values: stream,
       })
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
-      await drainStream(execResult.stream)
+      await drainStreamInternal(
+        {
+          op: 'Insert',
+          query_id: execResult.query_id,
+          log_writer,
+          log_level: ClickHouseLogLevel.OFF,
+        },
+        execResult.stream,
+      )
       await checkInsertedValues([])
     })
 
@@ -185,16 +231,14 @@ describe('[Node.js] exec', () => {
     })
 
     it('should force decompress in case of an error', async () => {
-      await expectAsync(
+      await expect(
         client.exec({
           query: 'invalid',
           decompress_response_stream: false,
         }),
-      ).toBeRejectedWith(
-        jasmine.objectContaining({
-          message: jasmine.stringContaining('Syntax error'),
-        }),
-      )
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Syntax error'),
+      })
     })
   })
 

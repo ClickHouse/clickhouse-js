@@ -1,13 +1,23 @@
+import { describe, it, expect, vi } from 'vitest'
 import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common'
 import { createClient } from '../../src'
 import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
 import { sleep } from '../utils/sleep'
+import { createSimpleWebTestClient } from '../utils/simple_web_client'
 
 describe('[Web] createClient', () => {
+  it('createSimpleWebTestClient creates a client without requiring ClickHouse', async () => {
+    // Imported from the side-effect-free `simple_web_client` module, so it does
+    // not register the shared `beforeAll` test-env init and needs no ClickHouse.
+    const client = createSimpleWebTestClient()
+    expect(client).toBeDefined()
+    await client.close()
+  })
+
   it('throws on incorrect "url" config value', () => {
     expect(() => createClient({ url: 'foo' })).toThrow(
-      jasmine.objectContaining({
-        message: jasmine.stringContaining('ClickHouse URL is malformed.'),
+      expect.objectContaining({
+        message: expect.stringContaining('ClickHouse URL is malformed.'),
       }),
     )
   })
@@ -24,14 +34,14 @@ describe('[Web] createClient', () => {
     })
   })
 
-  it('closes the client when used with using statement', async () => {
+  it('closes the client when used with using statement', async ({ skip }) => {
     if (!isAwaitUsingStatementSupported()) {
-      pending('using statement is not supported in this environment')
+      skip('using statement is not supported in this environment')
       return
     }
     const client = createClient()
     let isClosed = false
-    spyOn(client, 'close').and.callFake(async () => {
+    vi.spyOn(client, 'close').mockImplementation(async () => {
       // Simulate some delay in closing
       await sleep(0)
       isClosed = true
@@ -47,6 +57,6 @@ describe('[Web] createClient', () => {
         })
       `)(client)
 
-    expect(isClosed).toBeTrue()
+    expect(isClosed).toBeTruthy()
   })
 })

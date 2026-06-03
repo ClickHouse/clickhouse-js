@@ -4,7 +4,7 @@ import type {
   WithHttpStatusCode,
   WithResponseHeaders,
 } from './clickhouse_types'
-import type { LogWriter } from './logger'
+import type { ClickHouseLogLevel, LogWriter } from './logger'
 import type { ClickHouseSettings } from './settings'
 
 export type ConnectionAuth =
@@ -19,6 +19,7 @@ export interface ConnectionParams {
   database: string
   clickhouse_settings: ClickHouseSettings
   log_writer: LogWriter
+  log_level: ClickHouseLogLevel
   keep_alive: { enabled: boolean }
   application_id?: string
   http_headers?: Record<string, string>
@@ -47,6 +48,10 @@ export type ConnPingParams = { select: boolean } & Omit<
   ConnBaseQueryParams,
   'query' | 'query_params'
 >
+
+export interface ConnCommandParams extends ConnBaseQueryParams {
+  ignore_error_response?: boolean
+}
 
 export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
   values: string | Stream
@@ -85,7 +90,7 @@ export interface Connection<Stream> {
   ping(params: ConnPingParams): Promise<ConnPingResult>
   query(params: ConnBaseQueryParams): Promise<ConnQueryResult<Stream>>
   insert(params: ConnInsertParams<Stream>): Promise<ConnInsertResult>
-  command(params: ConnBaseQueryParams): Promise<ConnCommandResult>
+  command(params: ConnCommandParams): Promise<ConnCommandResult>
   exec(params: ConnExecParams<Stream>): Promise<ConnExecResult<Stream>>
   close(): Promise<void>
 }

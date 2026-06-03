@@ -5,10 +5,8 @@ import {
 } from '@clickhouse/client-common'
 import type Http from 'http'
 import Https from 'https'
-import type {
-  NodeConnectionParams,
-  RequestParams,
-} from './node_base_connection'
+import type { NodeConnectionParams } from './node_base_connection'
+import type { RequestParams } from './socket_pool'
 import { NodeBaseConnection } from './node_base_connection'
 
 export class NodeHttpsConnection extends NodeBaseConnection {
@@ -74,6 +72,9 @@ export class NodeHttpsConnection extends NodeBaseConnection {
       timeout: this.params.request_timeout,
       signal: params.abort_signal,
       headers,
+      ...(this.params.max_response_headers_size !== undefined && {
+        maxHeaderSize: this.params.max_response_headers_size,
+      }),
     })
   }
 }

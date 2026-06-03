@@ -1,12 +1,13 @@
 /* eslint @typescript-eslint/no-var-requires: 0 */
-import type {
-  BaseClickHouseClientConfigOptions,
-  ClickHouseClient,
-  ClickHouseSettings,
+import { beforeAll } from 'vitest'
+import {
+  type BaseClickHouseClientConfigOptions,
+  type ClickHouseClient,
+  type ClickHouseSettings,
 } from '@clickhouse/client-common'
-import { cacheServerVersion } from '@test/utils/server_version'
 import { EnvKeys, getFromEnv } from './env'
 import { guid } from './guid'
+import { createSimpleTestClient, getTestLogConfig } from './simple_client'
 import {
   getClickHouseTestEnvironment,
   isCloudTestEnv,
@@ -14,39 +15,41 @@ import {
   SKIP_INIT,
   TestEnv,
 } from './test_env'
-import { TestLogger } from './test_logger'
 
-if (typeof jasmine !== 'undefined') {
-  jasmine.DEFAULT_TIMEOUT_INTERVAL = 400_000
-}
+export { createSimpleTestClient }
 
 let databaseName: string
-beforeAll(async () => {
-  if (SKIP_INIT) {
-    // it will be skipped for unit tests that don't require DB setup
-    console.log('\nSkipping test environment initialization')
-    return
-  }
-
-  console.log(
-    `\nTest environment: ${getClickHouseTestEnvironment()}, database: ${
-      databaseName ?? 'default'
-    }`,
-  )
-  const initClient = createTestClient({
-    request_timeout: 10_000,
+// Only register the shared test-environment initializer when it is actually
+// needed. Skipping the registration entirely (instead of returning early from
+// the hook) ensures that importing this module never couples a test suite to a
+// reachable ClickHouse instance when init is skipped.
+if (!SKIP_INIT) {
+  beforeAll(async () => {
+    console.log(
+      `\nTest environment: ${getClickHouseTestEnvironment()}, database: ${
+        databaseName ?? 'default'
+      }`,
+    )
+    const initClient = createTestClient({
+      request_timeout: 10_000,
+    })
+    if (isCloudTestEnv() && databaseName === undefined) {
+      await wakeUpPing(initClient)
+      databaseName = await createRandomDatabase(initClient)
+    }
+    await initClient.close()
   })
-  if (isCloudTestEnv() && databaseName === undefined) {
-    await wakeUpPing(initClient)
-    databaseName = await createRandomDatabase(initClient)
-  }
-  await cacheServerVersion(initClient)
-  await initClient.close()
-})
+}
 
 export function createTestClient<Stream = unknown>(
   config: BaseClickHouseClientConfigOptions = {},
 ): ClickHouseClient<Stream> {
+  // When the shared test-environment init is skipped, there is no ClickHouse
+  // instance to talk to; fall back to a client that requires no server.
+  if (SKIP_INIT) {
+    return createSimpleTestClient<Stream>(config)
+  }
+
   const env = getClickHouseTestEnvironment()
   const clickHouseSettings: ClickHouseSettings = {
     // (U)Int64 are not quoted by default since 25.8
@@ -59,48 +62,33 @@ export function createTestClient<Stream = unknown>(
   }
   // Allow to override `insert_quorum` if necessary
   Object.assign(clickHouseSettings, config?.clickhouse_settings || {})
-  const logging = {
-    log: {
-      enable: true,
-      LoggerClass: TestLogger,
-    },
-  }
+  const log = getTestLogConfig(config)
+
   if (isCloudTestEnv()) {
-    const cloudConfig: BaseClickHouseClientConfigOptions = {
+    return (globalThis as any).environmentSpecificCreateClient({
       url: `https://${getFromEnv(EnvKeys.host)}:8443`,
       password: getFromEnv(EnvKeys.password),
       database: databaseName,
       request_timeout: 60_000,
-      ...logging,
+      log,
       ...config,
       clickhouse_settings: clickHouseSettings,
-    }
-    if (process.env.browser) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('../../../client-web/src/client').createClient(cloudConfig)
-    } else {
-      // props to https://stackoverflow.com/a/41063795/4575540
-      // @ts-expect-error
-      return eval('require')('../../../client-node/src/client').createClient(
-        cloudConfig,
-      ) as ClickHouseClient
-    }
+    }) as ClickHouseClient<Stream>
   } else {
-    const localConfig: BaseClickHouseClientConfigOptions = {
+    // The local cluster entrypoint (nginx round-robin LB) is exposed on a different
+    // host port than the single-node setup so both can run side by side.
+    // See docker-compose.yml for the full port mapping.
+    const url =
+      env === TestEnv.LocalCluster
+        ? 'http://127.0.0.1:8127'
+        : 'http://127.0.0.1:8123'
+    return (globalThis as any).environmentSpecificCreateClient({
+      url,
       database: databaseName,
-      ...logging,
+      log,
       ...config,
       clickhouse_settings: clickHouseSettings,
-    }
-    if (process.env.browser) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('../../../client-web/src/client').createClient(localConfig)
-    } else {
-      // @ts-expect-error
-      return eval('require')('../../../client-node/src/client').createClient(
-        localConfig,
-      ) as ClickHouseClient
-    }
+    }) as ClickHouseClient<Stream>
   }
 }
 
@@ -174,6 +162,6 @@ export async function wakeUpPing(client: ClickHouseClient): Promise<void> {
       lastError,
     )
     await client.close()
-    process.exit(1)
+    throw new Error('Failed to wake up the service')
   }
 }

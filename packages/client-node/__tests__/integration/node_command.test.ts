@@ -1,5 +1,6 @@
 import type { ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
+import { describe, it, beforeEach, afterEach, expect } from 'vitest'
+import { createTestClient } from '@test/utils/client'
 
 /**
  * {@link ClickHouseClient.command} re-introduction is the result of
@@ -32,6 +33,38 @@ describe('[Node.js] command', () => {
     await command()
     await command() // if previous call holds the socket, the test will time out
     clearTimeout(timeout)
-    expect(1).toEqual(1) // Jasmine needs at least 1 assertion
+    expect(1).toBe(1) // Vitest needs at least 1 assertion
+  })
+
+  describe('ignore error response', () => {
+    it('should throw an error by default when ignore_error_response is not set', async () => {
+      await expect(
+        client.command({
+          query: 'invalid',
+        }),
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Syntax error'),
+      })
+    })
+
+    it('should throw an error when ignore_error_response is false', async () => {
+      await expect(
+        client.command({
+          query: 'invalid',
+          ignore_error_response: false,
+        }),
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Syntax error'),
+      })
+    })
+
+    it('should not throw an error when ignore_error_response is true', async () => {
+      const result = await client.command({
+        query: 'invalid',
+        ignore_error_response: true,
+      })
+      // command doesn't return a stream, just summary info
+      expect(result.query_id).toBeDefined()
+    })
   })
 })

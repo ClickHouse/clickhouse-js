@@ -1,9 +1,7 @@
 import { withCompressionHeaders } from '@clickhouse/client-common'
 import Http from 'http'
-import type {
-  NodeConnectionParams,
-  RequestParams,
-} from './node_base_connection'
+import type { NodeConnectionParams } from './node_base_connection'
+import type { RequestParams } from './socket_pool'
 import { NodeBaseConnection } from './node_base_connection'
 
 export class NodeHttpConnection extends NodeBaseConnection {
@@ -27,6 +25,9 @@ export class NodeHttpConnection extends NodeBaseConnection {
       timeout: this.params.request_timeout,
       signal: params.abort_signal,
       headers,
+      ...(this.params.max_response_headers_size !== undefined && {
+        maxHeaderSize: this.params.max_response_headers_size,
+      }),
     })
   }
 }
