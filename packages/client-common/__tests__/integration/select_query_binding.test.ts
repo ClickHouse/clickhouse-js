@@ -341,7 +341,7 @@ describe('select with query binding', () => {
   })
 
   describe('Enum', () => {
-    it('should accept numeric enums in a parametrized query', async () => {
+    it('should accept numeric enum-like values in a parametrized query', async () => {
       const MyEnum = {
         foo: 0,
         bar: 1,
