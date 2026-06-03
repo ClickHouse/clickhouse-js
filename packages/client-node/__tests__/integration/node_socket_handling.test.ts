@@ -10,12 +10,17 @@ import net from 'net'
 import type Stream from 'stream'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { AddressInfo } from 'net'
+import { isBun } from '../utils/feature_detection'
 
 const ClientTimeout = 10 // ms
 const Iterations = 5
 const MaxOpenConnections = 2
 
-describe.concurrent('Slow server', () => {
+// This whole suite drives the Node.js client against raw TCP servers to
+// exercise low-level socket behaviors. Under Bun's `node:http` these scenarios
+// rely on Node.js socket internals and leave handles open that keep the test
+// runner from exiting, so the suite is skipped under Bun.
+describe.skipIf(isBun()).concurrent('Slow server', () => {
   let client: ClickHouseClient<Stream.Readable>
   let server: http.Server | null = null
   let port: number
@@ -140,7 +145,7 @@ describe.concurrent('Slow server', () => {
   }
 })
 
-describe('Server that times out', () => {
+describe.skipIf(isBun())('Server that times out', () => {
   it('should eventually get a successful ping', async () => {
     let requestCount = 0
     // Simulate an LB where the server is not available
@@ -178,7 +183,7 @@ describe('Server that times out', () => {
   })
 })
 
-describe('Resource is not available', () => {
+describe.skipIf(isBun())('Resource is not available', () => {
   let client: ClickHouseClient<Stream.Readable>
   let server: http.Server | undefined
   const port = 18125
@@ -220,7 +225,11 @@ describe('Resource is not available', () => {
   })
 })
 
-describe.concurrent('Server that drops connections', () => {
+// These assertions check the exact text/codes of low-level socket errors
+// ("socket hang up", "invalid header token", "ECONNRESET", "aborted"), which
+// Bun's `node:http` reports differently (e.g. "Malformed_HTTP_Response", "The
+// socket connection was closed unexpectedly"). Skipped under Bun.
+describe.skipIf(isBun()).concurrent('Server that drops connections', () => {
   it('should expose "socket hang up" error', async () => {
     const [server, port] = await createTCPServer(async (socket) => {
       drainSocket(socket)

@@ -4,8 +4,11 @@ import { guid } from '@test/utils/guid'
 import { sleep } from '@test/utils/sleep'
 import type { ClickHouseClient } from '../../src'
 import { createNodeTestClient } from '../utils/node_client'
+import { isBun } from '../utils/feature_detection'
 
-describe('[Node.js] max_open_connections config', () => {
+// Bun's `node:http` does not enforce the `Http.Agent` `maxSockets` limit the
+// way Node.js does, so these connection-pooling assertions only hold on Node.js.
+describe.skipIf(isBun())('[Node.js] max_open_connections config', () => {
   let client: ClickHouseClient
   let results: number[] = []
 

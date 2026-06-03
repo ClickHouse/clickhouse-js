@@ -9,8 +9,12 @@ import { createTestClient } from '@test/utils/client'
 import * as http from 'http'
 import { AddressInfo } from 'net'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
+import { isBun } from '../utils/feature_detection'
 
-describe('[Node.js] Eager socket destruction', () => {
+// These tests rely on Node.js `Http.Agent` socket reuse internals (the
+// `freeSockets` pool, the socket `'free'` event, and idle-socket destruction),
+// which Bun's `node:http` implementation does not expose in the same way.
+describe.skipIf(isBun())('[Node.js] Eager socket destruction', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })

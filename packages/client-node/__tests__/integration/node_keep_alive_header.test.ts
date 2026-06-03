@@ -4,8 +4,12 @@ import { createTestClient } from '@test/utils/client'
 import net from 'net'
 import type { NodeClickHouseClientConfigOptions } from '../../src/config'
 import { AddressInfo } from 'net'
+import { isBun } from '../utils/feature_detection'
 
-describe.concurrent('Handling keep-alive header', () => {
+// The server keep-alive timeout tracking relies on Node.js `Http.Agent` socket
+// reuse internals (sockets tracked by identity and reused across requests),
+// which Bun's `node:http` implementation does not replicate.
+describe.skipIf(isBun()).concurrent('Handling keep-alive header', () => {
   it('should log the suggestion', async ({ expect }) => {
     let sleepServerPromiseResolve: () => void
     let sleepServerPromise = new Promise<void>((resolve) => {

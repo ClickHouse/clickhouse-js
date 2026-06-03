@@ -1,6 +1,7 @@
 import http from 'http'
 import net, { type AddressInfo } from 'net'
 import { describe, it } from 'vitest'
+import { isBun } from '../utils/feature_detection'
 
 // Verifies the behavior of Node.js' built-in http client when parsing responses
 // with a large block of response headers, depending on the `maxHeaderSize`
@@ -10,7 +11,11 @@ import { describe, it } from 'vitest'
 //
 // This is a pure Node.js behavior check; the ClickHouse client is intentionally
 // not involved here.
-describe('[Node.js] http client maxHeaderSize behavior', () => {
+//
+// Bun's `node:http` does not implement the `maxHeaderSize` option with the same
+// semantics (different overflow error, different effective caps), so these
+// Node.js-specific checks are skipped under Bun.
+describe.skipIf(isBun())('[Node.js] http client maxHeaderSize behavior', () => {
   // Build enough X-H-NNNN headers to roughly reach `targetBytes`.
   function makeHeaders(
     targetBytes: number,
