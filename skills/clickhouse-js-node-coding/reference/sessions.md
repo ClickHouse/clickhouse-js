@@ -70,7 +70,7 @@ import * as crypto from 'node:crypto'
 
 const client = createClient({
   session_id: crypto.randomUUID(),
-  max_open_connections: 1, // safe-guard against concurrent-session errors
+  max_open_connections: 1, // safeguard against concurrent-session errors
 })
 
 await client.command({

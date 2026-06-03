@@ -154,6 +154,8 @@ await client.command({
   `,
 })
 
+const uuid = crypto.randomUUID()
+
 await client.insert({
   table: 'events',
   format: 'JSONEachRow',

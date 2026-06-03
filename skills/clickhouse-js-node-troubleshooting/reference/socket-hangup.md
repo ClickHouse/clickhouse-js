@@ -133,8 +133,20 @@ Max duration (seconds) ≈ http_headers_progress_interval_ms × 75 ÷ 1000
 
 If you need a longer max safe duration without lengthening the progress interval, raise Node's HTTP header limit. For example, increasing it from the default 16 KB to **64 KB** quadruples the max safe duration (≈300 progress headers instead of ≈75).
 
+```ts
+// Option 1 (recommended, since `>= 1.18.5`) — per-client, no process-wide flag needed
+const client = createClient({
+  request_timeout: 400_000,
+  max_response_headers_size: 65536, // 64 KB; lifts the per-request header cap
+  clickhouse_settings: {
+    send_progress_in_http_headers: 1,
+    http_headers_progress_interval_ms: '110000',
+  },
+})
+```
+
 ```bash
-# Option 1 — CLI flag when launching your app
+# Option 2 — CLI flag when launching your app (process-wide; older client versions)
 node --max-http-header-size=65536 app.js
 
 # Option 2 — environment variable (works with any Node entry point, including npm/ts-node)

@@ -60,6 +60,8 @@ function uuidToUInt128(uuid) {
   return BigInt('0x' + uuid.replace(/-/g, '')).toString()
 }
 
+const uuid = crypto.randomUUID()
+
 await client.insert({
   table: 'events',
   format: 'JSONEachRow',
