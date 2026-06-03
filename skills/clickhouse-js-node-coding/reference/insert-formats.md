@@ -138,5 +138,4 @@ await client.insert({
 - For type guidance (`Decimal` strings, `Date` objects, `BigInt`), see
   `insert-values.md` and `custom-json.md`.
 - **Use runtime type checkers like `zod` or `io-ts` if your app ingests untrusted JSON.**
-  It's easier to debug mismatches between your data and the format's expected shape with a validation library used at the place of ingestion than with ClickHouse errors.
-  This is especially true in the middle of a large insert batch or streaming operation.
+  It's easier to debug mismatches between your data and the format's expected shape with a validation library used at the place of ingestion than with ClickHouse errors, especially in the middle of a large insert batch or streaming operation.

@@ -48,12 +48,13 @@ describe('getAsText', () => {
         ]),
       ),
     ).rejects.toThrowError(
-      'The response length exceeds the maximum allowed size of V8 String:',
+      'The response length exceeds the maximum allowed size of a string:',
     )
   })
 
   it('should not throw on big but not too big streams', async () => {
-    const bigChunk = Buffer.alloc((constants.MAX_STRING_LENGTH / 8) >> 0, 'b')
+    const chunkSize = (constants.MAX_STRING_LENGTH / 8) >> 0
+    const bigChunk = Buffer.alloc(chunkSize, 'b')
     expect(
       await getAsText(
         makeStreamFromBuffers([
@@ -64,7 +65,7 @@ describe('getAsText', () => {
           bigChunk,
         ]),
       ),
-    ).toHaveLength(335_544_305)
+    ).toHaveLength(chunkSize * 5)
   })
 
   it('should use streamed decoding and not break utf-8 characters', async () => {
