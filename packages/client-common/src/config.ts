@@ -455,7 +455,7 @@ export function loadConfigOptionsFromURL(
               key,
               value,
               enumObject: ClickHouseLogLevel,
-            })
+            }) as ClickHouseLogLevel
             break
           case 'keep_alive_enabled':
             if (config.keep_alive === undefined) {

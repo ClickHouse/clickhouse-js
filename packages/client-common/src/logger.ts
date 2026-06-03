@@ -84,7 +84,7 @@ export class LogWriter {
     this.module = module
     this.logLevel = logLevel
     this.info({
-      message: `Log level is set to ${ClickHouseLogLevelName[this.logLevel]}`,
+      message: `Log level is set to ${ClickHouseLogLevel[this.logLevel]}`,
     })
   }
 
@@ -134,6 +134,14 @@ export class LogWriter {
   }
 }
 
+/**
+ * Mimics the runtime shape of a numeric TypeScript `enum`: an object with both
+ * forward (`Name -> number`) and reverse (`number -> Name`) mappings. This
+ * preserves backwards compatibility with the previous `enum ClickHouseLogLevel`
+ * — both `ClickHouseLogLevel.TRACE` (returns `0`) and `ClickHouseLogLevel[0]`
+ * (returns `'TRACE'`) continue to work — while staying compatible with the
+ * `--erasableSyntaxOnly` TypeScript option (no TS `enum` declaration).
+ */
 export const ClickHouseLogLevel = {
   /**
    * A fine-grained debugging event. Might produce a lot of logs, so use with caution.
@@ -159,16 +167,14 @@ export const ClickHouseLogLevel = {
    * Logging is turned off.
    */
   OFF: 127,
+  0: 'TRACE',
+  1: 'DEBUG',
+  2: 'INFO',
+  3: 'WARN',
+  4: 'ERROR',
+  127: 'OFF',
 } as const
-export type ClickHouseLogLevel =
-  (typeof ClickHouseLogLevel)[keyof typeof ClickHouseLogLevel]
-
-const ClickHouseLogLevelName: Record<
-  ClickHouseLogLevel,
-  keyof typeof ClickHouseLogLevel
-> = Object.fromEntries(
-  Object.entries(ClickHouseLogLevel).map(([k, v]) => [v, k]),
-) as Record<ClickHouseLogLevel, keyof typeof ClickHouseLogLevel>
+export type ClickHouseLogLevel = 0 | 1 | 2 | 3 | 4 | 127
 
 function formatMessage({
   level,
