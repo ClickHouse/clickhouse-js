@@ -100,6 +100,13 @@ describe('client.query FORMAT clause handling', () => {
     expect(getLastFormat()).toBe('JSONEachRow')
   })
 
+  it('infers result format when query ends with FORMAT and format on next line', async () => {
+    const { client, getLastQuery, getLastFormat } = makeClientCapturingQuery()
+    await client.query({ query: 'SELECT 1 FORMAT\nJSONEachRow' })
+    expect(getLastQuery()).toBe('SELECT 1 FORMAT\nJSONEachRow')
+    expect(getLastFormat()).toBe('JSONEachRow')
+  })
+
   it('throws when query FORMAT does not match the provided format', async () => {
     const { client } = makeClientCapturingQuery()
     await expect(
