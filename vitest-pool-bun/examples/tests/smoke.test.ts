@@ -8,3 +8,8 @@ test('runs inside the Bun runtime', () => {
 test('1 + 1 === 2', () => {
   expect(1 + 1).toBe(2)
 })
+
+// Proves Vitest `setupFiles` ran inside the Bun worker (see examples/setup.ts).
+test('setup file executed in the Bun worker', () => {
+  expect((globalThis as Record<string, unknown>).__BUN_POOL_SETUP__).toBe(true)
+})
