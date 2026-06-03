@@ -35,7 +35,6 @@ export function testFilesOverrides() {
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
-      '@typescript-eslint/ban-ts-comment': 'off',
       'no-constant-condition': 'off',
       'no-console': 'off',
     },
