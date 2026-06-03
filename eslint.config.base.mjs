@@ -23,6 +23,7 @@ export function typescriptEslintConfig(root) {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/consistent-type-imports': 'warn',
       '@typescript-eslint/array-type': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off',
     },
   } // TypeScript-ESLint recommended rules with type checking
 }
