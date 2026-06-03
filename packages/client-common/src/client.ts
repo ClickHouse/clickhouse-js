@@ -231,7 +231,9 @@ export class ClickHouseClient<Stream = unknown> {
    * Use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,
    * or {@link ClickHouseClient.exec} for queries where you need to provide the full SQL (including `FORMAT`) yourself or where the `FORMAT` suffix is not supported.
    * 
-   * NOTE: For `SHOW [ROW] POLICIES` use full syntax `SHOW POLICIES ON *` as the short version does not support `FORMAT` appendix at the server SQL parser level. See https://github.com/ClickHouse/ClickHouse/issues/105899
+   * @note For `SHOW [ROW] POLICIES`, use the full syntax `SHOW POLICIES ON *`,
+   * as the short version does not support appending `FORMAT` at the server SQL parser level.
+   * See https://github.com/ClickHouse/ClickHouse/issues/105899
    *
    * See {@link DataFormat} for the formats supported by the client.
    */
