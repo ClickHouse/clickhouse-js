@@ -673,8 +673,40 @@ export class SocketPool {
       request.on('response', onResponse)
       request.on('error', onError)
       request.on('close', onClose)
+      // Rely on the request-level 'timeout' event in addition to the socket
+      // timeout set in `onSocket`. Some runtimes (e.g. Bun/JavaScriptCore) do
+      // not honor `socket.setTimeout`, but do emit the request 'timeout' event
+      // configured via the `timeout` option in `createClientRequest`.
+      request.on('timeout', onTimeout)
 
       if (params.abort_signal) {
+        // If the signal is already aborted by the time the request is being
+        // set up, this happens even before the request and its listeners are
+        // instantiated, so the 'abort' listener below would never fire.
+        // Node.js rejects natively with a plain AbortError in this case, but
+        // other runtimes (e.g. Bun/JavaScriptCore) don't, which would leave
+        // the promise unsettled. Reproduce Node's behavior explicitly to stay
+        // engine-agnostic.
+        if (params.abort_signal.aborted) {
+          removeRequestListeners()
+          request.once('error', function () {
+            // catch the abort/ECONNRESET error from the destroyed request,
+            // so that it is not reported to the global context.
+          })
+          try {
+            request.destroy()
+          } catch {
+            // the request might not have an underlying socket yet; ignore
+          }
+          const abortError =
+            params.abort_signal.reason instanceof Error
+              ? params.abort_signal.reason
+              : Object.assign(new Error('The operation was aborted'), {
+                  name: 'AbortError',
+                })
+          reject(enhanceStackTrace(abortError, currentStackTrace))
+          return
+        }
         params.abort_signal.addEventListener('abort', onAbort, {
           once: true,
         })
