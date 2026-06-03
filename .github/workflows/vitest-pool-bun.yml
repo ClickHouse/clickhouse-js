@@ -45,3 +45,15 @@ jobs:
       - name: Run tests (green example suite in Bun)
         run: |
           npm run demo
+
+      - name: Install dependencies (clickhouse-js root)
+        working-directory: .
+        run: |
+          npm install
+
+      - name: Run selected Node unit tests in Bun pool
+        working-directory: .
+        env:
+          CLICKHOUSE_TEST_SKIP_INIT: '1'
+        run: |
+          node vitest-pool-bun/node_modules/vitest/vitest.mjs run --config vitest-pool-bun/examples/clickhouse-node-unit.config.mjs
