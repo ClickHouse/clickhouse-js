@@ -1,5 +1,5 @@
 import { createClient } from '@clickhouse/client'
-import { expect } from 'vitest'
+import assert from 'node:assert'
 
 /**
  * QBit is a column type that stores float vectors in bit-sliced ("transposed")
@@ -67,7 +67,7 @@ console.log('Round-tripped rows:')
 console.log(rows)
 // Even though QBit is stored as a Tuple of FixedString bit planes, JSON* formats
 // return the original Float32 vectors unchanged.
-expect(rows).toEqual(values)
+assert.deepStrictEqual(rows, values)
 
 // Approximate vector search via L2DistanceTransposed.
 // The third argument is the precision in bits: lower = less I/O, less accurate.
@@ -88,8 +88,11 @@ const nearest = await search.json<{ id: number; dist: number }>()
 console.log('Nearest neighbours of the reference vector:')
 console.log(nearest)
 // The reference vector is exactly row #1, so it must be the closest match (dist 0).
-expect(nearest.map((r) => r.id)).toEqual([1, 3, 2])
-expect(nearest[0].dist).toBe(0)
+assert.deepStrictEqual(
+  nearest.map((r) => r.id),
+  [1, 3, 2],
+)
+assert.strictEqual(nearest[0].dist, 0)
 
 // Bit-plane subcolumns (`vec.N`) are exposed as FixedString and therefore are
 // NOT valid UTF-8. Selecting them directly with a JSON* format would force the
@@ -104,9 +107,12 @@ const planeRows = await planes.json<{ id: number; bit_plane_1_hex: string }>()
 console.log('First bit plane per row (hex-encoded to keep JSON UTF-8 safe):')
 console.log(planeRows)
 // hex() yields a UTF-8-safe representation of the raw FixedString bit-plane bytes.
-expect(planeRows.map((r) => r.id)).toEqual([1, 2, 3])
+assert.deepStrictEqual(
+  planeRows.map((r) => r.id),
+  [1, 2, 3],
+)
 for (const row of planeRows) {
-  expect(row.bit_plane_1_hex).toMatch(/^[0-9A-F]*$/)
+  assert.match(row.bit_plane_1_hex, /^[0-9A-F]*$/)
 }
 
 await client.close()
