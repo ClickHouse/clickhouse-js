@@ -44,6 +44,7 @@ jobs:
   head:
     if: github.ref == 'refs/heads/release' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment: npm-publish
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -81,6 +82,7 @@ jobs:
   latest:
     if: github.ref == 'refs/heads/release' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    environment: npm-publish
     permissions:
       contents: write # Required to push the release git tag
       id-token: write # Required for npm OIDC authentication and provenance
