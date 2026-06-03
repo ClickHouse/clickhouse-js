@@ -224,11 +224,11 @@ export class ClickHouseClient<Stream = unknown> {
    * Used for most statements that can have a response, such as `SELECT`.
    * Returns an implementation of {@link BaseResultSet}.
    *
-   * The `FORMAT` clause should be specified separately via {@link QueryParams.format} (default is `JSON`).
-   * Providing both a `FORMAT` clause in the query and {@link QueryParams.format} will lead to an expected error.
-   * Instead use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,
-   * or {@link ClickHouseClient.exec} for custom queries with response where the `FORMAT` clause is not applicable
-   * or is included in the query itself and is not trivial to parse out.
+   * The `FORMAT` clause should be specified separately via {@link QueryParams.format} (default is `JSON`);
+   * this method will always append `FORMAT <format>` to the end of {@link QueryParams.query}.
+   * If the query already contains a `FORMAT` clause, ClickHouse will return a syntax error due to a duplicate `FORMAT`.
+   * Use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,
+   * or {@link ClickHouseClient.exec} for queries where you need to provide the full SQL (including `FORMAT`) yourself.
    *
    * See {@link DataFormat} for the formats supported by the client.
    */
