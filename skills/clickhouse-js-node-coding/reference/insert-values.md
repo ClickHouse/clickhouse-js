@@ -142,6 +142,8 @@ clause**. With the row-oriented JSON formats the client uses (e.g.
 always pass `UInt128` as a string:
 
 ```ts
+import * as crypto from 'node:crypto'
+
 function uuidToUInt128(uuid: string): string {
   // 8-4-4-4-12 hex digits → 32 hex digits → BigInt → decimal string
   return BigInt('0x' + uuid.replace(/-/g, '')).toString()
@@ -155,7 +157,6 @@ await client.command({
 })
 
 const uuid = crypto.randomUUID()
-
 await client.insert({
   table: 'events',
   format: 'JSONEachRow',
