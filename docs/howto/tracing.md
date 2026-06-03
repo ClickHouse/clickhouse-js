@@ -104,6 +104,10 @@ const tracer: ClickHouseTracer<Span> = {
 const client = createClient({ url: 'http://localhost:8123', tracer })
 ```
 
+A complete, runnable version of this adapter (wired to an in-memory span
+exporter so you can see the emitted spans) lives in
+[`examples/node/coding/otel_tracing.ts`](../../examples/node/coding/otel_tracing.ts).
+
 ## Recording-only tracer for tests / debugging
 
 ```ts

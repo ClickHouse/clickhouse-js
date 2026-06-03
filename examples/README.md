@@ -76,6 +76,7 @@ parameter binding, sessions, data types, and custom JSON handling.
 | Dynamic / Variant / JSON                       | [node/coding/dynamic_variant_json.ts](node/coding/dynamic_variant_json.ts)                                             | [web/coding/dynamic_variant_json.ts](web/coding/dynamic_variant_json.ts)                                             |
 | `Time` / `Time64` (ClickHouse 25.6+)           | [node/coding/time_time64.ts](node/coding/time_time64.ts)                                                               | [web/coding/time_time64.ts](web/coding/time_time64.ts)                                                               |
 | Custom JSON `parse`/`stringify`                | [node/coding/custom_json_handling.ts](node/coding/custom_json_handling.ts)                                             | [web/coding/custom_json_handling.ts](web/coding/custom_json_handling.ts)                                             |
+| OpenTelemetry tracing via the `tracer` hooks   | [node/coding/otel_tracing.ts](node/coding/otel_tracing.ts)                                                             | —                                                                                                                    |
 
 ### `performance/` — Streaming, batching, and high-throughput patterns
 
