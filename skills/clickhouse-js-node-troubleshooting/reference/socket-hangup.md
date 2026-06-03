@@ -149,7 +149,7 @@ const client = createClient({
 # Option 2 — CLI flag when launching your app (process-wide; older client versions)
 node --max-http-header-size=65536 app.js
 
-# Option 2 — environment variable (works with any Node entry point, including npm/ts-node)
+# Option 3 — environment variable (works with any Node entry point, including npm/ts-node)
 NODE_OPTIONS="--max-http-header-size=65536" node app.js
 ```
 
