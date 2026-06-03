@@ -120,6 +120,12 @@ describe('client.query FORMAT clause handling', () => {
     await client.query({ query: 'SELECT format FROM t', format: 'JSON' })
     expect(getLastQuery()).toBe('SELECT format FROM t \nFORMAT JSON')
   })
+
+  it('still appends FORMAT when query ends with "format" identifier', async () => {
+    const { client, getLastQuery } = makeClientCapturingQuery()
+    await client.query({ query: 'SELECT * FROM format', format: 'JSON' })
+    expect(getLastQuery()).toBe('SELECT * FROM format \nFORMAT JSON')
+  })
 })
 
 describe('client', () => {
