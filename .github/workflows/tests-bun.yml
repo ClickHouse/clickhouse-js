@@ -1,4 +1,4 @@
-name: 'tests (bun)'
+name: 'bun'
 
 permissions: {}
 on:
@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  common-unit-tests-bun:
+  common-unit-tests:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
@@ -38,7 +38,7 @@ jobs:
         run: |
           npm run test:common:unit:bun
 
-  node-unit-tests-bun:
+  node-unit-tests:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
