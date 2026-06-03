@@ -113,7 +113,7 @@ const client = createClient({
 
 **Node.js defaults to a total received HTTP header limit of approximately 16 KB (this can be increased via the `--max-http-header-size` CLI flag[^max-header-size]).** ClickHouse sends a new progress header with each interval (~200 bytes), and after ~75 progress headers accumulate, Node.js will throw an exception and terminate the request unless that limit is raised.
 
-[^max-header-size]: Node.js also exposes a `maxHeaderSize` option on `http(s).request`, but the ClickHouse JS client currently does not forward it through `createClient`. For now, the practical workaround in clickhouse-js is to either use the `--max-http-header-size` CLI flag / `NODE_OPTIONS` (process-wide) or supply a custom `http.Agent` configured with `maxHeaderSize`. A dedicated client option is coming soon.
+[^max-header-size]: Since `>= 1.18.5`, the ClickHouse JS Node client forwards a per-client header limit via the `max_response_headers_size` (bytes) option on `createClient` (it maps to Node's `http(s).request({ maxHeaderSize })`). On older versions, the practical workarounds are the `--max-http-header-size` CLI flag / `NODE_OPTIONS` (process-wide) or supplying a custom `http.Agent` configured with `maxHeaderSize`.
 
 **Maximum safe query duration formula:**
 
