@@ -24,7 +24,8 @@
     "clean": "rm -rf dist",
     "spike": "bun run spikes/m0-runner.ts",
     "demo": "npm run build && node node_modules/vitest/vitest.mjs run --root examples",
-    "demo:bun-api": "npm run build && node node_modules/vitest/vitest.mjs run --root examples bun-api.test.ts"
+    "demo:failure": "npm run build && node node_modules/vitest/vitest.mjs run --config examples/expected-failures.config.ts",
+    "demo:diagnostics": "npm run build && BUN_POOL_CRASH=1 node node_modules/vitest/vitest.mjs run --config examples/diagnostics.config.ts"
   },
   "dependencies": {
     "flatted": "^3.3.1"

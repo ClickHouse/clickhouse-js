@@ -98,10 +98,7 @@ export class BunPoolWorker implements PoolWorker {
       stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
       serialization: 'json',
     })
-
-    child.on('error', (error) => {
-      this.augmentSpawnError(error)
-    })
+    this.child = child
 
     if (child.stdout) {
       child.stdout.pipe(this.stdout, { end: false })
@@ -113,7 +110,33 @@ export class BunPoolWorker implements PoolWorker {
       child.stderr.pipe(this.stderr, { end: false })
     }
 
-    this.child = child
+    // Disambiguate "successfully spawned" from "failed to spawn" (e.g. `bun`
+    // not on PATH). Without this, an async ENOENT fires before Vitest attaches
+    // its own 'error' listener, and the host hangs until a start timeout.
+    await new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        child.off('spawn', onSpawn)
+        child.off('error', onError)
+      }
+      const onSpawn = () => {
+        cleanup()
+        resolve()
+      }
+      const onError = (error: NodeJS.ErrnoException) => {
+        cleanup()
+        this.child = undefined
+        this.augmentSpawnError(error)
+        reject(error)
+      }
+      child.once('spawn', onSpawn)
+      child.once('error', onError)
+    })
+
+    // Improve the message of any late, post-spawn process error before Vitest's
+    // PoolRunner reports it (it reads `error.message`).
+    child.on('error', (error: NodeJS.ErrnoException) => {
+      this.augmentSpawnError(error)
+    })
   }
 
   async stop(): Promise<void> {
