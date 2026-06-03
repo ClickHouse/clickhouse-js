@@ -32,7 +32,7 @@ env:
   VITEST_COVERAGE: 'true'
 
 jobs:
-  common-unit-tests-web:
+  common-unit-tests:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -64,7 +64,7 @@ jobs:
         run: |
           node .scripts/export-coverage-metrics.mjs
 
-  web-all-tests-local-single-node:
+  all-tests-local-single-node:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -105,7 +105,7 @@ jobs:
         run: |
           node .scripts/export-coverage-metrics.mjs
 
-  web-integration-tests-local-cluster:
+  integration-tests-local-cluster:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -146,7 +146,7 @@ jobs:
         run: |
           node .scripts/export-coverage-metrics.mjs
 
-  web-integration-tests-cloud:
+  integration-tests-cloud:
     # Cloud secrets are not available for PRs from forks; skip the job in that case.
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     timeout-minutes: 5
@@ -184,7 +184,7 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   # It should only use the current version of Chrome
-  web-codecov-upload:
+  codecov-upload:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -235,11 +235,11 @@ jobs:
   success:
     needs:
       [
-        'common-unit-tests-web',
-        'web-all-tests-local-single-node',
-        'web-integration-tests-local-cluster',
-        'web-integration-tests-cloud',
-        'web-codecov-upload',
+        'common-unit-tests',
+        'all-tests-local-single-node',
+        'integration-tests-local-cluster',
+        'integration-tests-cloud',
+        'codecov-upload',
       ]
     # Run even if some needed jobs were skipped (e.g. cloud jobs on PRs from forks),
     # but still fail if any of them failed or were cancelled.
