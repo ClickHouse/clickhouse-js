@@ -16,8 +16,17 @@ import {
 } from '../../src/connection'
 import { sleep } from '../utils/sleep'
 import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
+import { createSimpleNodeTestClient } from '../utils/simple_node_client'
 
 describe('[Node.js] createClient', () => {
+  it('createSimpleNodeTestClient creates a client without requiring ClickHouse', async () => {
+    // Imported from the side-effect-free `simple_node_client` module, so it does
+    // not register the shared `beforeAll` test-env init and needs no ClickHouse.
+    const client = createSimpleNodeTestClient()
+    expect(client).toBeDefined()
+    await client.close()
+  })
+
   it('throws on incorrect "url" config value', () => {
     expect(() => createClient({ url: 'foobar' })).toThrow(
       expect.objectContaining({
@@ -94,6 +103,7 @@ describe('[Node.js] createClient', () => {
           enabled: true,
           idle_socket_ttl: 1500,
         },
+        eagerly_destroy_stale_sockets: false,
         set_basic_auth_header: true,
         http_agent: undefined,
         capture_enhanced_stack_trace: false,
@@ -129,6 +139,7 @@ describe('[Node.js] createClient', () => {
           enabled: true,
           idle_socket_ttl: 1500,
         },
+        eagerly_destroy_stale_sockets: false,
         set_basic_auth_header: true,
         http_agent: undefined,
         capture_enhanced_stack_trace: false,
@@ -168,6 +179,7 @@ describe('[Node.js] createClient', () => {
           enabled: true,
           idle_socket_ttl: 1500,
         },
+        eagerly_destroy_stale_sockets: false,
         set_basic_auth_header: true,
         http_agent: undefined,
         capture_enhanced_stack_trace: false,

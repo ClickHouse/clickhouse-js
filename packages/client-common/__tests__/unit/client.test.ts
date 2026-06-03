@@ -1,6 +1,7 @@
 import { vi, describe, it, expect } from 'vitest'
 import { sleep } from '../utils/sleep'
 import { ClickHouseClient } from '../../src/client'
+import { createSimpleTestClient } from '../utils/simple_client'
 
 function isAwaitUsingStatementSupported(): boolean {
   try {
@@ -27,6 +28,14 @@ function mockImpl(): any {
 }
 
 describe('client', () => {
+  it('createSimpleTestClient creates a client without requiring ClickHouse', async () => {
+    // Imported from the side-effect-free `simple_client` module, so it does not
+    // register the shared `beforeAll` test-env init and needs no ClickHouse.
+    const client = createSimpleTestClient()
+    expect(client).toBeDefined()
+    await client.close()
+  })
+
   it.skipIf(!isAwaitUsingStatementSupported())(
     'closes the client when used with using statement',
     async () => {

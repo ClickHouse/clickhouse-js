@@ -3,8 +3,17 @@ import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-commo
 import { createClient } from '../../src'
 import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
 import { sleep } from '../utils/sleep'
+import { createSimpleWebTestClient } from '../utils/simple_web_client'
 
 describe('[Web] createClient', () => {
+  it('createSimpleWebTestClient creates a client without requiring ClickHouse', async () => {
+    // Imported from the side-effect-free `simple_web_client` module, so it does
+    // not register the shared `beforeAll` test-env init and needs no ClickHouse.
+    const client = createSimpleWebTestClient()
+    expect(client).toBeDefined()
+    await client.close()
+  })
+
   it('throws on incorrect "url" config value', () => {
     expect(() => createClient({ url: 'foo' })).toThrow(
       expect.objectContaining({

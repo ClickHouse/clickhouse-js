@@ -25,4 +25,4 @@ for package in packages/client-common packages/client-node packages/client-web; 
   fi
 done
 
-npm --workspaces version "$version"
+npm --workspaces version --no-git-tag-version "$version"

@@ -105,6 +105,25 @@ See more examples in the [examples directory](./examples).
 
 See the [ClickHouse website](https://clickhouse.com/docs/integrations/javascript) for the full documentation.
 
+## AI Agent Skills
+
+This repository contains agent skills for working with the client:
+
+- `clickhouse-js-node-troubleshooting` — troubleshooting playbook for the Node.js client.
+
+Install via CLI:
+
+```sh
+# per project
+npx skills add ClickHouse/clickhouse-js
+# globally
+npx skills add ClickHouse/clickhouse-js -g
+```
+
+Or ask your agent to install it for you:
+
+> install agent skills from ClickHouse/clickhouse-js
+
 ## Usage examples
 
 We have a wide range of [examples](./examples), aiming to cover various scenarios of client usage. The overview is available in the [examples README](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/README.md#overview).
@@ -116,3 +135,5 @@ If you have any questions or need help, feel free to reach out to us in the [Com
 ## Contributing
 
 Check out our [contributing guide](./CONTRIBUTING.md).
+
+If you'd like to build a client for an alternative runtime (such as Bun or Cloudflare Workers) or an alternative protocol (such as the native ClickHouse protocol or gRPC over a proxy), see [Building specialized clients for alternative runtimes and protocols](./ALTERNATIVE_CLIENTS.md).

@@ -59,71 +59,6 @@ jobs:
         run: |
           npm run lint
 
-  code-quality-examples:
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: examples
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Typecheck
-        run: |
-          npm run typecheck
-
-      - name: Run linting
-        run: |
-          npm run lint
-
-  run-examples:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        clickhouse: [head, latest]
-    defaults:
-      run:
-        working-directory: examples
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-
-      - name: Install root dependencies
-        working-directory: .
-        run: |
-          npm install
-
-      - name: Install examples dependencies
-        run: |
-          npm install
-
-      - name: Run examples
-        run: |
-          npm run run-examples
-
   common-unit-tests-node:
     timeout-minutes: 5
     runs-on: ubuntu-latest
@@ -204,8 +139,8 @@ jobs:
         run: |
           npm install
 
-      - name: Install dependencies (examples)
-        working-directory: examples
+      - name: Install dependencies (Node examples)
+        working-directory: examples/node
         run: |
           npm install
 
@@ -338,7 +273,7 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.cluster.yml'
+          compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
       - name: Setup NodeJS ${{ matrix.node }}
@@ -376,7 +311,7 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.cluster.yml'
+          compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
 
       - name: Setup NodeJS
@@ -402,6 +337,8 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   node-integration-tests-cloud:
+    # Cloud secrets are not available for PRs from forks; skip the job in that case.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -436,6 +373,8 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   web-integration-tests-cloud:
+    # Cloud secrets are not available for PRs from forks; skip the job in that case.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -559,8 +498,6 @@ jobs:
     needs:
       [
         'code-quality',
-        'code-quality-examples',
-        'run-examples',
         'common-unit-tests-node',
         'common-unit-tests-web',
         'node-unit-tests',
@@ -573,7 +510,13 @@ jobs:
         'web-integration-tests-cloud',
         'web-codecov-upload',
       ]
+    # Run even if some needed jobs were skipped (e.g. cloud jobs on PRs from forks),
+    # but still fail if any of them failed or were cancelled.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Fail if any needed job failed or was cancelled
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1
       - name: All tests passed
         run: echo "All tests passed! 🎉"

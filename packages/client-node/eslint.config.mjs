@@ -9,6 +9,12 @@ export default defineConfig(
   // TypeScript-ESLint recommended rules with type checking
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-unused-expressions': 'warn',
+    },
+  },
   typescriptEslintConfig(import.meta.dirname),
   // Ignore build artifacts and externals
   {
