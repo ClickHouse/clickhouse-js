@@ -55,13 +55,14 @@ Fix it with one of two patterns:
 **Pattern 1 — convert the UUID on the client and send it as a decimal string** (recommended). A JS `number` cannot hold 128 bits without precision loss, so always pass `UInt128` as a string:
 
 ```js
+import * as crypto from 'node:crypto'
+
 function uuidToUInt128(uuid) {
   // 8-4-4-4-12 hex digits → 32 hex digits → BigInt → decimal string
   return BigInt('0x' + uuid.replace(/-/g, '')).toString()
 }
 
 const uuid = crypto.randomUUID()
-
 await client.insert({
   table: 'events',
   format: 'JSONEachRow',
