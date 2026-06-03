@@ -18,6 +18,7 @@ const collections = {
   unit: [
     'packages/client-node/__tests__/unit/*.test.ts',
     'packages/client-node/__tests__/utils/*.test.ts',
+    'packages/drizzle-clickhouse/__tests__/unit/*.test.ts',
   ],
   integration: [
     'packages/client-node/__tests__/integration/*.test.ts',
@@ -45,6 +46,7 @@ const collections = {
     'packages/client-node/__tests__/unit/*.test.ts',
     'packages/client-node/__tests__/utils/*.test.ts',
     'packages/client-node/__tests__/integration/*.test.ts',
+    'packages/drizzle-clickhouse/__tests__/unit/*.test.ts',
   ],
 }
 

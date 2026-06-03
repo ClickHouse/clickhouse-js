@@ -1,0 +1,62 @@
+{
+  "name": "@clickhouse/drizzle-orm",
+  "description": "Drizzle ORM adapter for ClickHouse — uses @clickhouse/client / @clickhouse/client-web as the driver",
+  "homepage": "https://clickhouse.com",
+  "version": "0.1.0-0",
+  "license": "Apache-2.0",
+  "keywords": [
+    "clickhouse",
+    "drizzle",
+    "orm",
+    "sql",
+    "olap"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClickHouse/clickhouse-js.git"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "default": "./dist/web.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --max-warnings=0 .",
+    "lint:fix": "eslint . --fix",
+    "build": "rm -rf dist; tsc"
+  },
+  "peerDependencies": {
+    "@clickhouse/client": "^1.20.0",
+    "@clickhouse/client-web": "^1.20.0"
+  },
+  "peerDependenciesMeta": {
+    "@clickhouse/client": {
+      "optional": true
+    },
+    "@clickhouse/client-web": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@clickhouse/client-common": "1.20.0"
+  }
+}
