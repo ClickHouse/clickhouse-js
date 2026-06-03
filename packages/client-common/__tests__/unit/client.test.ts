@@ -30,8 +30,10 @@ describe('client.query FORMAT clause handling', () => {
   function makeClientCapturingQuery(): {
     client: ClickHouseClient
     getLastQuery: () => string
+    getLastFormat: () => string
   } {
     let lastQuery = ''
+    let lastFormat = ''
     const client = new ClickHouseClient({
       url: 'http://localhost',
       impl: {
@@ -46,14 +48,21 @@ describe('client.query FORMAT clause handling', () => {
               }
             },
           }) as any,
-        make_result_set: ((stream: any, _format: any, query_id: string) => ({
-          stream,
-          query_id,
-        })) as any,
+        make_result_set: ((stream: any, format: any, query_id: string) => {
+          lastFormat = format
+          return {
+            stream,
+            query_id,
+          }
+        }) as any,
         values_encoder: () => ({}) as any,
       } as any,
     })
-    return { client, getLastQuery: () => lastQuery }
+    return {
+      client,
+      getLastQuery: () => lastQuery,
+      getLastFormat: () => lastFormat,
+    }
   }
 
   it('appends FORMAT when the query has no FORMAT clause', async () => {
@@ -69,18 +78,35 @@ describe('client.query FORMAT clause handling', () => {
   })
 
   it('does not append a second FORMAT when one is already present', async () => {
-    const { client, getLastQuery } = makeClientCapturingQuery()
-    await client.query({ query: 'SELECT 1 FORMAT CSV', format: 'JSON' })
+    const { client, getLastQuery, getLastFormat } = makeClientCapturingQuery()
+    await client.query({ query: 'SELECT 1 FORMAT CSV', format: 'CSV' })
     expect(getLastQuery()).toBe('SELECT 1 FORMAT CSV')
+    expect(getLastFormat()).toBe('CSV')
   })
 
   it('detects an existing FORMAT clause case-insensitively and with newlines', async () => {
-    const { client, getLastQuery } = makeClientCapturingQuery()
+    const { client, getLastQuery, getLastFormat } = makeClientCapturingQuery()
     await client.query({
       query: 'SELECT 1\nformat JSONEachRow',
-      format: 'JSON',
+      format: 'JSONEachRow',
     })
     expect(getLastQuery()).toBe('SELECT 1\nformat JSONEachRow')
+    expect(getLastFormat()).toBe('JSONEachRow')
+  })
+
+  it('infers result format from trailing FORMAT clause when format is omitted', async () => {
+    const { client, getLastFormat } = makeClientCapturingQuery()
+    await client.query({ query: 'SELECT 1 format jsonEachRow' })
+    expect(getLastFormat()).toBe('JSONEachRow')
+  })
+
+  it('throws when query FORMAT does not match the provided format', async () => {
+    const { client } = makeClientCapturingQuery()
+    await expect(
+      client.query({ query: 'SELECT 1 FORMAT CSV', format: 'JSON' }),
+    ).rejects.toThrow(
+      'Query FORMAT (CSV) must match QueryParams.format (JSON), or omit QueryParams.format.',
+    )
   })
 
   it('strips a trailing semicolon before appending FORMAT', async () => {

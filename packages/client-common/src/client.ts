@@ -11,6 +11,7 @@ import type {
   DataFormat,
 } from './index'
 import { defaultJSONHandling, DefaultLogger, ClickHouseLogLevel } from './index'
+import { SupportedJSONFormats, SupportedRawFormats } from './data_formatter'
 import type {
   InsertValues,
   NonEmptyArray,
@@ -229,6 +230,10 @@ export class ClickHouseClient<Stream = unknown> {
    *
    * NB: the client appends a `FORMAT` clause derived from {@link QueryParams.format}
    * to the query, unless the query already ends with its own `FORMAT` clause.
+   * If the query already has a trailing `FORMAT`, and {@link QueryParams.format}
+   * is also provided, both format names must match.
+   * If the query already has a trailing `FORMAT` and {@link QueryParams.format}
+   * is omitted, the format is inferred from the query when it is supported by the client.
    * A few statements (most notably `SHOW ROW POLICIES` with an empty result set) are
    * rejected by the server's parser when a trailing `FORMAT` clause is present; prefer
    * an equivalent query such as `SELECT * FROM system.row_policies` in that case.
@@ -236,7 +241,7 @@ export class ClickHouseClient<Stream = unknown> {
   async query<Format extends DataFormat = 'JSON'>(
     params: QueryParamsWithFormat<Format>,
   ): Promise<QueryResult<Stream, Format>> {
-    const format = params.format ?? 'JSON'
+    const format = resolveQueryFormat(params.query, params.format)
     const query = formatQuery(params.query, format)
     const queryParams = this.withClientQueryParams(params)
     const { stream, query_id, response_headers } = await this.connection.query({
@@ -394,7 +399,7 @@ function formatQuery(query: string, format: DataFormat): string {
   query = removeTrailingSemi(query)
   // If the query already ends with a FORMAT clause, do not append another one,
   // as that would produce an invalid `... FORMAT X FORMAT JSON` statement.
-  if (hasTrailingFormatClause(query)) {
+  if (getTrailingFormatClause(query) !== undefined) {
     return query
   }
   return query + ' \nFORMAT ' + format
@@ -404,8 +409,50 @@ function formatQuery(query: string, format: DataFormat): string {
  * Detects whether a query already ends with a `FORMAT <Name>` clause,
  * so that the client does not append a second, conflicting FORMAT clause.
  */
-function hasTrailingFormatClause(query: string): boolean {
-  return /(?:^|\s)FORMAT\s+[A-Za-z][A-Za-z0-9]*\s*$/i.test(query)
+function getTrailingFormatClause(query: string): string | undefined {
+  query = removeTrailingSemi(query.trim())
+  const match = query.match(/(?:^|\s)FORMAT\s+([A-Za-z][A-Za-z0-9]*)\s*$/i)
+  return match?.[1]
+}
+
+const SupportedDataFormats = [
+  ...SupportedJSONFormats,
+  ...SupportedRawFormats,
+] as const satisfies ReadonlyArray<DataFormat>
+
+function inferSupportedDataFormat(format: string): DataFormat | undefined {
+  const formatUpperCase = format.toUpperCase()
+  return SupportedDataFormats.find(
+    (supportedFormat) => supportedFormat.toUpperCase() === formatUpperCase,
+  )
+}
+
+function resolveQueryFormat(
+  query: string,
+  providedFormat: DataFormat | undefined,
+): DataFormat {
+  const trailingFormat = getTrailingFormatClause(query)
+  if (trailingFormat === undefined) {
+    return providedFormat ?? 'JSON'
+  }
+
+  if (providedFormat !== undefined) {
+    if (trailingFormat.toUpperCase() !== providedFormat.toUpperCase()) {
+      throw new Error(
+        `Query FORMAT (${trailingFormat}) must match QueryParams.format (${providedFormat}), or omit QueryParams.format.`,
+      )
+    }
+    return providedFormat
+  }
+
+  const inferredFormat = inferSupportedDataFormat(trailingFormat)
+  if (inferredFormat !== undefined) {
+    return inferredFormat
+  }
+
+  throw new Error(
+    `Could not infer a supported response format from trailing FORMAT ${trailingFormat}. Please provide QueryParams.format or use exec().`,
+  )
 }
 
 function removeTrailingSemi(query: string) {
