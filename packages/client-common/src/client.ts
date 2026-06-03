@@ -230,7 +230,7 @@ export class ClickHouseClient<Stream = unknown> {
    * This is intended behavior.
    * Use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,
    * or {@link ClickHouseClient.exec} for queries where you need to provide the full SQL (including `FORMAT`) yourself or where the `FORMAT` suffix is not supported.
-   * 
+   *
    * @note For `SHOW [ROW] POLICIES`, use the full syntax `SHOW POLICIES ON *`,
    * as the short version does not support appending `FORMAT` at the server SQL parser level.
    * See https://github.com/ClickHouse/ClickHouse/issues/105899
