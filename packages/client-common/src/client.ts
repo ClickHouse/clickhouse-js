@@ -229,7 +229,7 @@ export class ClickHouseClient<Stream = unknown> {
    * If the query already contains a `FORMAT` clause, ClickHouse will return a syntax error due to a duplicate `FORMAT`.
    * This is intended behaviour.
    * Use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,
-   * or {@link ClickHouseClient.exec} for queries where you need to provide the full SQL (including `FORMAT`) yourself or where the `FOMRAT` suffix is not supported.
+   * or {@link ClickHouseClient.exec} for queries where you need to provide the full SQL (including `FORMAT`) yourself or where the `FORMAT` suffix is not supported.
    * 
    * NOTE: For `SHOW [ROW] POLICIES` use full syntax `SHOW POLICIES ON *` as the short version does not support `FORMAT` appendix at the server SQL parser level. See https://github.com/ClickHouse/ClickHouse/issues/105899
    *
