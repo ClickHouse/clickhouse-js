@@ -1,8 +1,9 @@
+import { describe, it, expect } from 'vitest'
 import type { Row } from '@clickhouse/client-common'
 import type Stream from 'stream'
 import { type ClickHouseClient } from '@clickhouse/client-common'
 import { createTestClient } from '@test/utils'
-import { requireServerVersionAtLeast } from '@test/utils/jasmine'
+import { isClickHouseVersionAtLeast } from '@test/utils/server_version'
 
 describe('[Node.js] streaming exception', () => {
   it('should not trigger on a valid \\r\\n in the stream', async () => {
@@ -27,10 +28,14 @@ describe('[Node.js] streaming exception', () => {
     expect(rows).toEqual(['0,1\r', '1,2\r'])
   })
 
-  it('should trigger on a valid exception', async () => {
+  it('should trigger on a valid exception', async ({ skip }) => {
+    const versionClient: ClickHouseClient<Stream.Readable> = createTestClient()
+    const versionOk = await isClickHouseVersionAtLeast(versionClient, 25, 11)
+    await versionClient.close()
+
     // ignore pre-25.11 servers that don't comply to the new exception-in-stream behavior
-    if (!requireServerVersionAtLeast(25, 11)) {
-      return
+    if (!versionOk) {
+      skip()
     }
 
     const client: ClickHouseClient<Stream.Readable> = createTestClient({
