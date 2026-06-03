@@ -6,7 +6,7 @@ const DEFAULT_LOG_PATH = '/tmp/clickhouse-client-cli.log'
 const FALLBACK_LOG_FILENAME = 'clickhouse-client-cli.log'
 
 export function resolveLogPath(): string {
-  const fromEnv = process.env.CLICKHOUSE_CLIENT_CLI_LOG
+  const fromEnv = process.env['CLICKHOUSE_CLIENT_CLI_LOG']
   if (fromEnv !== undefined && fromEnv.trim().length > 0) {
     return fromEnv
   }

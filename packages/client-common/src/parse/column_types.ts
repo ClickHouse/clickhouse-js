@@ -247,8 +247,10 @@ export function parseDecimalType({
       },
     )
   }
+  // SAFETY: `split` length is checked to be exactly 2 above
+  const [precisionStr, scaleStr] = split as [string, string]
   let intSize: DecimalParams['intSize'] = 32
-  const precision = parseInt(split[0], 10)
+  const precision = parseInt(precisionStr, 10)
   if (Number.isNaN(precision) || precision < 1 || precision > 76) {
     throw new ColumnTypeParseError('Invalid Decimal precision', {
       columnType,
@@ -256,7 +258,7 @@ export function parseDecimalType({
       precision,
     })
   }
-  const scale = parseInt(split[1], 10)
+  const scale = parseInt(scaleStr, 10)
   if (Number.isNaN(scale) || scale < 0 || scale > precision) {
     throw new ColumnTypeParseError('Invalid Decimal scale', {
       columnType,
@@ -415,7 +417,12 @@ export function parseEnumType({
 
   const values: ParsedColumnEnum['values'] = {}
   for (let i = 0; i < names.length; i++) {
-    values[indices[i]] = names[i]
+    const idx = indices[i]
+    const name = names[i]
+    // SAFETY: `names.length !== indices.length` is checked and throws above, so both indexed values are always defined.
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore -- guarded by the runtime invariant check above.
+    values[idx] = name
   }
   return {
     type: 'Enum',
@@ -467,7 +474,10 @@ export function parseMapType({
     })
   }
   columnType = columnType.slice(MapPrefix.length, -1)
-  const [keyType, valueType] = getElementsTypes({ columnType, sourceType }, 2)
+  const [keyType, valueType] = getElementsTypes(
+    { columnType, sourceType },
+    2,
+  ) as [string, string, ...string[]]
   const key = parseColumnType(keyType)
   if (
     key.type === 'DateTime64' ||
@@ -604,7 +614,7 @@ export function parseDateTime64Type({
       sourceType,
     })
   }
-  const precision = parseInt(columnType[DateTime64Prefix.length], 10)
+  const precision = parseInt(columnType[DateTime64Prefix.length] ?? '', 10)
   if (Number.isNaN(precision) || precision < 0 || precision > 9) {
     throw new ColumnTypeParseError('Invalid DateTime64 precision', {
       columnType,
