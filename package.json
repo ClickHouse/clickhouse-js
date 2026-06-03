@@ -28,6 +28,7 @@
     "test:common:integration:node": "TEST_MODE=common-integration vitest -c vitest.node.config.ts",
     "test:common:integration:web": "TEST_MODE=common-integration vitest -c vitest.web.config.ts",
     "test:node:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=unit vitest -c vitest.node.config.ts",
+    "test:drizzle:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=unit vitest run -c vitest.node.config.ts packages/drizzle-clickhouse",
     "test:node:integration:tls": "TEST_MODE=tls vitest -c vitest.node.config.ts",
     "test:node:integration": "TEST_MODE=integration vitest -c vitest.node.config.ts",
     "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster TEST_MODE=integration vitest -c vitest.node.config.ts",

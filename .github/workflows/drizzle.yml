@@ -1,0 +1,82 @@
+name: 'drizzle'
+
+# Informational, non-blocking workflow for the experimental
+# `@clickhouse/drizzle-orm` package. It runs the build, typecheck, lint and
+# unit tests and reports which checks pass and which fail in the job summary,
+# so we can see what works and what doesn't while the adapter is still an MVP.
+# Individual checks use `continue-on-error` so the workflow does not gate PRs.
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/drizzle-clickhouse/**'
+      - '.github/workflows/drizzle.yml'
+  pull_request:
+    paths:
+      - 'packages/drizzle-clickhouse/**'
+      - '.github/workflows/drizzle.yml'
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  drizzle-checks:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Build packages
+        id: build
+        continue-on-error: true
+        run: |
+          npm run build
+
+      - name: Typecheck
+        id: typecheck
+        continue-on-error: true
+        run: |
+          npm run typecheck --workspace @clickhouse/drizzle-orm
+
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: |
+          npm run lint --workspace @clickhouse/drizzle-orm
+
+      - name: Unit tests
+        id: unit
+        continue-on-error: true
+        run: |
+          npm run test:drizzle:unit
+
+      - name: Summarize results
+        run: |
+          {
+            echo "## drizzle-clickhouse checks (Node ${{ matrix.node }})"
+            echo ""
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Build | ${{ steps.build.outcome == 'success' && '✅ pass' || '❌ fail' }} |"
+            echo "| Typecheck | ${{ steps.typecheck.outcome == 'success' && '✅ pass' || '❌ fail' }} |"
+            echo "| Lint | ${{ steps.lint.outcome == 'success' && '✅ pass' || '❌ fail' }} |"
+            echo "| Unit tests | ${{ steps.unit.outcome == 'success' && '✅ pass' || '❌ fail' }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
