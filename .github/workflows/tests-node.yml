@@ -262,6 +262,10 @@ jobs:
   node-codecov-upload:
     timeout-minutes: 5
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        clickhouse: [head, latest]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -269,6 +273,8 @@ jobs:
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
         uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
           compose-file: 'docker-compose.yml'
           down-flags: '--volumes'
