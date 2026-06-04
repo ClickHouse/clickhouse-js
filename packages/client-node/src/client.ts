@@ -19,7 +19,7 @@ export type QueryResult<Format extends DataFormat> =
 
 export class NodeClickHouseClient extends ClickHouseClient<Stream.Readable> {
   /** See {@link ClickHouseClient.query}. */
-  query<Format extends DataFormat = 'JSON'>(
+  override query<Format extends DataFormat = 'JSON'>(
     params: QueryParamsWithFormat<Format>,
   ): Promise<QueryResult<Format>> {
     return super.query(params) as Promise<ResultSet<Format>>
