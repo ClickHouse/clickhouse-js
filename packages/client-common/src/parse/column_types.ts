@@ -420,9 +420,7 @@ export function parseEnumType({
     const idx = indices[i]
     const name = names[i]
     // SAFETY: `names.length !== indices.length` is checked and throws above, so both indexed values are always defined.
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore -- guarded by the runtime invariant check above.
-    values[idx] = name
+    values[idx!] = name!
   }
   return {
     type: 'Enum',
