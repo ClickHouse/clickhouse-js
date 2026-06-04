@@ -10,7 +10,6 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
-    "noImplicitReturns": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
     "resolveJsonModule": true,
