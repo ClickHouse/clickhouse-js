@@ -419,8 +419,13 @@ export function parseEnumType({
   for (let i = 0; i < names.length; i++) {
     const idx = indices[i]
     const name = names[i]
-    // SAFETY: `names.length !== indices.length` is checked and throws above, so both indexed values are always defined.
-    values[idx!] = name!
+    if (idx === undefined || name === undefined) {
+      throw new ColumnTypeParseError(
+        'Expected Enum name and index to be defined',
+        { columnType, sourceType, names, indices, position: i, idx, name },
+      )
+    }
+    values[idx] = name
   }
   return {
     type: 'Enum',
