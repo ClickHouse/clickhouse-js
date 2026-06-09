@@ -20,7 +20,7 @@ jobs:
   traffic:
     runs-on: ubuntu-latest
     permissions:
-      # Needed by add-and-commit to push the CSV files to the `traffic` branch.
+      # Needed to push the CSV files to the `traffic` branch.
       contents: write
     steps:
       - name: 'Checkout traffic branch'
@@ -34,9 +34,13 @@ jobs:
           TRAFFIC_ACTION_TOKEN: ${{ secrets.TRAFFIC_ACTION_TOKEN }}
 
       - name: 'Commit traffic data'
-        uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
-        with:
-          message: 'chore: update repository traffic stats'
-          add: './traffic/*'
-          # Commits to the dedicated `traffic` branch.
-          new_branch: 'traffic'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ./traffic/
+          if git diff --cached --quiet; then
+            echo 'No traffic changes to commit.'
+            exit 0
+          fi
+          git commit -m 'chore: update repository traffic stats'
+          git push origin HEAD:traffic
