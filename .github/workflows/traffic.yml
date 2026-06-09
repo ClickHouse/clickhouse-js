@@ -1,0 +1,42 @@
+# This workflow uses actions that are not certified by GitHub. They are provided
+# by a third-party and are governed by separate terms of service, privacy
+# policy, and support documentation.
+
+# Persists GitHub repository traffic (views and clones) past the default 2-week
+# retention period by appending the data to CSV files stored on the `traffic`
+# branch. Requires a `TRAFFIC_ACTION_TOKEN` repository secret containing a
+# personal access token with `repo` scope so the action can read the traffic API.
+name: 'traffic'
+
+permissions: {}
+
+on:
+  schedule:
+    # Runs once a week on Sunday.
+    - cron: '55 23 * * 0'
+  workflow_dispatch:
+
+jobs:
+  traffic:
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed by add-and-commit to push the CSV files to the `traffic` branch.
+      contents: write
+    steps:
+      - name: 'Checkout traffic branch'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: 'traffic'
+
+      - name: 'Collect repository traffic'
+        uses: sangonzal/repository-traffic-action@404df77a0bfb110f8977fe14ddba62451ec868b7 # v.0.1.6
+        env:
+          TRAFFIC_ACTION_TOKEN: ${{ secrets.TRAFFIC_ACTION_TOKEN }}
+
+      - name: 'Commit traffic data'
+        uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
+        with:
+          message: 'chore: update repository traffic stats'
+          add: './traffic/*'
+          # Commits to the dedicated `traffic` branch.
+          new_branch: 'traffic'
