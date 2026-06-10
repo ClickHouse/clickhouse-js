@@ -34,6 +34,7 @@ describe("ClickHouse settings", () => {
 
       const failures: { name: string; error: string }[] = [];
       const concurrency = Math.min(10, settings.length);
+      let index = 0;
       async function worker() {
         while (index < settings.length) {
           const { name, value } = settings[index++];
