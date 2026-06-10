@@ -7,11 +7,11 @@
 // lookahead requires at least three consecutive uppercase letters so that
 // parenthesised groups like `(2)` or `(official build)` are not mistaken for it.
 //
-// NOTE: this input is never freeform. ClickHouse error messages always follow
-// this rigid, server-controlled format; the string fed to `parseError` is the
-// server's exception text, not arbitrary user input. There is therefore no
-// adversary able to craft a pathological string, so the greedy regex is safe to
-// use here and the theoretical backtracking (ReDoS) cost is not a real concern.
+// NOTE: In normal usage, the string fed to `parseError` comes from ClickHouse,
+// but it may still include user-controlled fragments (e.g. parts of a query) or
+// even non-ClickHouse payloads (proxy/HTML errors) when parsing failed requests.
+// Keep this regex simple to avoid excessive backtracking on large/unexpected input.
+// (If this ever becomes a concern, consider a non-regex parser or input length limits.)
 const errorRe =
   /(Code|Error): (?<code>\d+).*Exception: (?<message>.+?)\((?<type>(?=[A-Z0-9_]*[A-Z]{3})[A-Z0-9_]+)\)/s;
 
