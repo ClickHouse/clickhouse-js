@@ -116,6 +116,13 @@ export interface BaseClickHouseClientConfigOptions {
    * at the cost of a small fixed per-operation overhead)
    */
   tracer?: ClickHouseTracer;
+  /** When true, query() sends query_params as multipart/form-data parts
+   *  instead of URL query string entries. This avoids HTTP URL length limits
+   *  when query parameters contain large arrays (25K+ values).
+   *  The SQL query is also moved into a multipart part named "query".
+   *  All other URL search params (database, query_id, settings, etc.) remain in the URL.
+   *  @default false */
+  use_multipart_params?: boolean;
 }
 
 export type MakeConnection<
@@ -310,6 +317,7 @@ export function getConnectionParams(
       ...defaultJSONHandling,
       ...config.json,
     },
+    ...(config.use_multipart_params ? { use_multipart_params: true } : {}),
   };
 }
 

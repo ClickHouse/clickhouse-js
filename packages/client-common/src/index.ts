@@ -151,6 +151,7 @@ export {
   EXCEPTION_TAG_HEADER_NAME,
   isSuccessfulResponse,
   sleep,
+  buildMultipartBody,
   toSearchParams,
   transformUrl,
   withCompressionHeaders,
