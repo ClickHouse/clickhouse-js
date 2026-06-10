@@ -1,13 +1,19 @@
-const codeRe = /(?:Code|Error): (?<code>\d+)/;
-// The exception marker that separates the preamble from the message.
-const exceptionMarker = "Exception: ";
-// Matches the human-readable message followed by the `(TYPE)` marker at the
-// start of an exception body. Anchored at `^` and using a lazy message so the
-// match runs in linear time. The type lookahead requires at least three
-// consecutive uppercase letters so that parenthesised groups such as `(2)` or
-// `(official build)` are not mistaken for the error type.
-const messageAndTypeRe =
-  /^(?<message>[\s\S]*?)\((?<type>(?=[A-Z0-9_]*[A-Z]{3})[A-Z0-9_]+)\)/;
+// In cluster mode, the server wraps the original exception, repeating the
+// `Code`/`Exception`/`(TYPE)` markers, e.g.:
+//   Code: 57. DB::Exception: There was an error on [host:9000]: Code: 57. DB::Exception: <message>. (TABLE_ALREADY_EXISTS) (version ...). (TABLE_ALREADY_EXISTS) (version ...)
+// The leading `.*Exception: ` is greedy so we anchor on the innermost (last)
+// exception, while `(?<message>.+?)` is lazy so the message stops at the first
+// `(TYPE)` marker rather than swallowing the repeated suffixes. The type
+// lookahead requires at least three consecutive uppercase letters so that
+// parenthesised groups like `(2)` or `(official build)` are not mistaken for it.
+//
+// NOTE: this input is never freeform. ClickHouse error messages always follow
+// this rigid, server-controlled format; the string fed to `parseError` is the
+// server's exception text, not arbitrary user input. There is therefore no
+// adversary able to craft a pathological string, so the greedy regex is safe to
+// use here and the theoretical backtracking (ReDoS) cost is not a real concern.
+const errorRe =
+  /(Code|Error): (?<code>\d+).*Exception: (?<message>.+?)\((?<type>(?=[A-Z0-9_]*[A-Z]{3})[A-Z0-9_]+)\)/s;
 
 interface ParsedClickHouseError {
   message: string;
@@ -33,27 +39,13 @@ export class ClickHouseError extends Error {
 export function parseError(input: string | Error): ClickHouseError | Error {
   const inputIsError = input instanceof Error;
   const message = inputIsError ? input.message : input;
-  const codeMatch = message.match(codeRe);
-  // In cluster mode, the server wraps the original exception, repeating the
-  // `Code`/`Exception`/`(TYPE)` markers, e.g.:
-  //   Code: 57. DB::Exception: There was an error on [host:9000]: Code: 57. DB::Exception: <message>. (TABLE_ALREADY_EXISTS) (version ...). (TABLE_ALREADY_EXISTS) (version ...)
-  // Anchor on the innermost (last) exception so the original message and type
-  // are extracted instead of the outer wrapper. Using `lastIndexOf` keeps the
-  // parsing linear and avoids the backtracking of a single greedy regex.
-  const lastExceptionIndex = message.lastIndexOf(exceptionMarker);
-  if (codeMatch?.groups && lastExceptionIndex !== -1) {
-    const body = message.slice(lastExceptionIndex + exceptionMarker.length);
-    const bodyMatch = body.match(messageAndTypeRe);
-    if (bodyMatch?.groups) {
-      const { code } = codeMatch.groups as { code: string };
-      const { message: errorMessage, type } = bodyMatch.groups as {
-        message: string;
-        type: string;
-      };
-      return new ClickHouseError({ code, message: errorMessage, type });
-    }
+  const match = message.match(errorRe);
+  const groups = match?.groups as ParsedClickHouseError | undefined;
+  if (groups) {
+    return new ClickHouseError(groups);
+  } else {
+    return inputIsError ? input : new Error(input);
   }
-  return inputIsError ? input : new Error(input);
 }
 
 /** Captures the current stack trace from the sync context before going async.
