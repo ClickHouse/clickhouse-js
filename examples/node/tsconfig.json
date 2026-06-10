@@ -20,5 +20,7 @@
     "types": ["node"]
   },
   "include": ["./**/*.ts"],
-  "exclude": ["node_modules"]
+  // TODO: stop excluding coding/otel_tracing.ts once @clickhouse/client@1.20.0
+  //  (which adds the `tracer` config option) is published to npm.
+  "exclude": ["node_modules", "coding/otel_tracing.ts"]
 }
