@@ -78,7 +78,7 @@ jobs:
           pip install jinja2
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: isbang/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v2.4.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
