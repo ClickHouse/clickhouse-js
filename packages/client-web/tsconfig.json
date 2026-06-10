@@ -4,6 +4,7 @@
   "compilerOptions": {
     "rootDir": "./src",
     "lib": ["ES2022", "ESNext.Disposable", "DOM"],
+    "types": [],
     "outDir": "./dist"
   }
 }

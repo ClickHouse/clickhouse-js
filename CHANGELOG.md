@@ -4,6 +4,21 @@
 
 - TypeScript: `ClickHouseLogLevel` is now exported as a literal numeric union type (`0 | 1 | 2 | 3 | 4 | 127`) instead of a TypeScript `enum` type. If you were assigning arbitrary `number` values to `ClickHouseLogLevel`, you may need to narrow/cast those values during migration.
 
+## Improvements
+
+- Added TypeScript typings for the remaining HTTP-specific ClickHouse settings, so they are now suggested by autocomplete when used in `clickhouse_settings`: `buffer_size`, `compress`, `decompress`, `quota_key`, and `stacktrace` (in addition to the existing `wait_end_of_query`, `default_format`, `session_timeout`, and `session_check`).
+
+```ts
+await client.query({
+  query: "SELECT 1",
+  clickhouse_settings: {
+    // Buffer the entire response on the server before sending it to the client
+    wait_end_of_query: 1,
+    buffer_size: "1048576",
+  },
+});
+```
+
 ## Bug Fixes
 
 - (Node.js only) Fixed a race condition in `ResultSet.json()` and `ResultSet.stream()` on `JSONEachRow` (and other streamable) result sets where calling `json()` on a fast/small response could throw `Stream has been already consumed` if the underlying stream ended between internal `readableEnded` checks. The consumption guard has been hardened: the stream is now shielded through a single `consume()` path that marks the result set as consumed in the appropriate branches, after format validation, so a successful `json()` call no longer races against the stream finishing. ([#603])

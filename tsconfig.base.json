@@ -21,7 +21,9 @@
     "skipLibCheck": false,
     "esModuleInterop": true,
     "importHelpers": false,
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "noUncheckedSideEffectImports": true,
+    "libReplacement": false
   },
   "exclude": ["node_modules"]
 }
