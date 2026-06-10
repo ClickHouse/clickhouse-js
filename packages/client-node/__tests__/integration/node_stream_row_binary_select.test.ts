@@ -60,7 +60,10 @@ describe('[Node.js] stream RowBinary select', () => {
 
 class BufferReader {
   private offset = 0
-  constructor(private readonly buf: Buffer) {}
+  private readonly buf: Buffer
+  constructor(buf: Buffer) {
+    this.buf = buf
+  }
 
   eof(): boolean {
     return this.offset >= this.buf.length

@@ -1,5 +1,8 @@
 export class TupleParam {
-  constructor(public readonly values: readonly unknown[]) {}
+  readonly values: readonly unknown[]
+  constructor(values: readonly unknown[]) {
+    this.values = values
+  }
 }
 
 export function formatQueryParams({

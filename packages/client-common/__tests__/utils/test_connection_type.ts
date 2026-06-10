@@ -1,7 +1,9 @@
-export enum TestConnectionType {
-  Node = 'node',
-  Browser = 'browser',
-}
+export const TestConnectionType = {
+  Node: 'node',
+  Browser: 'browser',
+} as const
+export type TestConnectionType =
+  (typeof TestConnectionType)[keyof typeof TestConnectionType]
 export function getTestConnectionType(): TestConnectionType {
   let connectionType
   switch (process.env['CLICKHOUSE_TEST_CONNECTION_TYPE']) {
