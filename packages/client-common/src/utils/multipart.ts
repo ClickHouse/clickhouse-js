@@ -21,6 +21,12 @@ export function buildMultipartBody(
 ): string {
   const chunks: string[] = [];
 
+  // Part names are validated against SAFE_PART_NAME to prevent header injection
+  // (a name could otherwise smuggle CRLF or quotes into the Content-Disposition
+  // line). Part values are intentionally NOT validated/escaped: the only way a
+  // value could forge a part delimiter is by containing the boundary, and the
+  // boundary is a random UUID generated per request by the caller, so it cannot
+  // be predicted or collided with by user-supplied input.
   for (const [name, value] of Object.entries(parts)) {
     if (!SAFE_PART_NAME.test(name)) {
       throw new Error(
