@@ -12,8 +12,12 @@
 <img alt="NPM Downloads" src="https://img.shields.io/npm/dw/%40clickhouse%2Fclient?color=%233178C6&logo=npm">
 </a>
 
-<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml">
-<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml/badge.svg?branch=main">
+<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-node.yml">
+<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-node.yml/badge.svg?branch=main">
+</a>
+
+<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-web.yml">
+<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-web.yml/badge.svg?branch=main">
 </a>
 
 <a href="https://codecov.io/gh/ClickHouse/clickhouse-js">
