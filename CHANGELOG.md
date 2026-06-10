@@ -29,14 +29,14 @@ Example:
 parseEnumType({
   columnType: "Enum8('f\\'' = 1)",
   sourceType: "Enum8('f\\'' = 1)",
-})
+});
 // returned: { values: { 1: "f\\'" } }  // with backslash
 
 // After (correct):
 parseEnumType({
   columnType: "Enum8('f\\'' = 1)",
   sourceType: "Enum8('f\\'' = 1)",
-})
+});
 // returns: { values: { 1: "f'" } }     // unescaped
 ```
 
@@ -52,9 +52,9 @@ const client = createClient({
   max_response_headers_size: 1024 * 1024, // accept up to 1 MiB of response headers
   clickhouse_settings: {
     send_progress_in_http_headers: 1,
-    http_headers_progress_interval_ms: '110000',
+    http_headers_progress_interval_ms: "110000",
   },
-})
+});
 ```
 
 - The `@clickhouse/client` npm package now ships embedded AI-agent skills, `clickhouse-js-node-coding` and `clickhouse-js-node-troubleshooting`, under `node_modules/@clickhouse/client/skills/`. These skills are also declared in the `agents.skills` field of the package manifest for discovery tools that scan `node_modules`. This allows agentic coding tools to load focused, Node-client-specific coding and troubleshooting guidance without any additional setup. ([#682])
@@ -78,7 +78,7 @@ const client = createClient({
     idle_socket_ttl: 2500,
     eagerly_destroy_stale_sockets: true,
   },
-})
+});
 ```
 
 - Added auto-detection and warning when `request_timeout` is high (> 60 seconds) but progress headers are not configured. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. The client now warns users to enable `send_progress_in_http_headers` and `http_headers_progress_interval_ms` settings to prevent such issues.
@@ -88,16 +88,16 @@ const client = createClient({
 const client = createClient({
   request_timeout: 120_000, // 120 seconds
   // send_progress_in_http_headers is not configured
-})
+});
 
 // ✓ Properly configured to avoid load balancer timeouts
 const client = createClient({
   request_timeout: 400_000,
   clickhouse_settings: {
     send_progress_in_http_headers: 1,
-    http_headers_progress_interval_ms: '110000', // ~10s below LB timeout
+    http_headers_progress_interval_ms: "110000", // ~10s below LB timeout
   },
-})
+});
 ```
 
 # 1.18.2
@@ -119,7 +119,7 @@ const client = createClient({
   log: {
     level: ClickHouseLogLevel.WARN, // to see the warning logs
   },
-})
+});
 
 for (let i = 0; i < 1000; i++) {
   await client.ping({
@@ -127,14 +127,14 @@ for (let i = 0; i < 1000; i++) {
     // which might be configured differently on the server side
     // and have different timeout settings.
     select: true,
-  })
+  });
 
   // Wait long enough to let the server close the idle connection,
   // but not too long to let the client remove it from the pool,
   // in other words try to hit the scenario when the race condition
   // happens between the server closing the connection and the client
   // trying to reuse it.
-  await sleep(SERVER_KEEP_ALIVE_TIMEOUT_MS - 100)
+  await sleep(SERVER_KEEP_ALIVE_TIMEOUT_MS - 100);
 }
 ```
 
@@ -168,7 +168,7 @@ const client = createClient({
   log: {
     level: ClickHouseLogLevel.WARN, // default is now ClickHouseLogLevel.WARN instead of ClickHouseLogLevel.OFF
   },
-})
+});
 ```
 
 - Logging is now lazy, which means that the log messages will only be constructed if the log level is appropriate for the message. This can improve performance in cases where constructing the log message is expensive, and the log level is set to ignore such messages. See `ClickHouseLogLevel` enum for the complete list of log levels. ([#520])
@@ -179,7 +179,7 @@ const client = createClient({
   log: {
     level: ClickHouseLogLevel.TRACE, // to log everything available down to the network level events
   },
-})
+});
 ```
 
 - Enhanced the logging of the HTTP request / socket lifecycle with additional trace messages and context such as Connection ID (UUID) and Request ID and Socket ID that embed the connection ID for ease of tracing the logs of a particular request across the connection lifecycle. To enable such logs, set the `log.level` config option to `ClickHouseLogLevel.TRACE`. ([#567])
@@ -404,8 +404,8 @@ A minor release to allow further investigation regarding uncaught error issues w
   ```ts
   const client = createClient({
     // ...
-    access_token: '<JWT access token>',
-  })
+    access_token: "<JWT access token>",
+  });
   ```
 
   Access token can also be configured via the URL params, e.g., `https://host:port?access_token=...`.
@@ -456,12 +456,12 @@ A minor release to allow further investigation regarding uncaught error issues w
 
   ```ts
   for (const type of [
-    'Int32',
-    'Array(Nullable(String))',
+    "Int32",
+    "Array(Nullable(String))",
     `Map(Int32, DateTime64(9, 'UTC'))`,
   ]) {
-    console.log(`##### Source ClickHouse type: ${type}`)
-    console.log(parseColumnType(type))
+    console.log(`##### Source ClickHouse type: ${type}`);
+    console.log(parseColumnType(type));
   }
   ```
 
@@ -546,10 +546,10 @@ A minor release to allow further investigation regarding uncaught error issues w
 
   ```ts
   const rs = await client.query({
-    query: 'SELECT * FROM system.numbers LIMIT 1',
-    format: 'JSONEachRow',
-  })
-  console.log(rs.response_headers['content-type'])
+    query: "SELECT * FROM system.numbers LIMIT 1",
+    format: "JSONEachRow",
+  });
+  console.log(rs.response_headers["content-type"]);
   ```
 
   This will print: `application/x-ndjson; charset=UTF-8`. It can be used in a similar way with the other methods.
@@ -576,19 +576,19 @@ A minor release to allow further investigation regarding uncaught error issues w
 
   ```ts
   const agent = new https.Agent({
-    ca: fs.readFileSync('./ca.crt'),
-  })
+    ca: fs.readFileSync("./ca.crt"),
+  });
   const client = createClient({
-    url: 'https://server.clickhouseconnect.test:8443',
+    url: "https://server.clickhouseconnect.test:8443",
     http_agent: agent,
     // With a custom HTTPS agent, the client won't use the default HTTPS connection implementation; the headers should be provided manually
     http_headers: {
-      'X-ClickHouse-User': 'default',
-      'X-ClickHouse-Key': '',
+      "X-ClickHouse-User": "default",
+      "X-ClickHouse-Key": "",
     },
     // Authorization header conflicts with the TLS headers; disable it.
     set_basic_auth_header: false,
-  })
+  });
   ```
 
 NB: It is currently not possible to set the `set_basic_auth_header` option via the URL params.
@@ -678,83 +678,83 @@ Complete reference:
 By default, `T` (which represents `JSONType`) is still `unknown`. However, considering `JSONObjectsEachRow` example: prior to 1.0.0, you had to specify the entire type hint, including the shape of the data, manually:
 
 ```ts
-type Data = { foo: string }
+type Data = { foo: string };
 
 const resultSet = await client.query({
-  query: 'SELECT * FROM my_table',
-  format: 'JSONObjectsEachRow',
-})
+  query: "SELECT * FROM my_table",
+  format: "JSONObjectsEachRow",
+});
 
 // pre-1.0.0, `resultOld` has type Record<string, Data>
-const resultOld = resultSet.json<Record<string, Data>>()
+const resultOld = resultSet.json<Record<string, Data>>();
 // const resultOld = resultSet.json<Data>() // incorrect! The type hint should've been `Record<string, Data>` here.
 
 // 1.0.0, `resultNew` also has type Record<string, Data>; client inferred that it has to be a Record from the format literal.
-const resultNew = resultSet.json<Data>()
+const resultNew = resultSet.json<Data>();
 ```
 
 This is even more handy in case of streaming on the Node.js platform:
 
 ```ts
 const resultSet = await client.query({
-  query: 'SELECT * FROM my_table',
-  format: 'JSONEachRow',
-})
+  query: "SELECT * FROM my_table",
+  format: "JSONEachRow",
+});
 
 // pre-1.0.0
 // `streamOld` was just a regular Node.js Stream.Readable
-const streamOld = resultSet.stream()
+const streamOld = resultSet.stream();
 // `rows` were `any`, needed an explicit type hint
-streamNew.on('data', (rows: Row[]) => {
+streamNew.on("data", (rows: Row[]) => {
   rows.forEach((row) => {
     // without an explicit type hint to `rows`, calling `forEach` and other array methods resulted in TS compiler errors
-    const t = row.text
-    const j = row.json<Data>() // `j` needed a type hint here, otherwise, it's `unknown`
-  })
-})
+    const t = row.text;
+    const j = row.json<Data>(); // `j` needed a type hint here, otherwise, it's `unknown`
+  });
+});
 
 // 1.0.0
 // `streamNew` is now StreamReadable<T> (Node.js Stream.Readable with a bit more type hints);
 // type hint for the further `json` calls can be added here (and removed from the `json` calls)
-const streamNew = resultSet.stream<Data>()
+const streamNew = resultSet.stream<Data>();
 // `rows` are inferred as an Array<Row<Data, "JSONEachRow">> instead of `any`
-streamNew.on('data', (rows) => {
+streamNew.on("data", (rows) => {
   // `row` is inferred as Row<Data, "JSONEachRow">
   rows.forEach((row) => {
     // no explicit type hints required, you can use `forEach` straight away and TS compiler will be happy
-    const t = row.text
-    const j = row.json() // `j` will be of type Data
-  })
-})
+    const t = row.text;
+    const j = row.json(); // `j` will be of type Data
+  });
+});
 
 // async iterator now also has type hints
 // similarly to the `on(data)` example above, `rows` are inferred as Array<Row<Data, "JSONEachRow">>
 for await (const rows of streamNew) {
   // `row` is inferred as Row<Data, "JSONEachRow">
   rows.forEach((row) => {
-    const t = row.text
-    const j = row.json() // `j` will be of type Data
-  })
+    const t = row.text;
+    const j = row.json(); // `j` will be of type Data
+  });
 }
 ```
 
 Calling `ResultSet.stream` is not allowed for certain data formats, such as `JSON` and `JSONObjectsEachRow` (unlike `JSONEachRow` and the rest of `JSON*EachRow`, these formats return a single object). In these cases, the client throws an error. However, it was previously not reflected on the type level; now, calling `stream` on these formats will result in a TS compiler error. For example:
 
 ```ts
-const resultSet = await client.query('SELECT * FROM table', {
-  format: 'JSON',
-})
-const stream = resultSet.stream() // `stream` is `never`
+const resultSet = await client.query("SELECT * FROM table", {
+  format: "JSON",
+});
+const stream = resultSet.stream(); // `stream` is `never`
 ```
 
 Calling `ResultSet.json` also does not make sense on `CSV` and similar "raw" formats, and the client throws. Again, now, it is typed properly:
 
 ```ts
-const resultSet = await client.query('SELECT * FROM table', {
-  format: 'CSV',
-})
+const resultSet = await client.query("SELECT * FROM table", {
+  format: "CSV",
+});
 // `json` is `never`; same if you stream CSV, and call `Row.json` - it will be `never`, too.
-const json = resultSet.json()
+const json = resultSet.json();
 ```
 
 Currently, there is one known limitation: as the general shape of the data and the methods allowed for calling are inferred from the format literal, there might be situations where it will fail to do so, for example:
@@ -764,10 +764,10 @@ Currently, there is one known limitation: as the general shape of the data and t
 async function runQuery(
   queryParams: QueryParams,
 ): Promise<Record<string, Data>> {
-  const resultSet = await client.query(queryParams)
+  const resultSet = await client.query(queryParams);
   // type hint here will provide a union of all known shapes instead of a specific one
   // inferred shapes: Data[] | ResponseJSON<Data> | Record<string, Data>
-  return resultSet.json<Data>()
+  return resultSet.json<Data>();
 }
 ```
 
@@ -779,10 +779,10 @@ async function runQuery(
 ): Promise<Record<string, Data>> {
   const resultSet = await client.query({
     ...queryParams,
-    format: 'JSONObjectsEachRow',
-  })
+    format: "JSONObjectsEachRow",
+  });
   // TS understands that it is a Record<string, Data> now
-  return resultSet.json<Data>()
+  return resultSet.json<Data>();
 }
 ```
 
@@ -818,7 +818,7 @@ createClient({
     async_insert: 1,
     wait_for_async_insert: 1,
   },
-})
+});
 ```
 
 Note: boolean values for `clickhouse_settings` should be passed as `1`/`0` in the URL.
@@ -828,9 +828,9 @@ Note: boolean values for `clickhouse_settings` should be passed as `1`/`0` in th
 ```ts
 createClient({
   http_headers: {
-    'x-clickhouse-auth': 'foobar',
+    "x-clickhouse-auth": "foobar",
   },
-})
+});
 ```
 
 **Important: URL will _always_ overwrite the hardcoded values and a warning will be logged in this case.**
@@ -905,10 +905,10 @@ See [0.3.0](#030-nodejs-only).
 ```ts
 const client = createClient({
   additional_headers: {
-    'X-ClickHouse-User': 'clickhouse_user',
-    'X-ClickHouse-Key': 'clickhouse_password',
+    "X-ClickHouse-User": "clickhouse_user",
+    "X-ClickHouse-Key": "clickhouse_password",
   },
-})
+});
 ```
 
 ## 0.2.8 (Common, Node.js, Web)
@@ -919,8 +919,8 @@ const client = createClient({
   Keep-Alive setting **is now enabled by default** for the Web version.
 
 ```ts
-import { createClient } from '@clickhouse/client-web'
-const client = createClient({ keep_alive: { enabled: true } })
+import { createClient } from "@clickhouse/client-web";
+const client = createClient({ keep_alive: { enabled: true } });
 ```
 
 - (Node.js & Web) It is now possible to either specify a list of columns to insert the data into or a list of excluded columns:
@@ -928,19 +928,19 @@ const client = createClient({ keep_alive: { enabled: true } })
 ```ts
 // Generated query: INSERT INTO mytable (message) FORMAT JSONEachRow
 await client.insert({
-  table: 'mytable',
-  format: 'JSONEachRow',
-  values: [{ message: 'foo' }],
-  columns: ['message'],
-})
+  table: "mytable",
+  format: "JSONEachRow",
+  values: [{ message: "foo" }],
+  columns: ["message"],
+});
 
 // Generated query: INSERT INTO mytable (* EXCEPT (message)) FORMAT JSONEachRow
 await client.insert({
-  table: 'mytable',
-  format: 'JSONEachRow',
+  table: "mytable",
+  format: "JSONEachRow",
   values: [{ id: 42 }],
-  columns: { except: ['message'] },
-})
+  columns: { except: ["message"] },
+});
 ```
 
 See also the new examples:
@@ -1062,7 +1062,7 @@ const client = createClient({
   keep_alive: {
     enabled: false,
   },
-})
+});
 ```
 
 #### Retry on expired socket
@@ -1077,7 +1077,7 @@ const client = createClient({
     socket_ttl: 2500,
     retry_on_expired_socket: true,
   },
-})
+});
 ```
 
 ## 0.1.0
@@ -1097,16 +1097,16 @@ Example:
 
 ```ts
 // incorrect: stream is not consumed and not destroyed, request will be timed out eventually
-await client.exec('CREATE TABLE foo (id String) ENGINE Memory')
+await client.exec("CREATE TABLE foo (id String) ENGINE Memory");
 
 // correct: stream does not contain any information and just destroyed
 const { stream } = await client.exec(
-  'CREATE TABLE foo (id String) ENGINE Memory',
-)
-stream.destroy()
+  "CREATE TABLE foo (id String) ENGINE Memory",
+);
+stream.destroy();
 
 // correct: same as exec + stream.destroy()
-await client.command('CREATE TABLE foo (id String) ENGINE Memory')
+await client.command("CREATE TABLE foo (id String) ENGINE Memory");
 ```
 
 ### Bug fixes

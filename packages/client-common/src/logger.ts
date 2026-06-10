@@ -1,135 +1,135 @@
 /* eslint-disable no-console */
 export interface LogParams {
-  module: string
-  message: string
-  args?: Record<string, unknown>
+  module: string;
+  message: string;
+  args?: Record<string, unknown>;
 }
-export type ErrorLogParams = LogParams & { err: Error }
-export type WarnLogParams = LogParams & { err?: Error }
+export type ErrorLogParams = LogParams & { err: Error };
+export type WarnLogParams = LogParams & { err?: Error };
 export interface Logger {
-  trace(params: LogParams): void
-  debug(params: LogParams): void
-  info(params: LogParams): void
-  warn(params: WarnLogParams): void
-  error(params: ErrorLogParams): void
+  trace(params: LogParams): void;
+  debug(params: LogParams): void;
+  info(params: LogParams): void;
+  warn(params: WarnLogParams): void;
+  error(params: ErrorLogParams): void;
 }
 
 export class DefaultLogger implements Logger {
   trace({ module, message, args }: LogParams): void {
     const params: unknown[] = [
-      formatMessage({ module, message, level: 'TRACE' }),
-    ]
+      formatMessage({ module, message, level: "TRACE" }),
+    ];
     if (args) {
-      params.push('\nArguments:', args)
+      params.push("\nArguments:", args);
     }
-    console.debug(...params)
+    console.debug(...params);
   }
 
   debug({ module, message, args }: LogParams): void {
     const params: unknown[] = [
-      formatMessage({ module, message, level: 'DEBUG' }),
-    ]
+      formatMessage({ module, message, level: "DEBUG" }),
+    ];
     if (args) {
-      params.push('\nArguments:', args)
+      params.push("\nArguments:", args);
     }
-    console.debug(...params)
+    console.debug(...params);
   }
 
   info({ module, message, args }: LogParams): void {
     const params: unknown[] = [
-      formatMessage({ module, message, level: 'INFO' }),
-    ]
+      formatMessage({ module, message, level: "INFO" }),
+    ];
     if (args) {
-      params.push('\nArguments:', args)
+      params.push("\nArguments:", args);
     }
-    console.info(...params)
+    console.info(...params);
   }
 
   warn({ module, message, args, err }: WarnLogParams): void {
     const params: unknown[] = [
-      formatMessage({ module, message, level: 'WARN' }),
-    ]
+      formatMessage({ module, message, level: "WARN" }),
+    ];
     if (args) {
-      params.push('\nArguments:', args)
+      params.push("\nArguments:", args);
     }
     if (err) {
-      params.push('\nCaused by:', err)
+      params.push("\nCaused by:", err);
     }
-    console.warn(...params)
+    console.warn(...params);
   }
 
   error({ module, message, args, err }: ErrorLogParams): void {
     const params: unknown[] = [
-      formatMessage({ module, message, level: 'ERROR' }),
-    ]
+      formatMessage({ module, message, level: "ERROR" }),
+    ];
     if (args) {
-      params.push('\nArguments:', args)
+      params.push("\nArguments:", args);
     }
-    params.push('\nCaused by:', err)
-    console.error(...params)
+    params.push("\nCaused by:", err);
+    console.error(...params);
   }
 }
 
 export type LogWriterParams<Method extends keyof Logger> = Omit<
   Parameters<Logger[Method]>[0],
-  'module'
-> & { module?: string }
+  "module"
+> & { module?: string };
 
 export class LogWriter {
-  private readonly logger: Logger
-  private readonly module: string
-  private readonly logLevel: ClickHouseLogLevel
+  private readonly logger: Logger;
+  private readonly module: string;
+  private readonly logLevel: ClickHouseLogLevel;
   constructor(logger: Logger, module: string, logLevel: ClickHouseLogLevel) {
-    this.logger = logger
-    this.module = module
-    this.logLevel = logLevel
+    this.logger = logger;
+    this.module = module;
+    this.logLevel = logLevel;
     this.info({
       message: `Log level is set to ${ClickHouseLogLevel[this.logLevel]}`,
-    })
+    });
   }
 
-  trace(params: LogWriterParams<'trace'>): void {
+  trace(params: LogWriterParams<"trace">): void {
     if (this.logLevel <= (ClickHouseLogLevel.TRACE as number)) {
       this.logger.trace({
         ...params,
         module: params.module ?? this.module,
-      })
+      });
     }
   }
 
-  debug(params: LogWriterParams<'debug'>): void {
+  debug(params: LogWriterParams<"debug">): void {
     if (this.logLevel <= (ClickHouseLogLevel.DEBUG as number)) {
       this.logger.debug({
         ...params,
         module: params.module ?? this.module,
-      })
+      });
     }
   }
 
-  info(params: LogWriterParams<'info'>): void {
+  info(params: LogWriterParams<"info">): void {
     if (this.logLevel <= (ClickHouseLogLevel.INFO as number)) {
       this.logger.info({
         ...params,
         module: params.module ?? this.module,
-      })
+      });
     }
   }
 
-  warn(params: LogWriterParams<'warn'>): void {
+  warn(params: LogWriterParams<"warn">): void {
     if (this.logLevel <= (ClickHouseLogLevel.WARN as number)) {
       this.logger.warn({
         ...params,
         module: params.module ?? this.module,
-      })
+      });
     }
   }
 
-  error(params: LogWriterParams<'error'>): void {
+  error(params: LogWriterParams<"error">): void {
     if (this.logLevel <= (ClickHouseLogLevel.ERROR as number)) {
       this.logger.error({
         ...params,
         module: params.module ?? this.module,
-      })
+      });
     }
   }
 }
@@ -167,24 +167,24 @@ export const ClickHouseLogLevel = {
    * Logging is turned off.
    */
   OFF: 127,
-  0: 'TRACE',
-  1: 'DEBUG',
-  2: 'INFO',
-  3: 'WARN',
-  4: 'ERROR',
-  127: 'OFF',
-} as const
-export type ClickHouseLogLevel = 0 | 1 | 2 | 3 | 4 | 127
+  0: "TRACE",
+  1: "DEBUG",
+  2: "INFO",
+  3: "WARN",
+  4: "ERROR",
+  127: "OFF",
+} as const;
+export type ClickHouseLogLevel = 0 | 1 | 2 | 3 | 4 | 127;
 
 function formatMessage({
   level,
   module,
   message,
 }: {
-  level: 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
-  module: string
-  message: string
+  level: "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR";
+  module: string;
+  message: string;
 }): string {
-  const ts = new Date().toISOString()
-  return `[${ts}][${level}][@clickhouse/client][${module}] ${message}`
+  const ts = new Date().toISOString();
+  return `[${ts}][${level}][@clickhouse/client][${module}] ${message}`;
 }

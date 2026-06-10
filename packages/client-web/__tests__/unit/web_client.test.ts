@@ -1,51 +1,51 @@
-import { describe, it, expect, vi } from 'vitest'
-import type { BaseClickHouseClientConfigOptions } from '@clickhouse/client-common'
-import { createClient } from '../../src'
-import { isAwaitUsingStatementSupported } from '../utils/feature_detection'
-import { sleep } from '../utils/sleep'
-import { createSimpleWebTestClient } from '../utils/simple_web_client'
+import { describe, it, expect, vi } from "vitest";
+import type { BaseClickHouseClientConfigOptions } from "@clickhouse/client-common";
+import { createClient } from "../../src";
+import { isAwaitUsingStatementSupported } from "../utils/feature_detection";
+import { sleep } from "../utils/sleep";
+import { createSimpleWebTestClient } from "../utils/simple_web_client";
 
-describe('[Web] createClient', () => {
-  it('createSimpleWebTestClient creates a client without requiring ClickHouse', async () => {
+describe("[Web] createClient", () => {
+  it("createSimpleWebTestClient creates a client without requiring ClickHouse", async () => {
     // Imported from the side-effect-free `simple_web_client` module, so it does
     // not register the shared `beforeAll` test-env init and needs no ClickHouse.
-    const client = createSimpleWebTestClient()
-    expect(client).toBeDefined()
-    await client.close()
-  })
+    const client = createSimpleWebTestClient();
+    expect(client).toBeDefined();
+    await client.close();
+  });
 
   it('throws on incorrect "url" config value', () => {
-    expect(() => createClient({ url: 'foo' })).toThrow(
+    expect(() => createClient({ url: "foo" })).toThrow(
       expect.objectContaining({
-        message: expect.stringContaining('ClickHouse URL is malformed.'),
+        message: expect.stringContaining("ClickHouse URL is malformed."),
       }),
-    )
-  })
+    );
+  });
 
-  it('should not mutate provided configuration', async () => {
+  it("should not mutate provided configuration", async () => {
     const config: BaseClickHouseClientConfigOptions = {
-      url: 'https://localhost:8443',
-    }
-    createClient(config)
+      url: "https://localhost:8443",
+    };
+    createClient(config);
     // initial configuration is not overridden by the defaults we assign
     // when we transform the specified config object to the connection params
     expect(config).toEqual({
-      url: 'https://localhost:8443',
-    })
-  })
+      url: "https://localhost:8443",
+    });
+  });
 
-  it('closes the client when used with using statement', async ({ skip }) => {
+  it("closes the client when used with using statement", async ({ skip }) => {
     if (!isAwaitUsingStatementSupported()) {
-      skip('using statement is not supported in this environment')
-      return
+      skip("using statement is not supported in this environment");
+      return;
     }
-    const client = createClient()
-    let isClosed = false
-    vi.spyOn(client, 'close').mockImplementation(async () => {
+    const client = createClient();
+    let isClosed = false;
+    vi.spyOn(client, "close").mockImplementation(async () => {
       // Simulate some delay in closing
-      await sleep(0)
-      isClosed = true
-    })
+      await sleep(0);
+      isClosed = true;
+    });
 
     // Wrap in eval to allow using statement syntax without
     // syntax error in older Node.js versions. Might want to
@@ -55,8 +55,8 @@ describe('[Web] createClient', () => {
             await using c = value;
             // do nothing, just testing the disposal at the end of the block
         })
-      `)(client)
+      `)(client);
 
-    expect(isClosed).toBeTruthy()
-  })
-})
+    expect(isClosed).toBeTruthy();
+  });
+});

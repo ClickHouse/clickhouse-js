@@ -6,77 +6,77 @@ import type {
   ResultJSONType,
   ResultStream,
   Row,
-} from '@clickhouse/client-common'
+} from "@clickhouse/client-common";
 import {
   extractErrorAtTheEndOfChunk,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
-} from '@clickhouse/client-common'
+} from "@clickhouse/client-common";
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
   validateStreamFormat,
-} from '@clickhouse/client-common'
-import { Buffer } from 'buffer'
-import type { Readable, TransformCallback } from 'stream'
-import Stream, { Transform } from 'stream'
-import { getAsText } from './utils'
+} from "@clickhouse/client-common";
+import { Buffer } from "buffer";
+import type { Readable, TransformCallback } from "stream";
+import Stream, { Transform } from "stream";
+import { getAsText } from "./utils";
 
-const NEWLINE = 0x0a as const
+const NEWLINE = 0x0a as const;
 
 /** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
  * Everything else is an exact copy from stream.d.ts */
-export type StreamReadable<T> = Omit<Stream.Readable, 'on'> & {
-  [Symbol.asyncIterator](): NodeJS.AsyncIterator<T>
-  on(event: 'data', listener: (chunk: T) => void): Stream.Readable
+export type StreamReadable<T> = Omit<Stream.Readable, "on"> & {
+  [Symbol.asyncIterator](): NodeJS.AsyncIterator<T>;
+  on(event: "data", listener: (chunk: T) => void): Stream.Readable;
   on(
     event:
-      | 'close'
-      | 'drain'
-      | 'end'
-      | 'finish'
-      | 'pause'
-      | 'readable'
-      | 'resume'
-      | 'unpipe',
+      | "close"
+      | "drain"
+      | "end"
+      | "finish"
+      | "pause"
+      | "readable"
+      | "resume"
+      | "unpipe",
     listener: () => void,
-  ): Stream.Readable
-  on(event: 'error', listener: (err: Error) => void): Stream.Readable
-  on(event: 'pipe', listener: (src: Readable) => void): Stream.Readable
+  ): Stream.Readable;
+  on(event: "error", listener: (err: Error) => void): Stream.Readable;
+  on(event: "pipe", listener: (src: Readable) => void): Stream.Readable;
   on(
     event: string | symbol,
     listener: (...args: any[]) => void,
-  ): Stream.Readable
-}
+  ): Stream.Readable;
+};
 
 export interface ResultSetOptions<Format extends DataFormat> {
-  stream: Stream.Readable
-  format: Format
-  query_id: string
-  log_error: (error: Error) => void
-  response_headers: ResponseHeaders
-  jsonHandling?: JSONHandling
+  stream: Stream.Readable;
+  format: Format;
+  query_id: string;
+  log_error: (error: Error) => void;
+  response_headers: ResponseHeaders;
+  jsonHandling?: JSONHandling;
 }
 
 export class ResultSet<
   Format extends DataFormat | unknown,
 > implements BaseResultSet<Stream.Readable, Format> {
-  public readonly response_headers: ResponseHeaders = {}
+  public readonly response_headers: ResponseHeaders = {};
 
-  private readonly exceptionTag: string | undefined = undefined
-  private readonly log_error: (error: Error) => void
-  private readonly jsonHandling: JSONHandling
-  private _consumed = false
+  private readonly exceptionTag: string | undefined = undefined;
+  private readonly log_error: (error: Error) => void;
+  private readonly jsonHandling: JSONHandling;
+  private _consumed = false;
   /**
    * The stream of the response body.
    *
    * It is expected that the stream is passed directly from the response of the HTTP request
    * and has not been consumed or altered yet.
    */
-  private _stream: Stream.Readable
-  private readonly format: Format
-  public readonly query_id: string
+  private _stream: Stream.Readable;
+  private readonly format: Format;
+  public readonly query_id: string;
 
   constructor(
     _stream: Stream.Readable,
@@ -86,91 +86,91 @@ export class ResultSet<
     _response_headers?: ResponseHeaders,
     jsonHandling?: JSONHandling,
   ) {
-    this._stream = _stream
-    this.format = format
-    this.query_id = query_id
+    this._stream = _stream;
+    this.format = format;
+    this.query_id = query_id;
     this.jsonHandling = {
       ...defaultJSONHandling,
       ...jsonHandling,
-    }
+    };
     // eslint-disable-next-line no-console
-    this.log_error = log_error ?? ((err: Error) => console.error(err))
+    this.log_error = log_error ?? ((err: Error) => console.error(err));
 
     if (_response_headers !== undefined) {
-      this.response_headers = Object.freeze(_response_headers)
+      this.response_headers = Object.freeze(_response_headers);
       this.exceptionTag = _response_headers[EXCEPTION_TAG_HEADER_NAME] as
         | string
-        | undefined
+        | undefined;
     }
   }
 
   private consume() {
     if (this._consumed) {
-      throw new Error(streamAlreadyConsumedMessage)
+      throw new Error(streamAlreadyConsumedMessage);
     }
-    this._consumed = true
-    return this._stream
+    this._consumed = true;
+    return this._stream;
   }
 
   /** See {@link BaseResultSet.text}. */
   async text(): Promise<string> {
-    return await getAsText(this.consume())
+    return await getAsText(this.consume());
   }
 
   /** See {@link BaseResultSet.json}. */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
-      const result: T[] = []
+      const result: T[] = [];
       // Using the stream() instead of _stream directly to leverage the existing logic
       // for handling incomplete chunks and exception tags.
       // TODO: consider using stream() for all formats to unify the logic and error handling.
-      const stream = this.stream<T>()
+      const stream = this.stream<T>();
       for await (const rows of stream) {
         for (const row of rows) {
-          result.push(row.json() as T)
+          result.push(row.json() as T);
         }
       }
-      return result as ResultJSONType<T, Format>
+      return result as ResultJSONType<T, Format>;
     }
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
-      const text = await getAsText(this.consume())
-      return this.jsonHandling.parse(text)
+      const text = await getAsText(this.consume());
+      return this.jsonHandling.parse(text);
     }
     // should not be called for CSV, etc.
-    throw new Error(`Cannot decode ${this.format} as JSON`)
+    throw new Error(`Cannot decode ${this.format} as JSON`);
   }
 
   /** See {@link BaseResultSet.stream}. */
   stream<T>(): ResultStream<Format, StreamReadable<Row<T, Format>[]>> {
-    validateStreamFormat(this.format)
+    validateStreamFormat(this.format);
 
-    const incompleteChunks: Buffer[] = []
-    const logError = this.log_error
-    const exceptionTag = this.exceptionTag
-    const jsonHandling = this.jsonHandling
+    const incompleteChunks: Buffer[] = [];
+    const logError = this.log_error;
+    const exceptionTag = this.exceptionTag;
+    const jsonHandling = this.jsonHandling;
     const toRows = new Transform({
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
         callback: TransformCallback,
       ) {
-        const rows: Row[] = []
+        const rows: Row[] = [];
 
-        let lastIdx = 0
-        let currentChunkPart: Buffer
+        let lastIdx = 0;
+        let currentChunkPart: Buffer;
 
         while (true) {
           // an unescaped newline character denotes the end of a row,
           // or at least the beginning of the exception marker
-          const idx = chunk.indexOf(NEWLINE, lastIdx)
+          const idx = chunk.indexOf(NEWLINE, lastIdx);
           if (idx === -1) {
-            incompleteChunks.push(chunk.subarray(lastIdx))
+            incompleteChunks.push(chunk.subarray(lastIdx));
             if (rows.length > 0) {
-              this.push(rows)
+              this.push(rows);
             }
-            break
+            break;
           } else {
             // Check for exception in the chunk (only after 25.11)
             if (
@@ -178,34 +178,34 @@ export class ResultSet<
               idx >= 1 &&
               chunk[idx - 1] === CARET_RETURN
             ) {
-              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
+              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag));
             }
 
             if (incompleteChunks.length > 0) {
-              incompleteChunks.push(chunk.subarray(lastIdx, idx))
-              currentChunkPart = Buffer.concat(incompleteChunks)
+              incompleteChunks.push(chunk.subarray(lastIdx, idx));
+              currentChunkPart = Buffer.concat(incompleteChunks);
               // Removing used buffers and reusing the already allocated memory
               // by setting length to 0
-              incompleteChunks.length = 0
+              incompleteChunks.length = 0;
             } else {
-              currentChunkPart = chunk.subarray(lastIdx, idx)
+              currentChunkPart = chunk.subarray(lastIdx, idx);
             }
 
-            const text = currentChunkPart.toString()
+            const text = currentChunkPart.toString();
             rows.push({
               text,
               json<T>(): T {
-                return jsonHandling.parse(text)
+                return jsonHandling.parse(text);
               },
-            })
-            lastIdx = idx + 1 // skipping newline character
+            });
+            lastIdx = idx + 1; // skipping newline character
           }
         }
-        callback()
+        callback();
       },
       autoDestroy: true,
       objectMode: true,
-    })
+    });
 
     const pipeline = Stream.pipeline(
       this.consume(),
@@ -213,19 +213,19 @@ export class ResultSet<
       function pipelineCb(err) {
         if (
           err &&
-          err.name !== 'AbortError' &&
+          err.name !== "AbortError" &&
           err.message !== resultSetClosedMessage
         ) {
-          logError(err)
+          logError(err);
         }
       },
-    )
-    return pipeline as any
+    );
+    return pipeline as any;
   }
 
   /** See {@link BaseResultSet.close}. */
   close() {
-    this._stream.destroy(new Error(resultSetClosedMessage))
+    this._stream.destroy(new Error(resultSetClosedMessage));
   }
 
   /**
@@ -236,7 +236,7 @@ export class ResultSet<
    * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
    */
   [Symbol.dispose]() {
-    this.close()
+    this.close();
   }
 
   static instance<Format extends DataFormat>({
@@ -254,9 +254,9 @@ export class ResultSet<
       log_error,
       response_headers,
       jsonHandling,
-    )
+    );
   }
 }
 
-const streamAlreadyConsumedMessage = 'Stream has been already consumed'
-const resultSetClosedMessage = 'ResultSet has been closed'
+const streamAlreadyConsumedMessage = "Stream has been already consumed";
+const resultSetClosedMessage = "ResultSet has been closed";

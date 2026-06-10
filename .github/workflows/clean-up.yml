@@ -1,14 +1,14 @@
-name: 'misc'
+name: "misc"
 
 permissions: {}
 on:
   workflow_dispatch:
   push:
   schedule:
-    - cron: '0 10 * * *'
+    - cron: "0 10 * * *"
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.ref }}'
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:

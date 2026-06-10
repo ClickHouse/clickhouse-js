@@ -14,7 +14,7 @@ await client.command({
     INSERT INTO target
     SELECT * FROM source
   `,
-})
+});
 ```
 
 Use `command()` (not `insert()`) — there is no row payload to send.
@@ -38,13 +38,13 @@ await client.command({
     )
   `,
   query_params: {
-    id: '00112233445566778899aabbccddeeff',
-    timestamp: '2026-05-06 12:34:56',
-    email: 'alice@example.com',
-    name: 'Alice',
+    id: "00112233445566778899aabbccddeeff",
+    timestamp: "2026-05-06 12:34:56",
+    email: "alice@example.com",
+    name: "Alice",
   },
   clickhouse_settings: { wait_end_of_query: 1 },
-})
+});
 ```
 
 Do not build `VALUES` rows with string interpolation or manual escaping. If
@@ -61,13 +61,13 @@ session-wide.
 
 ```ts
 await client.insert({
-  table: 'events',
-  format: 'JSONEachRow',
-  values: [{ id: '42', dt: new Date() }],
+  table: "events",
+  format: "JSONEachRow",
+  values: [{ id: "42", dt: new Date() }],
   clickhouse_settings: {
-    date_time_input_format: 'best_effort', // default on the Cloud
+    date_time_input_format: "best_effort", // default on the Cloud
   },
-})
+});
 ```
 
 > JS `Date` objects do **not** work for the `Date` type (date-only) — pass
@@ -97,22 +97,22 @@ await client.command({
     )
     ENGINE MergeTree ORDER BY id
   `,
-})
+});
 
 await client.insert({
-  table: 'prices',
-  format: 'JSONEachRow',
+  table: "prices",
+  format: "JSONEachRow",
   values: [
     {
       id: 1,
-      dec32: '1234567.89',
-      dec64: '123456789123456.789',
-      dec128: '1234567891234567891234567891.1234567891',
+      dec32: "1234567.89",
+      dec64: "123456789123456.789",
+      dec128: "1234567891234567891234567891.1234567891",
       dec256:
-        '12345678912345678912345678911234567891234567891234567891.12345678911234567891',
+        "12345678912345678912345678911234567891234567891234567891.12345678911234567891",
     },
   ],
-})
+});
 ```
 
 When reading them back, cast to string in the SELECT to avoid the same
@@ -125,8 +125,8 @@ const rs = await client.query({
            toString(dec128) AS decimal128
     FROM prices
   `,
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 ```
 
 ## Inserting a `UUID` into a `UInt128` column
@@ -142,11 +142,11 @@ clause**. With the row-oriented JSON formats the client uses (e.g.
 always pass `UInt128` as a string:
 
 ```ts
-import * as crypto from 'node:crypto'
+import * as crypto from "node:crypto";
 
 function uuidToUInt128(uuid: string): string {
   // 8-4-4-4-12 hex digits → 32 hex digits → BigInt → decimal string
-  return BigInt('0x' + uuid.replace(/-/g, '')).toString()
+  return BigInt("0x" + uuid.replace(/-/g, "")).toString();
 }
 
 await client.command({
@@ -154,14 +154,14 @@ await client.command({
     CREATE OR REPLACE TABLE events (id UInt128, description String)
     ENGINE MergeTree ORDER BY id
   `,
-})
+});
 
-const uuid = crypto.randomUUID()
+const uuid = crypto.randomUUID();
 await client.insert({
-  table: 'events',
-  format: 'JSONEachRow',
-  values: [{ id: uuidToUInt128(uuid), description: 'converted on the client' }],
-})
+  table: "events",
+  format: "JSONEachRow",
+  values: [{ id: uuidToUInt128(uuid), description: "converted on the client" }],
+});
 ```
 
 `UInt128` values are also too wide for a JS `number` when reading back — cast
@@ -181,15 +181,15 @@ await client.command({
     )
     ENGINE MergeTree ORDER BY id
   `,
-})
+});
 
 await client.insert({
-  table: 'events',
-  format: 'JSONEachRow',
-  values: [{ id_uuid: uuid, description: 'populated via EPHEMERAL column' }],
+  table: "events",
+  format: "JSONEachRow",
+  values: [{ id_uuid: uuid, description: "populated via EPHEMERAL column" }],
   // The ephemeral column must be listed so the DEFAULT on `id` is evaluated.
-  columns: ['id_uuid', 'description'],
-})
+  columns: ["id_uuid", "description"],
+});
 ```
 
 See `reference/insert-columns.md` for more on `EPHEMERAL` columns and why they

@@ -2,349 +2,353 @@ import type {
   ClickHouseClient,
   ClickHouseSettings,
   RawDataFormat,
-} from '@clickhouse/client-common'
-import { describe, it, beforeEach, afterEach, expect } from 'vitest'
-import { createSimpleTable } from '@test/fixtures/simple_table'
-import { assertJsonValues, jsonValues } from '@test/fixtures/test_data'
-import { createTestClient } from '@test/utils/client'
-import { guid } from '@test/utils/guid'
-import Stream from 'stream'
-import { makeRawStream } from '../utils/stream'
+} from "@clickhouse/client-common";
+import { describe, it, beforeEach, afterEach, expect } from "vitest";
+import { createSimpleTable } from "@test/fixtures/simple_table";
+import { assertJsonValues, jsonValues } from "@test/fixtures/test_data";
+import { createTestClient } from "@test/utils/client";
+import { guid } from "@test/utils/guid";
+import Stream from "stream";
+import { makeRawStream } from "../utils/stream";
 
-describe('[Node.js] stream raw formats', () => {
-  let client: ClickHouseClient
-  let tableName: string
+describe("[Node.js] stream raw formats", () => {
+  let client: ClickHouseClient;
+  let tableName: string;
 
   beforeEach(async () => {
-    tableName = `insert_stream_raw_${guid()}`
-    client = createTestClient()
-    await createSimpleTable(client, tableName)
-  })
+    tableName = `insert_stream_raw_${guid()}`;
+    client = createTestClient();
+    await createSimpleTable(client, tableName);
+  });
   afterEach(async () => {
-    await client.close()
-  })
+    await client.close();
+  });
 
-  it('should throw in case of invalid format of data', async () => {
+  it("should throw in case of invalid format of data", async () => {
     const stream = Stream.Readable.from(
       `"baz","foo","[1,2]"\n43,"bar","[3,4]"\n`,
       {
         objectMode: false,
       },
-    )
+    );
     await expect(
       client.insert({
         table: tableName,
         values: stream,
-        format: 'CSV',
+        format: "CSV",
       }),
     ).rejects.toMatchObject({
-      message: expect.stringContaining('Cannot parse input'),
-    })
-  })
+      message: expect.stringContaining("Cannot parse input"),
+    });
+  });
 
-  describe('TSV', () => {
-    it('should insert a TSV without names or types', async () => {
-      const values = `42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`
+  describe("TSV", () => {
+    it("should insert a TSV without names or types", async () => {
+      const values = `42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'TabSeparated',
-      })
-      await assertInsertedValues('TabSeparated', values)
-    })
+        format: "TabSeparated",
+      });
+      await assertInsertedValues("TabSeparated", values);
+    });
 
-    it('should insert a TSV with names', async () => {
-      const values = `id\tname\tsku\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`
+    it("should insert a TSV with names", async () => {
+      const values = `id\tname\tsku\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'TabSeparatedWithNames',
-      })
-      await assertInsertedValues('TabSeparatedWithNames', values)
-    })
+        format: "TabSeparatedWithNames",
+      });
+      await assertInsertedValues("TabSeparatedWithNames", values);
+    });
 
-    it('should insert a TSV with names and types', async () => {
-      const values = `id\tname\tsku\nUInt64\tString\tArray(UInt8)\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`
+    it("should insert a TSV with names and types", async () => {
+      const values = `id\tname\tsku\nUInt64\tString\tArray(UInt8)\n42\tfoo\t[1,2]\n43\tbar\t[3,4]\n`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'TabSeparatedWithNamesAndTypes',
-      })
-      await assertInsertedValues('TabSeparatedWithNamesAndTypes', values)
-    })
+        format: "TabSeparatedWithNamesAndTypes",
+      });
+      await assertInsertedValues("TabSeparatedWithNamesAndTypes", values);
+    });
 
-    it('should insert a TSV (unescaped)', async () => {
-      const values = `42\t\\bfoo\t[1,2]\n43\tba\\tr\t[3,4]\n`
+    it("should insert a TSV (unescaped)", async () => {
+      const values = `42\t\\bfoo\t[1,2]\n43\tba\\tr\t[3,4]\n`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'TabSeparatedRaw',
-      })
-      await assertInsertedValues('TabSeparatedRaw', values)
-    })
+        format: "TabSeparatedRaw",
+      });
+      await assertInsertedValues("TabSeparatedRaw", values);
+    });
 
-    it('should throw in case of invalid TSV format', async () => {
+    it("should throw in case of invalid TSV format", async () => {
       const stream = Stream.Readable.from(`foobar\t42\n`, {
         objectMode: false,
-      })
+      });
       await expect(
         client.insert({
           table: tableName,
           values: stream,
-          format: 'TabSeparated',
+          format: "TabSeparated",
         }),
       ).rejects.toMatchObject({
-        message: expect.stringContaining('Cannot parse input'),
-      })
-    })
+        message: expect.stringContaining("Cannot parse input"),
+      });
+    });
 
-    it('can insert multiple TSV streams at once', async () => {
-      const streams: Stream.Readable[] = Array(jsonValues.length)
+    it("can insert multiple TSV streams at once", async () => {
+      const streams: Stream.Readable[] = Array(jsonValues.length);
       const insertStreamPromises = Promise.all(
         jsonValues.map(({ id, name, sku }, i) => {
-          const stream = makeRawStream()
-          streams[i] = stream
-          stream.push(`${id}\t${name}\t[${sku}]\n`)
+          const stream = makeRawStream();
+          streams[i] = stream;
+          stream.push(`${id}\t${name}\t[${sku}]\n`);
           return client.insert({
             values: stream,
-            format: 'TabSeparated',
+            format: "TabSeparated",
             table: tableName,
-          })
+          });
         }),
-      )
+      );
       setTimeout(() => {
-        streams.forEach((stream) => stream.push(null))
-      }, 100)
-      await insertStreamPromises
-      await assertJsonValues(client, tableName)
-    })
-  })
+        streams.forEach((stream) => stream.push(null));
+      }, 100);
+      await insertStreamPromises;
+      await assertJsonValues(client, tableName);
+    });
+  });
 
-  describe('CSV', () => {
-    it('should insert a CSV without names or types', async () => {
-      const values = `42,"foo","[1,2]"\n43,"bar","[3,4]"\n`
+  describe("CSV", () => {
+    it("should insert a CSV without names or types", async () => {
+      const values = `42,"foo","[1,2]"\n43,"bar","[3,4]"\n`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'CSV',
-      })
-      await assertInsertedValues('CSV', values)
-    })
+        format: "CSV",
+      });
+      await assertInsertedValues("CSV", values);
+    });
 
-    it('should insert a CSV with names', async () => {
-      const values = `"id","name","sku"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`
+    it("should insert a CSV with names", async () => {
+      const values = `"id","name","sku"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'CSVWithNames',
-      })
-      await assertInsertedValues('CSVWithNames', values)
-    })
+        format: "CSVWithNames",
+      });
+      await assertInsertedValues("CSVWithNames", values);
+    });
 
-    it('should insert a CSV with wrong names', async () => {
+    it("should insert a CSV with wrong names", async () => {
       const values = `"foo","name","sku"
 42,"foo","[1,2]"
 43,"bar","[3,4]"
-`
+`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'CSVWithNames',
-      })
+        format: "CSVWithNames",
+      });
       await assertInsertedValues(
-        'CSVWithNames',
+        "CSVWithNames",
         `"id","name","sku"
 0,"foo","[1,2]"
 0,"bar","[3,4]"
 `,
-      )
-    })
+      );
+    });
 
-    it('should insert a CSV with names and types', async () => {
-      const values = `"id","name","sku"\n"UInt64","String","Array(UInt8)"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`
+    it("should insert a CSV with names and types", async () => {
+      const values = `"id","name","sku"\n"UInt64","String","Array(UInt8)"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'CSVWithNamesAndTypes',
-      })
-      await assertInsertedValues('CSVWithNamesAndTypes', values)
-    })
+        format: "CSVWithNamesAndTypes",
+      });
+      await assertInsertedValues("CSVWithNamesAndTypes", values);
+    });
 
-    it('should throw in case of a wrong type in CSV format', async () => {
+    it("should throw in case of a wrong type in CSV format", async () => {
       const stream = Stream.Readable.from(
         `"id","name","sku"\n"UInt64","UInt64","Array(UInt8)"\n42,"foo","[1,2]"\n43,"bar","[3,4]"\n`,
         {
           objectMode: false,
         },
-      )
+      );
       await expect(
         client.insert({
           table: tableName,
           values: stream,
-          format: 'CSVWithNamesAndTypes',
+          format: "CSVWithNamesAndTypes",
         }),
       ).rejects.toMatchObject({
         message: expect.stringContaining(
           `Type of 'name' must be String, not UInt64`,
         ),
-      })
-    })
+      });
+    });
 
-    it('should throw in case of invalid CSV format', async () => {
+    it("should throw in case of invalid CSV format", async () => {
       const stream = Stream.Readable.from(`"foobar","42",,\n`, {
         objectMode: false,
-      })
+      });
       await expect(
         client.insert({
           table: tableName,
           values: stream,
-          format: 'CSV',
+          format: "CSV",
         }),
       ).rejects.toMatchObject({
-        message: expect.stringContaining('Cannot parse input'),
-      })
-    })
+        message: expect.stringContaining("Cannot parse input"),
+      });
+    });
 
-    it('can insert multiple CSV streams at once', async () => {
-      const streams: Stream.Readable[] = Array(jsonValues.length)
+    it("can insert multiple CSV streams at once", async () => {
+      const streams: Stream.Readable[] = Array(jsonValues.length);
       const insertStreamPromises = Promise.all(
         jsonValues.map(({ id, name, sku }, i) => {
-          const stream = makeRawStream()
-          streams[i] = stream
-          stream.push(`${id},${name},"${sku}"\n`)
+          const stream = makeRawStream();
+          streams[i] = stream;
+          stream.push(`${id},${name},"${sku}"\n`);
           return client.insert({
             values: stream,
-            format: 'CSV',
+            format: "CSV",
             table: tableName,
-          })
+          });
         }),
-      )
+      );
       setTimeout(() => {
-        streams.forEach((stream) => stream.push(null))
-      }, 100)
-      await insertStreamPromises
-      await assertJsonValues(client, tableName)
-    })
-  })
+        streams.forEach((stream) => stream.push(null));
+      }, 100);
+      await insertStreamPromises;
+      await assertJsonValues(client, tableName);
+    });
+  });
 
-  describe('Custom separated', () => {
+  describe("Custom separated", () => {
     const clickhouse_settings: ClickHouseSettings = {
-      format_custom_escaping_rule: 'CSV',
-      format_custom_field_delimiter: '^',
-    }
+      format_custom_escaping_rule: "CSV",
+      format_custom_field_delimiter: "^",
+    };
 
-    it('should insert a custom separated stream without names or types', async () => {
-      const values = `42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`
+    it("should insert a custom separated stream without names or types", async () => {
+      const values = `42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'CustomSeparated',
+        format: "CustomSeparated",
         clickhouse_settings,
-      })
-      await assertInsertedValues('CustomSeparated', values, clickhouse_settings)
-    })
-
-    it('should insert a custom separated stream with names', async () => {
-      const values = `"id"^"name"^"sku"\n42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`
-      const stream = Stream.Readable.from(values, {
-        objectMode: false,
-      })
-      await client.insert({
-        table: tableName,
-        values: stream,
-        format: 'CustomSeparatedWithNames',
-        clickhouse_settings,
-      })
+      });
       await assertInsertedValues(
-        'CustomSeparatedWithNames',
+        "CustomSeparated",
         values,
         clickhouse_settings,
-      )
-    })
+      );
+    });
 
-    it('should insert a custom separated stream with names and types', async () => {
-      const values = `"id"^"name"^"sku"\n"UInt64"^"String"^"Array(UInt8)"\n42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`
+    it("should insert a custom separated stream with names", async () => {
+      const values = `"id"^"name"^"sku"\n42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`;
       const stream = Stream.Readable.from(values, {
         objectMode: false,
-      })
+      });
       await client.insert({
         table: tableName,
         values: stream,
-        format: 'CustomSeparatedWithNamesAndTypes',
+        format: "CustomSeparatedWithNames",
         clickhouse_settings,
-      })
+      });
       await assertInsertedValues(
-        'CustomSeparatedWithNamesAndTypes',
+        "CustomSeparatedWithNames",
         values,
         clickhouse_settings,
-      )
-    })
+      );
+    });
 
-    it('should throw in case of invalid custom separated format', async () => {
+    it("should insert a custom separated stream with names and types", async () => {
+      const values = `"id"^"name"^"sku"\n"UInt64"^"String"^"Array(UInt8)"\n42^"foo"^"[1,2]"\n43^"bar"^"[3,4]"\n`;
+      const stream = Stream.Readable.from(values, {
+        objectMode: false,
+      });
+      await client.insert({
+        table: tableName,
+        values: stream,
+        format: "CustomSeparatedWithNamesAndTypes",
+        clickhouse_settings,
+      });
+      await assertInsertedValues(
+        "CustomSeparatedWithNamesAndTypes",
+        values,
+        clickhouse_settings,
+      );
+    });
+
+    it("should throw in case of invalid custom separated format", async () => {
       const stream = Stream.Readable.from(`"foobar"^"42"^^\n`, {
         objectMode: false,
-      })
+      });
       await expect(
         client.insert({
           table: tableName,
           values: stream,
-          format: 'CustomSeparated',
+          format: "CustomSeparated",
           clickhouse_settings,
         }),
       ).rejects.toMatchObject({
-        message: expect.stringContaining('Cannot parse input'),
-      })
-    })
+        message: expect.stringContaining("Cannot parse input"),
+      });
+    });
 
-    it('can insert multiple custom-separated streams at once', async () => {
-      const streams: Stream.Readable[] = Array(jsonValues.length)
+    it("can insert multiple custom-separated streams at once", async () => {
+      const streams: Stream.Readable[] = Array(jsonValues.length);
       const insertStreamPromises = Promise.all(
         jsonValues.map(({ id, name, sku }, i) => {
-          const stream = makeRawStream()
-          streams[i] = stream
-          stream.push(`${id}^${name}^[${sku}]\n`)
+          const stream = makeRawStream();
+          streams[i] = stream;
+          stream.push(`${id}^${name}^[${sku}]\n`);
           return client.insert({
             values: stream,
-            format: 'CustomSeparated',
+            format: "CustomSeparated",
             table: tableName,
             clickhouse_settings,
-          })
+          });
         }),
-      )
+      );
       setTimeout(() => {
-        streams.forEach((stream) => stream.push(null))
-      }, 100)
-      await insertStreamPromises
-      await assertJsonValues(client, tableName)
-    })
-  })
+        streams.forEach((stream) => stream.push(null));
+      }, 100);
+      await insertStreamPromises;
+      await assertJsonValues(client, tableName);
+    });
+  });
 
   async function assertInsertedValues(
     format: RawDataFormat,
@@ -355,7 +359,7 @@ describe('[Node.js] stream raw formats', () => {
       query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
       clickhouse_settings,
       format,
-    })
-    expect(await result.text()).toEqual(expected)
+    });
+    expect(await result.text()).toEqual(expected);
   }
-})
+});

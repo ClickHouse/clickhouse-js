@@ -1,4 +1,4 @@
-name: 'bun'
+name: "bun"
 
 permissions: {}
 on:
@@ -7,17 +7,17 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**/*.md'
-      - 'LICENSE'
-      - 'benchmarks/**'
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
   pull_request:
     paths-ignore:
-      - '**/*.md'
-      - 'LICENSE'
-      - 'benchmarks/**'
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.ref }}'
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:

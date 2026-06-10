@@ -6,7 +6,7 @@
 
 ```js
 // What you write:
-await client.query({ query: 'SELECT 1', format: 'JSONEachRow' })
+await client.query({ query: "SELECT 1", format: "JSONEachRow" });
 
 // What the client actually sends:
 // SELECT 1
@@ -19,10 +19,10 @@ If the `query` string already contains a `FORMAT` clause, the client still appen
 
 ```js
 // ❌ Wrong — ends up as `... FORMAT CSV FORMAT JSON` → syntax error
-await client.query({ query: 'SELECT 1 FORMAT CSV' })
+await client.query({ query: "SELECT 1 FORMAT CSV" });
 
 // ✓ Correct — let the client append FORMAT via the option
-await client.query({ query: 'SELECT 1', format: 'CSV' })
+await client.query({ query: "SELECT 1", format: "CSV" });
 ```
 
 If you genuinely need to write the full SQL yourself (including the `FORMAT` clause), or you're running a statement where the appended `FORMAT` suffix is not supported, use `client.exec()` instead of `client.query()`. Use `client.insert()` for data insertion and `client.command()` for DDLs.
@@ -33,15 +33,15 @@ Some statements are not parsed by the server with a trailing `FORMAT` clause, so
 
 ```js
 // ❌ Fails — query() appends `FORMAT JSON`, which the short SHOW POLICIES syntax rejects
-await client.query({ query: 'SHOW POLICIES', format: 'JSON' })
-await client.query({ query: 'SHOW ROW POLICIES', format: 'JSON' })
+await client.query({ query: "SHOW POLICIES", format: "JSON" });
+await client.query({ query: "SHOW ROW POLICIES", format: "JSON" });
 ```
 
 **Fix:** use the full syntax `SHOW POLICIES ON *` (or `SHOW POLICIES ON db.table`), which the parser accepts together with the appended `FORMAT`:
 
 ```js
 // ✓ Works — full syntax accepts the appended FORMAT clause
-await client.query({ query: 'SHOW POLICIES ON *', format: 'JSON' })
+await client.query({ query: "SHOW POLICIES ON *", format: "JSON" });
 ```
 
 Alternatively, run the short statement through `client.exec()`, where you control the full SQL and no `FORMAT` suffix is appended.
