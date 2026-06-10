@@ -22,6 +22,7 @@ import { Buffer } from 'buffer'
 import type { Readable, TransformCallback } from 'stream'
 import Stream, { Transform } from 'stream'
 import { getAsText } from './utils'
+import { ClickHouseExceptionStream } from './utils/exception_stream'
 
 const NEWLINE = 0x0a as const
 
@@ -57,6 +58,14 @@ export interface ResultSetOptions<Format extends DataFormat> {
   log_error: (error: Error) => void
   response_headers: ResponseHeaders
   jsonHandling?: JSONHandling
+  /**
+   * When enabled, an optional {@link ClickHouseExceptionStream} transformer is
+   * plugged into the internal stream to parse in-band exception blocks that
+   * ClickHouse (25.11+) appends to the response body after a 200 status. Off by
+   * default; requires the `X-ClickHouse-Exception-Tag` response header to be
+   * present, otherwise the transformer is skipped.
+   */
+  exceptionStream?: boolean
 }
 
 export class ResultSet<
@@ -67,6 +76,7 @@ export class ResultSet<
   private readonly exceptionTag: string | undefined = undefined
   private readonly log_error: (error: Error) => void
   private readonly jsonHandling: JSONHandling
+  private readonly exceptionStream: boolean
   private _consumed = false
   /**
    * The stream of the response body.
@@ -85,6 +95,7 @@ export class ResultSet<
     log_error?: (error: Error) => void,
     _response_headers?: ResponseHeaders,
     jsonHandling?: JSONHandling,
+    exceptionStream?: boolean,
   ) {
     this._stream = _stream
     this.format = format
@@ -95,6 +106,7 @@ export class ResultSet<
     }
     // eslint-disable-next-line no-console
     this.log_error = log_error ?? ((err: Error) => console.error(err))
+    this.exceptionStream = exceptionStream ?? false
 
     if (_response_headers !== undefined) {
       this.response_headers = Object.freeze(_response_headers)
@@ -207,19 +219,28 @@ export class ResultSet<
       objectMode: true,
     })
 
-    const pipeline = Stream.pipeline(
-      this.consume(),
-      toRows,
-      function pipelineCb(err) {
-        if (
-          err &&
-          err.name !== 'AbortError' &&
-          err.message !== resultSetClosedMessage
-        ) {
-          logError(err)
-        }
-      },
-    )
+    const source = this.consume()
+    const pipelineCb = function pipelineCb(err: NodeJS.ErrnoException | null) {
+      if (
+        err &&
+        err.name !== 'AbortError' &&
+        err.message !== resultSetClosedMessage
+      ) {
+        logError(err)
+      }
+    }
+
+    // Optionally plug the in-band exception transformer into the internal stream.
+    // Only used when explicitly enabled and the server advertised an exception tag.
+    const pipeline =
+      this.exceptionStream && this.exceptionTag !== undefined
+        ? Stream.pipeline(
+            source,
+            new ClickHouseExceptionStream({ tag: this.exceptionTag }),
+            toRows,
+            pipelineCb,
+          )
+        : Stream.pipeline(source, toRows, pipelineCb)
     return pipeline as any
   }
 
@@ -246,6 +267,7 @@ export class ResultSet<
     log_error,
     response_headers,
     jsonHandling,
+    exceptionStream,
   }: ResultSetOptions<Format>): ResultSet<Format> {
     return new ResultSet(
       stream,
@@ -254,6 +276,7 @@ export class ResultSet<
       log_error,
       response_headers,
       jsonHandling,
+      exceptionStream,
     )
   }
 }
