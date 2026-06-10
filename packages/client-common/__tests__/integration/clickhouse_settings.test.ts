@@ -33,8 +33,7 @@ describe("ClickHouse settings", () => {
       expect(settings.length).toBeGreaterThan(0);
 
       const failures: { name: string; error: string }[] = [];
-      const concurrency = 10;
-      let index = 0;
+      const concurrency = Math.min(10, settings.length);
       async function worker() {
         while (index < settings.length) {
           const { name, value } = settings[index++];
