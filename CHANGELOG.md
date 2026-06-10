@@ -1,3 +1,22 @@
+# 1.21.0
+
+## New features
+
+- Added a `use_multipart_params` client option (default: `false`). When enabled, `query()` sends `query_params` as `multipart/form-data` body parts (with the SQL moved into a `query` part) instead of URL query-string entries, avoiding HTTP 400 errors caused by over-long URLs when parameters contain large arrays (25K+ values). All other URL search params (database, query_id, settings, session_id, role) remain in the URL. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params` on `query()`. ([#825])
+
+```ts
+const client = createClient({ use_multipart_params: true });
+
+await client.query({
+  query: "SELECT * FROM events WHERE id IN {ids:Array(UInt64)}",
+  query_params: { ids: veryLargeArrayOfIds },
+  // Per-request override is also supported:
+  // use_multipart_params: false,
+});
+```
+
+[#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
+
 # 1.20.0
 
 ## Migration Notes

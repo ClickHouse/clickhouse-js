@@ -23,6 +23,24 @@
    }
    ```
 
+## Package structure and code duplication
+
+The source packages under [`packages/`](packages) are:
+
+- `client-common` — platform-agnostic shared code (config, query-param formatting, multipart
+  assembly, URL handling, result sets, etc.). It must not depend on Node.js-only or Web-only APIs.
+- `client-node` (`@clickhouse/client`) — the Node.js client.
+- `client-web` (`@clickhouse/client-web`) — the Web/edge client.
+
+`client-node` and `client-web` are slated to be **separated into fully independent packages**. Because
+of that, some logic is **intentionally duplicated** between the two connection implementations
+(`packages/client-node/src/connection/node_base_connection.ts` and
+`packages/client-web/src/connection/web_connection.ts`) rather than hoisted into `client-common` — for
+example the per-request `use_multipart_params` resolution and the `param_*` multipart-part assembly
+loop. **Do not flag this node/web duplication as something to consolidate**, and prefer keeping each
+client self-contained over adding shared helpers that only exist to remove the duplication. Genuinely
+platform-agnostic primitives (like `buildMultipartBody`) still belong in `client-common`.
+
 ## Examples
 
 The repository contains an [`examples`](examples) directory that is being refactored to be AI-agent-friendly.

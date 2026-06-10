@@ -53,6 +53,10 @@ export interface BaseQueryParams {
    *  Overrides the headers set in {@link BaseClickHouseClientConfigOptions.http_headers}.
    *  @default empty object */
   http_headers?: Record<string, string>;
+  /** When defined, overrides {@link BaseClickHouseClientConfigOptions.use_multipart_params}
+   *  for this particular request.
+   *  @default undefined (no override) */
+  use_multipart_params?: boolean;
 }
 
 export interface QueryParams extends BaseQueryParams {
@@ -390,6 +394,7 @@ export class ClickHouseClient<Stream = unknown> {
       role: params.role ?? this.role,
       auth: params.auth,
       http_headers: params.http_headers,
+      use_multipart_params: params.use_multipart_params,
     };
   }
 }
