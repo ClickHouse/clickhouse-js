@@ -37,10 +37,11 @@ describe("ClickHouse settings", () => {
       async function worker() {
         while (index < settings.length) {
           const { name, value } = settings[index++];
+          const clickhouse_settings: ClickHouseSettings = { [name]: value };
           try {
             await client.command({
               query: "SELECT 1",
-              clickhouse_settings: { [name]: value } as ClickHouseSettings,
+              clickhouse_settings,
             });
           } catch (err) {
             failures.push({ name, error: (err as Error).message });
