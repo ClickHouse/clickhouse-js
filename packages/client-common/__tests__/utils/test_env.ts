@@ -1,8 +1,9 @@
-export enum TestEnv {
-  Cloud = 'cloud',
-  LocalSingleNode = 'local_single_node',
-  LocalCluster = 'local_cluster',
-}
+export const TestEnv = {
+  Cloud: 'cloud',
+  LocalSingleNode: 'local_single_node',
+  LocalCluster: 'local_cluster',
+} as const
+export type TestEnv = (typeof TestEnv)[keyof typeof TestEnv]
 
 export function getClickHouseTestEnvironment(): TestEnv {
   let env

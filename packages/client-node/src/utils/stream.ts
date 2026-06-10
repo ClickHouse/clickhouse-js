@@ -28,12 +28,16 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
 
     return text
   } catch (err) {
+    // V8 (Node.js) throws a RangeError with "Invalid string length" once a
+    // string grows past MAX_STRING_LENGTH; JavaScriptCore (Bun) throws a
+    // RangeError with "Out of memory" in the same situation.
     if (
       err instanceof RangeError &&
-      err.message.includes('Invalid string length')
+      (err.message.includes('Invalid string length') ||
+        err.message.includes('Out of memory'))
     ) {
       throw new Error(
-        `The response length exceeds the maximum allowed size of V8 String: ${MAX_STRING_LENGTH} characters.`,
+        `The response length exceeds the maximum allowed size of a string: ${MAX_STRING_LENGTH} characters.`,
         { cause: err },
       )
     }

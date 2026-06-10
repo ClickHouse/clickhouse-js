@@ -1957,7 +1957,10 @@ type URI = string
 type Map = SettingsMap
 
 export class SettingsMap {
-  private constructor(private readonly record: Record<string, string>) {}
+  private readonly record: Record<string, string>
+  private constructor(record: Record<string, string>) {
+    this.record = record
+  }
 
   toString(): string {
     return `{${Object.entries(this.record)

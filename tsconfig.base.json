@@ -7,6 +7,11 @@
     "pretty": true,
     "noEmitOnError": true,
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
     "resolveJsonModule": true,
     "removeComments": false,
     "sourceMap": true,
@@ -15,7 +20,8 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": false,
     "esModuleInterop": true,
-    "importHelpers": false
+    "importHelpers": false,
+    "erasableSyntaxOnly": true
   },
   "exclude": ["node_modules"]
 }

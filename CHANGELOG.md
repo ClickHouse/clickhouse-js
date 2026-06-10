@@ -1,5 +1,9 @@
 # 1.20.0
 
+## Migration Notes
+
+- TypeScript: `ClickHouseLogLevel` is now exported as a literal numeric union type (`0 | 1 | 2 | 3 | 4 | 127`) instead of a TypeScript `enum` type. If you were assigning arbitrary `number` values to `ClickHouseLogLevel`, you may need to narrow/cast those values during migration.
+
 ## Bug Fixes
 
 - (Node.js only) Fixed a race condition in `ResultSet.json()` and `ResultSet.stream()` on `JSONEachRow` (and other streamable) result sets where calling `json()` on a fast/small response could throw `Stream has been already consumed` if the underlying stream ended between internal `readableEnded` checks. The consumption guard has been hardened: the stream is now shielded through a single `consume()` path that marks the result set as consumed in the appropriate branches, after format validation, so a successful `json()` call no longer races against the stream finishing. ([#603])
@@ -14,7 +18,7 @@
 
 [#758]: https://github.com/ClickHouse/clickhouse-js/pull/758
 
-## Breaking Changes
+## Bug Fixes
 
 - **Enum type parsing now correctly unescapes backslash escape sequences in enum names.** Previously, `parseEnumType` returned enum names with raw escape sequences (e.g., `f\'` instead of `f'`). Now it properly decodes escape sequences including `\'` (single quote), `\\` (backslash), `\n` (newline), `\t` (tab), and `\r` (carriage return). This matches the behavior of ClickHouse string literals and ensures consistency with how the client encodes strings when sending data to the server. If you were relying on the previous incorrect behavior where backslash escape sequences were preserved in enum names, you will need to update your code to handle properly unescaped values.
 

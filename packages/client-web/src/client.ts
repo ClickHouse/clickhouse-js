@@ -54,7 +54,7 @@ export type WebClickHouseClient = Omit<
 
 class WebClickHouseClientImpl extends ClickHouseClient<ReadableStream> {
   /** See {@link ClickHouseClient.query}. */
-  query<Format extends DataFormat>(
+  override query<Format extends DataFormat>(
     params: QueryParamsWithFormat<Format>,
   ): Promise<QueryResult<Format>> {
     return super.query(params) as Promise<ResultSet<Format>>
