@@ -1,13 +1,13 @@
-import * as uuid from 'uuid'
+import * as uuid from "uuid";
 
 export function guid(): string {
-  return uuid.v4().replace(/-/g, '')
+  return uuid.v4().replace(/-/g, "");
 }
 
 export function randomUUID(): string {
-  return uuid.v4()
+  return uuid.v4();
 }
 
 export function validateUUID(s: string): boolean {
-  return uuid.validate(s)
+  return uuid.validate(s);
 }

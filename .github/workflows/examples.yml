@@ -1,0 +1,120 @@
+name: "examples"
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - release
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  OTEL_SERVICE_NAME: vitest
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
+  OTEL_EXPORTER_OTLP_HEADERS: "authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}"
+  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js,deployment.environment=ci"
+  VITEST_OTEL_ENABLED: "true"
+  VITEST_COVERAGE: "true"
+
+jobs:
+  code-quality:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [node, web]
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Typecheck
+        run: |
+          npm run typecheck
+
+      - name: Run linting
+        run: |
+          npm run lint
+
+  run-examples:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        clickhouse: [head, latest]
+        package: [node, web]
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Install examples dependencies
+        run: |
+          npm install
+
+      - name: Install Playwright Chromium
+        if: matrix.package == 'web'
+        run: |
+          npx playwright install chromium
+
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
+      - name: Warm up system.query_log
+        run: |
+          docker exec clickhouse-js-clickhouse-server clickhouse-client --query "SELECT 1"
+          sleep 8
+
+      - name: Run examples
+        env:
+          CLICKHOUSE_CLOUD_URL: https://${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}/
+          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
+        run: |
+          npm run run-examples
+
+  success:
+    needs: ["code-quality", "run-examples"]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All examples checks passed
+        run: echo "All examples checks passed! 🎉"

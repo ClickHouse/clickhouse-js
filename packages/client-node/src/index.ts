@@ -1,11 +1,11 @@
 export {
   NodeClickHouseClient as ClickHouseClient,
   type QueryResult,
-} from './client'
-export { createClient } from './client'
-export { type NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
-export { ResultSet, type StreamReadable } from './result_set'
-export { drainStream } from './connection/stream'
+} from "./client";
+export { createClient } from "./client";
+export { type NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from "./config";
+export { ResultSet, type StreamReadable } from "./result_set";
+export { drainStream } from "./connection/stream";
 
 /** Re-export @clickhouse/client-common types */
 export {
@@ -37,16 +37,7 @@ export {
   type InputJSONObjectEachRow,
   type BaseResultSet,
   type PingResult,
-  ClickHouseError,
-  parseError,
-  ClickHouseLogLevel,
-  SettingsMap,
-  SupportedJSONFormats,
-  SupportedRawFormats,
-  StreamableFormats,
-  StreamableJSONFormats,
-  SingleDocumentJSONFormats,
-  RecordsJSONFormats,
+  type ResponseHeaders,
   type SimpleColumnType,
   type ParsedColumnSimple,
   type ParsedColumnEnum,
@@ -59,15 +50,59 @@ export {
   type ParsedColumnTuple,
   type ParsedColumnMap,
   type ParsedColumnType,
-  parseColumnType,
-  SimpleColumnTypes,
   type ProgressRow,
-  isProgressRow,
-  isRow,
-  isException,
   type RowOrProgress,
   type ClickHouseAuth,
   type ClickHouseJWTAuth,
   type ClickHouseCredentialsAuth,
-  TupleParam,
-} from '@clickhouse/client-common'
+} from "@clickhouse/client-common";
+
+/**
+ * Re-export @clickhouse/client-common runtime values.
+ *
+ * These are intentionally re-exported through local bindings (rather than a direct
+ * `export { ... } from '@clickhouse/client-common'`) so that the `@deprecated` JSDoc tags
+ * applied to them in `@clickhouse/client-common` are NOT propagated to consumers of this package.
+ * Importing these values from `@clickhouse/client` is the recommended, non-deprecated path.
+ */
+import {
+  ClickHouseError as ClickHouseError_,
+  parseError as parseError_,
+  ClickHouseLogLevel as ClickHouseLogLevel_,
+  SettingsMap as SettingsMap_,
+  SupportedJSONFormats as SupportedJSONFormats_,
+  SupportedRawFormats as SupportedRawFormats_,
+  StreamableFormats as StreamableFormats_,
+  StreamableJSONFormats as StreamableJSONFormats_,
+  SingleDocumentJSONFormats as SingleDocumentJSONFormats_,
+  RecordsJSONFormats as RecordsJSONFormats_,
+  parseColumnType as parseColumnType_,
+  SimpleColumnTypes as SimpleColumnTypes_,
+  isProgressRow as isProgressRow_,
+  isRow as isRow_,
+  isException as isException_,
+  TupleParam as TupleParam_,
+  defaultJSONHandling as defaultJSONHandling_,
+} from "@clickhouse/client-common";
+
+export const ClickHouseError = ClickHouseError_;
+export type ClickHouseError = ClickHouseError_;
+export const parseError = parseError_;
+export const ClickHouseLogLevel = ClickHouseLogLevel_;
+export type ClickHouseLogLevel = ClickHouseLogLevel_;
+export const SettingsMap = SettingsMap_;
+export type SettingsMap = SettingsMap_;
+export const SupportedJSONFormats = SupportedJSONFormats_;
+export const SupportedRawFormats = SupportedRawFormats_;
+export const StreamableFormats = StreamableFormats_;
+export const StreamableJSONFormats = StreamableJSONFormats_;
+export const SingleDocumentJSONFormats = SingleDocumentJSONFormats_;
+export const RecordsJSONFormats = RecordsJSONFormats_;
+export const parseColumnType = parseColumnType_;
+export const SimpleColumnTypes = SimpleColumnTypes_;
+export const isProgressRow = isProgressRow_;
+export const isRow = isRow_;
+export const isException = isException_;
+export const TupleParam = TupleParam_;
+export type TupleParam = TupleParam_;
+export const defaultJSONHandling = defaultJSONHandling_;

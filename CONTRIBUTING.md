@@ -52,6 +52,14 @@ everyone in the community can safely benefit from your contribution.
 
 We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports both Node.js, Web environments and edge runtimes.
 
+The repository uses three consolidated Vitest configuration files:
+
+- `vitest.client-common.config.ts` - Tests for the common client package
+- `vitest.node.config.ts` - Tests for the Node.js client package
+- `vitest.web.config.ts` - Tests for the Web client package
+
+Each config supports multiple test modes controlled by the `TEST_MODE` environment variable, allowing different test scenarios (unit, integration, TLS, etc.) to be run with a single configuration file.
+
 ### Type checking and linting
 
 Both checks can be run manually:
@@ -68,7 +76,11 @@ However, usually, it is enough to rely on Husky Git hooks.
 Does not require a running ClickHouse server.
 
 ```bash
-npm run test:unit
+# Run common unit tests
+npm run test:common:unit
+
+# Run Node.js unit tests
+npm run test:node:unit
 ```
 
 ### Running integration tests
@@ -108,7 +120,7 @@ npm run test:node:integration
 Run the tests (Web):
 
 ```bash
-npm run test:web:integration
+npm run test:web
 ```
 
 #### Running TLS integration tests
@@ -124,18 +136,12 @@ docker-compose up -d
 and then run the tests (Node.js only):
 
 ```bash
-npm run test:node:tls
+npm run test:node:integration:tls
 ```
 
 #### Local two nodes cluster integration tests
 
 Used when `CLICKHOUSE_TEST_ENVIRONMENT` is set to `local_cluster`.
-
-Start a ClickHouse cluster using Docker compose:
-
-```bash
-docker compose -f docker-compose.cluster.yml up -d
-```
 
 Run the tests (Node.js):
 
@@ -197,73 +203,6 @@ The average reported test coverage is above 90%. We generally aim towards this t
 Currently, automatic coverage reports are disabled.
 See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177), as it should be restored in the scope of that issue.
 
-## Release process
+## Running upstream ClickHouse SQL tests
 
-Tools required:
-
-- Node.js >= `20.x`
-- NPM >= `11.x`
-- jq (https://stedolan.github.io/jq/)
-
-We prefer to keep versions the same across the packages, and release all at once, even if there were no changes in some.
-
-Make sure that the working directory is clean:
-
-```bash
-git clean -dfX
-npm i
-```
-
-```bash
-export NEW_VERSION=[new_version]
-.scripts/update_version.sh $NEW_VERSION
-```
-
-Then build the packages:
-
-```bash
-npm run build
-```
-
-Now we're ready to publish the beta version for testing:
-
-```bash
-npm login
-npm --workspaces publish --tag=beta
-```
-
-After the package is published it can be tests in a separate project by installing it with the `beta` tag:
-
-```bash
-npm install @clickhouse/client@beta
-```
-
-After the beta testing is done, you can commit the changes, create a new Git tag and push it to the repository:
-
-```bash
-git add .
-git commit -m "chore: bump version to $NEW_VERSION"
-```
-
-Promote the `beta` tag to `latest`:
-
-```bash
-npm dist-tag add @clickhouse/client-common@$NEW_VERSION latest
-npm dist-tag add @clickhouse/client@$NEW_VERSION latest
-npm dist-tag add @clickhouse/client-web@$NEW_VERSION latest
-```
-
-Check that the packages have been published correctly: <https://www.npmjs.com/org/clickhouse>
-
-Create a PR and merge it after review.
-
-The last step is to create a new Git tag and push it to the repository:
-
-```bash
-git tag "$NEW_VERSION"
-git push origin tag "$NEW_VERSION"
-```
-
-Then create a new release in GitHub using the created tag and the corresponding changelog notes.
-
-All done, thanks!
+The [`tests/clickhouse-test-runner`](tests/clickhouse-test-runner) directory contains a Node.js port of `clickhouse-client` that lets `tests/clickhouse-test` from `ClickHouse/ClickHouse` exercise the JS client against the upstream SQL test suite. This harness helps validate that `@clickhouse/client` behaves correctly against real ClickHouse tests. See the [clickhouse-test-runner README](tests/clickhouse-test-runner/README.md) for setup and usage instructions.
