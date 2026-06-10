@@ -24,6 +24,7 @@ export function typescriptEslintConfig(root) {
       '@typescript-eslint/consistent-type-imports': 'warn',
       '@typescript-eslint/array-type': 'off',
       '@typescript-eslint/ban-ts-comment': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
     },
   } // TypeScript-ESLint recommended rules with type checking
 }
