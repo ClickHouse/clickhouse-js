@@ -175,8 +175,4 @@ const tracer: ClickHouseTracer<RecordedSpan> = {
 
 ## Disabling tracing
 
-Omit the `tracer` option (or set it to `undefined`) and the client does no
-tracing work - a shared no-op tracer (handing out a shared no-op span) is
-assigned once at client creation, so the hot path stays branch-free with
-effectively zero per-operation overhead, and the monomorphic call sites
-remain friendly to the JIT.
+Omit the `tracer` option (or set it to `undefined`) and the client will not emit any spans. Internally, it uses a shared no-op tracer/span so the call sites remain monomorphic (branch-free), keeping the overhead minimal (but not strictly zero).
