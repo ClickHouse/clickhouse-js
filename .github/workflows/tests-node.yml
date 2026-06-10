@@ -1,4 +1,4 @@
-name: 'node'
+name: "node"
 
 permissions: {}
 on:
@@ -7,29 +7,29 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**/*.md'
-      - 'LICENSE'
-      - 'benchmarks/**'
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
   pull_request:
     paths-ignore:
-      - '**/*.md'
-      - 'LICENSE'
-      - 'benchmarks/**'
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
 
   schedule:
-    - cron: '0 9 * * *'
+    - cron: "0 9 * * *"
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.ref }}'
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 env:
   OTEL_SERVICE_NAME: vitest
   OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-  OTEL_EXPORTER_OTLP_HEADERS: 'authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}'
-  OTEL_RESOURCE_ATTRIBUTES: 'service.namespace=clickhouse-js,deployment.environment=ci'
-  VITEST_OTEL_ENABLED: 'true'
-  VITEST_COVERAGE: 'true'
+  OTEL_EXPORTER_OTLP_HEADERS: "authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}"
+  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js,deployment.environment=ci"
+  VITEST_OTEL_ENABLED: "true"
+  VITEST_COVERAGE: "true"
 
 jobs:
   code-quality:
@@ -155,8 +155,8 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
 
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -200,8 +200,8 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
 
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -276,8 +276,8 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
 
       - name: Setup NodeJS
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -309,13 +309,13 @@ jobs:
   success:
     needs:
       [
-        'code-quality',
-        'common-unit-tests',
-        'unit-tests',
-        'integration-tests-local-single-node',
-        'integration-tests-local-cluster',
-        'integration-tests-cloud',
-        'codecov-upload',
+        "code-quality",
+        "common-unit-tests",
+        "unit-tests",
+        "integration-tests-local-single-node",
+        "integration-tests-local-cluster",
+        "integration-tests-cloud",
+        "codecov-upload",
       ]
     # Run even if some needed jobs were skipped (e.g. cloud jobs on PRs from forks),
     # but still fail if any of them failed or were cancelled.

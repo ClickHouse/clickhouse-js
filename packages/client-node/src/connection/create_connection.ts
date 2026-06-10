@@ -1,23 +1,23 @@
-import type { ConnectionParams } from '@clickhouse/client-common'
-import type http from 'http'
-import type https from 'node:https'
+import type { ConnectionParams } from "@clickhouse/client-common";
+import type http from "http";
+import type https from "node:https";
 import type {
   NodeBaseConnection,
   NodeConnectionParams,
-} from './node_base_connection'
-import { NodeCustomAgentConnection } from './node_custom_agent_connection'
-import { NodeHttpConnection } from './node_http_connection'
-import { NodeHttpsConnection } from './node_https_connection'
+} from "./node_base_connection";
+import { NodeCustomAgentConnection } from "./node_custom_agent_connection";
+import { NodeHttpConnection } from "./node_http_connection";
+import { NodeHttpsConnection } from "./node_https_connection";
 
 export interface CreateConnectionParams {
-  connection_params: ConnectionParams
-  tls: NodeConnectionParams['tls']
-  keep_alive: NodeConnectionParams['keep_alive']
-  http_agent: http.Agent | https.Agent | undefined
-  set_basic_auth_header: boolean
-  capture_enhanced_stack_trace: boolean
-  eagerly_destroy_stale_sockets?: boolean
-  max_response_headers_size?: number
+  connection_params: ConnectionParams;
+  tls: NodeConnectionParams["tls"];
+  keep_alive: NodeConnectionParams["keep_alive"];
+  http_agent: http.Agent | https.Agent | undefined;
+  set_basic_auth_header: boolean;
+  capture_enhanced_stack_trace: boolean;
+  eagerly_destroy_stale_sockets?: boolean;
+  max_response_headers_size?: number;
 }
 
 /** A factory for easier mocking after Node.js 22.18 */
@@ -42,10 +42,10 @@ export class NodeConnectionFactory {
         http_agent,
         eagerly_destroy_stale_sockets,
         max_response_headers_size,
-      })
+      });
     }
     switch (connection_params.url.protocol) {
-      case 'http:':
+      case "http:":
         return new NodeHttpConnection({
           ...connection_params,
           set_basic_auth_header,
@@ -53,8 +53,8 @@ export class NodeConnectionFactory {
           keep_alive,
           eagerly_destroy_stale_sockets,
           max_response_headers_size,
-        })
-      case 'https:':
+        });
+      case "https:":
         return new NodeHttpsConnection({
           ...connection_params,
           set_basic_auth_header,
@@ -63,9 +63,9 @@ export class NodeConnectionFactory {
           tls,
           eagerly_destroy_stale_sockets,
           max_response_headers_size,
-        })
+        });
       default:
-        throw new Error('Only HTTP and HTTPS protocols are supported')
+        throw new Error("Only HTTP and HTTPS protocols are supported");
     }
   }
 }

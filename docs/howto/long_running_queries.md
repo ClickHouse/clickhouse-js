@@ -48,9 +48,9 @@ The default value for `http_headers_progress_interval_ms` is defined by how ofte
 >   max_response_headers_size: 1024 * 1024, // 1 MiB
 >   clickhouse_settings: {
 >     send_progress_in_http_headers: 1,
->     http_headers_progress_interval_ms: '110000',
+>     http_headers_progress_interval_ms: "110000",
 >   },
-> })
+> });
 > ```
 >
 > The Web client uses `fetch` and is not subject to this limit.
@@ -62,7 +62,7 @@ The default value for `http_headers_progress_interval_ms` is defined by how ofte
 **Step 3.** Configure the client:
 
 ```ts
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
 const client = createClient({
   // Allow up to 400s for the query to complete (adjust to your estimate).
@@ -72,9 +72,9 @@ const client = createClient({
     send_progress_in_http_headers: 1,
     // Send headers every 110s — just under the assumed 120s LB idle timeout.
     // Must be a string because UInt64 can exceed Number.MAX_SAFE_INTEGER.
-    http_headers_progress_interval_ms: '110000',
+    http_headers_progress_interval_ms: "110000",
   },
-})
+});
 ```
 
 **Step 4.** Execute the query normally:
@@ -82,7 +82,7 @@ const client = createClient({
 ```ts
 await client.command({
   query: `INSERT INTO my_table SELECT * FROM source_table`,
-})
+});
 ```
 
 The client will now receive periodic header frames from ClickHouse, keeping the LB idle timer reset.
@@ -100,14 +100,14 @@ This reduces the window of exposure to network errors from "the entire query dur
 **Step 1.** Generate a `query_id` on the client side so you can track the query later:
 
 ```ts
-import * as crypto from 'crypto'
-const queryId = crypto.randomUUID()
+import * as crypto from "crypto";
+const queryId = crypto.randomUUID();
 ```
 
 **Step 2.** Start the long-running command but **do not await it yet**. Attach an `AbortController` so you can drop the HTTP connection without cancelling the server-side query:
 
 ```ts
-const abortController = new AbortController()
+const abortController = new AbortController();
 
 const commandPromise = client
   .command({
@@ -116,12 +116,12 @@ const commandPromise = client
     abort_signal: abortController.signal,
   })
   .catch((err) => {
-    if (err instanceof Error && err.message.includes('abort')) {
+    if (err instanceof Error && err.message.includes("abort")) {
       // Expected — we aborted the request intentionally.
     } else {
-      throw err
+      throw err;
     }
-  })
+  });
 ```
 
 **Step 3.** Poll `system.query_log` until the query appears (meaning the server has registered it):
@@ -134,18 +134,18 @@ async function checkQueryExists(client, queryId) {
       FROM system.query_log
       WHERE query_id = '${queryId}'
     `,
-    format: 'JSONEachRow',
-  })
-  const [row] = await rs.json()
-  return row?.exists !== 0
+    format: "JSONEachRow",
+  });
+  const [row] = await rs.json();
+  return row?.exists !== 0;
 }
 ```
 
 **Step 4.** Once the query is confirmed to exist on the server, abort the HTTP request:
 
 ```ts
-abortController.abort()
-await commandPromise // resolves immediately after abort
+abortController.abort();
+await commandPromise; // resolves immediately after abort
 ```
 
 If the query never appears after a reasonable number of polls, treat it as a failure and handle accordingly.
@@ -161,10 +161,10 @@ async function checkCompletedQuery(client, queryId) {
       WHERE query_id = '${queryId}' AND type != 'QueryStart'
       LIMIT 1
     `,
-    format: 'JSONEachRow',
-  })
-  const [row] = await rs.json()
-  return row?.type === 'QueryFinish'
+    format: "JSONEachRow",
+  });
+  const [row] = await rs.json();
+  return row?.type === "QueryFinish";
 }
 ```
 

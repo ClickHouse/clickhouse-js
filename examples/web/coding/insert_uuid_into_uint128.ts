@@ -1,4 +1,4 @@
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
 function assertEqual(
   actual: unknown,
@@ -6,7 +6,7 @@ function assertEqual(
   message: string,
 ): void {
   if (actual !== expected) {
-    throw new Error(`${message}: expected ${expected}, got ${actual}`)
+    throw new Error(`${message}: expected ${expected}, got ${actual}`);
   }
 }
 
@@ -26,16 +26,16 @@ function assertEqual(
 
 function uuidToUInt128(uuid: string): string {
   // 8-4-4-4-12 hex digits → 32 hex digits → BigInt → decimal string
-  return BigInt('0x' + uuid.replace(/-/g, '')).toString()
+  return BigInt("0x" + uuid.replace(/-/g, "")).toString();
 }
 
-const client = createClient()
+const client = createClient();
 
-const uuid = '019982cb-3abf-7e12-9668-c788a9e3639c'
-const expectedUInt128 = uuidToUInt128(uuid)
+const uuid = "019982cb-3abf-7e12-9668-c788a9e3639c";
+const expectedUInt128 = uuidToUInt128(uuid);
 
 // ---- Pattern 1: client-side UUID → UInt128 conversion ----
-const tableName = 'insert_uuid_into_uint128_example_web'
+const tableName = "insert_uuid_into_uint128_example_web";
 await client.command({
   query: `
     CREATE OR REPLACE TABLE ${tableName}
@@ -46,38 +46,38 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 await client.insert({
   table: tableName,
   values: [
     {
       id: expectedUInt128,
-      description: 'converted from UUID on the client',
+      description: "converted from UUID on the client",
     },
   ],
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 const converted = await client.query({
   // UInt128 values are returned as decimal strings (too wide for a JS number).
   query: `SELECT toString(id) AS id_uint128, description
           FROM ${tableName}`,
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 const convertedRows = await converted.json<{
-  id_uint128: string
-  description: string
-}>()
-console.info('Pattern 1 (client-side conversion):', convertedRows)
+  id_uint128: string;
+  description: string;
+}>();
+console.info("Pattern 1 (client-side conversion):", convertedRows);
 // Round-trip assertion: the value SELECTed back must equal the BigInt-derived
 // UInt128 we sent, proving the server parsed the JSON input correctly.
 assertEqual(
   convertedRows[0].id_uint128,
   expectedUInt128,
-  'Pattern 1 round-trip',
-)
+  "Pattern 1 round-trip",
+);
 
 // ---- Pattern 2: EPHEMERAL UUID column with UInt128 DEFAULT ----
-const ephemeralTableName = 'insert_uuid_into_uint128_ephemeral_example_web'
+const ephemeralTableName = "insert_uuid_into_uint128_ephemeral_example_web";
 await client.command({
   query: `
     CREATE OR REPLACE TABLE ${ephemeralTableName}
@@ -89,35 +89,35 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 await client.insert({
   table: ephemeralTableName,
   values: [
     {
       id_uuid: uuid,
-      description: 'populated via EPHEMERAL UUID column',
+      description: "populated via EPHEMERAL UUID column",
     },
   ],
-  format: 'JSONEachRow',
+  format: "JSONEachRow",
   // The ephemeral column must be listed explicitly so that the DEFAULT
   // expression on `id` is evaluated.
-  columns: ['id_uuid', 'description'],
-})
+  columns: ["id_uuid", "description"],
+});
 const ephemeral = await client.query({
   query: `SELECT toString(id) AS id_uint128, description
           FROM ${ephemeralTableName}`,
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 const ephemeralRows = await ephemeral.json<{
-  id_uint128: string
-  description: string
-}>()
-console.info('Pattern 2 (EPHEMERAL column):', ephemeralRows)
+  id_uint128: string;
+  description: string;
+}>();
+console.info("Pattern 2 (EPHEMERAL column):", ephemeralRows);
 // Both patterns must produce the same UInt128 representation of the UUID.
 assertEqual(
   ephemeralRows[0].id_uint128,
   expectedUInt128,
-  'Pattern 2 round-trip',
-)
+  "Pattern 2 round-trip",
+);
 
-await client.close()
+await client.close();

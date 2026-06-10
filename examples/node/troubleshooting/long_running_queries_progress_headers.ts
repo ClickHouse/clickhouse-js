@@ -1,4 +1,4 @@
-import { type ClickHouseClient, createClient } from '@clickhouse/client'
+import { type ClickHouseClient, createClient } from "@clickhouse/client";
 
 /**
  * If you execute a long-running query without data coming in from the client,
@@ -17,7 +17,7 @@ import { type ClickHouseClient, createClient } from '@clickhouse/client'
  * @see https://clickhouse.com/docs/en/operations/settings/settings#send_progress_in_http_headers
  * @see https://clickhouse.com/docs/en/interfaces/http
  */
-const tableName = 'long_running_queries_progress_headers'
+const tableName = "long_running_queries_progress_headers";
 const client = createClient({
   /* Here we assume that:
 
@@ -37,10 +37,10 @@ const client = createClient({
     // The interval of sending these progress headers. Here it is less than 120s,
     // which in this example is assumed to be the LB idle connection timeout.
     // As it is UInt64 (UInt64 max value > Number.MAX_SAFE_INTEGER), it should be passed as a string.
-    http_headers_progress_interval_ms: '110000',
+    http_headers_progress_interval_ms: "110000",
   },
-})
-await createTestTable(client, tableName)
+});
+await createTestTable(client, tableName);
 
 // Assuming that this is our long-long running insert,
 // it should not fail because of LB and the client settings described above.
@@ -49,13 +49,13 @@ await client.command({
     INSERT INTO ${tableName}
     SELECT '42', 'foobar'
   `,
-})
+});
 const rows = await client.query({
   query: `SELECT * FROM ${tableName}`,
-  format: 'JSONEachRow',
-})
-console.info('Inserted data:', await rows.json())
-await client.close()
+  format: "JSONEachRow",
+});
+console.info("Inserted data:", await rows.json());
+await client.close();
 
 async function createTestTable(client: ClickHouseClient, tableName: string) {
   try {
@@ -66,10 +66,10 @@ async function createTestTable(client: ClickHouseClient, tableName: string) {
         ENGINE MergeTree()
         ORDER BY (id)
       `,
-    })
+    });
   } catch (err) {
-    console.error(`Error while creating the table ${tableName}:`, err)
-    await client.close()
-    process.exit(1)
+    console.error(`Error while creating the table ${tableName}:`, err);
+    await client.close();
+    process.exit(1);
   }
 }

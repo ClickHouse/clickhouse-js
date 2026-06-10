@@ -4,10 +4,10 @@ export function isAwaitUsingStatementSupported(): boolean {
       (async () => {
           await using c = null;
       })
-    `)
-    return true
+    `);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -17,9 +17,9 @@ export function isUsingStatementSupported(): boolean {
       (() => {
           using c = null;
       })
-    `)
-    return true
+    `);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }

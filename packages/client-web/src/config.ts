@@ -5,19 +5,19 @@ import type {
   ImplementationDetails,
   JSONHandling,
   ResponseHeaders,
-} from '@clickhouse/client-common'
-import { WebConnection } from './connection'
-import { ResultSet } from './result_set'
-import { WebValuesEncoder } from './utils'
+} from "@clickhouse/client-common";
+import { WebConnection } from "./connection";
+import { ResultSet } from "./result_set";
+import { WebValuesEncoder } from "./utils";
 
 export type WebClickHouseClientConfigOptions =
   BaseClickHouseClientConfigOptions & {
     /** A custom implementation or wrapper over the global `fetch` method that will be used by the client internally.
      *  This might be helpful if you want to configure mTLS or change other default `fetch` settings. */
-    fetch?: typeof fetch
-  }
+    fetch?: typeof fetch;
+  };
 
-export const WebImpl: ImplementationDetails<ReadableStream>['impl'] = {
+export const WebImpl: ImplementationDetails<ReadableStream>["impl"] = {
   make_connection: (
     config: WebClickHouseClientConfigOptions,
     params: ConnectionParams,
@@ -35,4 +35,4 @@ export const WebImpl: ImplementationDetails<ReadableStream>['impl'] = {
   ) => new ResultSet(stream, format, query_id, response_headers)) as any,
   values_encoder: (jsonHandling: JSONHandling) =>
     new WebValuesEncoder(jsonHandling),
-}
+};
