@@ -35,6 +35,30 @@ describe("toSearchParams", () => {
     ]);
   });
 
+  it("should set HTTP-specific settings", async () => {
+    const params = toSearchParams({
+      database: "default",
+      query_id: "foo",
+      clickhouse_settings: {
+        wait_end_of_query: 1,
+        buffer_size: "3000000",
+        compress: 1,
+        decompress: 0,
+        quota_key: "my-quota",
+        stacktrace: 1,
+      },
+    })!;
+    expect(toSortedArray(params)).toEqual([
+      ["buffer_size", "3000000"],
+      ["compress", "1"],
+      ["decompress", "0"],
+      ["query_id", "foo"],
+      ["quota_key", "my-quota"],
+      ["stacktrace", "1"],
+      ["wait_end_of_query", "1"],
+    ]);
+  });
+
   it("should set query params", async () => {
     const params = toSearchParams({
       database: "default",
