@@ -1,63 +1,71 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from "vitest";
 import {
+  ClickHouseSpanKind,
   ClickHouseSpanNames,
+  ClickHouseSpanStatusCode,
+  type ClickHouseSpan,
+  type ClickHouseSpanAttributes,
+  type ClickHouseSpanOptions,
+  type ClickHouseSpanStatus,
   type ClickHouseTracer,
-  type ClickHouseTracerSpanAttributes,
-  type ClickHouseTracerSpanStatus,
-} from '@clickhouse/client-common'
-import { ClickHouseClient } from '../../src/client'
+} from "@clickhouse/client-common";
+import { ClickHouseClient } from "../../src/client";
 
-interface RecordedSpan {
-  id: number
-  name: string
-  initialAttributes: ClickHouseTracerSpanAttributes
-  attributes: ClickHouseTracerSpanAttributes
-  status?: ClickHouseTracerSpanStatus
-  exception?: unknown
-  ended: boolean
+class RecordedSpan implements ClickHouseSpan {
+  readonly initialAttributes: ClickHouseSpanAttributes;
+  attributes: ClickHouseSpanAttributes;
+  status?: ClickHouseSpanStatus;
+  exception?: Error;
+  ended = false;
+  activeDuring: string[] = [];
+
+  constructor(
+    readonly name: string,
+    readonly options?: ClickHouseSpanOptions,
+  ) {
+    this.initialAttributes = { ...options?.attributes };
+    this.attributes = { ...options?.attributes };
+  }
+  setAttributes(attributes: ClickHouseSpanAttributes) {
+    this.attributes = { ...this.attributes, ...attributes };
+  }
+  setStatus(status: ClickHouseSpanStatus) {
+    this.status = status;
+  }
+  recordException(error: Error) {
+    this.exception = error;
+  }
+  end() {
+    this.ended = true;
+  }
 }
 
 function createRecordingTracer(): {
-  tracer: ClickHouseTracer<RecordedSpan>
-  spans: RecordedSpan[]
+  tracer: ClickHouseTracer<RecordedSpan>;
+  spans: RecordedSpan[];
 } {
-  const spans: RecordedSpan[] = []
-  let nextId = 0
+  const spans: RecordedSpan[] = [];
   const tracer: ClickHouseTracer<RecordedSpan> = {
-    startSpan(name, attributes = {}) {
-      const span: RecordedSpan = {
-        id: nextId++,
-        name,
-        initialAttributes: { ...attributes },
-        attributes: { ...attributes },
-        ended: false,
-      }
-      spans.push(span)
-      return span
+    startSpan(name, options) {
+      const span = new RecordedSpan(name, options);
+      spans.push(span);
+      return span;
     },
-    setAttributes(span, attributes) {
-      span.attributes = { ...span.attributes, ...attributes }
+    withActiveSpan(span, fn) {
+      span.activeDuring.push("fn");
+      return fn();
     },
-    setStatus(span, status) {
-      span.status = status
-    },
-    recordException(span, error) {
-      span.exception = error
-    },
-    endSpan(span) {
-      span.ended = true
-    },
-  }
-  return { tracer, spans }
+  };
+  return { tracer, spans };
 }
 
 interface MockConnection {
-  query: ReturnType<typeof makeQuery>
-  command: ReturnType<typeof makeCommand>
-  exec: ReturnType<typeof makeExec>
-  insert: ReturnType<typeof makeInsert>
-  ping: ReturnType<typeof makePing>
-  close: () => Promise<void>
+  query: ReturnType<typeof makeQuery>;
+  command: ReturnType<typeof makeCommand>;
+  exec: ReturnType<typeof makeExec>;
+  insert: ReturnType<typeof makeInsert>;
+  ping: ReturnType<typeof makePing>;
+  close: () => Promise<void>;
 }
 
 function makeQuery(impl?: () => Promise<any>) {
@@ -65,29 +73,29 @@ function makeQuery(impl?: () => Promise<any>) {
     impl ??
     (async () => ({
       stream: {} as any,
-      query_id: 'q-1',
+      query_id: "q-1",
       response_headers: {},
     }))
-  )
+  );
 }
 function makeCommand(impl?: () => Promise<any>) {
-  return impl ?? (async () => ({ query_id: 'c-1', response_headers: {} }))
+  return impl ?? (async () => ({ query_id: "c-1", response_headers: {} }));
 }
 function makeExec(impl?: () => Promise<any>) {
   return (
     impl ??
     (async () => ({
       stream: {} as any,
-      query_id: 'e-1',
+      query_id: "e-1",
       response_headers: {},
     }))
-  )
+  );
 }
 function makeInsert(impl?: () => Promise<any>) {
-  return impl ?? (async () => ({ query_id: 'i-1', response_headers: {} }))
+  return impl ?? (async () => ({ query_id: "i-1", response_headers: {} }));
 }
 function makePing(impl?: () => Promise<any>) {
-  return impl ?? (async () => ({ success: true }))
+  return impl ?? (async () => ({ success: true }));
 }
 
 function buildClient(
@@ -101,11 +109,11 @@ function buildClient(
     insert: makeInsert(overrides.insert),
     ping: makePing(overrides.ping),
     close: async () => {},
-  }
+  };
   return new ClickHouseClient({
-    url: 'http://localhost:8123',
-    database: 'my_db',
-    application: 'my_app',
+    url: "http://localhost:8123",
+    database: "my_db",
+    application: "my_app",
     tracer,
     impl: {
       make_connection: () => connection as any,
@@ -116,133 +124,192 @@ function buildClient(
           encodeValues: (v: any) => v,
         }) as any,
     },
-  })
+  });
 }
 
-describe('tracer hooks', () => {
-  it('emits a span for query() with OK status and query_id attribute', async () => {
-    const { tracer, spans } = createRecordingTracer()
-    const client = buildClient(tracer)
-    await client.query({ query: 'SELECT 1', query_id: 'caller-q' })
-    expect(spans).toHaveLength(1)
-    const [span] = spans
-    expect(span.name).toBe(ClickHouseSpanNames.query)
-    expect(span.initialAttributes['db.system']).toBe('clickhouse')
-    expect(span.initialAttributes['db.namespace']).toBe('my_db')
-    expect(span.initialAttributes['server.address']).toBe('localhost:8123')
-    expect(span.initialAttributes['clickhouse.application']).toBe('my_app')
-    expect(span.initialAttributes['clickhouse.format']).toBe('JSON')
-    expect(span.initialAttributes['clickhouse.query_id']).toBe('caller-q')
-    expect(span.attributes['clickhouse.query_id']).toBe('q-1')
-    expect(span.status).toEqual({ code: 'OK' })
-    expect(span.exception).toBeUndefined()
-    expect(span.ended).toBe(true)
-  })
+describe("tracer", () => {
+  it("emits a CLIENT span for query() with OK status and query_id attribute", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.query({ query: "SELECT 1", query_id: "caller-q" });
+    expect(spans).toHaveLength(1);
+    const [span] = spans;
+    expect(span.name).toBe(ClickHouseSpanNames.query);
+    expect(span.options?.kind).toBe(ClickHouseSpanKind.CLIENT);
+    expect(span.initialAttributes["db.system"]).toBe("clickhouse");
+    expect(span.initialAttributes["db.namespace"]).toBe("my_db");
+    expect(span.initialAttributes["server.address"]).toBe("localhost:8123");
+    expect(span.initialAttributes["clickhouse.application"]).toBe("my_app");
+    expect(span.initialAttributes["clickhouse.format"]).toBe("JSON");
+    expect(span.initialAttributes["clickhouse.query_id"]).toBe("caller-q");
+    expect(span.attributes["clickhouse.query_id"]).toBe("q-1");
+    expect(span.status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+    expect(span.exception).toBeUndefined();
+    expect(span.ended).toBe(true);
+  });
 
-  it('emits a span for command() with OK status', async () => {
-    const { tracer, spans } = createRecordingTracer()
-    const client = buildClient(tracer)
-    await client.command({ query: 'CREATE TABLE t (a UInt8) ENGINE = Memory' })
-    expect(spans).toHaveLength(1)
-    expect(spans[0].name).toBe(ClickHouseSpanNames.command)
-    expect(spans[0].attributes['clickhouse.query_id']).toBe('c-1')
-    expect(spans[0].status).toEqual({ code: 'OK' })
-    expect(spans[0].ended).toBe(true)
-  })
+  it("runs the operation inside withActiveSpan when defined", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.query({ query: "SELECT 1" });
+    expect(spans[0].activeDuring).toEqual(["fn"]);
+  });
 
-  it('emits a span for exec()', async () => {
-    const { tracer, spans } = createRecordingTracer()
-    const client = buildClient(tracer)
-    await client.exec({ query: 'SELECT 1' })
-    expect(spans).toHaveLength(1)
-    expect(spans[0].name).toBe(ClickHouseSpanNames.exec)
-    expect(spans[0].attributes['clickhouse.query_id']).toBe('e-1')
-    expect(spans[0].status).toEqual({ code: 'OK' })
-  })
+  it("works without the optional withActiveSpan", async () => {
+    const spans: RecordedSpan[] = [];
+    const tracer: ClickHouseTracer<RecordedSpan> = {
+      startSpan(name, options) {
+        const span = new RecordedSpan(name, options);
+        spans.push(span);
+        return span;
+      },
+    };
+    const client = buildClient(tracer);
+    await client.query({ query: "SELECT 1" });
+    expect(spans).toHaveLength(1);
+    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+    expect(spans[0].ended).toBe(true);
+  });
 
-  it('emits a span for insert()', async () => {
-    const { tracer, spans } = createRecordingTracer()
-    const client = buildClient(tracer)
-    await client.insert({ table: 'my_table', values: [{ a: 1 }] })
-    expect(spans).toHaveLength(1)
-    expect(spans[0].name).toBe(ClickHouseSpanNames.insert)
-    expect(spans[0].initialAttributes['clickhouse.table']).toBe('my_table')
-    expect(spans[0].initialAttributes['clickhouse.format']).toBe(
-      'JSONCompactEachRow',
-    )
-    expect(spans[0].attributes['clickhouse.query_id']).toBe('i-1')
-    expect(spans[0].status).toEqual({ code: 'OK' })
-  })
+  it("emits a span for command() with OK status", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.command({ query: "CREATE TABLE t (a UInt8) ENGINE = Memory" });
+    expect(spans).toHaveLength(1);
+    expect(spans[0].name).toBe(ClickHouseSpanNames.command);
+    expect(spans[0].attributes["clickhouse.query_id"]).toBe("c-1");
+    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+    expect(spans[0].ended).toBe(true);
+  });
 
-  it('does NOT emit an insert span when there are no rows to insert', async () => {
-    const { tracer, spans } = createRecordingTracer()
-    const client = buildClient(tracer)
-    const result = await client.insert({ table: 'my_table', values: [] })
-    expect(result.executed).toBe(false)
-    expect(spans).toHaveLength(0)
-  })
+  it("emits a span for exec()", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.exec({ query: "SELECT 1" });
+    expect(spans).toHaveLength(1);
+    expect(spans[0].name).toBe(ClickHouseSpanNames.exec);
+    expect(spans[0].attributes["clickhouse.query_id"]).toBe("e-1");
+    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+  });
 
-  it('emits a span for ping()', async () => {
-    const { tracer, spans } = createRecordingTracer()
-    const client = buildClient(tracer)
-    await client.ping()
-    expect(spans).toHaveLength(1)
-    expect(spans[0].name).toBe(ClickHouseSpanNames.ping)
-    expect(spans[0].initialAttributes['clickhouse.ping.select']).toBe(false)
-    expect(spans[0].status).toEqual({ code: 'OK' })
-  })
+  it("emits a span for insert()", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.insert({ table: "my_table", values: [{ a: 1 }] });
+    expect(spans).toHaveLength(1);
+    expect(spans[0].name).toBe(ClickHouseSpanNames.insert);
+    expect(spans[0].initialAttributes["clickhouse.table"]).toBe("my_table");
+    expect(spans[0].initialAttributes["clickhouse.format"]).toBe(
+      "JSONCompactEachRow",
+    );
+    expect(spans[0].attributes["clickhouse.query_id"]).toBe("i-1");
+    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+  });
 
-  it('records the exception and sets ERROR status when an operation throws', async () => {
-    const { tracer, spans } = createRecordingTracer()
-    const failure = new Error('boom')
+  it("does NOT emit an insert span when there are no rows to insert", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    const result = await client.insert({ table: "my_table", values: [] });
+    expect(result.executed).toBe(false);
+    expect(spans).toHaveLength(0);
+  });
+
+  it("emits a span for ping()", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.ping();
+    expect(spans).toHaveLength(1);
+    expect(spans[0].name).toBe(ClickHouseSpanNames.ping);
+    expect(spans[0].initialAttributes["clickhouse.ping.select"]).toBe(false);
+    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+  });
+
+  it("records the exception and sets ERROR status when an operation throws", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const failure = new Error("boom");
     const client = buildClient(tracer, {
       query: async () => {
-        throw failure
+        throw failure;
       },
-    })
-    await expect(client.query({ query: 'SELECT 1' })).rejects.toThrow('boom')
-    expect(spans).toHaveLength(1)
-    expect(spans[0].exception).toBe(failure)
-    expect(spans[0].status).toEqual({ code: 'ERROR', message: 'boom' })
-    expect(spans[0].ended).toBe(true)
-  })
+    });
+    await expect(client.query({ query: "SELECT 1" })).rejects.toThrow("boom");
+    expect(spans).toHaveLength(1);
+    expect(spans[0].exception).toBe(failure);
+    expect(spans[0].status).toEqual({
+      code: ClickHouseSpanStatusCode.ERROR,
+      message: "boom",
+    });
+    expect(spans[0].ended).toBe(true);
+  });
 
-  it('does not call hooks at all when no tracer is configured', async () => {
-    const client = buildClient(undefined)
+  it("normalizes non-Error throwables before recordException", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer, {
+      query: async () => {
+        throw "string failure";
+      },
+    });
+    await expect(client.query({ query: "SELECT 1" })).rejects.toBe(
+      "string failure",
+    );
+    expect(spans[0].exception).toBeInstanceOf(Error);
+    expect(spans[0].exception?.message).toBe("string failure");
+    expect(spans[0].status).toEqual({
+      code: ClickHouseSpanStatusCode.ERROR,
+      message: "string failure",
+    });
+  });
+
+  it("does not call the tracer at all when none is configured", async () => {
+    const client = buildClient(undefined);
     // Must not throw.
-    const result = await client.query({ query: 'SELECT 1' })
-    expect(result).toBeDefined()
-  })
+    const result = await client.query({ query: "SELECT 1" });
+    expect(result).toBeDefined();
+  });
 
-  it('propagates tracer hook exceptions to the caller (no defensive wrapper)', async () => {
-    const brokenTracer: ClickHouseTracer<unknown> = {
+  it("propagates tracer exceptions to the caller (no defensive wrapper)", async () => {
+    const brokenTracer: ClickHouseTracer = {
       startSpan: () => {
-        throw new Error('start failed')
+        throw new Error("start failed");
       },
-      setAttributes: () => {},
-      setStatus: () => {},
-      recordException: () => {},
-      endSpan: () => {},
-    }
-    const client = buildClient(brokenTracer)
-    await expect(client.query({ query: 'SELECT 1' })).rejects.toThrow(
-      'start failed',
-    )
-  })
+    };
+    const client = buildClient(brokenTracer);
+    await expect(client.query({ query: "SELECT 1" })).rejects.toThrow(
+      "start failed",
+    );
+  });
 
-  it('still ends the span on success even when setStatus is a no-op', async () => {
-    let ended = false
-    const tracer: ClickHouseTracer<{ id: number }> = {
-      startSpan: () => ({ id: 1 }),
-      setAttributes: () => {},
-      setStatus: () => {},
-      recordException: () => {},
-      endSpan: () => {
-        ended = true
-      },
-    }
-    const client = buildClient(tracer)
-    await client.query({ query: 'SELECT 1' })
-    expect(ended).toBe(true)
-  })
-})
+  it("propagates span method exceptions to the caller", async () => {
+    const tracer: ClickHouseTracer = {
+      startSpan: () => ({
+        setAttributes: () => {
+          throw new Error("setAttributes failed");
+        },
+        setStatus: () => {},
+        recordException: () => {},
+        end: () => {},
+      }),
+    };
+    const client = buildClient(tracer);
+    await expect(client.query({ query: "SELECT 1" })).rejects.toThrow(
+      "setAttributes failed",
+    );
+  });
+
+  it("still ends the span on success even when setStatus is a no-op", async () => {
+    let ended = false;
+    const tracer: ClickHouseTracer = {
+      startSpan: () => ({
+        setAttributes: () => {},
+        setStatus: () => {},
+        recordException: () => {},
+        end: () => {
+          ended = true;
+        },
+      }),
+    };
+    const client = buildClient(tracer);
+    await client.query({ query: "SELECT 1" });
+    expect(ended).toBe(true);
+  });
+});

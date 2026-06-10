@@ -116,9 +116,13 @@ export {
 } from "./parse";
 export {
   type ClickHouseTracer,
-  type ClickHouseTracerSpanAttributes,
-  type ClickHouseTracerSpanStatus,
+  type ClickHouseSpan,
+  type ClickHouseSpanOptions,
+  type ClickHouseSpanAttributes,
+  type ClickHouseSpanStatus,
   type ClickHouseSpanName,
+  ClickHouseSpanStatusCode,
+  ClickHouseSpanKind,
   ClickHouseSpanNames,
 } from "./tracing";
 

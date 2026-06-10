@@ -95,20 +95,20 @@ export interface BaseClickHouseClientConfigOptions {
    */
   json?: Partial<JSONHandling>;
   /**
-   * Optional tracer hooks called by the client at key lifecycle events
-   * (e.g. query / command / exec / insert / ping start, completion, and
-   * error). The hook surface deliberately mirrors the OpenTelemetry `Span`
-   * API so it can be implemented as a trivial wrapper over an OTEL tracer,
-   * but the client itself depends on no tracing library.
+   * Optional tracer called by the client around key lifecycle operations
+   * (`query` / `command` / `exec` / `insert` / `ping`). The interface is a
+   * structural subset of the OpenTelemetry `Tracer`/`Span` APIs, so a raw
+   * OTEL tracer (`trace.getTracer(...)`) can be passed here as-is - but the
+   * client itself depends on no tracing library.
    *
-   * Hook calls are inlined into the client's hot path with no defensive
-   * wrapper: exceptions thrown by a hook propagate to the caller. Make
-   * sure your tracer doesn't throw.
+   * Tracer calls are inlined into the client's hot path with no defensive
+   * wrapper: exceptions thrown by the tracer or its spans propagate to the
+   * caller. Make sure your tracer doesn't throw.
    *
    * @see {@link ClickHouseTracer}
-   * @default undefined (tracing disabled, zero per-operation overhead)
+   * @default undefined (tracing disabled, no-op spans on the hot path)
    */
-  tracer?: ClickHouseTracer<unknown>;
+  tracer?: ClickHouseTracer;
 }
 
 export type MakeConnection<

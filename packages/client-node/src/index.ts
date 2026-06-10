@@ -56,8 +56,10 @@ export {
   type ClickHouseJWTAuth,
   type ClickHouseCredentialsAuth,
   type ClickHouseTracer,
-  type ClickHouseTracerSpanAttributes,
-  type ClickHouseTracerSpanStatus,
+  type ClickHouseSpan,
+  type ClickHouseSpanOptions,
+  type ClickHouseSpanAttributes,
+  type ClickHouseSpanStatus,
   type ClickHouseSpanName,
 } from "@clickhouse/client-common";
 
@@ -87,6 +89,8 @@ import {
   isException as isException_,
   TupleParam as TupleParam_,
   ClickHouseSpanNames as ClickHouseSpanNames_,
+  ClickHouseSpanStatusCode as ClickHouseSpanStatusCode_,
+  ClickHouseSpanKind as ClickHouseSpanKind_,
   defaultJSONHandling as defaultJSONHandling_,
 } from "@clickhouse/client-common";
 
@@ -111,4 +115,6 @@ export const isException = isException_;
 export const TupleParam = TupleParam_;
 export type TupleParam = TupleParam_;
 export const ClickHouseSpanNames = ClickHouseSpanNames_;
+export const ClickHouseSpanStatusCode = ClickHouseSpanStatusCode_;
+export const ClickHouseSpanKind = ClickHouseSpanKind_;
 export const defaultJSONHandling = defaultJSONHandling_;

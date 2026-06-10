@@ -2,19 +2,17 @@
 
 ## New Features
 
-- Added an optional **tracer-hooks API** that the user can pass through the client config (`tracer`) and that gets called at key lifecycle events (`query`, `command`, `exec`, `insert`, `ping`). The hook surface mirrors the OpenTelemetry `Span` API (`startSpan`, `setAttributes`, `setStatus`, `recordException`, `endSpan`) so an OTEL adapter is a trivial wrapper - but the client itself ships no tracing dependency. Hook exceptions are NOT caught so a broken tracer will break client operations. See [`docs/howto/tracing.md`](./docs/howto/tracing.md) for an OpenTelemetry adapter example, and [`examples/node/coding/otel_tracing.ts`](./examples/node/coding/otel_tracing.ts) for a runnable Node.js example. ([#776])
+- Added an optional **tracer API** that the user can pass through the client config (`tracer`) and that gets called around key lifecycle operations (`query`, `command`, `exec`, `insert`, `ping`). The `ClickHouseTracer` interface is a structural subset of the OpenTelemetry `Tracer`/`Span` APIs, so a raw OTEL tracer (`trace.getTracer(...)`) can be passed to the client as-is - but the client itself ships no tracing dependency. An optional `withActiveSpan` scope function enables OTEL context propagation, so auto-instrumented child spans nest under the ClickHouse operation spans. Tracer exceptions are NOT caught, so a broken tracer will break client operations. See [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the full surface description, and [`examples/node/coding/otel_tracing.ts`](./examples/node/coding/otel_tracing.ts) for a runnable Node.js example. ([#776])
 
 ```ts
-import { createClient, type ClickHouseTracer } from "@clickhouse/client";
+import { createClient } from "@clickhouse/client";
+import { trace } from "@opentelemetry/api";
 
-const tracer: ClickHouseTracer = {
-  startSpan: (name, attrs) => console.log("start", name, attrs),
-  setAttributes: (_span, attrs) => console.log("attrs", attrs),
-  setStatus: (_span, status) => console.log("status", status),
-  recordException: (_span, err) => console.error("exception", err),
-  endSpan: () => console.log("end"),
-};
-const client = createClient({ url: "http://localhost:8123", tracer });
+// a raw OpenTelemetry tracer is structurally compatible - no adapter needed
+const client = createClient({
+  url: "http://localhost:8123",
+  tracer: trace.getTracer("@clickhouse/client"),
+});
 ```
 
 ## Migration Notes
