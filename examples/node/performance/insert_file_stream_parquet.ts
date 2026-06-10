@@ -1,14 +1,14 @@
-import { createClient, type Row } from '@clickhouse/client'
-import Fs from 'node:fs'
-import { cwd } from 'node:process'
-import Path from 'node:path'
+import { createClient, type Row } from "@clickhouse/client";
+import Fs from "node:fs";
+import { cwd } from "node:process";
+import Path from "node:path";
 
 /** See also: https://clickhouse.com/docs/en/interfaces/formats#parquet-format-settings */
-const client = createClient()
-const tableName = 'insert_file_stream_parquet'
+const client = createClient();
+const tableName = "insert_file_stream_parquet";
 await client.command({
   query: `DROP TABLE IF EXISTS ${tableName}`,
-})
+});
 await client.command({
   query: `
     CREATE TABLE ${tableName}
@@ -16,10 +16,10 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 
-const filename = Path.resolve(cwd(), './node/resources/data.parquet')
-const fileStream = Fs.createReadStream(filename)
+const filename = Path.resolve(cwd(), "./node/resources/data.parquet");
+const fileStream = Fs.createReadStream(filename);
 
 /*
 
@@ -38,24 +38,24 @@ const fileStream = Fs.createReadStream(filename)
 await client.insert({
   table: tableName,
   values: fileStream,
-  format: 'Parquet',
+  format: "Parquet",
   clickhouse_settings: {
     /** See also https://clickhouse.com/docs/en/interfaces/formats#parquet-format-settings.
      *  You could specify these (and other settings) here. */
   },
-})
+});
 
 const rs = await client.query({
   query: `SELECT * from ${tableName}`,
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 
 for await (const rows of rs.stream()) {
   // or just `rows.json()`
   // to consume the entire response at once
   rows.forEach((row: Row) => {
-    console.log(row.json())
-  })
+    console.log(row.json());
+  });
 }
 
-await client.close()
+await client.close();

@@ -1,6 +1,6 @@
-import { createClient, ClickHouseError } from '@clickhouse/client'
-import { EventEmitter } from 'node:events'
-import { setTimeout as sleep } from 'node:timers/promises'
+import { createClient, ClickHouseError } from "@clickhouse/client";
+import { EventEmitter } from "node:events";
+import { setTimeout as sleep } from "node:timers/promises";
 
 // This example demonstrates how to use async inserts without waiting for an ack about a successfully written batch.
 // Run it for some time and observe the number of rows sent and the number of rows written to the table.
@@ -9,8 +9,8 @@ import { setTimeout as sleep } from 'node:timers/promises'
 // that can receive an arbitrarily large or small amount of data at various times.
 // See https://clickhouse.com/docs/en/optimize/asynchronous-inserts
 const client = createClient({
-  url: process.env['CLICKHOUSE_URL'], // defaults to 'http://localhost:8123'
-  password: process.env['CLICKHOUSE_PASSWORD'], // defaults to an empty string
+  url: process.env["CLICKHOUSE_URL"], // defaults to 'http://localhost:8123'
+  password: process.env["CLICKHOUSE_PASSWORD"], // defaults to an empty string
   max_open_connections: 10,
   clickhouse_settings: {
     // https://clickhouse.com/docs/en/operations/settings/settings#async_insert
@@ -20,12 +20,12 @@ const client = createClient({
     // insert operations promises will be resolved as soon as the request itself was processed on the server.
     wait_for_async_insert: 0,
     // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_max_data_size
-    async_insert_max_data_size: '1000000',
+    async_insert_max_data_size: "1000000",
     // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_busy_timeout_max_ms
     async_insert_busy_timeout_max_ms: 1000,
   },
-})
-const tableName = 'async_insert_without_waiting'
+});
+const tableName = "async_insert_without_waiting";
 await client.command({
   query: `
     CREATE OR REPLACE TABLE ${tableName}
@@ -33,20 +33,20 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 
 interface Row {
-  id: number
-  name: string
+  id: number;
+  name: string;
 }
 
 // Assume we have an event listener in our application that periodically receives incoming data,
 // that we would like to have inserted into ClickHouse.
 // This emitter is just a simulation for the sake of this example.
-let rowsInserted = 0
-const listener = new EventEmitter()
+let rowsInserted = 0;
+const listener = new EventEmitter();
 const asyncInsertOnData = async (rows: Row[]) => {
-  const start = +new Date()
+  const start = +new Date();
   // Each individual insert operation will be resolved as soon as the request itself was processed on the server.
   // The data will be batched on the server side. Insert will not wait for an ack about a successfully written batch.
   // This is the main difference from the `examples/async_insert.ts` example.
@@ -54,41 +54,41 @@ const asyncInsertOnData = async (rows: Row[]) => {
     await client.insert({
       table: tableName,
       values: rows,
-      format: 'JSONEachRow',
-    })
-    rowsInserted += rows.length
-    const elapsed = +new Date() - start
-    console.log(`Insert ${rows.length} rows finished in ${elapsed} ms`)
+      format: "JSONEachRow",
+    });
+    rowsInserted += rows.length;
+    const elapsed = +new Date() - start;
+    console.log(`Insert ${rows.length} rows finished in ${elapsed} ms`);
   } catch (err) {
     // Depending on the error, it is possible that the request itself was not processed on the server.
     if (err instanceof ClickHouseError) {
       // You could decide what to do with a failed insert based on the error code.
       // An overview of possible error codes is available in the `system.errors` ClickHouse table.
-      console.error(`ClickHouse error: ${err.code}. Insert failed:`, err)
-      return
+      console.error(`ClickHouse error: ${err.code}. Insert failed:`, err);
+      return;
     }
     // You could implement a proper retry mechanism depending on your application needs;
     // for the sake of this example, we just log an error.
-    console.error(`Insert failed:`, err)
+    console.error(`Insert failed:`, err);
   }
-}
-listener.on('data', asyncInsertOnData)
+};
+listener.on("data", asyncInsertOnData);
 
 // Periodically send a random amount of data to the listener, simulating a real application behavior.
-let rowsSent = 0
-let sendRowsHandle: ReturnType<typeof setTimeout> | null = null
+let rowsSent = 0;
+let sendRowsHandle: ReturnType<typeof setTimeout> | null = null;
 const sendRows = () => {
-  const rowsCount = Math.floor(Math.random() * 100) + 1
+  const rowsCount = Math.floor(Math.random() * 100) + 1;
   const rows = [...new Array(rowsCount)].map((_, i) => ({
     id: rowsSent + i,
     name: `Name ${rowsSent + i}`,
-  }))
-  rowsSent += rowsCount
-  listener.emit('data', rows)
+  }));
+  rowsSent += rowsCount;
+  listener.emit("data", rows);
   // Send the data at a random interval up to 1000 ms.
-  sendRowsHandle = setTimeout(sendRows, Math.floor(Math.random() * 900) + 100)
-}
-sendRows()
+  sendRowsHandle = setTimeout(sendRows, Math.floor(Math.random() * 900) + 100);
+};
+sendRows();
 
 // Periodically check the number of rows inserted so far.
 // Amount of inserted values will be almost always slightly behind due to async inserts.
@@ -96,26 +96,29 @@ const rowsCountHandle = setInterval(async () => {
   try {
     const resultSet = await client.query({
       query: `SELECT count(*) AS count FROM ${tableName}`,
-      format: 'JSONEachRow',
-    })
-    const [{ count }] = await resultSet.json<{ count: string }>()
+      format: "JSONEachRow",
+    });
+    const [{ count }] = await resultSet.json<{ count: string }>();
     console.log(
-      'Rows inserted so far:',
+      "Rows inserted so far:",
       `${rowsInserted};`,
-      'written to the table:',
+      "written to the table:",
       count,
-    )
+    );
   } catch (err) {
-    console.error('Failed to get the number of rows written to the table:', err)
+    console.error(
+      "Failed to get the number of rows written to the table:",
+      err,
+    );
   }
-}, 1000)
+}, 1000);
 
-await sleep(15000) // Run the example for 15 seconds
+await sleep(15000); // Run the example for 15 seconds
 
 if (sendRowsHandle) {
-  clearTimeout(sendRowsHandle)
+  clearTimeout(sendRowsHandle);
 }
-clearInterval(rowsCountHandle)
-listener.removeListener('data', asyncInsertOnData)
+clearInterval(rowsCountHandle);
+listener.removeListener("data", asyncInsertOnData);
 
-await client.close()
+await client.close();

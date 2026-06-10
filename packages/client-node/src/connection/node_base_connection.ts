@@ -12,7 +12,7 @@ import type {
   ConnPingResult,
   ConnQueryResult,
   ResponseHeaders,
-} from '@clickhouse/client-common'
+} from "@clickhouse/client-common";
 import {
   isCredentialsAuth,
   isJWTAuth,
@@ -20,30 +20,30 @@ import {
   transformUrl,
   withHttpSettings,
   ClickHouseLogLevel,
-} from '@clickhouse/client-common'
-import { type ConnPingParams } from '@clickhouse/client-common'
-import crypto from 'crypto'
-import type Http from 'http'
-import type Https from 'node:https'
-import type Stream from 'stream'
-import { getUserAgent } from '../utils'
-import { drainStreamInternal } from './stream'
-import { type RequestParams, SocketPool } from './socket_pool'
+} from "@clickhouse/client-common";
+import { type ConnPingParams } from "@clickhouse/client-common";
+import crypto from "crypto";
+import type Http from "http";
+import type Https from "node:https";
+import type Stream from "stream";
+import { getUserAgent } from "../utils";
+import { drainStreamInternal } from "./stream";
+import { type RequestParams, SocketPool } from "./socket_pool";
 
 export type NodeConnectionParams = ConnectionParams & {
-  tls?: TLSParams
-  http_agent?: Http.Agent | Https.Agent
-  set_basic_auth_header: boolean
-  capture_enhanced_stack_trace: boolean
+  tls?: TLSParams;
+  http_agent?: Http.Agent | Https.Agent;
+  set_basic_auth_header: boolean;
+  capture_enhanced_stack_trace: boolean;
   keep_alive: {
-    enabled: boolean
-    idle_socket_ttl: number
-  }
-  log_level: ClickHouseLogLevel
+    enabled: boolean;
+    idle_socket_ttl: number;
+  };
+  log_level: ClickHouseLogLevel;
   /**
    * Eagerly destroy the sockets that are considered stale (idle for more than `idle_socket_ttl`), without waiting for the timeout to trigger. This allows to free up the stale sockets in case of longer event loop delays.
    */
-  eagerly_destroy_stale_sockets: boolean
+  eagerly_destroy_stale_sockets: boolean;
   /**
    * Optional override for {@link Http.RequestOptions.maxHeaderSize} forwarded to
    * `http(s).request`. Useful for long-running queries that accumulate many
@@ -52,70 +52,71 @@ export type NodeConnectionParams = ConnectionParams & {
    *
    * When `undefined`, the Node.js default applies.
    */
-  max_response_headers_size?: number
-}
+  max_response_headers_size?: number;
+};
 
 export type TLSParams =
   | {
-      ca_cert: Buffer
-      type: 'Basic'
+      ca_cert: Buffer;
+      type: "Basic";
     }
   | {
-      ca_cert: Buffer
-      cert: Buffer
-      key: Buffer
-      type: 'Mutual'
-    }
+      ca_cert: Buffer;
+      cert: Buffer;
+      key: Buffer;
+      type: "Mutual";
+    };
 
 export abstract class NodeBaseConnection implements Connection<Stream.Readable> {
-  protected readonly defaultAuthHeader: string
-  protected readonly defaultHeaders: Http.OutgoingHttpHeaders
+  protected readonly defaultAuthHeader: string;
+  protected readonly defaultHeaders: Http.OutgoingHttpHeaders;
 
-  private readonly connectionId: string = crypto.randomUUID()
-  private readonly socketPool: SocketPool
+  private readonly connectionId: string = crypto.randomUUID();
+  private readonly socketPool: SocketPool;
+  protected readonly params: NodeConnectionParams;
+  protected readonly agent: Http.Agent;
 
-  protected constructor(
-    protected readonly params: NodeConnectionParams,
-    protected readonly agent: Http.Agent,
-  ) {
+  protected constructor(params: NodeConnectionParams, agent: Http.Agent) {
+    this.params = params;
+    this.agent = agent;
     this.socketPool = new SocketPool(
       this.connectionId,
       this.params,
       this.createClientRequest.bind(this),
       this.agent,
-    )
-    if (params.auth.type === 'Credentials') {
+    );
+    if (params.auth.type === "Credentials") {
       this.defaultAuthHeader = `Basic ${Buffer.from(
         `${params.auth.username}:${params.auth.password}`,
-      ).toString('base64')}`
-    } else if (params.auth.type === 'JWT') {
-      this.defaultAuthHeader = `Bearer ${params.auth.access_token}`
+      ).toString("base64")}`;
+    } else if (params.auth.type === "JWT") {
+      this.defaultAuthHeader = `Bearer ${params.auth.access_token}`;
     } else {
-      throw new Error(`Unknown auth type: ${(params.auth as any).type}`)
+      throw new Error(`Unknown auth type: ${(params.auth as any).type}`);
     }
     this.defaultHeaders = {
       // Node.js HTTP agent, for some reason, does not set this on its own when KeepAlive is enabled
-      Connection: this.params.keep_alive.enabled ? 'keep-alive' : 'close',
-      'User-Agent': getUserAgent(this.params.application_id),
-    }
+      Connection: this.params.keep_alive.enabled ? "keep-alive" : "close",
+      "User-Agent": getUserAgent(this.params.application_id),
+    };
   }
 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
-    const { log_writer, log_level } = this.params
-    const query_id = this.getQueryId(params.query_id)
-    const { controller, controllerCleanup } = this.getAbortController(params)
+    const { log_writer, log_level } = this.params;
+    const query_id = this.getQueryId(params.query_id);
+    const { controller, controllerCleanup } = this.getAbortController(params);
     try {
-      let result: RequestResult
+      let result: RequestResult;
       if (params.select) {
         const searchParams = toSearchParams({
           database: undefined,
           query: PingQuery,
           query_id,
-        })
+        });
         result = await this.request(
           {
             query: PingQuery,
-            method: 'GET',
+            method: "GET",
             url: transformUrl({ url: this.params.url, searchParams }),
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
@@ -123,66 +124,66 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             log_writer,
             log_level,
           },
-          'Ping',
-        )
+          "Ping",
+        );
       } else {
         result = await this.request(
           {
-            query: 'ping',
-            method: 'GET',
-            url: transformUrl({ url: this.params.url, pathname: '/ping' }),
+            query: "ping",
+            method: "GET",
+            url: transformUrl({ url: this.params.url, pathname: "/ping" }),
             abort_signal: controller.signal,
             headers: this.buildRequestHeaders(),
             query_id,
             log_writer,
             log_level,
           },
-          'Ping',
-        )
+          "Ping",
+        );
       }
       await drainStreamInternal(
         {
-          op: 'Ping' as const,
+          op: "Ping" as const,
           log_writer,
           query_id,
           log_level,
         },
         result.stream,
-      )
-      return { success: true }
+      );
+      return { success: true };
     } catch (error) {
       // it is used to ensure that the outgoing request is terminated,
       // and we don't get unhandled error propagation later
-      controller.abort('Ping failed')
+      controller.abort("Ping failed");
       // not an error, as this might be semi-expected
       if (log_level <= ClickHouseLogLevel.WARN) {
         log_writer.warn({
-          message: this.httpRequestErrorMessage('Ping'),
+          message: this.httpRequestErrorMessage("Ping"),
           err: error as Error,
           args: {
             connection_id: this.connectionId,
             query_id,
           },
-        })
+        });
       }
       return {
         success: false,
         error: error as Error, // should NOT be propagated to the user
-      }
+      };
     } finally {
-      controllerCleanup()
+      controllerCleanup();
     }
   }
 
   async query(
     params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<Stream.Readable>> {
-    const { log_writer, log_level } = this.params
-    const query_id = this.getQueryId(params.query_id)
+    const { log_writer, log_level } = this.params;
+    const query_id = this.getQueryId(params.query_id);
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
       this.params.compression.decompress_response,
-    )
+    );
     const searchParams = toSearchParams({
       database: this.params.database,
       query_params: params.query_params,
@@ -190,15 +191,15 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       clickhouse_settings,
       query_id,
       role: params.role,
-    })
-    const { controller, controllerCleanup } = this.getAbortController(params)
+    });
+    const { controller, controllerCleanup } = this.getAbortController(params);
     // allows enforcing the compression via the settings even if the client instance has it disabled
     const enableResponseCompression =
-      clickhouse_settings.enable_http_compression === 1
+      clickhouse_settings.enable_http_compression === 1;
     try {
       const { response_headers, stream, http_status_code } = await this.request(
         {
-          method: 'POST',
+          method: "POST",
           url: transformUrl({ url: this.params.url, searchParams }),
           body: params.query,
           abort_signal: controller.signal,
@@ -209,18 +210,18 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           log_writer,
           log_level,
         },
-        'Query',
-      )
+        "Query",
+      );
       return {
         stream,
         response_headers,
         query_id,
         http_status_code,
-      }
+      };
     } catch (err) {
-      controller.abort('Query HTTP request failed')
+      controller.abort("Query HTTP request failed");
       this.logRequestError({
-        op: 'Query',
+        op: "Query",
         query_id: query_id,
         query_params: params,
         search_params: searchParams,
@@ -229,18 +230,18 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           decompress_response: enableResponseCompression,
           clickhouse_settings,
         },
-      })
-      throw err // should be propagated to the user
+      });
+      throw err; // should be propagated to the user
     } finally {
-      controllerCleanup()
+      controllerCleanup();
     }
   }
 
   async insert(
     params: ConnInsertParams<Stream.Readable>,
   ): Promise<ConnInsertResult> {
-    const { log_writer, log_level } = this.params
-    const query_id = this.getQueryId(params.query_id)
+    const { log_writer, log_level } = this.params;
+    const query_id = this.getQueryId(params.query_id);
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
@@ -249,13 +250,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       session_id: params.session_id,
       role: params.role,
       query_id,
-    })
-    const { controller, controllerCleanup } = this.getAbortController(params)
+    });
+    const { controller, controllerCleanup } = this.getAbortController(params);
     try {
       const { stream, summary, response_headers, http_status_code } =
         await this.request(
           {
-            method: 'POST',
+            method: "POST",
             url: transformUrl({ url: this.params.url, searchParams }),
             body: params.values,
             abort_signal: controller.signal,
@@ -268,22 +269,22 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             log_writer,
             log_level,
           },
-          'Insert',
-        )
+          "Insert",
+        );
       await drainStreamInternal(
         {
-          op: 'Insert',
+          op: "Insert",
           log_writer,
           query_id,
           log_level,
         },
         stream,
-      )
-      return { query_id, summary, response_headers, http_status_code }
+      );
+      return { query_id, summary, response_headers, http_status_code };
     } catch (err) {
-      controller.abort('Insert HTTP request failed')
+      controller.abort("Insert HTTP request failed");
       this.logRequestError({
-        op: 'Insert',
+        op: "Insert",
         query_id: query_id,
         query_params: params,
         search_params: searchParams,
@@ -291,51 +292,51 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         extra_args: {
           clickhouse_settings: params.clickhouse_settings ?? {},
         },
-      })
-      throw err // should be propagated to the user
+      });
+      throw err; // should be propagated to the user
     } finally {
-      controllerCleanup()
+      controllerCleanup();
     }
   }
 
   async exec(
     params: ConnExecParams<Stream.Readable>,
   ): Promise<ConnExecResult<Stream.Readable>> {
-    const query_id = this.getQueryId(params.query_id)
+    const query_id = this.getQueryId(params.query_id);
     return this.runExec({
       ...params,
       query_id,
-      op: 'Exec',
-    })
+      op: "Exec",
+    });
   }
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
-    const { log_writer, log_level } = this.params
-    const query_id = this.getQueryId(params.query_id)
-    const commandStartTime = Date.now()
+    const { log_writer, log_level } = this.params;
+    const query_id = this.getQueryId(params.query_id);
+    const commandStartTime = Date.now();
     if (log_level <= ClickHouseLogLevel.TRACE) {
       log_writer.trace({
-        message: 'Command: operation started',
+        message: "Command: operation started",
         args: {
-          operation: 'Command',
+          operation: "Command",
           connection_id: this.connectionId,
           query_id,
         },
-      })
+      });
     }
 
     const { stream, summary, response_headers } = await this.runExec({
       ...params,
       query_id,
-      op: 'Command',
-    })
+      op: "Command",
+    });
 
-    const runExecDuration = Date.now() - commandStartTime
+    const runExecDuration = Date.now() - commandStartTime;
     if (log_level <= ClickHouseLogLevel.TRACE) {
       log_writer.trace({
-        message: 'Command: runExec completed, starting stream drain',
+        message: "Command: runExec completed, starting stream drain",
         args: {
-          operation: 'Command',
+          operation: "Command",
           connection_id: this.connectionId,
           query_id,
           runExec_duration_ms: runExecDuration,
@@ -345,43 +346,43 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             readableLength: stream.readableLength,
           },
         },
-      })
+      });
     }
 
     // ignore the response stream and release the socket immediately
-    const drainStartTime = Date.now()
+    const drainStartTime = Date.now();
     await drainStreamInternal(
       {
-        op: 'Command',
+        op: "Command",
         log_writer,
         query_id,
         log_level,
       },
       stream,
-    )
+    );
 
     if (log_level <= ClickHouseLogLevel.TRACE) {
-      const drainDuration = Date.now() - drainStartTime
-      const totalDuration = Date.now() - commandStartTime
+      const drainDuration = Date.now() - drainStartTime;
+      const totalDuration = Date.now() - commandStartTime;
 
       log_writer.trace({
-        message: 'Command: operation completed',
+        message: "Command: operation completed",
         args: {
-          operation: 'Command',
+          operation: "Command",
           connection_id: this.connectionId,
           query_id,
           drain_duration_ms: drainDuration,
           total_duration_ms: totalDuration,
         },
-      })
+      });
     }
 
-    return { query_id, summary, response_headers }
+    return { query_id, summary, response_headers };
   }
 
   async close(): Promise<void> {
     if (this.agent !== undefined && this.agent.destroy !== undefined) {
-      this.agent.destroy()
+      this.agent.destroy();
     }
   }
 
@@ -397,61 +398,61 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       // An appropriate `Authorization` header might be added later
       // It is not always required - see the TLS headers in `node_https_connection.ts`
       ...this.defaultHeaders,
-    }
+    };
   }
 
   protected buildRequestHeaders(
     params?: ConnBaseQueryParams,
   ): Http.OutgoingHttpHeaders {
-    const headers = this.defaultHeadersWithOverride(params)
+    const headers = this.defaultHeadersWithOverride(params);
     if (isJWTAuth(params?.auth)) {
       return {
         ...headers,
         Authorization: `Bearer ${params.auth.access_token}`,
-      }
+      };
     }
     if (this.params.set_basic_auth_header) {
       if (isCredentialsAuth(params?.auth)) {
         return {
           ...headers,
-          Authorization: `Basic ${Buffer.from(`${params.auth.username}:${params.auth.password}`).toString('base64')}`,
-        }
+          Authorization: `Basic ${Buffer.from(`${params.auth.username}:${params.auth.password}`).toString("base64")}`,
+        };
       } else {
         return {
           ...headers,
           Authorization: this.defaultAuthHeader,
-        }
+        };
       }
     }
     return {
       ...headers,
-    }
+    };
   }
 
   protected abstract createClientRequest(
     params: RequestParams,
-  ): Http.ClientRequest
+  ): Http.ClientRequest;
 
   private getQueryId(query_id: string | undefined): string {
-    return query_id || crypto.randomUUID()
+    return query_id || crypto.randomUUID();
   }
 
   // a wrapper over the user's Signal to terminate the failed requests
   private getAbortController(params: { abort_signal?: AbortSignal }): {
-    controller: AbortController
-    controllerCleanup: () => void
+    controller: AbortController;
+    controllerCleanup: () => void;
   } {
-    const controller = new AbortController()
+    const controller = new AbortController();
     function onAbort() {
-      controller.abort()
+      controller.abort();
     }
-    params.abort_signal?.addEventListener('abort', onAbort)
+    params.abort_signal?.addEventListener("abort", onAbort);
     return {
       controller,
       controllerCleanup: () => {
-        params.abort_signal?.removeEventListener('abort', onAbort)
+        params.abort_signal?.removeEventListener("abort", onAbort);
       },
-    }
+    };
   }
 
   private logRequestError({
@@ -473,24 +474,24 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           session_id: query_params.session_id,
           ...extra_args,
         },
-      })
+      });
     }
   }
 
   private httpRequestErrorMessage(op: ConnOperation): string {
-    return `${op}: HTTP request error.`
+    return `${op}: HTTP request error.`;
   }
 
   private async runExec(
     params: RunExecParams,
   ): Promise<ConnExecResult<Stream.Readable>> {
-    const { log_writer, log_level } = this.params
-    const query_id = params.query_id
-    const sendQueryInParams = params.values !== undefined
+    const { log_writer, log_level } = this.params;
+    const query_id = params.query_id;
+    const sendQueryInParams = params.values !== undefined;
     const clickhouse_settings = withHttpSettings(
       params.clickhouse_settings,
       this.params.compression.decompress_response,
-    )
+    );
     const toSearchParamsOptions = {
       query: sendQueryInParams ? params.query : undefined,
       database: this.params.database,
@@ -499,23 +500,23 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       role: params.role,
       clickhouse_settings,
       query_id,
-    }
-    const searchParams = toSearchParams(toSearchParamsOptions)
-    const { controller, controllerCleanup } = this.getAbortController(params)
+    };
+    const searchParams = toSearchParams(toSearchParamsOptions);
+    const { controller, controllerCleanup } = this.getAbortController(params);
     const tryDecompressResponseStream =
-      params.op === 'Exec'
+      params.op === "Exec"
         ? // allows disabling stream decompression for the `Exec` operation only
           (params.decompress_response_stream ??
           this.params.compression.decompress_response)
         : // there is nothing useful in the response stream for the `Command` operation,
           // and it is immediately destroyed; never decompress it
-          false
-    const ignoreErrorResponse = params.ignore_error_response ?? false
+          false;
+    const ignoreErrorResponse = params.ignore_error_response ?? false;
     try {
       const { stream, summary, response_headers, http_status_code } =
         await this.request(
           {
-            method: 'POST',
+            method: "POST",
             url: transformUrl({ url: this.params.url, searchParams }),
             body: sendQueryInParams ? params.values : params.query,
             abort_signal: controller.signal,
@@ -533,16 +534,16 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             log_level,
           },
           params.op,
-        )
+        );
       return {
         stream,
         query_id,
         summary,
         response_headers,
         http_status_code,
-      }
+      };
     } catch (err) {
-      controller.abort(`${params.op} HTTP request failed`)
+      controller.abort(`${params.op} HTTP request failed`);
       this.logRequestError({
         op: params.op,
         query_id: query_id,
@@ -552,10 +553,10 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         extra_args: {
           clickhouse_settings: params.clickhouse_settings ?? {},
         },
-      })
-      throw err // should be propagated to the user
+      });
+      throw err; // should be propagated to the user
     } finally {
-      controllerCleanup()
+      controllerCleanup();
     }
   }
 
@@ -563,32 +564,32 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     params: RequestParams,
     op: ConnOperation,
   ): Promise<RequestResult> {
-    return this.socketPool.request(params, op)
+    return this.socketPool.request(params, op);
   }
 }
 
 interface RequestResult {
-  stream: Stream.Readable
-  response_headers: ResponseHeaders
-  http_status_code?: number
-  summary?: ClickHouseSummary
+  stream: Stream.Readable;
+  response_headers: ResponseHeaders;
+  http_status_code?: number;
+  summary?: ClickHouseSummary;
 }
 
 interface LogRequestErrorParams {
-  op: ConnOperation
-  err: Error
-  query_id: string
-  query_params: ConnBaseQueryParams
-  search_params: URLSearchParams | undefined
-  extra_args: Record<string, unknown>
+  op: ConnOperation;
+  err: Error;
+  query_id: string;
+  query_params: ConnBaseQueryParams;
+  search_params: URLSearchParams | undefined;
+  extra_args: Record<string, unknown>;
 }
 
 type RunExecParams = ConnBaseQueryParams & {
-  query_id: string
-  op: 'Exec' | 'Command'
-  values?: ConnExecParams<Stream.Readable>['values']
-  decompress_response_stream?: boolean
-  ignore_error_response?: boolean
-}
+  query_id: string;
+  op: "Exec" | "Command";
+  values?: ConnExecParams<Stream.Readable>["values"];
+  decompress_response_stream?: boolean;
+  ignore_error_response?: boolean;
+};
 
-const PingQuery = `SELECT 'ping'`
+const PingQuery = `SELECT 'ping'`;

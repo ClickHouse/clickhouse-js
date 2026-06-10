@@ -7,8 +7,8 @@
    ```ts
    if (log_level <= ClickHouseLogLevel.WARN) {
      log_writer.warn({
-       message: 'Example log message',
-     })
+       message: "Example log message",
+     });
    }
    ```
 
@@ -18,8 +18,8 @@
    if (some_condition) {
      log_writer.warn({
        message:
-         'Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/socket_hang_up_econnreset.md',
-     })
+         "Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/socket_hang_up_econnreset.md",
+     });
    }
    ```
 

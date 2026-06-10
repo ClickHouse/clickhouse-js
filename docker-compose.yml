@@ -15,41 +15,41 @@
 #   nginx (cluster HTTP entrypoint, round-robin load balancer): 8127
 services:
   clickhouse:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-head}'
-    container_name: 'clickhouse-js-clickhouse-server'
+    image: "clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-head}"
+    container_name: "clickhouse-js-clickhouse-server"
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ports:
-      - '8123:8123'
-      - '9000:9000'
+      - "8123:8123"
+      - "9000:9000"
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
     volumes:
-      - './.docker/clickhouse/single_node/config.xml:/etc/clickhouse-server/config.xml'
-      - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+      - "./.docker/clickhouse/single_node/config.xml:/etc/clickhouse-server/config.xml"
+      - "./.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml"
 
   clickhouse_tls:
     build:
       context: ./
       dockerfile: .docker/clickhouse/single_node_tls/Dockerfile
-    container_name: 'clickhouse-js-clickhouse-server-tls'
+    container_name: "clickhouse-js-clickhouse-server-tls"
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ports:
-      - '8443:8443'
-      - '9440:9440'
+      - "8443:8443"
+      - "9440:9440"
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
     volumes:
-      - './.docker/clickhouse/single_node_tls/config.xml:/etc/clickhouse-server/config.xml'
-      - './.docker/clickhouse/single_node_tls/users.xml:/etc/clickhouse-server/users.xml'
+      - "./.docker/clickhouse/single_node_tls/config.xml:/etc/clickhouse-server/config.xml"
+      - "./.docker/clickhouse/single_node_tls/users.xml:/etc/clickhouse-server/users.xml"
 
   clickhouse1:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-head}'
+    image: "clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-head}"
     ulimits:
       nofile:
         soft: 262144
@@ -59,16 +59,16 @@ services:
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ports:
-      - '8124:8123'
-      - '9100:9000'
-      - '9181:9181'
+      - "8124:8123"
+      - "9100:9000"
+      - "9181:9181"
     volumes:
-      - './.docker/clickhouse/cluster/server1_config.xml:/etc/clickhouse-server/config.xml'
-      - './.docker/clickhouse/cluster/server1_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
-      - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+      - "./.docker/clickhouse/cluster/server1_config.xml:/etc/clickhouse-server/config.xml"
+      - "./.docker/clickhouse/cluster/server1_macros.xml:/etc/clickhouse-server/config.d/macros.xml"
+      - "./.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml"
 
   clickhouse2:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-head}'
+    image: "clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-head}"
     ulimits:
       nofile:
         soft: 262144
@@ -78,20 +78,20 @@ services:
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ports:
-      - '8125:8123'
-      - '9101:9000'
-      - '9182:9181'
+      - "8125:8123"
+      - "9101:9000"
+      - "9182:9181"
     volumes:
-      - './.docker/clickhouse/cluster/server2_config.xml:/etc/clickhouse-server/config.xml'
-      - './.docker/clickhouse/cluster/server2_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
-      - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+      - "./.docker/clickhouse/cluster/server2_config.xml:/etc/clickhouse-server/config.xml"
+      - "./.docker/clickhouse/cluster/server2_macros.xml:/etc/clickhouse-server/config.d/macros.xml"
+      - "./.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml"
 
   # Using Nginx as a cluster entrypoint and a round-robin load balancer for HTTP requests
   nginx:
-    image: 'nginx:1.23.1-alpine'
+    image: "nginx:1.23.1-alpine"
     hostname: nginx
     ports:
-      - '8127:8123'
+      - "8127:8123"
     volumes:
-      - './.docker/nginx/local.conf:/etc/nginx/conf.d/local.conf'
+      - "./.docker/nginx/local.conf:/etc/nginx/conf.d/local.conf"
     container_name: clickhouse-js-nginx

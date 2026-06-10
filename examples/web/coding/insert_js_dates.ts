@@ -1,8 +1,8 @@
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
 // NB: currently, JS Date objects work only with DateTime* fields
-const tableName = 'insert_js_date_web'
-const client = createClient()
+const tableName = "insert_js_date_web";
+const client = createClient();
 await client.command({
   query: `
     CREATE OR REPLACE TABLE ${tableName}
@@ -10,24 +10,24 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 await client.insert({
   table: tableName,
   values: [
     {
-      id: '42',
+      id: "42",
       dt: new Date(),
     },
   ],
   clickhouse_settings: {
     // Allows to insert serialized JS Dates (such as '2023-12-06T10:54:48.000Z')
-    date_time_input_format: 'best_effort',
+    date_time_input_format: "best_effort",
   },
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 const rows = await client.query({
   query: `SELECT * FROM ${tableName}`,
-  format: 'JSONEachRow',
-})
-console.info(await rows.json())
-await client.close()
+  format: "JSONEachRow",
+});
+console.info(await rows.json());
+await client.close();

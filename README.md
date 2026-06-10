@@ -12,8 +12,12 @@
 <img alt="NPM Downloads" src="https://img.shields.io/npm/dw/%40clickhouse%2Fclient?color=%233178C6&logo=npm">
 </a>
 
-<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml">
-<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml/badge.svg?branch=main">
+<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-node.yml">
+<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-node.yml/badge.svg?branch=main">
+</a>
+
+<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-web.yml">
+<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-web.yml/badge.svg?branch=main">
 </a>
 
 <a href="https://codecov.io/gh/ClickHouse/clickhouse-js">
@@ -80,23 +84,23 @@ The client may work with older versions too; however, this is best-effort suppor
 ## Quick start
 
 ```ts
-import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client"; // or '@clickhouse/client-web'
 
 const client = createClient({
-  url: process.env.CLICKHOUSE_URL ?? 'http://localhost:8123',
-  username: process.env.CLICKHOUSE_USER ?? 'default',
-  password: process.env.CLICKHOUSE_PASSWORD ?? '',
-})
+  url: process.env.CLICKHOUSE_URL ?? "http://localhost:8123",
+  username: process.env.CLICKHOUSE_USER ?? "default",
+  password: process.env.CLICKHOUSE_PASSWORD ?? "",
+});
 
 const resultSet = await client.query({
-  query: 'SELECT * FROM system.tables',
-  format: 'JSONEachRow',
-})
+  query: "SELECT * FROM system.tables",
+  format: "JSONEachRow",
+});
 
-const tables = await resultSet.json()
-console.log(tables)
+const tables = await resultSet.json();
+console.log(tables);
 
-await client.close()
+await client.close();
 ```
 
 See more examples in the [examples directory](./examples).

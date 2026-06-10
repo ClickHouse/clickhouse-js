@@ -2,8 +2,8 @@ import {
   ClickHouseLogLevel,
   type BaseClickHouseClientConfigOptions,
   type ClickHouseClient,
-} from '@clickhouse/client-common'
-import { TestLogger } from './test_logger'
+} from "@clickhouse/client-common";
+import { TestLogger } from "./test_logger";
 
 /**
  * Resolves the test logger configuration based on the provided config and the
@@ -12,18 +12,18 @@ import { TestLogger } from './test_logger'
  */
 export function getTestLogConfig(
   config: BaseClickHouseClientConfigOptions = {},
-): BaseClickHouseClientConfigOptions['log'] {
+): BaseClickHouseClientConfigOptions["log"] {
   const level =
     config.log?.level ??
-    (!process.env.LOG_LEVEL || process.env.LOG_LEVEL === 'undefined'
+    (!process.env.LOG_LEVEL || process.env.LOG_LEVEL === "undefined"
       ? undefined
       : ClickHouseLogLevel[
           process.env.LOG_LEVEL as keyof typeof ClickHouseLogLevel
-        ])
+        ]);
   return {
     LoggerClass: TestLogger,
     level,
-  }
+  };
 }
 
 /**
@@ -43,5 +43,5 @@ export function createSimpleTestClient<Stream = unknown>(
   return (globalThis as any).environmentSpecificCreateClient({
     log: getTestLogConfig(config),
     ...config,
-  }) as ClickHouseClient<Stream>
+  }) as ClickHouseClient<Stream>;
 }

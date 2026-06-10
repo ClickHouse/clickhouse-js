@@ -2,14 +2,14 @@ import {
   type LogWriter,
   type ConnOperation,
   ClickHouseLogLevel,
-} from '@clickhouse/client-common'
-import type Stream from 'stream'
+} from "@clickhouse/client-common";
+import type Stream from "stream";
 
 export interface Context {
-  op: ConnOperation
-  log_level: ClickHouseLogLevel
-  log_writer: LogWriter
-  query_id: string
+  op: ConnOperation;
+  log_level: ClickHouseLogLevel;
+  log_writer: LogWriter;
+  query_id: string;
 }
 
 /** Drains the response stream, as calling `destroy` on a {@link Stream.Readable} response stream
@@ -22,23 +22,23 @@ export async function drainStream(stream: Stream.Readable): Promise<void> {
     // If the stream has already emitted an error, we can reject the promise immediately.
     if (stream.errored) {
       // the stream is already errored, no need to attach listeners
-      reject(stream.errored)
-      return
+      reject(stream.errored);
+      return;
     }
 
     // Avoid a race condition where the stream has already sent the 'end' event before we attach the listener.
     // In this case, we can resolve the promise immediately without attaching any listeners.
     if (stream.readableEnded) {
       // the stream is already ended, no need to attach listeners
-      resolve()
-      return
+      resolve();
+      return;
     }
 
     // If the stream is already closed, we can resolve the promise immediately as well.
     if (stream.closed) {
       // the stream is already closed, no need to attach listeners
-      resolve()
-      return
+      resolve();
+      return;
     }
 
     function dropData() {
@@ -46,34 +46,34 @@ export async function drainStream(stream: Stream.Readable): Promise<void> {
     }
 
     function onEnd() {
-      removeListeners()
-      resolve()
+      removeListeners();
+      resolve();
     }
 
     function onError(err: Error) {
-      removeListeners()
-      reject(err)
+      removeListeners();
+      reject(err);
     }
 
     function onClose() {
-      removeListeners()
+      removeListeners();
       // The `end` event might not be emitted if the server closes the connection.
       // Making sure to resolve the promise in this case as well.
-      resolve()
+      resolve();
     }
 
     function removeListeners() {
-      stream.removeListener('data', dropData)
-      stream.removeListener('end', onEnd)
-      stream.removeListener('error', onError)
-      stream.removeListener('close', onClose)
+      stream.removeListener("data", dropData);
+      stream.removeListener("end", onEnd);
+      stream.removeListener("error", onError);
+      stream.removeListener("close", onClose);
     }
 
-    stream.on('data', dropData)
-    stream.on('end', onEnd)
-    stream.on('error', onError)
-    stream.on('close', onClose)
-  })
+    stream.on("data", dropData);
+    stream.on("end", onEnd);
+    stream.on("error", onError);
+    stream.on("close", onClose);
+  });
 }
 
 /** Drains the response stream, as calling `destroy` on a {@link Stream.Readable} response stream
@@ -85,9 +85,9 @@ export async function drainStreamInternal(
   stream: Stream.Readable,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const startTime = Date.now()
-    let bytesReceived = 0
-    let chunkCount = 0
+    const startTime = Date.now();
+    let bytesReceived = 0;
+    let chunkCount = 0;
 
     if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
       ctx.log_writer.trace({
@@ -100,7 +100,7 @@ export async function drainStreamInternal(
             readableLength: stream.readableLength,
           },
         },
-      })
+      });
     }
 
     // If the stream has already emitted an error, we can reject the promise immediately.
@@ -113,11 +113,11 @@ export async function drainStreamInternal(
             chunk_number: chunkCount,
             total_bytes_received: bytesReceived,
           },
-        })
+        });
       }
       // the stream is already errored, no need to attach listeners
-      reject(stream.errored)
-      return
+      reject(stream.errored);
+      return;
     }
 
     // Avoid a race condition where the stream has already sent the 'end' event before we attach the listener.
@@ -131,11 +131,11 @@ export async function drainStreamInternal(
             chunk_number: chunkCount,
             total_bytes_received: bytesReceived,
           },
-        })
+        });
       }
       // the stream is already ended, no need to attach listeners
-      resolve()
-      return
+      resolve();
+      return;
     }
 
     // If the stream is already closed, we can resolve the promise immediately as well.
@@ -148,19 +148,19 @@ export async function drainStreamInternal(
             chunk_number: chunkCount,
             total_bytes_received: bytesReceived,
           },
-        })
+        });
       }
       // the stream is already closed, no need to attach listeners
-      resolve()
-      return
+      resolve();
+      return;
     }
 
     function dropData(chunk: Buffer | string) {
       // used only for the methods without expected response; we don't care about the data here
       if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
-        chunkCount++
-        const chunk_size = Buffer.byteLength(chunk)
-        bytesReceived += chunk_size
+        chunkCount++;
+        const chunk_size = Buffer.byteLength(chunk);
+        bytesReceived += chunk_size;
         ctx.log_writer.trace({
           message: `${ctx.op}: received data chunk during drain`,
           args: {
@@ -169,14 +169,14 @@ export async function drainStreamInternal(
             chunk_size,
             total_bytes_received: bytesReceived,
           },
-        })
+        });
       }
     }
 
     function onEnd() {
-      removeListeners()
+      removeListeners();
       if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
-        const duration = Date.now() - startTime
+        const duration = Date.now() - startTime;
         ctx.log_writer.trace({
           message: `${ctx.op}: stream drain completed (end event)`,
           args: {
@@ -185,15 +185,15 @@ export async function drainStreamInternal(
             total_bytes_received: bytesReceived,
             total_chunks: chunkCount,
           },
-        })
+        });
       }
-      resolve()
+      resolve();
     }
 
     function onError(err: Error) {
-      removeListeners()
+      removeListeners();
       if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
-        const duration = Date.now() - startTime
+        const duration = Date.now() - startTime;
         ctx.log_writer.trace({
           message: `${ctx.op}: stream drain failed (error event)`,
           args: {
@@ -203,15 +203,15 @@ export async function drainStreamInternal(
             total_chunks: chunkCount,
             error: err.message,
           },
-        })
+        });
       }
-      reject(err)
+      reject(err);
     }
 
     function onClose() {
-      removeListeners()
+      removeListeners();
       if (ctx.log_level <= ClickHouseLogLevel.TRACE) {
-        const duration = Date.now() - startTime
+        const duration = Date.now() - startTime;
         ctx.log_writer.trace({
           message: `${ctx.op}: stream closed during drain (close event)`,
           args: {
@@ -220,23 +220,23 @@ export async function drainStreamInternal(
             total_bytes_received: bytesReceived,
             total_chunks: chunkCount,
           },
-        })
+        });
       }
       // The `end` event might not be emitted if the server closes the connection.
       // Making sure to resolve the promise in this case as well.
-      resolve()
+      resolve();
     }
 
     function removeListeners() {
-      stream.removeListener('data', dropData)
-      stream.removeListener('end', onEnd)
-      stream.removeListener('error', onError)
-      stream.removeListener('close', onClose)
+      stream.removeListener("data", dropData);
+      stream.removeListener("end", onEnd);
+      stream.removeListener("error", onError);
+      stream.removeListener("close", onClose);
     }
 
-    stream.on('data', dropData)
-    stream.on('end', onEnd)
-    stream.on('error', onError)
-    stream.on('close', onClose)
-  })
+    stream.on("data", dropData);
+    stream.on("end", onEnd);
+    stream.on("error", onError);
+    stream.on("close", onClose);
+  });
 }

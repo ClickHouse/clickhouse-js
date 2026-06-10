@@ -1,10 +1,10 @@
-import js from '@eslint/js'
-import { defineConfig } from 'eslint/config'
-import tseslint from 'typescript-eslint'
+import js from "@eslint/js";
+import { defineConfig } from "eslint/config";
+import tseslint from "typescript-eslint";
 import {
   typescriptEslintConfig,
   testFilesOverrides,
-} from '../../eslint.config.base.mjs'
+} from "../../eslint.config.base.mjs";
 
 export default defineConfig(
   js.configs.recommended,
@@ -13,6 +13,6 @@ export default defineConfig(
   typescriptEslintConfig(import.meta.dirname),
   testFilesOverrides(),
   {
-    ignores: ['dist', 'node_modules', 'bin', 'eslint.config.mjs'],
+    ignores: ["dist", "node_modules", "bin", "eslint.config.mjs"],
   },
-)
+);

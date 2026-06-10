@@ -29,42 +29,42 @@
 export interface ClickHouseTracer<TSpan = unknown> {
   /** Called when a tracked operation begins.
    *  Returned value is passed back to the other hooks for this operation. */
-  startSpan(name: string, attributes?: ClickHouseTracerSpanAttributes): TSpan
+  startSpan(name: string, attributes?: ClickHouseTracerSpanAttributes): TSpan;
   /** Attach additional attributes to an in-flight span. Called at least once
    *  for every span - typically right before {@link ClickHouseTracer.endSpan}
    *  - with operation-specific attributes such as `clickhouse.query_id`. */
-  setAttributes(span: TSpan, attributes: ClickHouseTracerSpanAttributes): void
+  setAttributes(span: TSpan, attributes: ClickHouseTracerSpanAttributes): void;
   /** Set the OTEL-style logical status of the span. */
-  setStatus(span: TSpan, status: ClickHouseTracerSpanStatus): void
+  setStatus(span: TSpan, status: ClickHouseTracerSpanStatus): void;
   /** Attach an exception that occurred during the span. Called before
    *  {@link ClickHouseTracer.setStatus} with code `ERROR`, before
    *  {@link ClickHouseTracer.endSpan}. */
-  recordException(span: TSpan, error: unknown): void
+  recordException(span: TSpan, error: unknown): void;
   /** Called exactly once per span, regardless of success or failure. */
-  endSpan(span: TSpan): void
+  endSpan(span: TSpan): void;
 }
 
 /** OTEL-compatible span status. */
 export type ClickHouseTracerSpanStatus =
-  | { code: 'UNSET' }
-  | { code: 'OK' }
-  | { code: 'ERROR'; message?: string }
+  | { code: "UNSET" }
+  | { code: "OK" }
+  | { code: "ERROR"; message?: string };
 
 /** Free-form attribute bag. Implementations should be tolerant of `undefined`
  *  values (skip them) and stringify non-primitive values as needed. */
 export type ClickHouseTracerSpanAttributes = Record<
   string,
   string | number | boolean | undefined
->
+>;
 
 /** Span name constants used by the client when starting spans.
  *  Exposed so that adapters and tests can match on them. */
 export const ClickHouseSpanNames = {
-  query: 'clickhouse.query',
-  command: 'clickhouse.command',
-  exec: 'clickhouse.exec',
-  insert: 'clickhouse.insert',
-  ping: 'clickhouse.ping',
-} as const
+  query: "clickhouse.query",
+  command: "clickhouse.command",
+  exec: "clickhouse.exec",
+  insert: "clickhouse.insert",
+  ping: "clickhouse.ping",
+} as const;
 export type ClickHouseSpanName =
-  (typeof ClickHouseSpanNames)[keyof typeof ClickHouseSpanNames]
+  (typeof ClickHouseSpanNames)[keyof typeof ClickHouseSpanNames];

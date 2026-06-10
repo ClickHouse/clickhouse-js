@@ -7,31 +7,31 @@
 // See also:
 //  - `ping_existing_host.ts` - successful ping against an existing host.
 //  - `ping_timeout.ts`       - ping that times out.
-import type { PingResult } from '@clickhouse/client'
-import { createClient } from '@clickhouse/client'
+import type { PingResult } from "@clickhouse/client";
+import { createClient } from "@clickhouse/client";
 
 const client = createClient({
-  url: 'http://localhost:8100', // non-existing host
+  url: "http://localhost:8100", // non-existing host
   request_timeout: 50, // low request_timeout to speed up the example
-})
+});
 // Ping does not throw an error; instead, { success: false; error: Error } is returned.
-const pingResult = await client.ping()
+const pingResult = await client.ping();
 if (hasConnectionRefusedError(pingResult)) {
-  console.info('[NonExistingHostPing] Ping connection refused, as expected')
+  console.info("[NonExistingHostPing] Ping connection refused, as expected");
 } else {
   console.error(
-    '[NonExistingHostPing] Ping expected to fail with ECONNREFUSED, but got:',
+    "[NonExistingHostPing] Ping expected to fail with ECONNREFUSED, but got:",
     pingResult,
-  )
+  );
 }
-await client.close()
+await client.close();
 
 function hasConnectionRefusedError(
   pingResult: PingResult,
-): pingResult is PingResult & { error: { code: 'ECONNREFUSED' } } {
+): pingResult is PingResult & { error: { code: "ECONNREFUSED" } } {
   return (
     !pingResult.success &&
-    'code' in pingResult.error &&
-    pingResult.error.code === 'ECONNREFUSED'
-  )
+    "code" in pingResult.error &&
+    pingResult.error.code === "ECONNREFUSED"
+  );
 }

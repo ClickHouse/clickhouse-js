@@ -1,8 +1,8 @@
 import type {
   ClickHouseClient,
   MergeTreeSettings,
-} from '@clickhouse/client-common'
-import { createTable, TestEnv } from '../utils'
+} from "@clickhouse/client-common";
+import { createTable, TestEnv } from "../utils";
 
 export function createSimpleTable<Stream = unknown>(
   client: ClickHouseClient<Stream>,
@@ -10,16 +10,16 @@ export function createSimpleTable<Stream = unknown>(
   settings: MergeTreeSettings = {},
 ) {
   return createTable(client, (env) => {
-    const filteredSettings = filterSettingsBasedOnEnv(settings, env)
+    const filteredSettings = filterSettingsBasedOnEnv(settings, env);
     const _settings = Object.keys(filteredSettings).length
-      ? 'SETTINGS ' +
+      ? "SETTINGS " +
         Object.entries(filteredSettings)
           .map(([key, value]) => {
-            const v = typeof value === 'string' ? `'${value}'` : value
-            return `${key} = ${v}`
+            const v = typeof value === "string" ? `'${value}'` : value;
+            return `${key} = ${v}`;
           })
-          .join(', ')
-      : ''
+          .join(", ")
+      : "";
     switch (env) {
       // ENGINE can be omitted in the cloud statements:
       // it will use ReplicatedMergeTree and will add ON CLUSTER as well
@@ -28,14 +28,14 @@ export function createSimpleTable<Stream = unknown>(
           CREATE TABLE ${tableName}
           (id UInt64, name String, sku Array(UInt8))
           ORDER BY (id) ${_settings}
-        `
+        `;
       case TestEnv.LocalSingleNode:
         return `
           CREATE TABLE ${tableName}
           (id UInt64, name String, sku Array(UInt8))
           ENGINE MergeTree()
           ORDER BY (id) ${_settings}
-        `
+        `;
       case TestEnv.LocalCluster:
         return `
           CREATE TABLE ${tableName} ON CLUSTER '{cluster}'
@@ -45,9 +45,9 @@ export function createSimpleTable<Stream = unknown>(
             '{replica}'
           )
           ORDER BY (id) ${_settings}
-        `
+        `;
     }
-  })
+  });
 }
 
 function filterSettingsBasedOnEnv(settings: MergeTreeSettings, env: TestEnv) {
@@ -55,14 +55,14 @@ function filterSettingsBasedOnEnv(settings: MergeTreeSettings, env: TestEnv) {
     case TestEnv.Cloud:
       // ClickHouse Cloud does not like this particular one
       // Local cluster, however, does.
-      if ('non_replicated_deduplication_window' in settings) {
-        const filtered = Object.assign({}, settings)
-        delete filtered['non_replicated_deduplication_window']
-        return filtered
+      if ("non_replicated_deduplication_window" in settings) {
+        const filtered = Object.assign({}, settings);
+        delete filtered["non_replicated_deduplication_window"];
+        return filtered;
       }
-      return settings
+      return settings;
     case TestEnv.LocalCluster:
     case TestEnv.LocalSingleNode:
-      return settings
+      return settings;
   }
 }
