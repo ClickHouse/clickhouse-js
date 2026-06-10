@@ -2,7 +2,7 @@
 
 ## Bug Fixes
 
-- The client now checks the `X-ClickHouse-Exception-Code` response header to detect server errors even when the HTTP status code indicates success. In some scenarios (for example, when an exception occurs while streaming the response, or with certain proxy setups), ClickHouse responds with HTTP 200 but sets the `X-ClickHouse-Exception-Code` header. Previously, such responses were treated as successful, and the exception text could surface as malformed response data; now the request is rejected with a parsed `ClickHouseError` (with the proper `code` and `type`), consistent with non-2xx error responses. This applies to both the Node.js and Web clients. ([#554], supersedes [#350], related issue: [#332])
+- The client now checks the `X-ClickHouse-Exception-Code` response header to detect server errors even when the HTTP status code indicates success. In some scenarios (for example, when an exception occurs while streaming the response progress in headers, or with certain proxy setups), ClickHouse responds with HTTP 200 but sets the `X-ClickHouse-Exception-Code` header. Previously, such responses were treated as successful, and the exception text could surface as malformed response data; now the request is rejected with a parsed `ClickHouseError` (with the proper `code` and `type`), consistent with non-2xx error responses. This applies to both the Node.js and Web clients. ([#554], supersedes [#350], related issue: [#332])
 
 [#554]: https://github.com/ClickHouse/clickhouse-js/pull/554
 [#350]: https://github.com/ClickHouse/clickhouse-js/pull/350
