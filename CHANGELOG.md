@@ -1,5 +1,22 @@
 # 1.21.0
 
+## New features
+
+- Added a `use_multipart_params` client option (default: `false`). When enabled, `query()` sends `query_params` as `multipart/form-data` body parts (with the SQL moved into a `query` part) instead of URL query-string entries, avoiding HTTP 400 errors caused by over-long URLs when parameters contain large arrays (25K+ values). All other URL search params (database, query_id, settings, session_id, role) remain in the URL. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params` on `query()`. ([#825])
+
+```ts
+const client = createClient({ use_multipart_params: true });
+
+await client.query({
+  query: "SELECT * FROM events WHERE id IN {ids:Array(UInt64)}",
+  query_params: { ids: veryLargeArrayOfIds },
+  // Per-request override is also supported:
+  // use_multipart_params: false,
+});
+```
+
+[#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
+
 ## Bug Fixes
 
 - The client now checks the `X-ClickHouse-Exception-Code` response header to detect server errors even when the HTTP status code indicates success. In some scenarios (for example, when an exception occurs while streaming the response progress in headers, or with certain proxy setups), ClickHouse responds with HTTP 200 but sets the `X-ClickHouse-Exception-Code` header. Previously, such responses were treated as successful, and the exception text could surface as malformed response data; now the request is rejected with a parsed `ClickHouseError` (with the proper `code` and `type`), consistent with non-2xx error responses. This applies to both the Node.js and Web clients. ([#554], supersedes [#350], related issue: [#332])
