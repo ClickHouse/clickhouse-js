@@ -76,11 +76,13 @@ export type LogWriterParams<Method extends keyof Logger> = Omit<
 > & { module?: string }
 
 export class LogWriter {
-  constructor(
-    private readonly logger: Logger,
-    private readonly module: string,
-    private readonly logLevel: ClickHouseLogLevel,
-  ) {
+  private readonly logger: Logger
+  private readonly module: string
+  private readonly logLevel: ClickHouseLogLevel
+  constructor(logger: Logger, module: string, logLevel: ClickHouseLogLevel) {
+    this.logger = logger
+    this.module = module
+    this.logLevel = logLevel
     this.info({
       message: `Log level is set to ${ClickHouseLogLevel[this.logLevel]}`,
     })
@@ -132,32 +134,47 @@ export class LogWriter {
   }
 }
 
-export enum ClickHouseLogLevel {
+/**
+ * Mimics the runtime shape of a numeric TypeScript `enum`: an object with both
+ * forward (`Name -> number`) and reverse (`number -> Name`) mappings. This
+ * preserves backwards compatibility with the previous `enum ClickHouseLogLevel`
+ * — both `ClickHouseLogLevel.TRACE` (returns `0`) and `ClickHouseLogLevel[0]`
+ * (returns `'TRACE'`) continue to work — while staying compatible with the
+ * `--erasableSyntaxOnly` TypeScript option (no TS `enum` declaration).
+ */
+export const ClickHouseLogLevel = {
   /**
    * A fine-grained debugging event. Might produce a lot of logs, so use with caution.
    */
-  TRACE = 0,
+  TRACE: 0,
   /**
    * A debugging event. Useful for debugging, but generally not needed in production. Includes technical values that might require redacting.
    */
-  DEBUG = 1,
+  DEBUG: 1,
   /**
    * An informational event. Indicates that an event happened.
    */
-  INFO = 2,
+  INFO: 2,
   /**
    * A warning event. Not an error, but is likely more important than an informational event. Addressing should help prevent potential issues.
    */
-  WARN = 3,
+  WARN: 3,
   /**
    * An error event. Something went wrong.
    */
-  ERROR = 4,
+  ERROR: 4,
   /**
    * Logging is turned off.
    */
-  OFF = 127,
-}
+  OFF: 127,
+  0: 'TRACE',
+  1: 'DEBUG',
+  2: 'INFO',
+  3: 'WARN',
+  4: 'ERROR',
+  127: 'OFF',
+} as const
+export type ClickHouseLogLevel = 0 | 1 | 2 | 3 | 4 | 127
 
 function formatMessage({
   level,

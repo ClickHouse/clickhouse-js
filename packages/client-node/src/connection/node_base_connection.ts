@@ -73,11 +73,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
 
   private readonly connectionId: string = crypto.randomUUID()
   private readonly socketPool: SocketPool
+  protected readonly params: NodeConnectionParams
+  protected readonly agent: Http.Agent
 
-  protected constructor(
-    protected readonly params: NodeConnectionParams,
-    protected readonly agent: Http.Agent,
-  ) {
+  protected constructor(params: NodeConnectionParams, agent: Http.Agent) {
+    this.params = params
+    this.agent = agent
     this.socketPool = new SocketPool(
       this.connectionId,
       this.params,

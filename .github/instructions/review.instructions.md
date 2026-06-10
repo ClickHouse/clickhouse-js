@@ -1,6 +1,6 @@
 ---
-applyTo: "**"
-excludeAgent: "cloud-agent"
+applyTo: '**'
+excludeAgent: 'cloud-agent'
 ---
 
 ## UX

@@ -68,21 +68,27 @@ export class ResultSet<
   private readonly log_error: (error: Error) => void
   private readonly jsonHandling: JSONHandling
   private _consumed = false
+  /**
+   * The stream of the response body.
+   *
+   * It is expected that the stream is passed directly from the response of the HTTP request
+   * and has not been consumed or altered yet.
+   */
+  private _stream: Stream.Readable
+  private readonly format: Format
+  public readonly query_id: string
 
   constructor(
-    /**
-     * The stream of the response body.
-     *
-     * It is expected that the stream is passed directly from the response of the HTTP request
-     * and has not been consumed or altered yet.
-     */
-    private _stream: Stream.Readable,
-    private readonly format: Format,
-    public readonly query_id: string,
+    _stream: Stream.Readable,
+    format: Format,
+    query_id: string,
     log_error?: (error: Error) => void,
     _response_headers?: ResponseHeaders,
     jsonHandling?: JSONHandling,
   ) {
+    this._stream = _stream
+    this.format = format
+    this.query_id = query_id
     this.jsonHandling = {
       ...defaultJSONHandling,
       ...jsonHandling,

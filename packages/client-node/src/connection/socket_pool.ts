@@ -76,12 +76,21 @@ export class SocketPool {
     return `${this.connectionId}:${this.socketCounter}`
   }
 
+  private readonly connectionId: string
+  private readonly params: NodeConnectionParams
+  private readonly createClientRequest: CreateClientRequest
+  private readonly agent: Http.Agent
+
   constructor(
-    private readonly connectionId: string,
-    private readonly params: NodeConnectionParams,
-    private readonly createClientRequest: CreateClientRequest,
-    private readonly agent: Http.Agent,
+    connectionId: string,
+    params: NodeConnectionParams,
+    createClientRequest: CreateClientRequest,
+    agent: Http.Agent,
   ) {
+    this.connectionId = connectionId
+    this.params = params
+    this.createClientRequest = createClientRequest
+    this.agent = agent
     this.jsonHandling = params.json ?? {
       parse: JSON.parse,
       stringify: JSON.stringify,

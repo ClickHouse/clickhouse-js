@@ -341,12 +341,12 @@ describe('select with query binding', () => {
   })
 
   describe('Enum', () => {
-    it('should accept numeric enums in a parametrized query', async () => {
-      enum MyEnum {
-        foo = 0,
-        bar = 1,
-        qaz = 2,
-      }
+    it('should accept numeric enum-like values in a parametrized query', async () => {
+      const MyEnum = {
+        foo: 0,
+        bar: 1,
+        qaz: 2,
+      } as const
 
       const rs = await client.query({
         query:
@@ -361,11 +361,11 @@ describe('select with query binding', () => {
       expect(response).toBe('2\n')
     })
 
-    it('should accept numeric enums in a parametrized query', async () => {
-      enum MyEnum {
-        foo = 'foo',
-        bar = 'bar',
-      }
+    it('should accept string enum-like values in a parametrized query', async () => {
+      const MyEnum = {
+        foo: 'foo',
+        bar: 'bar',
+      } as const
 
       const rs = await client.query({
         query: 'SELECT concat({str1: String},{str2: String})',
