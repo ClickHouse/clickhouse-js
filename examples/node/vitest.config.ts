@@ -24,6 +24,9 @@ export default defineConfig({
       "schema-and-deployments/url_configuration.ts",
       // Duplicate of `security/read_only_user.ts`
       "troubleshooting/read_only_user.ts",
+      // TODO: stop excluding once @clickhouse/client@1.20.0 (which adds the
+      //  `tracer` config option) is published to npm.
+      "coding/otel_tracing.ts",
     ],
     setupFiles: ["vitest.setup.ts"],
     pool: "forks",

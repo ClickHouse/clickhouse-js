@@ -6,6 +6,7 @@ import { ClickHouseLogLevel, LogWriter } from "./logger";
 import { defaultJSONHandling, type JSONHandling } from "./parse/json_handling";
 import type { BaseResultSet } from "./result";
 import type { ClickHouseSettings } from "./settings";
+import type { ClickHouseTracer } from "./tracing";
 
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
@@ -93,6 +94,28 @@ export interface BaseClickHouseClientConfigOptions {
    * Defaults to using standard `JSON.parse` and `JSON.stringify`
    */
   json?: Partial<JSONHandling>;
+  /**
+   * Optional tracer called by the client around key lifecycle operations
+   * (`query` / `command` / `exec` / `insert` / `ping`). The interface is a
+   * structural subset of the OpenTelemetry `Tracer`/`Span` APIs, so a raw
+   * OTEL tracer (`trace.getTracer(...)`) can be passed here as-is - but the
+   * client itself depends on no tracing library.
+   *
+   * Each operation runs inside `tracer.startActiveSpan(name, options, fn)`.
+   * For OpenTelemetry, active-span context propagation across the operation's
+   * `await` points requires the `AsyncLocalStorageContextManager` (from
+   * `@opentelemetry/context-async-hooks`) to be registered; this is the
+   * default context manager in the OpenTelemetry Node.js SDK.
+   *
+   * Tracer calls are inlined into the client's hot path with no defensive
+   * wrapper: exceptions thrown by the tracer or its spans propagate to the
+   * caller. Make sure your tracer doesn't throw.
+   *
+   * @see {@link ClickHouseTracer}
+   * @default undefined (no spans are emitted; the client uses a shared no-op tracer/span to keep call sites monomorphic,
+   * at the cost of a small fixed per-operation overhead)
+   */
+  tracer?: ClickHouseTracer;
   /** When true, query() sends query_params as multipart/form-data parts
    *  instead of URL query string entries. This avoids HTTP URL length limits
    *  when query parameters contain large arrays (25K+ values).

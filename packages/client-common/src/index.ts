@@ -114,6 +114,17 @@ export {
   /** @deprecated Import `defaultJSONHandling` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   defaultJSONHandling,
 } from "./parse";
+export {
+  type ClickHouseTracer,
+  type ClickHouseSpan,
+  type ClickHouseSpanOptions,
+  type ClickHouseSpanAttributes,
+  type ClickHouseSpanStatus,
+  type ClickHouseSpanName,
+  ClickHouseSpanStatusCode,
+  ClickHouseSpanKind,
+  ClickHouseSpanNames,
+} from "./tracing";
 
 /** For implementation usage only - should not be re-exported */
 export {

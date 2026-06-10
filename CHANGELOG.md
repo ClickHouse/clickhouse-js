@@ -27,6 +27,21 @@ await client.query({
 
 # 1.20.0
 
+## New Features
+
+- Added an optional **tracer API** that the user can pass through the client config (`tracer`) and that gets called around key lifecycle operations (`query`, `command`, `exec`, `insert`, `ping`). The `ClickHouseTracer` interface is a structural subset of the OpenTelemetry `Tracer`/`Span` APIs, so a raw OTEL tracer (`trace.getTracer(...)`) can be passed to the client as-is - but the client itself ships no tracing dependency. Each operation runs inside `tracer.startActiveSpan(...)`, so auto-instrumented child spans nest under the ClickHouse operation spans; for OpenTelemetry, this requires the `AsyncLocalStorageContextManager` to be registered (the default in the OpenTelemetry Node.js SDK). Tracer exceptions are NOT caught, so a broken tracer will break client operations. See [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the full surface description, and [`examples/node/coding/otel_tracing.ts`](./examples/node/coding/otel_tracing.ts) for a runnable Node.js example. ([#776])
+
+```ts
+import { createClient } from "@clickhouse/client";
+import { trace } from "@opentelemetry/api";
+
+// a raw OpenTelemetry tracer is structurally compatible - no adapter needed
+const client = createClient({
+  url: "http://localhost:8123",
+  tracer: trace.getTracer("@clickhouse/client"),
+});
+```
+
 ## Migration Notes
 
 - TypeScript: `ClickHouseLogLevel` is now exported as a literal numeric union type (`0 | 1 | 2 | 3 | 4 | 127`) instead of a TypeScript `enum` type. If you were assigning arbitrary `number` values to `ClickHouseLogLevel`, you may need to narrow/cast those values during migration.
@@ -59,6 +74,7 @@ await client.query({
 - Re-exported the `ResponseHeaders` type from `@clickhouse/client` and `@clickhouse/client-web`. Previously this type was only available from `@clickhouse/client-common`; it is now part of the public re-export surface of both flavored packages, alongside the other commonly used types. This is part of an ongoing effort to make `@clickhouse/client-common` an internal-only package so downstream consumers can depend solely on `@clickhouse/client` or `@clickhouse/client-web`. ([#758])
 
 [#758]: https://github.com/ClickHouse/clickhouse-js/pull/758
+[#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
 
 ## Bug Fixes
 

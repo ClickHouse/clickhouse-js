@@ -20,6 +20,9 @@
     "@clickhouse/client": "latest"
   },
   "devDependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/context-async-hooks": "^2.7.1",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
     "@types/node": "^25.2.3",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",

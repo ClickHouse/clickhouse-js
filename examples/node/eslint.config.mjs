@@ -41,6 +41,15 @@ export default defineConfig(
   },
   // Ignore build artifacts and externals
   {
-    ignores: ["eslint.config.mjs", "coverage", "out", "dist", "node_modules"],
+    ignores: [
+      "eslint.config.mjs",
+      "coverage",
+      "out",
+      "dist",
+      "node_modules",
+      // TODO: stop ignoring once @clickhouse/client@1.20.0 (which adds the
+      //  `tracer` config option) is published to npm.
+      "coding/otel_tracing.ts",
+    ],
   },
 );
