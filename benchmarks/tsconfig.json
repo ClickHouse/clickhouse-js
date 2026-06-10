@@ -5,7 +5,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "outDir": "dist",
-    "baseUrl": "./",
     "paths": {
       "@clickhouse/client-common": ["../packages/client-common/src/index.ts"],
       "@clickhouse/client": ["../packages/client-node/src/index.ts"],
