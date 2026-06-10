@@ -278,7 +278,9 @@ export class SocketPool {
           params.try_decompress_response_stream ?? true;
         const ignoreErrorResponse = params.ignore_error_response ?? false;
         // even if the stream decompression is disabled, we have to decompress it in case of an error
-        const isFailedResponse = !isSuccessfulResponse(_response.statusCode);
+        const isFailedResponse =
+          !isSuccessfulResponse(_response.statusCode) ||
+          _response.headers["x-clickhouse-exception-code"] !== undefined;
         if (
           tryDecompressResponseStream ||
           (isFailedResponse && !ignoreErrorResponse)
