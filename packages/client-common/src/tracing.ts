@@ -17,9 +17,9 @@
  * can implement the same small surface directly.
  *
  * When a {@link ClickHouseTracer} is provided via
- * {@link BaseClickHouseClientConfigOptions.tracer}, the client calls
- * {@link ClickHouseTracer.startSpan} when a tracked operation begins
- * (`query`, `command`, `exec`, `insert`, `ping`), then mutates the returned
+ * {@link BaseClickHouseClientConfigOptions.tracer}, the client runs each
+ * tracked operation (`query`, `command`, `exec`, `insert`, `ping`) inside
+ * {@link ClickHouseTracer.startActiveSpan}, mutates the provided
  * {@link ClickHouseSpan} during the operation
  * ({@link ClickHouseSpan.setAttributes}, {@link ClickHouseSpan.setStatus},
  * {@link ClickHouseSpan.recordException}), and finally calls
@@ -35,29 +35,29 @@
 export interface ClickHouseTracer<
   TSpan extends ClickHouseSpan = ClickHouseSpan,
 > {
-  /** Called when a tracked operation begins. Same shape as the first two
-   *  parameters of OpenTelemetry's `Tracer.startSpan`. The returned span is
-   *  mutated by the client and ended exactly once. */
-  startSpan(name: string, options?: ClickHouseSpanOptions): TSpan;
   /**
-   * Optional. When defined, the client runs the underlying network operation
-   * inside this scope function, so an OTEL implementation can make `span`
-   * the _active_ span for the duration of `fn` - causing auto-instrumented
-   * child spans (e.g. from `@opentelemetry/instrumentation-http`) to be
-   * parented under the ClickHouse operation span.
+   * Called when a tracked operation begins. Same shape as OpenTelemetry's
+   * `Tracer.startActiveSpan(name, options, fn)` overload: implementations
+   * must invoke `fn` with the new span and return `fn`'s result untouched.
+   * The client runs the entire operation (an `async` function) inside `fn`,
+   * mutates the span during the operation, and ends it exactly once.
    *
-   * The function is synchronous: `fn` returns the operation's `Promise`, and
-   * implementations must return `fn()`'s result untouched. An OTEL adapter is
-   * a one-liner:
-   *
-   * ```ts
-   * withActiveSpan: (span, fn) =>
-   *   context.with(trace.setSpan(context.active(), span), fn)
-   * ```
-   *
-   * When omitted, spans are still emitted, just never set as active.
+   * @note The callback is asynchronous under the hood: the client keeps using
+   * the span across `await` points inside `fn`. For OpenTelemetry, active-span
+   * context propagation across those `await`s requires the
+   * `AsyncLocalStorageContextManager` (from
+   * `@opentelemetry/context-async-hooks`) to be registered - which is the
+   * default context manager in the OpenTelemetry Node.js SDK
+   * (`@opentelemetry/sdk-node` / `NodeTracerProvider`). With it in place,
+   * auto-instrumented child spans (e.g. from
+   * `@opentelemetry/instrumentation-http`) are parented under the ClickHouse
+   * operation span.
    */
-  withActiveSpan?<T>(span: TSpan, fn: () => T): T;
+  startActiveSpan<T>(
+    name: string,
+    options: ClickHouseSpanOptions,
+    fn: (span: TSpan) => T,
+  ): T;
 }
 
 /** Structural subset of the OpenTelemetry `Span` interface - a real OTEL
@@ -137,11 +137,28 @@ export type ClickHouseSpanName =
   (typeof ClickHouseSpanNames)[keyof typeof ClickHouseSpanNames];
 
 const noop = (): void => undefined;
-/** Shared no-op span used by the client when no tracer is configured,
- *  keeping the hot path free of conditional checks. @internal */
+/** Shared no-op span handed out by {@link NoopClickHouseTracer}. @internal */
 export const NoopClickHouseSpan: ClickHouseSpan = {
   setAttributes: noop,
   setStatus: noop,
   recordException: noop,
   end: noop,
 };
+
+/** No-op tracer assigned once at client creation when no tracer is
+ *  configured, so the hot path stays branch-free (monomorphic call sites
+ *  that the JIT can inline). @internal */
+export const NoopClickHouseTracer: ClickHouseTracer = {
+  startActiveSpan: (_name, _options, fn) => fn(NoopClickHouseSpan),
+};
+
+/** Records the exception on the span and marks it with the ERROR status,
+ *  normalizing non-`Error` throwables to `Error`. */
+export function recordSpanError(span: ClickHouseSpan, err: unknown): void {
+  const error = err instanceof Error ? err : new Error(String(err));
+  span.recordException(error);
+  span.setStatus({
+    code: ClickHouseSpanStatusCode.ERROR,
+    message: error.message,
+  });
+}

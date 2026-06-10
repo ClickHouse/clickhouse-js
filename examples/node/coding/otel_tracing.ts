@@ -7,10 +7,12 @@
 // The client ships only the `ClickHouseTracer` shape (no OpenTelemetry
 // dependency of its own); that shape is a structural subset of the
 // OpenTelemetry `Tracer`/`Span` APIs, so a raw OTEL tracer can be passed to
-// the client **as-is**, with no adapter and no casts. Optionally, a tiny
-// wrapper adds `withActiveSpan` so that auto-instrumented child spans (e.g.
-// from `@opentelemetry/instrumentation-http`) nest under the ClickHouse
-// operation spans.
+// the client **as-is**, with no adapter and no casts. The client runs each
+// operation inside `tracer.startActiveSpan(...)`, so auto-instrumented child
+// spans (e.g. from `@opentelemetry/instrumentation-http`) nest under the
+// ClickHouse operation spans - provided the `AsyncLocalStorageContextManager`
+// is registered (see step 1 below; the OpenTelemetry Node.js SDK registers it
+// by default).
 //
 // To keep this example self-contained and runnable without an external
 // collector, it wires up an in-memory span exporter from
@@ -18,7 +20,8 @@
 //
 // See also:
 //  - `../../../docs/howto/tracing.md` - full description of the tracer surface.
-import { context, trace, SpanStatusCode, type Span } from "@opentelemetry/api";
+import { context, SpanStatusCode } from "@opentelemetry/api";
+import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
 import {
   BasicTracerProvider,
   InMemorySpanExporter,
@@ -26,7 +29,15 @@ import {
 } from "@opentelemetry/sdk-trace-base";
 import { createClient, type ClickHouseTracer } from "@clickhouse/client";
 
-// 1. Set up a minimal, in-memory OpenTelemetry tracer provider so that the
+// 1. Register the AsyncLocalStorageContextManager so that the span started by
+//    `startActiveSpan` stays *active* across the `await` points inside the
+//    client operation. This is required for active-span context propagation;
+//    when using the full OpenTelemetry Node.js SDK (`@opentelemetry/sdk-node`
+//    / `NodeTracerProvider`), this context manager is the default and this
+//    step is unnecessary.
+context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable());
+
+// 2. Set up a minimal, in-memory OpenTelemetry tracer provider so that the
 //    spans the client emits are actually recorded (the global no-op tracer
 //    would silently drop them). A real application would instead register an
 //    exporter that ships spans to its OTEL collector.
@@ -36,20 +47,9 @@ const provider = new BasicTracerProvider({
 });
 const otelTracer = provider.getTracer("@clickhouse/client");
 
-// 2. The zero-adapter path: a raw OpenTelemetry tracer is structurally
-//    assignable to `ClickHouseTracer` - this compiles with no casts, and you
-//    could pass `otelTracer` to `createClient` directly.
-const zeroAdapterTracer: ClickHouseTracer<Span> = otelTracer;
-void zeroAdapterTracer;
-
-// 3. Optionally, add the `withActiveSpan` scope function so that the
-//    ClickHouse operation span becomes the *active* span while the request
-//    runs - auto-instrumented child spans will then be parented under it.
-const tracer: ClickHouseTracer<Span> = {
-  startSpan: (name, options) => otelTracer.startSpan(name, options),
-  withActiveSpan: (span, fn) =>
-    context.with(trace.setSpan(context.active(), span), fn),
-};
+// 3. The zero-adapter path: a raw OpenTelemetry tracer is structurally
+//    assignable to `ClickHouseTracer` - this compiles with no casts.
+const tracer: ClickHouseTracer = otelTracer;
 
 // 4. Pass the tracer through the client config; from here on, every
 //    `query`/`command`/`exec`/`insert`/`ping` call is traced automatically.

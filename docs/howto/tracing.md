@@ -43,8 +43,11 @@ import type {
 } from "@clickhouse/client"; // or '@clickhouse/client-web'
 
 interface ClickHouseTracer<TSpan extends ClickHouseSpan = ClickHouseSpan> {
-  startSpan(name: string, options?: ClickHouseSpanOptions): TSpan;
-  withActiveSpan?<T>(span: TSpan, fn: () => T): T;
+  startActiveSpan<T>(
+    name: string,
+    options: ClickHouseSpanOptions,
+    fn: (span: TSpan) => T,
+  ): T;
 }
 
 interface ClickHouseSpan {
@@ -55,40 +58,39 @@ interface ClickHouseSpan {
 }
 ```
 
-- `startSpan` has the same shape as the first two parameters of OTEL's
-  `Tracer.startSpan`; the options carry `kind` (always
-  `ClickHouseSpanKind.CLIENT`, value-identical to OTEL's `SpanKind.CLIENT`,
-  per the OTEL database semantic conventions) and the initial `attributes`.
-- The returned span only needs the four methods above; OTEL's `Span`
-  satisfies them as-is (its chainable `this`-returning methods are compatible
-  with the `void` declarations).
+- `startActiveSpan` has the same shape as OTEL's
+  `Tracer.startActiveSpan(name, options, fn)` overload; the options carry
+  `kind` (always `ClickHouseSpanKind.CLIENT`, value-identical to OTEL's
+  `SpanKind.CLIENT`, per the OTEL database semantic conventions) and the
+  initial `attributes`. Implementations must invoke `fn` with the new span
+  and return `fn`'s result untouched - the client runs the entire operation
+  (an `async` function) inside `fn`.
+- The span only needs the four methods above; OTEL's `Span` satisfies them
+  as-is (its chainable `this`-returning methods are compatible with the
+  `void` declarations).
 - Status codes are numbers, value-identical to OTEL's `SpanStatusCode`.
   Non-OTEL implementations can match on the exported
   `ClickHouseSpanStatusCode` constant (`UNSET: 0`, `OK: 1`, `ERROR: 2`).
 
-### Optional: active-span context propagation
+### Active-span context propagation
 
-`withActiveSpan` is optional, and a raw OTEL tracer does not have it. When
-defined, the client runs the underlying network operation inside this scope
-function, so an OTEL implementation can make the ClickHouse operation span
-the _active_ span for the duration of the request - causing auto-instrumented
-child spans (e.g. from `@opentelemetry/instrumentation-http`) to be parented
-under it. The function is synchronous - `fn` returns the operation's
-`Promise`, which must be returned untouched:
+Because the client's operation callback is asynchronous (the span is used
+across `await` points inside `fn`), OpenTelemetry needs the
+`AsyncLocalStorageContextManager` (from `@opentelemetry/context-async-hooks`)
+to keep the ClickHouse operation span _active_ for the duration of the
+request - that is what causes auto-instrumented child spans (e.g. from
+`@opentelemetry/instrumentation-http`) to be parented under it.
+
+**This context manager is the default in the OpenTelemetry Node.js SDK**
+(`@opentelemetry/sdk-node` / `NodeTracerProvider`), so if you use the
+standard SDK setup, no extra work is needed. With a bare
+`BasicTracerProvider` (e.g. in tests), register it manually:
 
 ```ts
-import { createClient, type ClickHouseTracer } from "@clickhouse/client";
-import { context, trace, type Span } from "@opentelemetry/api";
+import { context } from "@opentelemetry/api";
+import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
 
-const otelTracer = trace.getTracer("@clickhouse/client");
-
-const tracer: ClickHouseTracer<Span> = {
-  startSpan: (name, options) => otelTracer.startSpan(name, options),
-  withActiveSpan: (span, fn) =>
-    context.with(trace.setSpan(context.active(), span), fn),
-};
-
-const client = createClient({ url: "http://localhost:8123", tracer });
+context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable());
 ```
 
 A complete, runnable version of this setup (wired to an in-memory span
@@ -99,17 +101,18 @@ exporter so you can see the emitted spans) lives in
 
 For every call to `query` / `command` / `exec` / `insert` / `ping` (with the
 single exception of `insert` with an empty `values` array, which short-circuits
-before talking to the server), the client invokes:
+before talking to the server), the client invokes
+`startActiveSpan(name, { kind, attributes }, fn)`:
 
-1. `startSpan(name, { kind, attributes })` - the name is one of
-   `clickhouse.query`, `clickhouse.command`, `clickhouse.exec`,
-   `clickhouse.insert`, `clickhouse.ping` (also exported as
-   `ClickHouseSpanNames`); `kind` is `ClickHouseSpanKind.CLIENT`. The initial
-   attribute bag always includes `db.system`, `db.namespace`,
+1. The name is one of `clickhouse.query`, `clickhouse.command`,
+   `clickhouse.exec`, `clickhouse.insert`, `clickhouse.ping` (also exported
+   as `ClickHouseSpanNames`); `kind` is `ClickHouseSpanKind.CLIENT`. The
+   initial attribute bag always includes `db.system`, `db.namespace`,
    `server.address`, and - when set - `clickhouse.application`, plus
    operation-specific entries such as `clickhouse.format`,
    `clickhouse.table`, `clickhouse.query_id`, and `clickhouse.session_id`.
-2. If `withActiveSpan` is defined, the network operation runs inside it.
+2. Inside `fn`, the network operation runs with the span as the active span
+   (when the context manager supports it; see above).
 3. `span.setAttributes({ 'clickhouse.query_id': <server-assigned id> })` - so
    you always have the final `query_id`, even when the caller did not pass one
    and the connection layer generated it.
@@ -150,10 +153,10 @@ interface RecordedSpan extends ClickHouseSpan {
 
 const recorded: RecordedSpan[] = [];
 const tracer: ClickHouseTracer<RecordedSpan> = {
-  startSpan: (name, options) => {
+  startActiveSpan: (name, options, fn) => {
     const span: RecordedSpan = {
       name,
-      attributes: { ...options?.attributes },
+      attributes: { ...options.attributes },
       setAttributes: (attrs) => Object.assign(span.attributes, attrs),
       setStatus: (status) => {
         span.status =
@@ -165,7 +168,7 @@ const tracer: ClickHouseTracer<RecordedSpan> = {
       end: () => {},
     };
     recorded.push(span);
-    return span;
+    return fn(span);
   },
 };
 ```
@@ -173,5 +176,7 @@ const tracer: ClickHouseTracer<RecordedSpan> = {
 ## Disabling tracing
 
 Omit the `tracer` option (or set it to `undefined`) and the client does no
-tracing work - operations run against a shared no-op span singleton, so the
-hot path stays branch-free with effectively zero per-operation overhead.
+tracing work - a shared no-op tracer (handing out a shared no-op span) is
+assigned once at client creation, so the hot path stays branch-free with
+effectively zero per-operation overhead, and the monomorphic call sites
+remain friendly to the JIT.

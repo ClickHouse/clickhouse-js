@@ -101,12 +101,19 @@ export interface BaseClickHouseClientConfigOptions {
    * OTEL tracer (`trace.getTracer(...)`) can be passed here as-is - but the
    * client itself depends on no tracing library.
    *
+   * Each operation runs inside `tracer.startActiveSpan(name, options, fn)`.
+   * For OpenTelemetry, active-span context propagation across the operation's
+   * `await` points requires the `AsyncLocalStorageContextManager` (from
+   * `@opentelemetry/context-async-hooks`) to be registered; this is the
+   * default context manager in the OpenTelemetry Node.js SDK.
+   *
    * Tracer calls are inlined into the client's hot path with no defensive
    * wrapper: exceptions thrown by the tracer or its spans propagate to the
    * caller. Make sure your tracer doesn't throw.
    *
    * @see {@link ClickHouseTracer}
-   * @default undefined (tracing disabled, no-op spans on the hot path)
+   * @default undefined (tracing disabled; a shared no-op tracer is assigned
+   * at client creation, keeping the hot path branch-free)
    */
   tracer?: ClickHouseTracer;
 }

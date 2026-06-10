@@ -10,6 +10,7 @@ import {
   type ClickHouseTracer,
 } from "@clickhouse/client-common";
 import { ClickHouseClient } from "../../src/client";
+import { NoopClickHouseSpan } from "../../src/tracing";
 
 class RecordedSpan implements ClickHouseSpan {
   readonly initialAttributes: ClickHouseSpanAttributes;
@@ -17,7 +18,6 @@ class RecordedSpan implements ClickHouseSpan {
   status?: ClickHouseSpanStatus;
   exception?: Error;
   ended = false;
-  activeDuring: string[] = [];
 
   constructor(
     readonly name: string,
@@ -46,14 +46,10 @@ function createRecordingTracer(): {
 } {
   const spans: RecordedSpan[] = [];
   const tracer: ClickHouseTracer<RecordedSpan> = {
-    startSpan(name, options) {
+    startActiveSpan(name, options, fn) {
       const span = new RecordedSpan(name, options);
       spans.push(span);
-      return span;
-    },
-    withActiveSpan(span, fn) {
-      span.activeDuring.push("fn");
-      return fn();
+      return fn(span);
     },
   };
   return { tracer, spans };
@@ -148,27 +144,22 @@ describe("tracer", () => {
     expect(span.ended).toBe(true);
   });
 
-  it("runs the operation inside withActiveSpan when defined", async () => {
-    const { tracer, spans } = createRecordingTracer();
-    const client = buildClient(tracer);
-    await client.query({ query: "SELECT 1" });
-    expect(spans[0].activeDuring).toEqual(["fn"]);
-  });
-
-  it("works without the optional withActiveSpan", async () => {
-    const spans: RecordedSpan[] = [];
-    const tracer: ClickHouseTracer<RecordedSpan> = {
-      startSpan(name, options) {
-        const span = new RecordedSpan(name, options);
-        spans.push(span);
-        return span;
+  it("emits the operation span via startActiveSpan", async () => {
+    const calls: string[] = [];
+    const tracer: ClickHouseTracer = {
+      startActiveSpan(name, _options, fn) {
+        calls.push(`start:${name}`);
+        const result = fn(NoopClickHouseSpan);
+        calls.push(`returned:${name}`);
+        return result;
       },
     };
     const client = buildClient(tracer);
     await client.query({ query: "SELECT 1" });
-    expect(spans).toHaveLength(1);
-    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
-    expect(spans[0].ended).toBe(true);
+    expect(calls).toEqual([
+      "start:clickhouse.query",
+      "returned:clickhouse.query",
+    ]);
   });
 
   it("emits a span for command() with OK status", async () => {
@@ -260,7 +251,7 @@ describe("tracer", () => {
     });
   });
 
-  it("does not call the tracer at all when none is configured", async () => {
+  it("uses the no-op tracer when none is configured", async () => {
     const client = buildClient(undefined);
     // Must not throw.
     const result = await client.query({ query: "SELECT 1" });
@@ -269,7 +260,7 @@ describe("tracer", () => {
 
   it("propagates tracer exceptions to the caller (no defensive wrapper)", async () => {
     const brokenTracer: ClickHouseTracer = {
-      startSpan: () => {
+      startActiveSpan: () => {
         throw new Error("start failed");
       },
     };
@@ -281,14 +272,15 @@ describe("tracer", () => {
 
   it("propagates span method exceptions to the caller", async () => {
     const tracer: ClickHouseTracer = {
-      startSpan: () => ({
-        setAttributes: () => {
-          throw new Error("setAttributes failed");
-        },
-        setStatus: () => {},
-        recordException: () => {},
-        end: () => {},
-      }),
+      startActiveSpan: (_name, _options, fn) =>
+        fn({
+          setAttributes: () => {
+            throw new Error("setAttributes failed");
+          },
+          setStatus: () => {},
+          recordException: () => {},
+          end: () => {},
+        }),
     };
     const client = buildClient(tracer);
     await expect(client.query({ query: "SELECT 1" })).rejects.toThrow(
@@ -299,14 +291,15 @@ describe("tracer", () => {
   it("still ends the span on success even when setStatus is a no-op", async () => {
     let ended = false;
     const tracer: ClickHouseTracer = {
-      startSpan: () => ({
-        setAttributes: () => {},
-        setStatus: () => {},
-        recordException: () => {},
-        end: () => {
-          ended = true;
-        },
-      }),
+      startActiveSpan: (_name, _options, fn) =>
+        fn({
+          setAttributes: () => {},
+          setStatus: () => {},
+          recordException: () => {},
+          end: () => {
+            ended = true;
+          },
+        }),
     };
     const client = buildClient(tracer);
     await client.query({ query: "SELECT 1" });
