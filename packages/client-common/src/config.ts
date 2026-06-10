@@ -112,8 +112,8 @@ export interface BaseClickHouseClientConfigOptions {
    * caller. Make sure your tracer doesn't throw.
    *
    * @see {@link ClickHouseTracer}
-   * @default undefined (tracing disabled; a shared no-op tracer is assigned
-   * at client creation, keeping the hot path branch-free)
+   * @default undefined (no spans are emitted; the client uses a shared no-op tracer/span to keep call sites monomorphic,
+   * at the cost of a small fixed per-operation overhead)
    */
   tracer?: ClickHouseTracer;
 }
