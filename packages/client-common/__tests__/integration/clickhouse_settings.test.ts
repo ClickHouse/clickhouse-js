@@ -1,10 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import type { ClickHouseClient, InsertParams } from "@clickhouse/client-common";
+import type {
+  ClickHouseClient,
+  ClickHouseSettings,
+  InsertParams,
+} from "@clickhouse/client-common";
 import { SettingsMap } from "@clickhouse/client-common";
 import { createSimpleTable } from "../fixtures/simple_table";
-import { createTestClient, guid } from "../utils";
+import { createTestClient, guid, isOnEnv, TestEnv } from "../utils";
 
-// TODO: cover at least all enum settings
 describe("ClickHouse settings", () => {
   let client: ClickHouseClient;
   beforeEach(() => {
@@ -13,6 +16,42 @@ describe("ClickHouse settings", () => {
   afterEach(async () => {
     await client.close();
   });
+
+  // Guards against transport/serialization regressions: the client must be able
+  // to send any setting the server advertises (including enum and Map settings).
+  // Scoped to local environments, where every setting is writable, so we can
+  // assert that none of them is rejected when sent back at its current value.
+  it.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
+    "should be able to send every setting reported by system.settings",
+    async () => {
+      const settings = await client
+        .query({
+          query: "SELECT name, value FROM system.settings",
+          format: "JSONEachRow",
+        })
+        .then((r) => r.json<{ name: string; value: string }>());
+      expect(settings.length).toBeGreaterThan(0);
+
+      const failures: { name: string; error: string }[] = [];
+      const concurrency = 10;
+      let index = 0;
+      async function worker() {
+        while (index < settings.length) {
+          const { name, value } = settings[index++];
+          try {
+            await client.command({
+              query: "SELECT 1",
+              clickhouse_settings: { [name]: value } as ClickHouseSettings,
+            });
+          } catch (err) {
+            failures.push({ name, error: (err as Error).message });
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: concurrency }, () => worker()));
+      expect(failures).toEqual([]);
+    },
+  );
 
   it("should work with additional_table_filters map", async () => {
     const result = await client
