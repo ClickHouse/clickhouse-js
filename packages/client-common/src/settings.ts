@@ -1608,6 +1608,23 @@ interface ClickHouseHTTPSettings {
    *  Additionally, this is useful when executing DDLs on clustered environments,
    *  as the client will receive the response only when the DDL is applied on all nodes of the cluster. */
   wait_end_of_query: Bool;
+  /** Number of bytes in the result to buffer in the server memory.
+   *  If the result body is larger than this threshold, the buffer is written to the HTTP channel,
+   *  and the remaining data is sent directly to the HTTP channel. */
+  buffer_size: UInt64;
+  /** If enabled, the server compresses the data it sends to the client using the internal ClickHouse
+   *  compression format (not a standard HTTP one). The compressed data has a non-standard format,
+   *  and the `clickhouse-compressor` program is required to work with it.
+   *  For standard HTTP (gzip) compression, use the `compression` client configuration option instead. */
+  compress: Bool;
+  /** If enabled, the server decompresses the data passed in the POST request body, expecting it to be
+   *  compressed using the internal ClickHouse compression format (not a standard HTTP one). */
+  decompress: Bool;
+  /** Can be passed as the quota key (any string).
+   *  @see https://clickhouse.com/docs/operations/quotas */
+  quota_key: string;
+  /** If enabled, include the stack trace in the response body when an exception occurs. */
+  stacktrace: Bool;
   /** Format to use if a SELECT query is executed without a FORMAT clause.
    *  Only useful for the {@link ClickHouseClient.exec} method,
    *  as {@link ClickHouseClient.query} method always attaches this clause. */
