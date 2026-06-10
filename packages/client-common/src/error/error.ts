@@ -1,5 +1,19 @@
+// In cluster mode, the server wraps the original exception, repeating the
+// `Code`/`Exception`/`(TYPE)` markers, e.g.:
+//   Code: 57. DB::Exception: There was an error on [host:9000]: Code: 57. DB::Exception: <message>. (TABLE_ALREADY_EXISTS) (version ...). (TABLE_ALREADY_EXISTS) (version ...)
+// The leading `.*Exception: ` is greedy so we anchor on the innermost (last)
+// exception, while `(?<message>.+?)` is lazy so the message stops at the first
+// `(TYPE)` marker rather than swallowing the repeated suffixes. The type
+// lookahead requires at least three consecutive uppercase letters so that
+// parenthesised groups like `(2)` or `(official build)` are not mistaken for it.
+//
+// NOTE: In normal usage, the string fed to `parseError` comes from ClickHouse,
+// but it may still include user-controlled fragments (e.g. parts of a query) or
+// even non-ClickHouse payloads (proxy/HTML errors) when parsing failed requests.
+// Keep this regex simple to avoid excessive backtracking on large/unexpected input.
+// (If this ever becomes a concern, consider a non-regex parser or input length limits.)
 const errorRe =
-  /(Code|Error): (?<code>\d+).*Exception: (?<message>.+)\((?<type>(?=.+[A-Z]{3})[A-Z0-9_]+?)\)/s;
+  /(Code|Error): (?<code>\d+).*Exception: (?<message>.+?)\((?<type>(?=[A-Z0-9_]*[A-Z]{3})[A-Z0-9_]+)\)/s;
 
 interface ParsedClickHouseError {
   message: string;
