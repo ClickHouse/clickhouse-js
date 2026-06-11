@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildMultipartBody } from "../../src/utils/multipart";
+import {
+  buildMultipartBody,
+  MAX_URL_BIND_PARAM_LENGTH,
+  queryParamsExceedUrlThreshold,
+} from "../../src/utils/multipart";
 
 describe("buildMultipartBody", () => {
   const boundary = "----test-boundary";
@@ -91,5 +95,63 @@ describe("buildMultipartBody", () => {
     expect(result).toContain(
       `Content-Disposition: form-data; name="param_my-key.name"\r\n`,
     );
+  });
+});
+
+describe("queryParamsExceedUrlThreshold", () => {
+  it("should return false for empty params", () => {
+    expect(queryParamsExceedUrlThreshold({})).toBe(false);
+  });
+
+  it("should keep small params under the threshold", () => {
+    expect(queryParamsExceedUrlThreshold({ id: "123", name: "abc" })).toBe(
+      false,
+    );
+  });
+
+  it("should report a single oversized param", () => {
+    expect(
+      queryParamsExceedUrlThreshold({
+        big: "x".repeat(MAX_URL_BIND_PARAM_LENGTH + 1),
+      }),
+    ).toBe(true);
+  });
+
+  it("should report many individually small params whose total exceeds the threshold", () => {
+    const params: Record<string, string> = {};
+    for (let i = 0; i < 40; i++) {
+      params[`p${i}`] = "v".repeat(200);
+    }
+    expect(queryParamsExceedUrlThreshold(params)).toBe(true);
+  });
+
+  it("should account for percent-encoding expansion", () => {
+    // Raw length is under the budget, but each ampersand encodes to three characters (%26)
+    expect(
+      queryParamsExceedUrlThreshold({
+        s: "&".repeat(Math.ceil(MAX_URL_BIND_PARAM_LENGTH / 2)),
+      }),
+    ).toBe(true);
+  });
+
+  it("should measure the formatted value of non-string params", () => {
+    // A large array formats to a long bracketed list
+    const ids = [...Array(2000).keys()];
+    expect(queryParamsExceedUrlThreshold({ ids })).toBe(true);
+    expect(queryParamsExceedUrlThreshold({ ids: [1, 2, 3] })).toBe(false);
+  });
+
+  it("should stay just under and flip just over the threshold", () => {
+    // "param_v=" prefix is 8 characters
+    expect(
+      queryParamsExceedUrlThreshold({
+        v: "x".repeat(MAX_URL_BIND_PARAM_LENGTH - 8),
+      }),
+    ).toBe(false);
+    expect(
+      queryParamsExceedUrlThreshold({
+        v: "x".repeat(MAX_URL_BIND_PARAM_LENGTH - 7),
+      }),
+    ).toBe(true);
   });
 });

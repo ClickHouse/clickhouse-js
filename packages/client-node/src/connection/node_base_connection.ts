@@ -15,6 +15,7 @@ import type {
 } from "@clickhouse/client-common";
 import {
   buildMultipartBody,
+  queryParamsExceedUrlThreshold,
   formatQueryParams,
   isCredentialsAuth,
   isJWTAuth,
@@ -187,10 +188,15 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.params.compression.decompress_response,
     );
 
+    const queryParams = params.query_params;
+    const hasQueryParams =
+      queryParams !== undefined && Object.keys(queryParams).length > 0;
     const useMultipart =
-      (params.use_multipart_params ?? this.params.use_multipart_params) &&
-      params.query_params !== undefined &&
-      Object.keys(params.query_params).length > 0;
+      hasQueryParams &&
+      ((params.use_multipart_params ?? this.params.use_multipart_params) ||
+        ((params.use_multipart_params_auto ??
+          this.params.use_multipart_params_auto) &&
+          queryParamsExceedUrlThreshold(queryParams)));
 
     const searchParams = toSearchParams({
       database: this.params.database,

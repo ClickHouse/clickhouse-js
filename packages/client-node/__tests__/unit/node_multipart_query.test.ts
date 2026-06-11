@@ -202,4 +202,100 @@ describe("[Node.js] Multipart query params", () => {
       expect(options.headers["Content-Type"]).toBeUndefined();
     });
   });
+
+  describe("when use_multipart_params_auto is true", () => {
+    it("should keep small query_params in the URL", async () => {
+      const adapter = buildHttpConnection({
+        use_multipart_params_auto: true,
+      });
+
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const selectPromise = adapter.query({
+        query: "SELECT {v:Int32}",
+        query_params: { v: 42 },
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url, options] = httpRequestStub.mock.calls[0];
+      expect(url.search).toContain("param_v=42");
+      expect(options.headers["Content-Type"]).toBeUndefined();
+    });
+
+    it("should promote large query_params to a multipart body", async () => {
+      const adapter = buildHttpConnection({
+        use_multipart_params_auto: true,
+      });
+
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const ids = [...Array(3000).keys()];
+      const selectPromise = adapter.query({
+        query:
+          "SELECT count() FROM numbers(5000) WHERE number IN {ids:Array(UInt64)}",
+        query_params: { ids },
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url, options] = httpRequestStub.mock.calls[0];
+      expect(url.search).not.toContain("param_ids");
+      expect(url.search).toContain("query_id=");
+      expect(options.headers["Content-Type"]).toMatch(
+        /^multipart\/form-data; boundary=/,
+      );
+    });
+
+    it("should respect a per-request use_multipart_params_auto override", async () => {
+      const adapter = buildHttpConnection({});
+
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const selectPromise = adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: "x".repeat(5000) },
+        use_multipart_params_auto: true,
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url, options] = httpRequestStub.mock.calls[0];
+      expect(url.search).not.toContain("param_big");
+      expect(options.headers["Content-Type"]).toMatch(
+        /^multipart\/form-data; boundary=/,
+      );
+    });
+  });
+
+  describe("when use_multipart_params_auto is false (default)", () => {
+    it("should keep large query_params in the URL", async () => {
+      const adapter = buildHttpConnection({});
+
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const selectPromise = adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: "x".repeat(5000) },
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url, options] = httpRequestStub.mock.calls[0];
+      expect(url.search).toContain("param_big");
+      expect(options.headers["Content-Type"]).toBeUndefined();
+    });
+  });
 });

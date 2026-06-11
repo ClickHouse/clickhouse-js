@@ -152,6 +152,8 @@ export {
   isSuccessfulResponse,
   sleep,
   buildMultipartBody,
+  MAX_URL_BIND_PARAM_LENGTH,
+  queryParamsExceedUrlThreshold,
   toSearchParams,
   transformUrl,
   withCompressionHeaders,
