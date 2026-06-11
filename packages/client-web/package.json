@@ -2,7 +2,7 @@
   "name": "@clickhouse/client-web",
   "description": "Official JS client for ClickHouse DB - Web API implementation",
   "homepage": "https://clickhouse.com",
-  "version": "1.18.2",
+  "version": "1.21.0",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
@@ -23,13 +23,14 @@
     "default": "./dist/index.js"
   },
   "scripts": {
+    "pack": "npm pack",
     "prepack": "cp ../../README.md ../../LICENSE .",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",
     "build": "rm -rf dist; tsc"
   },
   "dependencies": {
-    "@clickhouse/client-common": "1.18.2"
+    "@clickhouse/client-common": "1.21.0"
   }
 }

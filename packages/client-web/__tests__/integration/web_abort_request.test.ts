@@ -1,104 +1,104 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import type { Row } from '@clickhouse/client-common'
-import { createTestClient } from '@test/utils'
-import type { WebClickHouseClient } from '../../src/client'
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import type { Row } from "@clickhouse/client-common";
+import { createTestClient } from "@test/utils";
+import type { WebClickHouseClient } from "../../src/client";
 
-describe('[Web] abort request', () => {
-  let client: WebClickHouseClient
+describe("[Web] abort request", () => {
+  let client: WebClickHouseClient;
 
   beforeEach(() => {
-    client = createTestClient() as unknown as WebClickHouseClient
-  })
+    client = createTestClient() as unknown as WebClickHouseClient;
+  });
 
   afterEach(async () => {
-    await client.close()
-  })
+    await client.close();
+  });
 
   // a slightly different assertion vs the same Node.js test
-  it('cancels a select query before it is sent', async () => {
-    const controller = new AbortController()
+  it("cancels a select query before it is sent", async () => {
+    const controller = new AbortController();
     const selectPromise = client.query({
-      query: 'SELECT sleep(3)',
-      format: 'CSV',
+      query: "SELECT sleep(3)",
+      format: "CSV",
       abort_signal: controller.signal,
-    })
-    controller.abort()
+    });
+    controller.abort();
 
     await expect(selectPromise).rejects.toMatchObject(
       expect.objectContaining({
-        message: expect.stringMatching('The user aborted a request'),
+        message: expect.stringMatching("The user aborted a request"),
       }),
-    )
-  })
+    );
+  });
 
-  it('cancels a select query while reading response', async () => {
-    const controller = new AbortController()
+  it("cancels a select query while reading response", async () => {
+    const controller = new AbortController();
 
     const rs = await client.query({
-      query: 'SELECT number FROM system.numbers LIMIT 100000',
-      format: 'JSONCompactEachRow',
+      query: "SELECT number FROM system.numbers LIMIT 100000",
+      format: "JSONCompactEachRow",
       abort_signal: controller.signal,
       clickhouse_settings: {
         // low block size to force streaming 1 row at a time
-        max_block_size: '1',
+        max_block_size: "1",
       },
-    })
+    });
 
-    let caughtError: Error | null = null
-    let rowCount = 0
+    let caughtError: Error | null = null;
+    let rowCount = 0;
 
-    const reader = rs.stream().getReader()
+    const reader = rs.stream().getReader();
     try {
       while (true) {
-        const { done, value: rows } = await reader.read()
-        if (done) break
-        ;(rows as Row[]).forEach(() => {
+        const { done, value: rows } = await reader.read();
+        if (done) break;
+        (rows as Row[]).forEach(() => {
           if (rowCount >= 1) {
-            controller.abort()
+            controller.abort();
           }
-          rowCount++
-        })
+          rowCount++;
+        });
       }
     } catch (e) {
-      caughtError = e as Error
+      caughtError = e as Error;
     }
 
-    expect(caughtError).not.toBeNull()
+    expect(caughtError).not.toBeNull();
     // after fetching ${rowCount} rows
     expect(caughtError?.message, `after fetching ${rowCount} rows`).toContain(
-      'aborted',
-    )
-  })
+      "aborted",
+    );
+  });
 
-  it('cancels a select query while reading response by closing response stream', async () => {
-    let rowCount = 0
+  it("cancels a select query while reading response by closing response stream", async () => {
+    let rowCount = 0;
     const selectPromise = client
       .query({
-        query: 'SELECT number FROM system.numbers LIMIT 3',
-        format: 'JSONCompactEachRow',
+        query: "SELECT number FROM system.numbers LIMIT 3",
+        format: "JSONCompactEachRow",
         clickhouse_settings: {
           // low block size to force streaming 1 row at a time
-          max_block_size: '1',
+          max_block_size: "1",
         },
       })
       .then(async function (rs) {
-        const reader = rs.stream().getReader()
+        const reader = rs.stream().getReader();
         while (true) {
-          const { done, value: rows } = await reader.read()
-          if (done) break
+          const { done, value: rows } = await reader.read();
+          if (done) break;
           for (const row of rows as Row[]) {
-            row.json()
+            row.json();
             if (rowCount >= 1) {
-              await rs.stream().cancel()
+              await rs.stream().cancel();
             }
-            rowCount++
+            rowCount++;
           }
         }
-      })
+      });
     await expect(selectPromise).rejects.toMatchObject(
       expect.objectContaining({
-        message: expect.stringContaining('Stream has been already consumed'),
+        message: expect.stringContaining("Stream has been already consumed"),
       }),
-    )
-  })
-})
+    );
+  });
+});

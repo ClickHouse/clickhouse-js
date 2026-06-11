@@ -3,16 +3,16 @@ import type {
   InsertValues,
   JSONHandling,
   ValuesEncoder,
-} from '@clickhouse/client-common'
-import { encodeJSON, isSupportedRawFormat } from '@clickhouse/client-common'
-import Stream from 'stream'
-import { isStream, mapStream } from './stream'
+} from "@clickhouse/client-common";
+import { encodeJSON, isSupportedRawFormat } from "@clickhouse/client-common";
+import Stream from "stream";
+import { isStream, mapStream } from "./stream";
 
 export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
-  private readonly json: JSONHandling
+  private readonly json: JSONHandling;
 
   constructor(customJSONConfig: JSONHandling) {
-    this.json = customJSONConfig
+    this.json = customJSONConfig;
   }
 
   encodeValues<T>(
@@ -22,28 +22,28 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
     if (isStream(values)) {
       // TSV/CSV/CustomSeparated formats don't require additional serialization
       if (!values.readableObjectMode) {
-        return values
+        return values;
       }
       // JSON* formats streams
       return Stream.pipeline(
         values,
         mapStream((value) => encodeJSON(value, format, this.json.stringify)),
         pipelineCb,
-      )
+      );
     }
     // JSON* arrays
     if (Array.isArray(values)) {
       return values
         .map((value) => encodeJSON(value, format, this.json.stringify))
-        .join('')
+        .join("");
     }
     // JSON & JSONObjectEachRow format input
-    if (typeof values === 'object') {
-      return encodeJSON(values, format, this.json.stringify)
+    if (typeof values === "object") {
+      return encodeJSON(values, format, this.json.stringify);
     }
     throw new Error(
       `Cannot encode values of type ${typeof values} with ${format} format`,
-    )
+    );
   }
 
   validateInsertValues<T>(
@@ -53,12 +53,12 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
     if (
       !Array.isArray(values) &&
       !isStream(values) &&
-      typeof values !== 'object'
+      typeof values !== "object"
     ) {
       throw new Error(
         'Insert expected "values" to be an array, a stream of values or a JSON object, ' +
           `got: ${typeof values}`,
-      )
+      );
     }
 
     if (isStream(values)) {
@@ -66,12 +66,12 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
         if (values.readableObjectMode) {
           throw new Error(
             `Insert for ${format} expected Readable Stream with disabled object mode.`,
-          )
+          );
         }
       } else if (!values.readableObjectMode) {
         throw new Error(
           `Insert for ${format} expected Readable Stream with enabled object mode.`,
-        )
+        );
       }
     }
   }
@@ -81,6 +81,6 @@ function pipelineCb(err: NodeJS.ErrnoException | null) {
   if (err) {
     // FIXME: use logger instead
     // eslint-disable-next-line no-console
-    console.error(err)
+    console.error(err);
   }
 }

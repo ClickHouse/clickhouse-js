@@ -1,77 +1,113 @@
-import { describe, it, beforeEach, afterEach } from 'vitest'
+import { describe, it, beforeEach, afterEach } from "vitest";
 import {
   assertError,
   streamErrorQueryParams,
-} from '@test/fixtures/stream_errors'
-import { isClickHouseVersionAtLeast } from '@test/utils/server_version'
-import type { ClickHouseClient } from '../../src'
-import type { ClickHouseError } from '../../src'
-import { createNodeTestClient } from '../utils/node_client'
+} from "@test/fixtures/stream_errors";
+import { isClickHouseVersionAtLeast } from "@test/utils/server_version";
+import type { ClickHouseClient } from "../../src";
+import type { ClickHouseError } from "../../src";
+import { createNodeTestClient } from "../utils/node_client";
 
 // See https://github.com/ClickHouse/ClickHouse/pull/88818
-describe('[Node.js] Stream error handling', () => {
-  let client: ClickHouseClient
+describe("[Node.js] Stream error handling", () => {
+  let client: ClickHouseClient;
 
   beforeEach(async () => {
-    client = createNodeTestClient()
-  })
+    client = createNodeTestClient();
+  });
   afterEach(async () => {
-    await client.close()
-  })
+    await client.close();
+  });
 
-  it('with promise listeners', async ({ skip }) => {
+  it("with promise listeners", async ({ skip }) => {
     if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
-      skip()
+      skip();
     }
 
-    let caughtError: ClickHouseError | null = null
+    let caughtError: ClickHouseError | null = null;
 
     try {
-      const queryParams = streamErrorQueryParams()
-      const rs = await client.query(queryParams)
+      const queryParams = streamErrorQueryParams();
+      const rs = await client.query(queryParams);
 
       await new Promise<void>((resolve, reject) => {
-        const stream = rs.stream<{ n: number }>()
-        stream.on('data', (rows) => {
+        const stream = rs.stream<{ n: number }>();
+        stream.on("data", (rows) => {
           for (const row of rows) {
-            row.json() // ignored
+            row.json(); // ignored
           }
-        })
-        stream.on('error', (err) => {
-          reject(err)
-        })
-        stream.on('end', () => {
-          resolve()
-        })
-      })
+        });
+        stream.on("error", (err) => {
+          reject(err);
+        });
+        stream.on("end", () => {
+          resolve();
+        });
+      });
     } catch (err) {
-      caughtError = err as ClickHouseError
+      caughtError = err as ClickHouseError;
     }
 
-    assertError(caughtError)
-  })
+    assertError(caughtError);
+  });
 
-  it('with async iterators', async ({ skip }) => {
+  it("with async iterators", async ({ skip }) => {
     if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
-      skip()
+      skip();
     }
 
-    let caughtError: ClickHouseError | null = null
+    let caughtError: ClickHouseError | null = null;
 
     try {
-      const queryParams = streamErrorQueryParams()
-      const rs = await client.query(queryParams)
+      const queryParams = streamErrorQueryParams();
+      const rs = await client.query(queryParams);
 
-      const stream = rs.stream()
+      const stream = rs.stream();
       for await (const rows of stream) {
         for (const row of rows) {
-          row.json() // ignored
+          row.json(); // ignored
         }
       }
     } catch (err) {
-      caughtError = err as ClickHouseError
+      caughtError = err as ClickHouseError;
     }
 
-    assertError(caughtError)
-  })
-})
+    assertError(caughtError);
+  });
+
+  it.skip("with .json()", async ({ skip }) => {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
+      skip();
+    }
+
+    let caughtError: ClickHouseError | null = null;
+
+    try {
+      const queryParams = streamErrorQueryParams();
+      const rs = await client.query(queryParams);
+      await rs.json();
+    } catch (err) {
+      caughtError = err as ClickHouseError;
+    }
+
+    assertError(caughtError);
+  });
+
+  it.skip("with .text()", async ({ skip }) => {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
+      skip();
+    }
+
+    let caughtError: ClickHouseError | null = null;
+
+    try {
+      const queryParams = streamErrorQueryParams();
+      const rs = await client.query(queryParams);
+      await rs.text();
+    } catch (err) {
+      caughtError = err as ClickHouseError;
+    }
+
+    assertError(caughtError);
+  });
+});

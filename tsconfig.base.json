@@ -7,16 +7,23 @@
     "pretty": true,
     "noEmitOnError": true,
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
     "resolveJsonModule": true,
     "removeComments": false,
     "sourceMap": true,
-    "noUnusedLocals": true,
     "noFallthroughCasesInSwitch": true,
     "useDefineForClassFields": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": false,
     "esModuleInterop": true,
-    "importHelpers": false
+    "importHelpers": false,
+    "erasableSyntaxOnly": true,
+    "noUncheckedSideEffectImports": true,
+    "libReplacement": false
   },
   "exclude": ["node_modules"]
 }

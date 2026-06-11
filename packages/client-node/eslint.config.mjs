@@ -1,7 +1,7 @@
-import js from '@eslint/js'
-import { defineConfig } from 'eslint/config'
-import tseslint from 'typescript-eslint'
-import { typescriptEslintConfig } from '../../eslint.config.base.mjs'
+import js from "@eslint/js";
+import { defineConfig } from "eslint/config";
+import tseslint from "typescript-eslint";
+import { typescriptEslintConfig } from "../../eslint.config.base.mjs";
 
 export default defineConfig(
   // Base ESLint recommended rules
@@ -9,19 +9,25 @@ export default defineConfig(
   // TypeScript-ESLint recommended rules with type checking
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-unused-expressions": "warn",
+    },
+  },
   typescriptEslintConfig(import.meta.dirname),
   // Ignore build artifacts and externals
   {
     ignores: [
-      './__tests__/**/*.ts',
-      'eslint.config.mjs',
-      'vitest.*.config.ts',
-      'vitest.*.setup.ts',
-      'coverage',
-      'out',
-      'dist',
-      'node_modules',
-      'webpack',
+      "./__tests__/**/*.ts",
+      "eslint.config.mjs",
+      "vitest.*.config.ts",
+      "vitest.*.setup.ts",
+      "coverage",
+      "out",
+      "dist",
+      "node_modules",
+      "webpack",
     ],
   },
-)
+);

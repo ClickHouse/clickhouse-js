@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "pretty": true,
+    "noEmitOnError": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "removeComments": false,
+    "sourceMap": true,
+    "noFallthroughCasesInSwitch": true,
+    "useDefineForClassFields": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "importHelpers": false,
+    "lib": ["ES2022"],
+    "types": ["node"]
+  },
+  "include": ["./**/*.ts"],
+  // TODO: stop excluding coding/otel_tracing.ts once @clickhouse/client@1.20.0
+  //  (which adds the `tracer` config option) is published to npm.
+  "exclude": ["node_modules", "coding/otel_tracing.ts"]
+}

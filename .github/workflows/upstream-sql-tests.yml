@@ -1,0 +1,117 @@
+name: "upstream-sql-tests"
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: "ClickHouse/ClickHouse ref to check out"
+        required: false
+        default: "master"
+        type: string
+  schedule:
+    - cron: "0 5 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - "tests/clickhouse-test-runner/**"
+      - ".github/workflows/upstream-sql-tests.yml"
+  pull_request:
+    paths:
+      - "tests/clickhouse-test-runner/**"
+      - ".github/workflows/upstream-sql-tests.yml"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  UPSTREAM_REPO: "ClickHouse/ClickHouse"
+
+jobs:
+  upstream-sql-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        clickhouse: [head, latest]
+        # Round-robin shards keep each job at roughly one minute so the
+        # upstream SQL tests no longer dominate PR CI runtime. Bump
+        # `shard` and `SHARD_TOTAL` together if the allowlist grows enough
+        # that per-shard runtime climbs back above ~1 minute.
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - name: Checkout clickhouse-js
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Checkout ClickHouse upstream
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: ${{ env.UPSTREAM_REPO }}
+          ref: ${{ github.event.inputs.upstream_ref || 'master' }}
+          path: tests/clickhouse-test-runner/.upstream/ClickHouse
+          sparse-checkout: |
+            tests/clickhouse-test
+            tests/queries
+            tests/config
+            tests/ci
+            tests/performance
+            docker/test/util
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies for upstream clickhouse-test
+        run: |
+          python -m pip install --upgrade pip
+          pip install jinja2
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Build test runner
+        run: |
+          npm install
+          npm run build
+
+      - name: Make upstream test script executable
+        run: |
+          chmod +x tests/clickhouse-test-runner/.upstream/ClickHouse/tests/clickhouse-test
+
+      - name: Run upstream SQL tests
+        id: run-tests
+        env:
+          CLICKHOUSE_CLIENT_CLI_LOG: ${{ github.workspace }}/upstream-run.log
+          SHARD_INDEX: ${{ matrix.shard }}
+          SHARD_TOTAL: 10
+        run: |
+          bash tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: upstream-sql-tests-${{ matrix.clickhouse }}-shard-${{ matrix.shard }}
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            upstream-run.log
+            tests/clickhouse-test-runner/.upstream/ClickHouse/tests/queries/**/*.stdout
+            tests/clickhouse-test-runner/.upstream/ClickHouse/tests/queries/**/*.stderr
+            tests/clickhouse-test-runner/.upstream/ClickHouse/tests/queries/**/*.diff
