@@ -1,0 +1,25 @@
+[package]
+name = "ch-core-js"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Shared, pre-built Rust core (the same core consumed by the Python binding).
+# Cargo resolves path deps relative to THIS manifest (not the build's working
+# dir): ch-core-js/ -> clickhouse-js/ -> parent -> ch-core-rs/. Requires the
+# side-by-side clone layout described in the POC report.
+ch-core-rs = { path = "../../ch-core-rs" }
+# napi6 is required for the BigInt64Array/BigUint64Array TypedArrays
+# (Int64/UInt64/DateTime64 columns); everything else here is napi1-level.
+napi = { version = "2", default-features = false, features = ["napi6"] }
+napi-derive = "2"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1

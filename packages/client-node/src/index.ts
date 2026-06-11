@@ -3,6 +3,14 @@ export {
   type QueryResult,
 } from './client'
 export { createClient } from './client'
+export {
+  type DecodedNativeResult,
+  type NativeChunk,
+  type NativeColumn,
+  type NativeValuesArray,
+  type QueryNativeColumnsResult,
+  type QueryNativeRowsResult,
+} from './native_query'
 export { type NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from './config'
 export { ResultSet, type StreamReadable } from './result_set'
 export { drainStream } from './connection/stream'
