@@ -126,7 +126,9 @@ export class ResultSet<
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
       try {
         const text = await getAsText(this._stream);
-        this.span_bytes += new TextEncoder().encode(text).length;
+        // Same as text(): record text.length (UTF-16 code-unit count) rather
+        // than span_bytes to avoid the TextEncoder allocation.
+        this.span_text_length = text.length;
         this.finishSpan();
         return this.jsonHandling.parse(text);
       } catch (err) {
