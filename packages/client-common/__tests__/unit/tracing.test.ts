@@ -97,6 +97,7 @@ function makePing(impl?: () => Promise<any>) {
 function buildClient(
   tracer: ClickHouseTracer<any> | undefined,
   overrides: Partial<MockConnection> = {},
+  url = "http://localhost:8123",
 ): ClickHouseClient {
   const connection: MockConnection = {
     query: makeQuery(overrides.query),
@@ -107,7 +108,7 @@ function buildClient(
     close: async () => {},
   };
   return new ClickHouseClient({
-    url: "http://localhost:8123",
+    url,
     database: "my_db",
     application: "my_app",
     tracer,
@@ -132,9 +133,11 @@ describe("tracer", () => {
     const [span] = spans;
     expect(span.name).toBe(ClickHouseSpanNames.query);
     expect(span.options?.kind).toBe(ClickHouseSpanKind.CLIENT);
-    expect(span.initialAttributes["db.system"]).toBe("clickhouse");
+    expect(span.initialAttributes["db.system.name"]).toBe("clickhouse");
+    expect(span.initialAttributes["db.operation.name"]).toBe("query");
     expect(span.initialAttributes["db.namespace"]).toBe("my_db");
-    expect(span.initialAttributes["server.address"]).toBe("localhost:8123");
+    expect(span.initialAttributes["server.address"]).toBe("localhost");
+    expect(span.initialAttributes["server.port"]).toBe(8123);
     expect(span.initialAttributes["clickhouse.application"]).toBe("my_app");
     expect(span.initialAttributes["clickhouse.format"]).toBe("JSON");
     expect(span.initialAttributes["clickhouse.query_id"]).toBe("caller-q");
@@ -142,6 +145,17 @@ describe("tracer", () => {
     expect(span.status).toEqual({ code: ClickHouseSpanStatusCode.OK });
     expect(span.exception).toBeUndefined();
     expect(span.ended).toBe(true);
+  });
+
+  it("derives server.port from the protocol when the URL has no explicit port", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer, {}, "https://my.clickhouse.cloud");
+    await client.query({ query: "SELECT 1" });
+    expect(spans).toHaveLength(1);
+    expect(spans[0].initialAttributes["server.address"]).toBe(
+      "my.clickhouse.cloud",
+    );
+    expect(spans[0].initialAttributes["server.port"]).toBe(443);
   });
 
   it("emits the operation span via startActiveSpan", async () => {
@@ -189,7 +203,8 @@ describe("tracer", () => {
     await client.insert({ table: "my_table", values: [{ a: 1 }] });
     expect(spans).toHaveLength(1);
     expect(spans[0].name).toBe(ClickHouseSpanNames.insert);
-    expect(spans[0].initialAttributes["clickhouse.table"]).toBe("my_table");
+    expect(spans[0].initialAttributes["db.operation.name"]).toBe("insert");
+    expect(spans[0].initialAttributes["db.collection.name"]).toBe("my_table");
     expect(spans[0].initialAttributes["clickhouse.format"]).toBe(
       "JSONCompactEachRow",
     );

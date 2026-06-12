@@ -99,12 +99,13 @@ are.
 
 ## Suggested follow-ups (in order)
 
-1. Add stable semconv attributes (`db.system.name`, `db.operation.name`,
-   `db.collection.name`) and fix `server.address`/`server.port`; keep the old keys for
-   one minor release; document in CHANGELOG.
+1. ✅ **Implemented.** Add stable semconv attributes (`db.system.name`, `db.operation.name`,
+   `db.collection.name`) and fix `server.address`/`server.port`. Since the tracer API is
+   still unreleased, the old keys (`db.system`, `clickhouse.table`, host+port in
+   `server.address`) were removed outright instead of being kept for a deprecation window.
 2. Add opt-in query-text capture (`db.query.text`) behind a tracing option with
    `maxQueryLength`-style truncation; default off.
 3. Use `clickhouse.insert <table>` as the insert span name.
-4. Extend `examples/node/coding/otel_tracing.ts` (and docs) with `requireParentSpan`
-   and `suppressTracing` adapter recipes so the third-party package's two config
-   options have first-party equivalents.
+4. ✅ **Implemented.** Extend `examples/node/coding/otel_tracing.ts` (and
+   `docs/howto/tracing.md`) with `requireParentSpan` and `suppressTracing` adapter
+   recipes so the third-party package's two config options have first-party equivalents.

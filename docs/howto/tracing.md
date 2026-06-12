@@ -107,10 +107,15 @@ before talking to the server), the client invokes
 1. The name is one of `clickhouse.query`, `clickhouse.command`,
    `clickhouse.exec`, `clickhouse.insert`, `clickhouse.ping` (also exported
    as `ClickHouseSpanNames`); `kind` is `ClickHouseSpanKind.CLIENT`. The
-   initial attribute bag always includes `db.system`, `db.namespace`,
-   `server.address`, and - when set - `clickhouse.application`, plus
-   operation-specific entries such as `clickhouse.format`,
-   `clickhouse.table`, `clickhouse.query_id`, and `clickhouse.session_id`.
+   initial attribute bag always includes the stable
+   [OTEL database semantic convention](https://opentelemetry.io/docs/specs/semconv/database/database-spans/)
+   attributes `db.system.name` (always `clickhouse`), `db.operation.name`
+   (`query` / `command` / `exec` / `insert` / `ping`), `db.namespace` (the
+   configured database), `server.address` (hostname only), and `server.port`
+   (explicit port, or `443`/`80` derived from the URL protocol), and - when
+   set - `clickhouse.application`, plus operation-specific entries such as
+   `clickhouse.format`, `db.collection.name` (the target table on `insert`),
+   `clickhouse.query_id`, and `clickhouse.session_id`.
 2. Inside `fn`, the network operation runs with the span as the active span
    (when the context manager supports it; see above).
 3. `span.setAttributes({ 'clickhouse.query_id': <server-assigned id> })` - so
@@ -133,6 +138,75 @@ propagates to the caller of `query` / `command` / `exec` / `insert` /
 > client does not currently emit a separate "download finished" span when the
 > returned `ResultSet` stream is fully consumed; if you need that, wrap the
 > stream on the caller side.
+
+## Adapter recipes: `requireParentSpan` and suppressing nested HTTP spans
+
+OpenTelemetry auto-instrumentation packages commonly expose two options that
+the client deliberately does **not** implement itself - both belong in a thin
+tracer adapter, where they compose with your OTEL setup:
+
+### Only trace when there is an active parent span
+
+Skip ClickHouse spans when nothing else is being traced (e.g. background
+health checks or pings outside any request context). Wrap the tracer and
+hand the client a no-op span when there is no active parent:
+
+```ts
+import { context, trace } from "@opentelemetry/api";
+import {
+  createClient,
+  type ClickHouseSpan,
+  type ClickHouseTracer,
+} from "@clickhouse/client";
+
+const noop = () => undefined;
+const noopSpan: ClickHouseSpan = {
+  setAttributes: noop,
+  setStatus: noop,
+  recordException: noop,
+  end: noop,
+};
+
+const otelTracer = trace.getTracer("@clickhouse/client");
+const tracer: ClickHouseTracer = {
+  startActiveSpan: (name, options, fn) =>
+    trace.getSpan(context.active()) === undefined
+      ? fn(noopSpan) // no active parent span - do not trace this operation
+      : otelTracer.startActiveSpan(name, options, fn),
+};
+
+const client = createClient({ tracer });
+```
+
+### Suppress nested HTTP spans
+
+If `@opentelemetry/instrumentation-http` is registered, every ClickHouse
+operation span gets a duplicate child HTTP span for the underlying request.
+To suppress them, run the operation under a suppressed context using
+`suppressTracing` from `@opentelemetry/core`:
+
+```ts
+import { context, trace } from "@opentelemetry/api";
+import { suppressTracing } from "@opentelemetry/core";
+import { createClient, type ClickHouseTracer } from "@clickhouse/client";
+
+const otelTracer = trace.getTracer("@clickhouse/client");
+const tracer: ClickHouseTracer = {
+  startActiveSpan: (name, options, fn) =>
+    otelTracer.startActiveSpan(name, options, (span) =>
+      context.with(suppressTracing(context.active()), () => fn(span)),
+    ),
+};
+
+const client = createClient({ tracer });
+```
+
+Alternatively, keep the raw tracer and configure the HTTP instrumentation to
+ignore requests to your ClickHouse endpoint via its
+`ignoreOutgoingRequestHook` option.
+
+Both recipes are demonstrated end-to-end in
+[`examples/node/coding/otel_tracing.ts`](../../examples/node/coding/otel_tracing.ts).
 
 ## Recording-only tracer for tests / debugging
 

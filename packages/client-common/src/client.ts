@@ -264,7 +264,7 @@ export class ClickHouseClient<Stream = unknown> {
       ClickHouseSpanNames.query,
       {
         kind: ClickHouseSpanKind.CLIENT,
-        attributes: this.withBaseSpanAttributes({
+        attributes: this.withBaseSpanAttributes("query", {
           "clickhouse.format": format,
           "clickhouse.query_id": queryParams.query_id,
           "clickhouse.session_id": queryParams.session_id,
@@ -328,7 +328,7 @@ export class ClickHouseClient<Stream = unknown> {
       ClickHouseSpanNames.command,
       {
         kind: ClickHouseSpanKind.CLIENT,
-        attributes: this.withBaseSpanAttributes({
+        attributes: this.withBaseSpanAttributes("command", {
           "clickhouse.query_id": queryParams.query_id,
           "clickhouse.session_id": queryParams.session_id,
         }),
@@ -374,7 +374,7 @@ export class ClickHouseClient<Stream = unknown> {
       ClickHouseSpanNames.exec,
       {
         kind: ClickHouseSpanKind.CLIENT,
-        attributes: this.withBaseSpanAttributes({
+        attributes: this.withBaseSpanAttributes("exec", {
           "clickhouse.query_id": queryParams.query_id,
           "clickhouse.session_id": queryParams.session_id,
         }),
@@ -424,8 +424,8 @@ export class ClickHouseClient<Stream = unknown> {
       ClickHouseSpanNames.insert,
       {
         kind: ClickHouseSpanKind.CLIENT,
-        attributes: this.withBaseSpanAttributes({
-          "clickhouse.table": params.table,
+        attributes: this.withBaseSpanAttributes("insert", {
+          "db.collection.name": params.table,
           "clickhouse.format": format,
           "clickhouse.query_id": queryParams.query_id,
           "clickhouse.session_id": queryParams.session_id,
@@ -466,7 +466,7 @@ export class ClickHouseClient<Stream = unknown> {
       ClickHouseSpanNames.ping,
       {
         kind: ClickHouseSpanKind.CLIENT,
-        attributes: this.withBaseSpanAttributes({
+        attributes: this.withBaseSpanAttributes("ping", {
           "clickhouse.ping.select": select,
         }),
       },
@@ -508,11 +508,20 @@ export class ClickHouseClient<Stream = unknown> {
   }
 
   private withBaseSpanAttributes(
+    operation: string,
     extra: ClickHouseSpanAttributes,
   ): ClickHouseSpanAttributes {
+    const url = this.connectionParams.url;
     const attrs: ClickHouseSpanAttributes = {
-      "db.system": "clickhouse",
-      "server.address": this.connectionParams.url.host,
+      "db.system.name": "clickhouse",
+      "db.operation.name": operation,
+      "server.address": url.hostname,
+      "server.port":
+        url.port !== ""
+          ? Number(url.port)
+          : url.protocol === "https:"
+            ? 443
+            : 80,
       "db.namespace": this.connectionParams.database,
     };
     if (this.connectionParams.application_id !== undefined) {
