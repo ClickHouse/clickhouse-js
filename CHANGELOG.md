@@ -2,6 +2,28 @@
 
 ## New features
 
+- The tracer API (unreleased, introduced in [#776]) now follows the [OpenTelemetry database semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/sql/) and matches the attribute vocabulary of the Rust client ([clickhouse-rs](https://github.com/ClickHouse/clickhouse-rs)); see [`OTEL.md`](./OTEL.md) for the full analysis and [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the documentation. In particular ([#827]):
+  - Spans now carry `db.system.name` (instead of `db.system`), `server.address` + `server.port` (instead of a combined `host:port`), `clickhouse.request.query_id` / `clickhouse.request.session_id` (instead of `clickhouse.query_id` / `clickhouse.session_id`), `clickhouse.response.format` on `query` and `clickhouse.request.format` on `insert` (instead of `clickhouse.format`), and `db.operation.name` + `db.collection.name` on `insert` (instead of `clickhouse.table`).
+  - The span status is left unset on success (per the OTEL spec recommendation for client spans, previously set to `OK`); on failure, the span gets the `error.type` attribute (the error class name) and, for server-side errors, `clickhouse.error.code` (the numeric ClickHouse error code).
+  - Spans record response-side attributes: `db.response.status_code` (HTTP status) and, when the `X-ClickHouse-Summary` header is available, `clickhouse.summary.*` counters (`read_rows`, `written_rows`, etc.).
+  - The `query` span now stays open for the entire `ResultSet` lifetime, ending when the response stream is fully consumed, closed, or fails - with the final `clickhouse.response.decoded_bytes` and (for row-streaming consumption) `db.response.returned_rows` metrics. Streaming errors are now recorded on the span. If the `ResultSet` is never consumed nor closed, the span is never ended.
+  - The `insert` span records `clickhouse.request.sent_rows` and the pre-compression `clickhouse.request.encoded_bytes` for array-based inserts.
+- Added an optional zero-dependency `trace_context_propagator` client config hook that injects the caller's trace context (W3C `traceparent`/`tracestate` headers) into every outgoing request, so that the ClickHouse server links its `system.opentelemetry_span_log` entries to the client trace. With OpenTelemetry, wire it as `(carrier) => propagation.inject(context.active(), carrier)`. Supported on both `@clickhouse/client` and `@clickhouse/client-web`. ([#827])
+
+```ts
+import { context, propagation, trace } from "@opentelemetry/api";
+import { createClient } from "@clickhouse/client";
+
+const client = createClient({
+  tracer: trace.getTracer("@clickhouse/client"),
+  trace_context_propagator: (carrier) =>
+    propagation.inject(context.active(), carrier),
+});
+```
+
+[#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
+[#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
+
 - Added a `use_multipart_params` client option (default: `false`). When enabled, `query()` sends `query_params` as `multipart/form-data` body parts (with the SQL moved into a `query` part) instead of URL query-string entries, avoiding HTTP 400 errors caused by over-long URLs when parameters contain large arrays (25K+ values). All other URL search params (database, query_id, settings, session_id, role) remain in the URL. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params` on `query()`. ([#825])
 
 ```ts
