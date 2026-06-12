@@ -55,10 +55,11 @@ export function toSearchParams({
   query_id,
   role,
 }: ToSearchParamsOptions): URLSearchParams {
-  const entries: [string, string][] = [["query_id", query_id]];
+  const entries: [string, string][] =
+    param_entries !== undefined ? param_entries : [["query_id", query_id]];
 
   if (param_entries !== undefined) {
-    entries.push(...param_entries);
+    entries.push(["query_id", query_id]);
   } else if (query_params !== undefined) {
     for (const [key, value] of Object.entries(query_params)) {
       const formattedParam = formatQueryParams({ value });
