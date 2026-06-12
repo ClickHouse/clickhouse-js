@@ -16,7 +16,7 @@ import {
  * Transport benchmark: `@clickhouse/client` (legacy `http`/`https`) vs a trivial
  * `undici.request()` stub.
  *
- * Motivation: https://github.com/ClickHouse/clickhouse-js/issues/418 proposes
+ * Motivation: https://github.com/ClickHouse/clickhouse-js/issues/511 proposes
  * replacing the legacy `http`/`https` modules with `fetch`/`undici`. We compare
  * against `undici.request()` rather than the global `fetch()` deliberately:
  * `request()` returns a native Node `Readable`, while `fetch()` routes the body

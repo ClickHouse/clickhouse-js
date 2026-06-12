@@ -3,7 +3,7 @@
 ---
 
 This benchmark provides reproducible numbers for the proposal in
-[#418](https://github.com/ClickHouse/clickhouse-js/issues/418): replacing the
+[#511](https://github.com/ClickHouse/clickhouse-js/issues/511): replacing the
 legacy `node:http` / `node:https` transport used by `@clickhouse/client` with
 `undici`.
 
