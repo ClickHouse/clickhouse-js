@@ -1,3 +1,12 @@
+/**
+ * @deprecated The `@clickhouse/client-common` package is deprecated. It is no longer used by
+ * `@clickhouse/client` or `@clickhouse/client-web`; the shared code is bundled into each client
+ * package instead. Import everything from `@clickhouse/client` (Node.js) or
+ * `@clickhouse/client-web` (Web) instead.
+ *
+ * @packageDocumentation
+ */
+
 /** Should be re-exported by the implementation */
 export {
   type BaseQueryParams,

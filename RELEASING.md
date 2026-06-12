@@ -56,6 +56,12 @@ npm dist-tag add @clickhouse/client@head latest
 npm dist-tag add @clickhouse/client-web@head latest
 ```
 
+Mark the deprecated `@clickhouse/client-common` package as such on npm (it is no longer used by `@clickhouse/client` or `@clickhouse/client-web`; the shared code is bundled into each client package):
+
+```bash
+npm deprecate @clickhouse/client-common "This package is deprecated and no longer used by @clickhouse/client or @clickhouse/client-web. Import everything from @clickhouse/client (Node.js) or @clickhouse/client-web (Web) instead."
+```
+
 Check that the packages have been published correctly: <https://www.npmjs.com/org/clickhouse>
 
 Then create a new release in GitHub for `$NEW_VERSION` and include the corresponding changelog notes.
