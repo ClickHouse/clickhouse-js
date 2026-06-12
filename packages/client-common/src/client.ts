@@ -509,11 +509,9 @@ export class ClickHouseClient<Stream = unknown> {
       },
       async (span) => {
         try {
-          const pingParams = params ?? { select: false as const };
-          const result = await this.connection.ping({
-            ...pingParams,
-          });
-          return result;
+          return await this.connection.ping(
+            params ?? { select: false as const },
+          );
         } catch (err) {
           recordSpanError(span, err);
           throw err;
