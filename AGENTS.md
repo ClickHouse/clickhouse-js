@@ -41,6 +41,10 @@ loop. **Do not flag this node/web duplication as something to consolidate**, and
 client self-contained over adding shared helpers that only exist to remove the duplication. Genuinely
 platform-agnostic primitives (like `buildMultipartBody`) still belong in `client-common`.
 
+## Code intelligence (TypeScript LSP)
+
+The repository ships `typescript-language-server` as a root devDependency, so after `npm install` you can start a TypeScript language server with `npx typescript-language-server --stdio` from the repo root for precise go-to-definition, find-references, hover (signatures and JSDoc, including `@deprecated`), workspace symbol search, completions, and type diagnostics. Prefer it over text search when resolving symbols or usages across the `packages/*` workspaces. See [`.claude/skills/typescript-lsp/SKILL.md`](.claude/skills/typescript-lsp/SKILL.md) for verified capabilities and protocol notes.
+
 ## Examples
 
 The repository contains an [`examples`](examples) directory that is being refactored to be AI-agent-friendly.
