@@ -14,7 +14,7 @@ import {
   type ResponseHeaders,
   type ClickHouseSummary,
   type JSONHandling,
-} from "@clickhouse/client-common";
+} from "../common/index";
 import { getAsText, isStream } from "../utils";
 import { decompressResponse, isDecompressionError } from "./compression";
 import { type NodeConnectionParams } from "./node_base_connection";
