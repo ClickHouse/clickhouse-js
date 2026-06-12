@@ -1,4 +1,5 @@
 import type {
+  ClickHouseSpan,
   DataFormat,
   ImplementationDetails,
   JSONHandling,
@@ -167,6 +168,7 @@ export const NodeConfigImpl: Required<
     log_error: (err: Error) => void,
     response_headers: ResponseHeaders,
     jsonHandling: JSONHandling,
+    span?: ClickHouseSpan,
   ) =>
     ResultSet.instance({
       stream,
@@ -175,5 +177,6 @@ export const NodeConfigImpl: Required<
       log_error,
       response_headers,
       jsonHandling,
+      span,
     })) as any,
 };

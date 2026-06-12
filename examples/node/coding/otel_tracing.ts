@@ -53,6 +53,9 @@ const tracer: ClickHouseTracer = otelTracer;
 
 // 4. Pass the tracer through the client config; from here on, every
 //    `query`/`command`/`exec`/`insert`/`ping` call is traced automatically.
+//    Trace context propagation (the W3C `traceparent` header) is handled
+//    automatically by `@opentelemetry/instrumentation-http`, since the
+//    client uses the platform HTTP stack.
 const client = createClient({
   url: process.env["CLICKHOUSE_URL"], // defaults to 'http://localhost:8123'
   password: process.env["CLICKHOUSE_PASSWORD"], // defaults to an empty string
@@ -71,16 +74,19 @@ await client.close();
 // 5. Flush and inspect the spans the client produced. Each operation yields a
 //    single CLIENT-kind span named `clickhouse.<operation>` (also exported as
 //    `ClickHouseSpanNames`) carrying OTEL-style attributes such as
-//    `db.system`, `server.address`, and the server-assigned `clickhouse.query_id`.
+//    `db.system.name`, `server.address`, and the server-assigned
+//    `clickhouse.request.query_id`.
 await provider.forceFlush();
 const spans = exporter.getFinishedSpans();
 for (const span of spans) {
   console.info("[OtelTracing] Span:", {
     name: span.name,
     status: SpanStatusCode[span.status.code],
-    "db.system": span.attributes["db.system"],
+    "db.system.name": span.attributes["db.system.name"],
     "server.address": span.attributes["server.address"],
-    "clickhouse.query_id": span.attributes["clickhouse.query_id"],
+    "server.port": span.attributes["server.port"],
+    "clickhouse.request.query_id":
+      span.attributes["clickhouse.request.query_id"],
   });
 }
 await provider.shutdown();
