@@ -7,10 +7,11 @@ This benchmark provides reproducible numbers for the proposal in
 legacy `node:http` / `node:https` transport used by `@clickhouse/client` with
 `fetch` (backed by `undici`).
 
-It compares the published `@clickhouse/client` (which uses `http`/`https`
-internally) against a **trivial `fetch()`-based stub** over the exact same HTTP
-requests, so the difference reflects raw transport cost rather than client-side
-parsing or configuration.
+It compares `@clickhouse/client` **as built from this repository** (resolved via
+the npm workspace symlink, which uses `http`/`https` internally) against a
+**trivial `fetch()`-based stub** over the exact same HTTP requests, so the
+difference reflects raw transport cost rather than client-side parsing or
+configuration.
 
 Three representative use cases are measured:
 
@@ -32,13 +33,21 @@ Start a local ClickHouse instance (the default `docker-compose.yml` works):
 docker-compose up -d
 ```
 
-Then build and run the benchmark (we avoid `tsx` to keep runtime overhead out of
-the measurements):
+The benchmark drives `@clickhouse/client` through the compiled workspace package
+(`packages/client-node/dist`), so build the workspace packages first, then run
+the benchmark with `tsx`:
 
 ```sh
-tsc --project benchmarks/tsconfig.json \
-&& node benchmarks/dist/benchmarks/transport/index.js
+# 1. Build the workspace packages so `@clickhouse/client` resolves at runtime.
+npm run build
+
+# 2. Run the benchmark.
+npx tsx benchmarks/transport/index.ts
 ```
+
+`tsx` only transpiles at startup; it is not in the timing loop, so it does not
+affect these network-bound measurements (per-request latency and large-result
+throughput).
 
 ### Configuration
 
@@ -54,30 +63,32 @@ All parameters are optional and provided via environment variables:
 Example with custom configuration:
 
 ```sh
-tsc --project benchmarks/tsconfig.json \
+npm run build \
 && LATENCY_REQUESTS=500 DOWNLOAD_ROWS=5000000 ITERATIONS=20 \
-node benchmarks/dist/benchmarks/transport/index.js
+npx tsx benchmarks/transport/index.ts
 ```
 
 ## Sample results
 
-Indicative numbers from a single local run (sandboxed Linux container,
-Node.js v24, ClickHouse `head`, `docker-compose` single node, loopback
-networking, `LATENCY_REQUESTS=100 DOWNLOAD_ROWS=500000 UPLOAD_ROWS=500000
-ITERATIONS=5 WARMUP=2`). **Reproduce on your own hardware before drawing
-conclusions** — absolute values are environment-specific.
+Indicative numbers from a single local run (macOS / Apple Silicon,
+Node.js v24.6.0, ClickHouse `head`, `docker-compose` single node, loopback
+networking, **default configuration**: `LATENCY_REQUESTS=200
+DOWNLOAD_ROWS=1000000 UPLOAD_ROWS=1000000 ITERATIONS=10 WARMUP=3`). **Reproduce
+on your own hardware before drawing conclusions** — absolute values are
+environment-specific.
 
 | Scenario                  | `@clickhouse/client` (http/https) | `fetch` (undici) stub |
 | ------------------------- | --------------------------------- | --------------------- |
-| `SELECT 1` latency (mean) | 2.49 ms                           | 1.74 ms               |
-| Download throughput       | 273 MiB/s                         | 68 MiB/s              |
-| Upload throughput         | 40 MiB/s                          | 40 MiB/s              |
+| `SELECT 1` latency (mean) | ~2.3 ms                           | ~0.8 ms               |
+| Download throughput       | ~1000–1250 MiB/s                  | ~227 MiB/s            |
+| Upload throughput         | ~205–222 MiB/s                    | ~211–224 MiB/s        |
 
-In this run `fetch` had lower small-request latency, while the existing
-`http`/`https` streaming path drained large result sets considerably faster, and
-upload throughput was effectively server-bound for both. This is exactly the
-kind of trade-off the benchmark is meant to surface — the right transport choice
-depends on the workload, so measure the scenarios that matter to you.
+In this run `fetch` had markedly lower small-request latency (~3× faster), while
+the existing `http`/`https` streaming path drained large result sets
+considerably faster (~4.5–5.5×), and upload throughput was effectively
+server-bound for both transports. This is exactly the kind of trade-off the
+benchmark is meant to surface — the right transport choice depends on the
+workload, so measure the scenarios that matter to you.
 
 ## Interpreting the results
 
