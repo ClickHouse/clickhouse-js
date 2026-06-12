@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
 /**
  * This file is used to set up the test environment for Vitest when running tests in Node.js.
  */
-globalThis.environmentSpecificCreateClient = createClient
+globalThis.environmentSpecificCreateClient = createClient;
 
 // Port to import.meta.env once all modules support ESM
 globalThis.process = {
@@ -16,4 +16,4 @@ globalThis.process = {
     CLICKHOUSE_TEST_SKIP_INIT: import.meta.env.CLICKHOUSE_TEST_SKIP_INIT,
     CLICKHOUSE_TEST_ENVIRONMENT: import.meta.env.CLICKHOUSE_TEST_ENVIRONMENT,
   },
-}
+};

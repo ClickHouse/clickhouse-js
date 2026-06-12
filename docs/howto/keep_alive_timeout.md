@@ -15,7 +15,7 @@ This happens when `keep_alive.idle_socket_ttl` (client-side) is greater than the
 ```ts
 const client = createClient({
   log: { level: ClickHouseLogLevel.TRACE },
-})
+});
 ```
 
 Look for two log entries:
@@ -54,7 +54,7 @@ const client = createClient({
   keep_alive: {
     idle_socket_ttl: 2500, // ms; server timeout is 3000 ms → safe margin
   },
-})
+});
 ```
 
 A margin of 500–1000 ms is recommended to account for clock skew and event-loop delays.
@@ -75,7 +75,7 @@ const client = createClient({
   keep_alive: {
     eagerly_destroy_stale_sockets: true,
   },
-})
+});
 ```
 
 When enabled and the client detects that an idle socket has exceeded the server timeout, it will be destroyed immediately. This can help prevent `ECONNRESET` errors on the next request that tries to reuse that socket. You can check the logs for messages about destroying idle sockets:

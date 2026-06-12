@@ -1,5 +1,8 @@
 export class TupleParam {
-  constructor(public readonly values: readonly unknown[]) {}
+  readonly values: readonly unknown[];
+  constructor(values: readonly unknown[]) {
+    this.values = values;
+  }
 }
 
 export function formatQueryParams({
@@ -12,7 +15,7 @@ export function formatQueryParams({
     wrapStringInQuotes,
     printNullAsKeyword,
     isInArrayOrTuple: false,
-  })
+  });
 }
 
 function formatQueryParamsInternal({
@@ -22,45 +25,45 @@ function formatQueryParamsInternal({
   isInArrayOrTuple,
 }: FormatQueryParamsOptions & { isInArrayOrTuple: boolean }): string {
   if (value === null || value === undefined) {
-    if (printNullAsKeyword) return 'NULL'
-    return '\\N'
+    if (printNullAsKeyword) return "NULL";
+    return "\\N";
   }
-  if (Number.isNaN(value)) return 'nan'
-  if (value === Number.POSITIVE_INFINITY) return '+inf'
-  if (value === Number.NEGATIVE_INFINITY) return '-inf'
+  if (Number.isNaN(value)) return "nan";
+  if (value === Number.POSITIVE_INFINITY) return "+inf";
+  if (value === Number.NEGATIVE_INFINITY) return "-inf";
 
-  if (typeof value === 'number' || typeof value === 'bigint')
-    return String(value)
-  if (typeof value === 'boolean') {
+  if (typeof value === "number" || typeof value === "bigint")
+    return String(value);
+  if (typeof value === "boolean") {
     if (isInArrayOrTuple) {
-      return value ? 'TRUE' : 'FALSE'
+      return value ? "TRUE" : "FALSE";
     }
-    return value ? '1' : '0'
+    return value ? "1" : "0";
   }
-  if (typeof value === 'string') {
-    let result = ''
+  if (typeof value === "string") {
+    let result = "";
     for (let i = 0; i < value.length; i++) {
       switch (value.charCodeAt(i)) {
         case TabASCII:
-          result += '\\t'
-          break
+          result += "\\t";
+          break;
         case NewlineASCII:
-          result += '\\n'
-          break
+          result += "\\n";
+          break;
         case CarriageReturnASCII:
-          result += '\\r'
-          break
+          result += "\\r";
+          break;
         case SingleQuoteASCII:
-          result += `\\'`
-          break
+          result += `\\'`;
+          break;
         case BackslashASCII:
-          result += '\\\\'
-          break
+          result += "\\\\";
+          break;
         default:
-          result += value[i]
+          result += value[i];
       }
     }
-    return wrapStringInQuotes ? `'${result}'` : result
+    return wrapStringInQuotes ? `'${result}'` : result;
   }
 
   if (Array.isArray(value)) {
@@ -73,18 +76,18 @@ function formatQueryParamsInternal({
           isInArrayOrTuple: true,
         }),
       )
-      .join(',')}]`
+      .join(",")}]`;
   }
 
   if (value instanceof Date) {
     // The ClickHouse server parses numbers as time-zone-agnostic Unix timestamps
     const unixTimestamp = Math.floor(value.getTime() / 1000)
       .toString()
-      .padStart(10, '0')
-    const milliseconds = value.getUTCMilliseconds()
+      .padStart(10, "0");
+    const milliseconds = value.getUTCMilliseconds();
     return milliseconds === 0
       ? unixTimestamp
-      : `${unixTimestamp}.${milliseconds.toString().padStart(3, '0')}`
+      : `${unixTimestamp}.${milliseconds.toString().padStart(3, "0")}`;
   }
 
   // (42,'foo',NULL)
@@ -98,26 +101,26 @@ function formatQueryParamsInternal({
           isInArrayOrTuple: true,
         }),
       )
-      .join(',')})`
+      .join(",")})`;
   }
 
   if (value instanceof Map) {
-    return formatObjectLikeParam(value.entries())
+    return formatObjectLikeParam(value.entries());
   }
 
   // This is only useful for simple maps where the keys are strings
-  if (typeof value === 'object') {
-    return formatObjectLikeParam(Object.entries(value))
+  if (typeof value === "object") {
+    return formatObjectLikeParam(Object.entries(value));
   }
 
-  throw new Error(`Unsupported value in query parameters: [${value}].`)
+  throw new Error(`Unsupported value in query parameters: [${value}].`);
 }
 
 // {'key1':'value1',42:'value2'}
 function formatObjectLikeParam(
   entries: [unknown, unknown][] | MapIterator<[unknown, unknown]>,
 ): string {
-  const formatted: string[] = []
+  const formatted: string[] = [];
   for (const [key, val] of entries) {
     formatted.push(
       `${formatQueryParamsInternal({
@@ -131,20 +134,20 @@ function formatObjectLikeParam(
         printNullAsKeyword: true,
         isInArrayOrTuple: true,
       })}`,
-    )
+    );
   }
-  return `{${formatted.join(',')}}`
+  return `{${formatted.join(",")}}`;
 }
 
 interface FormatQueryParamsOptions {
-  value: unknown
-  wrapStringInQuotes?: boolean
+  value: unknown;
+  wrapStringInQuotes?: boolean;
   // For tuples/arrays, it is required to print NULL instead of \N
-  printNullAsKeyword?: boolean
+  printNullAsKeyword?: boolean;
 }
 
-const TabASCII = 9
-const NewlineASCII = 10
-const CarriageReturnASCII = 13
-const SingleQuoteASCII = 39
-const BackslashASCII = 92
+const TabASCII = 9;
+const NewlineASCII = 10;
+const CarriageReturnASCII = 13;
+const SingleQuoteASCII = 39;
+const BackslashASCII = 92;

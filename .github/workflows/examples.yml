@@ -1,4 +1,4 @@
-name: 'examples'
+name: "examples"
 
 permissions: {}
 on:
@@ -8,26 +8,26 @@ on:
       - main
       - release
     paths-ignore:
-      - '**/*.md'
-      - 'LICENSE'
-      - 'benchmarks/**'
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
   pull_request:
     paths-ignore:
-      - '**/*.md'
-      - 'LICENSE'
-      - 'benchmarks/**'
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.ref }}'
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 env:
   OTEL_SERVICE_NAME: vitest
   OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-  OTEL_EXPORTER_OTLP_HEADERS: 'authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}'
-  OTEL_RESOURCE_ATTRIBUTES: 'service.namespace=clickhouse-js,deployment.environment=ci'
-  VITEST_OTEL_ENABLED: 'true'
-  VITEST_COVERAGE: 'true'
+  OTEL_EXPORTER_OTLP_HEADERS: "authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}"
+  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js,deployment.environment=ci"
+  VITEST_OTEL_ENABLED: "true"
+  VITEST_COVERAGE: "true"
 
 jobs:
   code-quality:
@@ -41,7 +41,7 @@ jobs:
       run:
         working-directory: examples/${{ matrix.package }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup NodeJS
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -72,15 +72,15 @@ jobs:
       run:
         working-directory: examples/${{ matrix.package }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
         uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
 
       - name: Setup NodeJS
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -113,7 +113,7 @@ jobs:
           npm run run-examples
 
   success:
-    needs: ['code-quality', 'run-examples']
+    needs: ["code-quality", "run-examples"]
     runs-on: ubuntu-latest
     steps:
       - name: All examples checks passed

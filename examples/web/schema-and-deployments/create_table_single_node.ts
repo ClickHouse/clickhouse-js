@@ -1,7 +1,7 @@
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
 // A single ClickHouse node - for example, as in our `docker-compose.yml`
-const client = createClient()
+const client = createClient();
 await client.command({
   query: `
     CREATE TABLE IF NOT EXISTS clickhouse_js_create_table_example
@@ -9,5 +9,5 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
-await client.close()
+});
+await client.close();

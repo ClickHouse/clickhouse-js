@@ -1,4 +1,4 @@
-name: 'upstream-sql-tests'
+name: "upstream-sql-tests"
 
 permissions: {}
 
@@ -6,29 +6,29 @@ on:
   workflow_dispatch:
     inputs:
       upstream_ref:
-        description: 'ClickHouse/ClickHouse ref to check out'
+        description: "ClickHouse/ClickHouse ref to check out"
         required: false
-        default: 'master'
+        default: "master"
         type: string
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   push:
     branches:
       - main
     paths:
-      - 'tests/clickhouse-test-runner/**'
-      - '.github/workflows/upstream-sql-tests.yml'
+      - "tests/clickhouse-test-runner/**"
+      - ".github/workflows/upstream-sql-tests.yml"
   pull_request:
     paths:
-      - 'tests/clickhouse-test-runner/**'
-      - '.github/workflows/upstream-sql-tests.yml'
+      - "tests/clickhouse-test-runner/**"
+      - ".github/workflows/upstream-sql-tests.yml"
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.ref }}'
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 env:
-  UPSTREAM_REPO: 'ClickHouse/ClickHouse'
+  UPSTREAM_REPO: "ClickHouse/ClickHouse"
 
 jobs:
   upstream-sql-tests:
@@ -45,10 +45,10 @@ jobs:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Checkout clickhouse-js
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Checkout ClickHouse upstream
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: ${{ env.UPSTREAM_REPO }}
           ref: ${{ github.event.inputs.upstream_ref || 'master' }}
@@ -70,7 +70,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install Python dependencies for upstream clickhouse-test
         run: |
@@ -82,8 +82,8 @@ jobs:
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
 
       - name: Build test runner
         run: |

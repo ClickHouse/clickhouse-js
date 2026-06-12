@@ -1,17 +1,17 @@
-import { describe, it, expect, vi } from 'vitest'
-import Http from 'http'
-import Https from 'https'
-import { ClickHouseLogLevel, LogWriter } from '@clickhouse/client-common'
-import { TestLogger } from '../../../client-common/__tests__/utils/test_logger'
-import type { NodeConnectionParams } from '../../src/connection'
-import { NodeCustomAgentConnection } from '../../src/connection/node_custom_agent_connection'
+import { describe, it, expect, vi } from "vitest";
+import Http from "http";
+import Https from "https";
+import { ClickHouseLogLevel, LogWriter } from "@clickhouse/client-common";
+import { TestLogger } from "../../../client-common/__tests__/utils/test_logger";
+import type { NodeConnectionParams } from "../../src/connection";
+import { NodeCustomAgentConnection } from "../../src/connection/node_custom_agent_connection";
 
 /** Extends NodeCustomAgentConnection to expose protected methods for testing. */
 class TestableCustomAgentConnection extends NodeCustomAgentConnection {
   public testCreateClientRequest(
-    ...args: Parameters<NodeCustomAgentConnection['createClientRequest']>
+    ...args: Parameters<NodeCustomAgentConnection["createClientRequest"]>
   ): Http.ClientRequest {
-    return this.createClientRequest(...args)
+    return this.createClientRequest(...args);
   }
 }
 
@@ -19,19 +19,19 @@ function buildCustomAgentConnectionParams(
   overrides?: Partial<NodeConnectionParams>,
 ): NodeConnectionParams {
   return {
-    url: new URL('http://localhost:8123'),
+    url: new URL("http://localhost:8123"),
     request_timeout: 30_000,
     compression: {
       decompress_response: false,
       compress_request: false,
     },
     max_open_connections: 10,
-    auth: { username: 'default', password: '', type: 'Credentials' },
-    database: 'default',
+    auth: { username: "default", password: "", type: "Credentials" },
+    database: "default",
     clickhouse_settings: {},
     log_writer: new LogWriter(
       new TestLogger(),
-      'CustomAgentConnectionTest',
+      "CustomAgentConnectionTest",
       ClickHouseLogLevel.OFF,
     ),
     log_level: ClickHouseLogLevel.OFF,
@@ -43,12 +43,12 @@ function buildCustomAgentConnectionParams(
     capture_enhanced_stack_trace: false,
     http_agent: new Http.Agent(),
     ...overrides,
-  }
+  };
 }
 
-describe('[Node.js] NodeCustomAgentConnection', () => {
-  describe('constructor', () => {
-    it('should throw when http_agent is not provided', () => {
+describe("[Node.js] NodeCustomAgentConnection", () => {
+  describe("constructor", () => {
+    it("should throw when http_agent is not provided", () => {
       expect(
         () =>
           new TestableCustomAgentConnection(
@@ -56,301 +56,301 @@ describe('[Node.js] NodeCustomAgentConnection', () => {
               http_agent: undefined,
             }),
           ),
-      ).toThrow('http_agent is required to create NodeCustomAgentConnection')
-    })
-  })
+      ).toThrow("http_agent is required to create NodeCustomAgentConnection");
+    });
+  });
 
-  describe('createClientRequest', () => {
-    it('should use Https.request for https URLs', () => {
-      const httpsAgent = new Https.Agent()
-      const mockRequest = {} as Http.ClientRequest
+  describe("createClientRequest", () => {
+    it("should use Https.request for https URLs", () => {
+      const httpsAgent = new Https.Agent();
+      const mockRequest = {} as Http.ClientRequest;
       const httpsRequestSpy = vi
-        .spyOn(Https, 'request')
-        .mockReturnValue(mockRequest)
+        .spyOn(Https, "request")
+        .mockReturnValue(mockRequest);
       const httpRequestSpy = vi
-        .spyOn(Http, 'request')
+        .spyOn(Http, "request")
         .mockImplementation(() => {
-          throw new Error('Http.request should not be called for https URLs')
-        })
+          throw new Error("Http.request should not be called for https URLs");
+        });
 
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
-          url: new URL('https://localhost:8443'),
+          url: new URL("https://localhost:8443"),
           http_agent: httpsAgent,
         }),
-      )
-      expect(connection).toBeInstanceOf(NodeCustomAgentConnection)
+      );
+      expect(connection).toBeInstanceOf(NodeCustomAgentConnection);
 
-      const abortController = new AbortController()
+      const abortController = new AbortController();
       connection.testCreateClientRequest({
-        method: 'GET',
-        url: new URL('https://localhost:8443'),
+        method: "GET",
+        url: new URL("https://localhost:8443"),
         headers: {},
         abort_signal: abortController.signal,
-        query: 'SELECT 1',
-        query_id: 'test',
+        query: "SELECT 1",
+        query_id: "test",
         log_writer: buildCustomAgentConnectionParams().log_writer,
         log_level: ClickHouseLogLevel.OFF,
-      })
+      });
 
-      expect(httpsRequestSpy).toHaveBeenCalledTimes(1)
-      expect(httpRequestSpy).not.toHaveBeenCalled()
+      expect(httpsRequestSpy).toHaveBeenCalledTimes(1);
+      expect(httpRequestSpy).not.toHaveBeenCalled();
 
-      httpsRequestSpy.mockRestore()
-      httpRequestSpy.mockRestore()
-    })
+      httpsRequestSpy.mockRestore();
+      httpRequestSpy.mockRestore();
+    });
 
-    it('should use Http.request for http URLs', () => {
-      const httpAgent = new Http.Agent()
-      const mockRequest = {} as Http.ClientRequest
+    it("should use Http.request for http URLs", () => {
+      const httpAgent = new Http.Agent();
+      const mockRequest = {} as Http.ClientRequest;
       const httpRequestSpy = vi
-        .spyOn(Http, 'request')
-        .mockReturnValue(mockRequest)
-      const mockHttpsRequest = {} as Http.ClientRequest
+        .spyOn(Http, "request")
+        .mockReturnValue(mockRequest);
+      const mockHttpsRequest = {} as Http.ClientRequest;
       const httpsRequestSpy = vi
-        .spyOn(Https, 'request')
-        .mockReturnValue(mockHttpsRequest)
+        .spyOn(Https, "request")
+        .mockReturnValue(mockHttpsRequest);
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
-          url: new URL('http://localhost:8123'),
+          url: new URL("http://localhost:8123"),
           http_agent: httpAgent,
         }),
-      )
-      expect(connection).toBeInstanceOf(NodeCustomAgentConnection)
+      );
+      expect(connection).toBeInstanceOf(NodeCustomAgentConnection);
 
-      const abortController = new AbortController()
+      const abortController = new AbortController();
       connection.testCreateClientRequest({
-        method: 'GET',
-        url: new URL('http://localhost:8123'),
+        method: "GET",
+        url: new URL("http://localhost:8123"),
         headers: {},
         abort_signal: abortController.signal,
-        query: 'SELECT 1',
-        query_id: 'test',
+        query: "SELECT 1",
+        query_id: "test",
         log_writer: buildCustomAgentConnectionParams().log_writer,
         log_level: ClickHouseLogLevel.OFF,
-      })
+      });
 
-      expect(httpRequestSpy).toHaveBeenCalledTimes(1)
-      expect(httpsRequestSpy).not.toHaveBeenCalled()
+      expect(httpRequestSpy).toHaveBeenCalledTimes(1);
+      expect(httpsRequestSpy).not.toHaveBeenCalled();
 
-      httpRequestSpy.mockRestore()
-      httpsRequestSpy.mockRestore()
-    })
-  })
+      httpRequestSpy.mockRestore();
+      httpsRequestSpy.mockRestore();
+    });
+  });
 
-  describe('createClientRequest', () => {
-    it('should call Http.request for http URLs', () => {
-      const httpAgent = new Http.Agent()
+  describe("createClientRequest", () => {
+    it("should call Http.request for http URLs", () => {
+      const httpAgent = new Http.Agent();
 
-      const mockRequest = {} as Http.ClientRequest
+      const mockRequest = {} as Http.ClientRequest;
       const httpRequestSpy = vi
-        .spyOn(Http, 'request')
-        .mockReturnValue(mockRequest)
+        .spyOn(Http, "request")
+        .mockReturnValue(mockRequest);
 
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
-          url: new URL('http://localhost:8123'),
+          url: new URL("http://localhost:8123"),
           http_agent: httpAgent,
         }),
-      )
+      );
 
-      const url = new URL('http://localhost:8123/?query_id=test-query-id')
-      const abortController = new AbortController()
+      const url = new URL("http://localhost:8123/?query_id=test-query-id");
+      const abortController = new AbortController();
       const result = connection.testCreateClientRequest({
-        method: 'POST',
+        method: "POST",
         url,
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { "Content-Type": "text/plain" },
         abort_signal: abortController.signal,
-        query: 'SELECT 1',
-        query_id: 'test-query-id',
+        query: "SELECT 1",
+        query_id: "test-query-id",
         log_writer: new LogWriter(
           new TestLogger(),
-          'CustomAgentConnectionTest',
+          "CustomAgentConnectionTest",
           ClickHouseLogLevel.OFF,
         ),
         log_level: ClickHouseLogLevel.OFF,
-      })
+      });
 
-      expect(result).toBe(mockRequest)
-      expect(httpRequestSpy).toHaveBeenCalledTimes(1)
+      expect(result).toBe(mockRequest);
+      expect(httpRequestSpy).toHaveBeenCalledTimes(1);
       expect(httpRequestSpy).toHaveBeenCalledWith(url, {
-        method: 'POST',
+        method: "POST",
         agent: httpAgent,
         timeout: 30_000,
         signal: abortController.signal,
-        headers: { 'Content-Type': 'text/plain' },
-      })
+        headers: { "Content-Type": "text/plain" },
+      });
 
-      httpRequestSpy.mockRestore()
-    })
+      httpRequestSpy.mockRestore();
+    });
 
-    it('should call Https.request for https URLs', () => {
-      const httpsAgent = new Https.Agent()
+    it("should call Https.request for https URLs", () => {
+      const httpsAgent = new Https.Agent();
 
-      const mockRequest = {} as Http.ClientRequest
+      const mockRequest = {} as Http.ClientRequest;
       const httpsRequestSpy = vi
-        .spyOn(Https, 'request')
-        .mockReturnValue(mockRequest)
+        .spyOn(Https, "request")
+        .mockReturnValue(mockRequest);
 
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
-          url: new URL('https://localhost:8443'),
+          url: new URL("https://localhost:8443"),
           http_agent: httpsAgent,
         }),
-      )
+      );
 
-      const url = new URL('https://localhost:8443/?query_id=test')
-      const abortController = new AbortController()
+      const url = new URL("https://localhost:8443/?query_id=test");
+      const abortController = new AbortController();
       const result = connection.testCreateClientRequest({
-        method: 'GET',
+        method: "GET",
         url,
         headers: {},
         abort_signal: abortController.signal,
-        query: 'SELECT 1',
-        query_id: 'test-query-id',
+        query: "SELECT 1",
+        query_id: "test-query-id",
         log_writer: new LogWriter(
           new TestLogger(),
-          'CustomAgentConnectionTest',
+          "CustomAgentConnectionTest",
           ClickHouseLogLevel.OFF,
         ),
         log_level: ClickHouseLogLevel.OFF,
-      })
+      });
 
-      expect(result).toBe(mockRequest)
-      expect(httpsRequestSpy).toHaveBeenCalledTimes(1)
+      expect(result).toBe(mockRequest);
+      expect(httpsRequestSpy).toHaveBeenCalledTimes(1);
       expect(httpsRequestSpy).toHaveBeenCalledWith(url, {
-        method: 'GET',
+        method: "GET",
         agent: httpsAgent,
         timeout: 30_000,
         signal: abortController.signal,
         headers: {},
-      })
+      });
 
-      httpsRequestSpy.mockRestore()
-    })
+      httpsRequestSpy.mockRestore();
+    });
 
-    it('should add compression headers when compression is enabled', () => {
-      const httpAgent = new Http.Agent()
+    it("should add compression headers when compression is enabled", () => {
+      const httpAgent = new Http.Agent();
 
-      const mockRequest = {} as Http.ClientRequest
+      const mockRequest = {} as Http.ClientRequest;
       const httpRequestSpy = vi
-        .spyOn(Http, 'request')
-        .mockReturnValue(mockRequest)
+        .spyOn(Http, "request")
+        .mockReturnValue(mockRequest);
 
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
-          url: new URL('http://localhost:8123'),
+          url: new URL("http://localhost:8123"),
           http_agent: httpAgent,
         }),
-      )
+      );
 
-      const url = new URL('http://localhost:8123/?query_id=test')
-      const abortController = new AbortController()
+      const url = new URL("http://localhost:8123/?query_id=test");
+      const abortController = new AbortController();
       connection.testCreateClientRequest({
-        method: 'POST',
+        method: "POST",
         url,
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { "Content-Type": "text/plain" },
         abort_signal: abortController.signal,
         enable_request_compression: true,
         enable_response_compression: true,
-        query: 'SELECT 1',
-        query_id: 'test-query-id',
+        query: "SELECT 1",
+        query_id: "test-query-id",
         log_writer: new LogWriter(
           new TestLogger(),
-          'CustomAgentConnectionTest',
+          "CustomAgentConnectionTest",
           ClickHouseLogLevel.OFF,
         ),
         log_level: ClickHouseLogLevel.OFF,
-      })
+      });
 
-      expect(httpRequestSpy).toHaveBeenCalledTimes(1)
+      expect(httpRequestSpy).toHaveBeenCalledTimes(1);
       const calledHeaders = httpRequestSpy.mock.calls[0][1]?.headers as Record<
         string,
         string
-      >
-      expect(calledHeaders['Content-Encoding']).toBe('gzip')
-      expect(calledHeaders['Accept-Encoding']).toBe('gzip')
+      >;
+      expect(calledHeaders["Content-Encoding"]).toBe("gzip");
+      expect(calledHeaders["Accept-Encoding"]).toBe("gzip");
 
-      httpRequestSpy.mockRestore()
-    })
+      httpRequestSpy.mockRestore();
+    });
 
-    it('should forward max_response_headers_size as maxHeaderSize when set', () => {
-      const httpAgent = new Http.Agent()
-      const mockRequest = {} as Http.ClientRequest
+    it("should forward max_response_headers_size as maxHeaderSize when set", () => {
+      const httpAgent = new Http.Agent();
+      const mockRequest = {} as Http.ClientRequest;
       const httpRequestSpy = vi
-        .spyOn(Http, 'request')
-        .mockReturnValue(mockRequest)
+        .spyOn(Http, "request")
+        .mockReturnValue(mockRequest);
 
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
-          url: new URL('http://localhost:8123'),
+          url: new URL("http://localhost:8123"),
           http_agent: httpAgent,
           max_response_headers_size: 64 * 1024,
         }),
-      )
+      );
 
-      const url = new URL('http://localhost:8123/?query_id=test')
-      const abortController = new AbortController()
+      const url = new URL("http://localhost:8123/?query_id=test");
+      const abortController = new AbortController();
       connection.testCreateClientRequest({
-        method: 'GET',
+        method: "GET",
         url,
         headers: {},
         abort_signal: abortController.signal,
-        query: 'SELECT 1',
-        query_id: 'test-query-id',
+        query: "SELECT 1",
+        query_id: "test-query-id",
         log_writer: new LogWriter(
           new TestLogger(),
-          'CustomAgentConnectionTest',
+          "CustomAgentConnectionTest",
           ClickHouseLogLevel.OFF,
         ),
         log_level: ClickHouseLogLevel.OFF,
-      })
+      });
 
-      expect(httpRequestSpy).toHaveBeenCalledTimes(1)
+      expect(httpRequestSpy).toHaveBeenCalledTimes(1);
       const calledOptions = httpRequestSpy.mock
-        .calls[0][1] as Http.RequestOptions
-      expect(calledOptions.maxHeaderSize).toBe(64 * 1024)
+        .calls[0][1] as Http.RequestOptions;
+      expect(calledOptions.maxHeaderSize).toBe(64 * 1024);
 
-      httpRequestSpy.mockRestore()
-    })
+      httpRequestSpy.mockRestore();
+    });
 
-    it('should not include maxHeaderSize when max_response_headers_size is undefined', () => {
-      const httpAgent = new Http.Agent()
-      const mockRequest = {} as Http.ClientRequest
+    it("should not include maxHeaderSize when max_response_headers_size is undefined", () => {
+      const httpAgent = new Http.Agent();
+      const mockRequest = {} as Http.ClientRequest;
       const httpRequestSpy = vi
-        .spyOn(Http, 'request')
-        .mockReturnValue(mockRequest)
+        .spyOn(Http, "request")
+        .mockReturnValue(mockRequest);
 
       const connection = new TestableCustomAgentConnection(
         buildCustomAgentConnectionParams({
-          url: new URL('http://localhost:8123'),
+          url: new URL("http://localhost:8123"),
           http_agent: httpAgent,
         }),
-      )
+      );
 
-      const url = new URL('http://localhost:8123/?query_id=test')
-      const abortController = new AbortController()
+      const url = new URL("http://localhost:8123/?query_id=test");
+      const abortController = new AbortController();
       connection.testCreateClientRequest({
-        method: 'GET',
+        method: "GET",
         url,
         headers: {},
         abort_signal: abortController.signal,
-        query: 'SELECT 1',
-        query_id: 'test-query-id',
+        query: "SELECT 1",
+        query_id: "test-query-id",
         log_writer: new LogWriter(
           new TestLogger(),
-          'CustomAgentConnectionTest',
+          "CustomAgentConnectionTest",
           ClickHouseLogLevel.OFF,
         ),
         log_level: ClickHouseLogLevel.OFF,
-      })
+      });
 
-      expect(httpRequestSpy).toHaveBeenCalledTimes(1)
+      expect(httpRequestSpy).toHaveBeenCalledTimes(1);
       const calledOptions = httpRequestSpy.mock
-        .calls[0][1] as Http.RequestOptions
-      expect(calledOptions).not.toHaveProperty('maxHeaderSize')
+        .calls[0][1] as Http.RequestOptions;
+      expect(calledOptions).not.toHaveProperty("maxHeaderSize");
 
-      httpRequestSpy.mockRestore()
-    })
-  })
-})
+      httpRequestSpy.mockRestore();
+    });
+  });
+});

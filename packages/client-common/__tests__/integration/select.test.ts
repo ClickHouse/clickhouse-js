@@ -1,70 +1,70 @@
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
-import { type ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient, guid, validateUUID } from '../utils'
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
+import { type ClickHouseClient } from "@clickhouse/client-common";
+import { createTestClient, guid, validateUUID } from "../utils";
 
-describe('select', () => {
-  let client: ClickHouseClient
+describe("select", () => {
+  let client: ClickHouseClient;
   afterEach(async () => {
-    await client.close()
-  })
+    await client.close();
+  });
   beforeEach(async () => {
-    client = createTestClient()
-  })
+    client = createTestClient();
+  });
 
-  it('gets query_id back', async () => {
+  it("gets query_id back", async () => {
     const resultSet = await client.query({
-      query: 'SELECT * FROM system.numbers LIMIT 1',
-      format: 'JSONEachRow',
-    })
-    expect(await resultSet.json()).toEqual([{ number: '0' }])
-    expect(validateUUID(resultSet.query_id)).toBeTruthy()
-  })
+      query: "SELECT * FROM system.numbers LIMIT 1",
+      format: "JSONEachRow",
+    });
+    expect(await resultSet.json()).toEqual([{ number: "0" }]);
+    expect(validateUUID(resultSet.query_id)).toBeTruthy();
+  });
 
-  it('can override query_id', async () => {
-    const query_id = guid()
+  it("can override query_id", async () => {
+    const query_id = guid();
     const resultSet = await client.query({
-      query: 'SELECT * FROM system.numbers LIMIT 1',
-      format: 'JSONEachRow',
+      query: "SELECT * FROM system.numbers LIMIT 1",
+      format: "JSONEachRow",
       query_id,
-    })
-    expect(await resultSet.json()).toEqual([{ number: '0' }])
-    expect(resultSet.query_id).toEqual(query_id)
-  })
+    });
+    expect(await resultSet.json()).toEqual([{ number: "0" }]);
+    expect(resultSet.query_id).toEqual(query_id);
+  });
 
-  it('can process an empty response', async () => {
+  it("can process an empty response", async () => {
     expect(
       await client
         .query({
-          query: 'SELECT * FROM system.numbers LIMIT 0',
-          format: 'JSONEachRow',
+          query: "SELECT * FROM system.numbers LIMIT 0",
+          format: "JSONEachRow",
         })
         .then((r) => r.json()),
-    ).toEqual([])
+    ).toEqual([]);
     expect(
       await client
         .query({
-          query: 'SELECT * FROM system.numbers LIMIT 0',
-          format: 'TabSeparated',
+          query: "SELECT * FROM system.numbers LIMIT 0",
+          format: "TabSeparated",
         })
         .then((r) => r.text()),
-    ).toEqual('')
-  })
+    ).toEqual("");
+  });
 
-  it('can send a multiline query', async () => {
+  it("can send a multiline query", async () => {
     const rs = await client.query({
       query: `
         SELECT number
         FROM system.numbers
         LIMIT 2
       `,
-      format: 'CSV',
-    })
+      format: "CSV",
+    });
 
-    const response = await rs.text()
-    expect(response).toBe('0\n1\n')
-  })
+    const response = await rs.text();
+    expect(response).toBe("0\n1\n");
+  });
 
-  it('can send a query with an inline comment', async () => {
+  it("can send a query with an inline comment", async () => {
     const rs = await client.query({
       query: `
         SELECT number
@@ -72,14 +72,14 @@ describe('select', () => {
         FROM system.numbers
         LIMIT 2
       `,
-      format: 'CSV',
-    })
+      format: "CSV",
+    });
 
-    const response = await rs.text()
-    expect(response).toBe('0\n1\n')
-  })
+    const response = await rs.text();
+    expect(response).toBe("0\n1\n");
+  });
 
-  it('can send a query with a multiline comment', async () => {
+  it("can send a query with a multiline comment", async () => {
     const rs = await client.query({
       query: `
         SELECT number
@@ -89,64 +89,64 @@ describe('select', () => {
         FROM system.numbers
         LIMIT 2
       `,
-      format: 'CSV',
-    })
+      format: "CSV",
+    });
 
-    const response = await rs.text()
-    expect(response).toBe('0\n1\n')
-  })
+    const response = await rs.text();
+    expect(response).toBe("0\n1\n");
+  });
 
-  it('can send a query with a trailing comment', async () => {
+  it("can send a query with a trailing comment", async () => {
     const rs = await client.query({
       query: `
         SELECT number
         FROM system.numbers
         LIMIT 2
         -- comment`,
-      format: 'JSON',
-    })
+      format: "JSON",
+    });
 
-    const response = await rs.json<{ number: string }>()
-    expect(response.data).toEqual([{ number: '0' }, { number: '1' }])
-  })
+    const response = await rs.json<{ number: string }>();
+    expect(response.data).toEqual([{ number: "0" }, { number: "1" }]);
+  });
 
-  it('can specify settings in select', async () => {
+  it("can specify settings in select", async () => {
     const rs = await client.query({
-      query: 'SELECT number FROM system.numbers LIMIT 5',
-      format: 'CSV',
+      query: "SELECT number FROM system.numbers LIMIT 5",
+      format: "CSV",
       clickhouse_settings: {
-        limit: '2',
+        limit: "2",
       },
-    })
+    });
 
-    const response = await rs.text()
-    expect(response).toBe('0\n1\n')
-  })
+    const response = await rs.text();
+    expect(response).toBe("0\n1\n");
+  });
 
-  it('does not swallow a client error', async () => {
+  it("does not swallow a client error", async () => {
     await expect(
-      client.query({ query: 'SELECT number FR' }),
+      client.query({ query: "SELECT number FR" }),
     ).rejects.toMatchObject(
       expect.objectContaining({
-        type: 'UNKNOWN_IDENTIFIER',
+        type: "UNKNOWN_IDENTIFIER",
       }),
-    )
-  })
+    );
+  });
 
-  it('returns an error details provided by ClickHouse', async () => {
-    await expect(client.query({ query: 'foobar' })).rejects.toMatchObject(
+  it("returns an error details provided by ClickHouse", async () => {
+    await expect(client.query({ query: "foobar" })).rejects.toMatchObject(
       expect.objectContaining({
-        message: expect.stringContaining('Syntax error'),
-        code: '62',
-        type: 'SYNTAX_ERROR',
+        message: expect.stringContaining("Syntax error"),
+        code: "62",
+        type: "SYNTAX_ERROR",
       }),
-    )
-  })
+    );
+  });
 
-  it('should provide error details when sending a request with an unknown clickhouse settings', async () => {
+  it("should provide error details when sending a request with an unknown clickhouse settings", async () => {
     await expect(
       client.query({
-        query: 'SELECT * FROM system.numbers',
+        query: "SELECT * FROM system.numbers",
         clickhouse_settings: { foobar: 1 } as any,
       }),
     ).rejects.toMatchObject(
@@ -154,64 +154,64 @@ describe('select', () => {
         // Possible error messages:
         // Unknown setting foobar
         // Setting foobar is neither a builtin setting nor started with the prefix 'SQL_' registered for user-defined settings.
-        message: expect.stringContaining('foobar'),
-        code: '115',
-        type: 'UNKNOWN_SETTING',
+        message: expect.stringContaining("foobar"),
+        code: "115",
+        type: "UNKNOWN_SETTING",
       }),
-    )
-  })
+    );
+  });
 
-  it('can send multiple simultaneous requests', async () => {
-    const results: number[] = []
+  it("can send multiple simultaneous requests", async () => {
+    const results: number[] = [];
     await Promise.all(
       [...Array(5)].map((_, i) =>
         client
           .query({
             query: `SELECT toInt32(sum(*)) AS sum FROM numbers(0, ${i + 2});`,
-            format: 'JSONEachRow',
+            format: "JSONEachRow",
           })
           .then((r) => r.json<{ sum: number }>())
           .then((json) => results.push(json[0].sum)),
       ),
-    )
-    expect(results.sort((a, b) => a - b)).toEqual([1, 3, 6, 10, 15])
-  })
+    );
+    expect(results.sort((a, b) => a - b)).toEqual([1, 3, 6, 10, 15]);
+  });
 
-  it('should get the response headers', async () => {
+  it("should get the response headers", async () => {
     const rs = await client.query({
-      query: 'SELECT * FROM system.numbers LIMIT 1',
-      format: 'JSONEachRow',
-    })
+      query: "SELECT * FROM system.numbers LIMIT 1",
+      format: "JSONEachRow",
+    });
 
     expect(
-      rs.response_headers['Content-Type'] ??
-        rs.response_headers['content-type'],
-    ).toEqual('application/x-ndjson; charset=UTF-8')
-  })
+      rs.response_headers["Content-Type"] ??
+        rs.response_headers["content-type"],
+    ).toEqual("application/x-ndjson; charset=UTF-8");
+  });
 
-  describe('trailing semi', () => {
-    it('should allow queries with trailing semicolon', async () => {
+  describe("trailing semi", () => {
+    it("should allow queries with trailing semicolon", async () => {
       const numbers = await client.query({
-        query: 'SELECT * FROM system.numbers LIMIT 3;',
-        format: 'CSV',
-      })
-      expect(await numbers.text()).toEqual('0\n1\n2\n')
-    })
+        query: "SELECT * FROM system.numbers LIMIT 3;",
+        format: "CSV",
+      });
+      expect(await numbers.text()).toEqual("0\n1\n2\n");
+    });
 
-    it('should allow queries with multiple trailing semicolons', async () => {
+    it("should allow queries with multiple trailing semicolons", async () => {
       const numbers = await client.query({
-        query: 'SELECT * FROM system.numbers LIMIT 3;;;;;;;;;;;;;;;;;',
-        format: 'CSV',
-      })
-      expect(await numbers.text()).toEqual('0\n1\n2\n')
-    })
+        query: "SELECT * FROM system.numbers LIMIT 3;;;;;;;;;;;;;;;;;",
+        format: "CSV",
+      });
+      expect(await numbers.text()).toEqual("0\n1\n2\n");
+    });
 
-    it('should allow semi in select clause', async () => {
+    it("should allow semi in select clause", async () => {
       const resultSet = await client.query({
         query: `SELECT ';'`,
-        format: 'CSV',
-      })
-      expect(await resultSet.text()).toEqual('";"\n')
-    })
-  })
-})
+        format: "CSV",
+      });
+      expect(await resultSet.text()).toEqual('";"\n');
+    });
+  });
+});

@@ -9,63 +9,83 @@ import type {
   WithClickHouseSummary,
   WithResponseHeaders,
   DataFormat,
-} from './index'
-import { defaultJSONHandling, DefaultLogger, ClickHouseLogLevel } from './index'
+} from "./index";
+import { defaultJSONHandling } from "./parse";
+import { DefaultLogger, ClickHouseLogLevel } from "./logger";
 import type {
   InsertValues,
   NonEmptyArray,
   WithHttpStatusCode,
-} from './clickhouse_types'
-import type { ImplementationDetails, ValuesEncoder } from './config'
-import { getConnectionParams, prepareConfigWithURL } from './config'
-import type { ConnPingResult } from './connection'
-import type { JSONHandling } from './parse/json_handling'
-import type { BaseResultSet } from './result'
+} from "./clickhouse_types";
+import type { ImplementationDetails, ValuesEncoder } from "./config";
+import { getConnectionParams, prepareConfigWithURL } from "./config";
+import type { ConnPingResult } from "./connection";
+import type { JSONHandling } from "./parse/json_handling";
+import type { BaseResultSet } from "./result";
+import type {
+  ClickHouseSpan,
+  ClickHouseSpanAttributes,
+  ClickHouseTracer,
+} from "./tracing";
+import {
+  ClickHouseSpanKind,
+  ClickHouseSpanNames,
+  NoopClickHouseTracer,
+  recordSpanError,
+} from "./tracing";
 
 export interface BaseQueryParams {
   /** ClickHouse's settings that can be applied on query level. */
-  clickhouse_settings?: ClickHouseSettings
+  clickhouse_settings?: ClickHouseSettings;
   /** Parameters for query binding. https://clickhouse.com/docs/en/interfaces/http/#cli-queries-with-parameters */
-  query_params?: Record<string, unknown>
+  query_params?: Record<string, unknown>;
   /** AbortSignal instance to cancel a request in progress. */
-  abort_signal?: AbortSignal
+  abort_signal?: AbortSignal;
   /** A specific `query_id` that will be sent with this request.
    *  If it is not set, a random identifier will be generated automatically by the client. */
-  query_id?: string
+  query_id?: string;
   /** A specific ClickHouse Session id for this query.
    *  If it is not set, {@link BaseClickHouseClientConfigOptions.session_id} will be used.
    *  @default undefined (no override) */
-  session_id?: string
+  session_id?: string;
   /** A specific list of roles to use for this query.
    *  If it is not set, {@link BaseClickHouseClientConfigOptions.role} will be used.
    *  @default undefined (no override) */
-  role?: string | Array<string>
+  role?: string | Array<string>;
   /** When defined, overrides {@link BaseClickHouseClientConfigOptions.auth} for this particular request.
    *  @default undefined (no override) */
   auth?:
     | {
-        username: string
-        password: string
+        username: string;
+        password: string;
       }
-    | { access_token: string }
+    | { access_token: string };
   /** Additional HTTP headers to attach to this particular request.
    *  Overrides the headers set in {@link BaseClickHouseClientConfigOptions.http_headers}.
    *  @default empty object */
-  http_headers?: Record<string, string>
+  http_headers?: Record<string, string>;
+  /** When defined, overrides {@link BaseClickHouseClientConfigOptions.use_multipart_params}
+   *  for this particular request.
+   *  @default undefined (no override) */
+  use_multipart_params?: boolean;
+  /** When defined, overrides {@link BaseClickHouseClientConfigOptions.use_multipart_params_auto}
+   *  for this particular request.
+   *  @default undefined (no override) */
+  use_multipart_params_auto?: boolean;
 }
 
 export interface QueryParams extends BaseQueryParams {
   /** Statement to execute. */
-  query: string
+  query: string;
   /** Format of the resulting dataset. */
-  format?: DataFormat
+  format?: DataFormat;
 }
 
 /** Same parameters as {@link QueryParams}, but with `format` field as a type */
 export type QueryParamsWithFormat<Format extends DataFormat> = Omit<
   QueryParams,
-  'format'
-> & { format?: Format }
+  "format"
+> & { format?: Format };
 
 /** If the Format is not a literal type, fall back to the default behavior of the ResultSet,
  *  allowing to call all methods with all data shapes variants,
@@ -73,13 +93,13 @@ export type QueryParamsWithFormat<Format extends DataFormat> = Omit<
 export type QueryResult<Stream, Format extends DataFormat> =
   IsSame<Format, DataFormat> extends true
     ? BaseResultSet<Stream, unknown>
-    : BaseResultSet<Stream, Format>
+    : BaseResultSet<Stream, Format>;
 
 export type ExecParams = BaseQueryParams & {
   /** Statement to execute (including the FORMAT clause). By default, the query will be sent in the request body;
    *  If {@link ExecParamsWithValues.values} are defined, the query is sent as a request parameter,
    *  and the values are sent in the request body instead. */
-  query: string
+  query: string;
   /** If set to `false`, the client _will not_ decompress the response stream, even if the response compression
    *  was requested by the client via the {@link BaseClickHouseClientConfigOptions.compression.response } setting.
    *  This could be useful if the response stream is passed to another application as-is,
@@ -87,7 +107,7 @@ export type ExecParams = BaseQueryParams & {
    *  @note 1) Node.js only. This setting will have no effect on the Web version.
    *  @note 2) In case of an error, the stream will be decompressed anyway, regardless of this setting.
    *  @default true */
-  decompress_response_stream?: boolean
+  decompress_response_stream?: boolean;
   /**
    * If set to `true`, the client will ignore error responses from the server and return them as-is in the response stream.
    * This could be useful if you want to handle error responses manually.
@@ -96,8 +116,8 @@ export type ExecParams = BaseQueryParams & {
    *          is received. This includes decompressing the error response stream if it is compressed.
    * @default false
    */
-  ignore_error_response?: boolean
-}
+  ignore_error_response?: boolean;
+};
 export type ExecParamsWithValues<Stream> = ExecParams & {
   /** If you have a custom INSERT statement to run with `exec`, the data from this stream will be inserted.
    *
@@ -105,13 +125,13 @@ export type ExecParamsWithValues<Stream> = ExecParams & {
    *  used in {@link ExecParams.query} in this case.
    *
    *  @see https://clickhouse.com/docs/en/interfaces/formats */
-  values: Stream
-}
+  values: Stream;
+};
 
-export type CommandParams = ExecParams
+export type CommandParams = ExecParams;
 export type CommandResult = { query_id: string } & WithClickHouseSummary &
   WithResponseHeaders &
-  WithHttpStatusCode
+  WithHttpStatusCode;
 
 export type InsertResult = {
   /**
@@ -120,21 +140,21 @@ export type InsertResult = {
    * For example, if {@link InsertParams.values} was an empty array,
    * the client does not send any requests to the server, and {@link executed} is false.
    */
-  executed: boolean
+  executed: boolean;
   /**
    * Empty string if {@link executed} is false.
    * Otherwise, either {@link InsertParams.query_id} if it was set, or the id that was generated by the client.
    */
-  query_id: string
+  query_id: string;
 } & WithClickHouseSummary &
   WithResponseHeaders &
-  WithHttpStatusCode
+  WithHttpStatusCode;
 
-export type ExecResult<Stream> = ConnExecResult<Stream>
+export type ExecResult<Stream> = ConnExecResult<Stream>;
 
 /** {@link except} field contains a non-empty list of columns to exclude when generating `(* EXCEPT (...))` clause */
 export interface InsertColumnsExcept {
-  except: NonEmptyArray<string>
+  except: NonEmptyArray<string>;
 }
 
 export interface InsertParams<
@@ -142,11 +162,11 @@ export interface InsertParams<
   T = unknown,
 > extends BaseQueryParams {
   /** Name of a table to insert into. */
-  table: string
+  table: string;
   /** A dataset to insert. */
-  values: InsertValues<Stream, T>
+  values: InsertValues<Stream, T>;
   /** Format of the dataset to insert. Default: `JSONCompactEachRow` */
-  format?: DataFormat
+  format?: DataFormat;
   /**
    * Allows specifying which columns the data will be inserted into.
    * Accepts either an array of strings (column names) or an object of {@link InsertColumnsExcept} type.
@@ -159,106 +179,166 @@ export interface InsertParams<
    * and the generated statement will be: `INSERT INTO table FORMAT DataFormat`.
    *
    * See also: https://clickhouse.com/docs/en/sql-reference/statements/insert-into */
-  columns?: NonEmptyArray<string> | InsertColumnsExcept
+  columns?: NonEmptyArray<string> | InsertColumnsExcept;
 }
 
 /** Parameters for the health-check request - using the built-in `/ping` endpoint.
  *  This is the default behavior for the Node.js version. */
 export type PingParamsWithEndpoint = { select: false } & Pick<
   BaseQueryParams,
-  'abort_signal' | 'http_headers'
->
+  "abort_signal" | "http_headers"
+>;
 /** Parameters for the health-check request - using a SELECT query.
  *  This is the default behavior for the Web version, as the `/ping` endpoint does not support CORS.
  *  Most of the standard `query` method params, e.g., `query_id`, `abort_signal`, `http_headers`, etc. will work,
  *  except for `query_params`, which does not make sense to allow in this method. */
 export type PingParamsWithSelectQuery = { select: true } & Omit<
   BaseQueryParams,
-  'query_params'
->
-export type PingParams = PingParamsWithEndpoint | PingParamsWithSelectQuery
-export type PingResult = ConnPingResult
+  "query_params"
+>;
+export type PingParams = PingParamsWithEndpoint | PingParamsWithSelectQuery;
+export type PingResult = ConnPingResult;
 
 export class ClickHouseClient<Stream = unknown> {
-  private readonly clientClickHouseSettings: ClickHouseSettings
-  private readonly connectionParams: ConnectionParams
-  private readonly connection: Connection<Stream>
-  private readonly makeResultSet: MakeResultSet<Stream>
-  private readonly valuesEncoder: ValuesEncoder<Stream>
-  private readonly sessionId?: string
-  private readonly role?: string | Array<string>
-  private readonly jsonHandling: JSONHandling
+  private readonly clientClickHouseSettings: ClickHouseSettings;
+  private readonly connectionParams: ConnectionParams;
+  private readonly connection: Connection<Stream>;
+  private readonly makeResultSet: MakeResultSet<Stream>;
+  private readonly valuesEncoder: ValuesEncoder<Stream>;
+  private readonly sessionId?: string;
+  private readonly role?: string | Array<string>;
+  private readonly jsonHandling: JSONHandling;
+  private readonly tracer: ClickHouseTracer;
 
   constructor(
     config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,
   ) {
     const logger = config?.log?.LoggerClass
       ? new config.log.LoggerClass()
-      : new DefaultLogger()
+      : new DefaultLogger();
     const configWithURL = prepareConfigWithURL(
       config,
       logger,
       config.impl.handle_specific_url_params ?? null,
-    )
-    this.connectionParams = getConnectionParams(configWithURL, logger)
-    this.clientClickHouseSettings = this.connectionParams.clickhouse_settings
-    this.sessionId = config.session_id
-    this.role = config.role
+    );
+    this.connectionParams = getConnectionParams(configWithURL, logger);
+    this.clientClickHouseSettings = this.connectionParams.clickhouse_settings;
+    this.sessionId = config.session_id;
+    this.role = config.role;
     this.connection = config.impl.make_connection(
       configWithURL,
       this.connectionParams,
-    )
+    );
     // Using the connection params log level as it does the parsing.
     // TODO: it would be better to parse the log level in the client itself.
-    this.makeResultSet = config.impl.make_result_set
+    this.makeResultSet = config.impl.make_result_set;
     this.jsonHandling = {
       ...defaultJSONHandling,
       ...config.json,
-    }
+    };
 
-    this.valuesEncoder = config.impl.values_encoder(this.jsonHandling)
+    this.valuesEncoder = config.impl.values_encoder(this.jsonHandling);
+    // Assigned once at client creation: when no tracer is configured, the
+    // shared no-op tracer keeps the hot path branch-free.
+    this.tracer = config.tracer ?? NoopClickHouseTracer;
   }
 
   /**
    * Used for most statements that can have a response, such as `SELECT`.
-   * FORMAT clause should be specified separately via {@link QueryParams.format} (default is `JSON`).
-   * Consider using {@link ClickHouseClient.insert} for data insertion, or {@link ClickHouseClient.command} for DDLs.
    * Returns an implementation of {@link BaseResultSet}.
+   *
+   * The `FORMAT` clause should be specified separately via {@link QueryParams.format} (default is `JSON`);
+   * this method will always append `FORMAT <format>` to the end of {@link QueryParams.query}.
+   * If the query already contains a `FORMAT` clause, ClickHouse will return a syntax error due to a duplicate `FORMAT`.
+   * This is intended behavior.
+   * Use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,
+   * or {@link ClickHouseClient.exec} for queries where you need to provide the full SQL (including `FORMAT`) yourself or where the `FORMAT` suffix is not supported.
+   *
+   * @note For `SHOW [ROW] POLICIES`, use the full syntax `SHOW POLICIES ON *`,
+   * as the short version does not support appending `FORMAT` at the server SQL parser level.
+   * See https://github.com/ClickHouse/ClickHouse/issues/105899
    *
    * See {@link DataFormat} for the formats supported by the client.
    */
-  async query<Format extends DataFormat = 'JSON'>(
+  async query<Format extends DataFormat = "JSON">(
     params: QueryParamsWithFormat<Format>,
   ): Promise<QueryResult<Stream, Format>> {
-    const format = params.format ?? 'JSON'
-    const query = formatQuery(params.query, format)
-    const queryParams = this.withClientQueryParams(params)
-    const { stream, query_id, response_headers } = await this.connection.query({
-      query,
-      ...queryParams,
-    })
-    const { log_writer, log_level } = this.connectionParams
-    return this.makeResultSet(
-      stream,
-      format,
-      query_id,
-      (err) => {
-        if (log_level <= ClickHouseLogLevel.ERROR) {
-          log_writer.error({
-            err,
-            module: 'Client',
-            message: 'Error while processing the ResultSet.',
-            args: {
-              session_id: queryParams.session_id,
-              role: queryParams.role,
-              query_id,
-            },
-          })
-        }
+    const format = params.format ?? "JSON";
+    const query = formatQuery(params.query, format);
+    const queryParams = this.withClientQueryParams(params);
+    const { log_writer, log_level } = this.connectionParams;
+    return this.tracer.startActiveSpan(
+      ClickHouseSpanNames.query,
+      {
+        kind: ClickHouseSpanKind.CLIENT,
+        attributes: this.withBaseSpanAttributes({
+          "clickhouse.response.format": format,
+          "clickhouse.request.query_id": queryParams.query_id,
+          "clickhouse.request.session_id": queryParams.session_id,
+        }),
       },
-      response_headers,
-      this.jsonHandling,
-    )
+      async (span) => {
+        let queryResult;
+        try {
+          queryResult = await this.connection.query({
+            query,
+            ...queryParams,
+          });
+        } catch (err) {
+          recordSpanError(span, err);
+          span.end();
+          throw err;
+        }
+        const { stream, query_id, response_headers, http_status_code } =
+          queryResult;
+        // The query_id may have been generated by the connection layer.
+        span.setAttributes({ "clickhouse.request.query_id": query_id });
+        setResponseSpanAttributes(span, { http_status_code });
+        // The clickhouse.query span covers the HTTP request lifetime only:
+        // it ends here, once response headers are received.  A separate
+        // clickhouse.query.stream child span is started and handed to the
+        // ResultSet to track the response stream consumption (decoded bytes,
+        // returned rows, streaming errors).  Separating the two spans makes
+        // it easy to distinguish the original request duration from a stream
+        // that may never end (e.g. tailing a live table).
+        span.end();
+        return this.tracer.startActiveSpan(
+          ClickHouseSpanNames.query_stream,
+          { kind: ClickHouseSpanKind.CLIENT },
+          (streamSpan) => {
+            try {
+              return this.makeResultSet(
+                stream,
+                format,
+                query_id,
+                (err) => {
+                  if (log_level <= ClickHouseLogLevel.ERROR) {
+                    log_writer.error({
+                      err,
+                      module: "Client",
+                      message: "Error while processing the ResultSet.",
+                      args: {
+                        session_id: queryParams.session_id,
+                        role: queryParams.role,
+                        query_id,
+                      },
+                    });
+                  }
+                },
+                response_headers,
+                this.jsonHandling,
+                streamSpan,
+              );
+            } catch (err) {
+              recordSpanError(streamSpan, err);
+              streamSpan.end();
+              throw err;
+            }
+            // streamSpan is NOT ended here - the ResultSet owns its lifetime.
+          },
+        );
+      },
+    );
   }
 
   /**
@@ -271,14 +351,38 @@ export class ClickHouseClient<Stream = unknown> {
    * and you are interested in the response data, consider using {@link ClickHouseClient.exec}.
    */
   async command(params: CommandParams): Promise<CommandResult> {
-    const query = removeTrailingSemi(params.query.trim())
-    const ignore_error_response = params.ignore_error_response ?? false
-    const queryParams = this.withClientQueryParams(params)
-    return await this.connection.command({
-      query,
-      ignore_error_response,
-      ...queryParams,
-    })
+    const query = removeTrailingSemi(params.query.trim());
+    const ignore_error_response = params.ignore_error_response ?? false;
+    const queryParams = this.withClientQueryParams(params);
+    return this.tracer.startActiveSpan(
+      ClickHouseSpanNames.command,
+      {
+        kind: ClickHouseSpanKind.CLIENT,
+        attributes: this.withBaseSpanAttributes({
+          "clickhouse.request.query_id": queryParams.query_id,
+          "clickhouse.request.session_id": queryParams.session_id,
+        }),
+      },
+      async (span) => {
+        try {
+          const result = await this.connection.command({
+            query,
+            ignore_error_response,
+            ...queryParams,
+          });
+          span.setAttributes({
+            "clickhouse.request.query_id": result.query_id,
+          });
+          setResponseSpanAttributes(span, result);
+          return result;
+        } catch (err) {
+          recordSpanError(span, err);
+          throw err;
+        } finally {
+          span.end();
+        }
+      },
+    );
   }
 
   /**
@@ -292,18 +396,43 @@ export class ClickHouseClient<Stream = unknown> {
   async exec(
     params: ExecParams | ExecParamsWithValues<Stream>,
   ): Promise<ExecResult<Stream>> {
-    const query = removeTrailingSemi(params.query.trim())
-    const values = 'values' in params ? params.values : undefined
-    const decompress_response_stream = params.decompress_response_stream ?? true
-    const ignore_error_response = params.ignore_error_response ?? false
-    const queryParams = this.withClientQueryParams(params)
-    return await this.connection.exec({
-      query,
-      values,
-      decompress_response_stream,
-      ignore_error_response,
-      ...queryParams,
-    })
+    const query = removeTrailingSemi(params.query.trim());
+    const values = "values" in params ? params.values : undefined;
+    const decompress_response_stream =
+      params.decompress_response_stream ?? true;
+    const ignore_error_response = params.ignore_error_response ?? false;
+    const queryParams = this.withClientQueryParams(params);
+    return this.tracer.startActiveSpan(
+      ClickHouseSpanNames.exec,
+      {
+        kind: ClickHouseSpanKind.CLIENT,
+        attributes: this.withBaseSpanAttributes({
+          "clickhouse.request.query_id": queryParams.query_id,
+          "clickhouse.request.session_id": queryParams.session_id,
+        }),
+      },
+      async (span) => {
+        try {
+          const result = await this.connection.exec({
+            query,
+            values,
+            decompress_response_stream,
+            ignore_error_response,
+            ...queryParams,
+          });
+          span.setAttributes({
+            "clickhouse.request.query_id": result.query_id,
+          });
+          setResponseSpanAttributes(span, result);
+          return result;
+        } catch (err) {
+          recordSpanError(span, err);
+          throw err;
+        } finally {
+          span.end();
+        }
+      },
+    );
   }
 
   /**
@@ -317,20 +446,59 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async insert<T>(params: InsertParams<Stream, T>): Promise<InsertResult> {
     if (Array.isArray(params.values) && params.values.length === 0) {
-      return { executed: false, query_id: '', response_headers: {} }
+      return { executed: false, query_id: "", response_headers: {} };
     }
 
-    const format = params.format || 'JSONCompactEachRow'
-    this.valuesEncoder.validateInsertValues(params.values, format)
+    const format = params.format || "JSONCompactEachRow";
+    this.valuesEncoder.validateInsertValues(params.values, format);
 
-    const query = getInsertQuery(params, format)
-    const queryParams = this.withClientQueryParams(params)
-    const result = await this.connection.insert({
-      query,
-      values: this.valuesEncoder.encodeValues(params.values, format),
-      ...queryParams,
-    })
-    return { ...result, executed: true }
+    const query = getInsertQuery(params, format);
+    const queryParams = this.withClientQueryParams(params);
+    return this.tracer.startActiveSpan(
+      ClickHouseSpanNames.insert,
+      {
+        kind: ClickHouseSpanKind.CLIENT,
+        attributes: this.withBaseSpanAttributes({
+          "db.operation.name": "INSERT",
+          "db.collection.name": params.table,
+          "clickhouse.request.format": format,
+          "clickhouse.request.query_id": queryParams.query_id,
+          "clickhouse.request.session_id": queryParams.session_id,
+          // Only known up front for array-based inserts; for streamed
+          // inserts, the row count is not observable by the client.
+          "clickhouse.request.sent_rows": Array.isArray(params.values)
+            ? params.values.length
+            : undefined,
+        }),
+      },
+      async (span) => {
+        try {
+          const values = this.valuesEncoder.encodeValues(params.values, format);
+          // TODO: record `clickhouse.request.encoded_bytes` (the
+          // pre-compression request body size) here. This is a
+          // post-common-deprecation feature: once `client-common` is
+          // deprecated and the Node.js / Web clients are fully independent,
+          // each client can measure the encoded payload using its own
+          // platform-native byte-length primitive (e.g. `Buffer.byteLength`)
+          // instead of a hand-rolled common implementation.
+          const result = await this.connection.insert({
+            query,
+            values,
+            ...queryParams,
+          });
+          span.setAttributes({
+            "clickhouse.request.query_id": result.query_id,
+          });
+          setResponseSpanAttributes(span, result);
+          return { ...result, executed: true };
+        } catch (err) {
+          recordSpanError(span, err);
+          throw err;
+        } finally {
+          span.end();
+        }
+      },
+    );
   }
 
   /**
@@ -343,7 +511,28 @@ export class ClickHouseClient<Stream = unknown> {
    * **NOTE**: Since the `/ping` endpoint does not support CORS, the Web version always uses a `SELECT` query.
    */
   async ping(params?: PingParams): Promise<PingResult> {
-    return await this.connection.ping(params ?? { select: false })
+    const select = params?.select ?? false;
+    return this.tracer.startActiveSpan(
+      ClickHouseSpanNames.ping,
+      {
+        kind: ClickHouseSpanKind.CLIENT,
+        attributes: this.withBaseSpanAttributes({
+          "clickhouse.ping.select": select,
+        }),
+      },
+      async (span) => {
+        try {
+          return await this.connection.ping(
+            params ?? { select: false as const },
+          );
+        } catch (err) {
+          recordSpanError(span, err);
+          throw err;
+        } finally {
+          span.end();
+        }
+      },
+    );
   }
 
   /**
@@ -352,7 +541,7 @@ export class ClickHouseClient<Stream = unknown> {
    * for example, during the graceful shutdown phase.
    */
   async close(): Promise<void> {
-    return await this.connection.close()
+    return await this.connection.close();
   }
 
   /**
@@ -363,7 +552,26 @@ export class ClickHouseClient<Stream = unknown> {
    * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
    */
   async [Symbol.asyncDispose]() {
-    await this.close()
+    await this.close();
+  }
+
+  private withBaseSpanAttributes(
+    extra: ClickHouseSpanAttributes,
+  ): ClickHouseSpanAttributes {
+    const url = this.connectionParams.url;
+    const attrs: ClickHouseSpanAttributes = {
+      "db.system.name": "clickhouse",
+      "server.address": url.hostname,
+      "server.port": getServerPort(url),
+      "db.namespace": this.connectionParams.database,
+    };
+    if (this.connectionParams.application_id !== undefined) {
+      attrs["clickhouse.application"] = this.connectionParams.application_id;
+    }
+    for (const [k, v] of Object.entries(extra)) {
+      if (v !== undefined) attrs[k] = v;
+    }
+    return attrs;
   }
 
   private withClientQueryParams(params: BaseQueryParams): BaseQueryParams {
@@ -379,54 +587,88 @@ export class ClickHouseClient<Stream = unknown> {
       role: params.role ?? this.role,
       auth: params.auth,
       http_headers: params.http_headers,
-    }
+      use_multipart_params: params.use_multipart_params,
+      use_multipart_params_auto: params.use_multipart_params_auto,
+    };
   }
+}
+
+function getServerPort(url: URL): number {
+  if (url.port !== "") {
+    return Number(url.port);
+  }
+  return url.protocol === "https:" ? 443 : 80;
+}
+
+/** Records HTTP status and `X-ClickHouse-Summary` counters on the span once
+ *  the response (headers) arrived. The summary values are complete only when
+ *  the query was executed with `wait_end_of_query=1`; see
+ *  {@link ClickHouseSummary}. */
+function setResponseSpanAttributes(
+  span: ClickHouseSpan,
+  result: WithHttpStatusCode & WithClickHouseSummary,
+): void {
+  const attributes: ClickHouseSpanAttributes = {};
+  if (result.http_status_code !== undefined) {
+    attributes["db.response.status_code"] = result.http_status_code;
+  }
+  const summary = result.summary;
+  if (summary !== undefined) {
+    attributes["clickhouse.summary.read_rows"] = summary.read_rows;
+    attributes["clickhouse.summary.read_bytes"] = summary.read_bytes;
+    attributes["clickhouse.summary.written_rows"] = summary.written_rows;
+    attributes["clickhouse.summary.written_bytes"] = summary.written_bytes;
+    attributes["clickhouse.summary.result_rows"] = summary.result_rows;
+    attributes["clickhouse.summary.result_bytes"] = summary.result_bytes;
+    attributes["clickhouse.summary.elapsed_ns"] = summary.elapsed_ns;
+  }
+  span.setAttributes(attributes);
 }
 
 function formatQuery(query: string, format: DataFormat): string {
-  query = query.trim()
-  query = removeTrailingSemi(query)
-  return query + ' \nFORMAT ' + format
+  query = query.trim();
+  query = removeTrailingSemi(query);
+  return query + " \nFORMAT " + format;
 }
 
 function removeTrailingSemi(query: string) {
-  let lastNonSemiIdx = query.length
+  let lastNonSemiIdx = query.length;
   for (let i = lastNonSemiIdx; i > 0; i--) {
-    if (query[i - 1] !== ';') {
-      lastNonSemiIdx = i
-      break
+    if (query[i - 1] !== ";") {
+      lastNonSemiIdx = i;
+      break;
     }
   }
   if (lastNonSemiIdx !== query.length) {
-    return query.slice(0, lastNonSemiIdx)
+    return query.slice(0, lastNonSemiIdx);
   }
-  return query
+  return query;
 }
 
 function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
   return (
     obj !== undefined &&
     obj !== null &&
-    typeof obj === 'object' &&
+    typeof obj === "object" &&
     // Avoiding ESLint no-prototype-builtins error
-    Object.prototype.hasOwnProperty.call(obj, 'except')
-  )
+    Object.prototype.hasOwnProperty.call(obj, "except")
+  );
 }
 
 function getInsertQuery<T>(
   params: InsertParams<T>,
   format: DataFormat,
 ): string {
-  let columnsPart = ''
+  let columnsPart = "";
   if (params.columns !== undefined) {
     if (Array.isArray(params.columns) && params.columns.length > 0) {
-      columnsPart = ` (${params.columns.join(', ')})`
+      columnsPart = ` (${params.columns.join(", ")})`;
     } else if (
       isInsertColumnsExcept(params.columns) &&
       params.columns.except.length > 0
     ) {
-      columnsPart = ` (* EXCEPT (${params.columns.except.join(', ')}))`
+      columnsPart = ` (* EXCEPT (${params.columns.except.join(", ")}))`;
     }
   }
-  return `INSERT INTO ${params.table.trim()}${columnsPart} FORMAT ${format}`
+  return `INSERT INTO ${params.table.trim()}${columnsPart} FORMAT ${format}`;
 }

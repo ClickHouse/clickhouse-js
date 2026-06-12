@@ -1,386 +1,388 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type {
   ClickHouseClient,
   ClickHouseSettings,
-} from '@clickhouse/client-common'
-import { randomUUID } from '@test/utils/guid'
-import { createTableWithFields } from '../fixtures/table_with_fields'
-import { createTestClient, getRandomInt, TestEnv, isOnEnv } from '../utils'
+} from "@clickhouse/client-common";
+import { randomUUID } from "@test/utils/guid";
+import { createTableWithFields } from "../fixtures/table_with_fields";
+import { createTestClient, getRandomInt, TestEnv, isOnEnv } from "../utils";
 
-describe('data types', () => {
-  let client: ClickHouseClient
+describe("data types", () => {
+  let client: ClickHouseClient;
   beforeEach(() => {
-    client = createTestClient()
-  })
+    client = createTestClient();
+  });
   afterEach(async () => {
-    await client.close()
-  })
+    await client.close();
+  });
 
-  it('should work with integer types', async () => {
+  it("should work with integer types", async () => {
     const values = [
       {
         i1: 127,
         i2: 32767,
         i3: 2147483647,
-        i4: '9223372036854775807',
-        i5: '170141183460469231731687303715884105727',
-        i6: '57896044618658097711785492504343953926634992332820282019728792003956564819967',
+        i4: "9223372036854775807",
+        i5: "170141183460469231731687303715884105727",
+        i6: "57896044618658097711785492504343953926634992332820282019728792003956564819967",
         u1: 255,
         u2: 65535,
         u3: 4294967295,
-        u4: '18446744073709551615',
-        u5: '340282366920938463463374607431768211455',
-        u6: '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+        u4: "18446744073709551615",
+        u5: "340282366920938463463374607431768211455",
+        u6: "115792089237316195423570985008687907853269984665640564039457584007913129639935",
       },
       {
         i1: -128,
         i2: -32768,
         i3: -2147483648,
-        i4: '-9223372036854775808',
-        i5: '-170141183460469231731687303715884105728',
-        i6: '-57896044618658097711785492504343953926634992332820282019728792003956564819968',
+        i4: "-9223372036854775808",
+        i5: "-170141183460469231731687303715884105728",
+        i6: "-57896044618658097711785492504343953926634992332820282019728792003956564819968",
         u1: 120,
         u2: 1234,
         u3: 51234,
-        u4: '421342',
-        u5: '15324355',
-        u6: '41345135123432',
+        u4: "421342",
+        u5: "15324355",
+        u6: "41345135123432",
       },
-    ]
+    ];
     const table = await createTableWithFields(
       client,
-      'u1 UInt8, u2 UInt16, u3 UInt32, u4 UInt64, u5 UInt128, u6 UInt256, ' +
-        'i1 Int8, i2 Int16, i3 Int32, i4 Int64, i5 Int128, i6 Int256',
-    )
-    await insertAndAssert(table, values)
-  })
+      "u1 UInt8, u2 UInt16, u3 UInt32, u4 UInt64, u5 UInt128, u6 UInt256, " +
+        "i1 Int8, i2 Int16, i3 Int32, i4 Int64, i5 Int128, i6 Int256",
+    );
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with floating point types', async () => {
+  it("should work with floating point types", async () => {
     const values = [
       { f1: 1.234, f2: 3.35245141223232 },
       { f1: -0.7968956, f2: -0.113259394344324 },
-    ]
-    const table = await createTableWithFields(client, 'f1 Float32, f2 Float64')
-    await insertAndAssert(table, values)
-  })
+    ];
+    const table = await createTableWithFields(client, "f1 Float32, f2 Float64");
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with boolean', async () => {
-    const values = [{ b: true }, { b: false }]
-    const table = await createTableWithFields(client, 'b Boolean')
-    await insertAndAssert(table, values)
-  })
+  it("should work with boolean", async () => {
+    const values = [{ b: true }, { b: false }];
+    const table = await createTableWithFields(client, "b Boolean");
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with strings', async () => {
+  it("should work with strings", async () => {
     const values = [
-      { s: 'foo', fs: 'bar' },
-      { s: 'qaz', fs: 'qux' },
-    ]
+      { s: "foo", fs: "bar" },
+      { s: "qaz", fs: "qux" },
+    ];
     const table = await createTableWithFields(
       client,
-      's String, fs FixedString(3)',
-    )
-    await insertAndAssert(table, values)
-  })
+      "s String, fs FixedString(3)",
+    );
+    await insertAndAssert(table, values);
+  });
 
-  it('should throw if a value is too large for a FixedString field', async () => {
-    const table = await createTableWithFields(client, 'fs FixedString(3)')
+  it("should throw if a value is too large for a FixedString field", async () => {
+    const table = await createTableWithFields(client, "fs FixedString(3)");
     await expect(
       client.insert({
         table,
-        values: [{ fs: 'foobar' }],
-        format: 'JSONEachRow',
+        values: [{ fs: "foobar" }],
+        format: "JSONEachRow",
       }),
     ).rejects.toMatchObject(
       expect.objectContaining({
-        message: expect.stringContaining('Too large value for FixedString(3)'),
+        message: expect.stringContaining("Too large value for FixedString(3)"),
       }),
-    )
-  })
+    );
+  });
 
-  it('should work with decimals', async () => {
+  it("should work with decimals", async () => {
     const row1 = {
       id: 1,
-      d1: '1234567.89',
-      d2: '123456789123456.789',
-      d3: '1234567891234567891234567891.1234567891',
-      d4: '12345678912345678912345678911234567891234567891234567891.12345678911234567891',
-    }
+      d1: "1234567.89",
+      d2: "123456789123456.789",
+      d3: "1234567891234567891234567891.1234567891",
+      d4: "12345678912345678912345678911234567891234567891234567891.12345678911234567891",
+    };
     const row2 = {
       id: 2,
-      d1: '12.01',
-      d2: '5000000.405',
-      d3: '1.0000000004',
-      d4: '42.00000000000000013007',
-    }
+      d1: "12.01",
+      d2: "5000000.405",
+      d3: "1.0000000004",
+      d4: "42.00000000000000013007",
+    };
     const stringRow1 =
-      '1\t1234567.89\t123456789123456.789\t' +
-      '1234567891234567891234567891.1234567891\t' +
-      '12345678912345678912345678911234567891234567891234567891.12345678911234567891\n'
+      "1\t1234567.89\t123456789123456.789\t" +
+      "1234567891234567891234567891.1234567891\t" +
+      "12345678912345678912345678911234567891234567891234567891.12345678911234567891\n";
     const stringRow2 =
-      '2\t12.01\t5000000.405\t1.0000000004\t42.00000000000000013007\n'
+      "2\t12.01\t5000000.405\t1.0000000004\t42.00000000000000013007\n";
     const table = await createTableWithFields(
       client,
-      'd1 Decimal(9, 2), d2 Decimal(18, 3), ' +
-        'd3 Decimal(38, 10), d4 Decimal(76, 20)',
-    )
+      "d1 Decimal(9, 2), d2 Decimal(18, 3), " +
+        "d3 Decimal(38, 10), d4 Decimal(76, 20)",
+    );
     await client.insert({
       table,
       values: [row1, row2],
-      format: 'JSONEachRow',
-    })
+      format: "JSONEachRow",
+    });
     const result = await client
       .query({
         query: `SELECT *
                 FROM ${table}
                 ORDER BY id ASC`,
-        format: 'TabSeparated',
+        format: "TabSeparated",
       })
-      .then((r) => r.text())
-    expect(result).toEqual(stringRow1 + stringRow2)
-  })
+      .then((r) => r.text());
+    expect(result).toEqual(stringRow1 + stringRow2);
+  });
 
-  it('should work with UUID', async () => {
-    const values = [{ u: randomUUID() }, { u: randomUUID() }]
-    const table = await createTableWithFields(client, 'u UUID')
-    await insertAndAssert(table, values)
-  })
+  it("should work with UUID", async () => {
+    const values = [{ u: randomUUID() }, { u: randomUUID() }];
+    const table = await createTableWithFields(client, "u UUID");
+    await insertAndAssert(table, values);
+  });
 
-  describe('Dates', () => {
-    it('should work with strings', async () => {
+  describe("Dates", () => {
+    it("should work with strings", async () => {
       const values = [
         {
-          d1: '2149-06-06',
-          d2: '2178-04-16',
-          dt1: '2106-02-07 06:28:15',
-          dt2: '2106-02-07 06:28:15.123',
-          dt3: '2106-02-07 06:28:15.123456',
-          dt4: '2106-02-07 06:28:15.123456789',
+          d1: "2149-06-06",
+          d2: "2178-04-16",
+          dt1: "2106-02-07 06:28:15",
+          dt2: "2106-02-07 06:28:15.123",
+          dt3: "2106-02-07 06:28:15.123456",
+          dt4: "2106-02-07 06:28:15.123456789",
         },
         {
-          d1: '2022-09-01',
-          d2: '2007-01-29',
-          dt1: '2022-09-01 01:40:42',
-          dt2: '2021-10-02 03:12:42.123',
-          dt3: '2022-12-15 07:10:42.123456',
-          dt4: '2008-04-05 03:45:42.123456789',
+          d1: "2022-09-01",
+          d2: "2007-01-29",
+          dt1: "2022-09-01 01:40:42",
+          dt2: "2021-10-02 03:12:42.123",
+          dt3: "2022-12-15 07:10:42.123456",
+          dt4: "2008-04-05 03:45:42.123456789",
         },
-      ]
+      ];
       const table = await createTableWithFields(
         client,
-        'd1 Date, d2 Date32, dt1 DateTime, ' +
-          'dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)',
-      )
-      await insertAndAssert(table, values)
-    })
+        "d1 Date, d2 Date32, dt1 DateTime, " +
+          "dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)",
+      );
+      await insertAndAssert(table, values);
+    });
 
     // NB: JS Date objects work only with DateTime* fields
-    it('should work with JS Date objects', async () => {
+    it("should work with JS Date objects", async () => {
       const values = [
         {
-          dt1: new Date('2106-02-07T06:28:15Z'),
+          dt1: new Date("2106-02-07T06:28:15Z"),
           // JS Date is millis only
-          dt2: new Date('2106-02-07T06:28:15.123Z'),
-          dt3: new Date('2106-02-07T06:28:15.123Z'),
-          dt4: new Date('2106-02-07T06:28:15.123Z'),
+          dt2: new Date("2106-02-07T06:28:15.123Z"),
+          dt3: new Date("2106-02-07T06:28:15.123Z"),
+          dt4: new Date("2106-02-07T06:28:15.123Z"),
         },
         {
-          dt1: new Date('2022-09-01T01:40:42Z'),
-          dt2: new Date('2021-10-02T03:12:42.123Z'),
-          dt3: new Date('2022-12-15T07:10:42.123Z'),
-          dt4: new Date('2008-04-05T03:45:42.123Z'),
+          dt1: new Date("2022-09-01T01:40:42Z"),
+          dt2: new Date("2021-10-02T03:12:42.123Z"),
+          dt3: new Date("2022-12-15T07:10:42.123Z"),
+          dt4: new Date("2008-04-05T03:45:42.123Z"),
         },
-      ]
+      ];
       const expected = [
         {
-          dt1: '2106-02-07 06:28:15',
+          dt1: "2106-02-07 06:28:15",
           // JS Date is millis only
-          dt2: '2106-02-07 06:28:15.123',
-          dt3: '2106-02-07 06:28:15.123000',
-          dt4: '2106-02-07 06:28:15.123000000',
+          dt2: "2106-02-07 06:28:15.123",
+          dt3: "2106-02-07 06:28:15.123000",
+          dt4: "2106-02-07 06:28:15.123000000",
         },
         {
-          dt1: '2022-09-01 01:40:42',
-          dt2: '2021-10-02 03:12:42.123',
-          dt3: '2022-12-15 07:10:42.123000',
-          dt4: '2008-04-05 03:45:42.123000000',
+          dt1: "2022-09-01 01:40:42",
+          dt2: "2021-10-02 03:12:42.123",
+          dt3: "2022-12-15 07:10:42.123000",
+          dt4: "2008-04-05 03:45:42.123000000",
         },
-      ]
+      ];
       const table = await createTableWithFields(
         client,
-        'dt1 DateTime, dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)',
-      )
+        "dt1 DateTime, dt2 DateTime64(3), dt3 DateTime64(6), dt4 DateTime64(9)",
+      );
       await insertData(table, values, {
         // Allows to insert serialized JS Dates (such as '2023-12-06T10:54:48.000Z')
-        date_time_input_format: 'best_effort',
-      })
-      await assertData(table, expected)
-    })
-  })
+        date_time_input_format: "best_effort",
+      });
+      await assertData(table, expected);
+    });
+  });
 
-  it('should work with custom JSON handling (BigInt and Date)', async () => {
-    const TEST_BIGINT = BigInt(25000000000000000)
-    const TEST_DATE = new Date('2023-12-06T10:54:48.123Z')
+  it("should work with custom JSON handling (BigInt and Date)", async () => {
+    const TEST_BIGINT = BigInt(25000000000000000);
+    const TEST_DATE = new Date("2023-12-06T10:54:48.123Z");
     const values = [
       {
         big_id: TEST_BIGINT,
         dt: TEST_DATE,
       },
-    ]
+    ];
 
     const valueSerializer = (value: unknown): unknown => {
       if (value instanceof Date) {
-        return value.getTime()
+        return value.getTime();
       }
-      if (typeof value === 'bigint') {
-        return value.toString()
+      if (typeof value === "bigint") {
+        return value.toString();
       }
       if (Array.isArray(value)) {
-        return value.map(valueSerializer)
+        return value.map(valueSerializer);
       }
-      if (value && typeof value === 'object') {
+      if (value && typeof value === "object") {
         return Object.fromEntries(
           Object.entries(value).map(([k, v]) => [k, valueSerializer(v)]),
-        )
+        );
       }
-      return value
-    }
+      return value;
+    };
 
     // modify the client to handle BigInt and Date serialization
     client = createTestClient({
       json: {
         parse: JSON.parse,
         stringify: (obj: unknown) => {
-          const seralized = valueSerializer(obj)
-          return JSON.stringify(seralized)
+          const seralized = valueSerializer(obj);
+          return JSON.stringify(seralized);
         },
       },
-    })
+    });
 
     const table = await createTableWithFields(
       client,
       "big_id UInt64, dt DateTime64(3, 'UTC')",
-    )
+    );
 
     await insertAndAssert(table, values, {}, [
       {
-        dt: TEST_DATE.toISOString().replace('T', ' ').replace('Z', ''), // clickhouse returns DateTime64 in UTC without timezone info
+        dt: TEST_DATE.toISOString().replace("T", " ").replace("Z", ""), // clickhouse returns DateTime64 in UTC without timezone info
         big_id: TEST_BIGINT.toString(), // clickhouse by default returns UInt64 as string to be safe
       },
-    ])
-  })
+    ]);
+  });
 
-  it('should work with string enums', async () => {
+  it("should work with string enums", async () => {
     const values = [
-      { e1: 'Foo', e2: 'Qaz' },
-      { e1: 'Bar', e2: 'Qux' },
-    ]
+      { e1: "Foo", e2: "Qaz" },
+      { e1: "Bar", e2: "Qux" },
+    ];
     const table = await createTableWithFields(
       client,
       `e1 Enum('Foo', 'Bar'), e2 Enum('Qaz', 'Qux')`,
-    )
-    await insertAndAssert(table, values)
-  })
+    );
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with numeric enums', async () => {
+  it("should work with numeric enums", async () => {
     const values = [
       { e1: 42, e2: 100 },
       { e1: 43, e2: 127 },
-    ]
+    ];
     const table = await createTableWithFields(
       client,
       `e1 Enum('Foo' = 42, 'Bar' = 43), e2 Enum('Qaz' = 100, 'Qux' = 127)`,
-    )
-    await insertData(table, values)
+    );
+    await insertData(table, values);
     const result = await client
       .query({
         query: `SELECT CAST(e1, 'Int8') AS e1, CAST(e2, 'Int8') AS e2
                 FROM ${table}
                 ORDER BY id ASC`,
-        format: 'JSONEachRow',
+        format: "JSONEachRow",
       })
-      .then((r) => r.json())
-    expect(result).toEqual(values)
-  })
+      .then((r) => r.json());
+    expect(result).toEqual(values);
+  });
 
-  it('should work with low cardinality', async () => {
+  it("should work with low cardinality", async () => {
     const values = [
       {
-        s: 'foo',
-        fs: 'bar',
+        s: "foo",
+        fs: "bar",
       },
       {
-        s: 'qaz',
-        fs: 'qux',
+        s: "qaz",
+        fs: "qux",
       },
-    ]
+    ];
     const table = await createTableWithFields(
       client,
-      's LowCardinality(String), fs LowCardinality(FixedString(3))',
-    )
-    await insertAndAssert(table, values)
-  })
+      "s LowCardinality(String), fs LowCardinality(FixedString(3))",
+    );
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with tuples', async () => {
+  it("should work with tuples", async () => {
     const values = [
-      { t1: ['foo', 42], t2: ['2022-01-04', [1, 2]] },
-      { t1: ['bar', 43], t2: ['2015-04-15', [3, 4]] },
-    ]
+      { t1: ["foo", 42], t2: ["2022-01-04", [1, 2]] },
+      { t1: ["bar", 43], t2: ["2015-04-15", [3, 4]] },
+    ];
     const table = await createTableWithFields(
       client,
-      't1 Tuple(String, Int32), t2 Tuple(Date, Array(Int32))',
-    )
-    await insertAndAssert(table, values)
-  })
+      "t1 Tuple(String, Int32), t2 Tuple(Date, Array(Int32))",
+    );
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with nullable types', async () => {
+  it("should work with nullable types", async () => {
     const values = [
-      { s: 'foo', i: null, a: [null, null] },
+      { s: "foo", i: null, a: [null, null] },
       { s: null, i: 42, a: [51, null] },
-    ]
+    ];
     const table = await createTableWithFields(
       client,
-      's Nullable(String), i Nullable(Int32), a Array(Nullable(Int32))',
-    )
-    await insertAndAssert(table, values)
-  })
+      "s Nullable(String), i Nullable(Int32), a Array(Nullable(Int32))",
+    );
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with IP', async () => {
+  it("should work with IP", async () => {
     const values = [
       {
-        ip1: '68.172.195.211',
-        ip2: 'f984:5f0b:bf33:e2db:16cd:567c:c1b3:20c4',
+        ip1: "68.172.195.211",
+        ip2: "f984:5f0b:bf33:e2db:16cd:567c:c1b3:20c4",
       },
       {
-        ip1: '184.232.227.132',
-        ip2: '2150:c3d5:f9e0:cdee:a94f:4580:d939:3901',
+        ip1: "184.232.227.132",
+        ip2: "2150:c3d5:f9e0:cdee:a94f:4580:d939:3901",
       },
-    ]
-    const table = await createTableWithFields(client, 'ip1 IPv4, ip2 IPv6')
-    await insertAndAssert(table, values)
-  })
+    ];
+    const table = await createTableWithFields(client, "ip1 IPv4, ip2 IPv6");
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with ((very) nested) arrays', async () => {
+  it("should work with ((very) nested) arrays", async () => {
     // it's the largest reasonable nesting value (data is generated within 50 ms);
     // 25 here can already tank the performance to ~500ms only to generate the data;
     // 50 simply times out :)
     // FIXME: investigate fetch max body length
     //  (reduced 20 to 10 cause the body was too large and fetch failed)
-    const maxNestingLevel = 10
+    const maxNestingLevel = 10;
 
     function genNestedArray(level: number): unknown {
       if (level === 1) {
         return [...Array(getRandomInt(2, 4))].map(() =>
           Math.random().toString(36).slice(2),
-        )
+        );
       }
-      return [...Array(getRandomInt(1, 3))].map(() => genNestedArray(level - 1))
+      return [...Array(getRandomInt(1, 3))].map(() =>
+        genNestedArray(level - 1),
+      );
     }
 
     function genArrayType(level: number): string {
       if (level === 0) {
-        return 'String'
+        return "String";
       }
-      return `Array(${genArrayType(level - 1)})`
+      return `Array(${genArrayType(level - 1)})`;
     }
 
     const values = [
@@ -388,12 +390,12 @@ describe('data types', () => {
         a1: [42, 43],
         a2: [
           [
-            ['qaz', 144],
-            ['qux', 1024],
+            ["qaz", 144],
+            ["qux", 1024],
           ],
           [
-            ['qwerty', 102],
-            ['dvorak', -500],
+            ["qwerty", 102],
+            ["dvorak", -500],
           ],
         ],
         a3: genNestedArray(maxNestingLevel),
@@ -402,114 +404,114 @@ describe('data types', () => {
         a1: [44, 56],
         a2: [
           [
-            ['rtx', 60],
-            ['RDNA', 100],
+            ["rtx", 60],
+            ["RDNA", 100],
           ],
           [
-            ['zen', 42],
-            ['core', 400],
+            ["zen", 42],
+            ["core", 400],
           ],
         ],
         a3: genNestedArray(maxNestingLevel),
       },
-    ]
+    ];
     const fields =
-      'a1 Array(Int32), a2 Array(Array(Tuple(String, Int32))), ' +
-      `a3 ${genArrayType(maxNestingLevel)}`
-    const table = await createTableWithFields(client, fields)
-    await insertAndAssert(table, values)
-  })
+      "a1 Array(Int32), a2 Array(Array(Tuple(String, Int32))), " +
+      `a3 ${genArrayType(maxNestingLevel)}`;
+    const table = await createTableWithFields(client, fields);
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with ((very) nested) maps', async () => {
-    const maxNestingLevel = 10
+  it("should work with ((very) nested) maps", async () => {
+    const maxNestingLevel = 10;
 
     function genNestedMap(level: number): unknown {
-      const obj: Record<number, unknown> = {}
+      const obj: Record<number, unknown> = {};
       if (level === 1) {
-        ;[...Array(getRandomInt(2, 4))].forEach(
+        [...Array(getRandomInt(2, 4))].forEach(
           () =>
             (obj[getRandomInt(1, 1000)] = Math.random().toString(36).slice(2)),
-        )
-        return obj
+        );
+        return obj;
       }
-      ;[...Array(getRandomInt(1, 3))].forEach(
+      [...Array(getRandomInt(1, 3))].forEach(
         () => (obj[getRandomInt(1, 1000)] = genNestedMap(level - 1)),
-      )
-      return obj
+      );
+      return obj;
     }
 
     function genMapType(level: number): string {
       if (level === 0) {
-        return 'String'
+        return "String";
       }
-      return `Map(Int32, ${genMapType(level - 1)})`
+      return `Map(Int32, ${genMapType(level - 1)})`;
     }
 
     const values = [
       {
-        m1: { foo: 'bar', qwe: 'rty' },
-        m2: { 1: '2', 3: '4' },
+        m1: { foo: "bar", qwe: "rty" },
+        m2: { 1: "2", 3: "4" },
         m3: genNestedMap(maxNestingLevel),
       },
       {
-        m1: { qaz: 'qux', sub: 'q' },
-        m2: { 3: '4', 4: '5' },
+        m1: { qaz: "qux", sub: "q" },
+        m2: { 3: "4", 4: "5" },
         m3: {},
       },
-    ]
+    ];
     const table = await createTableWithFields(
       client,
-      'm1 Map(String, String), m2 Map(Int32, Int64), ' +
+      "m1 Map(String, String), m2 Map(Int32, Int64), " +
         `m3 ${genMapType(maxNestingLevel)}`,
-    )
-    await insertAndAssert(table, values)
-  })
+    );
+    await insertAndAssert(table, values);
+  });
 
-  it('should work with (simple) aggregation functions', async () => {
+  it("should work with (simple) aggregation functions", async () => {
     const values = [
       { route: 53, distance: 20.96 },
       { route: 54, distance: 100.52 },
       { route: 55, distance: 4.05 },
-    ]
+    ];
     const table = await createTableWithFields(
       client,
       `route Int32, distance Decimal(10, 2)`,
-    )
+    );
     await client.insert({
       table,
       values,
-      format: 'JSONEachRow',
-    })
+      format: "JSONEachRow",
+    });
     expect(
       await client
         .query({
           query: `SELECT sum(distance)
                   FROM ${table}`,
-          format: 'TabSeparated',
+          format: "TabSeparated",
         })
         .then((r) => r.text()),
-    ).toEqual('125.53\n')
+    ).toEqual("125.53\n");
     expect(
       await client
         .query({
           query: `SELECT max(distance)
                   FROM ${table}`,
-          format: 'TabSeparated',
+          format: "TabSeparated",
         })
         .then((r) => r.text()),
-    ).toEqual('100.52\n')
+    ).toEqual("100.52\n");
     expect(
       await client
         .query({
           query: `SELECT uniqExact(distance)
                   FROM ${table}`,
-          format: 'TabSeparated',
+          format: "TabSeparated",
         })
         .then((r) => r.text()),
-    ).toEqual('3\n')
-  })
+    ).toEqual("3\n");
+  });
 
-  it('should work with geo', async () => {
+  it("should work with geo", async () => {
     const values = [
       {
         p: [42, 144],
@@ -556,18 +558,18 @@ describe('data types', () => {
           ],
         ],
       },
-    ]
+    ];
     const table = await createTableWithFields(
       client,
-      'p Point, r Ring, pg Polygon, mpg MultiPolygon',
-    )
-    await insertAndAssert(table, values)
-  })
+      "p Point, r Ring, pg Polygon, mpg MultiPolygon",
+    );
+    await insertAndAssert(table, values);
+  });
 
   // New experimental JSON type
   // https://clickhouse.com/docs/en/sql-reference/data-types/newjson
   it.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
-    'should work with (new) JSON',
+    "should work with (new) JSON",
     async () => {
       const values = [
         {
@@ -576,77 +578,77 @@ describe('data types', () => {
         {
           o: { a: 2, b: { c: 3, d: [4, 5, 6] } },
         },
-      ]
+      ];
       const table = await createTableWithFields(client, `o JSON`, {
         allow_experimental_json_type: 1,
-      })
+      });
       await insertAndAssert(table, values, {
         output_format_json_quote_64bit_integers: 0,
-      })
+      });
     },
-  )
+  );
 
   // New experimental Variant type
   // https://clickhouse.com/docs/en/sql-reference/data-types/variant
   it.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
-    'should work with Variant',
+    "should work with Variant",
     async () => {
-      const values = [{ var: 'foo' }, { var: 42 }]
+      const values = [{ var: "foo" }, { var: 42 }];
       const table = await createTableWithFields(
         client,
         `var Variant(String, Int32)`,
         {
           allow_experimental_variant_type: 1,
         },
-      )
-      await insertAndAssert(table, values)
+      );
+      await insertAndAssert(table, values);
     },
-  )
+  );
 
   // New experimental Dynamic type
   // https://clickhouse.com/docs/en/sql-reference/data-types/dynamic
   it.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
-    'should work with Dynamic',
+    "should work with Dynamic",
     async () => {
-      const values = [{ dyn: 'foo' }, { dyn: { bar: 'qux' } }]
+      const values = [{ dyn: "foo" }, { dyn: { bar: "qux" } }];
       const table = await createTableWithFields(client, `dyn Dynamic`, {
         allow_experimental_dynamic_type: 1,
-      })
-      await insertAndAssert(table, values)
+      });
+      await insertAndAssert(table, values);
     },
-  )
+  );
 
-  describe('Nested', () => {
-    it('should work by default', async () => {
+  describe("Nested", () => {
+    it("should work by default", async () => {
       const values = [
         {
           id: 1,
-          'n.id': [42],
-          'n.name': ['foo'],
-          'n.createdAt': ['2001-04-23 00:00:00'],
-          'n.roles': [['User']],
+          "n.id": [42],
+          "n.name": ["foo"],
+          "n.createdAt": ["2001-04-23 00:00:00"],
+          "n.roles": [["User"]],
         },
         {
           id: 2,
-          'n.id': [43],
-          'n.name': ['bar'],
-          'n.createdAt': ['2000-01-12 00:00:00'],
-          'n.roles': [['Admin']],
+          "n.id": [43],
+          "n.name": ["bar"],
+          "n.createdAt": ["2000-01-12 00:00:00"],
+          "n.roles": [["Admin"]],
         },
-      ]
-      await insertAndAssertNestedValues(values, {}, {})
-    })
+      ];
+      await insertAndAssertNestedValues(values, {}, {});
+    });
 
-    it('should work with nested (flatten_nested = 0)', async () => {
+    it("should work with nested (flatten_nested = 0)", async () => {
       const values = [
         {
           id: 1,
           n: [
             {
               id: 42,
-              name: 'foo',
-              createdAt: '2001-04-23 00:00:00',
-              roles: ['User'],
+              name: "foo",
+              createdAt: "2001-04-23 00:00:00",
+              roles: ["User"],
             },
           ],
         },
@@ -655,56 +657,56 @@ describe('data types', () => {
           n: [
             {
               id: 43,
-              name: 'bar',
-              createdAt: '2000-01-12 00:00:00',
-              roles: ['Admin'],
+              name: "bar",
+              createdAt: "2000-01-12 00:00:00",
+              roles: ["Admin"],
             },
           ],
         },
-      ]
-      await insertAndAssertNestedValues(values, { flatten_nested: 0 }, {})
-    })
+      ];
+      await insertAndAssertNestedValues(values, { flatten_nested: 0 }, {});
+    });
 
-    it('should work with nested (input_format_import_nested_json = 1)', async () => {
+    it("should work with nested (input_format_import_nested_json = 1)", async () => {
       const values = [
         {
           id: 1,
           n: {
             id: [42],
-            name: ['foo'],
-            createdAt: ['2001-04-23 00:00:00'],
-            roles: [['User']],
+            name: ["foo"],
+            createdAt: ["2001-04-23 00:00:00"],
+            roles: [["User"]],
           },
         },
         {
           id: 2,
           n: {
             id: [43],
-            name: ['bar'],
-            createdAt: ['2000-01-12 00:00:00'],
-            roles: [['Admin']],
+            name: ["bar"],
+            createdAt: ["2000-01-12 00:00:00"],
+            roles: [["Admin"]],
           },
         },
-      ]
+      ];
       await insertAndAssertNestedValues(
         values,
         {},
         {
           input_format_import_nested_json: 1,
         },
-      )
-    })
+      );
+    });
 
-    it('should work with nested with (flatten_nested = 0 and input_format_import_nested_json = 1)', async () => {
+    it("should work with nested with (flatten_nested = 0 and input_format_import_nested_json = 1)", async () => {
       const values = [
         {
           id: 1,
           n: [
             {
               id: 42,
-              name: 'foo',
-              createdAt: '2001-04-23 00:00:00',
-              roles: ['User'],
+              name: "foo",
+              createdAt: "2001-04-23 00:00:00",
+              roles: ["User"],
             },
           ],
         },
@@ -713,21 +715,21 @@ describe('data types', () => {
           n: [
             {
               id: 43,
-              name: 'bar',
-              createdAt: '2000-01-12 00:00:00',
-              roles: ['Admin'],
+              name: "bar",
+              createdAt: "2000-01-12 00:00:00",
+              roles: ["Admin"],
             },
           ],
         },
-      ]
+      ];
       await insertAndAssertNestedValues(
         values,
         { flatten_nested: 0 },
         {
           input_format_import_nested_json: 1,
         },
-      )
-    })
+      );
+    });
 
     async function insertAndAssertNestedValues(
       values: unknown[],
@@ -736,53 +738,53 @@ describe('data types', () => {
     ) {
       const table = await createTableWithFields(
         client,
-        'n Nested(id UInt32, name String, createdAt DateTime, ' +
+        "n Nested(id UInt32, name String, createdAt DateTime, " +
           `roles Array(Enum('User', 'Admin')))`,
         createTableSettings,
-      )
+      );
       await client.insert({
         table,
         values,
         clickhouse_settings: insertSettings,
-        format: 'JSONEachRow',
-      })
+        format: "JSONEachRow",
+      });
       const result = await client
         .query({
           query: `SELECT n.id, n.name, n.createdAt, n.roles
                   FROM ${table}
                   ORDER BY id ASC`,
-          format: 'JSONEachRow',
+          format: "JSONEachRow",
         })
-        .then((r) => r.json())
+        .then((r) => r.json());
       expect(result).toEqual([
         {
-          'n.id': [42],
-          'n.name': ['foo'],
-          'n.createdAt': ['2001-04-23 00:00:00'],
-          'n.roles': [['User']],
+          "n.id": [42],
+          "n.name": ["foo"],
+          "n.createdAt": ["2001-04-23 00:00:00"],
+          "n.roles": [["User"]],
         },
         {
-          'n.id': [43],
-          'n.name': ['bar'],
-          'n.createdAt': ['2000-01-12 00:00:00'],
-          'n.roles': [['Admin']],
+          "n.id": [43],
+          "n.name": ["bar"],
+          "n.createdAt": ["2000-01-12 00:00:00"],
+          "n.roles": [["Admin"]],
         },
-      ])
+      ]);
     }
-  })
+  });
 
   async function insertData<T>(
     table: string,
     data: T[],
     clickhouse_settings?: ClickHouseSettings,
   ) {
-    const values = data.map((v, i) => ({ ...v, id: i + 1 }))
+    const values = data.map((v, i) => ({ ...v, id: i + 1 }));
     await client.insert({
-      format: 'JSONEachRow',
+      format: "JSONEachRow",
       table,
       values,
       clickhouse_settings,
-    })
+    });
   }
 
   async function assertData<T>(
@@ -795,11 +797,11 @@ describe('data types', () => {
         query: `SELECT * EXCEPT (id)
                 FROM ${table}
                 ORDER BY id ASC`,
-        format: 'JSONEachRow',
+        format: "JSONEachRow",
         clickhouse_settings,
       })
-      .then((r) => r.json())
-    expect(result).toEqual(data)
+      .then((r) => r.json());
+    expect(result).toEqual(data);
   }
 
   async function insertAndAssert<T>(
@@ -808,7 +810,7 @@ describe('data types', () => {
     clickhouse_settings: ClickHouseSettings = {},
     expectedDataBack?: unknown[],
   ) {
-    await insertData(table, data, clickhouse_settings)
-    await assertData(table, expectedDataBack ?? data, clickhouse_settings)
+    await insertData(table, data, clickhouse_settings);
+    await assertData(table, expectedDataBack ?? data, clickhouse_settings);
   }
-})
+});

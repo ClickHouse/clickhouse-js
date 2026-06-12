@@ -143,7 +143,6 @@ npm run test:node:integration:tls
 
 Used when `CLICKHOUSE_TEST_ENVIRONMENT` is set to `local_cluster`.
 
-
 Run the tests (Node.js):
 
 ```bash

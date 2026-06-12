@@ -1,4 +1,4 @@
-import Stream from 'stream'
+import Stream from "stream";
 
 export function makeRawStream() {
   return new Stream.Readable({
@@ -6,7 +6,7 @@ export function makeRawStream() {
     read() {
       /* stub */
     },
-  })
+  });
 }
 
 export function makeObjectStream() {
@@ -15,5 +15,5 @@ export function makeObjectStream() {
     read() {
       /* stub */
     },
-  })
+  });
 }
