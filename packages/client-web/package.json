@@ -30,7 +30,5 @@
     "lint:fix": "eslint . --fix",
     "build": "rm -rf dist; tsc"
   },
-  "dependencies": {
-    "@clickhouse/client-common": "1.21.0"
-  }
+  "dependencies": {}
 }
