@@ -7,7 +7,7 @@
   - The span status is left unset on success (per the OTEL spec recommendation for client spans, previously set to `OK`); on failure, the span gets the `error.type` attribute (the error class name) and, for server-side errors, `clickhouse.error.code` (the numeric ClickHouse error code).
   - Spans record response-side attributes: `db.response.status_code` (HTTP status) and, when the `X-ClickHouse-Summary` header is available, `clickhouse.summary.*` counters (`read_rows`, `written_rows`, etc.).
   - The `query` span now stays open for the entire `ResultSet` lifetime, ending when the response stream is fully consumed, closed, or fails - with the final `clickhouse.response.decoded_bytes` and (for row-streaming consumption) `db.response.returned_rows` metrics. Streaming errors are now recorded on the span. If the `ResultSet` is never consumed nor closed, the span is never ended.
-  - The `insert` span records `clickhouse.request.sent_rows` and the pre-compression `clickhouse.request.encoded_bytes` for array-based inserts.
+  - The `insert` span records `clickhouse.request.sent_rows` for array-based inserts.
 
 [#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
 [#827]: https://github.com/ClickHouse/clickhouse-js/pull/827

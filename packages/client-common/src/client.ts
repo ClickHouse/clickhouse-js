@@ -461,14 +461,13 @@ export class ClickHouseClient<Stream = unknown> {
       async (span) => {
         try {
           const values = this.valuesEncoder.encodeValues(params.values, format);
-          if (typeof values === "string") {
-            // The pre-compression request body size; the post-compression
-            // (sent) size is not observable at this layer. Streamed insert
-            // payloads are not measured to avoid wrapping the stream.
-            span.setAttributes({
-              "clickhouse.request.encoded_bytes": utf8ByteLength(values),
-            });
-          }
+          // TODO: record `clickhouse.request.encoded_bytes` (the
+          // pre-compression request body size) here. This is a
+          // post-common-deprecation feature: once `client-common` is
+          // deprecated and the Node.js / Web clients are fully independent,
+          // each client can measure the encoded payload using its own
+          // platform-native byte-length primitive (e.g. `Buffer.byteLength`)
+          // instead of a hand-rolled common implementation.
           const result = await this.connection.insert({
             query,
             values,
@@ -587,26 +586,6 @@ function getServerPort(url: URL): number {
     return Number(url.port);
   }
   return url.protocol === "https:" ? 443 : 80;
-}
-
-/** Computes the UTF-8 encoded byte length of a string without allocating
- *  an encoded copy (unlike `TextEncoder.encode`). */
-function utf8ByteLength(str: string): number {
-  let bytes = 0;
-  for (let i = 0; i < str.length; i++) {
-    const code = str.codePointAt(i) as number;
-    if (code <= 0x7f) {
-      bytes += 1;
-    } else if (code <= 0x7ff) {
-      bytes += 2;
-    } else if (code <= 0xffff) {
-      bytes += 3;
-    } else {
-      bytes += 4;
-      i++; // surrogate pair occupies two UTF-16 code units
-    }
-  }
-  return bytes;
 }
 
 /** Records HTTP status and `X-ClickHouse-Summary` counters on the span once

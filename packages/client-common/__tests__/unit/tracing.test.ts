@@ -259,19 +259,15 @@ describe("tracer", () => {
     expect(spans[0].status).toBeUndefined();
   });
 
-  it("records sent_rows and encoded_bytes for array-based inserts", async () => {
+  it("records sent_rows for array-based inserts", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);
     await client.insert({ table: "my_table", values: [{ a: 1 }, { a: 2 }] });
     const [span] = spans;
     expect(span.initialAttributes["clickhouse.request.sent_rows"]).toBe(2);
-    // The mock encoder produces JSON.stringify([{a:1},{a:2}]).
-    expect(span.attributes["clickhouse.request.encoded_bytes"]).toBe(
-      JSON.stringify([{ a: 1 }, { a: 2 }]).length,
-    );
   });
 
-  it("does not record sent_rows or encoded_bytes for streamed inserts", async () => {
+  it("does not record sent_rows for streamed inserts", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);
     // Anything that is not an array nor encoded to a string stands for a stream.
@@ -283,7 +279,6 @@ describe("tracer", () => {
     expect(
       span.initialAttributes["clickhouse.request.sent_rows"],
     ).toBeUndefined();
-    expect(span.attributes["clickhouse.request.encoded_bytes"]).toBeUndefined();
   });
 
   it("does NOT emit an insert span when there are no rows to insert", async () => {

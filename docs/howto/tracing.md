@@ -112,9 +112,8 @@ before talking to the server), the client invokes
    `clickhouse.application`, plus operation-specific entries such as
    `clickhouse.response.format` (query), `clickhouse.request.format`,
    `db.operation.name`, `db.collection.name` and `clickhouse.request.sent_rows`
-   (insert; the row count is recorded for array-based inserts only, and the
-   pre-compression `clickhouse.request.encoded_bytes` is added once the
-   payload is encoded), `clickhouse.request.query_id`, and
+   (insert; the row count is recorded for array-based inserts only),
+   `clickhouse.request.query_id`, and
    `clickhouse.request.session_id`.
 2. Inside `fn`, the network operation runs with the span as the active span
    (when the context manager supports it; see above).

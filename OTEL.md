@@ -215,10 +215,13 @@ Mirror rs's "span lives as long as the cursor" model:
   inserts the row count is not observable by the client without wrapping the stream — not
   recorded (**deferred**; rs counts rows during serialization, which js delegates to the caller's
   stream).
-- Record `clickhouse.request.encoded_bytes` (pre-compression request body size) when the encoded
-  insert payload is a string (i.e. array-based inserts). `clickhouse.request.sent_bytes`
-  (post-compression bytes written to the socket) is **deferred**: it would require
-  connection/socket-level instrumentation on node, and web `fetch` cannot observe it at all.
+- `clickhouse.request.encoded_bytes` (pre-compression request body size) is **deferred** as a
+  post-common-deprecation feature: once `client-common` is deprecated and the Node.js / Web
+  clients are independent, each client can measure the encoded payload with its own
+  platform-native byte-length primitive instead of a shared hand-rolled implementation.
+  `clickhouse.request.sent_bytes` (post-compression bytes written to the socket) is also
+  **deferred**: it would require connection/socket-level instrumentation on node, and web `fetch`
+  cannot observe it at all.
 
 ### Phase 5 — trace context propagation ✅ (resolved: not needed)
 
