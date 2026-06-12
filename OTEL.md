@@ -208,15 +208,16 @@ Mirror rs's "span lives as long as the cursor" model:
 - Keep `command`/`exec`/`insert`/`ping` ending the span on method return (their responses are
   fully consumed by then), matching current behavior.
 
-### Phase 4 — insert request metrics
+### Phase 4 — insert request metrics ✅ (implemented)
 
-- Record `clickhouse.request.sent_rows` for array-based inserts (known up front) and counted
-  during encoding for streamed inserts where rows are countable (e.g. `JSONEachRow` encoding in
-  `valuesEncoder`).
-- Record `clickhouse.request.sent_bytes` (bytes written to the socket, post-compression) and
-  `clickhouse.request.encoded_bytes` (pre-compression) from the node connection's request body
-  pipeline; web `fetch` cannot observe post-compression size, so the web client records
-  `encoded_bytes` only (document this divergence as "Node.js only" in the CHANGELOG).
+- Record `clickhouse.request.sent_rows` for array-based inserts (known up front). For streamed
+  inserts the row count is not observable by the client without wrapping the stream — not
+  recorded (**deferred**; rs counts rows during serialization, which js delegates to the caller's
+  stream).
+- Record `clickhouse.request.encoded_bytes` (pre-compression request body size) when the encoded
+  insert payload is a string (i.e. array-based inserts). `clickhouse.request.sent_bytes`
+  (post-compression bytes written to the socket) is **deferred**: it would require
+  connection/socket-level instrumentation on node, and web `fetch` cannot observe it at all.
 
 ### Phase 5 — trace context propagation
 

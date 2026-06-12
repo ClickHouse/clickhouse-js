@@ -452,13 +452,27 @@ export class ClickHouseClient<Stream = unknown> {
           "clickhouse.request.format": format,
           "clickhouse.request.query_id": queryParams.query_id,
           "clickhouse.request.session_id": queryParams.session_id,
+          // Only known up front for array-based inserts; for streamed
+          // inserts, the row count is not observable by the client.
+          "clickhouse.request.sent_rows": Array.isArray(params.values)
+            ? params.values.length
+            : undefined,
         }),
       },
       async (span) => {
         try {
+          const values = this.valuesEncoder.encodeValues(params.values, format);
+          if (typeof values === "string") {
+            // The pre-compression request body size; the post-compression
+            // (sent) size is not observable at this layer. Streamed insert
+            // payloads are not measured to avoid wrapping the stream.
+            span.setAttributes({
+              "clickhouse.request.encoded_bytes": utf8ByteLength(values),
+            });
+          }
           const result = await this.connection.insert({
             query,
-            values: this.valuesEncoder.encodeValues(params.values, format),
+            values,
             ...queryParams,
           });
           span.setAttributes({
@@ -573,6 +587,26 @@ function getServerPort(url: URL): number {
     return Number(url.port);
   }
   return url.protocol === "https:" ? 443 : 80;
+}
+
+/** Computes the UTF-8 encoded byte length of a string without allocating
+ *  an encoded copy (unlike `TextEncoder.encode`). */
+function utf8ByteLength(str: string): number {
+  let bytes = 0;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.codePointAt(i) as number;
+    if (code <= 0x7f) {
+      bytes += 1;
+    } else if (code <= 0x7ff) {
+      bytes += 2;
+    } else if (code <= 0xffff) {
+      bytes += 3;
+    } else {
+      bytes += 4;
+      i++; // surrogate pair occupies two UTF-16 code units
+    }
+  }
+  return bytes;
 }
 
 /** Records HTTP status and `X-ClickHouse-Summary` counters on the span once
