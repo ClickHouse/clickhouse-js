@@ -8,18 +8,6 @@
   - Spans record response-side attributes: `db.response.status_code` (HTTP status) and, when the `X-ClickHouse-Summary` header is available, `clickhouse.summary.*` counters (`read_rows`, `written_rows`, etc.).
   - The `query` span now stays open for the entire `ResultSet` lifetime, ending when the response stream is fully consumed, closed, or fails - with the final `clickhouse.response.decoded_bytes` and (for row-streaming consumption) `db.response.returned_rows` metrics. Streaming errors are now recorded on the span. If the `ResultSet` is never consumed nor closed, the span is never ended.
   - The `insert` span records `clickhouse.request.sent_rows` and the pre-compression `clickhouse.request.encoded_bytes` for array-based inserts.
-- Added an optional zero-dependency `trace_context_propagator` client config hook that injects the caller's trace context (W3C `traceparent`/`tracestate` headers) into every outgoing request, so that the ClickHouse server links its `system.opentelemetry_span_log` entries to the client trace. With OpenTelemetry, wire it as `(carrier) => propagation.inject(context.active(), carrier)`. Supported on both `@clickhouse/client` and `@clickhouse/client-web`. ([#827])
-
-```ts
-import { context, propagation, trace } from "@opentelemetry/api";
-import { createClient } from "@clickhouse/client";
-
-const client = createClient({
-  tracer: trace.getTracer("@clickhouse/client"),
-  trace_context_propagator: (carrier) =>
-    propagation.inject(context.active(), carrier),
-});
-```
 
 [#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
 [#827]: https://github.com/ClickHouse/clickhouse-js/pull/827

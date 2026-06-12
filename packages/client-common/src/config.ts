@@ -6,11 +6,7 @@ import { ClickHouseLogLevel, LogWriter } from "./logger";
 import { defaultJSONHandling, type JSONHandling } from "./parse/json_handling";
 import type { BaseResultSet } from "./result";
 import type { ClickHouseSettings } from "./settings";
-import type {
-  ClickHouseTraceContextPropagator,
-  ClickHouseTracer,
-  QuerySpanTracker,
-} from "./tracing";
+import type { ClickHouseTracer, QuerySpanTracker } from "./tracing";
 
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
@@ -120,25 +116,6 @@ export interface BaseClickHouseClientConfigOptions {
    * at the cost of a small fixed per-operation overhead)
    */
   tracer?: ClickHouseTracer;
-  /**
-   * Optional hook that injects the caller's current trace context into the
-   * outgoing HTTP request headers (typically the W3C `traceparent` /
-   * `tracestate` headers), so that the ClickHouse server can link its
-   * `system.opentelemetry_span_log` entries to the client trace.
-   *
-   * The hook is called once per operation, inside
-   * {@link ClickHouseTracer.startActiveSpan} (so with OpenTelemetry, the
-   * operation span is the active span at that point). The entries written to
-   * the carrier override same-named per-request `http_headers`.
-   *
-   * Like {@link tracer}, this keeps the client zero-dependency: with
-   * OpenTelemetry, pass
-   * `(carrier) => propagation.inject(context.active(), carrier)`.
-   *
-   * @see {@link ClickHouseTraceContextPropagator}
-   * @default undefined (no trace context is injected)
-   */
-  trace_context_propagator?: ClickHouseTraceContextPropagator;
   /** When true, query() sends query_params as multipart/form-data parts
    *  instead of URL query string entries. This avoids HTTP URL length limits
    *  when query parameters contain large arrays (25K+ values).

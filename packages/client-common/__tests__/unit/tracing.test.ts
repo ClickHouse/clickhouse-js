@@ -98,7 +98,6 @@ function makePing(impl?: () => Promise<any>) {
 function buildClient(
   tracer: ClickHouseTracer<any> | undefined,
   overrides: Partial<MockConnection> = {},
-  extraConfig: Record<string, unknown> = {},
 ): ClickHouseClient {
   const connection: MockConnection = {
     query: makeQuery(overrides.query),
@@ -113,7 +112,6 @@ function buildClient(
     database: "my_db",
     application: "my_app",
     tracer,
-    ...extraConfig,
     impl: {
       make_connection: () => connection as any,
       make_result_set: ((_s, _f, q, _log, _h, _j, span_tracker) => ({
@@ -446,98 +444,18 @@ describe("tracer", () => {
     expect(ended).toBe(true);
   });
 
-  describe("trace context propagation", () => {
-    it("injects the trace context into the request HTTP headers inside the active span", async () => {
-      const events: string[] = [];
-      const captured: any[] = [];
-      const tracer: ClickHouseTracer = {
-        startActiveSpan(name, _options, fn) {
-          events.push(`start:${name}`);
-          return fn(NoopClickHouseSpan);
-        },
-      };
-      const client = buildClient(
-        tracer,
-        {
-          command: async (params: any) => {
-            captured.push(params);
-            return { query_id: "c-1", response_headers: {} };
-          },
-        },
-        {
-          trace_context_propagator: (carrier: Record<string, string>) => {
-            events.push("inject");
-            carrier["traceparent"] = "00-trace-span-01";
-          },
-        },
-      );
-      await client.command({
-        query: "SELECT 1",
-        http_headers: { "x-custom": "value" },
-      });
-      // The propagator must run inside startActiveSpan's callback.
-      expect(events).toEqual(["start:clickhouse.command", "inject"]);
-      expect(captured[0].http_headers).toEqual({
-        "x-custom": "value",
-        traceparent: "00-trace-span-01",
-      });
+  it("passes the request HTTP headers through unaltered", async () => {
+    const captured: any[] = [];
+    const client = buildClient(undefined, {
+      command: async (params: any) => {
+        captured.push(params);
+        return { query_id: "c-1", response_headers: {} };
+      },
     });
-
-    it("injects the trace context for every operation", async () => {
-      const captured: Record<string, any> = {};
-      const client = buildClient(
-        undefined,
-        {
-          query: async (params: any) => {
-            captured.query = params.http_headers;
-            return { stream: {} as any, query_id: "q", response_headers: {} };
-          },
-          command: async (params: any) => {
-            captured.command = params.http_headers;
-            return { query_id: "c", response_headers: {} };
-          },
-          exec: async (params: any) => {
-            captured.exec = params.http_headers;
-            return { stream: {} as any, query_id: "e", response_headers: {} };
-          },
-          insert: async (params: any) => {
-            captured.insert = params.http_headers;
-            return { query_id: "i", response_headers: {} };
-          },
-          ping: async (params: any) => {
-            captured.ping = params.http_headers;
-            return { success: true };
-          },
-        },
-        {
-          trace_context_propagator: (carrier: Record<string, string>) => {
-            carrier["traceparent"] = "00-t-s-01";
-          },
-        },
-      );
-      await client.query({ query: "SELECT 1" });
-      await client.command({ query: "SELECT 1" });
-      await client.exec({ query: "SELECT 1" });
-      await client.insert({ table: "t", values: [{ a: 1 }] });
-      await client.ping();
-      for (const op of ["query", "command", "exec", "insert", "ping"]) {
-        expect(captured[op], op).toEqual({ traceparent: "00-t-s-01" });
-      }
+    await client.command({
+      query: "SELECT 1",
+      http_headers: { "x-custom": "value" },
     });
-
-    it("does not alter the request headers when no propagator is configured", async () => {
-      const captured: any[] = [];
-      const client = buildClient(undefined, {
-        command: async (params: any) => {
-          captured.push(params);
-          return { query_id: "c-1", response_headers: {} };
-        },
-      });
-      await client.command({
-        query: "SELECT 1",
-        http_headers: { "x-custom": "value" },
-      });
-      expect(captured[0].http_headers).toEqual({ "x-custom": "value" });
-    });
+    expect(captured[0].http_headers).toEqual({ "x-custom": "value" });
   });
 });

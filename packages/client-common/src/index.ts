@@ -121,7 +121,6 @@ export {
   type ClickHouseSpanAttributes,
   type ClickHouseSpanStatus,
   type ClickHouseSpanName,
-  type ClickHouseTraceContextPropagator,
   ClickHouseSpanStatusCode,
   ClickHouseSpanKind,
   ClickHouseSpanNames,

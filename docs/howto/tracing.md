@@ -195,31 +195,14 @@ const tracer: ClickHouseTracer<RecordedSpan> = {
 ## Trace context propagation (`traceparent`)
 
 To let the ClickHouse server link its own spans (recorded in
-`system.opentelemetry_span_log`) to your client trace, the client can inject
-the W3C `traceparent` / `tracestate` headers into every outgoing request via
-the zero-dependency `trace_context_propagator` config hook:
-
-```ts
-import { context, propagation, trace } from "@opentelemetry/api";
-import { createClient } from "@clickhouse/client";
-
-const client = createClient({
-  tracer: trace.getTracer("@clickhouse/client"),
-  trace_context_propagator: (carrier) =>
-    propagation.inject(context.active(), carrier),
-});
-```
-
-The hook is called once per operation, **inside** `startActiveSpan`'s
-callback - so with OpenTelemetry (and a registered context manager, see
-above), `context.active()` resolves to the `clickhouse.<operation>` span, and
-the injected `traceparent` points at it. The entries written to the carrier
-override same-named per-request `http_headers`.
-
-Alternatively, Node.js users get header propagation for free from
-`@opentelemetry/instrumentation-http` (Web: `instrumentation-fetch`), since
-the client uses the platform HTTP stack; the explicit hook is for setups that
-do not use auto-instrumentation.
+`system.opentelemetry_span_log`) to your client trace, the outgoing requests
+must carry the W3C `traceparent` / `tracestate` headers. With OpenTelemetry,
+this happens automatically: Node.js users get header propagation for free
+from `@opentelemetry/instrumentation-http` (Web: `instrumentation-fetch`),
+since the client uses the platform HTTP stack. With the
+`AsyncLocalStorageContextManager` registered (see above), those
+auto-instrumented HTTP spans parent under the `clickhouse.<operation>` span,
+so the injected `traceparent` points at the client trace.
 
 To see the server-side spans, the server must have the
 `opentelemetry_span_log` table configured (see this repository's

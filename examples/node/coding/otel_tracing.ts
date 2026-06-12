@@ -20,7 +20,7 @@
 //
 // See also:
 //  - `../../../docs/howto/tracing.md` - full description of the tracer surface.
-import { context, propagation, SpanStatusCode } from "@opentelemetry/api";
+import { context, SpanStatusCode } from "@opentelemetry/api";
 import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
 import {
   BasicTracerProvider,
@@ -53,15 +53,13 @@ const tracer: ClickHouseTracer = otelTracer;
 
 // 4. Pass the tracer through the client config; from here on, every
 //    `query`/`command`/`exec`/`insert`/`ping` call is traced automatically.
-//    The optional `trace_context_propagator` hook additionally injects the
-//    W3C `traceparent` header into every request, so the ClickHouse server
-//    links its own `system.opentelemetry_span_log` entries to this trace.
+//    Trace context propagation (the W3C `traceparent` header) is handled
+//    automatically by `@opentelemetry/instrumentation-http`, since the
+//    client uses the platform HTTP stack.
 const client = createClient({
   url: process.env["CLICKHOUSE_URL"], // defaults to 'http://localhost:8123'
   password: process.env["CLICKHOUSE_PASSWORD"], // defaults to an empty string
   tracer,
-  trace_context_propagator: (carrier) =>
-    propagation.inject(context.active(), carrier),
 });
 
 await client.ping();
