@@ -68,6 +68,10 @@ export interface BaseQueryParams {
    *  for this particular request.
    *  @default undefined (no override) */
   use_multipart_params?: boolean;
+  /** When defined, overrides {@link BaseClickHouseClientConfigOptions.use_multipart_params_auto}
+   *  for this particular request.
+   *  @default undefined (no override) */
+  use_multipart_params_auto?: boolean;
 }
 
 export interface QueryParams extends BaseQueryParams {
@@ -575,6 +579,7 @@ export class ClickHouseClient<Stream = unknown> {
       auth: params.auth,
       http_headers: params.http_headers,
       use_multipart_params: params.use_multipart_params,
+      use_multipart_params_auto: params.use_multipart_params_auto,
     };
   }
 }

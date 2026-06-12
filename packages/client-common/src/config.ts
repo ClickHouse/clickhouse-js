@@ -123,6 +123,14 @@ export interface BaseClickHouseClientConfigOptions {
    *  All other URL search params (database, query_id, settings, etc.) remain in the URL.
    *  @default false */
   use_multipart_params?: boolean;
+  /** When true, query() automatically sends query_params as multipart/form-data
+   *  parts (see {@link use_multipart_params}) once their URL-encoded length
+   *  exceeds a threshold (4096 characters), avoiding HTTP 414/400 errors from
+   *  over-long URLs. Smaller parameter payloads remain in the URL query string.
+   *  Has no effect when {@link use_multipart_params} is enabled, as that always
+   *  sends the parameters as multipart/form-data parts.
+   *  @default false */
+  use_multipart_params_auto?: boolean;
 }
 
 export type MakeConnection<
@@ -324,6 +332,9 @@ export function getConnectionParams(
       ...config.json,
     },
     ...(config.use_multipart_params ? { use_multipart_params: true } : {}),
+    ...(config.use_multipart_params_auto
+      ? { use_multipart_params_auto: true }
+      : {}),
   };
 }
 

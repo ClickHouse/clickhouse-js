@@ -26,6 +26,7 @@ export interface ConnectionParams {
   auth: ConnectionAuth;
   json?: JSONHandling;
   use_multipart_params?: boolean;
+  use_multipart_params_auto?: boolean;
 }
 
 export interface CompressionSettings {
@@ -44,6 +45,7 @@ export interface ConnBaseQueryParams {
   role?: string | Array<string>;
   http_headers?: Record<string, string>;
   use_multipart_params?: boolean;
+  use_multipart_params_auto?: boolean;
 }
 
 export type ConnPingParams = { select: boolean } & Omit<

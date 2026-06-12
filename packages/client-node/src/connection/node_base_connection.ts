@@ -15,6 +15,7 @@ import type {
 } from "@clickhouse/client-common";
 import {
   buildMultipartBody,
+  serializeQueryParamsForUrl,
   formatQueryParams,
   isCredentialsAuth,
   isJWTAuth,
@@ -187,15 +188,35 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.params.compression.decompress_response,
     );
 
-    const useMultipart =
-      (params.use_multipart_params ?? this.params.use_multipart_params) &&
-      params.query_params !== undefined &&
-      Object.keys(params.query_params).length > 0;
+    const queryParams = params.query_params;
+    const hasQueryParams =
+      queryParams !== undefined && Object.keys(queryParams).length > 0;
+    let useMultipart =
+      hasQueryParams &&
+      (params.use_multipart_params ?? this.params.use_multipart_params);
+    // In auto mode, serialize the params for the URL once with an early
+    // return: a null result means they exceed the URL budget and should be
+    // promoted to a multipart body; otherwise the entries are reused below.
+    let urlParamEntries: [string, string][] | undefined;
+    if (
+      hasQueryParams &&
+      !useMultipart &&
+      (params.use_multipart_params_auto ??
+        this.params.use_multipart_params_auto)
+    ) {
+      const entries = serializeQueryParamsForUrl(queryParams);
+      if (entries === null) {
+        useMultipart = true;
+      } else {
+        urlParamEntries = entries;
+      }
+    }
 
     const searchParams = toSearchParams({
       database: this.params.database,
       // When using multipart, query_params are sent in the multipart body
       query_params: useMultipart ? undefined : params.query_params,
+      param_entries: urlParamEntries,
       session_id: params.session_id,
       clickhouse_settings,
       query_id,

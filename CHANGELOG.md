@@ -2,15 +2,24 @@
 
 ## New features
 
-- The tracer API (unreleased, introduced in [#776]) now follows the [OpenTelemetry database semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/sql/) and matches the attribute vocabulary of the Rust client ([clickhouse-rs](https://github.com/ClickHouse/clickhouse-rs)); see [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the documentation. In particular ([#827]):
+- The tracer API (unreleased, introduced in [#776]) now follows the [OpenTelemetry database semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/sql/) and matches the attribute vocabulary of the Rust client ([clickhouse-rs](https://github.com/ClickHouse/clickhouse-rs)); see [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the documentation. In particular ([#828]):
   - Spans now carry `db.system.name` (instead of `db.system`), `server.address` + `server.port` (instead of a combined `host:port`), `clickhouse.request.query_id` / `clickhouse.request.session_id` (instead of `clickhouse.query_id` / `clickhouse.session_id`), `clickhouse.response.format` on `query` and `clickhouse.request.format` on `insert` (instead of `clickhouse.format`), and `db.operation.name` + `db.collection.name` on `insert` (instead of `clickhouse.table`).
   - The span status is left unset on success (per the OTEL spec recommendation for client spans, previously set to `OK`); on failure, the span gets the `error.type` attribute (the error class name) and, for server-side errors, `clickhouse.error.code` (the numeric ClickHouse error code).
   - Spans record response-side attributes: `db.response.status_code` (HTTP status) and, when the `X-ClickHouse-Summary` header is available, `clickhouse.summary.*` counters (`read_rows`, `written_rows`, etc.).
   - The `query` span now stays open for the entire `ResultSet` lifetime, ending when the response stream is fully consumed, closed, or fails - with the final `clickhouse.response.decoded_bytes` and (for row-streaming consumption) `db.response.returned_rows` metrics. Streaming errors are now recorded on the span. If the `ResultSet` is never consumed nor closed, the span is never ended.
   - The `insert` span records `clickhouse.request.sent_rows` for array-based inserts.
 
-[#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
-[#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
+- Added a `use_multipart_params_auto` client option (default: `false`). When enabled, `query()` automatically sends `query_params` as `multipart/form-data` body parts (the same mechanism as `use_multipart_params`) once their URL-encoded length exceeds 4096 characters, avoiding HTTP 414/400 errors from HTTP intermediaries (nginx, AWS ALB, CloudFront) caused by over-long URLs - for example, a large `IN` list or a high-dimensional vector embedding. Smaller parameter payloads remain in the URL query string, so existing behavior is unchanged unless the threshold is crossed. `use_multipart_params: true` still forces multipart for all queries regardless of size. This does not change the server's per-value size limit, which is governed by `http_max_field_value_size`. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params_auto` on `query()`. Ported from [clickhouse-connect#789](https://github.com/ClickHouse/clickhouse-connect/pull/789). ([#827])
+
+```ts
+const client = createClient({ use_multipart_params_auto: true });
+
+await client.query({
+  query: "SELECT * FROM events WHERE id IN {ids:Array(UInt64)}",
+  // Sent in the URL when small, auto-promoted to the multipart body when large
+  query_params: { ids: veryLargeArrayOfIds },
+});
+```
 
 - Added a `use_multipart_params` client option (default: `false`). When enabled, `query()` sends `query_params` as `multipart/form-data` body parts (with the SQL moved into a `query` part) instead of URL query-string entries, avoiding HTTP 400 errors caused by over-long URLs when parameters contain large arrays (25K+ values). All other URL search params (database, query_id, settings, session_id, role) remain in the URL. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params` on `query()`. ([#825])
 
@@ -25,7 +34,10 @@ await client.query({
 });
 ```
 
+[#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
 [#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
+[#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
+[#828]: https://github.com/ClickHouse/clickhouse-js/pull/828
 
 ## Bug Fixes
 
