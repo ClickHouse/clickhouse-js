@@ -9,6 +9,7 @@ import {
   type ClickHouseSpanStatus,
   type ClickHouseTracer,
 } from "@clickhouse/client-common";
+import { parseError } from "@clickhouse/client-common";
 import { ClickHouseClient } from "../../src/client";
 import { NoopClickHouseSpan } from "../../src/tracing";
 
@@ -124,7 +125,7 @@ function buildClient(
 }
 
 describe("tracer", () => {
-  it("emits a CLIENT span for query() with OK status and query_id attribute", async () => {
+  it("emits a CLIENT span for query() with unset status and query_id attribute", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);
     await client.query({ query: "SELECT 1", query_id: "caller-q" });
@@ -132,14 +133,18 @@ describe("tracer", () => {
     const [span] = spans;
     expect(span.name).toBe(ClickHouseSpanNames.query);
     expect(span.options?.kind).toBe(ClickHouseSpanKind.CLIENT);
-    expect(span.initialAttributes["db.system"]).toBe("clickhouse");
+    expect(span.initialAttributes["db.system.name"]).toBe("clickhouse");
     expect(span.initialAttributes["db.namespace"]).toBe("my_db");
-    expect(span.initialAttributes["server.address"]).toBe("localhost:8123");
+    expect(span.initialAttributes["server.address"]).toBe("localhost");
+    expect(span.initialAttributes["server.port"]).toBe(8123);
     expect(span.initialAttributes["clickhouse.application"]).toBe("my_app");
-    expect(span.initialAttributes["clickhouse.format"]).toBe("JSON");
-    expect(span.initialAttributes["clickhouse.query_id"]).toBe("caller-q");
-    expect(span.attributes["clickhouse.query_id"]).toBe("q-1");
-    expect(span.status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+    expect(span.initialAttributes["clickhouse.response.format"]).toBe("JSON");
+    expect(span.initialAttributes["clickhouse.request.query_id"]).toBe(
+      "caller-q",
+    );
+    expect(span.attributes["clickhouse.request.query_id"]).toBe("q-1");
+    // Per the OTEL spec, the status is left unset on success.
+    expect(span.status).toBeUndefined();
     expect(span.exception).toBeUndefined();
     expect(span.ended).toBe(true);
   });
@@ -162,14 +167,14 @@ describe("tracer", () => {
     ]);
   });
 
-  it("emits a span for command() with OK status", async () => {
+  it("emits a span for command() with unset status", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);
     await client.command({ query: "CREATE TABLE t (a UInt8) ENGINE = Memory" });
     expect(spans).toHaveLength(1);
     expect(spans[0].name).toBe(ClickHouseSpanNames.command);
-    expect(spans[0].attributes["clickhouse.query_id"]).toBe("c-1");
-    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+    expect(spans[0].attributes["clickhouse.request.query_id"]).toBe("c-1");
+    expect(spans[0].status).toBeUndefined();
     expect(spans[0].ended).toBe(true);
   });
 
@@ -179,8 +184,8 @@ describe("tracer", () => {
     await client.exec({ query: "SELECT 1" });
     expect(spans).toHaveLength(1);
     expect(spans[0].name).toBe(ClickHouseSpanNames.exec);
-    expect(spans[0].attributes["clickhouse.query_id"]).toBe("e-1");
-    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+    expect(spans[0].attributes["clickhouse.request.query_id"]).toBe("e-1");
+    expect(spans[0].status).toBeUndefined();
   });
 
   it("emits a span for insert()", async () => {
@@ -189,12 +194,13 @@ describe("tracer", () => {
     await client.insert({ table: "my_table", values: [{ a: 1 }] });
     expect(spans).toHaveLength(1);
     expect(spans[0].name).toBe(ClickHouseSpanNames.insert);
-    expect(spans[0].initialAttributes["clickhouse.table"]).toBe("my_table");
-    expect(spans[0].initialAttributes["clickhouse.format"]).toBe(
+    expect(spans[0].initialAttributes["db.operation.name"]).toBe("INSERT");
+    expect(spans[0].initialAttributes["db.collection.name"]).toBe("my_table");
+    expect(spans[0].initialAttributes["clickhouse.request.format"]).toBe(
       "JSONCompactEachRow",
     );
-    expect(spans[0].attributes["clickhouse.query_id"]).toBe("i-1");
-    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+    expect(spans[0].attributes["clickhouse.request.query_id"]).toBe("i-1");
+    expect(spans[0].status).toBeUndefined();
   });
 
   it("does NOT emit an insert span when there are no rows to insert", async () => {
@@ -212,7 +218,7 @@ describe("tracer", () => {
     expect(spans).toHaveLength(1);
     expect(spans[0].name).toBe(ClickHouseSpanNames.ping);
     expect(spans[0].initialAttributes["clickhouse.ping.select"]).toBe(false);
-    expect(spans[0].status).toEqual({ code: ClickHouseSpanStatusCode.OK });
+    expect(spans[0].status).toBeUndefined();
   });
 
   it("records the exception and sets ERROR status when an operation throws", async () => {
@@ -226,11 +232,28 @@ describe("tracer", () => {
     await expect(client.query({ query: "SELECT 1" })).rejects.toThrow("boom");
     expect(spans).toHaveLength(1);
     expect(spans[0].exception).toBe(failure);
+    expect(spans[0].attributes["error.type"]).toBe("Error");
     expect(spans[0].status).toEqual({
       code: ClickHouseSpanStatusCode.ERROR,
       message: "boom",
     });
     expect(spans[0].ended).toBe(true);
+  });
+
+  it("sets error.type and clickhouse.error.code for server-side errors", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const failure = parseError(
+      "Code: 62. DB::Exception: Syntax error: failed at position 1. (SYNTAX_ERROR) (version 24.3.1)",
+    );
+    const client = buildClient(tracer, {
+      query: async () => {
+        throw failure;
+      },
+    });
+    await expect(client.query({ query: "SELECT 1" })).rejects.toThrow(failure);
+    expect(spans[0].attributes["error.type"]).toBe("ClickHouseError");
+    expect(spans[0].attributes["clickhouse.error.code"]).toBe("62");
+    expect(spans[0].status?.code).toBe(ClickHouseSpanStatusCode.ERROR);
   });
 
   it("normalizes non-Error throwables before recordException", async () => {
@@ -245,6 +268,7 @@ describe("tracer", () => {
     );
     expect(spans[0].exception).toBeInstanceOf(Error);
     expect(spans[0].exception?.message).toBe("string failure");
+    expect(spans[0].attributes["error.type"]).toBe("Error");
     expect(spans[0].status).toEqual({
       code: ClickHouseSpanStatusCode.ERROR,
       message: "string failure",

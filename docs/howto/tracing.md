@@ -107,20 +107,25 @@ before talking to the server), the client invokes
 1. The name is one of `clickhouse.query`, `clickhouse.command`,
    `clickhouse.exec`, `clickhouse.insert`, `clickhouse.ping` (also exported
    as `ClickHouseSpanNames`); `kind` is `ClickHouseSpanKind.CLIENT`. The
-   initial attribute bag always includes `db.system`, `db.namespace`,
-   `server.address`, and - when set - `clickhouse.application`, plus
-   operation-specific entries such as `clickhouse.format`,
-   `clickhouse.table`, `clickhouse.query_id`, and `clickhouse.session_id`.
+   initial attribute bag always includes `db.system.name`, `db.namespace`,
+   `server.address`, and `server.port`, and - when set -
+   `clickhouse.application`, plus operation-specific entries such as
+   `clickhouse.response.format` (query), `clickhouse.request.format`,
+   `db.operation.name` and `db.collection.name` (insert),
+   `clickhouse.request.query_id`, and `clickhouse.request.session_id`.
 2. Inside `fn`, the network operation runs with the span as the active span
    (when the context manager supports it; see above).
-3. `span.setAttributes({ 'clickhouse.query_id': <server-assigned id> })` - so
-   you always have the final `query_id`, even when the caller did not pass one
-   and the connection layer generated it.
-4. `span.setStatus({ code: ClickHouseSpanStatusCode.OK })` on success, or
-   `span.recordException(error)` immediately followed by
-   `span.setStatus({ code: ClickHouseSpanStatusCode.ERROR, message })` on
-   failure. Non-`Error` throwables are normalized to `Error` before
-   `recordException`.
+3. `span.setAttributes({ 'clickhouse.request.query_id': <server-assigned id> })` -
+   so you always have the final `query_id`, even when the caller did not pass
+   one and the connection layer generated it.
+4. On success, the span status is left **unset**, per the OTEL span status
+   spec for client spans. On failure,
+   `span.setAttributes({ 'error.type': <error class name> })` (plus
+   `clickhouse.error.code` with the numeric server error code when the error
+   is a server-side `ClickHouseError`), then `span.recordException(error)`
+   immediately followed by
+   `span.setStatus({ code: ClickHouseSpanStatusCode.ERROR, message })`.
+   Non-`Error` throwables are normalized to `Error` before `recordException`.
 5. `span.end()` - always, in a `finally` block.
 
 Tracer calls are inlined directly on the client's hot path and are **not**

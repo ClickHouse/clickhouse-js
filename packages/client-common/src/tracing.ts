@@ -1,3 +1,5 @@
+import { ClickHouseError } from "./error";
+
 /**
  * A minimal, dependency-free tracer interface that is a structural subset of
  * the {@link https://opentelemetry.io/docs/specs/otel/trace/api/#tracer OpenTelemetry `Tracer` API}.
@@ -67,7 +69,7 @@ export interface ClickHouseTracer<
 export interface ClickHouseSpan {
   /** Attach additional attributes to an in-flight span. Called at least once
    *  for every span - typically right before {@link ClickHouseSpan.end} -
-   *  with operation-specific attributes such as `clickhouse.query_id`. */
+   *  with operation-specific attributes such as `clickhouse.request.query_id`. */
   setAttributes(attributes: ClickHouseSpanAttributes): void;
   /** Set the logical status of the span. The codes are value-identical to
    *  OTEL's `SpanStatusCode`; see {@link ClickHouseSpanStatusCode}. */
@@ -153,9 +155,21 @@ export const NoopClickHouseTracer: ClickHouseTracer = {
 };
 
 /** Records the exception on the span and marks it with the ERROR status,
- *  normalizing non-`Error` throwables to `Error`. */
+ *  normalizing non-`Error` throwables to `Error`.
+ *
+ *  Sets the {@link https://opentelemetry.io/docs/specs/semconv/registry/attributes/error/#error-type `error.type`}
+ *  attribute to the error class name (e.g. `ClickHouseError`, `TypeError`),
+ *  and, for server-side errors ({@link ClickHouseError}), the numeric server
+ *  error code as `clickhouse.error.code`. */
 export function recordSpanError(span: ClickHouseSpan, err: unknown): void {
   const error = err instanceof Error ? err : new Error(String(err));
+  const attributes: ClickHouseSpanAttributes = {
+    "error.type": error.constructor.name,
+  };
+  if (error instanceof ClickHouseError) {
+    attributes["clickhouse.error.code"] = error.code;
+  }
+  span.setAttributes(attributes);
   span.recordException(error);
   span.setStatus({
     code: ClickHouseSpanStatusCode.ERROR,

@@ -71,16 +71,19 @@ await client.close();
 // 5. Flush and inspect the spans the client produced. Each operation yields a
 //    single CLIENT-kind span named `clickhouse.<operation>` (also exported as
 //    `ClickHouseSpanNames`) carrying OTEL-style attributes such as
-//    `db.system`, `server.address`, and the server-assigned `clickhouse.query_id`.
+//    `db.system.name`, `server.address`, and the server-assigned
+//    `clickhouse.request.query_id`.
 await provider.forceFlush();
 const spans = exporter.getFinishedSpans();
 for (const span of spans) {
   console.info("[OtelTracing] Span:", {
     name: span.name,
     status: SpanStatusCode[span.status.code],
-    "db.system": span.attributes["db.system"],
+    "db.system.name": span.attributes["db.system.name"],
     "server.address": span.attributes["server.address"],
-    "clickhouse.query_id": span.attributes["clickhouse.query_id"],
+    "server.port": span.attributes["server.port"],
+    "clickhouse.request.query_id":
+      span.attributes["clickhouse.request.query_id"],
   });
 }
 await provider.shutdown();

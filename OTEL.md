@@ -152,24 +152,25 @@ The plan is ordered so that each phase is independently shippable. All work happ
 `client-web` result sets. Per repository convention, node/web connection-level duplication is
 acceptable and should not be hoisted into `client-common` beyond platform-agnostic primitives.
 
-### Phase 1 — attribute vocabulary alignment (non-breaking additions)
+### Phase 1 — attribute vocabulary alignment ✅ (implemented)
 
-Align attribute names with clickhouse-rs while keeping the existing keys for one release cycle
-(documented as deprecated), since the tracer API is already published:
+Align attribute names with clickhouse-rs. Since the tracer API has not shipped in a release yet,
+the old keys are removed/renamed right away, with no deprecation window:
 
-- Add `db.system.name: "clickhouse"` alongside the existing `db.system` (modern semconv key used
-  by rs); deprecate and later remove `db.system`.
+- Replace `db.system` with `db.system.name: "clickhouse"` (modern semconv key used by rs).
+- Split `server.address` (`host:port`) into `server.address` (hostname) + `server.port` (explicit
+  port, or 443/80 derived from the protocol), per the OTEL server attribute conventions.
 - Rename `clickhouse.query_id` → `clickhouse.request.query_id` and `clickhouse.session_id` →
-  `clickhouse.request.session_id` (emit both during the deprecation window).
+  `clickhouse.request.session_id`.
 - Rename `clickhouse.format` → `clickhouse.response.format` on `query`; for `insert`, the format
   describes the request payload, so use `clickhouse.request.format` (a js-specific extension —
   rs's `InsertFormatted` embeds the format in SQL and does not record it).
-- On the `insert` span, add `db.operation.name: "INSERT"` and `db.collection.name: <table>`
-  (alongside the existing `clickhouse.table` during the deprecation window).
+- On the `insert` span, replace `clickhouse.table` with `db.operation.name: "INSERT"` and
+  `db.collection.name: <table>`.
 - Stop calling `setStatus({ code: OK })` on success; leave the status unset like rs and the OTEL
   spec recommend. Keep `setStatus(ERROR)` + `recordException` on failure.
 - Add `error.type` on failures in `recordSpanError` (`packages/client-common/src/tracing.ts`):
-  use the error class name (`ClickHouseError`, `ConnectionError`, `TimeoutError`, `Error`, …) and,
+  use the error class name (`ClickHouseError`, `Error`, …) and,
   for server-side `ClickHouseError`, the numeric server error code as
   `clickhouse.error.code` (js extension; rs encodes its own error enum variants instead).
 - Document the canonical attribute table in `docs/howto/tracing.md` and update
