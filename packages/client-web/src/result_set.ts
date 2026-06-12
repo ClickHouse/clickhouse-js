@@ -49,6 +49,10 @@ export class ResultSet<
   /** Rows decoded from the response stream so far. */
   private span_rows = 0;
   private span_rows_counted = false;
+  /** UTF-16 code-unit length of the response body, recorded by {@link text}
+   *  instead of {@link span_bytes} to avoid the `TextEncoder` allocation that
+   *  accurate byte counting would require. */
+  private span_text_length: number | undefined;
   private span_finished = false;
   public readonly query_id: string;
 
@@ -81,7 +85,11 @@ export class ResultSet<
     this.markAsConsumed();
     try {
       const text = await getAsText(this._stream);
-      this.span_bytes += new TextEncoder().encode(text).length;
+      // text.length is the UTF-16 code-unit count of the response body, not a
+      // byte count.  We record it as `clickhouse.response.text_length` rather
+      // than `span_bytes` (`clickhouse.response.decoded_bytes`) to avoid the
+      // `TextEncoder` allocation that accurate byte counting would require here.
+      this.span_text_length = text.length;
       this.finishSpan();
       return text;
     } catch (err) {
@@ -279,8 +287,9 @@ export class ResultSet<
     this.span_rows += count;
   }
 
-  /** Record the final response metrics (`clickhouse.response.decoded_bytes`
-   *  and, when rows were counted, `db.response.returned_rows`) and the error
+  /** Record the final response metrics (`clickhouse.response.decoded_bytes`,
+   *  `clickhouse.response.text_length` when called from {@link text}, and
+   *  `db.response.returned_rows` when rows were counted) and the error
    *  (if any) on the span, and end it. Safe to call multiple times - only
    *  the first call wins. */
   private finishSpan(err?: unknown): void {
@@ -288,9 +297,15 @@ export class ResultSet<
       return;
     }
     this.span_finished = true;
-    const attributes: ClickHouseSpanAttributes = {
-      "clickhouse.response.decoded_bytes": this.span_bytes,
-    };
+    const attributes: ClickHouseSpanAttributes = {};
+    if (this.span_text_length !== undefined) {
+      // Recorded by text(): UTF-16 code-unit count, not a byte count.
+      attributes["clickhouse.response.text_length"] = this.span_text_length;
+    } else {
+      // Recorded by stream() / json() streamable path: actual decoded bytes
+      // accumulated from raw Uint8Array chunks.
+      attributes["clickhouse.response.decoded_bytes"] = this.span_bytes;
+    }
     if (this.span_rows_counted) {
       attributes["db.response.returned_rows"] = this.span_rows;
     }
