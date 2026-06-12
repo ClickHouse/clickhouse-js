@@ -176,16 +176,15 @@ the old keys are removed/renamed right away, with no deprecation window:
 - Document the canonical attribute table in `docs/howto/tracing.md` and update
   `examples/node/coding/otel_tracing.ts` assertions.
 
-### Phase 2 — response-side attributes
+### Phase 2 — response-side attributes ✅ (implemented)
 
-- Record `db.response.status_code` (HTTP status) on every span once response headers arrive. The
-  connection layer already surfaces `response_headers`; extend the connection results (node and
-  web independently) to expose the HTTP status code so `client.ts` can set it.
-- For `query()`, record `db.response.returned_rows`, `clickhouse.response.received_bytes` and
+- Record `db.response.status_code` (HTTP status) on every span once response headers arrive
+  (the connection results already expose `http_status_code` on node and web).
+- For `query()`, record `db.response.returned_rows` and
   `clickhouse.response.decoded_bytes` when the `ResultSet` is fully consumed or closed. This
-  requires the span lifetime change below.
+  requires the span lifetime change below (Phase 3).
 - Where the `X-ClickHouse-Summary` header is available (`command`/`exec`/`insert` with
-  `wait_end_of_query`, or response headers in general), optionally map summary counters
+  `wait_end_of_query`, or response headers in general), map summary counters
   (`read_rows`, `written_rows`, …) to `clickhouse.summary.*` attributes (js extension; rs parses
   the same header into `QuerySummary` but does not yet record it on spans).
 

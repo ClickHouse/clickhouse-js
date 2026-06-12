@@ -211,6 +211,48 @@ describe("tracer", () => {
     expect(spans).toHaveLength(0);
   });
 
+  it("records db.response.status_code when the connection reports it", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer, {
+      query: async () => ({
+        stream: {} as any,
+        query_id: "q-1",
+        response_headers: {},
+        http_status_code: 200,
+      }),
+    });
+    await client.query({ query: "SELECT 1" });
+    expect(spans[0].attributes["db.response.status_code"]).toBe(200);
+  });
+
+  it("records clickhouse.summary.* attributes when the summary is present", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer, {
+      command: async () => ({
+        query_id: "c-1",
+        response_headers: {},
+        http_status_code: 200,
+        summary: {
+          read_rows: "10",
+          read_bytes: "100",
+          written_rows: "5",
+          written_bytes: "50",
+          total_rows_to_read: "10",
+          result_rows: "5",
+          result_bytes: "50",
+          elapsed_ns: "1000",
+        },
+      }),
+    });
+    await client.command({ query: "INSERT INTO t SELECT * FROM s" });
+    const attrs = spans[0].attributes;
+    expect(attrs["db.response.status_code"]).toBe(200);
+    expect(attrs["clickhouse.summary.read_rows"]).toBe("10");
+    expect(attrs["clickhouse.summary.written_rows"]).toBe("5");
+    expect(attrs["clickhouse.summary.result_bytes"]).toBe("50");
+    expect(attrs["clickhouse.summary.elapsed_ns"]).toBe("1000");
+  });
+
   it("emits a span for ping()", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);

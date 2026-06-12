@@ -117,7 +117,10 @@ before talking to the server), the client invokes
    (when the context manager supports it; see above).
 3. `span.setAttributes({ 'clickhouse.request.query_id': <server-assigned id> })` -
    so you always have the final `query_id`, even when the caller did not pass
-   one and the connection layer generated it.
+   one and the connection layer generated it. Once the response arrives, the
+   span also gets `db.response.status_code` (HTTP status) and, when the
+   `X-ClickHouse-Summary` header is present (e.g. with `wait_end_of_query`),
+   `clickhouse.summary.*` counters (`read_rows`, `written_rows`, …).
 4. On success, the span status is left **unset**, per the OTEL span status
    spec for client spans. On failure,
    `span.setAttributes({ 'error.type': <error class name> })` (plus
