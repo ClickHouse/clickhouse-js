@@ -294,6 +294,11 @@ export class ResultSet<
 
   /** See {@link BaseResultSet.close}. */
   close() {
+    // NB: _consumed is intentionally NOT set here. The stream is destroyed
+    // (not read to completion), so marking it as "consumed" would produce the
+    // misleading "Stream has been already consumed" error on any subsequent
+    // call. Downstream code will instead receive a "ResultSet has been closed"
+    // error from the destroyed stream, which accurately describes what happened.
     this._stream.destroy(new Error(resultSetClosedMessage));
     this.finishSpan();
   }
