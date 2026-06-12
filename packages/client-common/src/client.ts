@@ -25,6 +25,7 @@ import type { BaseResultSet } from "./result";
 import type {
   ClickHouseSpan,
   ClickHouseSpanAttributes,
+  ClickHouseTraceContextPropagator,
   ClickHouseTracer,
 } from "./tracing";
 import {
@@ -206,6 +207,7 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly role?: string | Array<string>;
   private readonly jsonHandling: JSONHandling;
   private readonly tracer: ClickHouseTracer;
+  private readonly traceContextPropagator?: ClickHouseTraceContextPropagator;
 
   constructor(
     config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,
@@ -238,6 +240,7 @@ export class ClickHouseClient<Stream = unknown> {
     // Assigned once at client creation: when no tracer is configured, the
     // shared no-op tracer keeps the hot path branch-free.
     this.tracer = config.tracer ?? NoopClickHouseTracer;
+    this.traceContextPropagator = config.trace_context_propagator;
   }
 
   /**
@@ -280,6 +283,7 @@ export class ClickHouseClient<Stream = unknown> {
           queryResult = await this.connection.query({
             query,
             ...queryParams,
+            http_headers: this.injectTraceContext(queryParams.http_headers),
           });
         } catch (err) {
           recordSpanError(span, err);
@@ -357,6 +361,7 @@ export class ClickHouseClient<Stream = unknown> {
             query,
             ignore_error_response,
             ...queryParams,
+            http_headers: this.injectTraceContext(queryParams.http_headers),
           });
           span.setAttributes({
             "clickhouse.request.query_id": result.query_id,
@@ -407,6 +412,7 @@ export class ClickHouseClient<Stream = unknown> {
             decompress_response_stream,
             ignore_error_response,
             ...queryParams,
+            http_headers: this.injectTraceContext(queryParams.http_headers),
           });
           span.setAttributes({
             "clickhouse.request.query_id": result.query_id,
@@ -474,6 +480,7 @@ export class ClickHouseClient<Stream = unknown> {
             query,
             values,
             ...queryParams,
+            http_headers: this.injectTraceContext(queryParams.http_headers),
           });
           span.setAttributes({
             "clickhouse.request.query_id": result.query_id,
@@ -511,9 +518,11 @@ export class ClickHouseClient<Stream = unknown> {
       },
       async (span) => {
         try {
-          const result = await this.connection.ping(
-            params ?? { select: false },
-          );
+          const pingParams = params ?? { select: false as const };
+          const result = await this.connection.ping({
+            ...pingParams,
+            http_headers: this.injectTraceContext(pingParams.http_headers),
+          });
           return result;
         } catch (err) {
           recordSpanError(span, err);
@@ -543,6 +552,21 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async [Symbol.asyncDispose]() {
     await this.close();
+  }
+
+  /** Calls the configured {@link ClickHouseTraceContextPropagator} (if any)
+   *  and merges the injected entries (e.g. `traceparent`) into the request's
+   *  HTTP headers. Must be invoked inside `startActiveSpan`'s callback so
+   *  that, with OpenTelemetry, the operation span is the active span. */
+  private injectTraceContext(
+    http_headers: Record<string, string> | undefined,
+  ): Record<string, string> | undefined {
+    if (this.traceContextPropagator === undefined) {
+      return http_headers;
+    }
+    const carrier: Record<string, string> = { ...http_headers };
+    this.traceContextPropagator(carrier);
+    return carrier;
   }
 
   private withBaseSpanAttributes(

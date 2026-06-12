@@ -219,21 +219,23 @@ Mirror rs's "span lives as long as the cursor" model:
   (post-compression bytes written to the socket) is **deferred**: it would require
   connection/socket-level instrumentation on node, and web `fetch` cannot observe it at all.
 
-### Phase 5 — trace context propagation
+### Phase 5 — trace context propagation ✅ (implemented)
 
-- Add an optional `propagateTraceContext` hook to the tracer surface (or a standalone
-  `http_headers`-producing callback in the client config) that lets the user inject
+- Add an optional `trace_context_propagator` hook to the client config that lets the user inject
   `traceparent`/`tracestate` into outgoing requests — keeping the zero-dependency stance: the
   client never imports `@opentelemetry/api` itself, the user wires
-  `propagation.inject(context.active(), headers)` in the hook.
+  `propagation.inject(context.active(), carrier)` in the hook. The hook runs inside
+  `startActiveSpan`'s callback, so the injected context points at the operation span.
 - Document the alternative: Node.js users can get propagation for free from
   `@opentelemetry/instrumentation-http` (web: `instrumentation-fetch`), since the client uses the
   platform HTTP stack; with the `AsyncLocalStorageContextManager`, those auto-instrumented HTTP
   spans already parent under the `clickhouse.*` span.
-- Add an integration test mirroring rs's `tests/it/opentelemetry.rs`: run a query with a known
-  `query_id`, then assert `system.opentelemetry_span_log` contains a server span whose trace ID
-  matches the client span (requires `opentelemetry_span_log` enabled in the docker-compose server
-  config, as rs does in `.docker/clickhouse/single_node/config.xml`).
+- Add an integration test mirroring rs's `tests/it/opentelemetry.rs`
+  (`packages/client-node/__tests__/integration/node_otel_propagation.test.ts`): run a query with
+  a known `query_id` and a crafted `traceparent`, then assert `system.opentelemetry_span_log`
+  contains server spans with the same trace id and the matching `clickhouse.query_id` attribute
+  (`opentelemetry_span_log` is enabled in the docker-compose server configs, as rs does in its
+  `.docker/clickhouse/single_node/config.xml`).
 
 ### Out of scope / intentionally divergent
 

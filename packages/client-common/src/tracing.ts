@@ -158,6 +158,32 @@ export const NoopClickHouseTracer: ClickHouseTracer = {
   startActiveSpan: (_name, _options, fn) => fn(NoopClickHouseSpan),
 };
 
+/** Injects the caller's current trace context into an outgoing request's
+ *  HTTP headers (the `carrier`), most commonly the W3C
+ *  `traceparent`/`tracestate` headers.
+ *
+ *  The client invokes the hook once per operation, **inside**
+ *  {@link ClickHouseTracer.startActiveSpan} (so with OpenTelemetry, the
+ *  operation span is the active span at that point), and merges the entries
+ *  written to the `carrier` into the request's HTTP headers. With
+ *  OpenTelemetry, wire it as:
+ *
+ *  ```ts
+ *  import { context, propagation } from '@opentelemetry/api'
+ *  const client = createClient({
+ *    tracer: trace.getTracer('clickhouse-js'),
+ *    trace_context_propagator: (carrier) =>
+ *      propagation.inject(context.active(), carrier),
+ *  })
+ *  ```
+ *
+ *  ClickHouse picks up the `traceparent` header and records matching
+ *  server-side spans in `system.opentelemetry_span_log`, linking the
+ *  server-side processing to the client trace. */
+export type ClickHouseTraceContextPropagator = (
+  carrier: Record<string, string>,
+) => void;
+
 /** Records the exception on the span and marks it with the ERROR status,
  *  normalizing non-`Error` throwables to `Error`.
  *

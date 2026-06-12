@@ -61,6 +61,7 @@ export {
   type ClickHouseSpanAttributes,
   type ClickHouseSpanStatus,
   type ClickHouseSpanName,
+  type ClickHouseTraceContextPropagator,
 } from "@clickhouse/client-common";
 
 /**

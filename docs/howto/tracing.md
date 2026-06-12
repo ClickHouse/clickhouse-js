@@ -192,6 +192,45 @@ const tracer: ClickHouseTracer<RecordedSpan> = {
 };
 ```
 
+## Trace context propagation (`traceparent`)
+
+To let the ClickHouse server link its own spans (recorded in
+`system.opentelemetry_span_log`) to your client trace, the client can inject
+the W3C `traceparent` / `tracestate` headers into every outgoing request via
+the zero-dependency `trace_context_propagator` config hook:
+
+```ts
+import { context, propagation, trace } from "@opentelemetry/api";
+import { createClient } from "@clickhouse/client";
+
+const client = createClient({
+  tracer: trace.getTracer("@clickhouse/client"),
+  trace_context_propagator: (carrier) =>
+    propagation.inject(context.active(), carrier),
+});
+```
+
+The hook is called once per operation, **inside** `startActiveSpan`'s
+callback - so with OpenTelemetry (and a registered context manager, see
+above), `context.active()` resolves to the `clickhouse.<operation>` span, and
+the injected `traceparent` points at it. The entries written to the carrier
+override same-named per-request `http_headers`.
+
+Alternatively, Node.js users get header propagation for free from
+`@opentelemetry/instrumentation-http` (Web: `instrumentation-fetch`), since
+the client uses the platform HTTP stack; the explicit hook is for setups that
+do not use auto-instrumentation.
+
+To see the server-side spans, the server must have the
+`opentelemetry_span_log` table configured (see this repository's
+`.docker/clickhouse/single_node/config.xml` for an example); you can then
+correlate by trace id:
+
+```sql
+SELECT * FROM system.opentelemetry_span_log
+WHERE lower(hex(trace_id)) = '<your 32-char trace id>'
+```
+
 ## Disabling tracing
 
 Omit the `tracer` option (or set it to `undefined`) and the client will not emit any spans. Internally, it uses a shared no-op tracer/span so the call sites remain monomorphic (branch-free), keeping the overhead minimal (but not strictly zero).
