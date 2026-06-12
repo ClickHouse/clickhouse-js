@@ -43,8 +43,6 @@ interface ToSearchParamsOptions {
   role?: string | Array<string>;
 }
 
-// TODO validate max length of the resulting query
-// https://stackoverflow.com/questions/812925/what-is-the-maximum-possible-length-of-a-query-string
 export function toSearchParams({
   database,
   query,
@@ -55,15 +53,17 @@ export function toSearchParams({
   query_id,
   role,
 }: ToSearchParamsOptions): URLSearchParams {
-  const entries: [string, string][] =
-    param_entries !== undefined ? param_entries : [["query_id", query_id]];
-
-  if (param_entries !== undefined) {
+  let entries: [string, string][];
+  if (param_entries) {
+    entries = param_entries;
     entries.push(["query_id", query_id]);
-  } else if (query_params !== undefined) {
-    for (const [key, value] of Object.entries(query_params)) {
-      const formattedParam = formatQueryParams({ value });
-      entries.push([`param_${key}`, formattedParam]);
+  } else {
+    entries = [["query_id", query_id]];
+    if (query_params !== undefined) {
+      for (const [key, value] of Object.entries(query_params)) {
+        const formattedParam = formatQueryParams({ value });
+        entries.push([`param_${key}`, formattedParam]);
+      }
     }
   }
 
