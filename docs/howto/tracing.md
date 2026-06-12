@@ -129,18 +129,26 @@ before talking to the server), the client invokes
    immediately followed by
    `span.setStatus({ code: ClickHouseSpanStatusCode.ERROR, message })`.
    Non-`Error` throwables are normalized to `Error` before `recordException`.
-5. `span.end()` - always, in a `finally` block.
+5. `span.end()` - exactly once. For `command`/`exec`/`insert`/`ping`, in a
+   `finally` block when the method settles; for `query`, when the returned
+   `ResultSet` is fully consumed, closed, or fails (see the stream lifecycle
+   note below).
 
 Tracer calls are inlined directly on the client's hot path and are **not**
 wrapped in defensive try/catch - if your tracer or span throws, the exception
 propagates to the caller of `query` / `command` / `exec` / `insert` /
 `ping`. Make sure your tracer implementation doesn't throw.
 
-> **Stream lifecycle:** for `query`/`exec`, the span ends when the request
-> promise settles (i.e. headers received, stream handed to the caller). The
-> client does not currently emit a separate "download finished" span when the
-> returned `ResultSet` stream is fully consumed; if you need that, wrap the
-> stream on the caller side.
+> **Stream lifecycle:** for `query`, the span stays open for the entire
+> `ResultSet` lifetime, mirroring clickhouse-rs (where the span lives as long
+> as the cursor). The span ends - with the final response metrics
+> `clickhouse.response.decoded_bytes` and, for row-streaming consumption,
+> `db.response.returned_rows` - when the result set is fully consumed
+> (`text()`/`json()` resolve, or the `stream()` is read to completion),
+> closed via `close()`, or fails (the streaming error is recorded on the
+> span). If the `ResultSet` is never consumed nor closed, the span is never
+> ended. For `command`/`exec`/`insert`/`ping`, the span ends when the method
+> returns.
 
 ## Recording-only tracer for tests / debugging
 

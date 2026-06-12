@@ -188,18 +188,22 @@ the old keys are removed/renamed right away, with no deprecation window:
   (`read_rows`, `written_rows`, …) to `clickhouse.summary.*` attributes (js extension; rs parses
   the same header into `QuerySummary` but does not yet record it on spans).
 
-### Phase 3 — span lifetime over streaming (query)
+### Phase 3 — span lifetime over streaming (query) ✅ (implemented)
 
 Mirror rs's "span lives as long as the cursor" model:
 
-- Pass the active span into `makeResultSet` (node and web result sets separately, per the
-  duplication convention). The span is ended when the stream is fully consumed, destroyed, or
-  errors — not when `query()` returns.
-- Count decoded rows and received bytes inside the result set while streaming, then record
-  `db.response.returned_rows` / `clickhouse.response.received_bytes` /
-  `clickhouse.response.decoded_bytes` right before `span.end()`.
+- Pass a `QuerySpanTracker` (wrapping the active span) into `makeResultSet` (node and web result
+  sets separately, per the duplication convention). The span is ended when the stream is fully
+  consumed, closed, or errors — not when `query()` returns. If the `ResultSet` is never consumed
+  nor closed, the span is never ended (js cannot rely on GC, unlike rs's `Drop`).
+- Count decoded rows and bytes inside the result set while streaming, then record
+  `db.response.returned_rows` (only when rows were actually counted, i.e. row-streaming
+  consumption) and `clickhouse.response.decoded_bytes` right before `span.end()`.
+  `clickhouse.response.received_bytes` (pre-decompression network bytes) is **deferred**: the
+  result set only sees the already-decompressed stream; recording network bytes would require
+  connection-level instrumentation.
 - Errors surfaced during streaming (e.g. in-band `DB::Exception` parsing) call `recordSpanError`
-  on the still-open span — this fixes today's blind spot where streaming failures are invisible
+  on the still-open span — this fixes the prior blind spot where streaming failures were invisible
   to tracing.
 - Keep `command`/`exec`/`insert`/`ping` ending the span on method return (their responses are
   fully consumed by then), matching current behavior.

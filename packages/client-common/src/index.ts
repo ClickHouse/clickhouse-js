@@ -124,6 +124,7 @@ export {
   ClickHouseSpanStatusCode,
   ClickHouseSpanKind,
   ClickHouseSpanNames,
+  QuerySpanTracker,
 } from "./tracing";
 
 /** For implementation usage only - should not be re-exported */

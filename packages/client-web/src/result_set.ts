@@ -2,6 +2,7 @@ import type {
   BaseResultSet,
   DataFormat,
   JSONHandling,
+  QuerySpanTracker,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
@@ -30,6 +31,7 @@ export class ResultSet<
   private readonly jsonHandling: JSONHandling;
   private _stream: ReadableStream;
   private readonly format: Format;
+  private readonly span_tracker: QuerySpanTracker | undefined;
   public readonly query_id: string;
 
   constructor(
@@ -41,10 +43,12 @@ export class ResultSet<
       parse: JSON.parse,
       stringify: JSON.stringify,
     },
+    span_tracker?: QuerySpanTracker,
   ) {
     this._stream = _stream;
     this.format = format;
     this.query_id = query_id;
+    this.span_tracker = span_tracker;
     this.response_headers =
       _response_headers !== undefined ? Object.freeze(_response_headers) : {};
     this.exceptionTag = this.response_headers["x-clickhouse-exception-tag"] as
@@ -57,7 +61,15 @@ export class ResultSet<
   /** See {@link BaseResultSet.text} */
   async text(): Promise<string> {
     this.markAsConsumed();
-    return getAsText(this._stream);
+    try {
+      const text = await getAsText(this._stream);
+      this.span_tracker?.addBytes(new TextEncoder().encode(text).length);
+      this.span_tracker?.finish();
+      return text;
+    } catch (err) {
+      this.span_tracker?.finish(err);
+      throw err;
+    }
   }
 
   /** See {@link BaseResultSet.json} */
@@ -65,23 +77,36 @@ export class ResultSet<
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
       const result: T[] = [];
+      // The span tracker is updated and finished by the stream() pipeline.
       const reader = this.stream<T>().getReader();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          for (const row of value) {
+            result.push(row.json() as T);
+          }
         }
-        for (const row of value) {
-          result.push(row.json() as T);
-        }
+      } catch (err) {
+        this.span_tracker?.finish(err);
+        throw err;
       }
       return result as any;
     }
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
-      const text = await getAsText(this._stream);
-      return this.jsonHandling.parse(text);
+      try {
+        const text = await getAsText(this._stream);
+        this.span_tracker?.addBytes(new TextEncoder().encode(text).length);
+        this.span_tracker?.finish();
+        return this.jsonHandling.parse(text);
+      } catch (err) {
+        this.span_tracker?.finish(err);
+        throw err;
+      }
     }
     // should not be called for CSV, etc.
     throw new Error(`Cannot decode ${this.format} as JSON`);
@@ -97,6 +122,7 @@ export class ResultSet<
 
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
+    const spanTracker = this.span_tracker;
     const decoder = new TextDecoder("utf-8");
     const transform = new TransformStream({
       start() {
@@ -107,6 +133,7 @@ export class ResultSet<
           controller.terminate();
         }
 
+        spanTracker?.addBytes(chunk.length);
         const rows: Row[] = [];
 
         let idx: number;
@@ -125,6 +152,7 @@ export class ResultSet<
 
             // send the extracted rows to the consumer, if any
             if (rows.length > 0) {
+              spanTracker?.addRows(rows.length);
               controller.enqueue(rows);
             }
             break;
@@ -137,9 +165,9 @@ export class ResultSet<
               idx >= 1 &&
               chunk[idx - 1] === CARET_RETURN
             ) {
-              controller.error(
-                extractErrorAtTheEndOfChunk(chunk, exceptionTag),
-              );
+              const err = extractErrorAtTheEndOfChunk(chunk, exceptionTag);
+              spanTracker?.finish(err);
+              controller.error(err);
             }
 
             // using the incomplete chunks from the previous iterations
@@ -181,6 +209,11 @@ export class ResultSet<
           }
         }
       },
+      flush: () => {
+        // The readable side of the transform completes when the source
+        // stream is fully consumed - finalize the query span.
+        this.span_tracker?.finish();
+      },
     });
 
     const pipeline = this._stream.pipeThrough(transform, {
@@ -194,6 +227,7 @@ export class ResultSet<
   async close(): Promise<void> {
     this.markAsConsumed();
     await this._stream.cancel();
+    this.span_tracker?.finish();
   }
 
   /**

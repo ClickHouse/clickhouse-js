@@ -114,7 +114,12 @@ function buildClient(
     tracer,
     impl: {
       make_connection: () => connection as any,
-      make_result_set: ((_s, _f, q) => ({ query_id: q }) as any) as any,
+      make_result_set: ((_s, _f, q, _log, _h, _j, span_tracker) => ({
+        query_id: q,
+        // Test result set: pretend immediate full consumption.
+        consume: () => span_tracker?.finish(),
+        span_tracker,
+      })) as any,
       values_encoder: () =>
         ({
           validateInsertValues: () => {},
@@ -128,7 +133,7 @@ describe("tracer", () => {
   it("emits a CLIENT span for query() with unset status and query_id attribute", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);
-    await client.query({ query: "SELECT 1", query_id: "caller-q" });
+    const rs = await client.query({ query: "SELECT 1", query_id: "caller-q" });
     expect(spans).toHaveLength(1);
     const [span] = spans;
     expect(span.name).toBe(ClickHouseSpanNames.query);
@@ -146,6 +151,44 @@ describe("tracer", () => {
     // Per the OTEL spec, the status is left unset on success.
     expect(span.status).toBeUndefined();
     expect(span.exception).toBeUndefined();
+    // The span stays open until the ResultSet is consumed or closed.
+    expect(span.ended).toBe(false);
+    (rs as any).consume();
+    expect(span.ended).toBe(true);
+  });
+
+  it("records the response metrics on the query span when the ResultSet is consumed", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    const rs = await client.query({ query: "SELECT 1" });
+    const tracker = (rs as any).span_tracker;
+    tracker.addBytes(42);
+    tracker.addRows(2);
+    tracker.addRows(1);
+    tracker.finish();
+    // Subsequent finish() calls are no-ops.
+    tracker.finish(new Error("ignored"));
+    const [span] = spans;
+    expect(span.attributes["clickhouse.response.decoded_bytes"]).toBe(42);
+    expect(span.attributes["db.response.returned_rows"]).toBe(3);
+    expect(span.status).toBeUndefined();
+    expect(span.exception).toBeUndefined();
+    expect(span.ended).toBe(true);
+  });
+
+  it("records streaming errors on the query span via the tracker", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    const rs = await client.query({ query: "SELECT 1" });
+    const tracker = (rs as any).span_tracker;
+    tracker.addBytes(10);
+    tracker.finish(new Error("stream failed"));
+    const [span] = spans;
+    expect(span.attributes["clickhouse.response.decoded_bytes"]).toBe(10);
+    // No rows were counted - the attribute must not be reported.
+    expect(span.attributes["db.response.returned_rows"]).toBeUndefined();
+    expect(span.exception?.message).toBe("stream failed");
+    expect(span.status?.code).toBe(ClickHouseSpanStatusCode.ERROR);
     expect(span.ended).toBe(true);
   });
 
@@ -368,7 +411,8 @@ describe("tracer", () => {
         }),
     };
     const client = buildClient(tracer);
-    await client.query({ query: "SELECT 1" });
+    const rs = await client.query({ query: "SELECT 1" });
+    (rs as any).consume();
     expect(ended).toBe(true);
   });
 });

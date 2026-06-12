@@ -2,6 +2,7 @@ import type {
   BaseResultSet,
   DataFormat,
   JSONHandling,
+  QuerySpanTracker,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
@@ -57,6 +58,7 @@ export interface ResultSetOptions<Format extends DataFormat> {
   log_error: (error: Error) => void;
   response_headers: ResponseHeaders;
   jsonHandling?: JSONHandling;
+  span_tracker?: QuerySpanTracker;
 }
 
 export class ResultSet<
@@ -76,6 +78,7 @@ export class ResultSet<
    */
   private _stream: Stream.Readable;
   private readonly format: Format;
+  private readonly span_tracker: QuerySpanTracker | undefined;
   public readonly query_id: string;
 
   constructor(
@@ -85,10 +88,12 @@ export class ResultSet<
     log_error?: (error: Error) => void,
     _response_headers?: ResponseHeaders,
     jsonHandling?: JSONHandling,
+    span_tracker?: QuerySpanTracker,
   ) {
     this._stream = _stream;
     this.format = format;
     this.query_id = query_id;
+    this.span_tracker = span_tracker;
     this.jsonHandling = {
       ...defaultJSONHandling,
       ...jsonHandling,
@@ -114,7 +119,16 @@ export class ResultSet<
 
   /** See {@link BaseResultSet.text}. */
   async text(): Promise<string> {
-    return await getAsText(this.consume());
+    const stream = this.consume();
+    try {
+      const text = await getAsText(stream);
+      this.span_tracker?.addBytes(Buffer.byteLength(text));
+      this.span_tracker?.finish();
+      return text;
+    } catch (err) {
+      this.span_tracker?.finish(err);
+      throw err;
+    }
   }
 
   /** See {@link BaseResultSet.json}. */
@@ -124,6 +138,7 @@ export class ResultSet<
       const result: T[] = [];
       // Using the stream() instead of _stream directly to leverage the existing logic
       // for handling incomplete chunks and exception tags.
+      // The span tracker is updated and finished by the stream() pipeline.
       // TODO: consider using stream() for all formats to unify the logic and error handling.
       const stream = this.stream<T>();
       for await (const rows of stream) {
@@ -135,8 +150,16 @@ export class ResultSet<
     }
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
-      const text = await getAsText(this.consume());
-      return this.jsonHandling.parse(text);
+      const stream = this.consume();
+      try {
+        const text = await getAsText(stream);
+        this.span_tracker?.addBytes(Buffer.byteLength(text));
+        this.span_tracker?.finish();
+        return this.jsonHandling.parse(text);
+      } catch (err) {
+        this.span_tracker?.finish(err);
+        throw err;
+      }
     }
     // should not be called for CSV, etc.
     throw new Error(`Cannot decode ${this.format} as JSON`);
@@ -150,12 +173,14 @@ export class ResultSet<
     const logError = this.log_error;
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
+    const spanTracker = this.span_tracker;
     const toRows = new Transform({
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
         callback: TransformCallback,
       ) {
+        spanTracker?.addBytes(chunk.length);
         const rows: Row[] = [];
 
         let lastIdx = 0;
@@ -168,6 +193,7 @@ export class ResultSet<
           if (idx === -1) {
             incompleteChunks.push(chunk.subarray(lastIdx));
             if (rows.length > 0) {
+              spanTracker?.addRows(rows.length);
               this.push(rows);
             }
             break;
@@ -217,6 +243,9 @@ export class ResultSet<
           err.message !== resultSetClosedMessage
         ) {
           logError(err);
+          spanTracker?.finish(err);
+        } else {
+          spanTracker?.finish();
         }
       },
     );
@@ -226,6 +255,7 @@ export class ResultSet<
   /** See {@link BaseResultSet.close}. */
   close() {
     this._stream.destroy(new Error(resultSetClosedMessage));
+    this.span_tracker?.finish();
   }
 
   /**
@@ -246,6 +276,7 @@ export class ResultSet<
     log_error,
     response_headers,
     jsonHandling,
+    span_tracker,
   }: ResultSetOptions<Format>): ResultSet<Format> {
     return new ResultSet(
       stream,
@@ -254,6 +285,7 @@ export class ResultSet<
       log_error,
       response_headers,
       jsonHandling,
+      span_tracker,
     );
   }
 }

@@ -24,8 +24,12 @@ import { ClickHouseError } from "./error";
  * {@link ClickHouseTracer.startActiveSpan}, mutates the provided
  * {@link ClickHouseSpan} during the operation
  * ({@link ClickHouseSpan.setAttributes}, {@link ClickHouseSpan.setStatus},
- * {@link ClickHouseSpan.recordException}), and finally calls
- * {@link ClickHouseSpan.end} when it completes (regardless of outcome).
+ * {@link ClickHouseSpan.recordException}), and calls
+ * {@link ClickHouseSpan.end} exactly once. For `command`, `exec`, `insert`,
+ * and `ping`, the span ends when the operation settles (regardless of
+ * outcome); for `query`, the span stays open for the entire `ResultSet`
+ * lifetime and ends when the response stream is fully consumed, closed, or
+ * fails (see {@link QuerySpanTracker}).
  *
  * Calls are inlined directly into the client's hot path - there is no
  * defensive wrapper around them. Any exception thrown by a tracer or span
@@ -175,4 +179,61 @@ export function recordSpanError(span: ClickHouseSpan, err: unknown): void {
     code: ClickHouseSpanStatusCode.ERROR,
     message: error.message,
   });
+}
+
+/** Tracks the streaming progress of a query `ResultSet` and finalizes the
+ *  `clickhouse.query` span exactly once, mirroring clickhouse-rs, where the
+ *  span lives for the entire cursor lifetime and the response metrics are
+ *  recorded when the cursor is dropped.
+ *
+ *  The client hands an instance of this class to the `ResultSet`
+ *  implementations (via `MakeResultSet`); the result set reports decoded
+ *  bytes/rows while the response is consumed and calls {@link finish} when
+ *  the stream is fully consumed, closed, or fails. {@link finish} records
+ *  `clickhouse.response.decoded_bytes` (and `db.response.returned_rows` when
+ *  rows were counted, i.e. for row-streaming consumption), records the error
+ *  (if any), and ends the span.
+ *
+ *  @internal */
+export class QuerySpanTracker {
+  private readonly span: ClickHouseSpan;
+  private bytes = 0;
+  private rows = 0;
+  private rowsCounted = false;
+  private finished = false;
+
+  constructor(span: ClickHouseSpan) {
+    this.span = span;
+  }
+
+  /** Add the number of decoded (decompressed) bytes received from the server. */
+  addBytes(count: number): void {
+    this.bytes += count;
+  }
+
+  /** Add the number of rows decoded from the response stream. */
+  addRows(count: number): void {
+    this.rowsCounted = true;
+    this.rows += count;
+  }
+
+  /** Record the final response metrics (and the error, if any) on the span
+   *  and end it. Safe to call multiple times - only the first call wins. */
+  finish(err?: unknown): void {
+    if (this.finished) {
+      return;
+    }
+    this.finished = true;
+    const attributes: ClickHouseSpanAttributes = {
+      "clickhouse.response.decoded_bytes": this.bytes,
+    };
+    if (this.rowsCounted) {
+      attributes["db.response.returned_rows"] = this.rows;
+    }
+    this.span.setAttributes(attributes);
+    if (err !== undefined && err !== null) {
+      recordSpanError(this.span, err);
+    }
+    this.span.end();
+  }
 }

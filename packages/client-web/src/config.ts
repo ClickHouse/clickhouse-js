@@ -4,6 +4,7 @@ import type {
   DataFormat,
   ImplementationDetails,
   JSONHandling,
+  QuerySpanTracker,
   ResponseHeaders,
 } from "@clickhouse/client-common";
 import { WebConnection } from "./connection";
@@ -32,7 +33,17 @@ export const WebImpl: ImplementationDetails<ReadableStream>["impl"] = {
     query_id: string,
     _log_error: (err: Error) => void,
     response_headers: ResponseHeaders,
-  ) => new ResultSet(stream, format, query_id, response_headers)) as any,
+    jsonHandling: JSONHandling,
+    span_tracker?: QuerySpanTracker,
+  ) =>
+    new ResultSet(
+      stream,
+      format,
+      query_id,
+      response_headers,
+      jsonHandling,
+      span_tracker,
+    )) as any,
   values_encoder: (jsonHandling: JSONHandling) =>
     new WebValuesEncoder(jsonHandling),
 };
