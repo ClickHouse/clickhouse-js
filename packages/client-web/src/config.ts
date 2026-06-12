@@ -1,10 +1,10 @@
 import type {
   BaseClickHouseClientConfigOptions,
+  ClickHouseSpan,
   ConnectionParams,
   DataFormat,
   ImplementationDetails,
   JSONHandling,
-  QuerySpanTracker,
   ResponseHeaders,
 } from "@clickhouse/client-common";
 import { WebConnection } from "./connection";
@@ -34,7 +34,7 @@ export const WebImpl: ImplementationDetails<ReadableStream>["impl"] = {
     _log_error: (err: Error) => void,
     response_headers: ResponseHeaders,
     jsonHandling: JSONHandling,
-    span_tracker?: QuerySpanTracker,
+    span?: ClickHouseSpan,
   ) =>
     new ResultSet(
       stream,
@@ -42,7 +42,7 @@ export const WebImpl: ImplementationDetails<ReadableStream>["impl"] = {
       query_id,
       response_headers,
       jsonHandling,
-      span_tracker,
+      span,
     )) as any,
   values_encoder: (jsonHandling: JSONHandling) =>
     new WebValuesEncoder(jsonHandling),

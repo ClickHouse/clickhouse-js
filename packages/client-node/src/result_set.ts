@@ -1,8 +1,9 @@
 import type {
   BaseResultSet,
+  ClickHouseSpan,
+  ClickHouseSpanAttributes,
   DataFormat,
   JSONHandling,
-  QuerySpanTracker,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
@@ -13,6 +14,7 @@ import {
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
+  recordSpanError,
 } from "@clickhouse/client-common";
 import {
   isNotStreamableJSONFamily,
@@ -58,7 +60,7 @@ export interface ResultSetOptions<Format extends DataFormat> {
   log_error: (error: Error) => void;
   response_headers: ResponseHeaders;
   jsonHandling?: JSONHandling;
-  span_tracker?: QuerySpanTracker;
+  span?: ClickHouseSpan;
 }
 
 export class ResultSet<
@@ -78,7 +80,16 @@ export class ResultSet<
    */
   private _stream: Stream.Readable;
   private readonly format: Format;
-  private readonly span_tracker: QuerySpanTracker | undefined;
+  /** The `clickhouse.query` span owned by this result set (if the client was
+   *  configured with a tracer); it ends via {@link finishSpan} when the
+   *  response stream is fully consumed, closed, or fails. */
+  private readonly span: ClickHouseSpan | undefined;
+  /** Decoded (decompressed) bytes received from the server so far. */
+  private span_bytes = 0;
+  /** Rows decoded from the response stream so far. */
+  private span_rows = 0;
+  private span_rows_counted = false;
+  private span_finished = false;
   public readonly query_id: string;
 
   constructor(
@@ -88,12 +99,12 @@ export class ResultSet<
     log_error?: (error: Error) => void,
     _response_headers?: ResponseHeaders,
     jsonHandling?: JSONHandling,
-    span_tracker?: QuerySpanTracker,
+    span?: ClickHouseSpan,
   ) {
     this._stream = _stream;
     this.format = format;
     this.query_id = query_id;
-    this.span_tracker = span_tracker;
+    this.span = span;
     this.jsonHandling = {
       ...defaultJSONHandling,
       ...jsonHandling,
@@ -117,16 +128,44 @@ export class ResultSet<
     return this._stream;
   }
 
+  /** Add the number of rows decoded from the response stream. */
+  private addSpanRows(count: number): void {
+    this.span_rows_counted = true;
+    this.span_rows += count;
+  }
+
+  /** Record the final response metrics (`clickhouse.response.decoded_bytes`
+   *  and, when rows were counted, `db.response.returned_rows`) and the error
+   *  (if any) on the span, and end it. Safe to call multiple times - only
+   *  the first call wins. */
+  private finishSpan(err?: unknown): void {
+    if (this.span === undefined || this.span_finished) {
+      return;
+    }
+    this.span_finished = true;
+    const attributes: ClickHouseSpanAttributes = {
+      "clickhouse.response.decoded_bytes": this.span_bytes,
+    };
+    if (this.span_rows_counted) {
+      attributes["db.response.returned_rows"] = this.span_rows;
+    }
+    this.span.setAttributes(attributes);
+    if (err !== undefined && err !== null) {
+      recordSpanError(this.span, err);
+    }
+    this.span.end();
+  }
+
   /** See {@link BaseResultSet.text}. */
   async text(): Promise<string> {
     const stream = this.consume();
     try {
       const text = await getAsText(stream);
-      this.span_tracker?.addBytes(Buffer.byteLength(text));
-      this.span_tracker?.finish();
+      this.span_bytes += Buffer.byteLength(text);
+      this.finishSpan();
       return text;
     } catch (err) {
-      this.span_tracker?.finish(err);
+      this.finishSpan(err);
       throw err;
     }
   }
@@ -138,7 +177,7 @@ export class ResultSet<
       const result: T[] = [];
       // Using the stream() instead of _stream directly to leverage the existing logic
       // for handling incomplete chunks and exception tags.
-      // The span tracker is updated and finished by the stream() pipeline.
+      // The span progress is updated and the span is finished by the stream() pipeline.
       // TODO: consider using stream() for all formats to unify the logic and error handling.
       const stream = this.stream<T>();
       for await (const rows of stream) {
@@ -153,11 +192,11 @@ export class ResultSet<
       const stream = this.consume();
       try {
         const text = await getAsText(stream);
-        this.span_tracker?.addBytes(Buffer.byteLength(text));
-        this.span_tracker?.finish();
+        this.span_bytes += Buffer.byteLength(text);
+        this.finishSpan();
         return this.jsonHandling.parse(text);
       } catch (err) {
-        this.span_tracker?.finish(err);
+        this.finishSpan(err);
         throw err;
       }
     }
@@ -173,14 +212,15 @@ export class ResultSet<
     const logError = this.log_error;
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
-    const spanTracker = this.span_tracker;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const resultSet = this;
     const toRows = new Transform({
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
         callback: TransformCallback,
       ) {
-        spanTracker?.addBytes(chunk.length);
+        resultSet.span_bytes += chunk.length;
         const rows: Row[] = [];
 
         let lastIdx = 0;
@@ -193,7 +233,7 @@ export class ResultSet<
           if (idx === -1) {
             incompleteChunks.push(chunk.subarray(lastIdx));
             if (rows.length > 0) {
-              spanTracker?.addRows(rows.length);
+              resultSet.addSpanRows(rows.length);
               this.push(rows);
             }
             break;
@@ -243,9 +283,9 @@ export class ResultSet<
           err.message !== resultSetClosedMessage
         ) {
           logError(err);
-          spanTracker?.finish(err);
+          resultSet.finishSpan(err);
         } else {
-          spanTracker?.finish();
+          resultSet.finishSpan();
         }
       },
     );
@@ -255,7 +295,7 @@ export class ResultSet<
   /** See {@link BaseResultSet.close}. */
   close() {
     this._stream.destroy(new Error(resultSetClosedMessage));
-    this.span_tracker?.finish();
+    this.finishSpan();
   }
 
   /**
@@ -276,7 +316,7 @@ export class ResultSet<
     log_error,
     response_headers,
     jsonHandling,
-    span_tracker,
+    span,
   }: ResultSetOptions<Format>): ResultSet<Format> {
     return new ResultSet(
       stream,
@@ -285,7 +325,7 @@ export class ResultSet<
       log_error,
       response_headers,
       jsonHandling,
-      span_tracker,
+      span,
     );
   }
 }

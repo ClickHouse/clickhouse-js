@@ -1,8 +1,9 @@
 import type {
   BaseResultSet,
+  ClickHouseSpan,
+  ClickHouseSpanAttributes,
   DataFormat,
   JSONHandling,
-  QuerySpanTracker,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
@@ -11,6 +12,7 @@ import type {
 import {
   CARET_RETURN,
   extractErrorAtTheEndOfChunk,
+  recordSpanError,
 } from "@clickhouse/client-common";
 import {
   isNotStreamableJSONFamily,
@@ -31,7 +33,16 @@ export class ResultSet<
   private readonly jsonHandling: JSONHandling;
   private _stream: ReadableStream;
   private readonly format: Format;
-  private readonly span_tracker: QuerySpanTracker | undefined;
+  /** The `clickhouse.query` span owned by this result set (if the client was
+   *  configured with a tracer); it ends via {@link finishSpan} when the
+   *  response stream is fully consumed, closed, or fails. */
+  private readonly span: ClickHouseSpan | undefined;
+  /** Decoded (decompressed) bytes received from the server so far. */
+  private span_bytes = 0;
+  /** Rows decoded from the response stream so far. */
+  private span_rows = 0;
+  private span_rows_counted = false;
+  private span_finished = false;
   public readonly query_id: string;
 
   constructor(
@@ -43,12 +54,12 @@ export class ResultSet<
       parse: JSON.parse,
       stringify: JSON.stringify,
     },
-    span_tracker?: QuerySpanTracker,
+    span?: ClickHouseSpan,
   ) {
     this._stream = _stream;
     this.format = format;
     this.query_id = query_id;
-    this.span_tracker = span_tracker;
+    this.span = span;
     this.response_headers =
       _response_headers !== undefined ? Object.freeze(_response_headers) : {};
     this.exceptionTag = this.response_headers["x-clickhouse-exception-tag"] as
@@ -63,11 +74,11 @@ export class ResultSet<
     this.markAsConsumed();
     try {
       const text = await getAsText(this._stream);
-      this.span_tracker?.addBytes(new TextEncoder().encode(text).length);
-      this.span_tracker?.finish();
+      this.span_bytes += new TextEncoder().encode(text).length;
+      this.finishSpan();
       return text;
     } catch (err) {
-      this.span_tracker?.finish(err);
+      this.finishSpan(err);
       throw err;
     }
   }
@@ -77,7 +88,7 @@ export class ResultSet<
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
       const result: T[] = [];
-      // The span tracker is updated and finished by the stream() pipeline.
+      // The span progress is updated and the span is finished by the stream() pipeline.
       const reader = this.stream<T>().getReader();
 
       try {
@@ -91,7 +102,7 @@ export class ResultSet<
           }
         }
       } catch (err) {
-        this.span_tracker?.finish(err);
+        this.finishSpan(err);
         throw err;
       }
       return result as any;
@@ -100,11 +111,11 @@ export class ResultSet<
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
       try {
         const text = await getAsText(this._stream);
-        this.span_tracker?.addBytes(new TextEncoder().encode(text).length);
-        this.span_tracker?.finish();
+        this.span_bytes += new TextEncoder().encode(text).length;
+        this.finishSpan();
         return this.jsonHandling.parse(text);
       } catch (err) {
-        this.span_tracker?.finish(err);
+        this.finishSpan(err);
         throw err;
       }
     }
@@ -122,7 +133,6 @@ export class ResultSet<
 
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
-    const spanTracker = this.span_tracker;
     const decoder = new TextDecoder("utf-8");
     const transform = new TransformStream({
       start() {
@@ -133,7 +143,7 @@ export class ResultSet<
           controller.terminate();
         }
 
-        spanTracker?.addBytes(chunk.length);
+        this.span_bytes += chunk.length;
         const rows: Row[] = [];
 
         let idx: number;
@@ -152,7 +162,7 @@ export class ResultSet<
 
             // send the extracted rows to the consumer, if any
             if (rows.length > 0) {
-              spanTracker?.addRows(rows.length);
+              this.addSpanRows(rows.length);
               controller.enqueue(rows);
             }
             break;
@@ -166,7 +176,7 @@ export class ResultSet<
               chunk[idx - 1] === CARET_RETURN
             ) {
               const err = extractErrorAtTheEndOfChunk(chunk, exceptionTag);
-              spanTracker?.finish(err);
+              this.finishSpan(err);
               controller.error(err);
             }
 
@@ -212,7 +222,7 @@ export class ResultSet<
       flush: () => {
         // The readable side of the transform completes when the source
         // stream is fully consumed - finalize the query span.
-        this.span_tracker?.finish();
+        this.finishSpan();
       },
     });
 
@@ -227,7 +237,7 @@ export class ResultSet<
   async close(): Promise<void> {
     this.markAsConsumed();
     await this._stream.cancel();
-    this.span_tracker?.finish();
+    this.finishSpan();
   }
 
   /**
@@ -246,6 +256,34 @@ export class ResultSet<
       throw new Error(streamAlreadyConsumedMessage);
     }
     this.isAlreadyConsumed = true;
+  }
+
+  /** Add the number of rows decoded from the response stream. */
+  private addSpanRows(count: number): void {
+    this.span_rows_counted = true;
+    this.span_rows += count;
+  }
+
+  /** Record the final response metrics (`clickhouse.response.decoded_bytes`
+   *  and, when rows were counted, `db.response.returned_rows`) and the error
+   *  (if any) on the span, and end it. Safe to call multiple times - only
+   *  the first call wins. */
+  private finishSpan(err?: unknown): void {
+    if (this.span === undefined || this.span_finished) {
+      return;
+    }
+    this.span_finished = true;
+    const attributes: ClickHouseSpanAttributes = {
+      "clickhouse.response.decoded_bytes": this.span_bytes,
+    };
+    if (this.span_rows_counted) {
+      attributes["db.response.returned_rows"] = this.span_rows;
+    }
+    this.span.setAttributes(attributes);
+    if (err !== undefined && err !== null) {
+      recordSpanError(this.span, err);
+    }
+    this.span.end();
   }
 }
 

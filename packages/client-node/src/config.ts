@@ -1,8 +1,8 @@
 import type {
+  ClickHouseSpan,
   DataFormat,
   ImplementationDetails,
   JSONHandling,
-  QuerySpanTracker,
   ResponseHeaders,
 } from "@clickhouse/client-common";
 import {
@@ -168,7 +168,7 @@ export const NodeConfigImpl: Required<
     log_error: (err: Error) => void,
     response_headers: ResponseHeaders,
     jsonHandling: JSONHandling,
-    span_tracker?: QuerySpanTracker,
+    span?: ClickHouseSpan,
   ) =>
     ResultSet.instance({
       stream,
@@ -177,6 +177,6 @@ export const NodeConfigImpl: Required<
       log_error,
       response_headers,
       jsonHandling,
-      span_tracker,
+      span,
     })) as any,
 };

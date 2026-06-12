@@ -31,7 +31,6 @@ import {
   ClickHouseSpanKind,
   ClickHouseSpanNames,
   NoopClickHouseTracer,
-  QuerySpanTracker,
   recordSpanError,
 } from "./tracing";
 
@@ -297,7 +296,6 @@ export class ClickHouseClient<Stream = unknown> {
         // (mirroring clickhouse-rs, where the span lives for the entire
         // cursor lifetime). If the ResultSet is never consumed or closed,
         // the span is never ended.
-        const spanTracker = new QuerySpanTracker(span);
         try {
           return this.makeResultSet(
             stream,
@@ -319,10 +317,11 @@ export class ClickHouseClient<Stream = unknown> {
             },
             response_headers,
             this.jsonHandling,
-            spanTracker,
+            span,
           );
         } catch (err) {
-          spanTracker.finish(err);
+          recordSpanError(span, err);
+          span.end();
           throw err;
         }
       },

@@ -4,7 +4,6 @@ import type {
   ClickHouseSpanAttributes,
   ClickHouseSpanStatus,
 } from "@clickhouse/client-common";
-import { QuerySpanTracker } from "@clickhouse/client-common";
 import Stream, { Readable } from "stream";
 import { ResultSet } from "../../src";
 
@@ -39,7 +38,7 @@ describe("[Node.js] ResultSet span tracking", () => {
       undefined,
       undefined,
       undefined,
-      new QuerySpanTracker(span),
+      span,
     );
   }
 

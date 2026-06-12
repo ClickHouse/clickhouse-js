@@ -192,8 +192,9 @@ the old keys are removed/renamed right away, with no deprecation window:
 
 Mirror rs's "span lives as long as the cursor" model:
 
-- Pass a `QuerySpanTracker` (wrapping the active span) into `makeResultSet` (node and web result
-  sets separately, per the duplication convention). The span is ended when the stream is fully
+- Pass the raw active span into `makeResultSet` (node and web result
+  sets separately, per the duplication convention); the result set tracks its own streaming
+  progress (decoded bytes/rows). The span is ended when the stream is fully
   consumed, closed, or errors — not when `query()` returns. If the `ResultSet` is never consumed
   nor closed, the span is never ended (js cannot rely on GC, unlike rs's `Drop`).
 - Count decoded rows and bytes inside the result set while streaming, then record

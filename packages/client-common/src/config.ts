@@ -6,7 +6,7 @@ import { ClickHouseLogLevel, LogWriter } from "./logger";
 import { defaultJSONHandling, type JSONHandling } from "./parse/json_handling";
 import type { BaseResultSet } from "./result";
 import type { ClickHouseSettings } from "./settings";
-import type { ClickHouseTracer, QuerySpanTracker } from "./tracing";
+import type { ClickHouseSpan, ClickHouseTracer } from "./tracing";
 
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
@@ -142,10 +142,10 @@ export type MakeResultSet<Stream> = <
   jsonHandling: JSONHandling,
   /** When the client was configured with a {@link ClickHouseTracer}, the
    *  `clickhouse.query` span stays open for the entire `ResultSet` lifetime.
-   *  The result set must report decoded bytes/rows to the tracker and call
-   *  {@link QuerySpanTracker.finish} when the stream is fully consumed,
-   *  closed, or fails. */
-  span_tracker?: QuerySpanTracker,
+   *  The result set tracks its own streaming progress (decoded bytes/rows)
+   *  and must record the final response metrics on the span and end it when
+   *  the stream is fully consumed, closed, or fails. */
+  span?: ClickHouseSpan,
 ) => ResultSet;
 
 export type MakeValuesEncoder<Stream> = (

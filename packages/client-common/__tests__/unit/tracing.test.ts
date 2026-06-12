@@ -114,11 +114,11 @@ function buildClient(
     tracer,
     impl: {
       make_connection: () => connection as any,
-      make_result_set: ((_s, _f, q, _log, _h, _j, span_tracker) => ({
+      make_result_set: ((_s, _f, q, _log, _h, _j, span) => ({
         query_id: q,
         // Test result set: pretend immediate full consumption.
-        consume: () => span_tracker?.finish(),
-        span_tracker,
+        consume: () => span?.end(),
+        span,
       })) as any,
       values_encoder: () =>
         ({
@@ -158,37 +158,49 @@ describe("tracer", () => {
     expect(span.ended).toBe(true);
   });
 
-  it("records the response metrics on the query span when the ResultSet is consumed", async () => {
+  it("hands the raw query span to the ResultSet without ending it", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);
     const rs = await client.query({ query: "SELECT 1" });
-    const tracker = (rs as any).span_tracker;
-    tracker.addBytes(42);
-    tracker.addRows(2);
-    tracker.addRows(1);
-    tracker.finish();
-    // Subsequent finish() calls are no-ops.
-    tracker.finish(new Error("ignored"));
     const [span] = spans;
-    expect(span.attributes["clickhouse.response.decoded_bytes"]).toBe(42);
-    expect(span.attributes["db.response.returned_rows"]).toBe(3);
-    expect(span.status).toBeUndefined();
-    expect(span.exception).toBeUndefined();
+    // The ResultSet receives the span itself and owns its lifetime.
+    expect((rs as any).span).toBe(span);
+    expect(span.ended).toBe(false);
+    (rs as any).consume();
     expect(span.ended).toBe(true);
   });
 
-  it("records streaming errors on the query span via the tracker", async () => {
+  it("records the error on the query span and ends it when makeResultSet throws", async () => {
     const { tracer, spans } = createRecordingTracer();
-    const client = buildClient(tracer);
-    const rs = await client.query({ query: "SELECT 1" });
-    const tracker = (rs as any).span_tracker;
-    tracker.addBytes(10);
-    tracker.finish(new Error("stream failed"));
+    const connection: MockConnection = {
+      query: makeQuery(),
+      command: makeCommand(),
+      exec: makeExec(),
+      insert: makeInsert(),
+      ping: makePing(),
+      close: async () => {},
+    };
+    const client = new ClickHouseClient({
+      url: "http://localhost:8123",
+      tracer,
+      impl: {
+        make_connection: () => connection as any,
+        make_result_set: (() => {
+          throw new Error("make_result_set failed");
+        }) as any,
+        values_encoder: () =>
+          ({
+            validateInsertValues: () => {},
+            encodeValues: (v: any) =>
+              typeof v === "string" ? v : JSON.stringify(v),
+          }) as any,
+      },
+    });
+    await expect(client.query({ query: "SELECT 1" })).rejects.toThrow(
+      "make_result_set failed",
+    );
     const [span] = spans;
-    expect(span.attributes["clickhouse.response.decoded_bytes"]).toBe(10);
-    // No rows were counted - the attribute must not be reported.
-    expect(span.attributes["db.response.returned_rows"]).toBeUndefined();
-    expect(span.exception?.message).toBe("stream failed");
+    expect(span.exception?.message).toBe("make_result_set failed");
     expect(span.status?.code).toBe(ClickHouseSpanStatusCode.ERROR);
     expect(span.ended).toBe(true);
   });
