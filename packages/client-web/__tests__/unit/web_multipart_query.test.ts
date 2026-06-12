@@ -181,4 +181,78 @@ describe("[Web] Multipart query params", () => {
       expect(headers["Content-Type"]).toBeUndefined();
     });
   });
+
+  describe("when use_multipart_params_auto is true", () => {
+    it("should keep small query_params in the URL", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({
+        use_multipart_params_auto: true,
+        fetch: fetchStub,
+      });
+
+      await adapter.query({
+        query: "SELECT {v:Int32}",
+        query_params: { v: 42 },
+      });
+
+      const { url, headers } = lastFetchCall(fetchStub);
+      expect(url).toContain("param_v=42");
+      expect(headers["Content-Type"]).toBeUndefined();
+    });
+
+    it("should promote large query_params to a multipart body", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({
+        use_multipart_params_auto: true,
+        fetch: fetchStub,
+      });
+
+      const ids = [...Array(3000).keys()];
+      await adapter.query({
+        query:
+          "SELECT count() FROM numbers(5000) WHERE number IN {ids:Array(UInt64)}",
+        query_params: { ids },
+      });
+
+      const { url, headers } = lastFetchCall(fetchStub);
+      expect(url).not.toContain("param_ids");
+      expect(url).toContain("query_id=");
+      expect(headers["Content-Type"]).toMatch(
+        /^multipart\/form-data; boundary=/,
+      );
+    });
+
+    it("should respect a per-request use_multipart_params_auto override", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({ fetch: fetchStub });
+
+      await adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: "x".repeat(5000) },
+        use_multipart_params_auto: true,
+      });
+
+      const { url, headers } = lastFetchCall(fetchStub);
+      expect(url).not.toContain("param_big");
+      expect(headers["Content-Type"]).toMatch(
+        /^multipart\/form-data; boundary=/,
+      );
+    });
+  });
+
+  describe("when use_multipart_params_auto is false (default)", () => {
+    it("should keep large query_params in the URL", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({ fetch: fetchStub });
+
+      await adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: "x".repeat(5000) },
+      });
+
+      const { url, headers } = lastFetchCall(fetchStub);
+      expect(url).toContain("param_big");
+      expect(headers["Content-Type"]).toBeUndefined();
+    });
+  });
 });

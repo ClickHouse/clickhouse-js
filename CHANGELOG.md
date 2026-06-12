@@ -2,6 +2,18 @@
 
 ## New features
 
+- Added a `use_multipart_params_auto` client option (default: `false`). When enabled, `query()` automatically sends `query_params` as `multipart/form-data` body parts (the same mechanism as `use_multipart_params`) once their URL-encoded length exceeds 4096 characters, avoiding HTTP 414/400 errors from HTTP intermediaries (nginx, AWS ALB, CloudFront) caused by over-long URLs - for example, a large `IN` list or a high-dimensional vector embedding. Smaller parameter payloads remain in the URL query string, so existing behavior is unchanged unless the threshold is crossed. `use_multipart_params: true` still forces multipart for all queries regardless of size. This does not change the server's per-value size limit, which is governed by `http_max_field_value_size`. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params_auto` on `query()`. Ported from [clickhouse-connect#789](https://github.com/ClickHouse/clickhouse-connect/pull/789). ([#827])
+
+```ts
+const client = createClient({ use_multipart_params_auto: true });
+
+await client.query({
+  query: "SELECT * FROM events WHERE id IN {ids:Array(UInt64)}",
+  // Sent in the URL when small, auto-promoted to the multipart body when large
+  query_params: { ids: veryLargeArrayOfIds },
+});
+```
+
 - Added a `use_multipart_params` client option (default: `false`). When enabled, `query()` sends `query_params` as `multipart/form-data` body parts (with the SQL moved into a `query` part) instead of URL query-string entries, avoiding HTTP 400 errors caused by over-long URLs when parameters contain large arrays (25K+ values). All other URL search params (database, query_id, settings, session_id, role) remain in the URL. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params` on `query()`. ([#825])
 
 ```ts
@@ -16,6 +28,7 @@ await client.query({
 ```
 
 [#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
+[#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
 
 ## Bug Fixes
 
