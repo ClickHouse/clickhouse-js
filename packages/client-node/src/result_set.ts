@@ -139,7 +139,7 @@ export class ResultSet<
    *  (if any) on the span, and end it. Safe to call multiple times - only
    *  the first call wins. */
   private finishSpan(err?: unknown): void {
-    if (this.span === undefined || this.span_finished) {
+    if (!this.span || this.span_finished) {
       return;
     }
     this.span_finished = true;
@@ -150,7 +150,7 @@ export class ResultSet<
       attributes["db.response.returned_rows"] = this.span_rows;
     }
     this.span.setAttributes(attributes);
-    if (err !== undefined && err !== null) {
+    if (err) {
       recordSpanError(this.span, err);
     }
     this.span.end();
