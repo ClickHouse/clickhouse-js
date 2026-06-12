@@ -1,11 +1,12 @@
 import { createClient } from "@clickhouse/client";
 import type { ClickHouseClient } from "@clickhouse/client";
 import { Readable } from "node:stream";
+import { request } from "undici";
 
 /**
  * A tiny transport abstraction so the benchmark can drive both the real
  * Node.js client (which uses the legacy `http`/`https` modules under the hood)
- * and a trivial `fetch()`-based stub through the exact same scenarios.
+ * and a trivial `undici.request()`-based stub through the exact same scenarios.
  *
  * Every method fully drains the response body (counting the bytes read) so the
  * comparison reflects end-to-end transport cost, not just time-to-first-byte.
@@ -67,15 +68,21 @@ export class SdkTransportClient implements TransportClient {
 }
 
 /**
- * A deliberately minimal `fetch()`-based stub: no pooling configuration, no
- * retries, no settings handling. Just enough to issue the same HTTP requests
- * against ClickHouse so we can compare raw transport throughput and latency.
+ * A deliberately minimal `undici.request()`-based stub: no pooling
+ * configuration, no retries, no settings handling. Just enough to issue the
+ * same HTTP requests against ClickHouse so we can compare raw transport
+ * throughput and latency.
  *
- * `fetch` is backed by `undici` in Node.js, which is the lower-level transport
- * the issue suggests evaluating.
+ * `undici` is the low-level HTTP/1.1 client the issue suggests evaluating.
+ * Crucially we use `request()` rather than the global `fetch()`: `request()`
+ * returns the response body as a Node.js `Readable` stream, whereas `fetch()`
+ * exposes it through the much slower WebStreams (`ReadableStream`) layer. This
+ * keeps the comparison against `@clickhouse/client` apples-to-apples — both
+ * drain a native Node stream — and reflects the API a real migration would use.
+ * See https://github.com/nodejs/undici/issues/1203.
  */
-export class FetchTransportClient implements TransportClient {
-  readonly name = "fetch (undici) stub";
+export class UndiciTransportClient implements TransportClient {
+  readonly name = "undici request() (native stream)";
   private readonly baseUrl: string;
 
   constructor(url: string) {
@@ -83,39 +90,38 @@ export class FetchTransportClient implements TransportClient {
   }
 
   async query(sql: string): Promise<number> {
-    const res = await fetch(this.baseUrl + "/", {
+    const { statusCode, body } = await request(this.baseUrl + "/", {
       method: "POST",
       body: sql,
     });
-    if (!res.ok) {
-      throw new Error(`Unexpected status ${res.status}: ${await res.text()}`);
+    if (statusCode < 200 || statusCode >= 300) {
+      throw new Error(`Unexpected status ${statusCode}: ${await body.text()}`);
     }
     let bytes = 0;
-    if (res.body !== null) {
-      const reader = res.body.getReader();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        bytes += value.byteLength;
-      }
+    for await (const chunk of body) {
+      bytes += (chunk as Buffer).length;
     }
     return bytes;
   }
 
   async insert(query: string, body: string): Promise<void> {
     const url = this.baseUrl + "/?query=" + encodeURIComponent(query);
-    const res = await fetch(url, {
+    const { statusCode, body: resBody } = await request(url, {
       method: "POST",
       body,
     });
-    if (!res.ok) {
-      throw new Error(`Unexpected status ${res.status}: ${await res.text()}`);
+    if (statusCode < 200 || statusCode >= 300) {
+      throw new Error(
+        `Unexpected status ${statusCode}: ${await resBody.text()}`,
+      );
     }
     // Drain the response body to release the connection back to the pool.
-    await res.arrayBuffer();
+    for await (const _chunk of resBody) {
+      void _chunk;
+    }
   }
 
   async close(): Promise<void> {
-    // The global `fetch`/`undici` agent is shared; nothing to close explicitly.
+    // The global undici dispatcher/agent is shared; nothing to close.
   }
 }

@@ -1,17 +1,27 @@
-# Transport benchmark: `http`/`https` vs `fetch`
+# Transport benchmark: `http`/`https` vs `undici`
 
 ---
 
 This benchmark provides reproducible numbers for the proposal in
 [#418](https://github.com/ClickHouse/clickhouse-js/issues/418): replacing the
 legacy `node:http` / `node:https` transport used by `@clickhouse/client` with
-`fetch` (backed by `undici`).
+`undici`.
 
 It compares `@clickhouse/client` **as built from this repository** (resolved via
 the npm workspace symlink, which uses `http`/`https` internally) against a
-**trivial `fetch()`-based stub** over the exact same HTTP requests, so the
-difference reflects raw transport cost rather than client-side parsing or
+**trivial `undici.request()`-based stub** over the exact same HTTP requests, so
+the difference reflects raw transport cost rather than client-side parsing or
 configuration.
+
+> **Why `undici.request()` and not the global `fetch()`?** `fetch()` exposes the
+> response body through the WebStreams (`ReadableStream`) layer, which is a known
+> Node.js-core bottleneck ([nodejs/undici#1203](https://github.com/nodejs/undici/issues/1203))
+> and drains large bodies several times slower than native streams. `request()`
+> returns a native Node `Readable` — the same stream type `@clickhouse/client`
+> drains — so this is an apples-to-apples transport comparison and reflects the
+> API a real migration would actually adopt. An earlier revision of this
+> benchmark used `fetch()` and showed it losing the download scenario by ~5×;
+> that gap was entirely the WebStreams penalty, not undici.
 
 Three representative use cases are measured:
 
@@ -77,28 +87,33 @@ DOWNLOAD_ROWS=1000000 UPLOAD_ROWS=1000000 ITERATIONS=10 WARMUP=3`). **Reproduce
 on your own hardware before drawing conclusions** — absolute values are
 environment-specific.
 
-| Scenario                  | `@clickhouse/client` (http/https) | `fetch` (undici) stub |
-| ------------------------- | --------------------------------- | --------------------- |
-| `SELECT 1` latency (mean) | ~2.3 ms                           | ~0.8 ms               |
-| Download throughput       | ~1000–1250 MiB/s                  | ~227 MiB/s            |
-| Upload throughput         | ~205–222 MiB/s                    | ~211–224 MiB/s        |
+| Scenario                  | `@clickhouse/client` (http/https) | `undici.request()` stub |
+| ------------------------- | --------------------------------- | ----------------------- |
+| `SELECT 1` latency (mean) | ~2.1–2.7 ms                       | ~0.50 ms                |
+| Download throughput       | ~1310–1440 MiB/s                  | ~1850–1920 MiB/s        |
+| Upload throughput         | ~223–225 MiB/s                    | ~241–245 MiB/s          |
 
-In this run `fetch` had markedly lower small-request latency (~3× faster), while
-the existing `http`/`https` streaming path drained large result sets
-considerably faster (~4.5–5.5×), and upload throughput was effectively
-server-bound for both transports. This is exactly the kind of trade-off the
-benchmark is meant to surface — the right transport choice depends on the
-workload, so measure the scenarios that matter to you.
+In this run `undici.request()` was faster across the board: markedly lower
+small-request latency (~4–5×), faster large-result draining (~1.3–1.4×), and a
+small edge on upload (which is largely server-bound for both transports). This
+is the kind of signal the benchmark is meant to surface — but absolute values
+are environment-specific, so measure the scenarios that matter to you. Note that
+these numbers compare a bare transport stub against the full client; the stub
+omits everything the real client does (see below).
 
 ## Interpreting the results
 
 - Run against a **local** server to minimise network noise; for a more
   realistic picture, also run it against a remote/cloud endpoint via
   `CLICKHOUSE_URL`.
-- The `fetch` stub intentionally omits everything the real client does (request
-  settings, retries, keep-alive tuning, compression, abort handling, logging).
-  It is a transport baseline, **not** a drop-in replacement, so treat it as the
-  best case for a `fetch`/`undici` migration.
+- The `undici.request()` stub intentionally omits everything the real client
+  does (request settings, retries, keep-alive tuning, compression, abort
+  handling, logging). It is a transport baseline, **not** a drop-in replacement,
+  so treat it as the best case for an `undici` migration.
+- Do **not** substitute the global `fetch()` for `undici.request()` here: its
+  WebStreams response body drains large payloads several times slower
+  ([nodejs/undici#1203](https://github.com/nodejs/undici/issues/1203)) and would
+  misrepresent what an undici-based transport can achieve.
 - Numbers vary by machine, Node.js version, and ClickHouse version. Always
   capture `process.version` (printed in the header) alongside the results when
   sharing them.
