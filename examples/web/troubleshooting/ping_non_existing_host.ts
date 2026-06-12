@@ -1,4 +1,4 @@
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
 /**
  * This example assumes that your local port 8100 is free.
@@ -17,19 +17,19 @@ import { createClient } from '@clickhouse/client-web'
  *  - `ping_timeout.ts`       - ping that times out.
  */
 const client = createClient({
-  url: 'http://localhost:8100', // non-existing host
+  url: "http://localhost:8100", // non-existing host
   request_timeout: 50, // low request_timeout to speed up the example
-})
+});
 // Ping does not throw an error; instead, { success: false; error: Error } is returned.
-const pingResult = await client.ping()
+const pingResult = await client.ping();
 if (!pingResult.success) {
   console.info(
-    '[NonExistingHostPing] Ping failed as expected:',
+    "[NonExistingHostPing] Ping failed as expected:",
     pingResult.error,
-  )
+  );
 } else {
   console.error(
-    '[NonExistingHostPing] Ping was expected to fail, but it succeeded',
-  )
+    "[NonExistingHostPing] Ping was expected to fail, but it succeeded",
+  );
 }
-await client.close()
+await client.close();

@@ -1,4 +1,88 @@
+# 1.21.0
+
+## New features
+
+- The tracer API (unreleased, introduced in [#776]) now follows the [OpenTelemetry database semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/sql/) and matches the attribute vocabulary of the Rust client ([clickhouse-rs](https://github.com/ClickHouse/clickhouse-rs)); see [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the documentation. In particular ([#828]):
+  - Spans now carry `db.system.name` (instead of `db.system`), `server.address` + `server.port` (instead of a combined `host:port`), `clickhouse.request.query_id` / `clickhouse.request.session_id` (instead of `clickhouse.query_id` / `clickhouse.session_id`), `clickhouse.response.format` on `query` and `clickhouse.request.format` on `insert` (instead of `clickhouse.format`), and `db.operation.name` + `db.collection.name` on `insert` (instead of `clickhouse.table`).
+  - The span status is left unset on success (per the OTEL spec recommendation for client spans, previously set to `OK`); on failure, the span gets the `error.type` attribute (the error class name) and, for server-side errors, `clickhouse.error.code` (the numeric ClickHouse error code).
+  - Spans record response-side attributes: `db.response.status_code` (HTTP status) and, when the `X-ClickHouse-Summary` header is available, `clickhouse.summary.*` counters (`read_rows`, `written_rows`, etc.).
+  - `query()` now emits two spans: `clickhouse.query` covers the HTTP request lifetime and ends as soon as the response headers are received; a child `clickhouse.query.stream` span is handed to the `ResultSet` and tracks the stream consumption, ending when the response is fully read, closed, or fails - with the final `clickhouse.response.decoded_bytes` and (for row-streaming) `db.response.returned_rows` metrics. This separation makes it easy to distinguish the original request duration from a stream that may never end (e.g. tailing a live table).
+  - Fixed a span leak in the Web `ResultSet.stream()` path: if the underlying fetch response stream was aborted (e.g. due to a network error), the `clickhouse.query.stream` span was never ended. The TransformStream now handles both source-stream aborts and consumer-side cancellations via a `cancel` callback.
+  - The `insert` span records `clickhouse.request.sent_rows` for array-based inserts.
+
+- Added a `use_multipart_params_auto` client option (default: `false`). When enabled, `query()` automatically sends `query_params` as `multipart/form-data` body parts (the same mechanism as `use_multipart_params`) once their URL-encoded length exceeds 4096 characters, avoiding HTTP 414/400 errors from HTTP intermediaries (nginx, AWS ALB, CloudFront) caused by over-long URLs - for example, a large `IN` list or a high-dimensional vector embedding. Smaller parameter payloads remain in the URL query string, so existing behavior is unchanged unless the threshold is crossed. `use_multipart_params: true` still forces multipart for all queries regardless of size. This does not change the server's per-value size limit, which is governed by `http_max_field_value_size`. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params_auto` on `query()`. Ported from [clickhouse-connect#789](https://github.com/ClickHouse/clickhouse-connect/pull/789). ([#827])
+
+```ts
+const client = createClient({ use_multipart_params_auto: true });
+
+await client.query({
+  query: "SELECT * FROM events WHERE id IN {ids:Array(UInt64)}",
+  // Sent in the URL when small, auto-promoted to the multipart body when large
+  query_params: { ids: veryLargeArrayOfIds },
+});
+```
+
+- Added a `use_multipart_params` client option (default: `false`). When enabled, `query()` sends `query_params` as `multipart/form-data` body parts (with the SQL moved into a `query` part) instead of URL query-string entries, avoiding HTTP 400 errors caused by over-long URLs when parameters contain large arrays (25K+ values). All other URL search params (database, query_id, settings, session_id, role) remain in the URL. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params` on `query()`. ([#825])
+
+```ts
+const client = createClient({ use_multipart_params: true });
+
+await client.query({
+  query: "SELECT * FROM events WHERE id IN {ids:Array(UInt64)}",
+  query_params: { ids: veryLargeArrayOfIds },
+  // Per-request override is also supported:
+  // use_multipart_params: false,
+});
+```
+
+[#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
+[#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
+[#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
+[#828]: https://github.com/ClickHouse/clickhouse-js/pull/828
+
+## Bug Fixes
+
+- The client now checks the `X-ClickHouse-Exception-Code` response header to detect server errors even when the HTTP status code indicates success. In some scenarios (for example, when an exception occurs while streaming the response progress in headers, or with certain proxy setups), ClickHouse responds with HTTP 200 but sets the `X-ClickHouse-Exception-Code` header. Previously, such responses were treated as successful, and the exception text could surface as malformed response data; now the request is rejected with a parsed `ClickHouseError` (with the proper `code` and `type`), consistent with non-2xx error responses. This applies to both the Node.js and Web clients. ([#554], supersedes [#350], related issue: [#332])
+
+[#554]: https://github.com/ClickHouse/clickhouse-js/pull/554
+[#350]: https://github.com/ClickHouse/clickhouse-js/pull/350
+[#332]: https://github.com/ClickHouse/clickhouse-js/issues/332
+
 # 1.20.0
+
+## New Features
+
+- Added an optional **tracer API** that the user can pass through the client config (`tracer`) and that gets called around key lifecycle operations (`query`, `command`, `exec`, `insert`, `ping`). The `ClickHouseTracer` interface is a structural subset of the OpenTelemetry `Tracer`/`Span` APIs, so a raw OTEL tracer (`trace.getTracer(...)`) can be passed to the client as-is - but the client itself ships no tracing dependency. Each operation runs inside `tracer.startActiveSpan(...)`, so auto-instrumented child spans nest under the ClickHouse operation spans; for OpenTelemetry, this requires the `AsyncLocalStorageContextManager` to be registered (the default in the OpenTelemetry Node.js SDK). Tracer exceptions are NOT caught, so a broken tracer will break client operations. See [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the full surface description, and [`examples/node/coding/otel_tracing.ts`](./examples/node/coding/otel_tracing.ts) for a runnable Node.js example. ([#776])
+
+```ts
+import { createClient } from "@clickhouse/client";
+import { trace } from "@opentelemetry/api";
+
+// a raw OpenTelemetry tracer is structurally compatible - no adapter needed
+const client = createClient({
+  url: "http://localhost:8123",
+  tracer: trace.getTracer("@clickhouse/client"),
+});
+```
+
+## Migration Notes
+
+- TypeScript: `ClickHouseLogLevel` is now exported as a literal numeric union type (`0 | 1 | 2 | 3 | 4 | 127`) instead of a TypeScript `enum` type. If you were assigning arbitrary `number` values to `ClickHouseLogLevel`, you may need to narrow/cast those values during migration.
+
+## Improvements
+
+- Added TypeScript typings for the remaining HTTP-specific ClickHouse settings, so they are now suggested by autocomplete when used in `clickhouse_settings`: `buffer_size`, `compress`, `decompress`, `quota_key`, and `stacktrace` (in addition to the existing `wait_end_of_query`, `default_format`, `session_timeout`, and `session_check`).
+
+```ts
+await client.query({
+  query: "SELECT 1",
+  clickhouse_settings: {
+    // Buffer the entire response on the server before sending it to the client
+    wait_end_of_query: 1,
+    buffer_size: "1048576",
+  },
+});
+```
 
 ## Bug Fixes
 
@@ -13,6 +97,7 @@
 - Re-exported the `ResponseHeaders` type from `@clickhouse/client` and `@clickhouse/client-web`. Previously this type was only available from `@clickhouse/client-common`; it is now part of the public re-export surface of both flavored packages, alongside the other commonly used types. This is part of an ongoing effort to make `@clickhouse/client-common` an internal-only package so downstream consumers can depend solely on `@clickhouse/client` or `@clickhouse/client-web`. ([#758])
 
 [#758]: https://github.com/ClickHouse/clickhouse-js/pull/758
+[#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
 
 ## Bug Fixes
 
@@ -25,14 +110,14 @@ Example:
 parseEnumType({
   columnType: "Enum8('f\\'' = 1)",
   sourceType: "Enum8('f\\'' = 1)",
-})
+});
 // returned: { values: { 1: "f\\'" } }  // with backslash
 
 // After (correct):
 parseEnumType({
   columnType: "Enum8('f\\'' = 1)",
   sourceType: "Enum8('f\\'' = 1)",
-})
+});
 // returns: { values: { 1: "f'" } }     // unescaped
 ```
 
@@ -48,9 +133,9 @@ const client = createClient({
   max_response_headers_size: 1024 * 1024, // accept up to 1 MiB of response headers
   clickhouse_settings: {
     send_progress_in_http_headers: 1,
-    http_headers_progress_interval_ms: '110000',
+    http_headers_progress_interval_ms: "110000",
   },
-})
+});
 ```
 
 - The `@clickhouse/client` npm package now ships embedded AI-agent skills, `clickhouse-js-node-coding` and `clickhouse-js-node-troubleshooting`, under `node_modules/@clickhouse/client/skills/`. These skills are also declared in the `agents.skills` field of the package manifest for discovery tools that scan `node_modules`. This allows agentic coding tools to load focused, Node-client-specific coding and troubleshooting guidance without any additional setup. ([#682])
@@ -74,7 +159,7 @@ const client = createClient({
     idle_socket_ttl: 2500,
     eagerly_destroy_stale_sockets: true,
   },
-})
+});
 ```
 
 - Added auto-detection and warning when `request_timeout` is high (> 60 seconds) but progress headers are not configured. Long-running queries may fail with socket hang-up errors if they exceed the load balancer idle timeout. The client now warns users to enable `send_progress_in_http_headers` and `http_headers_progress_interval_ms` settings to prevent such issues.
@@ -84,16 +169,16 @@ const client = createClient({
 const client = createClient({
   request_timeout: 120_000, // 120 seconds
   // send_progress_in_http_headers is not configured
-})
+});
 
 // ✓ Properly configured to avoid load balancer timeouts
 const client = createClient({
   request_timeout: 400_000,
   clickhouse_settings: {
     send_progress_in_http_headers: 1,
-    http_headers_progress_interval_ms: '110000', // ~10s below LB timeout
+    http_headers_progress_interval_ms: "110000", // ~10s below LB timeout
   },
-})
+});
 ```
 
 # 1.18.2
@@ -115,7 +200,7 @@ const client = createClient({
   log: {
     level: ClickHouseLogLevel.WARN, // to see the warning logs
   },
-})
+});
 
 for (let i = 0; i < 1000; i++) {
   await client.ping({
@@ -123,14 +208,14 @@ for (let i = 0; i < 1000; i++) {
     // which might be configured differently on the server side
     // and have different timeout settings.
     select: true,
-  })
+  });
 
   // Wait long enough to let the server close the idle connection,
   // but not too long to let the client remove it from the pool,
   // in other words try to hit the scenario when the race condition
   // happens between the server closing the connection and the client
   // trying to reuse it.
-  await sleep(SERVER_KEEP_ALIVE_TIMEOUT_MS - 100)
+  await sleep(SERVER_KEEP_ALIVE_TIMEOUT_MS - 100);
 }
 ```
 
@@ -164,7 +249,7 @@ const client = createClient({
   log: {
     level: ClickHouseLogLevel.WARN, // default is now ClickHouseLogLevel.WARN instead of ClickHouseLogLevel.OFF
   },
-})
+});
 ```
 
 - Logging is now lazy, which means that the log messages will only be constructed if the log level is appropriate for the message. This can improve performance in cases where constructing the log message is expensive, and the log level is set to ignore such messages. See `ClickHouseLogLevel` enum for the complete list of log levels. ([#520])
@@ -175,7 +260,7 @@ const client = createClient({
   log: {
     level: ClickHouseLogLevel.TRACE, // to log everything available down to the network level events
   },
-})
+});
 ```
 
 - Enhanced the logging of the HTTP request / socket lifecycle with additional trace messages and context such as Connection ID (UUID) and Request ID and Socket ID that embed the connection ID for ease of tracing the logs of a particular request across the connection lifecycle. To enable such logs, set the `log.level` config option to `ClickHouseLogLevel.TRACE`. ([#567])
@@ -400,8 +485,8 @@ A minor release to allow further investigation regarding uncaught error issues w
   ```ts
   const client = createClient({
     // ...
-    access_token: '<JWT access token>',
-  })
+    access_token: "<JWT access token>",
+  });
   ```
 
   Access token can also be configured via the URL params, e.g., `https://host:port?access_token=...`.
@@ -452,12 +537,12 @@ A minor release to allow further investigation regarding uncaught error issues w
 
   ```ts
   for (const type of [
-    'Int32',
-    'Array(Nullable(String))',
+    "Int32",
+    "Array(Nullable(String))",
     `Map(Int32, DateTime64(9, 'UTC'))`,
   ]) {
-    console.log(`##### Source ClickHouse type: ${type}`)
-    console.log(parseColumnType(type))
+    console.log(`##### Source ClickHouse type: ${type}`);
+    console.log(parseColumnType(type));
   }
   ```
 
@@ -542,10 +627,10 @@ A minor release to allow further investigation regarding uncaught error issues w
 
   ```ts
   const rs = await client.query({
-    query: 'SELECT * FROM system.numbers LIMIT 1',
-    format: 'JSONEachRow',
-  })
-  console.log(rs.response_headers['content-type'])
+    query: "SELECT * FROM system.numbers LIMIT 1",
+    format: "JSONEachRow",
+  });
+  console.log(rs.response_headers["content-type"]);
   ```
 
   This will print: `application/x-ndjson; charset=UTF-8`. It can be used in a similar way with the other methods.
@@ -572,19 +657,19 @@ A minor release to allow further investigation regarding uncaught error issues w
 
   ```ts
   const agent = new https.Agent({
-    ca: fs.readFileSync('./ca.crt'),
-  })
+    ca: fs.readFileSync("./ca.crt"),
+  });
   const client = createClient({
-    url: 'https://server.clickhouseconnect.test:8443',
+    url: "https://server.clickhouseconnect.test:8443",
     http_agent: agent,
     // With a custom HTTPS agent, the client won't use the default HTTPS connection implementation; the headers should be provided manually
     http_headers: {
-      'X-ClickHouse-User': 'default',
-      'X-ClickHouse-Key': '',
+      "X-ClickHouse-User": "default",
+      "X-ClickHouse-Key": "",
     },
     // Authorization header conflicts with the TLS headers; disable it.
     set_basic_auth_header: false,
-  })
+  });
   ```
 
 NB: It is currently not possible to set the `set_basic_auth_header` option via the URL params.
@@ -674,83 +759,83 @@ Complete reference:
 By default, `T` (which represents `JSONType`) is still `unknown`. However, considering `JSONObjectsEachRow` example: prior to 1.0.0, you had to specify the entire type hint, including the shape of the data, manually:
 
 ```ts
-type Data = { foo: string }
+type Data = { foo: string };
 
 const resultSet = await client.query({
-  query: 'SELECT * FROM my_table',
-  format: 'JSONObjectsEachRow',
-})
+  query: "SELECT * FROM my_table",
+  format: "JSONObjectsEachRow",
+});
 
 // pre-1.0.0, `resultOld` has type Record<string, Data>
-const resultOld = resultSet.json<Record<string, Data>>()
+const resultOld = resultSet.json<Record<string, Data>>();
 // const resultOld = resultSet.json<Data>() // incorrect! The type hint should've been `Record<string, Data>` here.
 
 // 1.0.0, `resultNew` also has type Record<string, Data>; client inferred that it has to be a Record from the format literal.
-const resultNew = resultSet.json<Data>()
+const resultNew = resultSet.json<Data>();
 ```
 
 This is even more handy in case of streaming on the Node.js platform:
 
 ```ts
 const resultSet = await client.query({
-  query: 'SELECT * FROM my_table',
-  format: 'JSONEachRow',
-})
+  query: "SELECT * FROM my_table",
+  format: "JSONEachRow",
+});
 
 // pre-1.0.0
 // `streamOld` was just a regular Node.js Stream.Readable
-const streamOld = resultSet.stream()
+const streamOld = resultSet.stream();
 // `rows` were `any`, needed an explicit type hint
-streamNew.on('data', (rows: Row[]) => {
+streamNew.on("data", (rows: Row[]) => {
   rows.forEach((row) => {
     // without an explicit type hint to `rows`, calling `forEach` and other array methods resulted in TS compiler errors
-    const t = row.text
-    const j = row.json<Data>() // `j` needed a type hint here, otherwise, it's `unknown`
-  })
-})
+    const t = row.text;
+    const j = row.json<Data>(); // `j` needed a type hint here, otherwise, it's `unknown`
+  });
+});
 
 // 1.0.0
 // `streamNew` is now StreamReadable<T> (Node.js Stream.Readable with a bit more type hints);
 // type hint for the further `json` calls can be added here (and removed from the `json` calls)
-const streamNew = resultSet.stream<Data>()
+const streamNew = resultSet.stream<Data>();
 // `rows` are inferred as an Array<Row<Data, "JSONEachRow">> instead of `any`
-streamNew.on('data', (rows) => {
+streamNew.on("data", (rows) => {
   // `row` is inferred as Row<Data, "JSONEachRow">
   rows.forEach((row) => {
     // no explicit type hints required, you can use `forEach` straight away and TS compiler will be happy
-    const t = row.text
-    const j = row.json() // `j` will be of type Data
-  })
-})
+    const t = row.text;
+    const j = row.json(); // `j` will be of type Data
+  });
+});
 
 // async iterator now also has type hints
 // similarly to the `on(data)` example above, `rows` are inferred as Array<Row<Data, "JSONEachRow">>
 for await (const rows of streamNew) {
   // `row` is inferred as Row<Data, "JSONEachRow">
   rows.forEach((row) => {
-    const t = row.text
-    const j = row.json() // `j` will be of type Data
-  })
+    const t = row.text;
+    const j = row.json(); // `j` will be of type Data
+  });
 }
 ```
 
 Calling `ResultSet.stream` is not allowed for certain data formats, such as `JSON` and `JSONObjectsEachRow` (unlike `JSONEachRow` and the rest of `JSON*EachRow`, these formats return a single object). In these cases, the client throws an error. However, it was previously not reflected on the type level; now, calling `stream` on these formats will result in a TS compiler error. For example:
 
 ```ts
-const resultSet = await client.query('SELECT * FROM table', {
-  format: 'JSON',
-})
-const stream = resultSet.stream() // `stream` is `never`
+const resultSet = await client.query("SELECT * FROM table", {
+  format: "JSON",
+});
+const stream = resultSet.stream(); // `stream` is `never`
 ```
 
 Calling `ResultSet.json` also does not make sense on `CSV` and similar "raw" formats, and the client throws. Again, now, it is typed properly:
 
 ```ts
-const resultSet = await client.query('SELECT * FROM table', {
-  format: 'CSV',
-})
+const resultSet = await client.query("SELECT * FROM table", {
+  format: "CSV",
+});
 // `json` is `never`; same if you stream CSV, and call `Row.json` - it will be `never`, too.
-const json = resultSet.json()
+const json = resultSet.json();
 ```
 
 Currently, there is one known limitation: as the general shape of the data and the methods allowed for calling are inferred from the format literal, there might be situations where it will fail to do so, for example:
@@ -760,10 +845,10 @@ Currently, there is one known limitation: as the general shape of the data and t
 async function runQuery(
   queryParams: QueryParams,
 ): Promise<Record<string, Data>> {
-  const resultSet = await client.query(queryParams)
+  const resultSet = await client.query(queryParams);
   // type hint here will provide a union of all known shapes instead of a specific one
   // inferred shapes: Data[] | ResponseJSON<Data> | Record<string, Data>
-  return resultSet.json<Data>()
+  return resultSet.json<Data>();
 }
 ```
 
@@ -775,10 +860,10 @@ async function runQuery(
 ): Promise<Record<string, Data>> {
   const resultSet = await client.query({
     ...queryParams,
-    format: 'JSONObjectsEachRow',
-  })
+    format: "JSONObjectsEachRow",
+  });
   // TS understands that it is a Record<string, Data> now
-  return resultSet.json<Data>()
+  return resultSet.json<Data>();
 }
 ```
 
@@ -814,7 +899,7 @@ createClient({
     async_insert: 1,
     wait_for_async_insert: 1,
   },
-})
+});
 ```
 
 Note: boolean values for `clickhouse_settings` should be passed as `1`/`0` in the URL.
@@ -824,9 +909,9 @@ Note: boolean values for `clickhouse_settings` should be passed as `1`/`0` in th
 ```ts
 createClient({
   http_headers: {
-    'x-clickhouse-auth': 'foobar',
+    "x-clickhouse-auth": "foobar",
   },
-})
+});
 ```
 
 **Important: URL will _always_ overwrite the hardcoded values and a warning will be logged in this case.**
@@ -901,10 +986,10 @@ See [0.3.0](#030-nodejs-only).
 ```ts
 const client = createClient({
   additional_headers: {
-    'X-ClickHouse-User': 'clickhouse_user',
-    'X-ClickHouse-Key': 'clickhouse_password',
+    "X-ClickHouse-User": "clickhouse_user",
+    "X-ClickHouse-Key": "clickhouse_password",
   },
-})
+});
 ```
 
 ## 0.2.8 (Common, Node.js, Web)
@@ -915,8 +1000,8 @@ const client = createClient({
   Keep-Alive setting **is now enabled by default** for the Web version.
 
 ```ts
-import { createClient } from '@clickhouse/client-web'
-const client = createClient({ keep_alive: { enabled: true } })
+import { createClient } from "@clickhouse/client-web";
+const client = createClient({ keep_alive: { enabled: true } });
 ```
 
 - (Node.js & Web) It is now possible to either specify a list of columns to insert the data into or a list of excluded columns:
@@ -924,19 +1009,19 @@ const client = createClient({ keep_alive: { enabled: true } })
 ```ts
 // Generated query: INSERT INTO mytable (message) FORMAT JSONEachRow
 await client.insert({
-  table: 'mytable',
-  format: 'JSONEachRow',
-  values: [{ message: 'foo' }],
-  columns: ['message'],
-})
+  table: "mytable",
+  format: "JSONEachRow",
+  values: [{ message: "foo" }],
+  columns: ["message"],
+});
 
 // Generated query: INSERT INTO mytable (* EXCEPT (message)) FORMAT JSONEachRow
 await client.insert({
-  table: 'mytable',
-  format: 'JSONEachRow',
+  table: "mytable",
+  format: "JSONEachRow",
   values: [{ id: 42 }],
-  columns: { except: ['message'] },
-})
+  columns: { except: ["message"] },
+});
 ```
 
 See also the new examples:
@@ -1058,7 +1143,7 @@ const client = createClient({
   keep_alive: {
     enabled: false,
   },
-})
+});
 ```
 
 #### Retry on expired socket
@@ -1073,7 +1158,7 @@ const client = createClient({
     socket_ttl: 2500,
     retry_on_expired_socket: true,
   },
-})
+});
 ```
 
 ## 0.1.0
@@ -1093,16 +1178,16 @@ Example:
 
 ```ts
 // incorrect: stream is not consumed and not destroyed, request will be timed out eventually
-await client.exec('CREATE TABLE foo (id String) ENGINE Memory')
+await client.exec("CREATE TABLE foo (id String) ENGINE Memory");
 
 // correct: stream does not contain any information and just destroyed
 const { stream } = await client.exec(
-  'CREATE TABLE foo (id String) ENGINE Memory',
-)
-stream.destroy()
+  "CREATE TABLE foo (id String) ENGINE Memory",
+);
+stream.destroy();
 
 // correct: same as exec + stream.destroy()
-await client.command('CREATE TABLE foo (id String) ENGINE Memory')
+await client.command("CREATE TABLE foo (id String) ENGINE Memory");
 ```
 
 ### Bug fixes

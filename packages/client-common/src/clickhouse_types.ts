@@ -1,59 +1,59 @@
 export interface ResponseJSON<T = unknown> {
-  data: Array<T>
-  query_id?: string
-  totals?: T
-  extremes?: Record<string, any>
+  data: Array<T>;
+  query_id?: string;
+  totals?: T;
+  extremes?: Record<string, any>;
   // # Supported only by responses in JSON, XML.
   // # Otherwise, it can be read from x-clickhouse-summary header
-  meta?: Array<{ name: string; type: string }>
-  statistics?: { elapsed: number; rows_read: number; bytes_read: number }
-  rows?: number
-  rows_before_limit_at_least?: number
+  meta?: Array<{ name: string; type: string }>;
+  statistics?: { elapsed: number; rows_read: number; bytes_read: number };
+  rows?: number;
+  rows_before_limit_at_least?: number;
 }
 
 export interface InputJSON<T = unknown> {
-  meta: { name: string; type: string }[]
-  data: T[]
+  meta: { name: string; type: string }[];
+  data: T[];
 }
 
-export type InputJSONObjectEachRow<T = unknown> = Record<string, T>
+export type InputJSONObjectEachRow<T = unknown> = Record<string, T>;
 
 export interface ClickHouseSummary {
-  read_rows: string
-  read_bytes: string
-  written_rows: string
-  written_bytes: string
-  total_rows_to_read: string
-  result_rows: string
-  result_bytes: string
-  elapsed_ns: string
+  read_rows: string;
+  read_bytes: string;
+  written_rows: string;
+  written_bytes: string;
+  total_rows_to_read: string;
+  result_rows: string;
+  result_bytes: string;
+  elapsed_ns: string;
   /** Available only after ClickHouse 24.9 */
-  real_time_microseconds?: string
+  real_time_microseconds?: string;
 }
 
-export type ResponseHeaders = Record<string, string | string[] | undefined>
+export type ResponseHeaders = Record<string, string | string[] | undefined>;
 
 export interface WithClickHouseSummary {
-  summary?: ClickHouseSummary
+  summary?: ClickHouseSummary;
 }
 
 export interface WithResponseHeaders {
-  response_headers: ResponseHeaders
+  response_headers: ResponseHeaders;
 }
 
 export interface WithHttpStatusCode {
-  http_status_code?: number
+  http_status_code?: number;
 }
 
 export interface ClickHouseProgress {
-  read_rows: string
-  read_bytes: string
-  elapsed_ns: string
-  total_rows_to_read?: string
+  read_rows: string;
+  read_bytes: string;
+  elapsed_ns: string;
+  total_rows_to_read?: string;
 }
 
 export interface ProgressRow {
-  progress: ClickHouseProgress
+  progress: ClickHouseProgress;
 }
 
 export type SpecialEventRow<T> =
@@ -63,37 +63,37 @@ export type SpecialEventRow<T> =
   | { max: T }
   | { rows_before_limit_at_least: number | string }
   | { rows_before_aggregation: number | string }
-  | { exception: string }
+  | { exception: string };
 
 export type InsertValues<Stream, T = unknown> =
   | ReadonlyArray<T>
   | Stream
   | InputJSON<T>
-  | InputJSONObjectEachRow<T>
+  | InputJSONObjectEachRow<T>;
 
-export type NonEmptyArray<T> = [T, ...T[]]
+export type NonEmptyArray<T> = [T, ...T[]];
 
 export interface ClickHouseCredentialsAuth {
-  username?: string
-  password?: string
+  username?: string;
+  password?: string;
 }
 
 /** Supported in ClickHouse Cloud only */
 export interface ClickHouseJWTAuth {
-  access_token: string
+  access_token: string;
 }
 
-export type ClickHouseAuth = ClickHouseCredentialsAuth | ClickHouseJWTAuth
+export type ClickHouseAuth = ClickHouseCredentialsAuth | ClickHouseJWTAuth;
 
 /** Type guard to use with `JSONEachRowWithProgress`, checking if the emitted row is a progress row.
  *  @see https://clickhouse.com/docs/interfaces/formats/JSONEachRowWithProgress */
 export function isProgressRow(row: unknown): row is ProgressRow {
   return (
     row !== null &&
-    typeof row === 'object' &&
-    'progress' in row &&
+    typeof row === "object" &&
+    "progress" in row &&
     Object.keys(row).length === 1
-  )
+  );
 }
 
 /** Type guard to use with `JSONEachRowWithProgress`, checking if the emitted row is a row with data.
@@ -101,10 +101,10 @@ export function isProgressRow(row: unknown): row is ProgressRow {
 export function isRow<T>(row: unknown): row is { row: T } {
   return (
     row !== null &&
-    typeof row === 'object' &&
-    'row' in row &&
+    typeof row === "object" &&
+    "row" in row &&
     Object.keys(row).length === 1
-  )
+  );
 }
 
 /** Type guard to use with `JSONEachRowWithProgress`, checking if the row contains an exception.
@@ -112,8 +112,8 @@ export function isRow<T>(row: unknown): row is { row: T } {
 export function isException(row: unknown): row is { exception: string } {
   return (
     row !== null &&
-    typeof row === 'object' &&
-    'exception' in row &&
+    typeof row === "object" &&
+    "exception" in row &&
     Object.keys(row).length === 1
-  )
+  );
 }

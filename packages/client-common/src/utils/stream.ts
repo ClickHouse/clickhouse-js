@@ -1,9 +1,9 @@
-import { parseError } from '../error'
+import { parseError } from "../error";
 
-const EXCEPTION_MARKER = '__exception__'
+const EXCEPTION_MARKER = "__exception__";
 
-const NEWLINE = 0x0a as const
-export const CARET_RETURN = 0x0d as const
+const NEWLINE = 0x0a as const;
+export const CARET_RETURN = 0x0d as const;
 
 /**
  * After 25.11, a newline error character is preceded by a caret return
@@ -28,31 +28,31 @@ export function extractErrorAtTheEndOfChunk(
       EXCEPTION_MARKER.length + // __exception__
       2 + // \r\n
       exceptionTag.length + // <value taken from the header>
-      2 // \r\n
+      2; // \r\n
 
-    let errMsgLenStartIdx = chunk.length - bytesCountAfterErrLenHint
+    let errMsgLenStartIdx = chunk.length - bytesCountAfterErrLenHint;
     if (errMsgLenStartIdx < 1) {
       return new Error(
-        'there was an error in the stream, but the last chunk is malformed',
-      )
+        "there was an error in the stream, but the last chunk is malformed",
+      );
     }
 
     do {
-      --errMsgLenStartIdx
-    } while (chunk[errMsgLenStartIdx] !== NEWLINE)
+      --errMsgLenStartIdx;
+    } while (chunk[errMsgLenStartIdx] !== NEWLINE);
 
-    const textDecoder = new TextDecoder('utf-8')
+    const textDecoder = new TextDecoder("utf-8");
 
     const errMsgLen = parseInt(
       textDecoder.decode(
         chunk.subarray(errMsgLenStartIdx, -bytesCountAfterErrLenHint),
       ),
-    )
+    );
 
     if (isNaN(errMsgLen) || errMsgLen <= 0) {
       return new Error(
-        'there was an error in the stream; failed to parse the message length',
-      )
+        "there was an error in the stream; failed to parse the message length",
+      );
     }
 
     const errMsg = textDecoder.decode(
@@ -60,11 +60,11 @@ export function extractErrorAtTheEndOfChunk(
         errMsgLenStartIdx - errMsgLen + 1, // skipping the newline character
         errMsgLenStartIdx,
       ),
-    )
+    );
 
-    return parseError(errMsg)
+    return parseError(errMsg);
   } catch (err) {
     // theoretically, it can happen if a proxy cuts the last chunk
-    return err as Error
+    return err as Error;
   }
 }

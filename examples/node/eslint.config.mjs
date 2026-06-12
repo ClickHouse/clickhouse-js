@@ -1,8 +1,8 @@
-import js from '@eslint/js'
-import { defineConfig } from 'eslint/config'
-import tseslint from 'typescript-eslint'
-import pluginPrettier from 'eslint-plugin-prettier'
-import pluginExpectType from 'eslint-plugin-expect-type/configs/recommended'
+import js from "@eslint/js";
+import { defineConfig } from "eslint/config";
+import tseslint from "typescript-eslint";
+import pluginPrettier from "eslint-plugin-prettier";
+import pluginExpectType from "eslint-plugin-expect-type/configs/recommended";
 
 export default defineConfig(
   // Base ESLint recommended rules
@@ -11,7 +11,7 @@ export default defineConfig(
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,
   {
-    files: ['**/*.ts'],
+    files: ["**/*.ts"],
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -20,33 +20,36 @@ export default defineConfig(
     },
     plugins: {
       prettier: pluginPrettier,
-      'expect-type': pluginExpectType,
+      "expect-type": pluginExpectType,
     },
     rules: {
-      'prettier/prettier': 'error',
-      '@typescript-eslint/no-floating-promises': 'error',
-      eqeqeq: 'error',
-      'no-console': 'error',
+      "prettier/prettier": "error",
+      "@typescript-eslint/no-floating-promises": "error",
+      eqeqeq: "error",
+      "no-console": "error",
       // Keep some rules relaxed until addressed in dedicated PRs
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/consistent-type-imports': 'warn',
-      '@typescript-eslint/array-type': 'off',
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/consistent-type-imports": "warn",
+      "@typescript-eslint/array-type": "off",
     },
   },
   {
-    files: ['**/*.ts'],
+    files: ["**/*.ts"],
     rules: {
-      'no-console': 'off',
+      "no-console": "off",
     },
   },
   // Ignore build artifacts and externals
   {
     ignores: [
-      'eslint.config.mjs',
-      'coverage',
-      'out',
-      'dist',
-      'node_modules',
+      "eslint.config.mjs",
+      "coverage",
+      "out",
+      "dist",
+      "node_modules",
+      // TODO: stop ignoring once @clickhouse/client@1.20.0 (which adds the
+      //  `tracer` config option) is published to npm.
+      "coding/otel_tracing.ts",
     ],
   },
-)
+);

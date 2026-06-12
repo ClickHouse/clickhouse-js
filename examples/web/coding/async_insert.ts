@@ -1,4 +1,4 @@
-import { createClient, ClickHouseError } from '@clickhouse/client-web'
+import { createClient, ClickHouseError } from "@clickhouse/client-web";
 
 // This example demonstrates how to use asynchronous inserts, avoiding client side batching of the incoming data.
 // Suitable for ClickHouse Cloud, too.
@@ -7,7 +7,7 @@ const client = createClient({
   // In a browser application, configure the URL/credentials directly here
   // (or build them from a runtime configuration object). The defaults below
   // assume a ClickHouse instance running locally without authentication.
-  url: 'http://localhost:8123',
+  url: "http://localhost:8123",
   max_open_connections: 10,
   clickhouse_settings: {
     // https://clickhouse.com/docs/en/operations/settings/settings#async_insert
@@ -15,14 +15,14 @@ const client = createClient({
     // https://clickhouse.com/docs/en/operations/settings/settings#wait_for_async_insert
     wait_for_async_insert: 1,
     // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_max_data_size
-    async_insert_max_data_size: '1000000',
+    async_insert_max_data_size: "1000000",
     // https://clickhouse.com/docs/en/operations/settings/settings#async_insert_busy_timeout_ms
     async_insert_busy_timeout_ms: 1000,
   },
-})
+});
 
 // Create the table if necessary
-const table = 'async_insert_example_web'
+const table = "async_insert_example_web";
 await client.command({
   query: `
     CREATE OR REPLACE TABLE ${table}
@@ -34,9 +34,9 @@ await client.command({
   clickhouse_settings: {
     wait_end_of_query: 1,
   },
-})
+});
 
-const start = new Date()
+const start = new Date();
 // Assume that we can receive multiple insert requests at the same time
 // (e.g. from parallel HTTP requests in your app or similar).
 const promises = [...new Array(10)].map(async () => {
@@ -50,43 +50,43 @@ const promises = [...new Array(10)].map(async () => {
   const values = [...new Array(1000).keys()].map(() => ({
     id: Math.floor(Math.random() * 100_000) + 1,
     data: Math.random().toString(36).slice(2),
-  }))
+  }));
   await client
     .insert({
       table,
       values,
-      format: 'JSONEachRow', // or other, depends on your data
+      format: "JSONEachRow", // or other, depends on your data
     })
     .catch((err) => {
       // Depending on the error, it is possible that the request itself was not processed on the server.
       if (err instanceof ClickHouseError) {
         // You could decide what to do with a failed insert based on the error code.
         // An overview of possible error codes is available in the `system.errors` ClickHouse table.
-        console.error(`ClickHouse error: ${err.code}. Insert failed:`, err)
-        return
+        console.error(`ClickHouse error: ${err.code}. Insert failed:`, err);
+        return;
       }
       // You could implement a proper retry mechanism depending on your application needs;
       // for the sake of this example, we just log an error.
-      console.error('Insert failed:', err)
-    })
-})
-await Promise.all(promises)
+      console.error("Insert failed:", err);
+    });
+});
+await Promise.all(promises);
 
 // In this example, it should take `async_insert_busy_timeout_ms` milliseconds or a bit more,
 // as the server will wait for more insert operations,
 // cause due to small amount of data its internal buffer was not exceeded.
-console.log('Inserts took', new Date().getTime() - start.getTime(), 'ms')
+console.log("Inserts took", new Date().getTime() - start.getTime(), "ms");
 
 const resultSet = await client.query({
   query: `SELECT count(*) AS count FROM ${table}`,
-  format: 'JSONEachRow',
-})
-const [{ count }] = await resultSet.json<{ count: string }>()
+  format: "JSONEachRow",
+});
+const [{ count }] = await resultSet.json<{ count: string }>();
 // It is expected to have 10k records in the table.
-console.info('Select count result:', count)
+console.info("Select count result:", count);
 
 // Close the client to release any open connections/handles. In a long-lived
 // browser application you would typically keep the client around for the
 // lifetime of the page; in a one-shot script like this example, closing it
 // avoids leaving the process hanging.
-await client.close()
+await client.close();

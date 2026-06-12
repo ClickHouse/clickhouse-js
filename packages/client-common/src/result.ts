@@ -3,7 +3,7 @@ import type {
   ResponseHeaders,
   ResponseJSON,
   SpecialEventRow,
-} from './clickhouse_types'
+} from "./clickhouse_types";
 import type {
   DataFormat,
   RawDataFormat,
@@ -11,9 +11,9 @@ import type {
   SingleDocumentJSONFormat,
   StreamableDataFormat,
   StreamableJSONDataFormat,
-} from './data_formatter'
+} from "./data_formatter";
 
-export type RowOrProgress<T> = { row: T } | ProgressRow | SpecialEventRow<T>
+export type RowOrProgress<T> = { row: T } | ProgressRow | SpecialEventRow<T>;
 
 export type ResultStream<Format extends DataFormat | unknown, Stream> =
   // JSON*EachRow (except JSONObjectEachRow), CSV, TSV etc.
@@ -26,11 +26,11 @@ export type ResultStream<Format extends DataFormat | unknown, Stream> =
         Format extends RecordsJSONFormat
         ? never
         : // If we fail to infer the literal type, allow getting the stream
-          Stream
+          Stream;
 
 export type ResultJSONType<T, F extends DataFormat | unknown> =
   // Emits either a { row: T } or an object with progress
-  F extends 'JSONEachRowWithProgress'
+  F extends "JSONEachRowWithProgress"
     ? RowOrProgress<T>[]
     : // JSON*EachRow formats except JSONObjectEachRow
       F extends StreamableJSONDataFormat
@@ -45,11 +45,11 @@ export type ResultJSONType<T, F extends DataFormat | unknown> =
             F extends RawDataFormat
             ? never
             : // happens only when Format could not be inferred from a literal
-                T[] | Record<string, T> | ResponseJSON<T>
+                T[] | Record<string, T> | ResponseJSON<T>;
 
 export type RowJSONType<T, F extends DataFormat | unknown> =
   // Emits either a { row: T } or an object with progress
-  F extends 'JSONEachRowWithProgress'
+  F extends "JSONEachRowWithProgress"
     ? RowOrProgress<T>
     : // JSON*EachRow formats
       F extends StreamableJSONDataFormat
@@ -57,21 +57,21 @@ export type RowJSONType<T, F extends DataFormat | unknown> =
       : // CSV, TSV, non-streamable JSON formats - cannot be streamed as JSON
         F extends RawDataFormat | SingleDocumentJSONFormat | RecordsJSONFormat
         ? never
-        : T // happens only when Format could not be inferred from a literal
+        : T; // happens only when Format could not be inferred from a literal
 
 export interface Row<
   JSONType = unknown,
   Format extends DataFormat | unknown = unknown,
 > {
   /** A string representation of a row. */
-  text: string
+  text: string;
 
   /**
    * Returns a JSON representation of a row.
    * The method will throw if called on a response in JSON incompatible format.
    * It is safe to call this method multiple times.
    */
-  json<T = JSONType>(): RowJSONType<T, Format>
+  json<T = JSONType>(): RowJSONType<T, Format>;
 }
 
 export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
@@ -84,7 +84,7 @@ export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
    * The method should throw if the underlying stream was already consumed
    * by calling the other methods.
    */
-  text(): Promise<string>
+  text(): Promise<string>;
 
   /**
    * The method waits for the all the rows to be fully loaded.
@@ -96,7 +96,7 @@ export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
    * by calling the other methods, or if it is called for non-JSON formats,
    * such as CSV, TSV, etc.
    */
-  json<T = unknown>(): Promise<ResultJSONType<T, Format>>
+  json<T = unknown>(): Promise<ResultJSONType<T, Format>>;
 
   /**
    * Returns a readable stream for responses that can be streamed.
@@ -139,14 +139,14 @@ export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
    * and if the underlying stream was already consumed
    * by calling the other methods.
    */
-  stream(): ResultStream<Format, Stream>
+  stream(): ResultStream<Format, Stream>;
 
   /** Close the underlying stream. */
-  close(): void
+  close(): void;
 
   /** ClickHouse server QueryID. */
-  query_id: string
+  query_id: string;
 
   /** Response headers. */
-  response_headers: ResponseHeaders
+  response_headers: ResponseHeaders;
 }

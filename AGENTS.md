@@ -7,8 +7,8 @@
    ```ts
    if (log_level <= ClickHouseLogLevel.WARN) {
      log_writer.warn({
-       message: 'Example log message',
-     })
+       message: "Example log message",
+     });
    }
    ```
 
@@ -18,10 +18,32 @@
    if (some_condition) {
      log_writer.warn({
        message:
-         'Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/socket_hang_up_econnreset.md',
-     })
+         "Example log message with suggestions for users. For more information, see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/socket_hang_up_econnreset.md",
+     });
    }
    ```
+
+## Package structure and code duplication
+
+The source packages under [`packages/`](packages) are:
+
+- `client-common` — platform-agnostic shared code (config, query-param formatting, multipart
+  assembly, URL handling, result sets, etc.). It must not depend on Node.js-only or Web-only APIs.
+- `client-node` (`@clickhouse/client`) — the Node.js client.
+- `client-web` (`@clickhouse/client-web`) — the Web/edge client.
+
+`client-node` and `client-web` are slated to be **separated into fully independent packages**. Because
+of that, some logic is **intentionally duplicated** between the two connection implementations
+(`packages/client-node/src/connection/node_base_connection.ts` and
+`packages/client-web/src/connection/web_connection.ts`) rather than hoisted into `client-common` — for
+example the per-request `use_multipart_params` resolution and the `param_*` multipart-part assembly
+loop. **Do not flag this node/web duplication as something to consolidate**, and prefer keeping each
+client self-contained over adding shared helpers that only exist to remove the duplication. Genuinely
+platform-agnostic primitives (like `buildMultipartBody`) still belong in `client-common`.
+
+## Code intelligence (TypeScript LSP)
+
+The repository ships `typescript-language-server` as a root devDependency, so after `npm install` you can start a TypeScript language server with `npx typescript-language-server --stdio` from the repo root for precise go-to-definition, find-references, hover (signatures and JSDoc, including `@deprecated`), workspace symbol search, completions, and type diagnostics. Prefer it over text search when resolving symbols or usages across the `packages/*` workspaces. See [`.claude/skills/typescript-lsp/SKILL.md`](.claude/skills/typescript-lsp/SKILL.md) for verified capabilities and protocol notes.
 
 ## Examples
 
@@ -113,6 +135,11 @@ For every pull request review, make sure to provide an evaluation of the followi
 
 1. When reviewing code changes, it is important to consider the impact on the API quality and stability. For example, if the code changes involve modifying the library's public API surface (such as exported functions, classes, or types) or adding new public APIs, it is important to ensure that the changes are well-documented and do not break existing functionality for users of the library.
 
-2. When introducing new features or making changes to the API, make sure the PR description includes a concise, human-readable CHANGELOG entry (followed by an example usage if applicable) so it can be folded into `CHANGELOG.md` at release time. This matches the PR template checklist item ("A human-readable description of the changes was provided to include in CHANGELOG").
+2. When introducing new features, fixing bugs, or making any change to observable behavior or the public API, you **must update [`CHANGELOG.md`](CHANGELOG.md) in the same PR** — do not defer it to "release time" or leave it only in the PR description. This satisfies the PR template checklist item ("A human-readable description of the changes was provided to include in CHANGELOG"). Follow the existing format exactly:
+   - Entries go under the **top-most version heading**. If the most recent `# x.y.z` heading corresponds to an **already-released** version (check `git tag`), open a **new** top-level `# x.y.z` heading that matches the unreleased version in `package.json` (e.g. the `version` field of [`packages/client-common/package.json`](packages/client-common/package.json)); otherwise append to the existing top heading.
+   - Group entries under lowercase section headings, reusing the ones already in the file: `## New features`, `## Improvements`, `## Bug fixes` (and `## Migration Notes` / `## Breaking changes` when relevant).
+   - Write a concise, human-readable entry, add an example usage when it helps, and end it with a PR reference link, e.g. `([#825])` plus a matching `[#825]: https://github.com/ClickHouse/clickhouse-js/pull/<n>` reference at the bottom of the section.
+   - When a change is Node.js- or Web-only, say so explicitly in the entry (e.g. "(Node.js only)").
+   - Run `npx prettier --write CHANGELOG.md` before committing.
 
 3. Additionally, make sure that the official documentation is in sync with the changes.

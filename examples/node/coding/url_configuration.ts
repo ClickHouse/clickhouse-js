@@ -1,4 +1,4 @@
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
 // URL configuration reference with all possible values.
 //
@@ -13,38 +13,38 @@ import { createClient } from '@clickhouse/client'
 // +----------------------------------------------------------------------------------------------------------+
 const url =
   // basic auth (username:password) + database will be extracted from the URL
-  'https://bob:secret@my.host:8124/analytics?' +
+  "https://bob:secret@my.host:8124/analytics?" +
   [
     // arbitrary string values
-    'application=my_analytics_app',
-    'session_id=random_session_id',
-    'pathname=/my_proxy', // or `my_proxy`, without the leading slash
+    "application=my_analytics_app",
+    "session_id=random_session_id",
+    "pathname=/my_proxy", // or `my_proxy`, without the leading slash
     // a numeric value
-    'request_timeout=60000',
+    "request_timeout=60000",
     // a numeric value; max_open_connections is expected to be at least 1 when set explicitly.
-    'max_open_connections=10',
+    "max_open_connections=10",
     // boolean values can be set as 1/0 or true/false;
     // sets compression.request = true
-    'compression_request=1',
+    "compression_request=1",
     // sets compression.response = false
-    'compression_response=false',
+    "compression_response=false",
     // sets log.level = 'TRACE';
     // allowed values: TRACE, DEBUG, INFO, WARN, ERROR, OFF.
-    'log_level=TRACE',
+    "log_level=TRACE",
     // sets keep_alive.enabled = false
-    'keep_alive_enabled=false',
+    "keep_alive_enabled=false",
     // (Node.js only) sets keep_alive.idle_socket_ttl = 1500
-    'keep_alive_idle_socket_ttl=1500',
+    "keep_alive_idle_socket_ttl=1500",
     // all values prefixed with clickhouse_setting_ will be added to clickhouse_settings
     // this will set clickhouse_settings.async_insert = 1
-    'clickhouse_setting_async_insert=1',
+    "clickhouse_setting_async_insert=1",
     // ch_ is a shorthand for clickhouse_setting_* parameters; works similarly.
     // this will set clickhouse_settings.wait_for_async_insert = 0
-    'ch_wait_for_async_insert=0',
+    "ch_wait_for_async_insert=0",
     // adds a custom HTTP header 'X-CLICKHOUSE-AUTH' with 'secret_header' value to client requests
     // arbitrary string value
-    'http_header_X-CLICKHOUSE-AUTH=secret_header',
-  ].join('&')
+    "http_header_X-CLICKHOUSE-AUTH=secret_header",
+  ].join("&");
 /*
   The URL above is an equivalent to the following configuration object:
   {
@@ -76,6 +76,6 @@ const url =
  */
 const client = createClient({
   url,
-})
+});
 // your queries will go here...
-await client.close()
+await client.close();

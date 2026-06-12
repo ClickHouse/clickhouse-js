@@ -1,9 +1,9 @@
 ---
 name: Feature request
 about: Suggest an idea for the client
-title: ''
+title: ""
 labels: enhancement
-assignees: ''
+assignees: ""
 ---
 
 <!-- delete unnecessary items -->

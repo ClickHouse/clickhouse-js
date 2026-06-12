@@ -1,4 +1,4 @@
-name: 'publish'
+name: "publish"
 
 # As NPM only supports a single workflow for publishing packages,
 # this workflow is both triggered on push to the `release` branch and manually.
@@ -30,15 +30,15 @@ on:
     # common package, so any change under packages/** triggers an
     # all-or-nothing publish of every package.
     paths:
-      - 'packages/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tsconfig.base.json'
-      - 'README.md'
-      - 'LICENSE'
-      - 'skills/**'
-      - '.scripts/update_version.sh'
-      - '.github/workflows/publish.yml'
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "README.md"
+      - "LICENSE"
+      - "skills/**"
+      - ".scripts/update_version.sh"
+      - ".github/workflows/publish.yml"
 
 jobs:
   head:
@@ -49,13 +49,13 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         run: npm ci
@@ -90,13 +90,13 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         run: npm ci
@@ -149,13 +149,13 @@ jobs:
     env:
       PUBLISHED_VERSION: ${{ needs.head.outputs.version || needs.latest.outputs.version }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ matrix.node }}
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
 
       - name: Wait for ${{ needs.head.outputs.version || needs.latest.outputs.version }} to be available on npm
         run: |

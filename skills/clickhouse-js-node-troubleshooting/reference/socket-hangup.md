@@ -16,11 +16,11 @@
 > **Requires:** `>= 0.2.0` (logging support with `log.level` config option). In `>= 1.18.1`, the default log level changed from `OFF` to `WARN`, so this step may already be active. In `>= 1.18.2`, the client auto-emits a WARN log with Keep-Alive troubleshooting hints when an `ECONNRESET` is detected. In `>= 1.12.0`, a warning is logged when a socket is closed without fully consuming the stream.
 
 ```js
-import { createClient, ClickHouseLogLevel } from '@clickhouse/client'
+import { createClient, ClickHouseLogLevel } from "@clickhouse/client";
 
 const client = createClient({
   log: { level: ClickHouseLogLevel.WARN },
-})
+});
 ```
 
 Look for log lines about unconsumed or dangling streams — these are a common hidden cause. A **dangling stream** is a query response stream that was never fully consumed or explicitly closed with `ResultSet.close()`. Because the Node.js client reuses sockets (Keep-Alive), leaving a stream open corrupts the socket and causes the _next_ request to fail with `ECONNRESET`. Errors on **every request** strongly suggest dangling streams rather than a Keep-Alive timeout mismatch.
@@ -29,33 +29,33 @@ Look for log lines about unconsumed or dangling streams — these are a common h
 
 ```js
 // ❌ Wrong — result stream never consumed; socket is left open
-const resultSet = await client.query({ query: 'SELECT ...' })
+const resultSet = await client.query({ query: "SELECT ..." });
 // result is abandoned without calling .json(), .text(), .stream(), or .close()
 
 // ❌ Wrong — stream created but not fully piped/iterated
 const resultSet = await client.query({
-  query: 'SELECT ...',
-  format: 'JSONEachRow',
-})
-const stream = resultSet.stream()
+  query: "SELECT ...",
+  format: "JSONEachRow",
+});
+const stream = resultSet.stream();
 // stream is never iterated and resultSet is never closed
 
 // ✓ Correct — consume via .json()
-const resultSet = await client.query({ query: 'SELECT ...' })
-const data = await resultSet.json()
+const resultSet = await client.query({ query: "SELECT ..." });
+const data = await resultSet.json();
 
 // ✓ Correct — consume via async iteration
 const resultSet = await client.query({
-  query: 'SELECT ...',
-  format: 'JSONEachRow',
-})
+  query: "SELECT ...",
+  format: "JSONEachRow",
+});
 for await (const rows of resultSet.stream()) {
   // process rows
 }
 
 // ✓ Correct — explicitly close; this destroys the underlying socket immediately
-const resultSet = await client.query({ query: 'SELECT ...' })
-resultSet.close()
+const resultSet = await client.query({ query: "SELECT ..." });
+resultSet.close();
 ```
 
 ## Step 2 — Check your ESLint setup
@@ -86,7 +86,7 @@ const client = createClient({
   keep_alive: {
     idle_socket_ttl: 9000, // stay ~500ms below the server's timeout
   },
-})
+});
 ```
 
 > ⚠️ If you still get errors after increasing, **lower** the value, not raise it.
@@ -104,9 +104,9 @@ const client = createClient({
   request_timeout: 400_000, // e.g. 400s for long queries
   clickhouse_settings: {
     send_progress_in_http_headers: 1,
-    http_headers_progress_interval_ms: '110000', // string — UInt64 type; set ~10s below LB idle timeout
+    http_headers_progress_interval_ms: "110000", // string — UInt64 type; set ~10s below LB idle timeout
   },
-})
+});
 ```
 
 ### ⚠️ Critical: 16 KB Node.js Header Size Limit
@@ -140,9 +140,9 @@ const client = createClient({
   max_response_headers_size: 65536, // 64 KB; lifts the per-request header cap
   clickhouse_settings: {
     send_progress_in_http_headers: 1,
-    http_headers_progress_interval_ms: '110000',
+    http_headers_progress_interval_ms: "110000",
   },
-})
+});
 ```
 
 ```bash
@@ -200,5 +200,5 @@ Adds overhead (new TCP connection per request) but eliminates all Keep-Alive iss
 ```js
 const client = createClient({
   keep_alive: { enabled: false },
-})
+});
 ```

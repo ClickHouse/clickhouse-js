@@ -7,7 +7,7 @@ If you're experiencing `socket hang up` and / or `ECONNRESET` errors even when u
   ```ts
   const client = createClient({
     log: { level: ClickHouseLogLevel.WARN },
-  })
+  });
   ```
 
 - Make sure that the desired configuration is applied to the correct client instance. If you have multiple client instances in your application, double-check that the one you're using for queries has the correct `keep_alive.idle_socket_ttl` value.
@@ -25,9 +25,9 @@ If you're experiencing `socket hang up` and / or `ECONNRESET` errors even when u
      *  In this case, we assume that the LB has idle connection timeout of 120s, so we set 110s as a "safe" value. */
     clickhouse_settings: {
       send_progress_in_http_headers: 1,
-      http_headers_progress_interval_ms: '110000', // UInt64, should be passed as a string
+      http_headers_progress_interval_ms: "110000", // UInt64, should be passed as a string
     },
-  })
+  });
   ```
 
   Keep in mind, however, that the total size of the received headers has a 16KB limit in recent Node.js versions; after a certain amount of progress headers received, which was around 70-80 in our tests, an exception will be thrown.
@@ -41,7 +41,7 @@ If you're experiencing `socket hang up` and / or `ECONNRESET` errors even when u
     keep_alive: {
       enabled: false,
     },
-  })
+  });
   ```
 
 - Rule out potential issues with the rest of the network stack including Node.js itself by running a simple command-line test with the same ClickHouse instance and the same network path (i.e. from the same machine or network segment, e.g. a Kubernetes pod), for example, using `curl`:
@@ -55,13 +55,13 @@ If you're experiencing `socket hang up` and / or `ECONNRESET` errors even when u
 - To test the connection with plain Node.js functionality, you can try to create a simple HTTP request to the ClickHouse server using the built-in `fetch` API:
 
   ```ts
-  const response = await fetch('<clickhouse_url>?query=SELECT+1', {
-    method: 'POST',
+  const response = await fetch("<clickhouse_url>?query=SELECT+1", {
+    method: "POST",
     headers: {
       Authorization:
-        'Basic ' + Buffer.from('<user>:<password>').toString('base64'),
+        "Basic " + Buffer.from("<user>:<password>").toString("base64"),
     },
-  })
+  });
   ```
 
 - In some cases the application code or the framework adapters can add a preemptive `ping()` before the actual query execution, which can lead to a situation where the `ping()` request is successful, but the subsequent query request fails with a "socket hang up" error due to the same underlying issue with idle connections. If you see that pattern in the logs, try to check if there is an option to disable preemptive pings in your framework or application code. This should also help with reducing the probability of getting rate limited by any of the intermediate network components.
