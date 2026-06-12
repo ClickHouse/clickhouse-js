@@ -34,6 +34,9 @@ interface ToSearchParamsOptions {
   database: string | undefined;
   clickhouse_settings?: ClickHouseSettings;
   query_params?: Record<string, unknown>;
+  /** Pre-serialized `param_*` entries (e.g. from {@link serializeQueryParamsForUrl});
+   *  used as-is instead of serializing {@link query_params} again. */
+  param_entries?: [string, string][];
   query?: string;
   session_id?: string;
   query_id: string;
@@ -46,6 +49,7 @@ export function toSearchParams({
   database,
   query,
   query_params,
+  param_entries,
   clickhouse_settings,
   session_id,
   query_id,
@@ -53,7 +57,9 @@ export function toSearchParams({
 }: ToSearchParamsOptions): URLSearchParams {
   const entries: [string, string][] = [["query_id", query_id]];
 
-  if (query_params !== undefined) {
+  if (param_entries !== undefined) {
+    entries.push(...param_entries);
+  } else if (query_params !== undefined) {
     for (const [key, value] of Object.entries(query_params)) {
       const formattedParam = formatQueryParams({ value });
       entries.push([`param_${key}`, formattedParam]);

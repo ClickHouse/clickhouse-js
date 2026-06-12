@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildMultipartBody,
   MAX_URL_BIND_PARAM_LENGTH,
-  queryParamsExceedUrlThreshold,
+  serializeQueryParamsForUrl,
 } from "../../src/utils/multipart";
 
 describe("buildMultipartBody", () => {
@@ -98,60 +98,63 @@ describe("buildMultipartBody", () => {
   });
 });
 
-describe("queryParamsExceedUrlThreshold", () => {
-  it("should return false for empty params", () => {
-    expect(queryParamsExceedUrlThreshold({})).toBe(false);
+describe("serializeQueryParamsForUrl", () => {
+  it("should return empty entries for empty params", () => {
+    expect(serializeQueryParamsForUrl({})).toEqual([]);
   });
 
-  it("should keep small params under the threshold", () => {
-    expect(queryParamsExceedUrlThreshold({ id: "123", name: "abc" })).toBe(
-      false,
-    );
+  it("should serialize small params under the threshold", () => {
+    expect(serializeQueryParamsForUrl({ id: "123", name: "abc" })).toEqual([
+      ["param_id", "123"],
+      ["param_name", "abc"],
+    ]);
   });
 
-  it("should report a single oversized param", () => {
+  it("should return null for a single oversized param", () => {
     expect(
-      queryParamsExceedUrlThreshold({
+      serializeQueryParamsForUrl({
         big: "x".repeat(MAX_URL_BIND_PARAM_LENGTH + 1),
       }),
-    ).toBe(true);
+    ).toBeNull();
   });
 
-  it("should report many individually small params whose total exceeds the threshold", () => {
+  it("should return null for many individually small params whose total exceeds the threshold", () => {
     const params: Record<string, string> = {};
     for (let i = 0; i < 40; i++) {
       params[`p${i}`] = "v".repeat(200);
     }
-    expect(queryParamsExceedUrlThreshold(params)).toBe(true);
+    expect(serializeQueryParamsForUrl(params)).toBeNull();
   });
 
   it("should account for percent-encoding expansion", () => {
     // Raw length is under the budget, but each ampersand encodes to three characters (%26)
     expect(
-      queryParamsExceedUrlThreshold({
+      serializeQueryParamsForUrl({
         s: "&".repeat(Math.ceil(MAX_URL_BIND_PARAM_LENGTH / 2)),
       }),
-    ).toBe(true);
+    ).toBeNull();
   });
 
   it("should measure the formatted value of non-string params", () => {
     // A large array formats to a long bracketed list
     const ids = [...Array(2000).keys()];
-    expect(queryParamsExceedUrlThreshold({ ids })).toBe(true);
-    expect(queryParamsExceedUrlThreshold({ ids: [1, 2, 3] })).toBe(false);
+    expect(serializeQueryParamsForUrl({ ids })).toBeNull();
+    expect(serializeQueryParamsForUrl({ ids: [1, 2, 3] })).toEqual([
+      ["param_ids", "[1,2,3]"],
+    ]);
   });
 
   it("should stay just under and flip just over the threshold", () => {
     // "param_v=" prefix is 8 characters
     expect(
-      queryParamsExceedUrlThreshold({
+      serializeQueryParamsForUrl({
         v: "x".repeat(MAX_URL_BIND_PARAM_LENGTH - 8),
       }),
-    ).toBe(false);
+    ).toEqual([["param_v", "x".repeat(MAX_URL_BIND_PARAM_LENGTH - 8)]]);
     expect(
-      queryParamsExceedUrlThreshold({
+      serializeQueryParamsForUrl({
         v: "x".repeat(MAX_URL_BIND_PARAM_LENGTH - 7),
       }),
-    ).toBe(true);
+    ).toBeNull();
   });
 });

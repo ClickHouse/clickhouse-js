@@ -153,7 +153,7 @@ export {
   sleep,
   buildMultipartBody,
   MAX_URL_BIND_PARAM_LENGTH,
-  queryParamsExceedUrlThreshold,
+  serializeQueryParamsForUrl,
   toSearchParams,
   transformUrl,
   withCompressionHeaders,

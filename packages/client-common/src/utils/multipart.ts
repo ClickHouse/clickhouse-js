@@ -4,8 +4,8 @@ const SAFE_PART_NAME = /^[A-Za-z0-9_.-]+$/;
 
 /**
  * Query parameters are URL-encoded into the request URL as `param_*` entries.
- * Once their encoded length passes this budget, {@link queryParamsExceedUrlThreshold}
- * reports that they should be routed through the multipart body instead, keeping
+ * Once their encoded length passes this budget, {@link serializeQueryParamsForUrl}
+ * returns null so that they are routed through the multipart body instead, keeping
  * oversized payloads out of the URL where HTTP intermediaries (nginx, AWS ALB,
  * CloudFront) reject them with HTTP 414 or 400. The threshold leaves ample
  * headroom under common request line limits.
@@ -13,14 +13,16 @@ const SAFE_PART_NAME = /^[A-Za-z0-9_.-]+$/;
 export const MAX_URL_BIND_PARAM_LENGTH = 4096;
 
 /**
- * Returns true when the URL-encoded length of the `param_*` entries produced
- * from {@link query_params} exceeds {@link MAX_URL_BIND_PARAM_LENGTH}.
- * Used to decide whether query parameters should be auto-promoted into a
- * multipart/form-data body instead of the URL query string.
+ * Early-return variant of the `param_*` serialization performed by
+ * {@link toSearchParams}: serializes {@link query_params} into `param_*`
+ * URL entries, returning them so the caller can reuse the result without
+ * serializing the params a second time, or returns null as soon as the
+ * URL-encoded length exceeds {@link MAX_URL_BIND_PARAM_LENGTH} — in which
+ * case the params should be sent as a multipart/form-data body instead.
  */
-export function queryParamsExceedUrlThreshold(
+export function serializeQueryParamsForUrl(
   query_params: Record<string, unknown>,
-): boolean {
+): [string, string][] | null {
   const entries: [string, string][] = [];
   // Raw length is a lower bound on the encoded length, so large payloads
   // short-circuit without materializing the encoded string.
@@ -30,14 +32,17 @@ export function queryParamsExceedUrlThreshold(
     const formatted = formatQueryParams({ value });
     rawLength += name.length + formatted.length;
     if (rawLength > MAX_URL_BIND_PARAM_LENGTH) {
-      return true;
+      return null;
     }
     entries.push([name, formatted]);
   }
   // Measure the exact encoded length, accounting for percent-encoding expansion.
-  return (
+  if (
     new URLSearchParams(entries).toString().length > MAX_URL_BIND_PARAM_LENGTH
-  );
+  ) {
+    return null;
+  }
+  return entries;
 }
 
 /**
