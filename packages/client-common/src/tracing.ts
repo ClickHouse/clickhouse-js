@@ -27,9 +27,11 @@ import { ClickHouseError } from "./error";
  * {@link ClickHouseSpan.recordException}), and calls
  * {@link ClickHouseSpan.end} exactly once. For `command`, `exec`, `insert`,
  * and `ping`, the span ends when the operation settles (regardless of
- * outcome); for `query`, the span is handed over to the `ResultSet`, which
- * tracks the streaming progress and ends the span when the response stream
- * is fully consumed, closed, or fails.
+ * outcome). For `query`, two spans are emitted: the `clickhouse.query` span
+ * ends as soon as the HTTP response headers are received; a child
+ * `clickhouse.query.stream` span is then handed to the `ResultSet`, which
+ * tracks the streaming progress and ends it when the response stream is fully
+ * consumed, closed, or fails.
  *
  * Calls are inlined directly into the client's hot path - there is no
  * defensive wrapper around them. Any exception thrown by a tracer or span
@@ -134,6 +136,12 @@ export type ClickHouseSpanAttributes = Record<
  *  Exposed so that adapters and tests can match on them. */
 export const ClickHouseSpanNames = {
   query: "clickhouse.query",
+  /** A child of {@link ClickHouseSpanNames.query} that covers the lifetime
+   *  of the `ResultSet` stream - from the first byte read to full
+   *  consumption, cancellation, or failure.  Ends with
+   *  `clickhouse.response.decoded_bytes` and (for row-streaming paths)
+   *  `db.response.returned_rows`. */
+  query_stream: "clickhouse.query.stream",
   command: "clickhouse.command",
   exec: "clickhouse.exec",
   insert: "clickhouse.insert",
@@ -172,7 +180,9 @@ export function recordSpanError(span: ClickHouseSpan, err: unknown): void {
   };
   if (error instanceof ClickHouseError) {
     const code = Number(error.code);
-    attributes["clickhouse.error.code"] = Number.isNaN(code) ? error.code : code;
+    attributes["clickhouse.error.code"] = Number.isNaN(code)
+      ? error.code
+      : code;
   }
   span.setAttributes(attributes);
   span.recordException(error);

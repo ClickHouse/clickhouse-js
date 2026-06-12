@@ -23,6 +23,13 @@ import { getAsText } from "./utils";
 
 const NEWLINE = 0x0a as const;
 
+/** The WHATWG Streams spec includes a `cancel` callback on `Transformer`, but
+ *  TypeScript's DOM lib does not yet declare it.  This local extension adds it
+ *  so we can detect source-stream aborts and consumer-side cancellations. */
+type TransformerWithCancel<I = any, O = any> = Transformer<I, O> & {
+  cancel?: (reason?: unknown) => void | PromiseLike<void>;
+};
+
 export class ResultSet<
   Format extends DataFormat | unknown,
 > implements BaseResultSet<ReadableStream<Row[]>, Format> {
@@ -33,9 +40,9 @@ export class ResultSet<
   private readonly jsonHandling: JSONHandling;
   private _stream: ReadableStream;
   private readonly format: Format;
-  /** The `clickhouse.query` span owned by this result set (if the client was
-   *  configured with a tracer); it ends via {@link finishSpan} when the
-   *  response stream is fully consumed, closed, or fails. */
+  /** The `clickhouse.query.stream` span owned by this result set (if the
+   *  client was configured with a tracer); it ends via {@link finishSpan}
+   *  when the response stream is fully consumed, closed, or fails. */
   private readonly span: ClickHouseSpan | undefined;
   /** Decoded (decompressed) bytes received from the server so far. */
   private span_bytes = 0;
@@ -134,7 +141,7 @@ export class ResultSet<
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
     const decoder = new TextDecoder("utf-8");
-    const transform = new TransformStream({
+    const transformerOptions: TransformerWithCancel<Uint8Array, Row[]> = {
       start() {
         //
       },
@@ -178,6 +185,7 @@ export class ResultSet<
               const err = extractErrorAtTheEndOfChunk(chunk, exceptionTag);
               this.finishSpan(err);
               controller.error(err);
+              return; // stop further processing once the stream is errored
             }
 
             // using the incomplete chunks from the previous iterations
@@ -224,7 +232,14 @@ export class ResultSet<
         // stream is fully consumed - finalize the query span.
         this.finishSpan();
       },
-    });
+      cancel: (reason?: unknown) => {
+        // Called when the readable side is cancelled by the consumer, or
+        // when the writable side is aborted (e.g. source stream network
+        // error).  Either way, the span must be properly ended.
+        this.finishSpan(reason);
+      },
+    };
+    const transform = new TransformStream(transformerOptions);
 
     const pipeline = this._stream.pipeThrough(transform, {
       preventClose: false,

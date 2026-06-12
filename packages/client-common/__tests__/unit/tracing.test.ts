@@ -135,42 +135,53 @@ describe("tracer", () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);
     const rs = await client.query({ query: "SELECT 1", query_id: "caller-q" });
-    expect(spans).toHaveLength(1);
-    const [span] = spans;
-    expect(span.name).toBe(ClickHouseSpanNames.query);
-    expect(span.options?.kind).toBe(ClickHouseSpanKind.CLIENT);
-    expect(span.initialAttributes["db.system.name"]).toBe("clickhouse");
-    expect(span.initialAttributes["db.namespace"]).toBe("my_db");
-    expect(span.initialAttributes["server.address"]).toBe("localhost");
-    expect(span.initialAttributes["server.port"]).toBe(8123);
-    expect(span.initialAttributes["clickhouse.application"]).toBe("my_app");
-    expect(span.initialAttributes["clickhouse.response.format"]).toBe("JSON");
-    expect(span.initialAttributes["clickhouse.request.query_id"]).toBe(
+    // query() emits two spans: clickhouse.query (HTTP request) and
+    // clickhouse.query.stream (ResultSet consumption).
+    expect(spans).toHaveLength(2);
+    const [querySpan, streamSpan] = spans;
+    expect(querySpan.name).toBe(ClickHouseSpanNames.query);
+    expect(querySpan.options?.kind).toBe(ClickHouseSpanKind.CLIENT);
+    expect(querySpan.initialAttributes["db.system.name"]).toBe("clickhouse");
+    expect(querySpan.initialAttributes["db.namespace"]).toBe("my_db");
+    expect(querySpan.initialAttributes["server.address"]).toBe("localhost");
+    expect(querySpan.initialAttributes["server.port"]).toBe(8123);
+    expect(querySpan.initialAttributes["clickhouse.application"]).toBe(
+      "my_app",
+    );
+    expect(querySpan.initialAttributes["clickhouse.response.format"]).toBe(
+      "JSON",
+    );
+    expect(querySpan.initialAttributes["clickhouse.request.query_id"]).toBe(
       "caller-q",
     );
-    expect(span.attributes["clickhouse.request.query_id"]).toBe("q-1");
+    expect(querySpan.attributes["clickhouse.request.query_id"]).toBe("q-1");
     // Per the OTEL spec, the status is left unset on success.
-    expect(span.status).toBeUndefined();
-    expect(span.exception).toBeUndefined();
-    // The span stays open until the ResultSet is consumed or closed.
-    expect(span.ended).toBe(false);
+    expect(querySpan.status).toBeUndefined();
+    expect(querySpan.exception).toBeUndefined();
+    // The query span ends as soon as the HTTP response headers are received.
+    expect(querySpan.ended).toBe(true);
+    // The stream span stays open until the ResultSet is consumed or closed.
+    expect(streamSpan.name).toBe(ClickHouseSpanNames.query_stream);
+    expect(streamSpan.ended).toBe(false);
     (rs as any).consume();
-    expect(span.ended).toBe(true);
+    expect(streamSpan.ended).toBe(true);
   });
 
-  it("hands the raw query span to the ResultSet without ending it", async () => {
+  it("hands the stream span to the ResultSet without ending it", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);
     const rs = await client.query({ query: "SELECT 1" });
-    const [span] = spans;
-    // The ResultSet receives the span itself and owns its lifetime.
-    expect((rs as any).span).toBe(span);
-    expect(span.ended).toBe(false);
+    const [querySpan, streamSpan] = spans;
+    // The query span ends immediately after the HTTP response is received.
+    expect(querySpan.ended).toBe(true);
+    // The stream span is passed to the ResultSet and owns its lifetime.
+    expect((rs as any).span).toBe(streamSpan);
+    expect(streamSpan.ended).toBe(false);
     (rs as any).consume();
-    expect(span.ended).toBe(true);
+    expect(streamSpan.ended).toBe(true);
   });
 
-  it("records the error on the query span and ends it when makeResultSet throws", async () => {
+  it("records the error on the stream span and ends it when makeResultSet throws", async () => {
     const { tracer, spans } = createRecordingTracer();
     const connection: MockConnection = {
       query: makeQuery(),
@@ -199,10 +210,15 @@ describe("tracer", () => {
     await expect(client.query({ query: "SELECT 1" })).rejects.toThrow(
       "make_result_set failed",
     );
-    const [span] = spans;
-    expect(span.exception?.message).toBe("make_result_set failed");
-    expect(span.status?.code).toBe(ClickHouseSpanStatusCode.ERROR);
-    expect(span.ended).toBe(true);
+    // The query span ends normally (HTTP response was received).
+    expect(spans[0].name).toBe(ClickHouseSpanNames.query);
+    expect(spans[0].ended).toBe(true);
+    expect(spans[0].exception).toBeUndefined();
+    // The stream span captures the makeResultSet error.
+    expect(spans[1].name).toBe(ClickHouseSpanNames.query_stream);
+    expect(spans[1].exception?.message).toBe("make_result_set failed");
+    expect(spans[1].status?.code).toBe(ClickHouseSpanStatusCode.ERROR);
+    expect(spans[1].ended).toBe(true);
   });
 
   it("emits the operation span via startActiveSpan", async () => {
@@ -220,6 +236,8 @@ describe("tracer", () => {
     expect(calls).toEqual([
       "start:clickhouse.query",
       "returned:clickhouse.query",
+      "start:clickhouse.query.stream",
+      "returned:clickhouse.query.stream",
     ]);
   });
 
@@ -372,7 +390,7 @@ describe("tracer", () => {
     });
     await expect(client.query({ query: "SELECT 1" })).rejects.toThrow(failure);
     expect(spans[0].attributes["error.type"]).toBe("ClickHouseError");
-    expect(spans[0].attributes["clickhouse.error.code"]).toBe("62");
+    expect(spans[0].attributes["clickhouse.error.code"]).toBe(62);
     expect(spans[0].status?.code).toBe(ClickHouseSpanStatusCode.ERROR);
   });
 

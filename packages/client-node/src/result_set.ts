@@ -80,9 +80,9 @@ export class ResultSet<
    */
   private _stream: Stream.Readable;
   private readonly format: Format;
-  /** The `clickhouse.query` span owned by this result set (if the client was
-   *  configured with a tracer); it ends via {@link finishSpan} when the
-   *  response stream is fully consumed, closed, or fails. */
+  /** The `clickhouse.query.stream` span owned by this result set (if the
+   *  client was configured with a tracer); it ends via {@link finishSpan}
+   *  when the response stream is fully consumed, closed, or fails. */
   private readonly span: ClickHouseSpan | undefined;
   /** Decoded (decompressed) bytes received from the server so far. */
   private span_bytes = 0;

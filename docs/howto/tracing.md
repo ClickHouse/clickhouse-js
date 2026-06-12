@@ -132,25 +132,32 @@ before talking to the server), the client invokes
    `span.setStatus({ code: ClickHouseSpanStatusCode.ERROR, message })`.
    Non-`Error` throwables are normalized to `Error` before `recordException`.
 5. `span.end()` - exactly once. For `command`/`exec`/`insert`/`ping`, in a
-   `finally` block when the method settles; for `query`, when the returned
-   `ResultSet` is fully consumed, closed, or fails (see the stream lifecycle
-   note below).
+   `finally` block when the method settles; for `query`, see the stream
+   lifecycle note below.
 
 Tracer calls are inlined directly on the client's hot path and are **not**
 wrapped in defensive try/catch - if your tracer or span throws, the exception
 propagates to the caller of `query` / `command` / `exec` / `insert` /
 `ping`. Make sure your tracer implementation doesn't throw.
 
-> **Stream lifecycle:** for `query`, the span stays open for the entire
-> `ResultSet` lifetime, mirroring clickhouse-rs (where the span lives as long
-> as the cursor). The span ends - with the final response metrics
-> `clickhouse.response.decoded_bytes` and, for row-streaming consumption,
-> `db.response.returned_rows` - when the result set is fully consumed
-> (`text()`/`json()` resolve, or the `stream()` is read to completion),
-> closed via `close()`, or fails (the streaming error is recorded on the
-> span). If the `ResultSet` is never consumed nor closed, the span is never
-> ended. For `command`/`exec`/`insert`/`ping`, the span ends when the method
-> returns.
+> **Stream lifecycle:** `query()` emits **two spans**.
+>
+> - `clickhouse.query` — covers the HTTP request: starts when `query()` is
+>   called and ends as soon as the response headers arrive (regardless of how
+>   much data is in the body).
+> - `clickhouse.query.stream` — a child span that covers the `ResultSet`
+>   lifetime: starts immediately after the response headers are received and
+>   ends when the result set is fully consumed (`text()`/`json()` resolve, or
+>   the `stream()` is read to completion), closed via `close()`, or fails
+>   (the error is recorded on this span). When it ends it carries the final
+>   `clickhouse.response.decoded_bytes` and, for row-streaming consumption,
+>   `db.response.returned_rows` metrics.
+>
+> This split makes it easy to distinguish the original request round-trip from
+> a stream that may never end (e.g. tailing a live materialized view). If the
+> `ResultSet` is never consumed nor closed, the `clickhouse.query.stream` span
+> is never ended. For `command`/`exec`/`insert`/`ping`, a single span ends
+> when the method returns.
 
 ## Recording-only tracer for tests / debugging
 

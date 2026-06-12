@@ -148,11 +148,11 @@ export type MakeResultSet<Stream> = <
   log_error: (err: Error) => void,
   response_headers: ResponseHeaders,
   jsonHandling: JSONHandling,
-  /** When the client was configured with a {@link ClickHouseTracer}, the
-   *  `clickhouse.query` span stays open for the entire `ResultSet` lifetime.
-   *  The result set tracks its own streaming progress (decoded bytes/rows)
-   *  and must record the final response metrics on the span and end it when
-   *  the stream is fully consumed, closed, or fails. */
+  /** When the client was configured with a {@link ClickHouseTracer}, a
+   *  `clickhouse.query.stream` child span is created and passed here.  The
+   *  result set tracks its own streaming progress (decoded bytes/rows) and
+   *  must record the final response metrics on the span and end it when the
+   *  stream is fully consumed, closed, or fails. */
   span?: ClickHouseSpan,
 ) => ResultSet;
 
