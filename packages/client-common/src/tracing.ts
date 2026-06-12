@@ -171,7 +171,8 @@ export function recordSpanError(span: ClickHouseSpan, err: unknown): void {
     "error.type": error.constructor.name,
   };
   if (error instanceof ClickHouseError) {
-    attributes["clickhouse.error.code"] = error.code;
+    const code = Number(error.code);
+    attributes["clickhouse.error.code"] = Number.isNaN(code) ? error.code : code;
   }
   span.setAttributes(attributes);
   span.recordException(error);
