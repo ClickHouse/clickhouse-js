@@ -243,5 +243,49 @@ describe("Node.js Connection compression", () => {
         (calledWith.headers as Record<string, string>)["Content-Encoding"],
       ).toBe("gzip");
     });
+
+    it('sends a zstd-compressed request if compress_request: "zstd"', async () => {
+      const adapter = buildHttpConnection({
+        compression: {
+          decompress_response: false,
+          compress_request: "zstd",
+        },
+      });
+
+      const values = "abc".repeat(1_000);
+
+      let chunks = Buffer.alloc(0);
+      let finalResult: Buffer | undefined = undefined;
+      const request = new Stream.Writable({
+        write(chunk, encoding, next) {
+          chunks = Buffer.concat([chunks, chunk]);
+          next();
+        },
+        final() {
+          Zlib.zstdDecompress(chunks, (_err, result) => {
+            finalResult = result;
+          });
+        },
+      }) as ClientRequest;
+      httpRequestStub.mockReturnValue(request);
+
+      void adapter.insert({
+        query: "INSERT INTO insert_compression_table",
+        values,
+      });
+
+      // trigger stream pipeline
+      await sleep(0);
+      request.emit("socket", socketStub);
+      await sleep(100);
+
+      expect(finalResult!.toString("utf8")).toEqual(values);
+      expect(httpRequestStub).toHaveBeenCalledTimes(1);
+      const calledWith =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1];
+      expect(
+        (calledWith.headers as Record<string, string>)["Content-Encoding"],
+      ).toBe("zstd");
+    });
   });
 });

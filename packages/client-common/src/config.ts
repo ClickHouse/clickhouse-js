@@ -1,5 +1,9 @@
 import type { InsertValues, ResponseHeaders } from "./clickhouse_types";
-import type { Connection, ConnectionParams } from "./connection";
+import type {
+  Connection,
+  ConnectionParams,
+  RequestCompressionMethod,
+} from "./connection";
 import type { DataFormat } from "./data_formatter";
 import type { Logger } from "./logger";
 import { ClickHouseLogLevel, LogWriter } from "./logger";
@@ -36,9 +40,11 @@ export interface BaseClickHouseClientConfigOptions {
      *  <p><b>Warning</b>: Response compression can't be enabled for a user with readonly=1, as ClickHouse will not allow settings modifications for such user.</p>
      *  @default false */
     response?: boolean;
-    /** `request: true` enabled compression on the client request body.
+    /** Enables compression of the outgoing request (insert) body.
+     *  `true` uses `gzip`; the codec can also be selected explicitly with `"gzip"` or `"zstd"`.
+     *  `"zstd"` requires Node.js >= 22.15.0 and is only supported by `@clickhouse/client` (Node.js).
      *  @default false */
-    request?: boolean;
+    request?: boolean | RequestCompressionMethod;
   };
   /** The name of the user on whose behalf requests are made.
    *  Should not be set if {@link access_token} is provided.

@@ -168,6 +168,7 @@ export { LogWriter, DefaultLogger, type LogWriterParams } from "./logger";
 export { getCurrentStackTrace, enhanceStackTrace } from "./error";
 export type {
   CompressionSettings,
+  RequestCompressionMethod,
   Connection,
   ConnectionParams,
   ConnInsertResult,

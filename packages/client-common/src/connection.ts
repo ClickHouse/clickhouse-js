@@ -29,9 +29,16 @@ export interface ConnectionParams {
   use_multipart_params_auto?: boolean;
 }
 
+/** Compression codec for the outgoing request (insert) body.
+ *  `zstd` requires Node.js >= 22.15.0 (zstd support in the built-in `zlib` module)
+ *  and is only available in `@clickhouse/client` (Node.js). */
+export type RequestCompressionMethod = "gzip" | "zstd";
+
 export interface CompressionSettings {
   decompress_response: boolean;
-  compress_request: boolean;
+  /** `false` disables request compression; `true` is treated as `gzip`
+   *  (kept for backwards compatibility). */
+  compress_request: boolean | RequestCompressionMethod;
 }
 
 export interface ConnBaseQueryParams {

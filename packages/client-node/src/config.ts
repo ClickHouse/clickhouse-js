@@ -13,6 +13,7 @@ import {
 import type http from "http";
 import type https from "node:https";
 import type Stream from "stream";
+import Zlib from "zlib";
 import { NodeConnectionFactory, type TLSParams } from "./connection";
 import { ResultSet } from "./result_set";
 import { NodeValuesEncoder } from "./utils";
@@ -127,6 +128,16 @@ export const NodeConfigImpl: Required<
     nodeConfig: NodeClickHouseClientConfigOptions,
     params: ConnectionParams,
   ) => {
+    if (
+      params.compression.compress_request === "zstd" &&
+      typeof Zlib.createZstdCompress !== "function"
+    ) {
+      throw new Error(
+        "zstd request compression requires Node.js >= 22.15.0, where zstd " +
+          "support was added to the built-in zlib module. Upgrade Node.js, or " +
+          "use gzip request compression (`compression: { request: true }`) instead.",
+      );
+    }
     let tls: TLSParams | undefined = undefined;
     if (nodeConfig.tls !== undefined) {
       if ("cert" in nodeConfig.tls && "key" in nodeConfig.tls) {
