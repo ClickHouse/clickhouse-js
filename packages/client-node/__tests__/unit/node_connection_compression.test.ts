@@ -12,6 +12,7 @@ import {
   socketStub,
   stubClientRequest,
 } from "../utils/http_stubs";
+import { validateCompressionSupport } from "../../src/connection/compression";
 
 const zstdSupported = typeof Zlib.createZstdCompress === "function";
 
@@ -298,15 +299,25 @@ describe("Node.js Connection compression", () => {
         const values = "abc".repeat(1_000);
 
         let chunks = Buffer.alloc(0);
-        let finalResult: Buffer | undefined = undefined;
+        let resolveResult!: (value: Buffer) => void;
+        let rejectResult!: (reason: Error) => void;
+        const decompressed = new Promise<Buffer>((resolve, reject) => {
+          resolveResult = resolve;
+          rejectResult = reject;
+        });
         const request = new Stream.Writable({
           write(chunk, encoding, next) {
             chunks = Buffer.concat([chunks, chunk]);
             next();
           },
-          final() {
-            Zlib.zstdDecompress(chunks, (_err, result) => {
-              finalResult = result;
+          final(callback) {
+            Zlib.zstdDecompress(chunks, (err, result) => {
+              callback(err);
+              if (err) {
+                rejectResult(err);
+              } else {
+                resolveResult(result);
+              }
             });
           },
         }) as ClientRequest;
@@ -320,9 +331,9 @@ describe("Node.js Connection compression", () => {
         // trigger stream pipeline
         await sleep(0);
         request.emit("socket", socketStub);
-        await sleep(100);
 
-        expect(finalResult!.toString("utf8")).toEqual(values);
+        const finalResult = await decompressed;
+        expect(finalResult.toString("utf8")).toEqual(values);
         expect(httpRequestStub).toHaveBeenCalledTimes(1);
         const calledWith =
           httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1];
@@ -331,5 +342,67 @@ describe("Node.js Connection compression", () => {
         ).toBe("zstd");
       },
     );
+  });
+});
+
+describe("validateCompressionSupport", () => {
+  function withMissingZlibFn(
+    name: "createZstdCompress" | "createZstdDecompress",
+    fn: () => void,
+  ) {
+    const descriptor = Object.getOwnPropertyDescriptor(Zlib, name)!;
+    Object.defineProperty(Zlib, name, {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      fn();
+    } finally {
+      Object.defineProperty(Zlib, name, descriptor);
+    }
+  }
+
+  it("does not throw for boolean or gzip settings", () => {
+    expect(() =>
+      validateCompressionSupport({
+        compress_request: false,
+        decompress_response: false,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateCompressionSupport({
+        compress_request: true,
+        decompress_response: true,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateCompressionSupport({
+        compress_request: "gzip",
+        decompress_response: "gzip",
+      }),
+    ).not.toThrow();
+  });
+
+  it("throws when zstd request compression is configured but unsupported", () => {
+    withMissingZlibFn("createZstdCompress", () => {
+      expect(() =>
+        validateCompressionSupport({
+          compress_request: "zstd",
+          decompress_response: false,
+        }),
+      ).toThrow(/Node\.js >= 22\.15/);
+    });
+  });
+
+  it("throws when zstd response decompression is configured but unsupported", () => {
+    withMissingZlibFn("createZstdDecompress", () => {
+      expect(() =>
+        validateCompressionSupport({
+          compress_request: false,
+          decompress_response: "zstd",
+        }),
+      ).toThrow(/Node\.js >= 22\.15/);
+    });
   });
 });
