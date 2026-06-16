@@ -3,6 +3,7 @@ import type {
   Connection,
   ConnectionParams,
   RequestCompressionMethod,
+  ResponseCompressionMethod,
 } from "./connection";
 import type { DataFormat } from "./data_formatter";
 import type { Logger } from "./logger";
@@ -35,11 +36,13 @@ export interface BaseClickHouseClientConfigOptions {
   max_open_connections?: number;
   /** Request and response compression settings. */
   compression?: {
-    /** `response: true` instructs ClickHouse server to respond with compressed response body. <br/>
-     *  This will add `Accept-Encoding: gzip` header in the request and `enable_http_compression=1` ClickHouse HTTP setting.
+    /** Instructs the ClickHouse server to respond with a compressed response body.
+     *  `true` requests `gzip`; the codec can also be selected explicitly with `"gzip"` or `"zstd"`.
+     *  This adds the matching `Accept-Encoding` header and the `enable_http_compression=1` ClickHouse HTTP setting.
+     *  `"zstd"` requires Node.js >= 22.15.0 and is only honored by `@clickhouse/client` (Node.js).
      *  <p><b>Warning</b>: Response compression can't be enabled for a user with readonly=1, as ClickHouse will not allow settings modifications for such user.</p>
      *  @default false */
-    response?: boolean;
+    response?: boolean | ResponseCompressionMethod;
     /** Enables compression of the outgoing request (insert) body.
      *  `true` uses `gzip`; the codec can also be selected explicitly with `"gzip"` or `"zstd"`.
      *  `"zstd"` requires Node.js >= 22.15.0 and is only supported by `@clickhouse/client` (Node.js).

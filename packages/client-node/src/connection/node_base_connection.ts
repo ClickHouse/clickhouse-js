@@ -225,7 +225,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     const { controller, controllerCleanup } = this.getAbortController(params);
     // allows enforcing the compression via the settings even if the client instance has it disabled
     const enableResponseCompression =
-      clickhouse_settings.enable_http_compression === 1;
+      clickhouse_settings.enable_http_compression === 1
+        ? this.params.compression.decompress_response === "zstd"
+          ? "zstd"
+          : "gzip"
+        : false;
 
     let body: string = params.query;
     const headers = this.buildRequestHeaders(params);
@@ -550,7 +554,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       params.op === "Exec"
         ? // allows disabling stream decompression for the `Exec` operation only
           (params.decompress_response_stream ??
-          this.params.compression.decompress_response)
+          Boolean(this.params.compression.decompress_response))
         : // there is nothing useful in the response stream for the `Command` operation,
           // and it is immediately destroyed; never decompress it
           false;

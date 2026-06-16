@@ -197,6 +197,42 @@ describe("Node.js Connection compression", () => {
         }),
       );
     });
+
+    it('decompresses a zstd response and sends Accept-Encoding: zstd if response: "zstd"', async () => {
+      const request = stubClientRequest();
+      httpRequestStub.mockReturnValue(request);
+
+      const adapter = buildHttpConnection({
+        compression: {
+          decompress_response: "zstd",
+          compress_request: false,
+        },
+      });
+
+      const selectPromise = adapter.query({
+        query: "SELECT * FROM system.numbers LIMIT 5",
+      });
+
+      const responseBody = "foobar";
+      await sleep(0);
+      request.emit(
+        "response",
+        buildIncomingMessage({
+          body: Zlib.zstdCompressSync(Buffer.from(responseBody)),
+          headers: { "content-encoding": "zstd" },
+        }),
+      );
+
+      const queryResult = await selectPromise;
+      await assertConnQueryResult(queryResult, responseBody);
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1);
+      const calledWith =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1];
+      expect(
+        (calledWith.headers as Record<string, string>)["Accept-Encoding"],
+      ).toBe("zstd");
+    });
   });
 
   describe("request compression", () => {

@@ -34,8 +34,15 @@ export interface ConnectionParams {
  *  and is only available in `@clickhouse/client` (Node.js). */
 export type RequestCompressionMethod = "gzip" | "zstd";
 
+/** Compression codec for the response (read) body that the ClickHouse server
+ *  is asked to use via `Accept-Encoding`. `zstd` requires Node.js >= 22.15.0
+ *  and is only honored by `@clickhouse/client` (Node.js). */
+export type ResponseCompressionMethod = "gzip" | "zstd";
+
 export interface CompressionSettings {
-  decompress_response: boolean;
+  /** `false` disables response decompression; `true` is treated as `gzip`
+   *  (kept for backwards compatibility). */
+  decompress_response: boolean | ResponseCompressionMethod;
   /** `false` disables request compression; `true` is treated as `gzip`
    *  (kept for backwards compatibility). */
   compress_request: boolean | RequestCompressionMethod;

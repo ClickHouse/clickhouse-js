@@ -3,6 +3,7 @@
 ## New features
 
 - (Node.js) The `compression.request` client option now accepts an explicit codec in addition to a boolean: `true` (or `"gzip"`) keeps gzip; `"zstd"` enables zstd compression of the outgoing request (insert) body. zstd typically yields a similar-or-better ratio than gzip at noticeably lower CPU cost (gzip/DEFLATE is comparatively CPU-heavy and decompressed single-threaded by the ClickHouse server). It uses the built-in `zlib` zstd support and therefore requires **Node.js >= 22.15.0** (`@clickhouse/client` throws a clear error at client creation otherwise). `compression: { request: true }` remains gzip for backwards compatibility. Supported only by `@clickhouse/client` (Node.js); `@clickhouse/client-web` is unaffected.
+- (Node.js) The `compression.response` client option likewise accepts an explicit codec: `true` (or `"gzip"`) keeps gzip; `"zstd"` requests a zstd-compressed response body via `Accept-Encoding: zstd` and decompresses it with the built-in `zlib` zstd support (Node.js >= 22.15.0). Decompression is driven by the server's actual `Content-Encoding`, so it degrades gracefully if the server replies with gzip or no compression. `@clickhouse/client-web` relies on the browser to negotiate and decompress responses and is unaffected.
 
 # 1.21.0
 

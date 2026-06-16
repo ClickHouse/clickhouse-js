@@ -169,6 +169,7 @@ export { getCurrentStackTrace, enhanceStackTrace } from "./error";
 export type {
   CompressionSettings,
   RequestCompressionMethod,
+  ResponseCompressionMethod,
   Connection,
   ConnectionParams,
   ConnInsertResult,

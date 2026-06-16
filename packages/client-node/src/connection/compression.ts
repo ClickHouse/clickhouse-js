@@ -15,22 +15,20 @@ export function decompressResponse(
 ): DecompressResponseResult {
   const encoding = response.headers["content-encoding"];
 
-  if (encoding === "gzip") {
+  if (encoding === "gzip" || encoding === "zstd") {
+    const decompress =
+      encoding === "zstd" ? Zlib.createZstdDecompress() : Zlib.createGunzip();
     return {
-      response: Stream.pipeline(
-        response,
-        Zlib.createGunzip(),
-        function pipelineCb(err) {
-          if (err) {
-            if (log_level <= ClickHouseLogLevel.ERROR) {
-              log_writer.error({
-                message: "An error occurred while decompressing the response",
-                err,
-              });
-            }
+      response: Stream.pipeline(response, decompress, function pipelineCb(err) {
+        if (err) {
+          if (log_level <= ClickHouseLogLevel.ERROR) {
+            log_writer.error({
+              message: "An error occurred while decompressing the response",
+              err,
+            });
           }
-        },
-      ),
+        }
+      }),
     };
   } else if (encoding !== undefined) {
     return {
