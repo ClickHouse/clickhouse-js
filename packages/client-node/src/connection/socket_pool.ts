@@ -1,6 +1,7 @@
 import Http from "http";
 import Stream from "stream";
 import type * as net from "net";
+import Zlib from "zlib";
 import {
   enhanceStackTrace,
   getCurrentStackTrace,
@@ -17,11 +18,7 @@ import {
   type ResponseCompressionMethod,
 } from "@clickhouse/client-common";
 import { getAsText, isStream } from "../utils";
-import {
-  createRequestCompressor,
-  decompressResponse,
-  isDecompressionError,
-} from "./compression";
+import { decompressResponse, isDecompressionError } from "./compression";
 import { type NodeConnectionParams } from "./node_base_connection";
 
 export interface RequestParams {
@@ -394,9 +391,10 @@ export class SocketPool {
         };
 
         if (params.enable_request_compression) {
-          const compressor = createRequestCompressor(
-            params.enable_request_compression,
-          );
+          const compressor =
+            params.enable_request_compression === "zstd"
+              ? Zlib.createZstdCompress()
+              : Zlib.createGzip();
           Stream.pipeline(bodyStream, compressor, request, callback);
         } else {
           Stream.pipeline(bodyStream, request, callback);

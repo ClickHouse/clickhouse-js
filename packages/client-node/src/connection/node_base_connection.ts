@@ -23,7 +23,6 @@ import {
   transformUrl,
   withHttpSettings,
   ClickHouseLogLevel,
-  type ResponseCompressionMethod,
 } from "@clickhouse/client-common";
 import { type ConnPingParams } from "@clickhouse/client-common";
 import crypto from "crypto";
@@ -224,15 +223,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       role: params.role,
     });
     const { controller, controllerCleanup } = this.getAbortController(params);
-    // allows enforcing the compression via the settings even if the client instance has it disabled;
-    // the codec defaults to gzip and is zstd only when explicitly configured on the client
-    let enableResponseCompression: false | ResponseCompressionMethod = false;
-    if (clickhouse_settings.enable_http_compression === 1) {
-      enableResponseCompression =
-        this.params.compression.decompress_response === "zstd"
+    // allows enforcing the compression via the settings even if the client instance has it disabled
+    const enableResponseCompression =
+      clickhouse_settings.enable_http_compression === 1
+        ? this.params.compression.decompress_response === "zstd"
           ? "zstd"
-          : "gzip";
-    }
+          : "gzip"
+        : false;
 
     let body: string = params.query;
     const headers = this.buildRequestHeaders(params);

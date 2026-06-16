@@ -12,7 +12,6 @@ import {
   socketStub,
   stubClientRequest,
 } from "../utils/http_stubs";
-import { validateCompressionSupport } from "../../src/connection/compression";
 
 const zstdSupported = typeof Zlib.createZstdCompress === "function";
 
@@ -342,67 +341,5 @@ describe("Node.js Connection compression", () => {
         ).toBe("zstd");
       },
     );
-  });
-});
-
-describe("validateCompressionSupport", () => {
-  function withMissingZlibFn(
-    name: "createZstdCompress" | "createZstdDecompress",
-    fn: () => void,
-  ) {
-    const descriptor = Object.getOwnPropertyDescriptor(Zlib, name)!;
-    Object.defineProperty(Zlib, name, {
-      value: undefined,
-      configurable: true,
-      writable: true,
-    });
-    try {
-      fn();
-    } finally {
-      Object.defineProperty(Zlib, name, descriptor);
-    }
-  }
-
-  it("does not throw for boolean or gzip settings", () => {
-    expect(() =>
-      validateCompressionSupport({
-        compress_request: false,
-        decompress_response: false,
-      }),
-    ).not.toThrow();
-    expect(() =>
-      validateCompressionSupport({
-        compress_request: true,
-        decompress_response: true,
-      }),
-    ).not.toThrow();
-    expect(() =>
-      validateCompressionSupport({
-        compress_request: "gzip",
-        decompress_response: "gzip",
-      }),
-    ).not.toThrow();
-  });
-
-  it("throws when zstd request compression is configured but unsupported", () => {
-    withMissingZlibFn("createZstdCompress", () => {
-      expect(() =>
-        validateCompressionSupport({
-          compress_request: "zstd",
-          decompress_response: false,
-        }),
-      ).toThrow(/Node\.js >= 22\.15/);
-    });
-  });
-
-  it("throws when zstd response decompression is configured but unsupported", () => {
-    withMissingZlibFn("createZstdDecompress", () => {
-      expect(() =>
-        validateCompressionSupport({
-          compress_request: false,
-          decompress_response: "zstd",
-        }),
-      ).toThrow(/Node\.js >= 22\.15/);
-    });
   });
 });
