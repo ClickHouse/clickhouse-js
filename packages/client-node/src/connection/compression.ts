@@ -15,7 +15,10 @@ export function decompressResponse(
 ): DecompressResponseResult {
   const encoding = response.headers["content-encoding"];
 
-  if (encoding === "gzip" || encoding === "zstd") {
+  if (
+    encoding === "gzip" ||
+    (encoding === "zstd" && typeof Zlib.createZstdDecompress === "function")
+  ) {
     const decompress =
       encoding === "zstd" ? Zlib.createZstdDecompress() : Zlib.createGunzip();
     return {

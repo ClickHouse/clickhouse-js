@@ -13,7 +13,11 @@ import {
   stubClientRequest,
 } from "../utils/http_stubs";
 
-const zstdSupported = typeof Zlib.createZstdCompress === "function";
+const zstdSupported =
+  typeof Zlib.createZstdCompress === "function" &&
+  typeof Zlib.createZstdDecompress === "function" &&
+  typeof Zlib.zstdCompressSync === "function" &&
+  typeof Zlib.zstdDecompress === "function";
 
 beforeEach(() => {
   vi.clearAllMocks();
