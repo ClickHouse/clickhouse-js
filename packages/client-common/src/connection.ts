@@ -31,11 +31,8 @@ export interface ConnectionParams {
 
 /** Compression codecs supported for the HTTP request (insert) and response
  *  (read) bodies. `zstd` requires Node.js >= 22.15.0 (zstd support in the
- *  built-in `zlib` module) and is only honored by `@clickhouse/client` (Node.js).
- *  Single source of truth for both the {@link CompressionMethod} type and runtime
- *  validation. */
-export const COMPRESSION_METHODS = ["gzip", "zstd"] as const;
-export type CompressionMethod = (typeof COMPRESSION_METHODS)[number];
+ *  built-in `zlib` module) and is only honored by `@clickhouse/client` (Node.js). */
+export type CompressionMethod = "gzip" | "zstd";
 
 export interface CompressionSettings {
   /** `false` disables response decompression; `true` is treated as `gzip`

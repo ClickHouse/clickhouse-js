@@ -9,7 +9,6 @@ import {
   type BaseClickHouseClientConfigOptions,
   type CompressionMethod,
   type ConnectionParams,
-  COMPRESSION_METHODS,
   numberConfigURLValue,
 } from "@clickhouse/client-common";
 import type http from "http";
@@ -98,7 +97,7 @@ function unknownCodecError(
 ): Error {
   return new Error(
     `Unknown ${direction} compression codec "${value}". ` +
-      `Supported codecs: ${COMPRESSION_METHODS.join(", ")}.`,
+      `Supported codecs: gzip, zstd.`,
   );
 }
 
@@ -120,11 +119,12 @@ function ensureRequestCodecSupported(value: boolean | CompressionMethod): void {
   if (typeof value !== "string") {
     return;
   }
-  if (!COMPRESSION_METHODS.includes(value)) {
+  if (value === "zstd") {
+    if (typeof Zlib.createZstdCompress !== "function") {
+      throw zstdUnavailableError();
+    }
+  } else if (value !== "gzip") {
     throw unknownCodecError(value, "request");
-  }
-  if (value === "zstd" && typeof Zlib.createZstdCompress !== "function") {
-    throw zstdUnavailableError();
   }
 }
 
@@ -137,11 +137,12 @@ function ensureResponseCodecSupported(
   if (typeof value !== "string") {
     return;
   }
-  if (!COMPRESSION_METHODS.includes(value)) {
+  if (value === "zstd") {
+    if (typeof Zlib.createZstdDecompress !== "function") {
+      throw zstdUnavailableError();
+    }
+  } else if (value !== "gzip") {
     throw unknownCodecError(value, "response");
-  }
-  if (value === "zstd" && typeof Zlib.createZstdDecompress !== "function") {
-    throw zstdUnavailableError();
   }
 }
 
