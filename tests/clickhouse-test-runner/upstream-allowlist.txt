@@ -1482,7 +1482,7 @@
 02346_text_index_bug84805
 02346_text_index_bug87887
 02346_text_index_bug93432
-02346_text_index_byte_size_reporting
+# 02346_text_index_byte_size_reporting: TODO: failing against latest ClickHouse stable; uses setting 'text_index_dictionary_block_size' not yet in the latest Docker release (passes on head).
 02346_text_index_collapsingmergetree
 02346_text_index_default_granularity
 02346_text_index_detach_attach
