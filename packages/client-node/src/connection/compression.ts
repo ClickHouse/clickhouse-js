@@ -127,7 +127,7 @@ export function createRequestCompressor(
     default: {
       const exhaustiveCheck: never = compression;
       throw new Error(
-        `Unsupported request compression codec: ${String(exhaustiveCheck)}`,
+        `Unsupported request compression codec: ${String((exhaustiveCheck as { codec?: unknown }).codec)}`,
       );
     }
   }

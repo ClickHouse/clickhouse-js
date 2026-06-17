@@ -32,8 +32,9 @@ export interface ConnectionParams {
 /** Compression codecs supported for the HTTP request (insert) and response
  *  (read) bodies. `zstd` requires Node.js >= 22.15.0 (zstd support in the
  *  built-in `zlib` module); `br` (Brotli) is available on every supported
- *  Node.js version. Non-`gzip` codecs are only honored by `@clickhouse/client`
- *  (Node.js). */
+ *  Node.js version. Request-body compression is performed only by
+ *  `@clickhouse/client` (Node.js); on the web client, response decompression is
+ *  handled by the browser and only `zstd` is rejected. */
 export type CompressionMethod = "gzip" | "zstd" | "br";
 
 /** Normalized request (insert) body compression, discriminated by codec so each

@@ -12,7 +12,7 @@
 
 To carry the codec (and its optional compression level) instead of a bare on/off flag, the internal compression representation changed shape:
 
-- `CompressionSettings.compress_request` / `decompress_response` are no longer `boolean`. They are now a normalized codec object or `undefined` (disabled): `{ codec: "gzip" | "zstd"; level?: number }` for the request, `{ codec: "gzip" | "zstd" }` for the response (the response compression level is chosen by the server). `getConnectionParams` normalizes the public `boolean | { codec, level }` option into this form (`true` → `{ codec: "gzip" }`).
+- `CompressionSettings.compress_request` / `decompress_response` are no longer `boolean`. They are now a normalized codec object or `undefined` (disabled): `{ codec: "gzip" | "zstd"; level?: number } | { codec: "br"; quality?: number }` for the request, `{ codec: "gzip" | "zstd" | "br" }` for the response (response compression options are chosen by the server). `getConnectionParams` normalizes the public request option into this form (`true` → `{ codec: "gzip" }`).
 - `withCompressionHeaders` now takes `request_compression_codec` / `response_compression_codec` (a `CompressionMethod | undefined`) instead of the boolean `enable_request_compression` / `enable_response_compression`; the codec value is also the `Content-Encoding` / `Accept-Encoding` it emits.
 - `withHttpSettings` now takes the response codec object (`{ codec } | undefined`) instead of a `boolean`.
 - New exported types: `CompressionMethod`, `RequestCompression`, `ResponseCompression`.

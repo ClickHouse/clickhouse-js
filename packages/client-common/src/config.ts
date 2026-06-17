@@ -75,7 +75,8 @@ export interface BaseClickHouseClientConfigOptions {
      *  `Accept-Encoding` header and the `enable_http_compression=1` ClickHouse HTTP
      *  setting. Decompression takes no codec options (the server chose them).
      *  `"zstd"` requires Node.js >= 22.15.0; `"br"` works on any supported Node.js.
-     *  Non-`gzip` codecs are only honored by `@clickhouse/client` (Node.js).
+     *  On `@clickhouse/client-web`, `zstd` is rejected at client creation; `gzip`
+     *  and `br` responses are decompressed by the browser.
      *  <p><b>Warning</b>: Response compression can't be enabled for a user with readonly=1, as ClickHouse will not allow settings modifications for such user.</p>
      *  @default false */
     response?: boolean | { codec: CompressionMethod };
@@ -87,7 +88,8 @@ export interface BaseClickHouseClientConfigOptions {
      *  used (gzip/zstd use zlib's defaults, `br` defaults to quality 4 since
      *  zlib's brotli default of 11 is far too slow for a streaming insert body).
      *  `"zstd"` requires Node.js >= 22.15.0; `"br"` works on any supported Node.js.
-     *  Non-`gzip` codecs are only supported by `@clickhouse/client` (Node.js).
+     *  Request-body compression is performed only by `@clickhouse/client` (Node.js);
+     *  `@clickhouse/client-web` sends request bodies uncompressed.
      *  @default false */
     request?: boolean | RequestCompression;
   };
