@@ -223,11 +223,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       role: params.role,
     });
     const { controller, controllerCleanup } = this.getAbortController(params);
-    // allows enforcing the compression via the settings even if the client instance has it disabled
+    // Accept-Encoding is sent whenever the server is asked to compress
+    // (enable_http_compression), independent of whether the client decompresses;
+    // the codec is the explicitly configured one, defaulting to gzip.
     const enableResponseCompression =
       clickhouse_settings.enable_http_compression === 1
-        ? this.params.compression.decompress_response === "zstd"
-          ? "zstd"
+        ? typeof this.params.compression.decompress_response === "string"
+          ? this.params.compression.decompress_response
           : "gzip"
         : false;
 

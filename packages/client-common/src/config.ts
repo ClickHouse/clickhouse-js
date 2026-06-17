@@ -13,6 +13,17 @@ import type { BaseResultSet } from "./result";
 import type { ClickHouseSettings } from "./settings";
 import type { ClickHouseSpan, ClickHouseTracer } from "./tracing";
 
+/** Normalizes the public compression option (`boolean | { codec }`) into the
+ *  internal `boolean | codec` representation used by the connection. */
+function resolveCompressionMethod<M extends string>(
+  value: boolean | { codec: M } | undefined,
+): boolean | M {
+  if (value === undefined || typeof value === "boolean") {
+    return value ?? false;
+  }
+  return value.codec;
+}
+
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
    *  A ClickHouse instance URL.
@@ -37,17 +48,21 @@ export interface BaseClickHouseClientConfigOptions {
   /** Request and response compression settings. */
   compression?: {
     /** Instructs the ClickHouse server to respond with a compressed response body.
-     *  `true` requests `gzip`; the codec can also be selected explicitly with `"gzip"` or `"zstd"`.
-     *  This adds the matching `Accept-Encoding` header and the `enable_http_compression=1` ClickHouse HTTP setting.
+     *  `true` requests `gzip`; pass `{ codec }` to select the codec explicitly,
+     *  e.g. `{ codec: "zstd" }`. The object form is extensible for future
+     *  codec-specific options. This adds the matching `Accept-Encoding` header and
+     *  the `enable_http_compression=1` ClickHouse HTTP setting.
      *  `"zstd"` requires Node.js >= 22.15.0 and is only honored by `@clickhouse/client` (Node.js).
      *  <p><b>Warning</b>: Response compression can't be enabled for a user with readonly=1, as ClickHouse will not allow settings modifications for such user.</p>
      *  @default false */
-    response?: boolean | ResponseCompressionMethod;
+    response?: boolean | { codec: ResponseCompressionMethod };
     /** Enables compression of the outgoing request (insert) body.
-     *  `true` uses `gzip`; the codec can also be selected explicitly with `"gzip"` or `"zstd"`.
+     *  `true` uses `gzip`; pass `{ codec }` to select the codec explicitly,
+     *  e.g. `{ codec: "zstd" }`. The object form is extensible for future
+     *  codec-specific options.
      *  `"zstd"` requires Node.js >= 22.15.0 and is only supported by `@clickhouse/client` (Node.js).
      *  @default false */
-    request?: boolean | RequestCompressionMethod;
+    request?: boolean | { codec: RequestCompressionMethod };
   };
   /** The name of the user on whose behalf requests are made.
    *  Should not be set if {@link access_token} is provided.
@@ -327,8 +342,10 @@ export function getConnectionParams(
     request_timeout,
     max_open_connections: config.max_open_connections ?? 10,
     compression: {
-      decompress_response: config.compression?.response ?? false,
-      compress_request: config.compression?.request ?? false,
+      decompress_response: resolveCompressionMethod(
+        config.compression?.response,
+      ),
+      compress_request: resolveCompressionMethod(config.compression?.request),
     },
     database: config.database ?? "default",
     log_writer: new LogWriter(logger, "Connection", log_level),

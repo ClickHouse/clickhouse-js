@@ -1,4 +1,7 @@
-import type { LogWriter } from "@clickhouse/client-common";
+import type {
+  LogWriter,
+  RequestCompressionMethod,
+} from "@clickhouse/client-common";
 import { ClickHouseLogLevel } from "@clickhouse/client-common";
 import type Http from "http";
 import Stream from "stream";
@@ -44,4 +47,25 @@ export function decompressResponse(
 
 export function isDecompressionError(result: any): result is { error: Error } {
   return result.error !== undefined;
+}
+
+/** Returns the request-body compressor for the given codec (`true` == gzip, kept
+ *  for backwards compatibility). The exhaustive switch fails the build if a new
+ *  codec is added to the type without a corresponding case here. */
+export function createRequestCompressor(
+  method: true | RequestCompressionMethod,
+): Stream.Transform {
+  switch (method) {
+    case true:
+    case "gzip":
+      return Zlib.createGzip();
+    case "zstd":
+      return Zlib.createZstdCompress();
+    default: {
+      const exhaustiveCheck: never = method;
+      throw new Error(
+        `Unsupported request compression codec: ${String(exhaustiveCheck)}`,
+      );
+    }
+  }
 }
