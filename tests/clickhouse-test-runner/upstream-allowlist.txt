@@ -321,7 +321,7 @@
 00507_sumwithoverflow
 00511_get_size_of_enum
 00513_fractional_time_zones
-00516_is_inf_nan
+# 00516_is_inf_nan: TODO: failing against latest ClickHouse stable; uses new server feature not yet in the latest Docker release
 00516_modulo
 00517_date_parsing
 00518_extract_all_and_empty_matches
@@ -532,7 +532,8 @@
 00822_array_insert_default
 00823_sequence_match_dfa
 00824_filesystem
-00826_cross_to_inner_join
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 00826_cross_to_inner_join
 00829_bitmap64_function
 00834_date_datetime_cmp
 00834_not_between
@@ -668,7 +669,8 @@
 01020_having_without_group_by
 01025_array_compact_generic
 01026_char_utf8
-01029_early_constant_folding
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01029_early_constant_folding
 01030_concatenate_equal_fixed_strings
 01030_final_mark_empty_primary_key
 # 01031_pmj_new_any_semi_join: reference output drifts on released CH (`latest`) vs upstream master due to join optimizer changes; passes on `head`.
@@ -825,10 +827,12 @@
 01314_position_in_system_columns
 01315_count_distinct_return_not_nullable
 01318_parallel_final_stuck
-01321_aggregate_functions_of_group_by_keys
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01321_aggregate_functions_of_group_by_keys
 01321_monotonous_functions_in_order_by_bug
 01323_too_many_threads_bug
-01324_if_transform_strings_to_enum
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01324_if_transform_strings_to_enum
 01324_settings_documentation
 01326_build_id
 01326_fixed_string_comparison_denny_crane
@@ -871,7 +875,8 @@
 01385_not_function
 01389_filter_by_virtual_columns
 01390_check_table_codec
-01390_remove_injective_in_uniq
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01390_remove_injective_in_uniq
 01391_join_on_dict_crash
 01392_column_resolve
 01396_negative_datetime_saturate_to_zero
@@ -889,7 +894,8 @@
 01413_if_array_uuid
 01413_truncate_without_table_keyword
 01414_bloom_filter_index_with_const_column
-01414_push_predicate_when_contains_with_clause
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01414_push_predicate_when_contains_with_clause
 01415_table_function_view
 01416_join_totals_header_bug
 01417_update_permutation_crash
@@ -931,8 +937,10 @@
 01459_decimal_casts
 01460_allow_dollar_and_number_in_identifier
 01460_mark_inclusion_search_crash
-01470_columns_transformers2
-01471_limit_by_format
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01470_columns_transformers2
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01471_limit_by_format
 01471_with_format
 01474_decimal_scale_bug
 01475_fix_bigint_shift
@@ -962,7 +970,8 @@
 01511_prewhere_with_virtuals
 01513_ilike_like_cache
 01514_tid_function
-01515_with_global_and_with_propagation
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01515_with_global_and_with_propagation
 01518_cast_nullable_virtual_system_column
 01518_filtering_aliased_materialized_column
 01518_nullable_aggregate_states1
@@ -997,12 +1006,14 @@
 01576_if_null_external_aggregation
 01580_column_const_comparision
 01582_any_join_supertype
-01582_deterministic_function_with_predicate
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01582_deterministic_function_with_predicate
 01583_const_column_in_set_index
 01585_fuzz_bits_with_bugfix
 01592_length_map
 01592_toUnixTimestamp_Date
-01593_functions_in_order_by
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01593_functions_in_order_by
 01596_full_join_chertus
 01600_encode_XML
 01600_min_max_compress_block_size
@@ -1017,7 +1028,8 @@
 01620_fix_simple_state_arg_type
 01621_decode_XML
 01623_byte_size_const
-01626_cnf_test
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01626_cnf_test
 01631_date_overflow_as_partition_key
 01632_nullable_string_type_convert_to_decimal_type
 01632_select_all_syntax
@@ -1090,9 +1102,11 @@
 01700_deltasum
 01700_mod_negative_type_promotion
 01702_bitmap_native_integers
-01702_rewrite_avg_for_algebraic_optimization
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01702_rewrite_avg_for_algebraic_optimization
 01702_toDateTime_from_string_clamping
-01703_rewrite_aggregate_function_case_insensitive
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01703_rewrite_aggregate_function_case_insensitive
 01704_transform_with_float_key
 01706_optimize_normalize_count_variants
 01707_join_use_nulls
@@ -1220,9 +1234,11 @@
 01846_null_as_default_for_insert_select
 01851_fix_row_policy_empty_result
 01851_s2_to_geo
-01852_cast_operator_2
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01852_cast_operator_2
 01852_cast_operator_3
-01852_cast_operator_4
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 01852_cast_operator_4
 01852_jit_if
 01852_s2_get_neighbours
 01855_jit_comparison_constant_result
@@ -1440,7 +1456,8 @@
 02313_negative_datetime64
 02313_test_fpc_codec
 02315_pmj_union_ubsan_35857
-02315_replace_multiif_to_if
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02315_replace_multiif_to_if
 02316_const_string_intersact
 02316_literal_no_octal
 02316_values_table_func_bug
@@ -1518,7 +1535,8 @@
 02393_every_metric_must_have_documentation
 02394_every_profile_event_must_have_documentation
 02395_every_merge_tree_setting_must_have_documentation
-02398_subquery_where_pushdown_and_limit_offset
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02398_subquery_where_pushdown_and_limit_offset
 02401_merge_tree_old_tmp_dirs_cleanup
 02405_pmj_issue_40335
 02406_try_read_datetime64_bug
@@ -1573,8 +1591,10 @@
 02476_analyzer_join_with_unused_columns
 02477_analyzer_ast_key_condition_crash
 02477_exists_fuzz_43478
-02477_fuse_quantiles
-02477_is_null_parser
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02477_fuse_quantiles
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02477_is_null_parser
 02477_logical_expressions_optimizer_issue_89803
 02478_analyzer_table_expression_aliases
 02479_analyzer_aggregation_crash
@@ -1586,7 +1606,8 @@
 02480_max_map_null_totals
 02480_parse_date_time_best_effort_math_overflow
 02481_aggregation_in_order_plan
-02481_analyzer_optimize_grouping_sets_keys
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02481_analyzer_optimize_grouping_sets_keys
 02481_low_cardinality_with_short_circuit_functins_mutations
 02481_xxh3_hash_function
 02482_if_with_nothing_argument
@@ -1681,7 +1702,8 @@
 02560_null_as_default
 02560_quantile_min_max
 02561_sorting_constants_and_distinct_crash
-02564_analyzer_ssb_cross_to_inner
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02564_analyzer_ssb_cross_to_inner
 02564_date_format
 02564_read_in_order_final_desc
 02565_update_empty_nested
@@ -1712,7 +1734,8 @@
 02679_explain_merge_tree_prewhere_row_policy
 02680_instr_alias_for_position_case_insensitive
 02681_aggregation_by_partitions_bug
-02681_comparsion_tuple_elimination_ast
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02681_comparsion_tuple_elimination_ast
 02690_subquery_identifiers
 02691_multiple_joins_backtick_identifiers
 02692_multiple_joins_unicode
@@ -1721,7 +1744,8 @@
 02699_polygons_sym_difference_rollup
 02699_polygons_sym_difference_total_analyzer
 02700_regexp_operator
-02702_logical_optimizer_with_nulls
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02702_logical_optimizer_with_nulls
 02705_grouping_keys_equal_keys
 02705_projection_and_ast_optimizations_bug
 02707_analyzer_nested_lambdas_types
@@ -1778,7 +1802,8 @@
 02784_move_all_conditions_to_prewhere_analyzer_asan
 02784_projections_read_in_order_bug
 02784_schema_inference_null_as_default
-02785_date_predicate_optimizations_ast_query_tree_rewrite
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02785_date_predicate_optimizations_ast_query_tree_rewrite
 02785_summing_merge_tree_datetime64
 02786_transform_float
 02787_transform_null
@@ -1858,7 +1883,8 @@
 02866_size_of_marks_skip_idx_explain
 02867_null_lc_in_bug
 02867_nullable_primary_key_final
-02868_distinct_to_count_optimization
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02868_distinct_to_count_optimization
 02869_unicode_minus
 02871_join_on_system_errors
 02874_infer_objects_as_named_tuples
@@ -1875,7 +1901,8 @@
 02884_virtual_column_order_by
 02886_binary_like
 02888_integer_type_inference_in_if_function
-02888_obsolete_settings
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02888_obsolete_settings
 02888_single_state_nullable_type
 02889_system_drop_format_schema
 02890_partition_prune_in_extra_columns
@@ -1959,7 +1986,8 @@
 02968_full_sorting_join_fuzz
 02968_sumMap_with_nan
 02968_url_args
-02969_analyzer_eliminate_injective_functions
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 02969_analyzer_eliminate_injective_functions
 02969_functions_to_subcolumns_if_null
 02970_generate_series
 02971_functions_to_subcolumns_column_names
@@ -2009,7 +2037,8 @@
 03003_sql_json_nonsense
 03006_buffer_overflow_join
 03006_mv_deduplication_throw_if_async_insert
-03006_parallel_replicas_cte_explain_syntax_crash
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 03006_parallel_replicas_cte_explain_syntax_crash
 03007_column_nullable_uninitialzed_value
 03008_filter_projections_non_deterministoc_functions
 03008_groupSortedArray_field
@@ -2207,8 +2236,10 @@
 03164_early_constant_folding_analyzer
 03164_optimize_read_in_order_nullable
 03165_distinct_with_window_func_crash
-03165_order_by_duplicate
-03165_string_functions_with_token_text_indexes
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 03165_order_by_duplicate
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 03165_string_functions_with_token_text_indexes
 03166_mv_prewhere_duplicating_name_bug
 03167_base64_url_functions_sh
 03167_empty_tuple_concat
@@ -2411,8 +2442,10 @@
 03282_json_equal_comparison
 03282_parallel_join_with_additional_filter
 03283_json_binary_serialization_use_default_settings
-03285_analyzer_extract_common_expr_bug
-03285_analyzer_optimize_disjunctions
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 03285_analyzer_extract_common_expr_bug
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 03285_analyzer_optimize_disjunctions
 03286_collation_locale_with_modifier
 03286_format_datetime_timezones
 03286_serialization_hint_system_columns
@@ -2490,11 +2523,13 @@
 03365_time_to_time64_conv_bug
 03366_bfloat16_sorting
 03366_with_fill_dag
-03367_bfloat16_tuple_final
+# TODO: failing against latest ClickHouse stable; uses new server feature not yet in the latest Docker release
+# 03367_bfloat16_tuple_final
 03368_bfloat16_merge_join
 03369_bfloat16_map
 03370_join_identifiers
-03371_bfloat16_special_values
+# TODO: failing against latest ClickHouse stable; uses new server feature not yet in the latest Docker release
+# 03371_bfloat16_special_values
 03371_nullable_tuple_string_comparison
 03374_date_trunc_with_negatives
 03375_bloom_filter_array_equals
@@ -2625,7 +2660,8 @@
 03594_coalescing_merge_tree_segfault
 03594_funcs_on_empty_arguments
 03594_json_extract_decimal_precision
-03594_like_perfect_affix_rewrite_pass
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 03594_like_perfect_affix_rewrite_pass
 03594_push_more_filters_down_joins
 03595_alter_if_exists_mixed_commands
 03595_alter_if_exists_runtime_check
@@ -2636,7 +2672,8 @@
 03600_analyzer_setting_bool
 03600_replace_fixed_string_bug
 03601_histogram_quantile
-03601_inconsistent_table_names
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 03601_inconsistent_table_names
 03601_insert_squashing_remove_const
 03601_json_from_string_accurate_cast_or_null
 03601_replace_regex_fixedstring_empty_needle
@@ -2697,7 +2734,8 @@
 03644_min_level_for_wide_part
 03644_rows_before_aggregation_in_order
 03651_positional_argument_agg_projection
-03652_coalescing_merge_tree_fix_empty_tuple
+# TODO: failing against latest ClickHouse stable; uses new server feature not yet in the latest Docker release
+# 03652_coalescing_merge_tree_fix_empty_tuple
 03652_join_using_legacy_step
 03652_union_columns_2
 03653_fractional_limit_offset
@@ -2720,7 +2758,8 @@
 # 03701_limit_by_in_order
 03702_encode_decode_memory_usage
 03702_json_datetime_format_settings
-03702_optimize_inverse_dictionary_lookup_composite_and_layouts
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 03702_optimize_inverse_dictionary_lookup_composite_and_layouts
 03703_function_dict_get_keys_large
 03703_statistics_low_cardinality
 03704_default_empty_order_by
@@ -2738,7 +2777,8 @@
 03708_join_or_to_right_any_bug
 03708_low_cardinality_aggregate_state_compatibility
 03708_statistics_estimator_cast_type
-03709_anti_join_runtime_filters
+# TODO: failing against latest ClickHouse stable; uses new server feature not yet in the latest Docker release
+# 03709_anti_join_runtime_filters
 03709_coalescing_final
 03709_final_prewhere_special_columns
 03709_remove_unused_columns_from_prewhere
@@ -2822,7 +2862,8 @@
 03760_join_reorder_outer_inner_nulls
 03761_convert_outer_to_inner_join_keeps_header
 03761_count_distinct_optimization_window
-03761_inconsistent_ast_formatting
+# TODO: failing against latest ClickHouse stable; upstream changed EXPLAIN SYNTAX formatting (operator syntax vs function call syntax)
+# 03761_inconsistent_ast_formatting
 03761_lazy_materialization_split_expr
 03761_log_with_string_size
 03762_count_distinct_optimization_multiple_columns
