@@ -15,27 +15,26 @@ export function decompressResponse(
 ): DecompressResponseResult {
   const encoding = response.headers["content-encoding"];
 
-  // Pipes the response through a decompressor, logging any pipeline error.
-  const decompressWith = (
-    decompressor: Stream.Transform,
-  ): DecompressResponseResult => ({
-    response: Stream.pipeline(response, decompressor, (err) => {
-      if (err && log_level <= ClickHouseLogLevel.ERROR) {
-        log_writer.error({
-          message: "An error occurred while decompressing the response",
-          err,
-        });
-      }
-    }),
-  });
-
   // No `Content-Encoding`: nothing to decompress.
   if (encoding === undefined) {
     return { response };
   }
 
   if (encoding === "gzip") {
-    return decompressWith(Zlib.createGunzip());
+    return {
+      response: Stream.pipeline(
+        response,
+        Zlib.createGunzip(),
+        function pipelineCb(err) {
+          if (err && log_level <= ClickHouseLogLevel.ERROR) {
+            log_writer.error({
+              message: "An error occurred while decompressing the response",
+              err,
+            });
+          }
+        },
+      ),
+    };
   }
 
   if (encoding === "zstd") {
@@ -53,7 +52,20 @@ export function decompressResponse(
         ),
       };
     }
-    return decompressWith(Zlib.createZstdDecompress());
+    return {
+      response: Stream.pipeline(
+        response,
+        Zlib.createZstdDecompress(),
+        function pipelineCb(err) {
+          if (err && log_level <= ClickHouseLogLevel.ERROR) {
+            log_writer.error({
+              message: "An error occurred while decompressing the response",
+              err,
+            });
+          }
+        },
+      ),
+    };
   }
 
   return { error: new Error(`Unexpected encoding: ${encoding}`) };
