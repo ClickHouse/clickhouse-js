@@ -7,7 +7,9 @@ import type {
 } from "@clickhouse/client-common";
 import {
   type BaseClickHouseClientConfigOptions,
+  type CompressionMethod,
   type ConnectionParams,
+  COMPRESSION_METHODS,
   numberConfigURLValue,
 } from "@clickhouse/client-common";
 import type http from "http";
@@ -90,6 +92,33 @@ interface MutualTLSOptions {
   key: Buffer;
 }
 
+/** Fails fast at client creation on an unknown codec, or on `zstd` when this
+ *  Node.js runtime's `zlib` does not provide the zstd APIs - rather than a
+ *  TypeError deep in a later insert/query. */
+function ensureCodecSupported(
+  value: boolean | CompressionMethod,
+  direction: "request" | "response",
+  zstdAvailable: boolean,
+): void {
+  if (typeof value !== "string") {
+    return;
+  }
+  if (!COMPRESSION_METHODS.includes(value)) {
+    throw new Error(
+      `Unknown ${direction} compression codec "${value}". ` +
+        `Supported codecs: ${COMPRESSION_METHODS.join(", ")}.`,
+    );
+  }
+  if (value === "zstd" && !zstdAvailable) {
+    throw new Error(
+      "zstd compression is not supported by this Node.js runtime (v" +
+        process.versions.node +
+        "): the built-in zlib module does not provide the zstd APIs (added " +
+        "in Node.js 22.15.0). Use gzip compression instead.",
+    );
+  }
+}
+
 export const NodeConfigImpl: Required<
   ImplementationDetails<Stream.Readable>["impl"]
 > = {
@@ -128,21 +157,16 @@ export const NodeConfigImpl: Required<
     nodeConfig: NodeClickHouseClientConfigOptions,
     params: ConnectionParams,
   ) => {
-    // zstd needs Node.js >= 22.15.0 (zstd in the built-in zlib); fail fast with a
-    // clear error rather than a TypeError deep in a later insert/query.
-    if (
-      (params.compression.compress_request === "zstd" &&
-        typeof Zlib.createZstdCompress !== "function") ||
-      (params.compression.decompress_response === "zstd" &&
-        typeof Zlib.createZstdDecompress !== "function")
-    ) {
-      throw new Error(
-        "zstd compression is not supported by this Node.js runtime (v" +
-          process.versions.node +
-          "): the built-in zlib module does not provide the zstd APIs (added " +
-          "in Node.js 22.15.0). Use gzip compression instead.",
-      );
-    }
+    ensureCodecSupported(
+      params.compression.compress_request,
+      "request",
+      typeof Zlib.createZstdCompress === "function",
+    );
+    ensureCodecSupported(
+      params.compression.decompress_response,
+      "response",
+      typeof Zlib.createZstdDecompress === "function",
+    );
     let tls: TLSParams | undefined = undefined;
     if (nodeConfig.tls !== undefined) {
       if ("cert" in nodeConfig.tls && "key" in nodeConfig.tls) {

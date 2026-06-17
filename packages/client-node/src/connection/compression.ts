@@ -1,7 +1,4 @@
-import type {
-  LogWriter,
-  RequestCompressionMethod,
-} from "@clickhouse/client-common";
+import type { CompressionMethod, LogWriter } from "@clickhouse/client-common";
 import { ClickHouseLogLevel } from "@clickhouse/client-common";
 import type Http from "http";
 import Stream from "stream";
@@ -53,7 +50,7 @@ export function isDecompressionError(result: any): result is { error: Error } {
  *  for backwards compatibility). The exhaustive switch fails the build if a new
  *  codec is added to the type without a corresponding case here. */
 export function createRequestCompressor(
-  method: true | RequestCompressionMethod,
+  method: true | CompressionMethod,
 ): Stream.Transform {
   switch (method) {
     case true:

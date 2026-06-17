@@ -166,10 +166,10 @@ export {
 } from "./utils";
 export { LogWriter, DefaultLogger, type LogWriterParams } from "./logger";
 export { getCurrentStackTrace, enhanceStackTrace } from "./error";
+export { COMPRESSION_METHODS } from "./connection";
 export type {
   CompressionSettings,
-  RequestCompressionMethod,
-  ResponseCompressionMethod,
+  CompressionMethod,
   Connection,
   ConnectionParams,
   ConnInsertResult,

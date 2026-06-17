@@ -98,7 +98,7 @@ describe("[Node.js] Config implementation details", () => {
       vi.clearAllMocks();
     });
 
-    describe("zstd availability guard", () => {
+    describe("compression codec guard", () => {
       function withMissingZlibFn(
         name: "createZstdCompress" | "createZstdDecompress",
         fn: () => void,
@@ -162,6 +162,18 @@ describe("[Node.js] Config implementation details", () => {
             },
           }),
         ).not.toThrow();
+      });
+
+      it("throws for an unknown codec", () => {
+        expect(() =>
+          NodeConfigImpl.make_connection(nodeConfig as any, {
+            ...params,
+            compression: {
+              compress_request: "lz4" as any,
+              decompress_response: false,
+            },
+          }),
+        ).toThrow(/Unknown request compression codec/);
       });
     });
 

@@ -13,8 +13,7 @@ import {
   type ResponseHeaders,
   type ClickHouseSummary,
   type JSONHandling,
-  type RequestCompressionMethod,
-  type ResponseCompressionMethod,
+  type CompressionMethod,
 } from "@clickhouse/client-common";
 import { getAsText, isStream } from "../utils";
 import {
@@ -31,8 +30,8 @@ export interface RequestParams {
   body?: string | Stream.Readable;
   // provided by the user and wrapped around internally
   abort_signal: AbortSignal;
-  enable_response_compression?: boolean | ResponseCompressionMethod;
-  enable_request_compression?: boolean | RequestCompressionMethod;
+  enable_response_compression?: boolean | CompressionMethod;
+  enable_request_compression?: boolean | CompressionMethod;
   // if there are compression headers, attempt to decompress it
   try_decompress_response_stream?: boolean;
   // if the response contains an error, ignore it and return the stream as-is

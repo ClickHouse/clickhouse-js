@@ -29,23 +29,21 @@ export interface ConnectionParams {
   use_multipart_params_auto?: boolean;
 }
 
-/** Compression codec for the outgoing request (insert) body.
- *  `zstd` requires Node.js >= 22.15.0 (zstd support in the built-in `zlib` module)
- *  and is only available in `@clickhouse/client` (Node.js). */
-export type RequestCompressionMethod = "gzip" | "zstd";
-
-/** Compression codec for the response (read) body that the ClickHouse server
- *  is asked to use via `Accept-Encoding`. `zstd` requires Node.js >= 22.15.0
- *  and is only honored by `@clickhouse/client` (Node.js). */
-export type ResponseCompressionMethod = "gzip" | "zstd";
+/** Compression codecs supported for the HTTP request (insert) and response
+ *  (read) bodies. `zstd` requires Node.js >= 22.15.0 (zstd support in the
+ *  built-in `zlib` module) and is only honored by `@clickhouse/client` (Node.js).
+ *  Single source of truth for both the {@link CompressionMethod} type and runtime
+ *  validation. */
+export const COMPRESSION_METHODS = ["gzip", "zstd"] as const;
+export type CompressionMethod = (typeof COMPRESSION_METHODS)[number];
 
 export interface CompressionSettings {
   /** `false` disables response decompression; `true` is treated as `gzip`
-   *  (kept for backwards compatibility). */
-  decompress_response: boolean | ResponseCompressionMethod;
+   *  (backwards compatible); a {@link CompressionMethod} selects the codec. */
+  decompress_response: boolean | CompressionMethod;
   /** `false` disables request compression; `true` is treated as `gzip`
-   *  (kept for backwards compatibility). */
-  compress_request: boolean | RequestCompressionMethod;
+   *  (backwards compatible); a {@link CompressionMethod} selects the codec. */
+  compress_request: boolean | CompressionMethod;
 }
 
 export interface ConnBaseQueryParams {

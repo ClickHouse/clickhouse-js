@@ -1,9 +1,8 @@
 import type { InsertValues, ResponseHeaders } from "./clickhouse_types";
 import type {
+  CompressionMethod,
   Connection,
   ConnectionParams,
-  RequestCompressionMethod,
-  ResponseCompressionMethod,
 } from "./connection";
 import type { DataFormat } from "./data_formatter";
 import type { Logger } from "./logger";
@@ -15,9 +14,9 @@ import type { ClickHouseSpan, ClickHouseTracer } from "./tracing";
 
 /** Normalizes the public compression option (`boolean | { codec }`) into the
  *  internal `boolean | codec` representation used by the connection. */
-function resolveCompressionMethod<M extends string>(
-  value: boolean | { codec: M } | undefined,
-): boolean | M {
+function resolveCompressionMethod(
+  value: boolean | { codec: CompressionMethod } | undefined,
+): boolean | CompressionMethod {
   if (value === undefined || typeof value === "boolean") {
     return value ?? false;
   }
@@ -55,14 +54,14 @@ export interface BaseClickHouseClientConfigOptions {
      *  `"zstd"` requires Node.js >= 22.15.0 and is only honored by `@clickhouse/client` (Node.js).
      *  <p><b>Warning</b>: Response compression can't be enabled for a user with readonly=1, as ClickHouse will not allow settings modifications for such user.</p>
      *  @default false */
-    response?: boolean | { codec: ResponseCompressionMethod };
+    response?: boolean | { codec: CompressionMethod };
     /** Enables compression of the outgoing request (insert) body.
      *  `true` uses `gzip`; pass `{ codec }` to select the codec explicitly,
      *  e.g. `{ codec: "zstd" }`. The object form is extensible for future
      *  codec-specific options.
      *  `"zstd"` requires Node.js >= 22.15.0 and is only supported by `@clickhouse/client` (Node.js).
      *  @default false */
-    request?: boolean | { codec: RequestCompressionMethod };
+    request?: boolean | { codec: CompressionMethod };
   };
   /** The name of the user on whose behalf requests are made.
    *  Should not be set if {@link access_token} is provided.
