@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Export Workflow Telemetry
-        uses: ClickHouse/github-actions-opentelemetry@166e4f803ea5857cfcd90502d99fd35ccb20de32
+        uses: ClickHouse/github-actions-opentelemetry@a43396f9eb698c48126a0d3cbe6b851858188753
         env:
           OTEL_SERVICE_NAME: github-actions
           OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
