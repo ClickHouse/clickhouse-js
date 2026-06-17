@@ -3,8 +3,14 @@ import { sleep } from "../utils/sleep";
 import Http, { type ClientRequest } from "http";
 import Stream from "stream";
 import Zlib from "zlib";
+import { ClickHouseLogLevel, LogWriter } from "@clickhouse/client-common";
+import { TestLogger } from "../../../client-common/__tests__/utils/test_logger";
 import { assertConnQueryResult } from "../utils/assert";
-import { createRequestCompressor } from "../../src/connection/compression";
+import {
+  createRequestCompressor,
+  decompressResponse,
+  isDecompressionError,
+} from "../../src/connection/compression";
 import {
   buildHttpConnection,
   buildIncomingMessage,
@@ -139,6 +145,45 @@ describe("Node.js Connection compression", () => {
 
       const queryResult = await selectPromise;
       await assertConnQueryResult(queryResult, responseBody);
+    });
+
+    it("returns a clear error for a zstd response on a runtime without zstd support", () => {
+      // Simulate a Node.js runtime whose zlib lacks the zstd APIs (< 22.15.0).
+      const original = Object.getOwnPropertyDescriptor(
+        Zlib,
+        "createZstdDecompress",
+      );
+      Object.defineProperty(Zlib, "createZstdDecompress", {
+        value: undefined,
+        configurable: true,
+      });
+      try {
+        const response = buildIncomingMessage({
+          body: "anything",
+          headers: { "content-encoding": "zstd" },
+        });
+        const logWriter = new LogWriter(
+          new TestLogger(),
+          "test",
+          ClickHouseLogLevel.OFF,
+        );
+        const result = decompressResponse(
+          response,
+          logWriter,
+          ClickHouseLogLevel.OFF,
+        );
+        expect(isDecompressionError(result)).toBe(true);
+        expect((result as { error: Error }).error.message).toContain(
+          "does not support zstd decompression",
+        );
+        expect((result as { error: Error }).error.message).not.toContain(
+          "Unexpected encoding",
+        );
+      } finally {
+        if (original) {
+          Object.defineProperty(Zlib, "createZstdDecompress", original);
+        }
+      }
     });
 
     it("throws on an unexpected encoding", async () => {

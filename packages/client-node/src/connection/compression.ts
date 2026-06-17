@@ -33,6 +33,20 @@ export function decompressResponse(
         }
       }),
     };
+  } else if (encoding === "zstd") {
+    // Reached only when the server returned a zstd-encoded body but this
+    // Node.js runtime's zlib lacks the zstd APIs (added in 22.15.0) - so the
+    // codec is recognized, just unusable here. Distinguish it from a truly
+    // unknown encoding to avoid a misleading "Unexpected encoding" message.
+    return {
+      error: new Error(
+        "Received a zstd-compressed response, but this Node.js runtime (v" +
+          process.versions.node +
+          ") does not support zstd decompression: the built-in zlib module " +
+          "does not provide the zstd APIs (added in Node.js 22.15.0). Use gzip " +
+          "compression instead, or upgrade Node.js.",
+      ),
+    };
   } else if (encoding !== undefined) {
     return {
       error: new Error(`Unexpected encoding: ${encoding}`),
