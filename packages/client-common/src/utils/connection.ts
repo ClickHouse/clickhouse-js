@@ -6,22 +6,22 @@ export type HttpHeaders = Record<string, HttpHeader | undefined>;
 
 export function withCompressionHeaders({
   headers,
-  enable_request_compression,
-  enable_response_compression,
+  request_compression_codec,
+  response_compression_codec,
 }: {
   headers: HttpHeaders;
   // The codec name is also the `Content-Encoding` / `Accept-Encoding` value;
   // `undefined` disables the corresponding header.
-  enable_request_compression: CompressionMethod | undefined;
-  enable_response_compression: CompressionMethod | undefined;
+  request_compression_codec: CompressionMethod | undefined;
+  response_compression_codec: CompressionMethod | undefined;
 }): Record<string, string> {
   return {
     ...headers,
-    ...(enable_response_compression
-      ? { "Accept-Encoding": enable_response_compression }
+    ...(response_compression_codec
+      ? { "Accept-Encoding": response_compression_codec }
       : {}),
-    ...(enable_request_compression
-      ? { "Content-Encoding": enable_request_compression }
+    ...(request_compression_codec
+      ? { "Content-Encoding": request_compression_codec }
       : {}),
   };
 }

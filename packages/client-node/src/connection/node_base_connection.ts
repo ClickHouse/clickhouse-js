@@ -226,7 +226,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     // Accept-Encoding is sent whenever the server is asked to compress
     // (enable_http_compression), independent of whether the client decompresses;
     // the codec is the explicitly configured one, defaulting to gzip.
-    const enableResponseCompression =
+    const responseCompressionCodec =
       clickhouse_settings.enable_http_compression === 1
         ? (this.params.compression.decompress_response?.codec ?? "gzip")
         : undefined;
@@ -250,7 +250,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           url: transformUrl({ url: this.params.url, searchParams }),
           body,
           abort_signal: controller.signal,
-          enable_response_compression: enableResponseCompression,
+          response_compression_codec: responseCompressionCodec,
           headers,
           query: params.query,
           query_id,
@@ -274,7 +274,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         search_params: searchParams,
         err: err as Error,
         extra_args: {
-          decompress_response: enableResponseCompression,
+          decompress_response: responseCompressionCodec,
           clickhouse_settings,
         },
       });
@@ -307,7 +307,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             url: transformUrl({ url: this.params.url, searchParams }),
             body: params.values,
             abort_signal: controller.signal,
-            enable_request_compression:
+            request_compression_codec:
               this.params.compression.compress_request?.codec,
             request_compression_level:
               this.params.compression.compress_request?.level,
@@ -570,11 +570,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             body: sendQueryInParams ? params.values : params.query,
             abort_signal: controller.signal,
             parse_summary: true,
-            enable_request_compression:
+            request_compression_codec:
               this.params.compression.compress_request?.codec,
             request_compression_level:
               this.params.compression.compress_request?.level,
-            enable_response_compression:
+            response_compression_codec:
               this.params.compression.decompress_response?.codec,
             try_decompress_response_stream: tryDecompressResponseStream,
             ignore_error_response: ignoreErrorResponse,

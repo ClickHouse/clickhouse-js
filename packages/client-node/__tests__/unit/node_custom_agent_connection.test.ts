@@ -251,8 +251,8 @@ describe("[Node.js] NodeCustomAgentConnection", () => {
         url,
         headers: { "Content-Type": "text/plain" },
         abort_signal: abortController.signal,
-        enable_request_compression: "gzip",
-        enable_response_compression: "gzip",
+        request_compression_codec: "gzip",
+        response_compression_codec: "gzip",
         query: "SELECT 1",
         query_id: "test-query-id",
         log_writer: new LogWriter(

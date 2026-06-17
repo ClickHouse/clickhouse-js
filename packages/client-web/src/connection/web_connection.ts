@@ -240,8 +240,8 @@ export class WebConnection implements Connection<ReadableStream> {
       const headers = withCompressionHeaders({
         headers: prebuiltHeaders ?? this.defaultHeadersWithOverride(params),
         // It is not currently working as expected in all major browsers
-        enable_request_compression: undefined,
-        enable_response_compression:
+        request_compression_codec: undefined,
+        response_compression_codec:
           this.params.compression.decompress_response?.codec,
       });
 
