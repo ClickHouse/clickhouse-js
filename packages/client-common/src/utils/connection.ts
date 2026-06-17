@@ -1,3 +1,4 @@
+import type { CompressionMethod } from "../connection";
 import type { ClickHouseSettings } from "../settings";
 
 export type HttpHeader = number | string | string[];
@@ -9,19 +10,29 @@ export function withCompressionHeaders({
   enable_response_compression,
 }: {
   headers: HttpHeaders;
-  enable_request_compression: boolean | undefined;
-  enable_response_compression: boolean | undefined;
+  enable_request_compression: boolean | CompressionMethod | undefined;
+  enable_response_compression: boolean | CompressionMethod | undefined;
 }): Record<string, string> {
   return {
     ...headers,
-    ...(enable_response_compression ? { "Accept-Encoding": "gzip" } : {}),
-    ...(enable_request_compression ? { "Content-Encoding": "gzip" } : {}),
+    ...(enable_response_compression
+      ? {
+          "Accept-Encoding":
+            enable_response_compression === "zstd" ? "zstd" : "gzip",
+        }
+      : {}),
+    ...(enable_request_compression
+      ? {
+          "Content-Encoding":
+            enable_request_compression === "zstd" ? "zstd" : "gzip",
+        }
+      : {}),
   };
 }
 
 export function withHttpSettings(
   clickhouse_settings?: ClickHouseSettings,
-  compression?: boolean,
+  compression?: boolean | CompressionMethod,
 ): ClickHouseSettings {
   return {
     ...(compression

@@ -387,6 +387,23 @@ describe("config", () => {
       });
     });
 
+    it("resolves the object compression codec form to connection params", () => {
+      const res = getConnectionParams(
+        {
+          url: new URL("https://my.host:8443/"),
+          compression: {
+            request: { codec: "zstd" },
+            response: { codec: "gzip" },
+          },
+        },
+        logger,
+      );
+      expect(res.compression).toEqual({
+        compress_request: "zstd",
+        decompress_response: "gzip",
+      });
+    });
+
     it("should set connection params from the config", async () => {
       const res = getConnectionParams(
         {

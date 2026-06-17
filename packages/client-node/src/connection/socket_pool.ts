@@ -1,7 +1,6 @@
 import Http from "http";
 import Stream from "stream";
 import type * as net from "net";
-import Zlib from "zlib";
 import {
   enhanceStackTrace,
   getCurrentStackTrace,
@@ -14,9 +13,14 @@ import {
   type ResponseHeaders,
   type ClickHouseSummary,
   type JSONHandling,
+  type CompressionMethod,
 } from "@clickhouse/client-common";
 import { getAsText, isStream } from "../utils";
-import { decompressResponse, isDecompressionError } from "./compression";
+import {
+  createRequestCompressor,
+  decompressResponse,
+  isDecompressionError,
+} from "./compression";
 import { type NodeConnectionParams } from "./node_base_connection";
 
 export interface RequestParams {
@@ -26,8 +30,8 @@ export interface RequestParams {
   body?: string | Stream.Readable;
   // provided by the user and wrapped around internally
   abort_signal: AbortSignal;
-  enable_response_compression?: boolean;
-  enable_request_compression?: boolean;
+  enable_response_compression?: boolean | CompressionMethod;
+  enable_request_compression?: boolean | CompressionMethod;
   // if there are compression headers, attempt to decompress it
   try_decompress_response_stream?: boolean;
   // if the response contains an error, ignore it and return the stream as-is
@@ -389,7 +393,10 @@ export class SocketPool {
         };
 
         if (params.enable_request_compression) {
-          Stream.pipeline(bodyStream, Zlib.createGzip(), request, callback);
+          const compressor = createRequestCompressor(
+            params.enable_request_compression,
+          );
+          Stream.pipeline(bodyStream, compressor, request, callback);
         } else {
           Stream.pipeline(bodyStream, request, callback);
         }

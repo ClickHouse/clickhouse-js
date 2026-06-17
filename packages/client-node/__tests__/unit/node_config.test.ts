@@ -8,6 +8,7 @@ import { ClickHouseLogLevel, LogWriter } from "@clickhouse/client-common";
 import { TestLogger } from "../../../client-common/__tests__/utils/test_logger";
 import { Buffer } from "buffer";
 import http from "http";
+import Zlib from "zlib";
 import type { NodeClickHouseClientConfigOptions } from "../../src/config";
 import { NodeConfigImpl } from "../../src/config";
 import {
@@ -95,6 +96,85 @@ describe("[Node.js] Config implementation details", () => {
       .mockReturnValue(fakeConnection);
     beforeEach(() => {
       vi.clearAllMocks();
+    });
+
+    describe("compression codec guard", () => {
+      function withMissingZlibFn(
+        name: "createZstdCompress" | "createZstdDecompress",
+        fn: () => void,
+      ) {
+        const descriptor = Object.getOwnPropertyDescriptor(Zlib, name);
+        Object.defineProperty(Zlib, name, {
+          value: undefined,
+          configurable: true,
+          writable: true,
+        });
+        try {
+          fn();
+        } finally {
+          if (descriptor) {
+            Object.defineProperty(Zlib, name, descriptor);
+          } else {
+            delete (Zlib as unknown as Record<string, unknown>)[name];
+          }
+        }
+      }
+
+      const nodeConfig: NodeClickHouseClientConfigOptions = {
+        url: new URL("http://localhost:8123"),
+      };
+
+      it("throws when zstd request compression is unsupported by the runtime", () => {
+        withMissingZlibFn("createZstdCompress", () => {
+          expect(() =>
+            NodeConfigImpl.make_connection(nodeConfig as any, {
+              ...params,
+              compression: {
+                compress_request: "zstd",
+                decompress_response: false,
+              },
+            }),
+          ).toThrow(/zstd compression is not supported/);
+        });
+      });
+
+      it("throws when zstd response decompression is unsupported by the runtime", () => {
+        withMissingZlibFn("createZstdDecompress", () => {
+          expect(() =>
+            NodeConfigImpl.make_connection(nodeConfig as any, {
+              ...params,
+              compression: {
+                compress_request: false,
+                decompress_response: "zstd",
+              },
+            }),
+          ).toThrow(/zstd compression is not supported/);
+        });
+      });
+
+      it("does not throw for gzip / boolean compression", () => {
+        expect(() =>
+          NodeConfigImpl.make_connection(nodeConfig as any, {
+            ...params,
+            compression: {
+              compress_request: "gzip",
+              decompress_response: true,
+            },
+          }),
+        ).not.toThrow();
+      });
+
+      it("throws for an unknown codec", () => {
+        expect(() =>
+          NodeConfigImpl.make_connection(nodeConfig as any, {
+            ...params,
+            compression: {
+              compress_request: "lz4" as any,
+              decompress_response: false,
+            },
+          }),
+        ).toThrow(/Unknown request compression codec/);
+      });
     });
 
     it("should create a connection with default KeepAlive settings", async () => {

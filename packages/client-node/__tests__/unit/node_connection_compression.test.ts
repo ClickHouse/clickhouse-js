@@ -13,6 +13,12 @@ import {
   stubClientRequest,
 } from "../utils/http_stubs";
 
+const zstdSupported =
+  typeof Zlib.createZstdCompress === "function" &&
+  typeof Zlib.createZstdDecompress === "function" &&
+  typeof Zlib.zstdCompressSync === "function" &&
+  typeof Zlib.zstdDecompress === "function";
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -197,6 +203,45 @@ describe("Node.js Connection compression", () => {
         }),
       );
     });
+
+    it.skipIf(!zstdSupported)(
+      'decompresses a zstd response and sends Accept-Encoding: zstd if response: "zstd"',
+      async () => {
+        const request = stubClientRequest();
+        httpRequestStub.mockReturnValue(request);
+
+        const adapter = buildHttpConnection({
+          compression: {
+            decompress_response: "zstd",
+            compress_request: false,
+          },
+        });
+
+        const selectPromise = adapter.query({
+          query: "SELECT * FROM system.numbers LIMIT 5",
+        });
+
+        const responseBody = "foobar";
+        await sleep(0);
+        request.emit(
+          "response",
+          buildIncomingMessage({
+            body: Zlib.zstdCompressSync(Buffer.from(responseBody)),
+            headers: { "content-encoding": "zstd" },
+          }),
+        );
+
+        const queryResult = await selectPromise;
+        await assertConnQueryResult(queryResult, responseBody);
+
+        expect(httpRequestStub).toHaveBeenCalledTimes(1);
+        const calledWith =
+          httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1];
+        expect(
+          (calledWith.headers as Record<string, string>)["Accept-Encoding"],
+        ).toBe("zstd");
+      },
+    );
   });
 
   describe("request compression", () => {
@@ -243,5 +288,62 @@ describe("Node.js Connection compression", () => {
         (calledWith.headers as Record<string, string>)["Content-Encoding"],
       ).toBe("gzip");
     });
+
+    it.skipIf(!zstdSupported)(
+      'sends a zstd-compressed request if compress_request: "zstd"',
+      async () => {
+        const adapter = buildHttpConnection({
+          compression: {
+            decompress_response: false,
+            compress_request: "zstd",
+          },
+        });
+
+        const values = "abc".repeat(1_000);
+
+        let chunks = Buffer.alloc(0);
+        let resolveResult!: (value: Buffer) => void;
+        let rejectResult!: (reason: Error) => void;
+        const decompressed = new Promise<Buffer>((resolve, reject) => {
+          resolveResult = resolve;
+          rejectResult = reject;
+        });
+        const request = new Stream.Writable({
+          write(chunk, encoding, next) {
+            chunks = Buffer.concat([chunks, chunk]);
+            next();
+          },
+          final(callback) {
+            Zlib.zstdDecompress(chunks, (err, result) => {
+              callback(err);
+              if (err) {
+                rejectResult(err);
+              } else {
+                resolveResult(result);
+              }
+            });
+          },
+        }) as ClientRequest;
+        httpRequestStub.mockReturnValue(request);
+
+        void adapter.insert({
+          query: "INSERT INTO insert_compression_table",
+          values,
+        });
+
+        // trigger stream pipeline
+        await sleep(0);
+        request.emit("socket", socketStub);
+
+        const finalResult = await decompressed;
+        expect(finalResult.toString("utf8")).toEqual(values);
+        expect(httpRequestStub).toHaveBeenCalledTimes(1);
+        const calledWith =
+          httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1];
+        expect(
+          (calledWith.headers as Record<string, string>)["Content-Encoding"],
+        ).toBe("zstd");
+      },
+    );
   });
 });

@@ -7,12 +7,15 @@ import type {
 } from "@clickhouse/client-common";
 import {
   type BaseClickHouseClientConfigOptions,
+  type CompressionMethod,
   type ConnectionParams,
+  COMPRESSION_METHODS,
   numberConfigURLValue,
 } from "@clickhouse/client-common";
 import type http from "http";
 import type https from "node:https";
 import type Stream from "stream";
+import Zlib from "zlib";
 import { NodeConnectionFactory, type TLSParams } from "./connection";
 import { ResultSet } from "./result_set";
 import { NodeValuesEncoder } from "./utils";
@@ -89,6 +92,40 @@ interface MutualTLSOptions {
   key: Buffer;
 }
 
+/** Fails fast at client creation on an unknown codec, or on `zstd` when this
+ *  Node.js runtime's `zlib` does not provide the zstd APIs - rather than a
+ *  TypeError deep in a later insert/query. */
+function ensureCodecSupported(
+  value: boolean | CompressionMethod,
+  direction: "request" | "response",
+): void {
+  if (typeof value !== "string") {
+    return;
+  }
+  if (!COMPRESSION_METHODS.includes(value)) {
+    throw new Error(
+      `Unknown ${direction} compression codec "${value}". ` +
+        `Supported codecs: ${COMPRESSION_METHODS.join(", ")}.`,
+    );
+  }
+  // zstd is the only codec gated on the runtime: its zlib APIs were added in
+  // Node.js 22.15.0, and compression / decompression are separate functions.
+  if (value === "zstd") {
+    const zstdAvailable =
+      direction === "request"
+        ? typeof Zlib.createZstdCompress === "function"
+        : typeof Zlib.createZstdDecompress === "function";
+    if (!zstdAvailable) {
+      throw new Error(
+        "zstd compression is not supported by this Node.js runtime (v" +
+          process.versions.node +
+          "): the built-in zlib module does not provide the zstd APIs (added " +
+          "in Node.js 22.15.0). Use gzip compression instead.",
+      );
+    }
+  }
+}
+
 export const NodeConfigImpl: Required<
   ImplementationDetails<Stream.Readable>["impl"]
 > = {
@@ -127,6 +164,8 @@ export const NodeConfigImpl: Required<
     nodeConfig: NodeClickHouseClientConfigOptions,
     params: ConnectionParams,
   ) => {
+    ensureCodecSupported(params.compression.compress_request, "request");
+    ensureCodecSupported(params.compression.decompress_response, "response");
     let tls: TLSParams | undefined = undefined;
     if (nodeConfig.tls !== undefined) {
       if ("cert" in nodeConfig.tls && "key" in nodeConfig.tls) {
