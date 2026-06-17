@@ -206,11 +206,11 @@ describe("Node.js Connection compression", () => {
         query: "SELECT * FROM system.numbers LIMIT 5",
       });
 
-      await emitCompressedBody(request, "abc", "br");
+      await emitCompressedBody(request, "abc", "lz4");
 
       await expect(selectPromise).rejects.toEqual(
         expect.objectContaining({
-          message: "Unexpected encoding: br",
+          message: "Unexpected encoding: lz4",
         }),
       );
     });
@@ -294,6 +294,42 @@ describe("Node.js Connection compression", () => {
         ).toBe("zstd");
       },
     );
+
+    it('decompresses a br response and sends Accept-Encoding: br if response: { codec: "br" }', async () => {
+      const request = stubClientRequest();
+      httpRequestStub.mockReturnValue(request);
+
+      const adapter = buildHttpConnection({
+        compression: {
+          decompress_response: { codec: "br" },
+          compress_request: undefined,
+        },
+      });
+
+      const selectPromise = adapter.query({
+        query: "SELECT * FROM system.numbers LIMIT 5",
+      });
+
+      const responseBody = "foobar";
+      await sleep(0);
+      request.emit(
+        "response",
+        buildIncomingMessage({
+          body: Zlib.brotliCompressSync(Buffer.from(responseBody)),
+          headers: { "content-encoding": "br" },
+        }),
+      );
+
+      const queryResult = await selectPromise;
+      await assertConnQueryResult(queryResult, responseBody);
+
+      expect(httpRequestStub).toHaveBeenCalledTimes(1);
+      const calledWith =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1];
+      expect(
+        (calledWith.headers as Record<string, string>)["Accept-Encoding"],
+      ).toBe("br");
+    });
   });
 
   describe("request compression", () => {
@@ -397,6 +433,59 @@ describe("Node.js Connection compression", () => {
         ).toBe("zstd");
       },
     );
+
+    it('sends a br-compressed request if compress_request is { codec: "br" }', async () => {
+      const adapter = buildHttpConnection({
+        compression: {
+          decompress_response: undefined,
+          compress_request: { codec: "br" },
+        },
+      });
+
+      const values = "abc".repeat(1_000);
+
+      let chunks = Buffer.alloc(0);
+      let resolveResult!: (value: Buffer) => void;
+      let rejectResult!: (reason: Error) => void;
+      const decompressed = new Promise<Buffer>((resolve, reject) => {
+        resolveResult = resolve;
+        rejectResult = reject;
+      });
+      const request = new Stream.Writable({
+        write(chunk, encoding, next) {
+          chunks = Buffer.concat([chunks, chunk]);
+          next();
+        },
+        final(callback) {
+          Zlib.brotliDecompress(chunks, (err, result) => {
+            callback(err);
+            if (err) {
+              rejectResult(err);
+            } else {
+              resolveResult(result);
+            }
+          });
+        },
+      }) as ClientRequest;
+      httpRequestStub.mockReturnValue(request);
+
+      void adapter.insert({
+        query: "INSERT INTO insert_compression_table",
+        values,
+      });
+
+      await sleep(0);
+      request.emit("socket", socketStub);
+
+      const finalResult = await decompressed;
+      expect(finalResult.toString("utf8")).toEqual(values);
+      expect(httpRequestStub).toHaveBeenCalledTimes(1);
+      const calledWith =
+        httpRequestStub.mock.calls[httpRequestStub.mock.calls.length - 1][1];
+      expect(
+        (calledWith.headers as Record<string, string>)["Content-Encoding"],
+      ).toBe("br");
+    });
   });
 });
 
@@ -419,20 +508,20 @@ describe("createRequestCompressor", () => {
 
   it("passes the level to the gzip compressor", () => {
     const createGzip = vi.spyOn(Zlib, "createGzip");
-    createRequestCompressor("gzip", 1);
+    createRequestCompressor({ codec: "gzip", level: 1 });
     expect(createGzip).toHaveBeenCalledWith({ level: 1 });
   });
 
   it("uses the codec default when no level is given", () => {
     const createGzip = vi.spyOn(Zlib, "createGzip");
-    createRequestCompressor("gzip");
+    createRequestCompressor({ codec: "gzip" });
     expect(createGzip).toHaveBeenCalledWith(undefined);
   });
 
   it("round-trips a gzip body compressed with an explicit level", async () => {
     const values = "abc".repeat(1_000);
     const out = await roundTrip(
-      createRequestCompressor("gzip", 1),
+      createRequestCompressor({ codec: "gzip", level: 1 }),
       (buf) => Zlib.gunzipSync(buf),
       values,
     );
@@ -445,7 +534,7 @@ describe("createRequestCompressor", () => {
       const createZstdCompress = vi.spyOn(Zlib, "createZstdCompress");
       const values = "abc".repeat(1_000);
       const out = await roundTrip(
-        createRequestCompressor("zstd", 19),
+        createRequestCompressor({ codec: "zstd", level: 19 }),
         (buf) => Zlib.zstdDecompressSync(buf),
         values,
       );
@@ -455,4 +544,26 @@ describe("createRequestCompressor", () => {
       expect(out).toBe(values);
     },
   );
+
+  it("passes the quality to the brotli compressor (defaulting to 4)", () => {
+    const createBrotliCompress = vi.spyOn(Zlib, "createBrotliCompress");
+    createRequestCompressor({ codec: "br" });
+    expect(createBrotliCompress).toHaveBeenLastCalledWith({
+      params: { [Zlib.constants.BROTLI_PARAM_QUALITY]: 4 },
+    });
+    createRequestCompressor({ codec: "br", quality: 11 });
+    expect(createBrotliCompress).toHaveBeenLastCalledWith({
+      params: { [Zlib.constants.BROTLI_PARAM_QUALITY]: 11 },
+    });
+  });
+
+  it("round-trips a br body compressed with an explicit quality", async () => {
+    const values = "abc".repeat(1_000);
+    const out = await roundTrip(
+      createRequestCompressor({ codec: "br", quality: 6 }),
+      (buf) => Zlib.brotliDecompressSync(buf),
+      values,
+    );
+    expect(out).toBe(values);
+  });
 });

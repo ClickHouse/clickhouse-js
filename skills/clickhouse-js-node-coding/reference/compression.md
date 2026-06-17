@@ -1,9 +1,10 @@
 # Compression
 
 > **Applies to:** all versions support boolean `compression`. The explicit
-> codec object form (`{ codec: "gzip" | "zstd" }`), the `{ codec, level }`
-> request option, and `zstd` support are a Node-only addition in
-> `@clickhouse/client` `>= 1.22.0`.
+> codec object form, per-codec request options, and `zstd` support are a
+> Node-only addition in `@clickhouse/client` `>= 1.22.0`. Brotli
+> (`{ codec: "br" }`) is a further Node-only addition; unlike `zstd` it has no
+> minimum Node.js version.
 
 The client can compress the outgoing request (insert) body and ask the server
 to compress the response (read) body. Both are configured under `compression`
@@ -20,6 +21,14 @@ When answering compression questions, include the relevant points:
 - `zstd` is **Node-only** (`@clickhouse/client`) and requires **Node.js >=
   22.15.0** (the built-in `zlib` zstd APIs). On `@clickhouse/client-web` or an
   older Node runtime, requesting `zstd` throws a clear error at `createClient`.
+- Supported codecs are `gzip`, `zstd`, and `br` (Brotli). `br` is **Node-only**
+  but, unlike `zstd`, works on any supported Node.js version (it ships in
+  `zlib`). The web client and older Node runtimes reject `zstd`; `br` is fine
+  (the browser handles `br` responses).
+- The request object takes a per-codec tuning option: a `level` for
+  `gzip`/`zstd`, a `quality` for `br` (`{ codec: "br", quality }`). Brotli
+  defaults to quality 4 — zlib's brotli default of 11 is far too slow for a
+  streaming insert.
 - Response compression cannot be enabled for a `readonly=1` user — the server
   rejects the required `enable_http_compression` setting change.
 - Prefer `zstd` for write-heavy (insert) workloads: a similar-or-better ratio
@@ -64,12 +73,35 @@ const client = createClient({
 });
 ```
 
-## Request compression level (Node.js)
+## Brotli (any Node.js version)
 
-The request object form accepts an optional `level` — the zlib level for
-`gzip` or the zstd compression level for `zstd`. When omitted, the codec's
-default level is used. This applies to the **request** direction only; the
-response compression level is chosen by the ClickHouse server.
+```ts
+const client = createClient({
+  compression: {
+    request: { codec: "br" }, // brotli insert bodies (quality 4 by default)
+    response: { codec: "br" }, // ask the server for a brotli-compressed response
+  },
+});
+```
+
+Brotli is Node-only but, unlike `zstd`, needs no minimum Node.js version. Its
+tuning option is `quality` (0-11), not `level`:
+
+```ts
+const client = createClient({
+  compression: {
+    request: { codec: "br", quality: 6 },
+  },
+});
+```
+
+## Request compression options (Node.js)
+
+The request object accepts a per-codec tuning option — a `level` for `gzip`
+(zlib level) and `zstd` (zstd compression level), or a `quality` for `br`
+(Brotli quality, 0-11). When omitted, the codec default is used (Brotli
+defaults to 4). This applies to the **request** direction only; the response
+compression options are chosen by the ClickHouse server.
 
 ```ts
 const client = createClient({

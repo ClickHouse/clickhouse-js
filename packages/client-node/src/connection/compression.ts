@@ -1,4 +1,4 @@
-import type { CompressionMethod, LogWriter } from "@clickhouse/client-common";
+import type { LogWriter, RequestCompression } from "@clickhouse/client-common";
 import { ClickHouseLogLevel } from "@clickhouse/client-common";
 import type Http from "http";
 import Stream from "stream";
@@ -68,6 +68,23 @@ export function decompressResponse(
     };
   }
 
+  if (encoding === "br") {
+    return {
+      response: Stream.pipeline(
+        response,
+        Zlib.createBrotliDecompress(),
+        function pipelineCb(err) {
+          if (err && log_level <= ClickHouseLogLevel.ERROR) {
+            log_writer.error({
+              message: "An error occurred while decompressing the response",
+              err,
+            });
+          }
+        },
+      ),
+    };
+  }
+
   return { error: new Error(`Unexpected encoding: ${encoding}`) };
 }
 
@@ -75,26 +92,40 @@ export function isDecompressionError(result: any): result is { error: Error } {
   return result.error !== undefined;
 }
 
-/** Returns the request-body compressor for the given codec. An optional `level`
- *  sets the codec-specific compression level (zlib level for gzip, zstd
- *  compression level for zstd); when omitted, the codec default is used. The
- *  exhaustive switch fails the build if a new codec is added to the type without
- *  a corresponding case here. */
+/** Returns the request-body compressor for the given config. Each codec carries
+ *  its own optional tuning option - a `level` for gzip/zstd, a `quality` for
+ *  Brotli; when omitted, the codec default is used (Brotli defaults to quality 4
+ *  rather than zlib's slow default of 11, which is impractical for a streaming
+ *  insert body). The exhaustive switch fails the build if a codec is added to
+ *  {@link RequestCompression} without a corresponding case here. */
 export function createRequestCompressor(
-  method: CompressionMethod,
-  level?: number,
+  compression: RequestCompression,
 ): Stream.Transform {
-  switch (method) {
+  switch (compression.codec) {
     case "gzip":
-      return Zlib.createGzip(level !== undefined ? { level } : undefined);
-    case "zstd":
-      return Zlib.createZstdCompress(
-        level !== undefined
-          ? { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
+      return Zlib.createGzip(
+        compression.level !== undefined
+          ? { level: compression.level }
           : undefined,
       );
+    case "zstd":
+      return Zlib.createZstdCompress(
+        compression.level !== undefined
+          ? {
+              params: {
+                [Zlib.constants.ZSTD_c_compressionLevel]: compression.level,
+              },
+            }
+          : undefined,
+      );
+    case "br":
+      return Zlib.createBrotliCompress({
+        params: {
+          [Zlib.constants.BROTLI_PARAM_QUALITY]: compression.quality ?? 4,
+        },
+      });
     default: {
-      const exhaustiveCheck: never = method;
+      const exhaustiveCheck: never = compression;
       throw new Error(
         `Unsupported request compression codec: ${String(exhaustiveCheck)}`,
       );
