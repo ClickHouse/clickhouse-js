@@ -1,8 +1,9 @@
 # Compression
 
 > **Applies to:** all versions support boolean `compression`. The explicit
-> codec object form (`{ codec: "gzip" | "zstd" }`) and `zstd` support are a
-> Node-only addition; see the CHANGELOG for the exact release.
+> codec object form (`{ codec: "gzip" | "zstd" }`), the `{ codec, level }`
+> request option, and `zstd` support are a Node-only addition in
+> `@clickhouse/client` `>= 1.22.0`.
 
 The client can compress the outgoing request (insert) body and ask the server
 to compress the response (read) body. Both are configured under `compression`
