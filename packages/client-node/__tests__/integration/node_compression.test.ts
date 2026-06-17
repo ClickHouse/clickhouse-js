@@ -1,5 +1,8 @@
 import { describe, it, beforeEach, afterEach, expect } from "vitest";
-import { type ClickHouseClient, type ResponseJSON } from "@clickhouse/client-common";
+import {
+  type ClickHouseClient,
+  type ResponseJSON,
+} from "@clickhouse/client-common";
 import { createTestClient, guid } from "@test/utils";
 import { createSimpleTable } from "@test/fixtures/simple_table";
 import { isClickHouseVersionAtLeast } from "@test/utils/server_version";
