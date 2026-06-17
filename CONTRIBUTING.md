@@ -80,6 +80,10 @@ npm run prettify
 The Husky Git hook formats staged files with `prettier` on commit, but does not run `eslint`; make sure to run
 `npm run lint` before pushing, as CI enforces it with zero warnings.
 
+Every ESLint rule is configured as a `warn` (the only hard errors come from the TypeScript compiler, i.e.
+`npm run typecheck`). Because CI runs `eslint --max-warnings=0`, any ESLint warning still fails the build, so
+treat all warnings as errors that must be fixed before merging.
+
 ### Running unit tests
 
 Does not require a running ClickHouse server.
