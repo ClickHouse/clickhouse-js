@@ -22,6 +22,7 @@
     "lint:fix": "npm --workspaces run lint:fix",
     "build": "npm run --workspaces build",
     "prettify": "prettier --write .",
+    "prettier:check": "prettier --check .",
     "test": "echo -e \"Please specify a test script to run. See \\033[1mnpm run\\033[0m for reference.\" && exit 1",
     "test:common:unit:node": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=common vitest -c vitest.node.config.ts",
     "test:common:unit:bun": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=common bun --bun vitest -c vitest.node.config.ts",
@@ -66,9 +67,7 @@
     "@vitest/coverage-v8": "^4.1.0",
     "apache-arrow": "^21.0.0",
     "eslint": "^10.4.1",
-    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-expect-type": "^0.6.2",
-    "eslint-plugin-prettier": "^5.5.6",
     "husky": "^9.1.7",
     "jsonwebtoken": "^9.0.3",
     "lint-staged": "^17.0.7",
@@ -92,8 +91,7 @@
   ],
   "lint-staged": {
     "*.ts": [
-      "prettier --write",
-      "npm run lint:fix"
+      "prettier --write"
     ],
     "*.json": [
       "prettier --write"

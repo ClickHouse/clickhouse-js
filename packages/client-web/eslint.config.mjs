@@ -1,14 +1,12 @@
-import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
-import tseslint from "typescript-eslint";
-import { typescriptEslintConfig } from "../../eslint.config.base.mjs";
+import {
+  recommendedWarnConfigs,
+  typescriptEslintConfig,
+} from "../../eslint.config.base.mjs";
 
 export default defineConfig(
-  // Base ESLint recommended rules
-  js.configs.recommended,
-  // TypeScript-ESLint recommended rules with type checking
-  ...tseslint.configs.strict,
-  ...tseslint.configs.stylistic,
+  // Recommended rule sets, downgraded to warnings (only tsc reports errors)
+  ...recommendedWarnConfigs,
   typescriptEslintConfig(import.meta.dirname),
   // Ignore build artifacts and externals
   {

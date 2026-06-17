@@ -59,6 +59,20 @@ jobs:
         run: |
           npm run lint
 
+      - name: Check formatting (Prettier)
+        env:
+          NO_COLOR: "1"
+        run: |
+          if ! npm run -s prettier:check > prettier-output.txt 2>&1; then
+            cat prettier-output.txt
+            grep -E '^\[warn\] ' prettier-output.txt \
+              | grep -vE 'Code style issues|Run Prettier|Forgot to run' \
+              | sed -E 's#^\[warn\] (.+)$#::error file=\1::File is not formatted with Prettier. Run "npm run prettify" to fix.#' || true
+            echo "::error::Prettier check failed. Run 'npm run prettify' locally to fix formatting."
+            exit 1
+          fi
+          cat prettier-output.txt
+
   common-unit-tests:
     timeout-minutes: 5
     runs-on: ubuntu-latest
