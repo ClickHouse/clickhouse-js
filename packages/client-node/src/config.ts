@@ -103,12 +103,13 @@ function unknownCodecError(
 
 // zstd's zlib APIs were added in Node.js 22.15.0, and compression /
 // decompression are separate functions - so each direction is gated on its own.
-function zstdUnavailableError(): Error {
+// The missing function is named to make the diagnosis concrete.
+function zstdUnavailableError(missingFn: string): Error {
   return new Error(
     "zstd compression is not supported by this Node.js runtime (v" +
       process.versions.node +
-      "): the built-in zlib module does not provide the zstd APIs (added " +
-      "in Node.js 22.15.0). Use gzip compression instead.",
+      `): the built-in zlib module does not provide \`${missingFn}\` (the zstd ` +
+      "APIs were added in Node.js 22.15.0). Use gzip compression instead.",
   );
 }
 
@@ -121,7 +122,7 @@ function ensureRequestCodecSupported(value: boolean | CompressionMethod): void {
   }
   if (value === "zstd") {
     if (typeof Zlib.createZstdCompress !== "function") {
-      throw zstdUnavailableError();
+      throw zstdUnavailableError("createZstdCompress");
     }
   } else if (value !== "gzip") {
     throw unknownCodecError(value, "request");
@@ -139,7 +140,7 @@ function ensureResponseCodecSupported(
   }
   if (value === "zstd") {
     if (typeof Zlib.createZstdDecompress !== "function") {
-      throw zstdUnavailableError();
+      throw zstdUnavailableError("createZstdDecompress");
     }
   } else if (value !== "gzip") {
     throw unknownCodecError(value, "response");
