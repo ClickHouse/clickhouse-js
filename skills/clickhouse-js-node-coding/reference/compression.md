@@ -63,6 +63,21 @@ const client = createClient({
 });
 ```
 
+## Request compression level (Node.js)
+
+The request object form accepts an optional `level` — the zlib level for
+`gzip` or the zstd compression level for `zstd`. When omitted, the codec's
+default level is used. This applies to the **request** direction only; the
+response compression level is chosen by the ClickHouse server.
+
+```ts
+const client = createClient({
+  compression: {
+    request: { codec: "zstd", level: 19 }, // higher ratio, more CPU
+  },
+});
+```
+
 ## Common pitfalls
 
 - **`compression: { request: "zstd" }` is a type error.** Use the object form:

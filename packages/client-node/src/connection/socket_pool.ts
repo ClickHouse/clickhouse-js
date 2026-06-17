@@ -32,6 +32,8 @@ export interface RequestParams {
   abort_signal: AbortSignal;
   enable_response_compression?: boolean | CompressionMethod;
   enable_request_compression?: boolean | CompressionMethod;
+  // optional codec-specific compression level for the request body
+  request_compression_level?: number;
   // if there are compression headers, attempt to decompress it
   try_decompress_response_stream?: boolean;
   // if the response contains an error, ignore it and return the stream as-is
@@ -395,6 +397,7 @@ export class SocketPool {
         if (params.enable_request_compression) {
           const compressor = createRequestCompressor(
             params.enable_request_compression,
+            params.request_compression_level,
           );
           Stream.pipeline(bodyStream, compressor, request, callback);
         } else {

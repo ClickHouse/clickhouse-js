@@ -4,6 +4,7 @@ import Http, { type ClientRequest } from "http";
 import Stream from "stream";
 import Zlib from "zlib";
 import { assertConnQueryResult } from "../utils/assert";
+import { createRequestCompressor } from "../../src/connection/compression";
 import {
   buildHttpConnection,
   buildIncomingMessage,
@@ -346,4 +347,61 @@ describe("Node.js Connection compression", () => {
       },
     );
   });
+});
+
+describe("createRequestCompressor", () => {
+  async function roundTrip(
+    compressor: Stream.Transform,
+    decompress: (buf: Buffer) => Buffer,
+    input: string,
+  ): Promise<string> {
+    const chunks: Buffer[] = [];
+    compressor.on("data", (chunk: Buffer) => chunks.push(chunk));
+    const done = new Promise<void>((resolve, reject) => {
+      compressor.on("end", resolve);
+      compressor.on("error", reject);
+    });
+    compressor.end(Buffer.from(input));
+    await done;
+    return decompress(Buffer.concat(chunks)).toString("utf8");
+  }
+
+  it("passes the level to the gzip compressor", () => {
+    const createGzip = vi.spyOn(Zlib, "createGzip");
+    createRequestCompressor("gzip", 1);
+    expect(createGzip).toHaveBeenCalledWith({ level: 1 });
+  });
+
+  it("uses the codec default when no level is given", () => {
+    const createGzip = vi.spyOn(Zlib, "createGzip");
+    createRequestCompressor(true);
+    expect(createGzip).toHaveBeenCalledWith(undefined);
+  });
+
+  it("round-trips a gzip body compressed with an explicit level", async () => {
+    const values = "abc".repeat(1_000);
+    const out = await roundTrip(
+      createRequestCompressor("gzip", 1),
+      (buf) => Zlib.gunzipSync(buf),
+      values,
+    );
+    expect(out).toBe(values);
+  });
+
+  it.skipIf(!zstdSupported)(
+    "passes the level to the zstd compressor and round-trips",
+    async () => {
+      const createZstdCompress = vi.spyOn(Zlib, "createZstdCompress");
+      const values = "abc".repeat(1_000);
+      const out = await roundTrip(
+        createRequestCompressor("zstd", 19),
+        (buf) => Zlib.zstdDecompressSync(buf),
+        values,
+      );
+      expect(createZstdCompress).toHaveBeenCalledWith({
+        params: { [Zlib.constants.ZSTD_c_compressionLevel]: 19 },
+      });
+      expect(out).toBe(values);
+    },
+  );
 });

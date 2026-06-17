@@ -311,6 +311,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             abort_signal: controller.signal,
             enable_request_compression:
               this.params.compression.compress_request,
+            request_compression_level:
+              this.params.compression.compress_request_level,
             parse_summary: true,
             headers: this.buildRequestHeaders(params),
             query: params.query,
@@ -572,6 +574,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             parse_summary: true,
             enable_request_compression:
               this.params.compression.compress_request,
+            request_compression_level:
+              this.params.compression.compress_request_level,
             enable_response_compression:
               this.params.compression.decompress_response,
             try_decompress_response_stream: tryDecompressResponseStream,

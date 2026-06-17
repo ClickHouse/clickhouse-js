@@ -44,6 +44,11 @@ export interface CompressionSettings {
   /** `false` disables request compression; `true` is treated as `gzip`
    *  (backwards compatible); a {@link CompressionMethod} selects the codec. */
   compress_request: boolean | CompressionMethod;
+  /** Optional codec-specific compression level for the request body, e.g. the
+   *  zlib level for `gzip` or the zstd compression level for `zstd`. When
+   *  omitted, the codec's default level is used. Has no effect on the response
+   *  direction, whose compression level is controlled by the server. */
+  compress_request_level?: number;
 }
 
 export interface ConnBaseQueryParams {

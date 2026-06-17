@@ -23,6 +23,17 @@ function resolveCompressionMethod(
   return value.codec;
 }
 
+/** Extracts the optional codec-specific compression level from the object form
+ *  of the request compression option. */
+function resolveCompressionLevel(
+  value: boolean | { codec: CompressionMethod; level?: number } | undefined,
+): number | undefined {
+  if (value === undefined || typeof value === "boolean") {
+    return undefined;
+  }
+  return value.level;
+}
+
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
    *  A ClickHouse instance URL.
@@ -57,11 +68,12 @@ export interface BaseClickHouseClientConfigOptions {
     response?: boolean | { codec: CompressionMethod };
     /** Enables compression of the outgoing request (insert) body.
      *  `true` uses `gzip`; pass `{ codec }` to select the codec explicitly,
-     *  e.g. `{ codec: "zstd" }`. The object form is extensible for future
-     *  codec-specific options.
+     *  e.g. `{ codec: "zstd" }`. Optionally pass `{ codec, level }` to set a
+     *  codec-specific compression level (the zlib level for `gzip`, the zstd
+     *  compression level for `zstd`); when omitted, the codec default is used.
      *  `"zstd"` requires Node.js >= 22.15.0 and is only supported by `@clickhouse/client` (Node.js).
      *  @default false */
-    request?: boolean | { codec: CompressionMethod };
+    request?: boolean | { codec: CompressionMethod; level?: number };
   };
   /** The name of the user on whose behalf requests are made.
    *  Should not be set if {@link access_token} is provided.
@@ -345,6 +357,9 @@ export function getConnectionParams(
         config.compression?.response,
       ),
       compress_request: resolveCompressionMethod(config.compression?.request),
+      compress_request_level: resolveCompressionLevel(
+        config.compression?.request,
+      ),
     },
     database: config.database ?? "default",
     log_writer: new LogWriter(logger, "Connection", log_level),
