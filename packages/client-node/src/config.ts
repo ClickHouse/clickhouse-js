@@ -92,37 +92,56 @@ interface MutualTLSOptions {
   key: Buffer;
 }
 
-/** Fails fast at client creation on an unknown codec, or on `zstd` when this
- *  Node.js runtime's `zlib` does not provide the zstd APIs - rather than a
- *  TypeError deep in a later insert/query. */
-function ensureCodecSupported(
-  value: boolean | CompressionMethod,
+function unknownCodecError(
+  value: string,
   direction: "request" | "response",
+): Error {
+  return new Error(
+    `Unknown ${direction} compression codec "${value}". ` +
+      `Supported codecs: ${COMPRESSION_METHODS.join(", ")}.`,
+  );
+}
+
+// zstd's zlib APIs were added in Node.js 22.15.0, and compression /
+// decompression are separate functions - so each direction is gated on its own.
+function zstdUnavailableError(): Error {
+  return new Error(
+    "zstd compression is not supported by this Node.js runtime (v" +
+      process.versions.node +
+      "): the built-in zlib module does not provide the zstd APIs (added " +
+      "in Node.js 22.15.0). Use gzip compression instead.",
+  );
+}
+
+/** Fails fast at client creation on an unknown request codec, or on `zstd` when
+ *  this Node.js runtime's `zlib` does not provide the zstd compression API -
+ *  rather than a TypeError deep in a later insert. */
+function ensureRequestCodecSupported(value: boolean | CompressionMethod): void {
+  if (typeof value !== "string") {
+    return;
+  }
+  if (!COMPRESSION_METHODS.includes(value)) {
+    throw unknownCodecError(value, "request");
+  }
+  if (value === "zstd" && typeof Zlib.createZstdCompress !== "function") {
+    throw zstdUnavailableError();
+  }
+}
+
+/** Fails fast at client creation on an unknown response codec, or on `zstd`
+ *  when this Node.js runtime's `zlib` does not provide the zstd decompression
+ *  API - rather than a TypeError deep in a later query. */
+function ensureResponseCodecSupported(
+  value: boolean | CompressionMethod,
 ): void {
   if (typeof value !== "string") {
     return;
   }
   if (!COMPRESSION_METHODS.includes(value)) {
-    throw new Error(
-      `Unknown ${direction} compression codec "${value}". ` +
-        `Supported codecs: ${COMPRESSION_METHODS.join(", ")}.`,
-    );
+    throw unknownCodecError(value, "response");
   }
-  // zstd is the only codec gated on the runtime: its zlib APIs were added in
-  // Node.js 22.15.0, and compression / decompression are separate functions.
-  if (value === "zstd") {
-    const zstdAvailable =
-      direction === "request"
-        ? typeof Zlib.createZstdCompress === "function"
-        : typeof Zlib.createZstdDecompress === "function";
-    if (!zstdAvailable) {
-      throw new Error(
-        "zstd compression is not supported by this Node.js runtime (v" +
-          process.versions.node +
-          "): the built-in zlib module does not provide the zstd APIs (added " +
-          "in Node.js 22.15.0). Use gzip compression instead.",
-      );
-    }
+  if (value === "zstd" && typeof Zlib.createZstdDecompress !== "function") {
+    throw zstdUnavailableError();
   }
 }
 
@@ -164,8 +183,8 @@ export const NodeConfigImpl: Required<
     nodeConfig: NodeClickHouseClientConfigOptions,
     params: ConnectionParams,
   ) => {
-    ensureCodecSupported(params.compression.compress_request, "request");
-    ensureCodecSupported(params.compression.decompress_response, "response");
+    ensureRequestCodecSupported(params.compression.compress_request);
+    ensureResponseCodecSupported(params.compression.decompress_response);
     let tls: TLSParams | undefined = undefined;
     if (nodeConfig.tls !== undefined) {
       if ("cert" in nodeConfig.tls && "key" in nodeConfig.tls) {
