@@ -107,11 +107,9 @@ function unknownCodecError(
 
 /** Fails fast at client creation on an unknown request codec, or on `zstd` when
  *  this Node.js runtime's `zlib` does not provide the zstd compression API -
- *  rather than a TypeError deep in a later insert. */
-function ensureRequestCodecSupported(value: boolean | CompressionMethod): void {
-  if (typeof value !== "string") {
-    return;
-  }
+ *  rather than a TypeError deep in a later insert. The boolean forms (`false`
+ *  off, `true` gzip) need no validation and are filtered out by the caller. */
+function ensureRequestCodecSupported(value: CompressionMethod): void {
   if (value === "zstd") {
     if (typeof Zlib.createZstdCompress !== "function") {
       throw new Error(
@@ -128,13 +126,9 @@ function ensureRequestCodecSupported(value: boolean | CompressionMethod): void {
 
 /** Fails fast at client creation on an unknown response codec, or on `zstd`
  *  when this Node.js runtime's `zlib` does not provide the zstd decompression
- *  API - rather than a TypeError deep in a later query. */
-function ensureResponseCodecSupported(
-  value: boolean | CompressionMethod,
-): void {
-  if (typeof value !== "string") {
-    return;
-  }
+ *  API - rather than a TypeError deep in a later query. The boolean forms
+ *  (`false` off, `true` gzip) need no validation and are filtered by the caller. */
+function ensureResponseCodecSupported(value: CompressionMethod): void {
   if (value === "zstd") {
     if (typeof Zlib.createZstdDecompress !== "function") {
       throw new Error(
@@ -187,8 +181,13 @@ export const NodeConfigImpl: Required<
     nodeConfig: NodeClickHouseClientConfigOptions,
     params: ConnectionParams,
   ) => {
-    ensureRequestCodecSupported(params.compression.compress_request);
-    ensureResponseCodecSupported(params.compression.decompress_response);
+    const { compress_request, decompress_response } = params.compression;
+    if (typeof compress_request === "string") {
+      ensureRequestCodecSupported(compress_request);
+    }
+    if (typeof decompress_response === "string") {
+      ensureResponseCodecSupported(decompress_response);
+    }
     let tls: TLSParams | undefined = undefined;
     if (nodeConfig.tls !== undefined) {
       if ("cert" in nodeConfig.tls && "key" in nodeConfig.tls) {
