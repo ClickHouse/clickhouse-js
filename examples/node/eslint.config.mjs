@@ -1,7 +1,6 @@
 import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
-import pluginPrettier from "eslint-plugin-prettier";
 import pluginExpectType from "eslint-plugin-expect-type/configs/recommended";
 
 export default defineConfig(
@@ -19,11 +18,9 @@ export default defineConfig(
       },
     },
     plugins: {
-      prettier: pluginPrettier,
       "expect-type": pluginExpectType,
     },
     rules: {
-      "prettier/prettier": "error",
       "@typescript-eslint/no-floating-promises": "error",
       eqeqeq: "error",
       "no-console": "error",

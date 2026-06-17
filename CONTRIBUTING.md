@@ -37,10 +37,11 @@ sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 
 ## Style Guide
 
-We use an automatic code formatting with `prettier` and `eslint`, both should be installed after running `npm i`.
+We use automatic code formatting with `prettier` and linting with `eslint`, both should be installed after running `npm i`.
 
 Additionally, every commit should trigger a [Husky](https://typicode.github.io/husky/) Git hook that applies `prettier`
-and checks the code with `eslint` via `lint-staged` automatically.
+to the staged files via `lint-staged` automatically. `eslint` is not run by the commit hook; it runs in CI (with
+`--max-warnings=0`), so run it manually with `npm run lint` (or `npm run lint:fix`) before pushing.
 
 ## Testing
 
@@ -69,7 +70,15 @@ npm run typecheck
 npm run lint:fix
 ```
 
-However, usually, it is enough to rely on Husky Git hooks.
+Formatting can be checked or applied repo-wide with:
+
+```bash
+npm run prettier:check
+npm run prettify
+```
+
+The Husky Git hook formats staged files with `prettier` on commit, but does not run `eslint`; make sure to run
+`npm run lint` before pushing, as CI enforces it with zero warnings.
 
 ### Running unit tests
 

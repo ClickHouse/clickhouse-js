@@ -1,7 +1,7 @@
-import js from '@eslint/js'
-import { defineConfig } from 'eslint/config'
-import tseslint from 'typescript-eslint'
-import { typescriptEslintConfig } from '../eslint.config.base.mjs'
+import js from "@eslint/js";
+import { defineConfig } from "eslint/config";
+import tseslint from "typescript-eslint";
+import { typescriptEslintConfig } from "../eslint.config.base.mjs";
 
 export default defineConfig(
   js.configs.recommended,
@@ -11,10 +11,10 @@ export default defineConfig(
   {
     // Benchmarks are standalone scripts that intentionally print to stdout.
     rules: {
-      'no-console': 'off',
+      "no-console": "off",
     },
   },
   {
-    ignores: ['dist', 'node_modules', 'eslint.config.mjs'],
+    ignores: ["dist", "node_modules", "eslint.config.mjs"],
   },
-)
+);

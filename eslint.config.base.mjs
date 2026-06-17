@@ -1,4 +1,3 @@
-import pluginPrettier from "eslint-plugin-prettier";
 import pluginExpectType from "eslint-plugin-expect-type/configs/recommended";
 
 export function typescriptEslintConfig(root) {
@@ -11,11 +10,9 @@ export function typescriptEslintConfig(root) {
       },
     },
     plugins: {
-      prettier: pluginPrettier,
       "expect-type": pluginExpectType,
     },
     rules: {
-      "prettier/prettier": "error",
       "@typescript-eslint/no-floating-promises": "error",
       eqeqeq: "error",
       "no-console": "error",
