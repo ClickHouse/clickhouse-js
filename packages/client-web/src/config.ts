@@ -1,6 +1,7 @@
 import type {
   BaseClickHouseClientConfigOptions,
   ClickHouseSpan,
+  CompressionSettings,
   ConnectionParams,
   DataFormat,
   ImplementationDetails,
@@ -18,15 +19,36 @@ export type WebClickHouseClientConfigOptions =
     fetch?: typeof fetch;
   };
 
+/** The `zstd` codec is Node-only: the Web client does not compress request
+ *  bodies, and relies on the browser to negotiate / decompress responses, so it
+ *  cannot honor `{ codec: "zstd" }`. Fail fast at client creation rather than
+ *  silently emitting an `Accept-Encoding: zstd` the client can't fulfill. */
+function ensureNoZstdCodec(compression: CompressionSettings): void {
+  const directions = [
+    ["request", compression.compress_request],
+    ["response", compression.decompress_response],
+  ] as const;
+  for (const [direction, value] of directions) {
+    if (value === "zstd") {
+      throw new Error(
+        `zstd ${direction} compression is not supported by @clickhouse/client-web; ` +
+          `it is only available in @clickhouse/client (Node.js). Use gzip instead.`,
+      );
+    }
+  }
+}
+
 export const WebImpl: ImplementationDetails<ReadableStream>["impl"] = {
   make_connection: (
     config: WebClickHouseClientConfigOptions,
     params: ConnectionParams,
-  ) =>
-    new WebConnection({
+  ) => {
+    ensureNoZstdCodec(params.compression);
+    return new WebConnection({
       ...params,
       fetch: config.fetch,
-    }),
+    });
+  },
   make_result_set: ((
     stream: ReadableStream,
     format: DataFormat,
