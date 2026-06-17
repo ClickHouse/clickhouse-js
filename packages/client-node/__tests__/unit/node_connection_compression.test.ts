@@ -182,6 +182,12 @@ describe("Node.js Connection compression", () => {
       } finally {
         if (original) {
           Object.defineProperty(Zlib, "createZstdDecompress", original);
+        } else {
+          // No original descriptor (runtime genuinely lacks zstd): remove the
+          // stub we added instead of leaving an `undefined` property behind.
+          delete (Zlib as unknown as Record<string, unknown>)[
+            "createZstdDecompress"
+          ];
         }
       }
     });
