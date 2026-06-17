@@ -182,11 +182,11 @@ export const NodeConfigImpl: Required<
     params: ConnectionParams,
   ) => {
     const { compress_request, decompress_response } = params.compression;
-    if (typeof compress_request === "string") {
-      ensureRequestCodecSupported(compress_request);
+    if (compress_request) {
+      ensureRequestCodecSupported(compress_request.codec);
     }
-    if (typeof decompress_response === "string") {
-      ensureResponseCodecSupported(decompress_response);
+    if (decompress_response) {
+      ensureResponseCodecSupported(decompress_response.codec);
     }
     let tls: TLSParams | undefined = undefined;
     if (nodeConfig.tls !== undefined) {

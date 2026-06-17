@@ -30,8 +30,8 @@ export interface RequestParams {
   body?: string | Stream.Readable;
   // provided by the user and wrapped around internally
   abort_signal: AbortSignal;
-  enable_response_compression?: boolean | CompressionMethod;
-  enable_request_compression?: boolean | CompressionMethod;
+  enable_response_compression?: CompressionMethod;
+  enable_request_compression?: CompressionMethod;
   // optional codec-specific compression level for the request body
   request_compression_level?: number;
   // if there are compression headers, attempt to decompress it

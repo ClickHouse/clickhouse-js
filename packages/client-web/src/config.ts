@@ -29,7 +29,7 @@ function ensureNoZstdCodec(compression: CompressionSettings): void {
     ["response", compression.decompress_response],
   ] as const;
   for (const [direction, value] of directions) {
-    if (value === "zstd") {
+    if (value?.codec === "zstd") {
       throw new Error(
         `zstd ${direction} compression is not supported by @clickhouse/client-web; ` +
           `it is only available in @clickhouse/client (Node.js). Use gzip instead.`,

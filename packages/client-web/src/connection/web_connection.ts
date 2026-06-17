@@ -240,9 +240,9 @@ export class WebConnection implements Connection<ReadableStream> {
       const headers = withCompressionHeaders({
         headers: prebuiltHeaders ?? this.defaultHeadersWithOverride(params),
         // It is not currently working as expected in all major browsers
-        enable_request_compression: false,
+        enable_request_compression: undefined,
         enable_response_compression:
-          this.params.compression.decompress_response,
+          this.params.compression.decompress_response?.codec,
       });
 
       // avoiding "fetch called on an object that does not implement interface Window" error

@@ -60,17 +60,16 @@ export function isDecompressionError(result: any): result is { error: Error } {
   return result.error !== undefined;
 }
 
-/** Returns the request-body compressor for the given codec (`true` == gzip, kept
- *  for backwards compatibility). An optional `level` sets the codec-specific
- *  compression level (zlib level for gzip, zstd compression level for zstd);
- *  when omitted, the codec default is used. The exhaustive switch fails the
- *  build if a new codec is added to the type without a corresponding case here. */
+/** Returns the request-body compressor for the given codec. An optional `level`
+ *  sets the codec-specific compression level (zlib level for gzip, zstd
+ *  compression level for zstd); when omitted, the codec default is used. The
+ *  exhaustive switch fails the build if a new codec is added to the type without
+ *  a corresponding case here. */
 export function createRequestCompressor(
-  method: true | CompressionMethod,
+  method: CompressionMethod,
   level?: number,
 ): Stream.Transform {
   switch (method) {
-    case true:
     case "gzip":
       return Zlib.createGzip(level !== undefined ? { level } : undefined);
     case "zstd":

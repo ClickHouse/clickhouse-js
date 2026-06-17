@@ -34,18 +34,22 @@ export interface ConnectionParams {
  *  built-in `zlib` module) and is only honored by `@clickhouse/client` (Node.js). */
 export type CompressionMethod = "gzip" | "zstd";
 
+/** Normalized request (insert) body compression, discriminated by codec so a
+ *  codec-specific compression level lives on the codec it belongs to. */
+export type RequestCompression =
+  | { codec: "gzip"; level?: number }
+  | { codec: "zstd"; level?: number };
+
+/** Normalized response (read) body compression. The compression level is chosen
+ *  by the ClickHouse server, so no level is carried here. */
+export type ResponseCompression = { codec: "gzip" } | { codec: "zstd" };
+
 export interface CompressionSettings {
-  /** `false` disables response decompression; `true` is treated as `gzip`
-   *  (backwards compatible); a {@link CompressionMethod} selects the codec. */
-  decompress_response: boolean | CompressionMethod;
-  /** `false` disables request compression; `true` is treated as `gzip`
-   *  (backwards compatible); a {@link CompressionMethod} selects the codec. */
-  compress_request: boolean | CompressionMethod;
-  /** Optional codec-specific compression level for the request body, e.g. the
-   *  zlib level for `gzip` or the zstd compression level for `zstd`. When
-   *  omitted, the codec's default level is used. Has no effect on the response
-   *  direction, whose compression level is controlled by the server. */
-  compress_request_level?: number;
+  /** Response decompression codec, or `undefined` to disable. */
+  decompress_response: ResponseCompression | undefined;
+  /** Request compression codec (with an optional codec-specific level), or
+   *  `undefined` to disable. */
+  compress_request: RequestCompression | undefined;
 }
 
 export interface ConnBaseQueryParams {

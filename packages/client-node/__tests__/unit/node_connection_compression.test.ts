@@ -40,8 +40,8 @@ describe("Node.js Connection compression", () => {
 
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: true,
-          compress_request: false,
+          decompress_response: { codec: "gzip" },
+          compress_request: undefined,
         },
       });
 
@@ -68,8 +68,8 @@ describe("Node.js Connection compression", () => {
 
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -99,8 +99,8 @@ describe("Node.js Connection compression", () => {
 
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -131,8 +131,8 @@ describe("Node.js Connection compression", () => {
 
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: true,
-          compress_request: false,
+          decompress_response: { codec: "gzip" },
+          compress_request: undefined,
         },
       });
 
@@ -191,8 +191,8 @@ describe("Node.js Connection compression", () => {
       httpRequestStub.mockReturnValue(request);
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: true,
-          compress_request: false,
+          decompress_response: { codec: "gzip" },
+          compress_request: undefined,
         },
       });
 
@@ -214,8 +214,8 @@ describe("Node.js Connection compression", () => {
       httpRequestStub.mockReturnValue(request);
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: true,
-          compress_request: false,
+          decompress_response: { codec: "gzip" },
+          compress_request: undefined,
         },
       });
 
@@ -258,8 +258,8 @@ describe("Node.js Connection compression", () => {
 
         const adapter = buildHttpConnection({
           compression: {
-            decompress_response: "zstd",
-            compress_request: false,
+            decompress_response: { codec: "zstd" },
+            compress_request: undefined,
           },
         });
 
@@ -294,8 +294,8 @@ describe("Node.js Connection compression", () => {
     it("sends a compressed request if compress_request: true", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: true,
+          decompress_response: undefined,
+          compress_request: { codec: "gzip" },
         },
       });
 
@@ -340,8 +340,8 @@ describe("Node.js Connection compression", () => {
       async () => {
         const adapter = buildHttpConnection({
           compression: {
-            decompress_response: false,
-            compress_request: "zstd",
+            decompress_response: undefined,
+            compress_request: { codec: "zstd" },
           },
         });
 
@@ -419,7 +419,7 @@ describe("createRequestCompressor", () => {
 
   it("uses the codec default when no level is given", () => {
     const createGzip = vi.spyOn(Zlib, "createGzip");
-    createRequestCompressor(true);
+    createRequestCompressor("gzip");
     expect(createGzip).toHaveBeenCalledWith(undefined);
   });
 

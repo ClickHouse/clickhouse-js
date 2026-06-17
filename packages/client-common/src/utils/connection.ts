@@ -10,33 +10,25 @@ export function withCompressionHeaders({
   enable_response_compression,
 }: {
   headers: HttpHeaders;
-  enable_request_compression: boolean | CompressionMethod | undefined;
-  enable_response_compression: boolean | CompressionMethod | undefined;
+  // The codec name is also the `Content-Encoding` / `Accept-Encoding` value;
+  // `undefined` disables the corresponding header.
+  enable_request_compression: CompressionMethod | undefined;
+  enable_response_compression: CompressionMethod | undefined;
 }): Record<string, string> {
   return {
     ...headers,
     ...(enable_response_compression
-      ? {
-          "Accept-Encoding":
-            enable_response_compression === true
-              ? "gzip"
-              : enable_response_compression,
-        }
+      ? { "Accept-Encoding": enable_response_compression }
       : {}),
     ...(enable_request_compression
-      ? {
-          "Content-Encoding":
-            enable_request_compression === true
-              ? "gzip"
-              : enable_request_compression,
-        }
+      ? { "Content-Encoding": enable_request_compression }
       : {}),
   };
 }
 
 export function withHttpSettings(
   clickhouse_settings?: ClickHouseSettings,
-  compression?: boolean | CompressionMethod,
+  compression?: { codec: CompressionMethod } | undefined,
 ): ClickHouseSettings {
   return {
     ...(compression

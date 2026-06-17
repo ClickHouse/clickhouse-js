@@ -3,6 +3,8 @@ import type {
   CompressionMethod,
   Connection,
   ConnectionParams,
+  RequestCompression,
+  ResponseCompression,
 } from "./connection";
 import type { DataFormat } from "./data_formatter";
 import type { Logger } from "./logger";
@@ -12,26 +14,36 @@ import type { BaseResultSet } from "./result";
 import type { ClickHouseSettings } from "./settings";
 import type { ClickHouseSpan, ClickHouseTracer } from "./tracing";
 
-/** Normalizes the public compression option (`boolean | { codec }`) into the
- *  internal `boolean | codec` representation used by the connection. */
-function resolveCompressionMethod(
-  value: boolean | { codec: CompressionMethod } | undefined,
-): boolean | CompressionMethod {
-  if (value === undefined || typeof value === "boolean") {
-    return value ?? false;
-  }
-  return value.codec;
-}
-
-/** Extracts the optional codec-specific compression level from the object form
- *  of the request compression option. */
-function resolveCompressionLevel(
+/** Normalizes the public request compression option
+ *  (`false | true | { codec, level }`) into the internal codec object, or
+ *  `undefined` when disabled. `true` keeps gzip for backwards compatibility. The
+ *  codec is preserved verbatim (the cast covers untyped JS passing an unknown
+ *  codec) so the Node guard can reject it with a clear error. */
+function normalizeRequestCompression(
   value: boolean | { codec: CompressionMethod; level?: number } | undefined,
-): number | undefined {
-  if (value === undefined || typeof value === "boolean") {
+): RequestCompression | undefined {
+  if (!value) {
     return undefined;
   }
-  return value.level;
+  if (value === true) {
+    return { codec: "gzip" };
+  }
+  return { codec: value.codec, level: value.level } as RequestCompression;
+}
+
+/** Normalizes the public response compression option
+ *  (`false | true | { codec }`) into the internal codec object, or `undefined`
+ *  when disabled. `true` keeps gzip for backwards compatibility. */
+function normalizeResponseCompression(
+  value: boolean | { codec: CompressionMethod } | undefined,
+): ResponseCompression | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (value === true) {
+    return { codec: "gzip" };
+  }
+  return { codec: value.codec } as ResponseCompression;
 }
 
 export interface BaseClickHouseClientConfigOptions {
@@ -353,11 +365,10 @@ export function getConnectionParams(
     request_timeout,
     max_open_connections: config.max_open_connections ?? 10,
     compression: {
-      decompress_response: resolveCompressionMethod(
+      decompress_response: normalizeResponseCompression(
         config.compression?.response,
       ),
-      compress_request: resolveCompressionMethod(config.compression?.request),
-      compress_request_level: resolveCompressionLevel(
+      compress_request: normalizeRequestCompression(
         config.compression?.request,
       ),
     },

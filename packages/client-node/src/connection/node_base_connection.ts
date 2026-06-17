@@ -228,10 +228,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     // the codec is the explicitly configured one, defaulting to gzip.
     const enableResponseCompression =
       clickhouse_settings.enable_http_compression === 1
-        ? typeof this.params.compression.decompress_response === "string"
-          ? this.params.compression.decompress_response
-          : "gzip"
-        : false;
+        ? (this.params.compression.decompress_response?.codec ?? "gzip")
+        : undefined;
 
     let body: string = params.query;
     const headers = this.buildRequestHeaders(params);
@@ -310,9 +308,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             body: params.values,
             abort_signal: controller.signal,
             enable_request_compression:
-              this.params.compression.compress_request,
+              this.params.compression.compress_request?.codec,
             request_compression_level:
-              this.params.compression.compress_request_level,
+              this.params.compression.compress_request?.level,
             parse_summary: true,
             headers: this.buildRequestHeaders(params),
             query: params.query,
@@ -573,11 +571,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             abort_signal: controller.signal,
             parse_summary: true,
             enable_request_compression:
-              this.params.compression.compress_request,
+              this.params.compression.compress_request?.codec,
             request_compression_level:
-              this.params.compression.compress_request_level,
+              this.params.compression.compress_request?.level,
             enable_response_compression:
-              this.params.compression.decompress_response,
+              this.params.compression.decompress_response?.codec,
             try_decompress_response_stream: tryDecompressResponseStream,
             ignore_error_response: ignoreErrorResponse,
             headers: this.buildRequestHeaders(params),
