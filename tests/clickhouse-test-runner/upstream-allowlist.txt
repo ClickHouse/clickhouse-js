@@ -321,8 +321,7 @@
 00507_sumwithoverflow
 00511_get_size_of_enum
 00513_fractional_time_zones
-# TODO: failing against latest ClickHouse stable; uses new server feature not yet in the latest Docker release
-# 00516_is_inf_nan
+# 00516_is_inf_nan: TODO: failing against latest ClickHouse stable; uses new server feature not yet in the latest Docker release
 00516_modulo
 00517_date_parsing
 00518_extract_all_and_empty_matches
