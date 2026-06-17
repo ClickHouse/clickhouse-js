@@ -98,7 +98,6 @@ interface MutualTLSOptions {
 function ensureCodecSupported(
   value: boolean | CompressionMethod,
   direction: "request" | "response",
-  zstdAvailable: boolean,
 ): void {
   if (typeof value !== "string") {
     return;
@@ -109,13 +108,21 @@ function ensureCodecSupported(
         `Supported codecs: ${COMPRESSION_METHODS.join(", ")}.`,
     );
   }
-  if (value === "zstd" && !zstdAvailable) {
-    throw new Error(
-      "zstd compression is not supported by this Node.js runtime (v" +
-        process.versions.node +
-        "): the built-in zlib module does not provide the zstd APIs (added " +
-        "in Node.js 22.15.0). Use gzip compression instead.",
-    );
+  // zstd is the only codec gated on the runtime: its zlib APIs were added in
+  // Node.js 22.15.0, and compression / decompression are separate functions.
+  if (value === "zstd") {
+    const zstdAvailable =
+      direction === "request"
+        ? typeof Zlib.createZstdCompress === "function"
+        : typeof Zlib.createZstdDecompress === "function";
+    if (!zstdAvailable) {
+      throw new Error(
+        "zstd compression is not supported by this Node.js runtime (v" +
+          process.versions.node +
+          "): the built-in zlib module does not provide the zstd APIs (added " +
+          "in Node.js 22.15.0). Use gzip compression instead.",
+      );
+    }
   }
 }
 
@@ -157,16 +164,8 @@ export const NodeConfigImpl: Required<
     nodeConfig: NodeClickHouseClientConfigOptions,
     params: ConnectionParams,
   ) => {
-    ensureCodecSupported(
-      params.compression.compress_request,
-      "request",
-      typeof Zlib.createZstdCompress === "function",
-    );
-    ensureCodecSupported(
-      params.compression.decompress_response,
-      "response",
-      typeof Zlib.createZstdDecompress === "function",
-    );
+    ensureCodecSupported(params.compression.compress_request, "request");
+    ensureCodecSupported(params.compression.decompress_response, "response");
     let tls: TLSParams | undefined = undefined;
     if (nodeConfig.tls !== undefined) {
       if ("cert" in nodeConfig.tls && "key" in nodeConfig.tls) {
