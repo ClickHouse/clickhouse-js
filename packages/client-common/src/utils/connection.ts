@@ -18,13 +18,17 @@ export function withCompressionHeaders({
     ...(enable_response_compression
       ? {
           "Accept-Encoding":
-            enable_response_compression === "zstd" ? "zstd" : "gzip",
+            enable_response_compression === true
+              ? "gzip"
+              : enable_response_compression,
         }
       : {}),
     ...(enable_request_compression
       ? {
           "Content-Encoding":
-            enable_request_compression === "zstd" ? "zstd" : "gzip",
+            enable_request_compression === true
+              ? "gzip"
+              : enable_request_compression,
         }
       : {}),
   };
