@@ -147,8 +147,8 @@ jobs:
           node .scripts/export-coverage-metrics.mjs
 
   integration-tests-cloud:
-    # Cloud secrets are not available for PRs from forks; skip the job in that case.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # Cloud secrets are not available for PRs from forks or Dependabot PRs; skip the job in those cases.
+    if: ${{ github.actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -185,6 +185,8 @@ jobs:
 
   # It should only use the current version of Chrome
   codecov-upload:
+    # Codecov token is not available for Dependabot PRs; skip the upload in that case.
+    if: ${{ github.actor != 'dependabot[bot]' }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
