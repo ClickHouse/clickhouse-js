@@ -1,8 +1,21 @@
-# Unreleased
+# 1.22.0
 
 ## New features
 
-- (Node.js) The `compression.request` / `compression.response` client options now accept an explicit codec via an object, in addition to the existing boolean: `true` keeps gzip (backwards compatible), and `{ codec: "zstd" }` selects zstd. The object form is intentionally extensible for future codecs and codec-specific options. zstd typically yields a similar-or-better ratio than gzip at noticeably lower CPU cost (gzip/DEFLATE is comparatively CPU-heavy and decompressed single-threaded by the ClickHouse server), and it uses the built-in `zlib` zstd support, so it requires **Node.js >= 22.15.0** (`@clickhouse/client` throws a clear error at client creation otherwise). Response decompression is driven by the server's actual `Content-Encoding`, so it degrades gracefully. Supported only by `@clickhouse/client` (Node.js); `@clickhouse/client-web` is unaffected.
+- (Node.js) The `compression.request` / `compression.response` client options now accept an explicit codec via an object, in addition to the existing boolean: `true` keeps gzip (backwards compatible), and `{ codec: "zstd" }` selects zstd. The object form is intentionally extensible for future codecs and codec-specific options. zstd typically yields a similar-or-better ratio than gzip at noticeably lower CPU cost (gzip/DEFLATE is comparatively CPU-heavy and decompressed single-threaded by the ClickHouse server), and it uses the built-in `zlib` zstd support, so it requires **Node.js >= 22.15.0** (`@clickhouse/client` throws a clear error at client creation otherwise). Response decompression is driven by the server's actual `Content-Encoding`, so it degrades gracefully. The request object form also accepts an optional `level` (`{ codec, level }`) to set the codec-specific compression level (zlib level for gzip, zstd compression level for zstd); the response compression level is controlled by the server. Supported only by `@clickhouse/client` (Node.js); `@clickhouse/client-web` rejects the `zstd` codec at client creation.
+
+## Internal changes (`@clickhouse/client-common`)
+
+> These only affect code that imports the low-level connection primitives from the deprecated `@clickhouse/client-common` package directly (e.g. a custom `Connection` implementation). The `createClient` `compression` option is unchanged and fully backwards compatible — if you only use `@clickhouse/client` or `@clickhouse/client-web`, you are not affected.
+
+To carry the codec (and its optional compression level) instead of a bare on/off flag, the internal compression representation changed shape:
+
+- `CompressionSettings.compress_request` / `decompress_response` are no longer `boolean`. They are now a normalized codec object or `undefined` (disabled): `{ codec: "gzip" | "zstd"; level?: number }` for the request, `{ codec: "gzip" | "zstd" }` for the response (the response compression level is chosen by the server). `getConnectionParams` normalizes the public `boolean | { codec, level }` option into this form (`true` → `{ codec: "gzip" }`).
+- `withCompressionHeaders` now takes `request_compression_codec` / `response_compression_codec` (a `CompressionMethod | undefined`) instead of the boolean `enable_request_compression` / `enable_response_compression`; the codec value is also the `Content-Encoding` / `Accept-Encoding` it emits.
+- `withHttpSettings` now takes the response codec object (`{ codec } | undefined`) instead of a `boolean`.
+- New exported types: `CompressionMethod`, `RequestCompression`, `ResponseCompression`.
+
+Why: a single `boolean` could not express which codec to use or its level, and a separate level field on `CompressionSettings` would have mixed a codec-specific option into the shared type. Discriminating by codec keeps each codec's options on the codec it belongs to.
 
 # 1.21.0
 

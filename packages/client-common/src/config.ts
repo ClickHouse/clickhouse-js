@@ -3,6 +3,8 @@ import type {
   CompressionMethod,
   Connection,
   ConnectionParams,
+  RequestCompression,
+  ResponseCompression,
 } from "./connection";
 import type { DataFormat } from "./data_formatter";
 import type { Logger } from "./logger";
@@ -12,15 +14,36 @@ import type { BaseResultSet } from "./result";
 import type { ClickHouseSettings } from "./settings";
 import type { ClickHouseSpan, ClickHouseTracer } from "./tracing";
 
-/** Normalizes the public compression option (`boolean | { codec }`) into the
- *  internal `boolean | codec` representation used by the connection. */
-function resolveCompressionMethod(
-  value: boolean | { codec: CompressionMethod } | undefined,
-): boolean | CompressionMethod {
-  if (value === undefined || typeof value === "boolean") {
-    return value ?? false;
+/** Normalizes the public request compression option
+ *  (`false | true | { codec, level }`) into the internal codec object, or
+ *  `undefined` when disabled. `true` keeps gzip for backwards compatibility. The
+ *  codec is preserved verbatim (the cast covers untyped JS passing an unknown
+ *  codec) so the Node guard can reject it with a clear error. */
+function normalizeRequestCompression(
+  value: boolean | { codec: CompressionMethod; level?: number } | undefined,
+): RequestCompression | undefined {
+  if (!value) {
+    return undefined;
   }
-  return value.codec;
+  if (value === true) {
+    return { codec: "gzip" };
+  }
+  return { codec: value.codec, level: value.level };
+}
+
+/** Normalizes the public response compression option
+ *  (`false | true | { codec }`) into the internal codec object, or `undefined`
+ *  when disabled. `true` keeps gzip for backwards compatibility. */
+function normalizeResponseCompression(
+  value: boolean | { codec: CompressionMethod } | undefined,
+): ResponseCompression | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (value === true) {
+    return { codec: "gzip" };
+  }
+  return { codec: value.codec };
 }
 
 export interface BaseClickHouseClientConfigOptions {
@@ -57,11 +80,12 @@ export interface BaseClickHouseClientConfigOptions {
     response?: boolean | { codec: CompressionMethod };
     /** Enables compression of the outgoing request (insert) body.
      *  `true` uses `gzip`; pass `{ codec }` to select the codec explicitly,
-     *  e.g. `{ codec: "zstd" }`. The object form is extensible for future
-     *  codec-specific options.
+     *  e.g. `{ codec: "zstd" }`. Optionally pass `{ codec, level }` to set a
+     *  codec-specific compression level (the zlib level for `gzip`, the zstd
+     *  compression level for `zstd`); when omitted, the codec default is used.
      *  `"zstd"` requires Node.js >= 22.15.0 and is only supported by `@clickhouse/client` (Node.js).
      *  @default false */
-    request?: boolean | { codec: CompressionMethod };
+    request?: boolean | { codec: CompressionMethod; level?: number };
   };
   /** The name of the user on whose behalf requests are made.
    *  Should not be set if {@link access_token} is provided.
@@ -341,10 +365,12 @@ export function getConnectionParams(
     request_timeout,
     max_open_connections: config.max_open_connections ?? 10,
     compression: {
-      decompress_response: resolveCompressionMethod(
+      decompress_response: normalizeResponseCompression(
         config.compression?.response,
       ),
-      compress_request: resolveCompressionMethod(config.compression?.request),
+      compress_request: normalizeRequestCompression(
+        config.compression?.request,
+      ),
     },
     database: config.database ?? "default",
     log_writer: new LogWriter(logger, "Connection", log_level),

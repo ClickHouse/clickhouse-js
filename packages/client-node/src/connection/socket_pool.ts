@@ -30,8 +30,10 @@ export interface RequestParams {
   body?: string | Stream.Readable;
   // provided by the user and wrapped around internally
   abort_signal: AbortSignal;
-  enable_response_compression?: boolean | CompressionMethod;
-  enable_request_compression?: boolean | CompressionMethod;
+  response_compression_codec?: CompressionMethod;
+  request_compression_codec?: CompressionMethod;
+  // optional codec-specific compression level for the request body
+  request_compression_level?: number;
   // if there are compression headers, attempt to decompress it
   try_decompress_response_stream?: boolean;
   // if the response contains an error, ignore it and return the stream as-is
@@ -392,9 +394,10 @@ export class SocketPool {
           }
         };
 
-        if (params.enable_request_compression) {
+        if (params.request_compression_codec) {
           const compressor = createRequestCompressor(
-            params.enable_request_compression,
+            params.request_compression_codec,
+            params.request_compression_level,
           );
           Stream.pipeline(bodyStream, compressor, request, callback);
         } else {

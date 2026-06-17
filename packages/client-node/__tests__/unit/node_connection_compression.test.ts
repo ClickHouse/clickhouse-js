@@ -3,7 +3,14 @@ import { sleep } from "../utils/sleep";
 import Http, { type ClientRequest } from "http";
 import Stream from "stream";
 import Zlib from "zlib";
+import { ClickHouseLogLevel, LogWriter } from "@clickhouse/client-common";
+import { TestLogger } from "../../../client-common/__tests__/utils/test_logger";
 import { assertConnQueryResult } from "../utils/assert";
+import {
+  createRequestCompressor,
+  decompressResponse,
+  isDecompressionError,
+} from "../../src/connection/compression";
 import {
   buildHttpConnection,
   buildIncomingMessage,
@@ -33,8 +40,8 @@ describe("Node.js Connection compression", () => {
 
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: true,
-          compress_request: false,
+          decompress_response: { codec: "gzip" },
+          compress_request: undefined,
         },
       });
 
@@ -61,8 +68,8 @@ describe("Node.js Connection compression", () => {
 
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -92,8 +99,8 @@ describe("Node.js Connection compression", () => {
 
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -124,8 +131,8 @@ describe("Node.js Connection compression", () => {
 
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: true,
-          compress_request: false,
+          decompress_response: { codec: "gzip" },
+          compress_request: undefined,
         },
       });
 
@@ -140,13 +147,58 @@ describe("Node.js Connection compression", () => {
       await assertConnQueryResult(queryResult, responseBody);
     });
 
+    it("returns a clear error for a zstd response on a runtime without zstd support", () => {
+      // Simulate a Node.js runtime whose zlib lacks the zstd APIs (< 22.15.0).
+      const original = Object.getOwnPropertyDescriptor(
+        Zlib,
+        "createZstdDecompress",
+      );
+      Object.defineProperty(Zlib, "createZstdDecompress", {
+        value: undefined,
+        configurable: true,
+      });
+      try {
+        const response = buildIncomingMessage({
+          body: "anything",
+          headers: { "content-encoding": "zstd" },
+        });
+        const logWriter = new LogWriter(
+          new TestLogger(),
+          "test",
+          ClickHouseLogLevel.OFF,
+        );
+        const result = decompressResponse(
+          response,
+          logWriter,
+          ClickHouseLogLevel.OFF,
+        );
+        expect(isDecompressionError(result)).toBe(true);
+        expect((result as { error: Error }).error.message).toContain(
+          "does not support zstd decompression",
+        );
+        expect((result as { error: Error }).error.message).not.toContain(
+          "Unexpected encoding",
+        );
+      } finally {
+        if (original) {
+          Object.defineProperty(Zlib, "createZstdDecompress", original);
+        } else {
+          // No original descriptor (runtime genuinely lacks zstd): remove the
+          // stub we added instead of leaving an `undefined` property behind.
+          delete (Zlib as unknown as Record<string, unknown>)[
+            "createZstdDecompress"
+          ];
+        }
+      }
+    });
+
     it("throws on an unexpected encoding", async () => {
       const request = stubClientRequest();
       httpRequestStub.mockReturnValue(request);
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: true,
-          compress_request: false,
+          decompress_response: { codec: "gzip" },
+          compress_request: undefined,
         },
       });
 
@@ -168,8 +220,8 @@ describe("Node.js Connection compression", () => {
       httpRequestStub.mockReturnValue(request);
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: true,
-          compress_request: false,
+          decompress_response: { codec: "gzip" },
+          compress_request: undefined,
         },
       });
 
@@ -212,8 +264,8 @@ describe("Node.js Connection compression", () => {
 
         const adapter = buildHttpConnection({
           compression: {
-            decompress_response: "zstd",
-            compress_request: false,
+            decompress_response: { codec: "zstd" },
+            compress_request: undefined,
           },
         });
 
@@ -248,8 +300,8 @@ describe("Node.js Connection compression", () => {
     it("sends a compressed request if compress_request: true", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: true,
+          decompress_response: undefined,
+          compress_request: { codec: "gzip" },
         },
       });
 
@@ -294,8 +346,8 @@ describe("Node.js Connection compression", () => {
       async () => {
         const adapter = buildHttpConnection({
           compression: {
-            decompress_response: false,
-            compress_request: "zstd",
+            decompress_response: undefined,
+            compress_request: { codec: "zstd" },
           },
         });
 
@@ -346,4 +398,61 @@ describe("Node.js Connection compression", () => {
       },
     );
   });
+});
+
+describe("createRequestCompressor", () => {
+  async function roundTrip(
+    compressor: Stream.Transform,
+    decompress: (buf: Buffer) => Buffer,
+    input: string,
+  ): Promise<string> {
+    const chunks: Buffer[] = [];
+    compressor.on("data", (chunk: Buffer) => chunks.push(chunk));
+    const done = new Promise<void>((resolve, reject) => {
+      compressor.on("end", resolve);
+      compressor.on("error", reject);
+    });
+    compressor.end(Buffer.from(input));
+    await done;
+    return decompress(Buffer.concat(chunks)).toString("utf8");
+  }
+
+  it("passes the level to the gzip compressor", () => {
+    const createGzip = vi.spyOn(Zlib, "createGzip");
+    createRequestCompressor("gzip", 1);
+    expect(createGzip).toHaveBeenCalledWith({ level: 1 });
+  });
+
+  it("uses the codec default when no level is given", () => {
+    const createGzip = vi.spyOn(Zlib, "createGzip");
+    createRequestCompressor("gzip");
+    expect(createGzip).toHaveBeenCalledWith(undefined);
+  });
+
+  it("round-trips a gzip body compressed with an explicit level", async () => {
+    const values = "abc".repeat(1_000);
+    const out = await roundTrip(
+      createRequestCompressor("gzip", 1),
+      (buf) => Zlib.gunzipSync(buf),
+      values,
+    );
+    expect(out).toBe(values);
+  });
+
+  it.skipIf(!zstdSupported)(
+    "passes the level to the zstd compressor and round-trips",
+    async () => {
+      const createZstdCompress = vi.spyOn(Zlib, "createZstdCompress");
+      const values = "abc".repeat(1_000);
+      const out = await roundTrip(
+        createRequestCompressor("zstd", 19),
+        (buf) => Zlib.zstdDecompressSync(buf),
+        values,
+      );
+      expect(createZstdCompress).toHaveBeenCalledWith({
+        params: { [Zlib.constants.ZSTD_c_compressionLevel]: 19 },
+      });
+      expect(out).toBe(values);
+    },
+  );
 });

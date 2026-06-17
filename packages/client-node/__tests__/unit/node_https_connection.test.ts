@@ -27,8 +27,8 @@ function buildHttpsConnectionParams(
     url: new URL("https://localhost:8443"),
     request_timeout: 30_000,
     compression: {
-      decompress_response: false,
-      compress_request: false,
+      decompress_response: undefined,
+      compress_request: undefined,
     },
     max_open_connections: 10,
     auth: { username: "default", password: "", type: "Credentials" },

@@ -365,8 +365,8 @@ describe("config", () => {
         request_timeout: 30_000,
         max_open_connections: 10,
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
         auth: {
           username: "default",
@@ -399,8 +399,24 @@ describe("config", () => {
         logger,
       );
       expect(res.compression).toEqual({
-        compress_request: "zstd",
-        decompress_response: "gzip",
+        compress_request: { codec: "zstd" },
+        decompress_response: { codec: "gzip" },
+      });
+    });
+
+    it("carries the request compression level on the codec object", () => {
+      const res = getConnectionParams(
+        {
+          url: new URL("https://my.host:8443/"),
+          compression: {
+            request: { codec: "zstd", level: 19 },
+          },
+        },
+        logger,
+      );
+      expect(res.compression).toEqual({
+        compress_request: { codec: "zstd", level: 19 },
+        decompress_response: undefined,
       });
     });
 
@@ -433,8 +449,8 @@ describe("config", () => {
         request_timeout: 42_000,
         max_open_connections: 144,
         compression: {
-          compress_request: true,
-          decompress_response: false,
+          compress_request: { codec: "gzip" },
+          decompress_response: undefined,
         },
         auth: {
           username: "bob",
@@ -513,8 +529,8 @@ describe("config", () => {
         request_timeout: 30_000,
         max_open_connections: 10,
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
         auth: {
           access_token: "secret-token",

@@ -45,8 +45,8 @@ describe("[Node.js] Connection", () => {
     it("should generate random query_id for each query", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -86,8 +86,8 @@ describe("[Node.js] Connection", () => {
     it("should use provided query_id for query", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -115,8 +115,8 @@ describe("[Node.js] Connection", () => {
     it("should generate random query_id for every exec request", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -157,8 +157,8 @@ describe("[Node.js] Connection", () => {
     it("should use provided query_id for exec", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -185,8 +185,8 @@ describe("[Node.js] Connection", () => {
     it("should generate random query_id for every command request", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -220,8 +220,8 @@ describe("[Node.js] Connection", () => {
     it("should use provided query_id for command", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -247,8 +247,8 @@ describe("[Node.js] Connection", () => {
     it("should generate random query_id for every insert request", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 
@@ -290,8 +290,8 @@ describe("[Node.js] Connection", () => {
     it("should use provided query_id for insert", async () => {
       const adapter = buildHttpConnection({
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
       });
 

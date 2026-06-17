@@ -22,6 +22,37 @@ describe("[Web] createClient", () => {
     );
   });
 
+  it("throws on a zstd request codec (Node-only)", () => {
+    expect(() =>
+      createClient({ compression: { request: { codec: "zstd" } } }),
+    ).toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          "zstd request compression is not supported by @clickhouse/client-web",
+        ),
+      }),
+    );
+  });
+
+  it("throws on a zstd response codec (Node-only)", () => {
+    expect(() =>
+      createClient({ compression: { response: { codec: "zstd" } } }),
+    ).toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          "zstd response compression is not supported by @clickhouse/client-web",
+        ),
+      }),
+    );
+  });
+
+  it("allows the gzip codec", () => {
+    const client = createClient({
+      compression: { request: { codec: "gzip" }, response: { codec: "gzip" } },
+    });
+    expect(client).toBeDefined();
+  });
+
   it("should not mutate provided configuration", async () => {
     const config: BaseClickHouseClientConfigOptions = {
       url: "https://localhost:8443",

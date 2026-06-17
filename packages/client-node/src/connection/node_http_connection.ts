@@ -16,8 +16,8 @@ export class NodeHttpConnection extends NodeBaseConnection {
   protected createClientRequest(params: RequestParams): Http.ClientRequest {
     const headers = withCompressionHeaders({
       headers: params.headers,
-      enable_request_compression: params.enable_request_compression,
-      enable_response_compression: params.enable_response_compression,
+      request_compression_codec: params.request_compression_codec,
+      response_compression_codec: params.response_compression_codec,
     });
     return Http.request(params.url, {
       method: params.method,
