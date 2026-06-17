@@ -28,7 +28,7 @@ function normalizeRequestCompression(
   if (value === true) {
     return { codec: "gzip" };
   }
-  return { codec: value.codec, level: value.level } as RequestCompression;
+  return { codec: value.codec, level: value.level };
 }
 
 /** Normalizes the public response compression option
@@ -43,7 +43,7 @@ function normalizeResponseCompression(
   if (value === true) {
     return { codec: "gzip" };
   }
-  return { codec: value.codec } as ResponseCompression;
+  return { codec: value.codec };
 }
 
 export interface BaseClickHouseClientConfigOptions {
