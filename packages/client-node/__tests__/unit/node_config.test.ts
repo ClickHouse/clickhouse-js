@@ -71,8 +71,8 @@ describe("[Node.js] Config implementation details", () => {
       request_timeout: 1000,
       max_open_connections: 10,
       compression: {
-        compress_request: true,
-        decompress_response: true,
+        compress_request: { codec: "gzip" },
+        decompress_response: { codec: "gzip" },
       },
       auth: {
         username: "alice",
@@ -130,8 +130,8 @@ describe("[Node.js] Config implementation details", () => {
             NodeConfigImpl.make_connection(nodeConfig as any, {
               ...params,
               compression: {
-                compress_request: "zstd",
-                decompress_response: false,
+                compress_request: { codec: "zstd" },
+                decompress_response: undefined,
               },
             }),
           ).toThrow(/zstd compression is not supported/);
@@ -144,8 +144,8 @@ describe("[Node.js] Config implementation details", () => {
             NodeConfigImpl.make_connection(nodeConfig as any, {
               ...params,
               compression: {
-                compress_request: false,
-                decompress_response: "zstd",
+                compress_request: undefined,
+                decompress_response: { codec: "zstd" },
               },
             }),
           ).toThrow(/zstd compression is not supported/);
@@ -157,8 +157,8 @@ describe("[Node.js] Config implementation details", () => {
           NodeConfigImpl.make_connection(nodeConfig as any, {
             ...params,
             compression: {
-              compress_request: "gzip",
-              decompress_response: true,
+              compress_request: { codec: "gzip" },
+              decompress_response: { codec: "gzip" },
             },
           }),
         ).not.toThrow();
@@ -169,8 +169,8 @@ describe("[Node.js] Config implementation details", () => {
           NodeConfigImpl.make_connection(nodeConfig as any, {
             ...params,
             compression: {
-              compress_request: "lz4" as any,
-              decompress_response: false,
+              compress_request: { codec: "lz4" } as any,
+              decompress_response: undefined,
             },
           }),
         ).toThrow(/Unknown request compression codec/);

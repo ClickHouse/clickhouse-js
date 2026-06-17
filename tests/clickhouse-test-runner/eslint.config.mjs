@@ -1,15 +1,13 @@
-import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
-import tseslint from "typescript-eslint";
 import {
+  recommendedWarnConfigs,
   typescriptEslintConfig,
   testFilesOverrides,
 } from "../../eslint.config.base.mjs";
 
 export default defineConfig(
-  js.configs.recommended,
-  ...tseslint.configs.strict,
-  ...tseslint.configs.stylistic,
+  // Recommended rule sets, downgraded to warnings (only tsc reports errors)
+  ...recommendedWarnConfigs,
   typescriptEslintConfig(import.meta.dirname),
   testFilesOverrides(),
   {

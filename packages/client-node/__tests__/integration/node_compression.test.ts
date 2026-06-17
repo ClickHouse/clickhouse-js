@@ -1,7 +1,17 @@
 import { describe, it, beforeEach, afterEach, expect } from "vitest";
-import { createTestClient } from "@test/utils/client";
+import { type ClickHouseClient, type ResponseJSON } from "@clickhouse/client-common";
+import { createTestClient, guid } from "@test/utils";
+import { createSimpleTable } from "@test/fixtures/simple_table";
+import { isClickHouseVersionAtLeast } from "@test/utils/server_version";
 import http from "http";
 import { type AddressInfo } from "net";
+import Zlib from "zlib";
+
+// zstd HTTP transport is supported by the ClickHouse server since 22.10, and the
+// client's zstd codec needs the built-in `zlib` zstd APIs (Node.js >= 22.15.0).
+const zstdSupported =
+  typeof Zlib.createZstdCompress === "function" &&
+  typeof Zlib.createZstdDecompress === "function";
 
 describe("[Node.js] Compression", () => {
   describe("Malformed compression response", () => {
@@ -84,4 +94,54 @@ describe("[Node.js] Compression", () => {
     res.write("A malformed response without compression");
     return res.end();
   }
+});
+
+describe.skipIf(!zstdSupported)("[Node.js] zstd compression", () => {
+  let client: ClickHouseClient;
+  afterEach(async () => {
+    await client.close();
+  });
+
+  it("round-trips an insert with zstd request compression", async ({
+    skip,
+  }) => {
+    client = createTestClient({
+      compression: { request: { codec: "zstd" } },
+    });
+    if (!(await isClickHouseVersionAtLeast(client, 22, 10))) {
+      skip();
+    }
+
+    const tableName = `zstd_request_compression_test_${guid()}`;
+    await createSimpleTable(client, tableName);
+
+    const dataToInsert = new Array(1_000)
+      .fill(0)
+      .map((_v, idx) => [idx, `${idx + 5}`, [idx + 1, idx + 2]]);
+    await client.insert({ table: tableName, values: dataToInsert });
+
+    const rs = await client.query({
+      query: `SELECT * FROM ${tableName}`,
+      format: "JSON",
+    });
+    const result = await rs.json<ResponseJSON>();
+    expect(result.data.length).toBe(1_000);
+  });
+
+  it("decompresses a zstd-compressed response", async ({ skip }) => {
+    client = createTestClient({
+      compression: { response: { codec: "zstd" } },
+    });
+    if (!(await isClickHouseVersionAtLeast(client, 22, 10))) {
+      skip();
+    }
+
+    const rs = await client.query({
+      query: `SELECT number FROM system.numbers LIMIT 20000`,
+      format: "JSONEachRow",
+    });
+    const response = await rs.json<{ number: string }>();
+    expect(response.length).toBe(20000);
+    expect(response[response.length - 1].number).toBe("19999");
+  });
 });
