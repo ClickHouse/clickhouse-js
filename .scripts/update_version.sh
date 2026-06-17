@@ -26,10 +26,10 @@ if [ "$#" -eq 0 ]; then
   # Default: keep every package (and the internal workspaces) in sync.
   echo "Setting the version to: $version (all packages)"
 
-  for dir in packages/client-common packages/client-node packages/client-web; do
-    if [ -f "$dir/package.json" ]; then
-      echo "Updating version in $dir/src/version.ts"
-      echo "export default '$version'" > "$dir/src/version.ts"
+  for package in packages/client-common packages/client-node packages/client-web; do
+    if [ -f "$package/package.json" ]; then
+      echo "Updating version in $package/src/version.ts"
+      echo "export default \"$version\";" > "$package/src/version.ts"
     fi
   done
 
@@ -48,7 +48,7 @@ else
       exit 1
     fi
     echo "Updating version in $dir/src/version.ts"
-    echo "export default '$version'" > "$dir/src/version.ts"
+    echo "export default \"$version\";" > "$dir/src/version.ts"
     npm --workspace "$name" version --no-git-tag-version "$version"
   done
 fi
