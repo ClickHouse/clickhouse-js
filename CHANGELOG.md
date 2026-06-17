@@ -2,7 +2,7 @@
 
 ## Migration Notes
 
-- The `@clickhouse/client-common` package is deprecated. `@clickhouse/client` (Node.js) and `@clickhouse/client-web` (Web) no longer depend on it; the shared code is now bundled into each client package. Everything previously importable from `@clickhouse/client-common` should be imported from `@clickhouse/client` or `@clickhouse/client-web` instead. The `@clickhouse/client-common` package itself will no longer receive updates.
+- The `@clickhouse/client-common` package is deprecated. `@clickhouse/client` (Node.js) and `@clickhouse/client-web` (Web) no longer depend on it; the shared code is now bundled into each client package. Everything previously importable from `@clickhouse/client-common` should be imported from `@clickhouse/client` or `@clickhouse/client-web` instead. The `@clickhouse/client-common` package itself will no longer receive updates. ([#845])
 
 ## New features
 
@@ -43,6 +43,7 @@ await client.query({
 [#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
 [#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
 [#828]: https://github.com/ClickHouse/clickhouse-js/pull/828
+[#845]: https://github.com/ClickHouse/clickhouse-js/pull/845
 
 ## Bug Fixes
 
