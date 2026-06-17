@@ -15,45 +15,48 @@ export function decompressResponse(
 ): DecompressResponseResult {
   const encoding = response.headers["content-encoding"];
 
-  if (
-    encoding === "gzip" ||
-    (encoding === "zstd" && typeof Zlib.createZstdDecompress === "function")
-  ) {
-    const decompress =
-      encoding === "zstd" ? Zlib.createZstdDecompress() : Zlib.createGunzip();
-    return {
-      response: Stream.pipeline(response, decompress, function pipelineCb(err) {
-        if (err) {
-          if (log_level <= ClickHouseLogLevel.ERROR) {
-            log_writer.error({
-              message: "An error occurred while decompressing the response",
-              err,
-            });
-          }
-        }
-      }),
-    };
-  } else if (encoding === "zstd") {
-    // Reached only when the server returned a zstd-encoded body but this
-    // Node.js runtime's zlib lacks the zstd APIs (added in 22.15.0) - so the
-    // codec is recognized, just unusable here. Distinguish it from a truly
-    // unknown encoding to avoid a misleading "Unexpected encoding" message.
-    return {
-      error: new Error(
-        "Received a zstd-compressed response, but this Node.js runtime (v" +
-          process.versions.node +
-          ") does not support zstd decompression: the built-in zlib module " +
-          "does not provide the zstd APIs (added in Node.js 22.15.0). Use gzip " +
-          "compression instead, or upgrade Node.js.",
-      ),
-    };
-  } else if (encoding !== undefined) {
-    return {
-      error: new Error(`Unexpected encoding: ${encoding}`),
-    };
+  // Pipes the response through a decompressor, logging any pipeline error.
+  const decompressWith = (
+    decompressor: Stream.Transform,
+  ): DecompressResponseResult => ({
+    response: Stream.pipeline(response, decompressor, (err) => {
+      if (err && log_level <= ClickHouseLogLevel.ERROR) {
+        log_writer.error({
+          message: "An error occurred while decompressing the response",
+          err,
+        });
+      }
+    }),
+  });
+
+  // No `Content-Encoding`: nothing to decompress.
+  if (encoding === undefined) {
+    return { response };
   }
 
-  return { response };
+  if (encoding === "gzip") {
+    return decompressWith(Zlib.createGunzip());
+  }
+
+  if (encoding === "zstd") {
+    // zstd's zlib API was added in Node.js 22.15.0; on an older runtime the
+    // codec is recognized but unusable, so report that explicitly rather than
+    // falling through to a misleading "Unexpected encoding".
+    if (typeof Zlib.createZstdDecompress !== "function") {
+      return {
+        error: new Error(
+          "Received a zstd-compressed response, but this Node.js runtime (v" +
+            process.versions.node +
+            ") does not support zstd decompression: the built-in zlib module " +
+            "does not provide the zstd APIs (added in Node.js 22.15.0). Use gzip " +
+            "compression instead, or upgrade Node.js.",
+        ),
+      };
+    }
+    return decompressWith(Zlib.createZstdDecompress());
+  }
+
+  return { error: new Error(`Unexpected encoding: ${encoding}`) };
 }
 
 export function isDecompressionError(result: any): result is { error: Error } {
