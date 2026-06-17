@@ -7,6 +7,11 @@ name: "publish"
 # The `main` branch is reserved for development and does not publish.
 # For both it uses NPM OIDC authentication with provenance support.
 #
+# The manual ("latest") trigger accepts a `package` input so a single package can
+# be published on its own - for example, a final release of the deprecated
+# `@clickhouse/client-common`. The automatic head publish always releases every
+# package together (they share the same head pre-release version).
+#
 # After a successful publish, the `e2e` job waits for the freshly published
 # version to become available on the npm registry, installs that exact
 # version into a tiny downstream project, and verifies it is usable.
@@ -21,13 +26,26 @@ concurrency:
 on:
   # for the latest workflow
   workflow_dispatch:
+    inputs:
+      package:
+        description: "Package(s) to publish"
+        required: true
+        default: all
+        type: choice
+        options:
+          # Publish every package together (the default release flow).
+          - all
+          - "@clickhouse/client"
+          - "@clickhouse/client-web"
+          # The common package is deprecated, but can still be published on its own.
+          - "@clickhouse/client-common"
   # for the head workflow
   push:
     branches:
       - release
     # Only run the head publishing workflow when files relevant to the
-    # published packages change. The web and node packages depend on the
-    # common package, so any change under packages/** triggers an
+    # published packages change. The web and node packages bundle the
+    # common package sources, so any change under packages/** triggers an
     # all-or-nothing publish of every package.
     paths:
       - "packages/**"
@@ -47,6 +65,8 @@ jobs:
     environment: npm-publish
     outputs:
       version: ${{ steps.version.outputs.version }}
+      packages: ${{ steps.publish.outputs.packages }}
+      client_published: ${{ steps.publish.outputs.client_published }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -73,11 +93,16 @@ jobs:
         run: npm --workspaces run build
 
       - name: Publish packages with head tag
+        id: publish
         run: |
           npm --workspaces publish \
             --access public \
             --provenance \
             --tag head
+          {
+            echo "packages=@clickhouse/client-common @clickhouse/client @clickhouse/client-web"
+            echo "client_published=true"
+          } >> "$GITHUB_OUTPUT"
 
   latest:
     if: github.ref == 'refs/heads/release' && github.event_name == 'workflow_dispatch'
@@ -88,6 +113,8 @@ jobs:
       id-token: write # Required for npm OIDC authentication and provenance
     outputs:
       version: ${{ steps.version.outputs.version }}
+      packages: ${{ steps.target.outputs.packages }}
+      client_published: ${{ steps.target.outputs.client_published }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -101,10 +128,54 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Resolve target package(s)
+        id: target
+        env:
+          PACKAGE: ${{ inputs.package }}
+        run: |
+          case "$PACKAGE" in
+            all)
+              packages="@clickhouse/client-common @clickhouse/client @clickhouse/client-web"
+              ws_flags="--workspaces"
+              version_source="packages/client-common/package.json"
+              ;;
+            "@clickhouse/client")
+              packages="@clickhouse/client"
+              ws_flags="--workspace @clickhouse/client"
+              version_source="packages/client-node/package.json"
+              ;;
+            "@clickhouse/client-web")
+              packages="@clickhouse/client-web"
+              ws_flags="--workspace @clickhouse/client-web"
+              version_source="packages/client-web/package.json"
+              ;;
+            "@clickhouse/client-common")
+              packages="@clickhouse/client-common"
+              ws_flags="--workspace @clickhouse/client-common"
+              version_source="packages/client-common/package.json"
+              ;;
+            *)
+              echo "Unknown package: $PACKAGE" >&2
+              exit 1
+              ;;
+          esac
+          client_published=false
+          case " $packages " in
+            *" @clickhouse/client "*) client_published=true ;;
+          esac
+          {
+            echo "packages=$packages"
+            echo "ws_flags=$ws_flags"
+            echo "version_source=$version_source"
+            echo "client_published=$client_published"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Get the release version
         id: version
+        env:
+          VERSION_SOURCE: ${{ steps.target.outputs.version_source }}
         run: |
-          BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
+          BASE_VERSION=$(node -p "require('./${VERSION_SOURCE}').version")
           echo "Using version: $BASE_VERSION"
           echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
 
@@ -112,32 +183,45 @@ jobs:
         run: npm --workspaces run build
 
       - name: Publish packages to the latest tag (implicit)
+        env:
+          WS_FLAGS: ${{ steps.target.outputs.ws_flags }}
         run: |
-          npm --workspaces publish \
+          # shellcheck disable=SC2086 # WS_FLAGS is an intentional npm flag list.
+          npm $WS_FLAGS publish \
             --access public \
             --provenance
 
       - name: Create and push release git tag
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          PACKAGE: ${{ inputs.package }}
         run: |
-          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_VERSION}" >/dev/null 2>&1; then
-            echo "Tag ${RELEASE_VERSION} already exists on origin; skipping."
+          if [ "$PACKAGE" = "all" ]; then
+            TAG="${RELEASE_VERSION}"
+          else
+            # Scope the tag to the package so single-package releases do not
+            # collide with the shared release tag.
+            SLUG="${PACKAGE#@clickhouse/}"
+            TAG="${SLUG}-${RELEASE_VERSION}"
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists on origin; skipping."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}"
-          git push origin "refs/tags/${RELEASE_VERSION}"
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git push origin "refs/tags/${TAG}"
 
   e2e:
     name: e2e (node ${{ matrix.node }})
     needs: [head, latest]
-    # Run when at least one of the publish jobs succeeded. The other one is
-    # skipped (not failed) by its `if:` condition for this trigger.
+    # Run when a publish job succeeded and the Node.js client was among the
+    # published packages (the e2e project imports `@clickhouse/client`).
     if: |
       always() &&
-      (needs.head.result == 'success' || needs.latest.result == 'success')
+      (needs.head.result == 'success' || needs.latest.result == 'success') &&
+      ((needs.head.outputs.client_published || needs.latest.outputs.client_published) == 'true')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -148,6 +232,7 @@ jobs:
         working-directory: tests/e2e/install
     env:
       PUBLISHED_VERSION: ${{ needs.head.outputs.version || needs.latest.outputs.version }}
+      PUBLISHED_PACKAGES: ${{ needs.head.outputs.packages || needs.latest.outputs.packages }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
@@ -157,18 +242,18 @@ jobs:
           node-version: ${{ matrix.node }}
           registry-url: "https://registry.npmjs.org"
 
-      - name: Wait for ${{ needs.head.outputs.version || needs.latest.outputs.version }} to be available on npm
+      - name: Wait for ${{ env.PUBLISHED_VERSION }} to be available on npm
         run: |
           set -euo pipefail
           if [ -z "${PUBLISHED_VERSION}" ]; then
             echo "PUBLISHED_VERSION is empty; cannot wait for npm publication." >&2
             exit 1
           fi
-          packages=(
-            "@clickhouse/client-common"
-            "@clickhouse/client"
-            "@clickhouse/client-web"
-          )
+          if [ -z "${PUBLISHED_PACKAGES}" ]; then
+            echo "PUBLISHED_PACKAGES is empty; cannot wait for npm publication." >&2
+            exit 1
+          fi
+          read -r -a packages <<< "${PUBLISHED_PACKAGES}"
           # Poll the registry for up to ~5 minutes per package. New versions
           # usually surface in seconds, but the registry CDN can lag.
           max_attempts=60
@@ -196,10 +281,13 @@ jobs:
 
       - name: Install the packages at the published version
         run: |
-          npm install \
-            "@clickhouse/client@${PUBLISHED_VERSION}" \
-            "@clickhouse/client-common@${PUBLISHED_VERSION}" \
-            "@clickhouse/client-web@${PUBLISHED_VERSION}"
+          set -euo pipefail
+          read -r -a packages <<< "${PUBLISHED_PACKAGES}"
+          specs=()
+          for pkg in "${packages[@]}"; do
+            specs+=("${pkg}@${PUBLISHED_VERSION}")
+          done
+          npm install "${specs[@]}"
 
       - name: Type check
         run: npx tsc --noEmit

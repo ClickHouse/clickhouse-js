@@ -11,6 +11,18 @@ on:
           - patch
           - minor
           - major
+      package:
+        description: "Package(s) to bump"
+        required: true
+        default: all
+        type: choice
+        options:
+          # Keep every package in sync (the default release flow).
+          - all
+          - "@clickhouse/client"
+          - "@clickhouse/client-web"
+          # The common package is deprecated, but can still be bumped on its own.
+          - "@clickhouse/client-common"
 
 permissions: {}
 
@@ -34,12 +46,51 @@ jobs:
         with:
           node-version: 24
 
+      - name: Resolve target package
+        id: target
+        env:
+          PACKAGE: ${{ inputs.package }}
+        run: |
+          case "$PACKAGE" in
+            all)
+              # Read the shared version from the common package and bump them all.
+              version_source="packages/client-common/package.json"
+              update_args=""
+              slug="all"
+              ;;
+            "@clickhouse/client")
+              version_source="packages/client-node/package.json"
+              update_args="@clickhouse/client"
+              slug="client"
+              ;;
+            "@clickhouse/client-web")
+              version_source="packages/client-web/package.json"
+              update_args="@clickhouse/client-web"
+              slug="client-web"
+              ;;
+            "@clickhouse/client-common")
+              version_source="packages/client-common/package.json"
+              update_args="@clickhouse/client-common"
+              slug="client-common"
+              ;;
+            *)
+              echo "Unknown package: $PACKAGE" >&2
+              exit 1
+              ;;
+          esac
+          {
+            echo "version_source=$version_source"
+            echo "update_args=$update_args"
+            echo "slug=$slug"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Calculate new version
         id: version
         env:
           BUMP_TYPE: ${{ inputs.bump_type }}
+          VERSION_SOURCE: ${{ steps.target.outputs.version_source }}
         run: |
-          CURRENT=$(node -p "require('./packages/client-common/package.json').version")
+          CURRENT=$(node -p "require('./${VERSION_SOURCE}').version")
           NEW=$(CURRENT="$CURRENT" node -e "
             const m = process.env.CURRENT.match(/^(\d+)\.(\d+)\.(\d+)$/);
             if (!m) throw new Error('Version ' + process.env.CURRENT + ' is not a strict x.y.z release; bump manually.');
@@ -51,24 +102,50 @@ jobs:
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
 
+      - name: Compute branch name
+        id: branch
+        env:
+          NEW: ${{ steps.version.outputs.new }}
+          SLUG: ${{ steps.target.outputs.slug }}
+        run: |
+          if [ "$SLUG" = "all" ]; then
+            echo "name=release-${NEW}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=release-${SLUG}-${NEW}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Bump version in packages
-        run: .scripts/update_version.sh "${{ steps.version.outputs.new }}"
+        env:
+          NEW: ${{ steps.version.outputs.new }}
+          UPDATE_ARGS: ${{ steps.target.outputs.update_args }}
+        run: |
+          # shellcheck disable=SC2086 # UPDATE_ARGS is an intentional word-split package list.
+          .scripts/update_version.sh "$NEW" $UPDATE_ARGS
 
       - name: Commit and push branch
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+          NEW: ${{ steps.version.outputs.new }}
+          PACKAGE: ${{ inputs.package }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "release-${{ steps.version.outputs.new }}"
+          git checkout -b "$BRANCH"
           git add .
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new }}"
-          git push origin "release-${{ steps.version.outputs.new }}"
+          git commit -m "chore: bump ${PACKAGE} version to ${NEW}"
+          git push origin "$BRANCH"
 
       - name: Create pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          NEW: ${{ steps.version.outputs.new }}
+          CURRENT: ${{ steps.version.outputs.current }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+          PACKAGE: ${{ inputs.package }}
         run: |
           gh pr create \
-            --title "chore: bump version to ${{ steps.version.outputs.new }}" \
-            --body "Bumps version from \`${{ steps.version.outputs.current }}\` to \`${{ steps.version.outputs.new }}\` (${{ inputs.bump_type }} bump)." \
+            --title "chore: bump ${PACKAGE} version to ${NEW}" \
+            --body "Bumps \`${PACKAGE}\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
             --base main \
-            --head "release-${{ steps.version.outputs.new }}"
+            --head "$BRANCH"
