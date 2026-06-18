@@ -183,19 +183,31 @@ describe("Resource is not available", () => {
   let server: http.Server | undefined;
   const port = 18125;
   beforeAll(async () => {
-    // Client has request timeout set to lower than the server's "sleep" time
+    // The down-server failures here are ECONNREFUSED (returned immediately,
+    // independent of the timeout), so the tight ClientTimeout is unnecessary.
+    // The final ping is a real connect + round-trip to a freshly started server,
+    // which can exceed a few ms on a loaded CI runner; use a generous timeout so
+    // it is not flaky.
     client = createTestClient({
       url: `http://127.0.0.1:${port}`,
-      request_timeout: ClientTimeout,
+      request_timeout: 2_000,
       max_open_connections: MaxOpenConnections,
       keep_alive: {
         enable: true,
       },
     } as NodeClickHouseClientConfigOptions);
   });
+  afterEach(async () => {
+    // Free the fixed port between retries: otherwise a retry would find the
+    // server started by the previous attempt still listening, and the
+    // "should fail" pings would unexpectedly succeed.
+    if (server) {
+      await closeServer(server);
+      server = undefined;
+    }
+  });
   afterAll(async () => {
     await client.close();
-    await closeServer(server!);
   });
 
   it("should fail with a connection error, but then reach out to the server", async () => {

@@ -206,7 +206,17 @@ describe("Node.js Connection compression", () => {
         query: "SELECT * FROM system.numbers LIMIT 5",
       });
 
-      await emitCompressedBody(request, "abc", "lz4");
+      // An unknown `Content-Encoding` is rejected before any decompression is
+      // attempted, so the body is sent as-is (uncompressed) - no codec the
+      // helper knows about is involved.
+      await sleep(0);
+      request.emit(
+        "response",
+        buildIncomingMessage({
+          body: "abc",
+          headers: { "content-encoding": "lz4" },
+        }),
+      );
 
       await expect(selectPromise).rejects.toEqual(
         expect.objectContaining({
