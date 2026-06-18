@@ -1,0 +1,73 @@
+name: "oss-dependents"
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+      - "benchmarks/**"
+
+  schedule:
+    - cron: "0 9 * * *"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  # Runnable reproductions of how the top OSS dependents use the client, resolved
+  # against the workspace source via the @clickhouse/client* vitest aliases. This
+  # is a separate workflow so a regression that breaks a known consumer is clearly
+  # attributable. It targets only the stable ClickHouse release on a local
+  # single-node instance, across the supported Node.js versions.
+  oss-dependents-tests:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Start ClickHouse (stable) in Docker
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run OSS-dependent integration tests
+        run: |
+          npm run test:node:oss-dependents
+
+  success:
+    needs: ["oss-dependents-tests"]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any needed job failed or was cancelled
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1
+      - name: All OSS-dependent tests passed
+        run: echo "All OSS-dependent tests passed! 🎉"
