@@ -101,8 +101,8 @@ export function buildHttpConnection(config: Partial<NodeConnectionParams>) {
 
     request_timeout: 30_000,
     compression: {
-      decompress_response: true,
-      compress_request: false,
+      decompress_response: { codec: "gzip" },
+      compress_request: undefined,
     },
     max_open_connections: 10,
 

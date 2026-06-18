@@ -22,8 +22,8 @@ function buildCustomAgentConnectionParams(
     url: new URL("http://localhost:8123"),
     request_timeout: 30_000,
     compression: {
-      decompress_response: false,
-      compress_request: false,
+      decompress_response: undefined,
+      compress_request: undefined,
     },
     max_open_connections: 10,
     auth: { username: "default", password: "", type: "Credentials" },
@@ -251,8 +251,8 @@ describe("[Node.js] NodeCustomAgentConnection", () => {
         url,
         headers: { "Content-Type": "text/plain" },
         abort_signal: abortController.signal,
-        enable_request_compression: true,
-        enable_response_compression: true,
+        request_compression: { codec: "gzip" },
+        response_compression_codec: "gzip",
         query: "SELECT 1",
         query_id: "test-query-id",
         log_writer: new LogWriter(

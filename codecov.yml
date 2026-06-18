@@ -2,3 +2,59 @@ coverage:
   range: 60..90
   round: down
   precision: 2
+
+# Coverage is uploaded incrementally from each test job in the Node.js
+# (.github/workflows/tests-node.yml) and Web (.github/workflows/tests-web.yml)
+# workflows, each with a distinct Codecov flag. To keep the number of uploads
+# stable as the test matrices grow, every upload step is gated (via its `if:`)
+# to a single canonical combination, so each flag uploads EXACTLY ONCE per
+# commit:
+#
+#   - Node.js flags upload only from Node 24 (local integration flags also require
+#     ClickHouse `latest`, and node-integration-single the default log level).
+#   - Web flags upload only from Chromium (local integration flags also require
+#     ClickHouse `latest`).
+#
+#   flag                       workflow / job
+#   node-common-unit           node / common-unit-tests
+#   node-unit                  node / unit-tests
+#   node-integration-single    node / integration-tests-local-single-node
+#   node-integration-cluster   node / integration-tests-local-cluster
+#   node-integration-cloud     node / integration-tests-cloud
+#   web-common-unit            web  / common-unit-tests
+#   web-all-single             web  / all-tests-local-single-node
+#   web-integration-cluster    web  / integration-tests-local-cluster
+#   web-integration-cloud      web  / integration-tests-cloud
+#                              => 9 uploads total (one per flag)
+#
+# `after_n_builds` therefore equals the number of flags (9). When a flag is
+# added or removed, update this value and the `individual_flags` list to match.
+codecov:
+  # Wait for the other CI checks to finish before notifying, in addition to the
+  # upload count below, so statuses/comments are not posted off a partial report.
+  notify:
+    wait_for_ci: true
+    # Total number of expected uploads before Codecov posts the final commit
+    # status/notification: one upload per flag (see the table above).
+    after_n_builds: 9
+
+comment:
+  # Wait for all uploads before posting/updating the PR comment.
+  after_n_builds: 9
+
+flag_management:
+  default_rules:
+    # Jobs that are conditionally skipped (e.g. cloud jobs on fork PRs) should
+    # not drop the total coverage; carry forward the last known coverage. Each
+    # flag uploads exactly once, so per-flag statuses post after a single build.
+    carryforward: true
+  individual_flags:
+    - name: node-common-unit
+    - name: node-unit
+    - name: node-integration-single
+    - name: node-integration-cluster
+    - name: node-integration-cloud
+    - name: web-common-unit
+    - name: web-all-single
+    - name: web-integration-cluster
+    - name: web-integration-cloud

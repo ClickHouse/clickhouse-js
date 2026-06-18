@@ -159,6 +159,75 @@ propagates to the caller of `query` / `command` / `exec` / `insert` /
 > is never ended. For `command`/`exec`/`insert`/`ping`, a single span ends
 > when the method returns.
 
+## Adapter recipes: `requireParentSpan` and suppressing nested HTTP spans
+
+OpenTelemetry auto-instrumentation packages commonly expose two options that
+the client deliberately does **not** implement itself - both belong in a thin
+tracer adapter, where they compose with your OTEL setup:
+
+### Only trace when there is an active parent span
+
+Skip ClickHouse spans when nothing else is being traced (e.g. background
+health checks or pings outside any request context). Wrap the tracer and
+hand the client a no-op span when there is no active parent:
+
+```ts
+import { context, trace } from "@opentelemetry/api";
+import {
+  createClient,
+  type ClickHouseSpan,
+  type ClickHouseTracer,
+} from "@clickhouse/client";
+
+const noop = () => undefined;
+const noopSpan: ClickHouseSpan = {
+  setAttributes: noop,
+  setStatus: noop,
+  recordException: noop,
+  end: noop,
+};
+
+const otelTracer = trace.getTracer("@clickhouse/client");
+const tracer: ClickHouseTracer = {
+  startActiveSpan: (name, options, fn) =>
+    trace.getSpan(context.active()) === undefined
+      ? fn(noopSpan) // no active parent span - do not trace this operation
+      : otelTracer.startActiveSpan(name, options, fn),
+};
+
+const client = createClient({ tracer });
+```
+
+### Suppress nested HTTP spans
+
+If `@opentelemetry/instrumentation-http` is registered, every ClickHouse
+operation span gets a duplicate child HTTP span for the underlying request.
+To suppress them, run the operation under a suppressed context using
+`suppressTracing` from `@opentelemetry/core`:
+
+```ts
+import { context, trace } from "@opentelemetry/api";
+import { suppressTracing } from "@opentelemetry/core";
+import { createClient, type ClickHouseTracer } from "@clickhouse/client";
+
+const otelTracer = trace.getTracer("@clickhouse/client");
+const tracer: ClickHouseTracer = {
+  startActiveSpan: (name, options, fn) =>
+    otelTracer.startActiveSpan(name, options, (span) =>
+      context.with(suppressTracing(context.active()), () => fn(span)),
+    ),
+};
+
+const client = createClient({ tracer });
+```
+
+Alternatively, keep the raw tracer and configure the HTTP instrumentation to
+ignore requests to your ClickHouse endpoint via its
+`ignoreOutgoingRequestHook` option.
+
+Both recipes are demonstrated end-to-end in
+[`examples/node/coding/otel_tracing.ts`](../../examples/node/coding/otel_tracing.ts).
+
 ## Recording-only tracer for tests / debugging
 
 ```ts

@@ -73,8 +73,8 @@ describe("[Node.js] Multipart query params", () => {
       const adapter = buildHttpConnection({
         database: "my_db",
         compression: {
-          decompress_response: false,
-          compress_request: false,
+          decompress_response: undefined,
+          compress_request: undefined,
         },
         use_multipart_params: true,
       });

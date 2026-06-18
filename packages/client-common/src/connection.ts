@@ -29,9 +29,35 @@ export interface ConnectionParams {
   use_multipart_params_auto?: boolean;
 }
 
+/** Compression codecs supported for the HTTP request (insert) and response
+ *  (read) bodies. `zstd` requires Node.js >= 22.15.0 (zstd support in the
+ *  built-in `zlib` module); `br` (Brotli) is available on every supported
+ *  Node.js version. Request-body compression is performed only by
+ *  `@clickhouse/client` (Node.js); on the web client, response decompression is
+ *  handled by the browser and only `zstd` is rejected. */
+export type CompressionMethod = "gzip" | "zstd" | "br";
+
+/** Normalized request (insert) body compression, discriminated by codec so each
+ *  codec carries its own tuning option: a `level` for gzip/zstd, a `quality` for
+ *  Brotli. */
+export type RequestCompression =
+  | { codec: "gzip"; level?: number }
+  | { codec: "zstd"; level?: number }
+  | { codec: "br"; quality?: number };
+
+/** Normalized response (read) body compression. The compression options are
+ *  chosen by the ClickHouse server, so none are carried here. */
+export type ResponseCompression =
+  | { codec: "gzip" }
+  | { codec: "zstd" }
+  | { codec: "br" };
+
 export interface CompressionSettings {
-  decompress_response: boolean;
-  compress_request: boolean;
+  /** Response decompression codec, or `undefined` to disable. */
+  decompress_response: ResponseCompression | undefined;
+  /** Request compression codec (with an optional codec-specific level), or
+   *  `undefined` to disable. */
+  compress_request: RequestCompression | undefined;
 }
 
 export interface ConnBaseQueryParams {
