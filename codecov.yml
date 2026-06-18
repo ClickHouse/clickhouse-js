@@ -2,3 +2,28 @@ coverage:
   range: 60..90
   round: down
   precision: 2
+
+# Coverage is uploaded incrementally from each test job (Node.js and Web
+# workflows) with a distinct flag. Codecov merges all uploads for a commit
+# into the total coverage, so no dedicated job re-runs the full suite.
+codecov:
+  notify:
+    # Number of expected uploads before Codecov posts the final status. This is
+    # the total number of distinct flags across the node + web workflows.
+    after_n_builds: 9
+
+flag_management:
+  default_rules:
+    # Jobs that are conditionally skipped (e.g. cloud jobs on fork PRs) should
+    # not drop the total coverage; carry forward the last known coverage.
+    carryforward: true
+  individual_flags:
+    - name: node-common-unit
+    - name: node-unit
+    - name: node-integration-single
+    - name: node-integration-cluster
+    - name: node-integration-cloud
+    - name: web-common-unit
+    - name: web-all-single
+    - name: web-integration-cluster
+    - name: web-integration-cloud
