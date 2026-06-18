@@ -19,6 +19,10 @@ To carry the codec (and its optional compression level) instead of a bare on/off
 
 Why: a single `boolean` could not express which codec to use or its level, and a separate level field on `CompressionSettings` would have mixed a codec-specific option into the shared type. Discriminating by codec keeps each codec's options on the codec it belongs to.
 
+## Documentation
+
+- Added two **tracer adapter recipes** to [`docs/howto/tracing.md`](./docs/howto/tracing.md) and [`examples/node/coding/otel_tracing.ts`](./examples/node/coding/otel_tracing.ts), demonstrating how common OpenTelemetry auto-instrumentation options compose as thin userland wrappers around the `tracer` API instead of being baked into the client: `requireParentSpan` (skip ClickHouse spans when there is no active parent span — e.g. background health checks) and suppressing the duplicate nested HTTP spans emitted by `@opentelemetry/instrumentation-http` (via `suppressTracing` from `@opentelemetry/core`).
+
 # 1.21.0
 
 ## New features
