@@ -51,29 +51,17 @@ jobs:
         with:
           node-version: 24
 
-      - name: Calculate new version
+      - name: Bump version
         id: version
         env:
           BUMP_TYPE: ${{ inputs.bump_type }}
         run: |
           CURRENT=$(node -p "require('./packages/client-node/package.json').version")
-          NEW=$(CURRENT="$CURRENT" node -e "
-            const m = process.env.CURRENT.match(/^(\d+)\.(\d+)\.(\d+)$/);
-            if (!m) throw new Error('Version ' + process.env.CURRENT + ' is not a strict x.y.z release; bump manually.');
-            const [, major, minor, patch] = m.map(Number);
-            if (process.env.BUMP_TYPE === 'major') process.stdout.write((major+1) + '.0.0');
-            else if (process.env.BUMP_TYPE === 'minor') process.stdout.write(major + '.' + (minor+1) + '.0');
-            else process.stdout.write(major + '.' + minor + '.' + (patch+1));
-          ")
+          npm --workspace @clickhouse/client version --no-git-tag-version "$BUMP_TYPE"
+          NEW=$(node -p "require('./packages/client-node/package.json').version")
+          echo "export default \"$NEW\";" > packages/client-node/src/version.ts
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
-
-      - name: Bump version in package
-        env:
-          NEW: ${{ steps.version.outputs.new }}
-        run: |
-          npm --workspace @clickhouse/client version --no-git-tag-version "$NEW"
-          echo "export default \"$NEW\";" > packages/client-node/src/version.ts
 
       - name: Commit, push branch, and open PR
         env:
@@ -113,29 +101,17 @@ jobs:
         with:
           node-version: 24
 
-      - name: Calculate new version
+      - name: Bump version
         id: version
         env:
           BUMP_TYPE: ${{ inputs.bump_type }}
         run: |
           CURRENT=$(node -p "require('./packages/client-web/package.json').version")
-          NEW=$(CURRENT="$CURRENT" node -e "
-            const m = process.env.CURRENT.match(/^(\d+)\.(\d+)\.(\d+)$/);
-            if (!m) throw new Error('Version ' + process.env.CURRENT + ' is not a strict x.y.z release; bump manually.');
-            const [, major, minor, patch] = m.map(Number);
-            if (process.env.BUMP_TYPE === 'major') process.stdout.write((major+1) + '.0.0');
-            else if (process.env.BUMP_TYPE === 'minor') process.stdout.write(major + '.' + (minor+1) + '.0');
-            else process.stdout.write(major + '.' + minor + '.' + (patch+1));
-          ")
+          npm --workspace @clickhouse/client-web version --no-git-tag-version "$BUMP_TYPE"
+          NEW=$(node -p "require('./packages/client-web/package.json').version")
+          echo "export default \"$NEW\";" > packages/client-web/src/version.ts
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
-
-      - name: Bump version in package
-        env:
-          NEW: ${{ steps.version.outputs.new }}
-        run: |
-          npm --workspace @clickhouse/client-web version --no-git-tag-version "$NEW"
-          echo "export default \"$NEW\";" > packages/client-web/src/version.ts
 
       - name: Commit, push branch, and open PR
         env:
@@ -175,29 +151,17 @@ jobs:
         with:
           node-version: 24
 
-      - name: Calculate new version
+      - name: Bump version
         id: version
         env:
           BUMP_TYPE: ${{ inputs.bump_type }}
         run: |
           CURRENT=$(node -p "require('./packages/client-common/package.json').version")
-          NEW=$(CURRENT="$CURRENT" node -e "
-            const m = process.env.CURRENT.match(/^(\d+)\.(\d+)\.(\d+)$/);
-            if (!m) throw new Error('Version ' + process.env.CURRENT + ' is not a strict x.y.z release; bump manually.');
-            const [, major, minor, patch] = m.map(Number);
-            if (process.env.BUMP_TYPE === 'major') process.stdout.write((major+1) + '.0.0');
-            else if (process.env.BUMP_TYPE === 'minor') process.stdout.write(major + '.' + (minor+1) + '.0');
-            else process.stdout.write(major + '.' + minor + '.' + (patch+1));
-          ")
+          npm --workspace @clickhouse/client-common version --no-git-tag-version "$BUMP_TYPE"
+          NEW=$(node -p "require('./packages/client-common/package.json').version")
+          echo "export default \"$NEW\";" > packages/client-common/src/version.ts
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
-
-      - name: Bump version in package
-        env:
-          NEW: ${{ steps.version.outputs.new }}
-        run: |
-          npm --workspace @clickhouse/client-common version --no-git-tag-version "$NEW"
-          echo "export default \"$NEW\";" > packages/client-common/src/version.ts
 
       - name: Commit, push branch, and open PR
         env:
