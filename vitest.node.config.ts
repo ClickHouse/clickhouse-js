@@ -39,9 +39,11 @@ const collections = {
     "packages/client-common/__tests__/integration/*.test.ts",
   ],
   // Runnable reproductions of how the top OSS dependents use the client.
-  // Each spec exercises a real dependent's surface against the workspace source
-  // (via the @clickhouse/client* aliases below) so a breaking change here fails
-  // the matching consumer's test. See packages/client-node/__tests__/oss-dependents.
+  // Unlike the other (fast, build-free) modes, these are e2e-style guards: they
+  // import the public package names and resolve to the BUILT workspace packages
+  // (see the resolve.alias note below), so a breaking change in the published
+  // surface fails the matching consumer's test. `npm run build` must run first.
+  // See packages/client-node/__tests__/oss-dependents.
   "oss-dependents": ["packages/client-node/__tests__/oss-dependents/*.test.ts"],
   all: [
     "packages/client-common/__tests__/unit/*.test.ts",
@@ -102,17 +104,25 @@ export default defineConfig({
     retry: process.env.CI ? 2 : 0,
   },
   resolve: {
-    alias: {
-      "@clickhouse/client-common": "packages/client-common/src",
-      "@clickhouse/client-node": "packages/client-node/src",
-      // The oss-dependents specs import from the public package names exactly as
-      // the upstream dependents do; alias them to the workspace source so those
-      // tests guard breaking changes against `src` (not the published packages).
-      // @rollup/plugin-alias only matches on an exact key or `key + "/"`, so
-      // these do NOT shadow `@clickhouse/client-common` / `-node` / `-web`.
-      "@clickhouse/client": "packages/client-node/src",
-      "@clickhouse/client-web": "packages/client-web/src",
-      "@test": "packages/client-common/__tests__",
-    },
+    // The oss-dependents specs import the published package names (`@clickhouse/
+    // client`, `-web`, `-common`) exactly as the upstream dependents do; those
+    // resolve through the node_modules workspace symlinks to the BUILT packages
+    // (run `npm run build` first) — an e2e-style guard against the published
+    // surface rather than `src`. `@clickhouse/client-node` is not a real package
+    // name (the node client publishes as `@clickhouse/client`); it is an
+    // internal alias the shared node setup/util files import, so we repoint it
+    // at the built node `dist` for this mode. Every other mode aliases the
+    // workspace `src` instead for a fast, build-free unit/integration loop.
+    alias:
+      testMode === "oss-dependents"
+        ? {
+            "@clickhouse/client-node": "packages/client-node/dist",
+            "@test": "packages/client-common/__tests__",
+          }
+        : {
+            "@clickhouse/client-common": "packages/client-common/src",
+            "@clickhouse/client-node": "packages/client-node/src",
+            "@test": "packages/client-common/__tests__",
+          },
   },
 });
