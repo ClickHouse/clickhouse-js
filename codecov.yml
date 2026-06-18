@@ -10,9 +10,9 @@ coverage:
 # to a single canonical combination, so each flag uploads EXACTLY ONCE per
 # commit:
 #
-#   - Node.js flags upload only from Node 24 (integration flags also require
+#   - Node.js flags upload only from Node 24 (local integration flags also require
 #     ClickHouse `latest`, and node-integration-single the default log level).
-#   - Web flags upload only from Chromium (integration flags also require
+#   - Web flags upload only from Chromium (local integration flags also require
 #     ClickHouse `latest`).
 #
 #   flag                       workflow / job
