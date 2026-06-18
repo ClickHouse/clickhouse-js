@@ -1,5 +1,10 @@
 name: "bump-version"
 
+# Manually bump a single package's version and open a release PR against main.
+# Each package has its own job; the required `package` input selects which one
+# runs. Packages are versioned independently, so there is no "bump everything"
+# option - dispatch the workflow once per package you want to release.
+
 on:
   workflow_dispatch:
     inputs:
@@ -12,13 +17,10 @@ on:
           - minor
           - major
       package:
-        description: "Package(s) to bump"
+        description: "Package to bump"
         required: true
-        default: all
         type: choice
         options:
-          # Keep every package in sync (the default release flow).
-          - all
           - "@clickhouse/client"
           - "@clickhouse/client-web"
           # The common package is deprecated, but can still be bumped on its own.
@@ -29,8 +31,11 @@ permissions: {}
 concurrency:
   group: ${{ github.repository }}-${{ github.workflow }}
   cancel-in-progress: false
+
 jobs:
-  bump:
+  bump_client:
+    name: "Bump @clickhouse/client"
+    if: inputs.package == '@clickhouse/client'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -46,51 +51,12 @@ jobs:
         with:
           node-version: 24
 
-      - name: Resolve target package
-        id: target
-        env:
-          PACKAGE: ${{ inputs.package }}
-        run: |
-          case "$PACKAGE" in
-            all)
-              # Read the shared version from the common package and bump them all.
-              version_source="packages/client-common/package.json"
-              update_args=""
-              slug="all"
-              ;;
-            "@clickhouse/client")
-              version_source="packages/client-node/package.json"
-              update_args="@clickhouse/client"
-              slug="client"
-              ;;
-            "@clickhouse/client-web")
-              version_source="packages/client-web/package.json"
-              update_args="@clickhouse/client-web"
-              slug="client-web"
-              ;;
-            "@clickhouse/client-common")
-              version_source="packages/client-common/package.json"
-              update_args="@clickhouse/client-common"
-              slug="client-common"
-              ;;
-            *)
-              echo "Unknown package: $PACKAGE" >&2
-              exit 1
-              ;;
-          esac
-          {
-            echo "version_source=$version_source"
-            echo "update_args=$update_args"
-            echo "slug=$slug"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Calculate new version
         id: version
         env:
           BUMP_TYPE: ${{ inputs.bump_type }}
-          VERSION_SOURCE: ${{ steps.target.outputs.version_source }}
         run: |
-          CURRENT=$(node -p "require('./${VERSION_SOURCE}').version")
+          CURRENT=$(node -p "require('./packages/client-node/package.json').version")
           NEW=$(CURRENT="$CURRENT" node -e "
             const m = process.env.CURRENT.match(/^(\d+)\.(\d+)\.(\d+)$/);
             if (!m) throw new Error('Version ' + process.env.CURRENT + ' is not a strict x.y.z release; bump manually.');
@@ -102,50 +68,153 @@ jobs:
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
 
-      - name: Compute branch name
-        id: branch
+      - name: Bump version in package
         env:
           NEW: ${{ steps.version.outputs.new }}
-          SLUG: ${{ steps.target.outputs.slug }}
         run: |
-          if [ "$SLUG" = "all" ]; then
-            echo "name=release-${NEW}" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=release-${SLUG}-${NEW}" >> "$GITHUB_OUTPUT"
-          fi
+          npm --workspace @clickhouse/client version --no-git-tag-version "$NEW"
+          echo "export default \"$NEW\";" > packages/client-node/src/version.ts
 
-      - name: Bump version in packages
+      - name: Commit, push branch, and open PR
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW: ${{ steps.version.outputs.new }}
-          UPDATE_ARGS: ${{ steps.target.outputs.update_args }}
+          CURRENT: ${{ steps.version.outputs.current }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
         run: |
-          # shellcheck disable=SC2086 # UPDATE_ARGS is an intentional word-split package list.
-          .scripts/update_version.sh "$NEW" $UPDATE_ARGS
-
-      - name: Commit and push branch
-        env:
-          BRANCH: ${{ steps.branch.outputs.name }}
-          NEW: ${{ steps.version.outputs.new }}
-          PACKAGE: ${{ inputs.package }}
-        run: |
+          BRANCH="release-client-${NEW}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
           git add .
-          git commit -m "chore: bump ${PACKAGE} version to ${NEW}"
+          git commit -m "chore: bump @clickhouse/client version to ${NEW}"
           git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: bump @clickhouse/client version to ${NEW}" \
+            --body "Bumps \`@clickhouse/client\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
+            --base main \
+            --head "$BRANCH"
 
-      - name: Create pull request
+  bump_client_web:
+    name: "Bump @clickhouse/client-web"
+    if: inputs.package == '@clickhouse/client-web'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Calculate new version
+        id: version
+        env:
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          CURRENT=$(node -p "require('./packages/client-web/package.json').version")
+          NEW=$(CURRENT="$CURRENT" node -e "
+            const m = process.env.CURRENT.match(/^(\d+)\.(\d+)\.(\d+)$/);
+            if (!m) throw new Error('Version ' + process.env.CURRENT + ' is not a strict x.y.z release; bump manually.');
+            const [, major, minor, patch] = m.map(Number);
+            if (process.env.BUMP_TYPE === 'major') process.stdout.write((major+1) + '.0.0');
+            else if (process.env.BUMP_TYPE === 'minor') process.stdout.write(major + '.' + (minor+1) + '.0');
+            else process.stdout.write(major + '.' + minor + '.' + (patch+1));
+          ")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version in package
+        env:
+          NEW: ${{ steps.version.outputs.new }}
+        run: |
+          npm --workspace @clickhouse/client-web version --no-git-tag-version "$NEW"
+          echo "export default \"$NEW\";" > packages/client-web/src/version.ts
+
+      - name: Commit, push branch, and open PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ steps.branch.outputs.name }}
           NEW: ${{ steps.version.outputs.new }}
           CURRENT: ${{ steps.version.outputs.current }}
           BUMP_TYPE: ${{ inputs.bump_type }}
-          PACKAGE: ${{ inputs.package }}
         run: |
+          BRANCH="release-client-web-${NEW}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "chore: bump @clickhouse/client-web version to ${NEW}"
+          git push origin "$BRANCH"
           gh pr create \
-            --title "chore: bump ${PACKAGE} version to ${NEW}" \
-            --body "Bumps \`${PACKAGE}\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
+            --title "chore: bump @clickhouse/client-web version to ${NEW}" \
+            --body "Bumps \`@clickhouse/client-web\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
+            --base main \
+            --head "$BRANCH"
+
+  bump_client_common:
+    name: "Bump @clickhouse/client-common (deprecated)"
+    if: inputs.package == '@clickhouse/client-common'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Calculate new version
+        id: version
+        env:
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          CURRENT=$(node -p "require('./packages/client-common/package.json').version")
+          NEW=$(CURRENT="$CURRENT" node -e "
+            const m = process.env.CURRENT.match(/^(\d+)\.(\d+)\.(\d+)$/);
+            if (!m) throw new Error('Version ' + process.env.CURRENT + ' is not a strict x.y.z release; bump manually.');
+            const [, major, minor, patch] = m.map(Number);
+            if (process.env.BUMP_TYPE === 'major') process.stdout.write((major+1) + '.0.0');
+            else if (process.env.BUMP_TYPE === 'minor') process.stdout.write(major + '.' + (minor+1) + '.0');
+            else process.stdout.write(major + '.' + minor + '.' + (patch+1));
+          ")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version in package
+        env:
+          NEW: ${{ steps.version.outputs.new }}
+        run: |
+          npm --workspace @clickhouse/client-common version --no-git-tag-version "$NEW"
+          echo "export default \"$NEW\";" > packages/client-common/src/version.ts
+
+      - name: Commit, push branch, and open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW: ${{ steps.version.outputs.new }}
+          CURRENT: ${{ steps.version.outputs.current }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          BRANCH="release-client-common-${NEW}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "chore: bump @clickhouse/client-common version to ${NEW}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: bump @clickhouse/client-common version to ${NEW}" \
+            --body "Bumps \`@clickhouse/client-common\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
             --base main \
             --head "$BRANCH"

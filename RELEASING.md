@@ -8,7 +8,7 @@ Tools required:
 
 We prefer to keep versions the same across the packages, and release all at once, even if there were no changes in some.
 
-> **Note:** The [`bump-version`](.github/workflows/bump-version.yml) and [`publish`](.github/workflows/publish.yml) GitHub workflows accept a `package` input so a single package can be bumped or published on its own. The default, `all`, keeps every package in sync (the flow described below). The other options (`@clickhouse/client`, `@clickhouse/client-web`, `@clickhouse/client-common`) target one package — useful, for example, to cut a final standalone release of the deprecated `@clickhouse/client-common`. The automatic `head` publish (on push to `release`) always releases every package together. `.scripts/update_version.sh` mirrors this: pass package name(s) after the version to bump only those (e.g. `.scripts/update_version.sh "$NEW_VERSION" @clickhouse/client-common`), or omit them to bump everything.
+> **Note:** The [`bump-version`](.github/workflows/bump-version.yml) and [`publish`](.github/workflows/publish.yml) GitHub workflows take a required `package` input and act on that one package only — one of `@clickhouse/client`, `@clickhouse/client-web`, or `@clickhouse/client-common` (useful, for example, to cut a final standalone release of the deprecated `@clickhouse/client-common`). To release more than one package, dispatch the workflow once per package. The automatic `head` publish (on push to `release`) still releases every package together. The local flow below uses `.scripts/update_version.sh`, which bumps every package by default; pass package name(s) after the version to bump only a subset (e.g. `.scripts/update_version.sh "$NEW_VERSION" @clickhouse/client-common`).
 
 Bump the version:
 
