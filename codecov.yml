@@ -3,14 +3,40 @@ coverage:
   round: down
   precision: 2
 
-# Coverage is uploaded incrementally from each test job (Node.js and Web
-# workflows) with a distinct flag. Codecov merges all uploads for a commit
-# into the total coverage, so no dedicated job re-runs the full suite.
+# Coverage is uploaded incrementally from each test job in the Node.js
+# (.github/workflows/tests-node.yml) and Web (.github/workflows/tests-web.yml)
+# workflows, each with a distinct Codecov flag. Because the jobs run across test
+# matrices, a single flag receives MULTIPLE uploads per commit, so after_n_builds
+# must count uploads (matrix expansions included), NOT the number of flags.
+#
+# Total expected uploads per commit = 44, broken down per flag below. The cloud
+# jobs only run when uploads are enabled (same `if` as the upload step), so a
+# commit either receives all 44 uploads or none (fork/Dependabot PRs skip every
+# upload), and Codecov never waits forever on a partial report.
+#
+#   flag                       job (workflow)                              matrix                          uploads
+#   node-common-unit           common-unit-tests (node)                    node[3]                         = 3
+#   node-unit                  unit-tests (node)                           node[3]                         = 3
+#   node-integration-single    integration-tests-local-single-node (node)  node[3]xch[2]xlog[2] + 5 incl.  = 17
+#   node-integration-cluster   integration-tests-local-cluster (node)      node[3]xch[2]                   = 6
+#   node-integration-cloud     integration-tests-cloud (node)              node[3]                         = 3
+#   web-common-unit            common-unit-tests (web)                     browser[2]                      = 2
+#   web-all-single             all-tests-local-single-node (web)           browser[2]xch[2]                = 4
+#   web-integration-cluster    integration-tests-local-cluster (web)       browser[2]xch[2]                = 4
+#   web-integration-cloud      integration-tests-cloud (web)               browser[2]                      = 2
+#                                                                                                    total = 44
+#
+# When the CI matrices change, update both the global `after_n_builds` below and
+# the matching per-flag `after_n_builds` values under `flag_management`.
 codecov:
   notify:
-    # Number of expected uploads before Codecov posts the final status. This is
-    # the total number of distinct flags across the node + web workflows.
-    after_n_builds: 9
+    # Total number of expected uploads before Codecov posts the final commit
+    # status/notification (gates the overall, non-flag status checks).
+    after_n_builds: 44
+
+comment:
+  # Wait for all uploads before posting/updating the PR comment.
+  after_n_builds: 44
 
 flag_management:
   default_rules:
@@ -18,12 +44,33 @@ flag_management:
     # not drop the total coverage; carry forward the last known coverage.
     carryforward: true
   individual_flags:
+    # Per-flag `after_n_builds` is required because the global `after_n_builds`
+    # does not gate per-flag status checks; each flag must wait for its own
+    # upload count (see the table above) before its status posts.
     - name: node-common-unit
+      carryforward: true
+      after_n_builds: 3
     - name: node-unit
+      carryforward: true
+      after_n_builds: 3
     - name: node-integration-single
+      carryforward: true
+      after_n_builds: 17
     - name: node-integration-cluster
+      carryforward: true
+      after_n_builds: 6
     - name: node-integration-cloud
+      carryforward: true
+      after_n_builds: 3
     - name: web-common-unit
+      carryforward: true
+      after_n_builds: 2
     - name: web-all-single
+      carryforward: true
+      after_n_builds: 4
     - name: web-integration-cluster
+      carryforward: true
+      after_n_builds: 4
     - name: web-integration-cloud
+      carryforward: true
+      after_n_builds: 2
