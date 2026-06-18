@@ -23,7 +23,10 @@ permissions:
   id-token: write # Required for npm OIDC authentication and provenance
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  # Scope manual publishes by package so dispatching a release for one package
+  # does not cancel an in-progress release of another. `github.event.inputs` is
+  # empty for the head (push) trigger, so head runs still share a single group.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}-${{ github.event.inputs.package }}
   cancel-in-progress: true
 on:
   # for the latest workflow
