@@ -14,13 +14,13 @@ import type { BaseResultSet } from "./result";
 import type { ClickHouseSettings } from "./settings";
 import type { ClickHouseSpan, ClickHouseTracer } from "./tracing";
 
-/** Normalizes the public request compression option
- *  (`false | true | { codec, level }`) into the internal codec object, or
- *  `undefined` when disabled. `true` keeps gzip for backwards compatibility. The
- *  codec is preserved verbatim (the cast covers untyped JS passing an unknown
- *  codec) so the Node guard can reject it with a clear error. */
+/** Normalizes the public request compression option into the internal codec
+ *  object, or `undefined` when disabled. `true` keeps gzip for backwards
+ *  compatibility; the object form (carrying its per-codec option) is passed
+ *  through verbatim, so untyped JS supplying an unknown codec still reaches the
+ *  Node guard, which rejects it with a clear error. */
 function normalizeRequestCompression(
-  value: boolean | { codec: CompressionMethod; level?: number } | undefined,
+  value: boolean | RequestCompression | undefined,
 ): RequestCompression | undefined {
   if (!value) {
     return undefined;
@@ -28,7 +28,7 @@ function normalizeRequestCompression(
   if (value === true) {
     return { codec: "gzip" };
   }
-  return { codec: value.codec, level: value.level };
+  return value;
 }
 
 /** Normalizes the public response compression option
@@ -71,21 +71,27 @@ export interface BaseClickHouseClientConfigOptions {
   compression?: {
     /** Instructs the ClickHouse server to respond with a compressed response body.
      *  `true` requests `gzip`; pass `{ codec }` to select the codec explicitly,
-     *  e.g. `{ codec: "zstd" }`. The object form is extensible for future
-     *  codec-specific options. This adds the matching `Accept-Encoding` header and
-     *  the `enable_http_compression=1` ClickHouse HTTP setting.
-     *  `"zstd"` requires Node.js >= 22.15.0 and is only honored by `@clickhouse/client` (Node.js).
+     *  e.g. `{ codec: "zstd" }` or `{ codec: "br" }`. This adds the matching
+     *  `Accept-Encoding` header and the `enable_http_compression=1` ClickHouse HTTP
+     *  setting. Decompression takes no codec options (the server chose them).
+     *  `"zstd"` requires Node.js >= 22.15.0; `"br"` works on any supported Node.js.
+     *  On `@clickhouse/client-web`, `zstd` is rejected at client creation; `gzip`
+     *  and `br` responses are decompressed by the browser.
      *  <p><b>Warning</b>: Response compression can't be enabled for a user with readonly=1, as ClickHouse will not allow settings modifications for such user.</p>
      *  @default false */
     response?: boolean | { codec: CompressionMethod };
     /** Enables compression of the outgoing request (insert) body.
-     *  `true` uses `gzip`; pass `{ codec }` to select the codec explicitly,
-     *  e.g. `{ codec: "zstd" }`. Optionally pass `{ codec, level }` to set a
-     *  codec-specific compression level (the zlib level for `gzip`, the zstd
-     *  compression level for `zstd`); when omitted, the codec default is used.
-     *  `"zstd"` requires Node.js >= 22.15.0 and is only supported by `@clickhouse/client` (Node.js).
+     *  `true` uses `gzip` with defaults; pass a per-codec object to select the
+     *  codec and tune it: `{ codec: "gzip", level }`, `{ codec: "zstd", level }`,
+     *  or `{ codec: "br", quality }`. Each codec exposes its own option (a `level`
+     *  for gzip/zstd, a `quality` for Brotli); when omitted, a sensible default is
+     *  used (gzip/zstd use zlib's defaults, `br` defaults to quality 4 since
+     *  zlib's brotli default of 11 is far too slow for a streaming insert body).
+     *  `"zstd"` requires Node.js >= 22.15.0; `"br"` works on any supported Node.js.
+     *  Request-body compression is performed only by `@clickhouse/client` (Node.js);
+     *  `@clickhouse/client-web` sends request bodies uncompressed.
      *  @default false */
-    request?: boolean | { codec: CompressionMethod; level?: number };
+    request?: boolean | RequestCompression;
   };
   /** The name of the user on whose behalf requests are made.
    *  Should not be set if {@link access_token} is provided.

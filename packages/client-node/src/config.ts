@@ -97,7 +97,7 @@ function unknownCodecError(
 ): Error {
   return new Error(
     `Unknown ${direction} compression codec "${value}". ` +
-      `Supported codecs: gzip, zstd.`,
+      `Supported codecs: gzip, zstd, br.`,
   );
 }
 
@@ -119,7 +119,7 @@ function ensureRequestCodecSupported(value: CompressionMethod): void {
           "(the zstd APIs were added in Node.js 22.15.0). Use gzip compression instead.",
       );
     }
-  } else if (value !== "gzip") {
+  } else if (value !== "gzip" && value !== "br") {
     throw unknownCodecError(value, "request");
   }
 }
@@ -138,7 +138,7 @@ function ensureResponseCodecSupported(value: CompressionMethod): void {
           "(the zstd APIs were added in Node.js 22.15.0). Use gzip compression instead.",
       );
     }
-  } else if (value !== "gzip") {
+  } else if (value !== "gzip" && value !== "br") {
     throw unknownCodecError(value, "response");
   }
 }

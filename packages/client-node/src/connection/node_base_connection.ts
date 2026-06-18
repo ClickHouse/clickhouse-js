@@ -307,10 +307,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             url: transformUrl({ url: this.params.url, searchParams }),
             body: params.values,
             abort_signal: controller.signal,
-            request_compression_codec:
-              this.params.compression.compress_request?.codec,
-            request_compression_level:
-              this.params.compression.compress_request?.level,
+            request_compression: this.params.compression.compress_request,
             parse_summary: true,
             headers: this.buildRequestHeaders(params),
             query: params.query,
@@ -570,10 +567,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             body: sendQueryInParams ? params.values : params.query,
             abort_signal: controller.signal,
             parse_summary: true,
-            request_compression_codec:
-              this.params.compression.compress_request?.codec,
-            request_compression_level:
-              this.params.compression.compress_request?.level,
+            request_compression: this.params.compression.compress_request,
             response_compression_codec:
               this.params.compression.decompress_response?.codec,
             try_decompress_response_stream: tryDecompressResponseStream,

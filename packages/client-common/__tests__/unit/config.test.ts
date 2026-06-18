@@ -420,6 +420,23 @@ describe("config", () => {
       });
     });
 
+    it("carries the brotli request quality on the codec object", () => {
+      const res = getConnectionParams(
+        {
+          url: new URL("https://my.host:8443/"),
+          compression: {
+            request: { codec: "br", quality: 6 },
+            response: { codec: "br" },
+          },
+        },
+        logger,
+      );
+      expect(res.compression).toEqual({
+        compress_request: { codec: "br", quality: 6 },
+        decompress_response: { codec: "br" },
+      });
+    });
+
     it("should set connection params from the config", async () => {
       const res = getConnectionParams(
         {

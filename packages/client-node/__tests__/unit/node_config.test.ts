@@ -175,6 +175,18 @@ describe("[Node.js] Config implementation details", () => {
           }),
         ).toThrow(/Unknown request compression codec/);
       });
+
+      it("does not throw for br compression", () => {
+        expect(() =>
+          NodeConfigImpl.make_connection(nodeConfig as any, {
+            ...params,
+            compression: {
+              compress_request: { codec: "br" },
+              decompress_response: { codec: "br" },
+            },
+          }),
+        ).not.toThrow();
+      });
     });
 
     it("should create a connection with default KeepAlive settings", async () => {

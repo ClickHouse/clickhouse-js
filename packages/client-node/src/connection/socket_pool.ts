@@ -14,6 +14,7 @@ import {
   type ClickHouseSummary,
   type JSONHandling,
   type CompressionMethod,
+  type RequestCompression,
 } from "@clickhouse/client-common";
 import { getAsText, isStream } from "../utils";
 import {
@@ -31,9 +32,7 @@ export interface RequestParams {
   // provided by the user and wrapped around internally
   abort_signal: AbortSignal;
   response_compression_codec?: CompressionMethod;
-  request_compression_codec?: CompressionMethod;
-  // optional codec-specific compression level for the request body
-  request_compression_level?: number;
+  request_compression?: RequestCompression;
   // if there are compression headers, attempt to decompress it
   try_decompress_response_stream?: boolean;
   // if the response contains an error, ignore it and return the stream as-is
@@ -394,10 +393,9 @@ export class SocketPool {
           }
         };
 
-        if (params.request_compression_codec) {
+        if (params.request_compression) {
           const compressor = createRequestCompressor(
-            params.request_compression_codec,
-            params.request_compression_level,
+            params.request_compression,
           );
           Stream.pipeline(bodyStream, compressor, request, callback);
         } else {
