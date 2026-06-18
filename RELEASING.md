@@ -4,7 +4,6 @@ Tools required (for verifying a published build and promoting npm tags locally):
 
 - Node.js >= `20.x`
 - NPM >= `11.x`
-- jq (https://stedolan.github.io/jq/)
 
 Packages are versioned and released independently. Release one package at a time; to release several, repeat the steps below for each. Versions are bumped through the GitHub Actions workflows — there is no local version-bump script.
 
