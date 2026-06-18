@@ -10,8 +10,8 @@ name: "publish"
 # The manual ("latest") trigger takes a required `package` input and runs the
 # matching per-package job, so a single package can be published on its own -
 # for example, a final release of the deprecated `@clickhouse/client-common`.
-# The automatic head publish always releases every package together (they share
-# the same head pre-release version).
+# The automatic head publish runs one per-package job for every package (each
+# computes its own `<base>-head.<sha>.<attempt>` version from its package.json).
 #
 # After a successful publish, the `e2e` job waits for the freshly published
 # version to become available on the npm registry, installs that exact
@@ -58,13 +58,14 @@ on:
       - ".github/workflows/publish.yml"
 
 jobs:
-  head:
+  head_client:
+    name: "Publish @clickhouse/client (head)"
     if: github.ref == 'refs/heads/release' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: npm-publish
     outputs:
       version: ${{ steps.version.outputs.version }}
-      packages: ${{ steps.publish.outputs.packages }}
+      packages: "@clickhouse/client"
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -81,23 +82,88 @@ jobs:
       - name: Set head pre-release version
         id: version
         run: |
-          BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
-          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
+          HEAD_VERSION=$(.scripts/head_version.sh packages/client-node/package.json)
           echo "Setting version to: $HEAD_VERSION"
-          .scripts/update_version.sh "$HEAD_VERSION"
+          .scripts/update_version.sh "$HEAD_VERSION" @clickhouse/client
           echo "version=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build packages
         run: npm --workspaces run build
 
-      - name: Publish packages with head tag
-        id: publish
+      - name: Publish @clickhouse/client with head tag
         run: |
-          npm --workspaces publish \
+          npm --workspace @clickhouse/client publish \
             --access public \
             --provenance \
             --tag head
-          echo "packages=@clickhouse/client-common @clickhouse/client @clickhouse/client-web" >> "$GITHUB_OUTPUT"
+
+  head_client_web:
+    name: "Publish @clickhouse/client-web (head)"
+    if: github.ref == 'refs/heads/release' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set head pre-release version
+        run: |
+          HEAD_VERSION=$(.scripts/head_version.sh packages/client-web/package.json)
+          echo "Setting version to: $HEAD_VERSION"
+          .scripts/update_version.sh "$HEAD_VERSION" @clickhouse/client-web
+
+      - name: Build packages
+        run: npm --workspaces run build
+
+      - name: Publish @clickhouse/client-web with head tag
+        run: |
+          npm --workspace @clickhouse/client-web publish \
+            --access public \
+            --provenance \
+            --tag head
+
+  head_client_common:
+    name: "Publish @clickhouse/client-common (head)"
+    if: github.ref == 'refs/heads/release' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set head pre-release version
+        run: |
+          HEAD_VERSION=$(.scripts/head_version.sh packages/client-common/package.json)
+          echo "Setting version to: $HEAD_VERSION"
+          .scripts/update_version.sh "$HEAD_VERSION" @clickhouse/client-common
+
+      - name: Build packages
+        run: npm --workspaces run build
+
+      - name: Publish @clickhouse/client-common with head tag
+        run: |
+          npm --workspace @clickhouse/client-common publish \
+            --access public \
+            --provenance \
+            --tag head
 
   publish_client:
     name: "Publish @clickhouse/client"
@@ -236,12 +302,12 @@ jobs:
 
   e2e:
     name: e2e (node ${{ matrix.node }})
-    needs: [head, publish_client]
+    needs: [head_client, publish_client]
     # The e2e project imports `@clickhouse/client`, so it only runs when the
     # Node.js client was published - either via the head job or the client job.
     if: |
       always() &&
-      (needs.head.result == 'success' || needs.publish_client.result == 'success')
+      (needs.head_client.result == 'success' || needs.publish_client.result == 'success')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -251,8 +317,8 @@ jobs:
       run:
         working-directory: tests/e2e/install
     env:
-      PUBLISHED_VERSION: ${{ needs.head.outputs.version || needs.publish_client.outputs.version }}
-      PUBLISHED_PACKAGES: ${{ needs.head.outputs.packages || needs.publish_client.outputs.packages }}
+      PUBLISHED_VERSION: ${{ needs.head_client.outputs.version || needs.publish_client.outputs.version }}
+      PUBLISHED_PACKAGES: ${{ needs.head_client.outputs.packages || needs.publish_client.outputs.packages }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
