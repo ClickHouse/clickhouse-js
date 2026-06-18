@@ -88,8 +88,8 @@ jobs:
           echo "export default \"$HEAD_VERSION\";" > packages/client-node/src/version.ts
           echo "version=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build packages
-        run: npm --workspaces run build
+      - name: Build the package
+        run: npm --workspace @clickhouse/client run build
 
       - name: Publish @clickhouse/client with head tag
         run: |
@@ -124,8 +124,8 @@ jobs:
           npm --workspace @clickhouse/client-web version --no-git-tag-version "$HEAD_VERSION"
           echo "export default \"$HEAD_VERSION\";" > packages/client-web/src/version.ts
 
-      - name: Build packages
-        run: npm --workspaces run build
+      - name: Build the package
+        run: npm --workspace @clickhouse/client-web run build
 
       - name: Publish @clickhouse/client-web with head tag
         run: |
@@ -160,8 +160,8 @@ jobs:
           npm --workspace @clickhouse/client-common version --no-git-tag-version "$HEAD_VERSION"
           echo "export default \"$HEAD_VERSION\";" > packages/client-common/src/version.ts
 
-      - name: Build packages
-        run: npm --workspaces run build
+      - name: Build the package
+        run: npm --workspace @clickhouse/client-common run build
 
       - name: Publish @clickhouse/client-common with head tag
         run: |
@@ -201,8 +201,8 @@ jobs:
           echo "Using version: $BASE_VERSION"
           echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build packages
-        run: npm --workspaces run build
+      - name: Build the package
+        run: npm --workspace @clickhouse/client run build
 
       - name: Publish @clickhouse/client to the latest tag (implicit)
         run: |
@@ -246,8 +246,8 @@ jobs:
           echo "Using version: $BASE_VERSION"
           echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build packages
-        run: npm --workspaces run build
+      - name: Build the package
+        run: npm --workspace @clickhouse/client-web run build
 
       - name: Publish @clickhouse/client-web to the latest tag (implicit)
         run: |
@@ -291,8 +291,8 @@ jobs:
           echo "Using version: $BASE_VERSION"
           echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build packages
-        run: npm --workspaces run build
+      - name: Build the package
+        run: npm --workspace @clickhouse/client-common run build
 
       - name: Publish @clickhouse/client-common to the latest tag (implicit)
         run: |
