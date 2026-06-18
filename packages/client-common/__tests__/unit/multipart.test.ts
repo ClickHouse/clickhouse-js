@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildMultipartBody } from "../../src/utils/multipart";
+import {
+  buildMultipartBody,
+  MAX_URL_BIND_PARAM_LENGTH,
+  serializeQueryParamsForUrl,
+} from "../../src/utils/multipart";
 
 describe("buildMultipartBody", () => {
   const boundary = "----test-boundary";
@@ -91,5 +95,66 @@ describe("buildMultipartBody", () => {
     expect(result).toContain(
       `Content-Disposition: form-data; name="param_my-key.name"\r\n`,
     );
+  });
+});
+
+describe("serializeQueryParamsForUrl", () => {
+  it("should return empty entries for empty params", () => {
+    expect(serializeQueryParamsForUrl({})).toEqual([]);
+  });
+
+  it("should serialize small params under the threshold", () => {
+    expect(serializeQueryParamsForUrl({ id: "123", name: "abc" })).toEqual([
+      ["param_id", "123"],
+      ["param_name", "abc"],
+    ]);
+  });
+
+  it("should return null for a single oversized param", () => {
+    expect(
+      serializeQueryParamsForUrl({
+        big: "x".repeat(MAX_URL_BIND_PARAM_LENGTH + 1),
+      }),
+    ).toBeNull();
+  });
+
+  it("should return null for many individually small params whose total exceeds the threshold", () => {
+    const params: Record<string, string> = {};
+    for (let i = 0; i < 40; i++) {
+      params[`p${i}`] = "v".repeat(200);
+    }
+    expect(serializeQueryParamsForUrl(params)).toBeNull();
+  });
+
+  it("should account for percent-encoding expansion", () => {
+    // Raw length is under the budget, but each ampersand encodes to three characters (%26)
+    expect(
+      serializeQueryParamsForUrl({
+        s: "&".repeat(Math.ceil(MAX_URL_BIND_PARAM_LENGTH / 2)),
+      }),
+    ).toBeNull();
+  });
+
+  it("should measure the formatted value of non-string params", () => {
+    // A large array formats to a long bracketed list
+    const ids = [...Array(2000).keys()];
+    expect(serializeQueryParamsForUrl({ ids })).toBeNull();
+    expect(serializeQueryParamsForUrl({ ids: [1, 2, 3] })).toEqual([
+      ["param_ids", "[1,2,3]"],
+    ]);
+  });
+
+  it("should stay just under and flip just over the threshold", () => {
+    // "param_v=" prefix is 8 characters
+    expect(
+      serializeQueryParamsForUrl({
+        v: "x".repeat(MAX_URL_BIND_PARAM_LENGTH - 8),
+      }),
+    ).toEqual([["param_v", "x".repeat(MAX_URL_BIND_PARAM_LENGTH - 8)]]);
+    expect(
+      serializeQueryParamsForUrl({
+        v: "x".repeat(MAX_URL_BIND_PARAM_LENGTH - 7),
+      }),
+    ).toBeNull();
   });
 });

@@ -107,32 +107,126 @@ before talking to the server), the client invokes
 1. The name is one of `clickhouse.query`, `clickhouse.command`,
    `clickhouse.exec`, `clickhouse.insert`, `clickhouse.ping` (also exported
    as `ClickHouseSpanNames`); `kind` is `ClickHouseSpanKind.CLIENT`. The
-   initial attribute bag always includes `db.system`, `db.namespace`,
-   `server.address`, and - when set - `clickhouse.application`, plus
-   operation-specific entries such as `clickhouse.format`,
-   `clickhouse.table`, `clickhouse.query_id`, and `clickhouse.session_id`.
+   initial attribute bag always includes `db.system.name`, `db.namespace`,
+   `server.address`, and `server.port`, and - when set -
+   `clickhouse.application`, plus operation-specific entries such as
+   `clickhouse.response.format` (query), `clickhouse.request.format`,
+   `db.operation.name`, `db.collection.name` and `clickhouse.request.sent_rows`
+   (insert; the row count is recorded for array-based inserts only),
+   `clickhouse.request.query_id`, and
+   `clickhouse.request.session_id`.
 2. Inside `fn`, the network operation runs with the span as the active span
    (when the context manager supports it; see above).
-3. `span.setAttributes({ 'clickhouse.query_id': <server-assigned id> })` - so
-   you always have the final `query_id`, even when the caller did not pass one
-   and the connection layer generated it.
-4. `span.setStatus({ code: ClickHouseSpanStatusCode.OK })` on success, or
-   `span.recordException(error)` immediately followed by
-   `span.setStatus({ code: ClickHouseSpanStatusCode.ERROR, message })` on
-   failure. Non-`Error` throwables are normalized to `Error` before
-   `recordException`.
-5. `span.end()` - always, in a `finally` block.
+3. `span.setAttributes({ 'clickhouse.request.query_id': <server-assigned id> })` -
+   so you always have the final `query_id`, even when the caller did not pass
+   one and the connection layer generated it. Once the response arrives, the
+   span also gets `db.response.status_code` (HTTP status) and, when the
+   `X-ClickHouse-Summary` header is present (e.g. with `wait_end_of_query`),
+   `clickhouse.summary.*` counters (`read_rows`, `written_rows`, …).
+4. On success, the span status is left **unset**, per the OTEL span status
+   spec for client spans. On failure,
+   `span.setAttributes({ 'error.type': <error class name> })` (plus
+   `clickhouse.error.code` with the numeric server error code when the error
+   is a server-side `ClickHouseError`), then `span.recordException(error)`
+   immediately followed by
+   `span.setStatus({ code: ClickHouseSpanStatusCode.ERROR, message })`.
+   Non-`Error` throwables are normalized to `Error` before `recordException`.
+5. `span.end()` - exactly once. For `command`/`exec`/`insert`/`ping`, in a
+   `finally` block when the method settles; for `query`, see the stream
+   lifecycle note below.
 
 Tracer calls are inlined directly on the client's hot path and are **not**
 wrapped in defensive try/catch - if your tracer or span throws, the exception
 propagates to the caller of `query` / `command` / `exec` / `insert` /
 `ping`. Make sure your tracer implementation doesn't throw.
 
-> **Stream lifecycle:** for `query`/`exec`, the span ends when the request
-> promise settles (i.e. headers received, stream handed to the caller). The
-> client does not currently emit a separate "download finished" span when the
-> returned `ResultSet` stream is fully consumed; if you need that, wrap the
-> stream on the caller side.
+> **Stream lifecycle:** `query()` emits **two spans**.
+>
+> - `clickhouse.query` — covers the HTTP request: starts when `query()` is
+>   called and ends as soon as the response headers arrive (regardless of how
+>   much data is in the body).
+> - `clickhouse.query.stream` — a child span that covers the `ResultSet`
+>   lifetime: starts immediately after the response headers are received and
+>   ends when the result set is fully consumed (`text()`/`json()` resolve, or
+>   the `stream()` is read to completion), closed via `close()`, or fails
+>   (the error is recorded on this span). When it ends it carries the final
+>   `clickhouse.response.decoded_bytes` and, for row-streaming consumption,
+>   `db.response.returned_rows` metrics.
+>
+> This split makes it easy to distinguish the original request round-trip from
+> a stream that may never end (e.g. tailing a live materialized view). If the
+> `ResultSet` is never consumed nor closed, the `clickhouse.query.stream` span
+> is never ended. For `command`/`exec`/`insert`/`ping`, a single span ends
+> when the method returns.
+
+## Adapter recipes: `requireParentSpan` and suppressing nested HTTP spans
+
+OpenTelemetry auto-instrumentation packages commonly expose two options that
+the client deliberately does **not** implement itself - both belong in a thin
+tracer adapter, where they compose with your OTEL setup:
+
+### Only trace when there is an active parent span
+
+Skip ClickHouse spans when nothing else is being traced (e.g. background
+health checks or pings outside any request context). Wrap the tracer and
+hand the client a no-op span when there is no active parent:
+
+```ts
+import { context, trace } from "@opentelemetry/api";
+import {
+  createClient,
+  type ClickHouseSpan,
+  type ClickHouseTracer,
+} from "@clickhouse/client";
+
+const noop = () => undefined;
+const noopSpan: ClickHouseSpan = {
+  setAttributes: noop,
+  setStatus: noop,
+  recordException: noop,
+  end: noop,
+};
+
+const otelTracer = trace.getTracer("@clickhouse/client");
+const tracer: ClickHouseTracer = {
+  startActiveSpan: (name, options, fn) =>
+    trace.getSpan(context.active()) === undefined
+      ? fn(noopSpan) // no active parent span - do not trace this operation
+      : otelTracer.startActiveSpan(name, options, fn),
+};
+
+const client = createClient({ tracer });
+```
+
+### Suppress nested HTTP spans
+
+If `@opentelemetry/instrumentation-http` is registered, every ClickHouse
+operation span gets a duplicate child HTTP span for the underlying request.
+To suppress them, run the operation under a suppressed context using
+`suppressTracing` from `@opentelemetry/core`:
+
+```ts
+import { context, trace } from "@opentelemetry/api";
+import { suppressTracing } from "@opentelemetry/core";
+import { createClient, type ClickHouseTracer } from "@clickhouse/client";
+
+const otelTracer = trace.getTracer("@clickhouse/client");
+const tracer: ClickHouseTracer = {
+  startActiveSpan: (name, options, fn) =>
+    otelTracer.startActiveSpan(name, options, (span) =>
+      context.with(suppressTracing(context.active()), () => fn(span)),
+    ),
+};
+
+const client = createClient({ tracer });
+```
+
+Alternatively, keep the raw tracer and configure the HTTP instrumentation to
+ignore requests to your ClickHouse endpoint via its
+`ignoreOutgoingRequestHook` option.
+
+Both recipes are demonstrated end-to-end in
+[`examples/node/coding/otel_tracing.ts`](../../examples/node/coding/otel_tracing.ts).
 
 ## Recording-only tracer for tests / debugging
 
@@ -171,6 +265,28 @@ const tracer: ClickHouseTracer<RecordedSpan> = {
     return fn(span);
   },
 };
+```
+
+## Trace context propagation (`traceparent`)
+
+To let the ClickHouse server link its own spans (recorded in
+`system.opentelemetry_span_log`) to your client trace, the outgoing requests
+must carry the W3C `traceparent` / `tracestate` headers. With OpenTelemetry,
+this happens automatically: Node.js users get header propagation for free
+from `@opentelemetry/instrumentation-http` (Web: `instrumentation-fetch`),
+since the client uses the platform HTTP stack. With the
+`AsyncLocalStorageContextManager` registered (see above), those
+auto-instrumented HTTP spans parent under the `clickhouse.<operation>` span,
+so the injected `traceparent` points at the client trace.
+
+To see the server-side spans, the server must have the
+`opentelemetry_span_log` table configured (see this repository's
+`.docker/clickhouse/single_node/config.xml` for an example); you can then
+correlate by trace id:
+
+```sql
+SELECT * FROM system.opentelemetry_span_log
+WHERE lower(hex(trace_id)) = '<your 32-char trace id>'
 ```
 
 ## Disabling tracing

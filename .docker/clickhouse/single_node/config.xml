@@ -32,6 +32,17 @@
     <flush_interval_milliseconds>1000</flush_interval_milliseconds>
   </query_log>
 
+  <opentelemetry_span_log>
+    <database>system</database>
+    <table>opentelemetry_span_log</table>
+    <engine>
+      ENGINE = MergeTree
+      PARTITION BY finish_date
+      ORDER BY (finish_date, finish_time_us)
+    </engine>
+    <flush_interval_milliseconds>1000</flush_interval_milliseconds>
+  </opentelemetry_span_log>
+
   <http_options_response>
     <header>
       <name>Access-Control-Allow-Origin</name>

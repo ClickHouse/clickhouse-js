@@ -53,8 +53,8 @@ describe("[Node.js] createClient", () => {
       request_timeout: 42_000,
       max_open_connections: 10,
       compression: {
-        compress_request: false,
-        decompress_response: false,
+        compress_request: undefined,
+        decompress_response: undefined,
       },
       auth: { username: "bob", password: "secret", type: "Credentials" },
       database: "analytics",

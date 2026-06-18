@@ -15,6 +15,7 @@ import type {
 } from "@clickhouse/client-common";
 import {
   buildMultipartBody,
+  serializeQueryParamsForUrl,
   formatQueryParams,
   isCredentialsAuth,
   isJWTAuth,
@@ -187,24 +188,48 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.params.compression.decompress_response,
     );
 
-    const useMultipart =
-      (params.use_multipart_params ?? this.params.use_multipart_params) &&
-      params.query_params !== undefined &&
-      Object.keys(params.query_params).length > 0;
+    const queryParams = params.query_params;
+    const hasQueryParams =
+      queryParams !== undefined && Object.keys(queryParams).length > 0;
+    let useMultipart =
+      hasQueryParams &&
+      (params.use_multipart_params ?? this.params.use_multipart_params);
+    // In auto mode, serialize the params for the URL once with an early
+    // return: a null result means they exceed the URL budget and should be
+    // promoted to a multipart body; otherwise the entries are reused below.
+    let urlParamEntries: [string, string][] | undefined;
+    if (
+      hasQueryParams &&
+      !useMultipart &&
+      (params.use_multipart_params_auto ??
+        this.params.use_multipart_params_auto)
+    ) {
+      const entries = serializeQueryParamsForUrl(queryParams);
+      if (entries === null) {
+        useMultipart = true;
+      } else {
+        urlParamEntries = entries;
+      }
+    }
 
     const searchParams = toSearchParams({
       database: this.params.database,
       // When using multipart, query_params are sent in the multipart body
       query_params: useMultipart ? undefined : params.query_params,
+      param_entries: urlParamEntries,
       session_id: params.session_id,
       clickhouse_settings,
       query_id,
       role: params.role,
     });
     const { controller, controllerCleanup } = this.getAbortController(params);
-    // allows enforcing the compression via the settings even if the client instance has it disabled
-    const enableResponseCompression =
-      clickhouse_settings.enable_http_compression === 1;
+    // Accept-Encoding is sent whenever the server is asked to compress
+    // (enable_http_compression), independent of whether the client decompresses;
+    // the codec is the explicitly configured one, defaulting to gzip.
+    const responseCompressionCodec =
+      clickhouse_settings.enable_http_compression === 1
+        ? (this.params.compression.decompress_response?.codec ?? "gzip")
+        : undefined;
 
     let body: string = params.query;
     const headers = this.buildRequestHeaders(params);
@@ -225,7 +250,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           url: transformUrl({ url: this.params.url, searchParams }),
           body,
           abort_signal: controller.signal,
-          enable_response_compression: enableResponseCompression,
+          response_compression_codec: responseCompressionCodec,
           headers,
           query: params.query,
           query_id,
@@ -249,7 +274,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         search_params: searchParams,
         err: err as Error,
         extra_args: {
-          decompress_response: enableResponseCompression,
+          decompress_response: responseCompressionCodec,
           clickhouse_settings,
         },
       });
@@ -282,8 +307,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             url: transformUrl({ url: this.params.url, searchParams }),
             body: params.values,
             abort_signal: controller.signal,
-            enable_request_compression:
-              this.params.compression.compress_request,
+            request_compression: this.params.compression.compress_request,
             parse_summary: true,
             headers: this.buildRequestHeaders(params),
             query: params.query,
@@ -529,7 +553,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       params.op === "Exec"
         ? // allows disabling stream decompression for the `Exec` operation only
           (params.decompress_response_stream ??
-          this.params.compression.decompress_response)
+          Boolean(this.params.compression.decompress_response))
         : // there is nothing useful in the response stream for the `Command` operation,
           // and it is immediately destroyed; never decompress it
           false;
@@ -543,10 +567,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             body: sendQueryInParams ? params.values : params.query,
             abort_signal: controller.signal,
             parse_summary: true,
-            enable_request_compression:
-              this.params.compression.compress_request,
-            enable_response_compression:
-              this.params.compression.decompress_response,
+            request_compression: this.params.compression.compress_request,
+            response_compression_codec:
+              this.params.compression.decompress_response?.codec,
             try_decompress_response_stream: tryDecompressResponseStream,
             ignore_error_response: ignoreErrorResponse,
             headers: this.buildRequestHeaders(params),

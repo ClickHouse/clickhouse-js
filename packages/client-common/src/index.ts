@@ -124,6 +124,7 @@ export {
   ClickHouseSpanStatusCode,
   ClickHouseSpanKind,
   ClickHouseSpanNames,
+  recordSpanError,
 } from "./tracing";
 
 /** For implementation usage only - should not be re-exported */
@@ -152,6 +153,8 @@ export {
   isSuccessfulResponse,
   sleep,
   buildMultipartBody,
+  MAX_URL_BIND_PARAM_LENGTH,
+  serializeQueryParamsForUrl,
   toSearchParams,
   transformUrl,
   withCompressionHeaders,
@@ -165,6 +168,9 @@ export { LogWriter, DefaultLogger, type LogWriterParams } from "./logger";
 export { getCurrentStackTrace, enhanceStackTrace } from "./error";
 export type {
   CompressionSettings,
+  CompressionMethod,
+  RequestCompression,
+  ResponseCompression,
   Connection,
   ConnectionParams,
   ConnInsertResult,

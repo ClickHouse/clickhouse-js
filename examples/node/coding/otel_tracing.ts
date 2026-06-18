@@ -20,14 +20,19 @@
 //
 // See also:
 //  - `../../../docs/howto/tracing.md` - full description of the tracer surface.
-import { context, SpanStatusCode } from "@opentelemetry/api";
+import { context, SpanStatusCode, trace } from "@opentelemetry/api";
 import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
+import { suppressTracing } from "@opentelemetry/core";
 import {
   BasicTracerProvider,
   InMemorySpanExporter,
   SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
-import { createClient, type ClickHouseTracer } from "@clickhouse/client";
+import {
+  createClient,
+  type ClickHouseSpan,
+  type ClickHouseTracer,
+} from "@clickhouse/client";
 
 // 1. Register the AsyncLocalStorageContextManager so that the span started by
 //    `startActiveSpan` stays *active* across the `await` points inside the
@@ -53,6 +58,9 @@ const tracer: ClickHouseTracer = otelTracer;
 
 // 4. Pass the tracer through the client config; from here on, every
 //    `query`/`command`/`exec`/`insert`/`ping` call is traced automatically.
+//    Trace context propagation (the W3C `traceparent` header) is handled
+//    automatically by `@opentelemetry/instrumentation-http`, since the
+//    client uses the platform HTTP stack.
 const client = createClient({
   url: process.env["CLICKHOUSE_URL"], // defaults to 'http://localhost:8123'
   password: process.env["CLICKHOUSE_PASSWORD"], // defaults to an empty string
@@ -71,19 +79,21 @@ await client.close();
 // 5. Flush and inspect the spans the client produced. Each operation yields a
 //    single CLIENT-kind span named `clickhouse.<operation>` (also exported as
 //    `ClickHouseSpanNames`) carrying OTEL-style attributes such as
-//    `db.system`, `server.address`, and the server-assigned `clickhouse.query_id`.
+//    `db.system.name`, `server.address`, and the server-assigned
+//    `clickhouse.request.query_id`.
 await provider.forceFlush();
 const spans = exporter.getFinishedSpans();
 for (const span of spans) {
   console.info("[OtelTracing] Span:", {
     name: span.name,
     status: SpanStatusCode[span.status.code],
-    "db.system": span.attributes["db.system"],
+    "db.system.name": span.attributes["db.system.name"],
     "server.address": span.attributes["server.address"],
-    "clickhouse.query_id": span.attributes["clickhouse.query_id"],
+    "server.port": span.attributes["server.port"],
+    "clickhouse.request.query_id":
+      span.attributes["clickhouse.request.query_id"],
   });
 }
-await provider.shutdown();
 
 const spanNames = spans.map((span) => span.name);
 if (
@@ -95,3 +105,102 @@ if (
   );
 }
 console.info("[OtelTracing] Recorded spans:", spanNames);
+
+// ---------------------------------------------------------------------------
+// Adapter recipes
+//
+// OTEL auto-instrumentation packages commonly expose two extra options -
+// `requireParentSpan` and `suppressInternalInstrumentation`. Both are
+// implemented here as thin wrappers around the raw OTEL tracer, composed in
+// userland instead of being baked into the client.
+// ---------------------------------------------------------------------------
+
+// Recipe 1: `requireParentSpan` - only trace ClickHouse operations when there
+// is already an active parent span; otherwise hand the client a no-op span.
+// Useful to suppress noise from background health checks/pings that run
+// outside any traced request.
+const noop = () => undefined;
+const noopSpan: ClickHouseSpan = {
+  setAttributes: noop,
+  setStatus: noop,
+  recordException: noop,
+  end: noop,
+};
+const requireParentSpanTracer: ClickHouseTracer = {
+  startActiveSpan: (name, options, fn) =>
+    trace.getSpan(context.active()) === undefined
+      ? fn(noopSpan) // no active parent span - skip tracing this operation
+      : otelTracer.startActiveSpan(name, options, fn),
+};
+const requireParentClient = createClient({
+  url: process.env["CLICKHOUSE_URL"],
+  password: process.env["CLICKHOUSE_PASSWORD"],
+  tracer: requireParentSpanTracer,
+});
+
+exporter.reset();
+// Outside any active span: no ClickHouse span is recorded.
+await requireParentClient.ping();
+// Inside a parent span: the ClickHouse span is recorded as its child.
+await otelTracer.startActiveSpan("parent-request", async (parent) => {
+  try {
+    await requireParentClient.ping();
+  } finally {
+    parent.end();
+  }
+});
+await requireParentClient.close();
+await provider.forceFlush();
+const requireParentSpanNames = exporter
+  .getFinishedSpans()
+  .map((span) => span.name);
+if (
+  requireParentSpanNames.filter((name) => name === "clickhouse.ping").length !==
+  1
+) {
+  throw new Error(
+    `[OtelTracing] Expected exactly one ping span (the one with a parent), but got: ${requireParentSpanNames.join(", ")}`,
+  );
+}
+console.info(
+  "[OtelTracing] requireParentSpan recipe spans:",
+  requireParentSpanNames,
+);
+
+// Recipe 2: suppress nested HTTP spans - if
+// `@opentelemetry/instrumentation-http` is registered, each ClickHouse
+// operation span gets a duplicate child HTTP span for the underlying request.
+// Running the operation under `suppressTracing` (from `@opentelemetry/core`)
+// prevents those child spans while keeping the ClickHouse span itself.
+// (Alternatively, configure the HTTP instrumentation's
+// `ignoreOutgoingRequestHook` for your ClickHouse endpoint.)
+const suppressNestedHttpTracer: ClickHouseTracer = {
+  startActiveSpan: (name, options, fn) =>
+    otelTracer.startActiveSpan(name, options, (span) =>
+      context.with(suppressTracing(context.active()), () => fn(span)),
+    ),
+};
+const suppressNestedHttpClient = createClient({
+  url: process.env["CLICKHOUSE_URL"],
+  password: process.env["CLICKHOUSE_PASSWORD"],
+  tracer: suppressNestedHttpTracer,
+});
+
+exporter.reset();
+await suppressNestedHttpClient.ping();
+await suppressNestedHttpClient.close();
+await provider.forceFlush();
+const suppressedSpanNames = exporter
+  .getFinishedSpans()
+  .map((span) => span.name);
+if (!suppressedSpanNames.includes("clickhouse.ping")) {
+  throw new Error(
+    `[OtelTracing] Expected a ping span from the suppressTracing recipe, but got: ${suppressedSpanNames.join(", ")}`,
+  );
+}
+console.info(
+  "[OtelTracing] suppressTracing recipe spans:",
+  suppressedSpanNames,
+);
+
+await provider.shutdown();

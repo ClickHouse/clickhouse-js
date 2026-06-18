@@ -1,6 +1,51 @@
+# 1.22.0
+
+## New features
+
+- (Node.js) The `compression.request` / `compression.response` client options now accept an explicit codec via an object, in addition to the existing boolean: `true` keeps gzip (backwards compatible), and `{ codec: "zstd" }` selects zstd. The object form is intentionally extensible for future codecs and codec-specific options. zstd typically yields a similar-or-better ratio than gzip at noticeably lower CPU cost (gzip/DEFLATE is comparatively CPU-heavy and decompressed single-threaded by the ClickHouse server), and it uses the built-in `zlib` zstd support, so it requires **Node.js >= 22.15.0** (`@clickhouse/client` throws a clear error at client creation otherwise). Response decompression is driven by the server's actual `Content-Encoding`, so it degrades gracefully. The request object form also accepts an optional `level` (`{ codec, level }`) to set the codec-specific compression level (zlib level for gzip, zstd compression level for zstd); the response compression level is controlled by the server. Supported only by `@clickhouse/client` (Node.js); `@clickhouse/client-web` rejects the `zstd` codec at client creation.
+
+- (Node.js) Brotli (`{ codec: "br" }`) is now supported for `compression.request` / `compression.response`, alongside gzip and zstd. Unlike zstd, Brotli is available on every supported Node.js version (no minimum-version requirement). The `compression.request` option is a per-codec discriminated union, so each codec exposes its own tuning option: a `level` for gzip/zstd, a `quality` for Brotli (`{ codec: "br", quality }`). When omitted, Brotli defaults to quality 4 for request bodies, since zlib's brotli default of 11 (max) is far too slow for a streaming insert path. Response decompression follows the server's `Content-Encoding`. Supported only by `@clickhouse/client` (Node.js).
+
+## Internal changes (`@clickhouse/client-common`)
+
+> These only affect code that imports the low-level connection primitives from the deprecated `@clickhouse/client-common` package directly (e.g. a custom `Connection` implementation). The `createClient` `compression` option is unchanged and fully backwards compatible — if you only use `@clickhouse/client` or `@clickhouse/client-web`, you are not affected.
+
+To carry the codec (and its optional compression level) instead of a bare on/off flag, the internal compression representation changed shape:
+
+- `CompressionSettings.compress_request` / `decompress_response` are no longer `boolean`. They are now a normalized codec object or `undefined` (disabled): `{ codec: "gzip" | "zstd"; level?: number } | { codec: "br"; quality?: number }` for the request, `{ codec: "gzip" | "zstd" | "br" }` for the response (response compression options are chosen by the server). `getConnectionParams` normalizes the public request option into this form (`true` → `{ codec: "gzip" }`).
+- `withCompressionHeaders` now takes `request_compression_codec` / `response_compression_codec` (a `CompressionMethod | undefined`) instead of the boolean `enable_request_compression` / `enable_response_compression`; the codec value is also the `Content-Encoding` / `Accept-Encoding` it emits.
+- `withHttpSettings` now takes the response codec object (`{ codec } | undefined`) instead of a `boolean`.
+- New exported types: `CompressionMethod`, `RequestCompression`, `ResponseCompression`.
+
+Why: a single `boolean` could not express which codec to use or its level, and a separate level field on `CompressionSettings` would have mixed a codec-specific option into the shared type. Discriminating by codec keeps each codec's options on the codec it belongs to.
+
+## Documentation
+
+- Added two **tracer adapter recipes** to [`docs/howto/tracing.md`](./docs/howto/tracing.md) and [`examples/node/coding/otel_tracing.ts`](./examples/node/coding/otel_tracing.ts), demonstrating how common OpenTelemetry auto-instrumentation options compose as thin userland wrappers around the `tracer` API instead of being baked into the client: `requireParentSpan` (skip ClickHouse spans when there is no active parent span — e.g. background health checks) and suppressing the duplicate nested HTTP spans emitted by `@opentelemetry/instrumentation-http` (via `suppressTracing` from `@opentelemetry/core`).
+
 # 1.21.0
 
 ## New features
+
+- The tracer API (unreleased, introduced in [#776]) now follows the [OpenTelemetry database semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/sql/) and matches the attribute vocabulary of the Rust client ([clickhouse-rs](https://github.com/ClickHouse/clickhouse-rs)); see [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the documentation. In particular ([#828]):
+  - Spans now carry `db.system.name` (instead of `db.system`), `server.address` + `server.port` (instead of a combined `host:port`), `clickhouse.request.query_id` / `clickhouse.request.session_id` (instead of `clickhouse.query_id` / `clickhouse.session_id`), `clickhouse.response.format` on `query` and `clickhouse.request.format` on `insert` (instead of `clickhouse.format`), and `db.operation.name` + `db.collection.name` on `insert` (instead of `clickhouse.table`).
+  - The span status is left unset on success (per the OTEL spec recommendation for client spans, previously set to `OK`); on failure, the span gets the `error.type` attribute (the error class name) and, for server-side errors, `clickhouse.error.code` (the numeric ClickHouse error code).
+  - Spans record response-side attributes: `db.response.status_code` (HTTP status) and, when the `X-ClickHouse-Summary` header is available, `clickhouse.summary.*` counters (`read_rows`, `written_rows`, etc.).
+  - `query()` now emits two spans: `clickhouse.query` covers the HTTP request lifetime and ends as soon as the response headers are received; a child `clickhouse.query.stream` span is handed to the `ResultSet` and tracks the stream consumption, ending when the response is fully read, closed, or fails - with the final `clickhouse.response.decoded_bytes` and (for row-streaming) `db.response.returned_rows` metrics. This separation makes it easy to distinguish the original request duration from a stream that may never end (e.g. tailing a live table).
+  - Fixed a span leak in the Web `ResultSet.stream()` path: if the underlying fetch response stream was aborted (e.g. due to a network error), the `clickhouse.query.stream` span was never ended. The TransformStream now handles both source-stream aborts and consumer-side cancellations via a `cancel` callback.
+  - The `insert` span records `clickhouse.request.sent_rows` for array-based inserts.
+
+- Added a `use_multipart_params_auto` client option (default: `false`). When enabled, `query()` automatically sends `query_params` as `multipart/form-data` body parts (the same mechanism as `use_multipart_params`) once their URL-encoded length exceeds 4096 characters, avoiding HTTP 414/400 errors from HTTP intermediaries (nginx, AWS ALB, CloudFront) caused by over-long URLs - for example, a large `IN` list or a high-dimensional vector embedding. Smaller parameter payloads remain in the URL query string, so existing behavior is unchanged unless the threshold is crossed. `use_multipart_params: true` still forces multipart for all queries regardless of size. This does not change the server's per-value size limit, which is governed by `http_max_field_value_size`. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params_auto` on `query()`. Ported from [clickhouse-connect#789](https://github.com/ClickHouse/clickhouse-connect/pull/789). ([#827])
+
+```ts
+const client = createClient({ use_multipart_params_auto: true });
+
+await client.query({
+  query: "SELECT * FROM events WHERE id IN {ids:Array(UInt64)}",
+  // Sent in the URL when small, auto-promoted to the multipart body when large
+  query_params: { ids: veryLargeArrayOfIds },
+});
+```
 
 - Added a `use_multipart_params` client option (default: `false`). When enabled, `query()` sends `query_params` as `multipart/form-data` body parts (with the SQL moved into a `query` part) instead of URL query-string entries, avoiding HTTP 400 errors caused by over-long URLs when parameters contain large arrays (25K+ values). All other URL search params (database, query_id, settings, session_id, role) remain in the URL. Supported on both `@clickhouse/client` and `@clickhouse/client-web`, and overridable per request via `use_multipart_params` on `query()`. ([#825])
 
@@ -15,7 +60,10 @@ await client.query({
 });
 ```
 
+[#776]: https://github.com/ClickHouse/clickhouse-js/pull/776
 [#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
+[#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
+[#828]: https://github.com/ClickHouse/clickhouse-js/pull/828
 
 ## Bug Fixes
 
