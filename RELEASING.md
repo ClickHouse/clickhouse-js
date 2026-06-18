@@ -16,7 +16,11 @@ Run the [`bump-version`](.github/workflows/bump-version.yml) workflow from the G
 
 The workflow computes the next version, bumps that package's `package.json` and `src/version.ts`, and opens a release PR against `main`.
 
-Review and merge the PR. Wait for the CI/CD pipeline to publish a signed `head` version.
+Review and merge the PR into `main`.
+
+## Publish the `head` build
+
+The signed `head` build is published by the [`publish`](.github/workflows/publish.yml) workflow on push to the long-lived `release` branch — not on merge to `main`. After the bump PR is merged, update `release` from `main` (open a PR from `main` into `release` and merge it). That push triggers the `head` publish for every package.
 
 ## Test the `head` build
 
