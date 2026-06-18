@@ -33,6 +33,7 @@
     "test:node:unit:bun": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=unit bun --bun vitest -c vitest.node.config.ts",
     "test:node:integration:tls": "TEST_MODE=tls vitest -c vitest.node.config.ts",
     "test:node:integration": "TEST_MODE=integration vitest -c vitest.node.config.ts",
+    "test:node:oss-dependents": "TEST_MODE=oss-dependents vitest -c vitest.node.config.ts",
     "test:node:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster TEST_MODE=integration vitest -c vitest.node.config.ts",
     "test:node:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud TEST_MODE=integration vitest -c vitest.node.config.ts",
     "test:node:all": "TEST_MODE=all vitest -c vitest.node.config.ts",

@@ -7,10 +7,11 @@ if (
   testMode !== "tls" &&
   testMode !== "common" &&
   testMode !== "common-integration" &&
+  testMode !== "oss-dependents" &&
   testMode !== "all"
 ) {
   throw new Error(
-    `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, tls, common, common-integration, all.`,
+    `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, tls, common, common-integration, oss-dependents, all.`,
   );
 }
 
@@ -37,6 +38,11 @@ const collections = {
   "common-integration": [
     "packages/client-common/__tests__/integration/*.test.ts",
   ],
+  // Runnable reproductions of how the top OSS dependents use the client.
+  // Each spec exercises a real dependent's surface against the workspace source
+  // (via the @clickhouse/client* aliases below) so a breaking change here fails
+  // the matching consumer's test. See packages/client-node/__tests__/oss-dependents.
+  "oss-dependents": ["packages/client-node/__tests__/oss-dependents/*.test.ts"],
   all: [
     "packages/client-common/__tests__/unit/*.test.ts",
     "packages/client-common/__tests__/utils/*.test.ts",
@@ -45,6 +51,7 @@ const collections = {
     "packages/client-node/__tests__/unit/*.test.ts",
     "packages/client-node/__tests__/utils/*.test.ts",
     "packages/client-node/__tests__/integration/*.test.ts",
+    "packages/client-node/__tests__/oss-dependents/*.test.ts",
   ],
 };
 
@@ -98,6 +105,13 @@ export default defineConfig({
     alias: {
       "@clickhouse/client-common": "packages/client-common/src",
       "@clickhouse/client-node": "packages/client-node/src",
+      // The oss-dependents specs import from the public package names exactly as
+      // the upstream dependents do; alias them to the workspace source so those
+      // tests guard breaking changes against `src` (not the published packages).
+      // @rollup/plugin-alias only matches on an exact key or `key + "/"`, so
+      // these do NOT shadow `@clickhouse/client-common` / `-node` / `-web`.
+      "@clickhouse/client": "packages/client-node/src",
+      "@clickhouse/client-web": "packages/client-web/src",
       "@test": "packages/client-common/__tests__",
     },
   },
