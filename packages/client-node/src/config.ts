@@ -7,12 +7,14 @@ import type {
 } from "@clickhouse/client-common";
 import {
   type BaseClickHouseClientConfigOptions,
+  type CompressionMethod,
   type ConnectionParams,
   numberConfigURLValue,
 } from "@clickhouse/client-common";
 import type http from "http";
 import type https from "node:https";
 import type Stream from "stream";
+import Zlib from "zlib";
 import { NodeConnectionFactory, type TLSParams } from "./connection";
 import { ResultSet } from "./result_set";
 import { NodeValuesEncoder } from "./utils";
@@ -89,6 +91,58 @@ interface MutualTLSOptions {
   key: Buffer;
 }
 
+function unknownCodecError(
+  value: string,
+  direction: "request" | "response",
+): Error {
+  return new Error(
+    `Unknown ${direction} compression codec "${value}". ` +
+      `Supported codecs: gzip, zstd, br.`,
+  );
+}
+
+// zstd's zlib APIs were added in Node.js 22.15.0, and compression /
+// decompression are separate functions - so each direction is gated on its own,
+// naming the missing function to make the diagnosis concrete.
+
+/** Fails fast at client creation on an unknown request codec, or on `zstd` when
+ *  this Node.js runtime's `zlib` does not provide the zstd compression API -
+ *  rather than a TypeError deep in a later insert. The boolean forms (`false`
+ *  off, `true` gzip) need no validation and are filtered out by the caller. */
+function ensureRequestCodecSupported(value: CompressionMethod): void {
+  if (value === "zstd") {
+    if (typeof Zlib.createZstdCompress !== "function") {
+      throw new Error(
+        "zstd compression is not supported by this Node.js runtime (v" +
+          process.versions.node +
+          "): the built-in zlib module does not provide `createZstdCompress` " +
+          "(the zstd APIs were added in Node.js 22.15.0). Use gzip compression instead.",
+      );
+    }
+  } else if (value !== "gzip" && value !== "br") {
+    throw unknownCodecError(value, "request");
+  }
+}
+
+/** Fails fast at client creation on an unknown response codec, or on `zstd`
+ *  when this Node.js runtime's `zlib` does not provide the zstd decompression
+ *  API - rather than a TypeError deep in a later query. The boolean forms
+ *  (`false` off, `true` gzip) need no validation and are filtered by the caller. */
+function ensureResponseCodecSupported(value: CompressionMethod): void {
+  if (value === "zstd") {
+    if (typeof Zlib.createZstdDecompress !== "function") {
+      throw new Error(
+        "zstd compression is not supported by this Node.js runtime (v" +
+          process.versions.node +
+          "): the built-in zlib module does not provide `createZstdDecompress` " +
+          "(the zstd APIs were added in Node.js 22.15.0). Use gzip compression instead.",
+      );
+    }
+  } else if (value !== "gzip" && value !== "br") {
+    throw unknownCodecError(value, "response");
+  }
+}
+
 export const NodeConfigImpl: Required<
   ImplementationDetails<Stream.Readable>["impl"]
 > = {
@@ -127,6 +181,13 @@ export const NodeConfigImpl: Required<
     nodeConfig: NodeClickHouseClientConfigOptions,
     params: ConnectionParams,
   ) => {
+    const { compress_request, decompress_response } = params.compression;
+    if (compress_request) {
+      ensureRequestCodecSupported(compress_request.codec);
+    }
+    if (decompress_response) {
+      ensureResponseCodecSupported(decompress_response.codec);
+    }
     let tls: TLSParams | undefined = undefined;
     if (nodeConfig.tls !== undefined) {
       if ("cert" in nodeConfig.tls && "key" in nodeConfig.tls) {

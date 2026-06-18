@@ -1,5 +1,11 @@
 import type { InsertValues, ResponseHeaders } from "./clickhouse_types";
-import type { Connection, ConnectionParams } from "./connection";
+import type {
+  CompressionMethod,
+  Connection,
+  ConnectionParams,
+  RequestCompression,
+  ResponseCompression,
+} from "./connection";
 import type { DataFormat } from "./data_formatter";
 import type { Logger } from "./logger";
 import { ClickHouseLogLevel, LogWriter } from "./logger";
@@ -7,6 +13,38 @@ import { defaultJSONHandling, type JSONHandling } from "./parse/json_handling";
 import type { BaseResultSet } from "./result";
 import type { ClickHouseSettings } from "./settings";
 import type { ClickHouseSpan, ClickHouseTracer } from "./tracing";
+
+/** Normalizes the public request compression option into the internal codec
+ *  object, or `undefined` when disabled. `true` keeps gzip for backwards
+ *  compatibility; the object form (carrying its per-codec option) is passed
+ *  through verbatim, so untyped JS supplying an unknown codec still reaches the
+ *  Node guard, which rejects it with a clear error. */
+function normalizeRequestCompression(
+  value: boolean | RequestCompression | undefined,
+): RequestCompression | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (value === true) {
+    return { codec: "gzip" };
+  }
+  return value;
+}
+
+/** Normalizes the public response compression option
+ *  (`false | true | { codec }`) into the internal codec object, or `undefined`
+ *  when disabled. `true` keeps gzip for backwards compatibility. */
+function normalizeResponseCompression(
+  value: boolean | { codec: CompressionMethod } | undefined,
+): ResponseCompression | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (value === true) {
+    return { codec: "gzip" };
+  }
+  return { codec: value.codec };
+}
 
 export interface BaseClickHouseClientConfigOptions {
   /** @deprecated since version 1.0.0. Use {@link url} instead. <br/>
@@ -31,14 +69,29 @@ export interface BaseClickHouseClientConfigOptions {
   max_open_connections?: number;
   /** Request and response compression settings. */
   compression?: {
-    /** `response: true` instructs ClickHouse server to respond with compressed response body. <br/>
-     *  This will add `Accept-Encoding: gzip` header in the request and `enable_http_compression=1` ClickHouse HTTP setting.
+    /** Instructs the ClickHouse server to respond with a compressed response body.
+     *  `true` requests `gzip`; pass `{ codec }` to select the codec explicitly,
+     *  e.g. `{ codec: "zstd" }` or `{ codec: "br" }`. This adds the matching
+     *  `Accept-Encoding` header and the `enable_http_compression=1` ClickHouse HTTP
+     *  setting. Decompression takes no codec options (the server chose them).
+     *  `"zstd"` requires Node.js >= 22.15.0; `"br"` works on any supported Node.js.
+     *  On `@clickhouse/client-web`, `zstd` is rejected at client creation; `gzip`
+     *  and `br` responses are decompressed by the browser.
      *  <p><b>Warning</b>: Response compression can't be enabled for a user with readonly=1, as ClickHouse will not allow settings modifications for such user.</p>
      *  @default false */
-    response?: boolean;
-    /** `request: true` enabled compression on the client request body.
+    response?: boolean | { codec: CompressionMethod };
+    /** Enables compression of the outgoing request (insert) body.
+     *  `true` uses `gzip` with defaults; pass a per-codec object to select the
+     *  codec and tune it: `{ codec: "gzip", level }`, `{ codec: "zstd", level }`,
+     *  or `{ codec: "br", quality }`. Each codec exposes its own option (a `level`
+     *  for gzip/zstd, a `quality` for Brotli); when omitted, a sensible default is
+     *  used (gzip/zstd use zlib's defaults, `br` defaults to quality 4 since
+     *  zlib's brotli default of 11 is far too slow for a streaming insert body).
+     *  `"zstd"` requires Node.js >= 22.15.0; `"br"` works on any supported Node.js.
+     *  Request-body compression is performed only by `@clickhouse/client` (Node.js);
+     *  `@clickhouse/client-web` sends request bodies uncompressed.
      *  @default false */
-    request?: boolean;
+    request?: boolean | RequestCompression;
   };
   /** The name of the user on whose behalf requests are made.
    *  Should not be set if {@link access_token} is provided.
@@ -318,8 +371,12 @@ export function getConnectionParams(
     request_timeout,
     max_open_connections: config.max_open_connections ?? 10,
     compression: {
-      decompress_response: config.compression?.response ?? false,
-      compress_request: config.compression?.request ?? false,
+      decompress_response: normalizeResponseCompression(
+        config.compression?.response,
+      ),
+      compress_request: normalizeRequestCompression(
+        config.compression?.request,
+      ),
     },
     database: config.database ?? "default",
     log_writer: new LogWriter(logger, "Connection", log_level),

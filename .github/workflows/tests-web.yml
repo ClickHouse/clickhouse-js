@@ -64,6 +64,19 @@ jobs:
         run: |
           node .scripts/export-coverage-metrics.mjs
 
+      - name: Upload coverage to Codecov
+        # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
+        # Upload coverage from a single canonical combination (Chromium) so Codecov
+        # receives exactly one upload per flag (see codecov.yml).
+        if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.browser == 'chromium' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        with:
+          name: web-common-unit
+          flags: web-common-unit
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
+
   all-tests-local-single-node:
     timeout-minutes: 5
     runs-on: ubuntu-latest
@@ -76,7 +89,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -105,6 +118,19 @@ jobs:
         run: |
           node .scripts/export-coverage-metrics.mjs
 
+      - name: Upload coverage to Codecov
+        # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
+        # Upload coverage from a single canonical combination (Chromium, ClickHouse
+        # latest) so Codecov receives exactly one upload per flag.
+        if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.browser == 'chromium' && matrix.clickhouse == 'latest' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        with:
+          name: web-all-single
+          flags: web-all-single
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
+
   integration-tests-local-cluster:
     timeout-minutes: 5
     runs-on: ubuntu-latest
@@ -117,7 +143,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -146,9 +172,22 @@ jobs:
         run: |
           node .scripts/export-coverage-metrics.mjs
 
+      - name: Upload coverage to Codecov
+        # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
+        # Upload coverage from a single canonical combination (Chromium, ClickHouse
+        # latest) so Codecov receives exactly one upload per flag.
+        if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.browser == 'chromium' && matrix.clickhouse == 'latest' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        with:
+          name: web-integration-cluster
+          flags: web-integration-cluster
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
+
   integration-tests-cloud:
-    # Cloud secrets are not available for PRs from forks; skip the job in that case.
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # Cloud secrets are not available for PRs from forks or Dependabot PRs; skip the job in those cases.
+    if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -183,51 +222,15 @@ jobs:
         run: |
           node .scripts/export-coverage-metrics.mjs
 
-  # It should only use the current version of Chrome
-  codecov-upload:
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        clickhouse: [head, latest]
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          fetch-depth: 0
-
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
-        env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: "docker-compose.yml"
-          down-flags: "--volumes"
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: |
-          npm install
-          npx playwright install chromium
-
-      - name: Add ClickHouse TLS instance to /etc/hosts
-        run: |
-          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
-
-      - name: Run unit + integration + TLS tests with coverage
-        env:
-          LOG_LEVEL: TRACE
-        run: |
-          npm run test:web:coverage
-
       - name: Upload coverage to Codecov
+        # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
+        # Upload coverage from a single canonical combination (Chromium) so Codecov
+        # receives exactly one upload per flag (see codecov.yml).
+        if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.browser == 'chromium' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
         with:
-          name: web
+          name: web-integration-cloud
+          flags: web-integration-cloud
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: true
@@ -239,7 +242,6 @@ jobs:
         "all-tests-local-single-node",
         "integration-tests-local-cluster",
         "integration-tests-cloud",
-        "codecov-upload",
       ]
     # Run even if some needed jobs were skipped (e.g. cloud jobs on PRs from forks),
     # but still fail if any of them failed or were cancelled.

@@ -16,7 +16,8 @@ jobs:
   # and it should run even if other tests fail, to ensure that we keep the ClickHouse Cloud
   # instance clean for the next runs to avoid adding cleanup cost to the critical path of the tests.
   cloud-cleanup:
-    if: always()
+    # Cloud secrets are not available for Dependabot pushes; skip the cleanup in that case.
+    if: ${{ always() && github.triggering_actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
