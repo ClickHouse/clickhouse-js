@@ -54,7 +54,6 @@ on:
       - "README.md"
       - "LICENSE"
       - "skills/**"
-      - ".scripts/update_version.sh"
       - ".github/workflows/publish.yml"
 
 jobs:
@@ -85,7 +84,8 @@ jobs:
           BASE_VERSION=$(node -p "require('./packages/client-node/package.json').version")
           HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
           echo "Setting version to: $HEAD_VERSION"
-          .scripts/update_version.sh "$HEAD_VERSION" @clickhouse/client
+          npm --workspace @clickhouse/client version --no-git-tag-version "$HEAD_VERSION"
+          echo "export default \"$HEAD_VERSION\";" > packages/client-node/src/version.ts
           echo "version=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build packages
@@ -121,7 +121,8 @@ jobs:
           BASE_VERSION=$(node -p "require('./packages/client-web/package.json').version")
           HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
           echo "Setting version to: $HEAD_VERSION"
-          .scripts/update_version.sh "$HEAD_VERSION" @clickhouse/client-web
+          npm --workspace @clickhouse/client-web version --no-git-tag-version "$HEAD_VERSION"
+          echo "export default \"$HEAD_VERSION\";" > packages/client-web/src/version.ts
 
       - name: Build packages
         run: npm --workspaces run build
@@ -156,7 +157,8 @@ jobs:
           BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
           HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
           echo "Setting version to: $HEAD_VERSION"
-          .scripts/update_version.sh "$HEAD_VERSION" @clickhouse/client-common
+          npm --workspace @clickhouse/client-common version --no-git-tag-version "$HEAD_VERSION"
+          echo "export default \"$HEAD_VERSION\";" > packages/client-common/src/version.ts
 
       - name: Build packages
         run: npm --workspaces run build
