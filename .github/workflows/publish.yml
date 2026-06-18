@@ -82,7 +82,8 @@ jobs:
       - name: Set head pre-release version
         id: version
         run: |
-          HEAD_VERSION=$(.scripts/head_version.sh packages/client-node/package.json)
+          BASE_VERSION=$(node -p "require('./packages/client-node/package.json').version")
+          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
           echo "Setting version to: $HEAD_VERSION"
           .scripts/update_version.sh "$HEAD_VERSION" @clickhouse/client
           echo "version=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
@@ -117,7 +118,8 @@ jobs:
 
       - name: Set head pre-release version
         run: |
-          HEAD_VERSION=$(.scripts/head_version.sh packages/client-web/package.json)
+          BASE_VERSION=$(node -p "require('./packages/client-web/package.json').version")
+          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
           echo "Setting version to: $HEAD_VERSION"
           .scripts/update_version.sh "$HEAD_VERSION" @clickhouse/client-web
 
@@ -151,7 +153,8 @@ jobs:
 
       - name: Set head pre-release version
         run: |
-          HEAD_VERSION=$(.scripts/head_version.sh packages/client-common/package.json)
+          BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
+          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
           echo "Setting version to: $HEAD_VERSION"
           .scripts/update_version.sh "$HEAD_VERSION" @clickhouse/client-common
 
