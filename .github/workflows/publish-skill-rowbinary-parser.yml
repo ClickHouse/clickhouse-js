@@ -1,6 +1,6 @@
 name: "publish: rowbinary parser"
 
-# Independent publish for the standalone @clickhouse-js/node-rowbinary-parser
+# Independent publish for the standalone @clickhouse/rowbinary
 # package (the RowBinary parser skill). It is NOT part of the npm workspace
 # lockstep release driven by publish.yml — it carries its own version in
 # skills/clickhouse-js-node-rowbinary-parser/package.json and ships on its own

@@ -1,7 +1,7 @@
 {
-  "name": "@clickhouse-js/node-rowbinary-parser",
+  "name": "@clickhouse/rowbinary",
   "version": "0.1.0",
-  "description": "RowBinary reader building blocks for Node.js — decode ClickHouse RowBinary / RowBinaryWithNames(AndTypes) streams. Ships with the clickhouse-js-node-rowbinary-parser agent skill.",
+  "description": "RowBinary building blocks for Node.js — read and write ClickHouse RowBinary / RowBinaryWithNames(AndTypes) streams. Ships with the clickhouse-js-node-rowbinary-parser agent skill.",
   "homepage": "https://github.com/ClickHouse/clickhouse-js/tree/main/skills/clickhouse-js-node-rowbinary-parser",
   "license": "Apache-2.0",
   "keywords": [
