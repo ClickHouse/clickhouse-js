@@ -57,16 +57,26 @@ const readOrderRowFast: Reader<OrderRow> = (s) => {
 
 Same values, same streaming-safety — **~3.4x** faster.
 
-## How to use this skill
+## How to use
+
+As a library (comes with the skill):
 
 ```bash
 npm install @clickhouse/node-rowbinary-parser
 npx skills-npm setup
 ```
 
+As a skill only:
+
+```bash
+npx skills add ClickHouse/clickhouse-js/skills/node-rowbinary-parser
+```
+
 ```console
-> Hey, Claude, generate a high-performance RowBinary parser for the queries in the app.
-< User requests a RowBinary parser… reading skill node-rowbinary-parser-generator.
+> Hey, Claude, tell me what the rowbinary parser skill can do for me.
+> A lot! It generates custom, high-performance RowBinary parsers…
+> Super, generate a parser for the queries in app/src/model.ts.
+< Reading skill clickhouse-js-node-rowbinary-parser…
 ```
 
 ## Why it's worth it
