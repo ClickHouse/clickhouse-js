@@ -39,8 +39,15 @@ export class RowBinaryState {
    * Node-only skill, so the input is a `Buffer`: number reads go through
    * {@link RowBinaryState.view} (DataView), while `String`/`FixedString` use the
    * fast `buf.toString("utf8", ...)`.
+   *
+   * Declared as an explicit field (not a constructor parameter property) so the
+   * class compiles under `erasableSyntaxOnly` — the same TS constraint the main
+   * packages enforce — keeping it copy/paste-safe for downstream code.
    */
-  constructor(readonly buf: Buffer) {
+  readonly buf: Buffer;
+
+  constructor(buf: Buffer) {
+    this.buf = buf;
     this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   }
 }

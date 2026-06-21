@@ -7,6 +7,7 @@
     "types": ["vitest/globals", "node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "erasableSyntaxOnly": true,
     "noEmit": true,
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
