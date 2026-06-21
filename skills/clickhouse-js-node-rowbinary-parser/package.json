@@ -1,8 +1,23 @@
 {
   "name": "@clickhouse-js/node-rowbinary-parser",
   "version": "0.1.0",
+  "description": "RowBinary reader building blocks for Node.js — decode ClickHouse RowBinary / RowBinaryWithNames(AndTypes) streams. Ships with the clickhouse-js-node-rowbinary-parser agent skill.",
+  "homepage": "https://github.com/ClickHouse/clickhouse-js/tree/main/skills/clickhouse-js-node-rowbinary-parser",
+  "license": "Apache-2.0",
+  "keywords": [
+    "clickhouse",
+    "rowbinary",
+    "parser",
+    "decoder",
+    "streaming",
+    "skill"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClickHouse/clickhouse-js.git",
+    "directory": "skills/clickhouse-js-node-rowbinary-parser"
+  },
   "type": "module",
-  "description": "RowBinary reader building blocks for Node.js — library modules under src/, live-server vitest suite under tests/, paired with the SKILL.md skill.",
   "sideEffects": false,
   "main": "./dist/reader.js",
   "module": "./dist/reader.js",
@@ -21,14 +36,24 @@
     "dist",
     "src",
     "SKILL.md",
-    "README.md"
+    "README.md",
+    "EXAMPLES.md"
   ],
+  "agents": {
+    "skills": [
+      {
+        "name": "clickhouse-js-node-rowbinary-parser",
+        "path": "."
+      }
+    ]
+  },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "bench": "vitest bench --run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "cp ../../LICENSE . && npm run build"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
