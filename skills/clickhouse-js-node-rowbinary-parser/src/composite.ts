@@ -1,4 +1,4 @@
-import { type Reader, RowBinaryState } from "./core.js";
+import { type Reader } from "./core.js";
 import { readUInt8 } from "./integers.js";
 import { readUVarint } from "./varint.js";
 
@@ -168,6 +168,14 @@ export function readVariant<T extends readonly unknown[]>(readers: {
   return (state) => {
     const discriminant = readUInt8(state);
     if (discriminant === 0xff) return null;
-    return fns[discriminant]!(state);
+    const fn = fns[discriminant];
+    if (fn === undefined) {
+      // Out-of-range discriminant (corrupted/truncated input): fail loudly
+      // instead of throwing a cryptic "fns[discriminant] is not a function".
+      throw new RangeError(
+        `RowBinary Variant: discriminant ${discriminant} out of range (${fns.length} alternatives)`,
+      );
+    }
+    return fn(state);
   };
 }

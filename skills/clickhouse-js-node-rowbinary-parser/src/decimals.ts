@@ -1,4 +1,4 @@
-import { type Reader, RowBinaryState } from "./core.js";
+import { type Reader } from "./core.js";
 import { readInt32, readInt64, readInt128, readInt256 } from "./integers.js";
 
 /**

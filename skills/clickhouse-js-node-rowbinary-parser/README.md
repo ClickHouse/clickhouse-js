@@ -73,7 +73,7 @@ npx skills-npm setup
 As a skill only:
 
 ```bash
-npx skills add ClickHouse/clickhouse-js/skills/node-rowbinary-parser
+npx skills add ClickHouse/clickhouse-js/skills/clickhouse-js-node-rowbinary-parser
 ```
 
 ```console
