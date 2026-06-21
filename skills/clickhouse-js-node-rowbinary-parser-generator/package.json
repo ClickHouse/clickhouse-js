@@ -1,0 +1,39 @@
+{
+  "name": "clickhouse-js-node-rowbinary-parser-generator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "RowBinary reader building blocks for Node.js — library modules under src/, live-server vitest suite under tests/, paired with the SKILL.md skill.",
+  "sideEffects": false,
+  "main": "./dist/reader.js",
+  "module": "./dist/reader.js",
+  "types": "./dist/reader.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/reader.d.ts",
+      "import": "./dist/reader.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "SKILL.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "vitest bench --run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
