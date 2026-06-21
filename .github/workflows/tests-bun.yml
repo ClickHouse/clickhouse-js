@@ -10,11 +10,13 @@ on:
       - "**/*.md"
       - "LICENSE"
       - "benchmarks/**"
+      - "skills/**"
   pull_request:
     paths-ignore:
       - "**/*.md"
       - "LICENSE"
       - "benchmarks/**"
+      - "skills/**"
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
