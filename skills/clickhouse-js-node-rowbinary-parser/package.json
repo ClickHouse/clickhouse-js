@@ -1,7 +1,6 @@
 {
-  "name": "clickhouse-js-node-rowbinary-parser-generator",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@clickhouse-js/node-rowbinary-parser",
+  "version": "0.1.0",
   "type": "module",
   "description": "RowBinary reader building blocks for Node.js — library modules under src/, live-server vitest suite under tests/, paired with the SKILL.md skill.",
   "sideEffects": false,
