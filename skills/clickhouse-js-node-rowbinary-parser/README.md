@@ -2,7 +2,9 @@
 
 **If JS had a -O3 compiler flag, this skill would be it.** (for RowBinary parsing)
 
-A skill and a library that lets a coding agent generate bespoke RowBinary parsers on the first pass from the column type definitions of a ClickHouse response. The [spirit](#the-spirit) behind the approach.
+A library and a skill that lets you or your coding agent generate bespoke RowBinary parsers on the first pass from the SQL column types.
+
+The [spirit](#the-spirit) behind the approach.
 
 ## Status
 
@@ -58,7 +60,7 @@ Same values, same streaming-safety — **~3.4x** faster.
 ## How to use this skill
 
 ```bash
-npm install @clickhouse/node-rowbinary-parser-generator
+npm install @clickhouse/node-rowbinary-parser
 npx skills-npm setup
 ```
 

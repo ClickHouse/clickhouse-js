@@ -1,5 +1,5 @@
 ---
-name: clickhouse-js-node-rowbinary-parser-generator
+name: clickhouse-js-node-rowbinary-parser
 description: >
   Generate TypeScript/JavaScript code that reads and decodes ClickHouse
   RowBinary streams from the ClickHouse HTTP server.
