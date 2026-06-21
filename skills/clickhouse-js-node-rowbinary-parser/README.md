@@ -14,6 +14,7 @@ The [spirit](#the-spirit) behind the approach.
 
 - ✅ Sonnet 4.6: 60% -> 94.0% pass rate
 - ✅ Opus 4.8: 71% -> 94.7% pass rate
+- ✅ Haiku 4.5: 52% -> 86.0% pass rate
 - ✅ Composer 2.5 Fast: 3x parser performance
 - ✅ 469/469 tests
 - ✅ type-checked
@@ -119,7 +120,8 @@ Four pillars — speed, correctness, judgment, and lifting smaller models:
   with-skill vs no-skill benchmark, the skill [raised](eval_result_sonnet.md) **Sonnet 4.6** from 60.4% to
   **94.0%** (+34pp) — bringing it level with skill-equipped **Opus 4.8** (94.7%),
   which itself [gained](eval_result.md) +23pp (71.5% → 94.7%). Composer 2.5 Fast
-  [got](eval_result_composer.md) a 3x parser performance boost. The skill closes
+  [got](eval_result_composer.md) a 3x parser performance boost, Haiku 4.5
+  [raised](eval_result_haiku.md) from 52% to 86% — the skill closes
   most of the model-capability gap on this task.
 
 ## What it does
