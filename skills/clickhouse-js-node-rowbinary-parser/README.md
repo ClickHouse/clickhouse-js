@@ -4,6 +4,10 @@
 
 A library and a skill that lets you or your coding agent generate bespoke RowBinary parsers on the first pass from the SQL column types.
 
+> **Reader only for now.** Today this covers _reading / decoding_ RowBinary
+> streams. A matching RowBinary **writer** (encoding) is planned — the package is
+> named `@clickhouse/rowbinary` rather than `…-parser` for exactly that reason.
+
 The [spirit](#the-spirit) behind the approach.
 
 ## Status
@@ -62,7 +66,7 @@ Same values, same streaming-safety — **~3.4x** faster.
 As a library (comes with the skill):
 
 ```bash
-npm install @clickhouse/node-rowbinary-parser
+npm install @clickhouse/rowbinary
 npx skills-npm setup
 ```
 
@@ -204,6 +208,9 @@ Measure, don't assume.
   (chunked) via `advance()`/`NeedMoreData`, `readRows()`, and the async
   `streamRowBatches()` (with a built-in small-chunk warning and the optional
   `coalesceChunks()` debounce filter).
+- **Planned:** RowBinary **writing / encoding** (the inverse of everything above)
+  — not shipped yet, but the reason the package carries the format-neutral
+  `@clickhouse/rowbinary` name.
 - **Out of scope (for now):** browsers and Edge runtimes, non-RowBinary formats
   (JSON / CSV / TSV / Parquet), and big-endian hosts.
 
