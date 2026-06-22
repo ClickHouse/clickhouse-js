@@ -6,6 +6,8 @@
 
 - (Node.js) Brotli (`{ codec: "br" }`) is now supported for `compression.request` / `compression.response`, alongside gzip and zstd. Unlike zstd, Brotli is available on every supported Node.js version (no minimum-version requirement). The `compression.request` option is a per-codec discriminated union, so each codec exposes its own tuning option: a `level` for gzip/zstd, a `quality` for Brotli (`{ codec: "br", quality }`). When omitted, Brotli defaults to quality 4 for request bodies, since zlib's brotli default of 11 (max) is far too slow for a streaming insert path. Response decompression follows the server's `Content-Encoding`. Supported only by `@clickhouse/client` (Node.js).
 
+- (Node.js) Added a RowBinary reader library and agent skill under [`skills/clickhouse-js-node-rowbinary-parser`](./skills/clickhouse-js-node-rowbinary-parser). It ships type-specific, monomorphizable building blocks for decoding `RowBinary` / `RowBinaryWithNames` / `RowBinaryWithNamesAndTypes` streams (full-buffer and chunked), plus a skill that guides an agent to generate bespoke high-performance parsers from a query's column types. The skill is bundled into `@clickhouse/client` (registered in `agents.skills`) and is also published independently as the [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary) package. A matching RowBinary writer is planned. ([#864])
+
 ## Internal changes (`@clickhouse/client-common`)
 
 > These only affect code that imports the low-level connection primitives from the deprecated `@clickhouse/client-common` package directly (e.g. a custom `Connection` implementation). The `createClient` `compression` option is unchanged and fully backwards compatible — if you only use `@clickhouse/client` or `@clickhouse/client-web`, you are not affected.
@@ -64,6 +66,7 @@ await client.query({
 [#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
 [#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
 [#828]: https://github.com/ClickHouse/clickhouse-js/pull/828
+[#864]: https://github.com/ClickHouse/clickhouse-js/pull/864
 
 ## Bug Fixes
 
