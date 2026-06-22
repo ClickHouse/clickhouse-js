@@ -1,5 +1,7 @@
 # RowBinary Logs Demo
 
+<img src="./screenshot.png" alt="Screenshot of the demo app" width="600">
+
 A tiny, **server-only** Next.js app that pages through a ClickHouse logs table,
 decoding each page from `RowBinary` with
 [`@clickhouse/rowbinary`](../../). The browser receives only HTML — there are no
