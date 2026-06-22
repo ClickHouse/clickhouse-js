@@ -115,8 +115,7 @@ export async function* streamRowBatches<T>(
   const warnObj = typeof warnCfg === "object" ? warnCfg : undefined;
   const minRowsPerChunk = warnObj?.minRowsPerChunk ?? 2;
   const warmupChunks = warnObj?.warmupChunks ?? 16;
-  const warn: (message: string, stats: SmallChunkStats) => void =
-    warnObj?.warn ?? ((message) => console.warn(message));
+  const warn = warnObj?.warn ?? ((message: string) => console.warn(message));
   let chunkCount = 0;
   let rowCount = 0;
   let warned = false;

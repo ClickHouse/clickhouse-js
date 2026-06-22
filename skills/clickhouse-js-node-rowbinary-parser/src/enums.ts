@@ -2,14 +2,13 @@ import { RowBinaryState, advance } from "./core.js";
 
 /**
  * Read an `Enum8`: the value's underlying signed `Int8`. The name<->value map
- * lives in the column's type definition, not the bytes. Two strategies, both
- * better than one shared name-resolving reader:
+ * lives in the column's type, not the bytes. Two strategies, both better than one
+ * shared name-resolving reader:
  *
- * - Keep the number. Carry the raw Int8 through the app and only map it to a
- *   name where a name is actually needed — most hot loops never need it.
- * - Or generate a dedicated reader per enum that bakes its own constant map,
- *   e.g. `readStatusEnum`. A monomorphic reader with a fixed lookup lets the JIT
- *   optimize each enum's decode on its own:
+ * - Keep the number: carry the raw Int8 and map to a name only where needed —
+ *   most hot loops never need it.
+ * - Or generate a per-enum reader with a baked-in constant map, so the JIT can
+ *   monomorphize each enum's decode:
  *
  *     const STATUS = { 1: "active", 2: "closed" } as const;
  *     const readStatusEnum = (s) => STATUS[readInt8(s) as keyof typeof STATUS];

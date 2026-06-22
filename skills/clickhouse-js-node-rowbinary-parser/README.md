@@ -2,13 +2,9 @@
 
 **If JS had a -O3 compiler flag, this skill would be it.** (for RowBinary parsing)
 
-A library and a skill that lets you or your coding agent generate bespoke RowBinary parsers on the first pass from the SQL column types.
+A skill and a library that lets a coding agent generate bespoke RowBinary parsers on the first pass from the column type definitions of a ClickHouse response. The [spirit](#the-spirit) behind the approach.
 
-> **Reader only for now.** Today this covers _reading / decoding_ RowBinary
-> streams. A matching RowBinary **writer** (encoding) is planned — the package is
-> named `@clickhouse/rowbinary` rather than `…-parser` for exactly that reason.
-
-The [spirit](#the-spirit) behind the approach.
+**Reader only** for now. Today this covers reading (decoding) RowBinary streams. A matching RowBinary writer (encoding) is planned.
 
 ## Status
 
@@ -211,8 +207,6 @@ Measure, don't assume.
   `streamRowBatches()` (with a built-in small-chunk warning and the optional
   `coalesceChunks()` debounce filter).
 - **Planned:** RowBinary **writing / encoding** (the inverse of everything above)
-  — not shipped yet, but the reason the package carries the format-neutral
-  `@clickhouse/rowbinary` name.
 - **Out of scope (for now):** browsers and Edge runtimes, non-RowBinary formats
   (JSON / CSV / TSV / Parquet), and big-endian hosts.
 

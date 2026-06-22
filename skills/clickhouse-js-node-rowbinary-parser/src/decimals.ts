@@ -1,4 +1,4 @@
-import { type Reader } from "./core.js";
+import { type Reader, RowBinaryState } from "./core.js";
 import { readInt32, readInt64, readInt128, readInt256 } from "./integers.js";
 
 /**
@@ -10,17 +10,15 @@ export type DecimalValue = readonly [unscaled: bigint, scale: number];
 
 /**
  * Format a {@link DecimalValue} as a fixed-point decimal string with `scale`
- * fractional digits (e.g. `[15000n, 4]` -> `"1.5000"`).
+ * fractional digits (e.g. `[15000n, 4]` -> `"1.5000"`). Plug in only when you
+ * need a string.
  *
- * Kept aside from the `readDecimal*` readers, which return the raw
- * `[unscaled, scale]` pair — plug this in only when you actually need a string.
- * Trailing zeros are preserved to reflect the declared scale, deliberately
- * unlike ClickHouse's text output, which trims them (`"1.5"`) and drops the
- * point for integers (`"10"`).
+ * Trailing zeros are preserved to reflect the declared scale, deliberately unlike
+ * ClickHouse's text output, which trims them (`"1.5"`) and drops the point for
+ * integers (`"10"`).
  */
 export function formatDecimal([unscaled, scale]: DecimalValue): string {
   if (scale === 0) return unscaled.toString();
-  // Test the sign once, then format each case directly.
   if (unscaled < 0n) {
     const digits = (-unscaled).toString().padStart(scale + 1, "0");
     const point = digits.length - scale;
@@ -34,11 +32,10 @@ export function formatDecimal([unscaled, scale]: DecimalValue): string {
 /**
  * Read a `Decimal32(P, S)`: a 4-byte little-endian signed integer (same wire
  * shape as `Int32`) scaled by 10^S. Pass the column's scale `S`; returns a
- * `Reader` of the raw `[unscaled, scale]` pair so exact value and scale are both
- * preserved. Pass the result to {@link formatDecimal} when you need a string.
+ * `Reader` of the raw `[unscaled, scale]` pair (see {@link formatDecimal}).
  *
- * `Decimal(P, S)` is an alias: the generator picks the width reader by precision
- * P — P<=9 -> Decimal32, <=18 -> Decimal64, <=38 -> Decimal128, <=76 -> Decimal256.
+ * `Decimal(P, S)` is an alias: pick the width reader by precision P — P<=9 ->
+ * Decimal32, <=18 -> Decimal64, <=38 -> Decimal128, <=76 -> Decimal256.
  */
 export function readDecimal32(scale: number): Reader<DecimalValue> {
   return (state) => [BigInt(readInt32(state)), scale];

@@ -35,3 +35,14 @@ the template.
 The readers live under `src/examples/` and are excluded from the published build
 (`tsconfig.build.json`): reference material and test fixtures, type-checked by the
 base `tsconfig.json` and run by the suite, not part of the package's public API.
+
+## Columnar decode (struct-of-arrays) — the ~4x numeric path
+
+The examples above produce one object per row (array-of-structs). For a
+**numeric, fixed-width result the consumer reads column-wise** (aggregate / scan
+/ filter / plot, or hand off to a Worker / WASM kernel), decode the same
+row-major bytes directly into **one typed array per column** in the same single
+pass — no per-row object, no `Date`, no number boxing. That removes the
+allocation that dominates a numeric decode for a **measured ~4.2x**.
+
+See example: [`decodeIotColumnar`](src/examples/iot.ts).

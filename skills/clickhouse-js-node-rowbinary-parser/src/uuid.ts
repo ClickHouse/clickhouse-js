@@ -24,11 +24,10 @@ UUID_OUT[8] = UUID_OUT[13] = UUID_OUT[18] = UUID_OUT[23] = 0x2d; // '-'
  * `xxxxxxxx-...` string.
  *
  * The view shares memory with the response buffer, so keeping it alive pins the
- * whole response chunk in memory. If the value must outlive the row/response,
- * copy it with `Buffer.from(...)`.
+ * whole chunk; copy with `Buffer.from(...)` if it must outlive the row.
  *
- * FAST ALTERNATIVE: if you stringify every UUID, format these bytes with
- * {@link formatUUIDTable} (lookup table, no BigInt, ~1.6x faster).
+ * FAST ALTERNATIVE: if you stringify every UUID, use {@link formatUUIDTable}
+ * (lookup table, no BigInt, ~1.6x faster).
  */
 export function readUUID(state: RowBinaryState): Buffer {
   const start = advance(state, 16);
@@ -39,10 +38,9 @@ export function readUUID(state: RowBinaryState): Buffer {
  * Read a `UUID` as a single 128-bit `bigint` (`hi << 64 | lo`) — useful for
  * numeric storage, comparison, or de-duplication without a string.
  *
- * Reads the two halves with `DataView.getBigUint64` rather than
- * `Buffer.readBigUInt64LE`: on V8 the DataView accessors are inlined to a bounds
- * check plus an inline load, measurably faster for 8-byte reads. For the
- * canonical string, use {@link readUUID} with {@link formatUUID}.
+ * Reads the halves with `DataView.getBigUint64` rather than
+ * `Buffer.readBigUInt64LE`: V8 inlines the DataView accessors, measurably faster
+ * for 8-byte reads. For the canonical string, use {@link readUUID} + {@link formatUUID}.
  */
 export function readUUIDBigInt(state: RowBinaryState): bigint {
   const start = advance(state, 16);
@@ -54,9 +52,8 @@ export function readUUIDBigInt(state: RowBinaryState): bigint {
 /**
  * Read a `UUID` as its two raw little-endian `UInt64` halves, `[hi, lo]` — the
  * faithful wire split with no combining work. Cheaper than {@link readUUIDBigInt}
- * (skips the `hi << 64 | lo`) and a compact key for comparison / de-duplication
- * as two 64-bit values. For the canonical string, use {@link readUUID} with
- * {@link formatUUID} (or {@link formatUUIDTable}).
+ * (skips `hi << 64 | lo`) and a compact two-value key for comparison/dedup. For
+ * the canonical string, use {@link readUUID} + {@link formatUUID}.
  */
 export function readUUIDHiLo(state: RowBinaryState): [hi: bigint, lo: bigint] {
   const start = advance(state, 16);
@@ -66,17 +63,18 @@ export function readUUIDHiLo(state: RowBinaryState): [hi: bigint, lo: bigint] {
 }
 
 /**
- * Format a `UUID` (the raw 16 bytes from {@link readUUID}) as the canonical
+ * Format a `UUID` (raw 16 bytes from {@link readUUID}) as the canonical
  * `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` string.
  *
- * ClickHouse stores a UUID as two little-endian `UInt64` halves (high then
- * low), so each half is byte-reversed relative to the text form. Reading each
- * half with `readBigUInt64LE` undoes that; concatenating high then low yields
- * the 32 canonical hex digits. Kept aside from the read so the hot path can
- * skip stringifying when the raw bytes suffice.
+ * THE TRAP: ClickHouse stores a UUID as two little-endian `UInt64` halves (high
+ * then low), so each half is byte-reversed vs the text form. Reading each half
+ * with `readBigUInt64LE` undoes that; concatenating high then low gives the 32
+ * canonical hex digits. (Hexing the 16 bytes in wire order scrambles the value.)
+ * Kept aside from the read so the hot path can skip stringifying when raw bytes
+ * suffice.
  *
- * FAST ALTERNATIVE: when you format every value, {@link formatUUIDTable} does
- * the same via a byte->hex lookup table with no BigInt (~1.6x faster).
+ * FAST ALTERNATIVE: to format every value, {@link formatUUIDTable} does the same
+ * via a byte->hex lookup table with no BigInt (~1.6x faster).
  */
 export function formatUUID(b: Buffer): string {
   const hex = ((b.readBigUInt64LE(0) << 64n) | b.readBigUInt64LE(8))
@@ -86,22 +84,18 @@ export function formatUUID(b: Buffer): string {
 }
 
 /**
- * Fast {@link formatUUID}: produces the same canonical string, but via a byte ->
- * two-hex-char lookup table (`UUID_HEX16`) written into a reused 36-byte buffer
- * (`UUID_OUT`, dashes preset), with no BigInt and no slicing. Benchmarks ~1.6x
- * faster (see `readUUID.bench.ts`). Takes the raw 16 bytes from {@link readUUID},
- * like formatUUID.
+ * Fast {@link formatUUID}: same canonical string via a byte -> two-hex-char
+ * lookup table (`UUID_HEX16`) written into a reused 36-byte buffer (`UUID_OUT`,
+ * dashes preset), no BigInt, no slicing. ~1.6x faster (see `readUUID.bench.ts`).
+ * Takes the raw 16 bytes from {@link readUUID}.
  *
- * The wire is two little-endian `UInt64` halves, each byte-reversed vs the text
- * form, so bytes are emitted high half first in reverse order (`b[7]..b[0]`)
- * then the low half (`b[15]..b[8]`) — the same reordering formatUUID gets from
- * reading each half as a little-endian BigInt.
+ * Same byte-reversal as formatUUID: emit the high half in reverse (`b[7]..b[0]`)
+ * then the low half (`b[15]..b[8]`).
  *
- * SAFE TO TOGGLE — the opt-in fast formatter, not the default. `UUID_OUT` is
- * shared scratch, so this is NOT reentrant; it is safe for synchronous
- * formatting because the bytes are copied into the returned string before the
- * next call (just don't alias `UUID_OUT` itself). Worth it only when you
- * stringify every UUID; otherwise keep the raw bytes/halves and skip it.
+ * SAFE TO TOGGLE — opt-in fast formatter, not the default. `UUID_OUT` is shared
+ * scratch, so NOT reentrant; safe for synchronous formatting because the bytes
+ * are copied into the returned string before the next call (don't alias
+ * `UUID_OUT`). Worth it only when you stringify every UUID.
  */
 export function formatUUIDTable(b: Buffer): string {
   let p: number;

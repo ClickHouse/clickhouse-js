@@ -1,17 +1,15 @@
-import { NeedMoreData, type Reader } from "./core.js";
+import { NeedMoreData, type Reader, RowBinaryState } from "./core.js";
 
 /**
  * Drive `readRow` over every row of a plain `RowBinary` result into an array.
  * Curried: `readRows(readRow)` returns a `Reader<T[]>`. Rows are concatenated on
- * the wire with no row count, length prefix, or delimiter, so the only way to
- * know the result is exhausted is the cursor reaching the buffer end.
+ * the wire with no count, length prefix, or delimiter, so the result is exhausted
+ * only when the cursor reaches the buffer end.
  *
- * `readRow` must consume EXACTLY one row's bytes. If it stops a byte short or
- * long the misalignment compounds across rows and the cursor overshoots or never
- * lands on `buf.length`.
- *
- * Returns `[]` for an empty result (empty buffer). When generating code, inline
- * the per-column reads into the loop body:
+ * `readRow` must consume EXACTLY one row's bytes — a byte short or long compounds
+ * across rows and the cursor overshoots or never lands on `buf.length`. Returns
+ * `[]` for an empty buffer. When generating code, inline the per-column reads
+ * into the loop body:
  *
  *   function readRowsUser(s) {
  *     const out = [];
@@ -21,12 +19,12 @@ import { NeedMoreData, type Reader } from "./core.js";
  *     return out;
  *   }
  *
- * STREAMING (partial trailing row): the buffer may end mid-row when it is one
- * chunk of a larger response still arriving. `pos` is committed only AFTER a row
- * reads cleanly, so when a row starves and `readRow` throws {@link NeedMoreData},
- * this catches it, rewinds `pos` to the last complete row boundary, and returns
- * the rows decoded so far — never a half-built row. The cursor is left at the
- * start of the incomplete row, the commit point a driver carries forward:
+ * STREAMING (partial trailing row): a chunk of a still-arriving response may end
+ * mid-row. `pos` is committed only AFTER a row reads cleanly, so when a row
+ * starves and `readRow` throws {@link NeedMoreData}, this catches it, rewinds
+ * `pos` to the last complete row boundary, and returns the rows so far — never a
+ * half-built row. The cursor is left at the straddling row, a commit point the
+ * driver carries forward:
  *
  *   const drive = readRows(readRow);
  *   let committed = 0;
@@ -37,8 +35,8 @@ import { NeedMoreData, type Reader } from "./core.js";
  *     committed = s.pos;                        // start of the straddling row
  *   }
  *
- * On a complete buffer no read starves, so the catch never runs. Any error other
- * than {@link NeedMoreData} is a real decode fault and propagates. See also
+ * On a complete buffer no read starves, so the catch never runs. Errors other
+ * than {@link NeedMoreData} are real decode faults and propagate. See also
  * `streamRowBatches`, the async driver built on this.
  */
 export function readRows<T>(readRow: Reader<T>): Reader<T[]> {

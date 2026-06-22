@@ -16,11 +16,9 @@ export function readUInt16(state: RowBinaryState): number {
 }
 
 /**
- * Read an `Int16`: 2 bytes, little-endian, two's-complement signed.
- *
- * `DataView` reads from any offset (no 2-byte alignment requirement) and decodes
- * explicitly little-endian, so the value never depends on host byte order.
- * Always fits a JS `number` exactly (-32768 .. 32767).
+ * Read an `Int16`: 2 bytes, little-endian, two's-complement signed (-32768 ..
+ * 32767). `DataView` reads from any offset and decodes explicitly little-endian,
+ * so the value never depends on host byte order.
  */
 export function readInt16(state: RowBinaryState): number {
   return state.view.getInt16(advance(state, 2), true);
@@ -38,7 +36,6 @@ export function readInt32(state: RowBinaryState): number {
 
 /**
  * Read a `UInt64`: 8 bytes, little-endian. Returns a `bigint`.
- *
  * SAFE TO TOGGLE: if the values fit in 53 bits, wrap in `Number(...)`.
  */
 export function readUInt64(state: RowBinaryState): bigint {
@@ -47,10 +44,8 @@ export function readUInt64(state: RowBinaryState): bigint {
 
 /**
  * Read an `Int64`: 8 bytes, little-endian, two's-complement. Returns a `bigint`
- * because the range exceeds `Number.MAX_SAFE_INTEGER`.
- *
- * SAFE TO TOGGLE: if the values are known to fit in 53 bits, wrap the result in
- * `Number(...)` for a plain `number` instead.
+ * (range exceeds `Number.MAX_SAFE_INTEGER`).
+ * SAFE TO TOGGLE: if the values fit in 53 bits, wrap in `Number(...)`.
  */
 export function readInt64(state: RowBinaryState): bigint {
   return state.view.getBigInt64(advance(state, 8), true);

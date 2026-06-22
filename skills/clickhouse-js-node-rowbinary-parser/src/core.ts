@@ -1,84 +1,63 @@
 /**
- * Thrown by {@link advance} when the buffer does not yet hold the bytes a read
- * needs — the "need more bytes" signal for incremental decoding over a buffer
- * that is still filling. A driver catches it (`err === NeedMoreData`), waits for
- * more input, and retries the row from its last committed position.
+ * Thrown by {@link advance} when the buffer lacks the bytes a read needs — the
+ * "need more bytes" signal for incremental decoding over a still-filling buffer.
+ * A driver catches it (`err === NeedMoreData`), waits for more input, and retries
+ * the row from its last committed position.
  *
- * It is a bare sentinel, NOT an `Error` subclass, on purpose: constructing an
- * Error captures a stack trace, which is the expensive part of throwing, and on
- * a decode path that starves once per chunk that cost is pure waste. Throwing a
- * constant value skips it — see `streamingRow.bench.ts`, where throw + restart
- * beats a generator's yield for realistic chunk sizes precisely because the
- * throw is this cheap.
+ * A bare sentinel, NOT an `Error` subclass, on purpose: constructing an Error
+ * captures a stack trace — the expensive part of throwing — and on a path that
+ * starves once per chunk that cost is pure waste. Throwing a constant skips it,
+ * which is why throw + restart beats a generator's yield for realistic chunks
+ * (see `streamingRow.bench.ts`).
  */
 export const NeedMoreData = Symbol("RowBinary.NeedMoreData");
 
 /**
- * The cursor state every reader function threads through. Holds the input
- * `Buffer`, the current position, and a `DataView` over the same bytes.
+ * The cursor state every reader threads through: the input `Buffer`, the current
+ * position, and a `DataView` over the same bytes.
  *
- * This is deliberately just STATE — no read methods. Decoding lives in the free
+ * Deliberately STATE only — no read methods. Decoding lives in the free
  * `readX(state, ...)` functions in the sibling modules, so a generated parser
- * pulls in only the per-type readers a result actually needs (and the readers
- * compose without a class). `view` and `buf` are public so those free functions
- * can reach them.
+ * pulls in only the per-type readers a result needs. `view`/`buf` are public so
+ * those free functions can reach them.
  */
 export class RowBinaryState {
   pos = 0;
 
   /**
-   * `DataView` over the same bytes, used for fixed-width integer/float reads.
-   *
-   * Built with the buffer's own `byteOffset`/`byteLength`: a `Buffer` is often a
-   * window into a larger pooled `ArrayBuffer`, so `new DataView(buf.buffer)`
-   * alone would point at the wrong bytes.
+   * `DataView` over the same bytes, for fixed-width integer/float reads. Built
+   * with the buffer's own `byteOffset`/`byteLength`: a `Buffer` is often a window
+   * into a larger pooled `ArrayBuffer`, so `new DataView(buf.buffer)` alone would
+   * point at the wrong bytes.
    */
   readonly view: DataView;
 
-  /**
-   * Node-only skill, so the input is a `Buffer`: number reads go through
-   * {@link RowBinaryState.view} (DataView), while `String`/`FixedString` use the
-   * fast `buf.toString("utf8", ...)`.
-   *
-   * Declared as an explicit field (not a constructor parameter property) so the
-   * class compiles under `erasableSyntaxOnly` — the same TS constraint the main
-   * packages enforce — keeping it copy/paste-safe for downstream code.
-   */
-  readonly buf: Buffer;
-
-  constructor(buf: Buffer) {
-    this.buf = buf;
+  constructor(readonly buf: Buffer) {
     this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   }
 }
 
 /**
- * A `Reader<T>` decodes one value of type `T` from the cursor, advancing it.
- * Leaf readers (e.g. `readUInt32`) are `Reader`s directly; combinators (e.g.
- * `readArray`) take sub-`Reader`s and RETURN a `Reader`, so types compose with
- * no per-element closures:
- *
- *   readArray(readUInt32)(state)                 // number[]
- *   readArray(readTupleNamed({ a: readUInt8 }))  // a Reader<{a:number}[]>
+ * A `Reader<T>` decodes one value of type `T` from the cursor, advancing it. Leaf
+ * readers (e.g. `readUInt32`) are `Reader`s directly; combinators (e.g.
+ * `readArray`) take sub-`Reader`s and return a `Reader`, so types compose with no
+ * per-element closures.
  */
 export type Reader<T> = (state: RowBinaryState) => T;
 
 /**
- * Reserve `n` bytes for the next read: bounds-check them, advance the cursor
- * past them, and return the offset the read should start at (the cursor's value
- * BEFORE advancing — the "last position"). Every fixed-width read goes through
- * this, so the one length check and the cursor bookkeeping live in a single
- * place:
+ * Reserve `n` bytes for the next read: bounds-check them, advance the cursor past
+ * them, and return the offset the read starts at (the value BEFORE advancing).
+ * Every fixed-width read goes through this, so the length check and cursor
+ * bookkeeping live in one place:
  *
  *   function readInt32(s) { return s.view.getInt32(advance(s, 4), true); }
  *
- * Throws {@link NeedMoreData} when fewer than `n` bytes remain. The cursor is
- * NOT moved in that case, so a driver that catches it can rewind to its last
- * committed row and retry once more bytes arrive.
+ * Throws {@link NeedMoreData} when fewer than `n` bytes remain, WITHOUT moving the
+ * cursor, so a driver can rewind to its last committed row and retry.
  *
- * SAFE TO TOGGLE: this skill's default is a complete, in-memory buffer where the
- * check never fires. A parser generated for that case can drop `advance` and
- * read against `state.pos` directly (the original no-bounds-check form), trading
+ * SAFE TO TOGGLE: for a complete in-memory buffer the check never fires — a parser
+ * for that case can drop `advance` and read against `state.pos` directly, trading
  * streaming tolerance for one fewer compare per read.
  */
 export function advance(state: RowBinaryState, n: number): number {

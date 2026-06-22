@@ -32,6 +32,11 @@ the wire cost shrinks too.
 - **High-volume fixed-width numeric columns** generally, where each value is a
   single `DataView` read.
 
+**Prefer the `Native` format when** columnar load and client-side analytics are
+the main goal (fold/scan/filter columns, feed typed arrays to a Worker or WASM).
+`Native` is column-major, so it loads straight into one typed array per column
+with no transpose.
+
 For help choosing and consuming a `JSON*` format (or CSV / TSV) instead, use the
 **`clickhouse-js-node-coding`** skill.
 
@@ -50,6 +55,34 @@ a real performance fork.
   This is 2-3x faster but introduces latency and unbounded memory use.
 
 The exposed API is streaming by default and requires an optimisation pass.
+
+## Third: row objects, or columnar (typed arrays)?
+
+The default output is one object per row (array-of-structs). For a **numeric,
+fixed-width result that the consumer reads column-wise**, decode instead into one
+typed array per column (struct-of-arrays) — it is **~4x faster and several times
+smaller** because it removes the per-row object, `Date`, and number-boxing
+allocations that dominate a numeric decode (the byte reads are already at memory
+bandwidth). Measured in `tests/iot.columnar.bench.ts`; rationale in
+`case-studies/wasm-vs-js.md`.
+
+- **Use columnar when** columns are numeric/fixed-width and the consumer
+  aggregates / filters / scans / plots them, or hands the buffers to a Worker or
+  WASM kernel (typed-array `ArrayBuffer`s are transferable — zero-copy).
+- **The preallocation trick:** if EVERY column is fixed-width the row stride is
+  known, so the exact count is `buf.length / stride` — allocate each column once,
+  write at `[i]`, no growth, no per-row bounds check.
+- **Streaming columnar is just that arithmetic per chunk.** Fixed width means
+  honoring a partial buffer needs no `advance()`/`NeedMoreData`/restart: the
+  complete-row count is `(chunk.length / stride) | 0`, and the leftover bytes
+  carry to the next chunk. Yield one typed-array batch per chunk, each owning a
+  fresh transferable `ArrayBuffer` (see `streamSensorColumns` in
+  `src/columnar.ts`).
+- **Stay row-oriented when** downstream code is row-shaped, the row is
+  string-dominated (columnar's win is numeric — a JS string allocates either
+  way), or the schema is nested/heterogeneous (`Array`/`Map`/`Tuple`).
+- **Hybrid:** store columnar, expose a lazy `rowAt(i)` accessor that builds an
+  object only for rows actually touched (see `iotRowAt` in `src/examples/iot.ts`).
 
 ## Core guidance
 
@@ -111,32 +144,33 @@ When generating a parser, follow these:
 
 The readers live as real code under `src/`, split by type family.
 
-| Result contains (trigger)                                                               | Open                             |
-| --------------------------------------------------------------------------------------- | -------------------------------- |
-| **Always** — cursor state, `advance()`, `NeedMoreData`, `Reader<T>`                     | `src/core.ts`                    |
-| LEB128 length/count prefixes for `String`/`Array`/`Map` (`readUVarint`)                 | `src/varint.ts`                  |
-| `Int8`–`Int256`, `UInt8`–`UInt256`                                                      | `src/integers.ts`                |
-| `Bool`                                                                                  | `src/bool.ts`                    |
-| `Enum8`, `Enum16`                                                                       | `src/enums.ts`                   |
-| `Float32`, `Float64`, `BFloat16`                                                        | `src/floats.ts`                  |
-| `Decimal32/64/128/256`, `Decimal(P, S)`                                                 | `src/decimals.ts`                |
-| `String`, `FixedString(N)`                                                              | `src/strings.ts`                 |
-| `UUID`                                                                                  | `src/uuid.ts`                    |
-| `IPv4`, `IPv6`                                                                          | `src/ip.ts`                      |
-| `Date`, `Date32`, `DateTime`, `DateTime(tz)`, `DateTime64(P[, tz])`                     | `src/datetime.ts`                |
-| `Time`, `Time64(P)`                                                                     | `src/time.ts`                    |
-| `IntervalNanosecond` … `IntervalYear`                                                   | `src/interval.ts`                |
-| `Array(T)`, `Map(K, V)`, `Tuple(...)`, `Nullable(T)`, `Variant(...)`, `QBit(...)`       | `src/composite.ts`               |
-| `Point`, `Ring`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `Geometry` | `src/geo.ts`                     |
-| `Dynamic` (and `Variant`/`Interval`/`Nested`/`Dynamic` nested inside it)                | `src/dynamic.ts`                 |
-| `JSON`                                                                                  | `src/json.ts`                    |
-| The whole result — loop rows to EOF (`readRows`)                                        | `src/rows.ts`                    |
-| A chunked HTTP response — `streamRowBatches`, `coalesceChunks`                          | `src/stream.ts`                  |
-| `LowCardinality(T)` — transparent, decode as `T`                                        | `src/lowCardinality.ts`          |
-| `SimpleAggregateFunction(f, T)` — transparent, decode as `T`                            | `src/simpleAggregateFunction.ts` |
-| `Nested(...)` — no wire of its own; `Array(Tuple(...))`                                 | `src/nested.ts`                  |
-| `Nothing` — zero-width, never decoded (only wrapped)                                    | `src/nothing.ts`                 |
-| `AggregateFunction(...)` — opaque state; finalize server-side                           | `src/aggregateFunction.ts`       |
+| Result contains (trigger)                                                                                                                      | Open                                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Always** — cursor state, `advance()`, `NeedMoreData`, `Reader<T>`                                                                            | `src/core.ts`                                                                                                                                                         |
+| LEB128 length/count prefixes for `String`/`Array`/`Map` (`readUVarint`)                                                                        | `src/varint.ts`                                                                                                                                                       |
+| `Int8`–`Int256`, `UInt8`–`UInt256`                                                                                                             | `src/integers.ts`                                                                                                                                                     |
+| `Bool`                                                                                                                                         | `src/bool.ts`                                                                                                                                                         |
+| `Enum8`, `Enum16`                                                                                                                              | `src/enums.ts`                                                                                                                                                        |
+| `Float32`, `Float64`, `BFloat16`                                                                                                               | `src/floats.ts`                                                                                                                                                       |
+| `Decimal32/64/128/256`, `Decimal(P, S)`                                                                                                        | `src/decimals.ts`                                                                                                                                                     |
+| `String`, `FixedString(N)`                                                                                                                     | `src/strings.ts`                                                                                                                                                      |
+| `UUID`                                                                                                                                         | `src/uuid.ts`                                                                                                                                                         |
+| `IPv4`, `IPv6`                                                                                                                                 | `src/ip.ts`                                                                                                                                                           |
+| `Date`, `Date32`, `DateTime`, `DateTime(tz)`, `DateTime64(P[, tz])`                                                                            | `src/datetime.ts`                                                                                                                                                     |
+| `Time`, `Time64(P)`                                                                                                                            | `src/time.ts`                                                                                                                                                         |
+| `IntervalNanosecond` … `IntervalYear`                                                                                                          | `src/interval.ts`                                                                                                                                                     |
+| `Array(T)`, `Map(K, V)`, `Tuple(...)`, `Nullable(T)`, `Variant(...)`, `QBit(...)`                                                              | `src/composite.ts`                                                                                                                                                    |
+| `Point`, `Ring`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `Geometry`                                                        | `src/geo.ts`                                                                                                                                                          |
+| `Dynamic` (and `Variant`/`Interval`/`Nested`/`Dynamic` nested inside it)                                                                       | `src/dynamic.ts`                                                                                                                                                      |
+| `JSON`                                                                                                                                         | `src/json.ts`                                                                                                                                                         |
+| The whole result — loop rows to EOF (`readRows`)                                                                                               | `src/rows.ts`                                                                                                                                                         |
+| A chunked HTTP response — `streamRowBatches`, `coalesceChunks`                                                                                 | `src/stream.ts`                                                                                                                                                       |
+| **Numeric/fixed-width result read column-wise** (aggregate/scan/plot, hand to a Worker/WASM) → decode into typed arrays, not row objects (~4x) | `src/columnar.ts` (`streamSensorColumns` — streaming, yields transferable typed-array batches); `decodeIotColumnar` in `src/examples/iot.ts` is the whole-buffer form |
+| `LowCardinality(T)` — transparent, decode as `T`                                                                                               | `src/lowCardinality.ts`                                                                                                                                               |
+| `SimpleAggregateFunction(f, T)` — transparent, decode as `T`                                                                                   | `src/simpleAggregateFunction.ts`                                                                                                                                      |
+| `Nested(...)` — no wire of its own; `Array(Tuple(...))`                                                                                        | `src/nested.ts`                                                                                                                                                       |
+| `Nothing` — zero-width, never decoded (only wrapped)                                                                                           | `src/nothing.ts`                                                                                                                                                      |
+| `AggregateFunction(...)` — opaque state; finalize server-side                                                                                  | `src/aggregateFunction.ts`                                                                                                                                            |
 
 ## Worked examples
 
