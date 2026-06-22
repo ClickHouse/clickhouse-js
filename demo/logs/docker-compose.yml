@@ -1,0 +1,35 @@
+# Self-contained ClickHouse for the RowBinary logs demo.
+#
+# Brings up a single ClickHouse node exposing HTTP on localhost:8123 with the
+# default user and no password — exactly what the app and seeder default to
+# (see lib/clickhouse.ts / scripts/seed.mjs). No external config files needed:
+# CLICKHOUSE_SKIP_USER_SETUP lets the default user connect without a password.
+#
+#   docker compose up -d     # start
+#   npm run seed             # create demo_logs and insert rows
+#   npm run dev              # http://localhost:3000
+#   docker compose down      # stop (add -v to also wipe the data volume)
+services:
+  clickhouse:
+    image: "clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-latest}"
+    container_name: "rowbinary-logs-demo-clickhouse"
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
+    ports:
+      - "8123:8123" # HTTP interface (used by the demo)
+      - "9000:9000" # native protocol
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - "clickhouse-data:/var/lib/clickhouse"
+    healthcheck:
+      test:
+        ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  clickhouse-data:

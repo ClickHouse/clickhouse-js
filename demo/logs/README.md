@@ -33,15 +33,14 @@ hot path.
 ## Prerequisites
 
 - Node 18+ (built/tested on Node 24)
-- A running ClickHouse. The clickhouse-js repo ships one via Docker — from the
-  **repo root**:
+- A running ClickHouse. This demo ships a self-contained one — from **this
+  directory** (`demo/logs`):
 
   ```bash
   docker compose up -d
   ```
 
-  That exposes HTTP on `localhost:8123` with the default user and no password,
-  which is exactly what this demo defaults to.
+  That exposes HTTP on `localhost:8123` with the default user and no password.
 
 ## Run it
 
