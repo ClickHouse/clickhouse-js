@@ -47,9 +47,7 @@
     "lint:fix": "eslint . --fix",
     "build": "rm -rf dist; tsc"
   },
-  "dependencies": {
-    "@clickhouse/client-common": "1.23.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "simdjson": "^0.9.2"
   }

@@ -8,7 +8,7 @@ import type {
   ConnPingResult,
   ConnQueryResult,
   ResponseHeaders,
-} from "@clickhouse/client-common";
+} from "../common/index";
 import {
   buildMultipartBody,
   serializeQueryParamsForUrl,
@@ -21,7 +21,7 @@ import {
   transformUrl,
   withCompressionHeaders,
   withHttpSettings,
-} from "@clickhouse/client-common";
+} from "../common/index";
 import { getAsText } from "../utils";
 
 type WebInsertParams<T> = Omit<

@@ -6,6 +6,10 @@
 
 # 1.22.0
 
+## Migration Notes
+
+- The `@clickhouse/client-common` package is deprecated. `@clickhouse/client` (Node.js) and `@clickhouse/client-web` (Web) no longer depend on it; the shared code is now bundled into each client package. Everything previously importable from `@clickhouse/client-common` should be imported from `@clickhouse/client` or `@clickhouse/client-web` instead. The `@clickhouse/client-common` package itself will no longer receive updates. ([#845])
+
 ## New features
 
 - (Node.js) The `compression.request` / `compression.response` client options now accept an explicit codec via an object, in addition to the existing boolean: `true` keeps gzip (backwards compatible), and `{ codec: "zstd" }` selects zstd. The object form is intentionally extensible for future codecs and codec-specific options. zstd typically yields a similar-or-better ratio than gzip at noticeably lower CPU cost (gzip/DEFLATE is comparatively CPU-heavy and decompressed single-threaded by the ClickHouse server), and it uses the built-in `zlib` zstd support, so it requires **Node.js >= 22.15.0** (`@clickhouse/client` throws a clear error at client creation otherwise). Response decompression is driven by the server's actual `Content-Encoding`, so it degrades gracefully. The request object form also accepts an optional `level` (`{ codec, level }`) to set the codec-specific compression level (zlib level for gzip, zstd compression level for zstd); the response compression level is controlled by the server. Supported only by `@clickhouse/client` (Node.js); `@clickhouse/client-web` rejects the `zstd` codec at client creation.
@@ -70,6 +74,7 @@ await client.query({
 [#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
 [#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
 [#828]: https://github.com/ClickHouse/clickhouse-js/pull/828
+[#845]: https://github.com/ClickHouse/clickhouse-js/pull/845
 [#864]: https://github.com/ClickHouse/clickhouse-js/pull/864
 
 ## Bug Fixes

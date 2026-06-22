@@ -29,6 +29,10 @@ The source packages under [`packages/`](packages) are:
 
 - `client-common` — platform-agnostic shared code (config, query-param formatting, multipart
   assembly, URL handling, result sets, etc.). It must not depend on Node.js-only or Web-only APIs.
+  The published `@clickhouse/client-common` package is **deprecated**: `client-node` and `client-web`
+  no longer depend on it and instead bundle its sources via the `src/common` symlink
+  (`packages/client-node/src/common` and `packages/client-web/src/common` both point to
+  `packages/client-common/src`), importing from it with relative paths (e.g. `./common/index`).
 - `client-node` (`@clickhouse/client`) — the Node.js client.
 - `client-web` (`@clickhouse/client-web`) — the Web/edge client.
 

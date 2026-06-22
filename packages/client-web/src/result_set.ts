@@ -8,17 +8,17 @@ import type {
   ResultJSONType,
   ResultStream,
   Row,
-} from "@clickhouse/client-common";
+} from "./common/index";
 import {
   CARET_RETURN,
   extractErrorAtTheEndOfChunk,
   recordSpanError,
-} from "@clickhouse/client-common";
+} from "./common/index";
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
   validateStreamFormat,
-} from "@clickhouse/client-common";
+} from "./common/index";
 import { getAsText } from "./utils";
 
 const NEWLINE = 0x0a as const;
