@@ -120,9 +120,7 @@ function EmptyState({ message }: { message?: string | null }) {
     <div className="empty">
       <p>No logs to show{message ? `: ${message}` : "."}</p>
       <p>Make sure ClickHouse is running and the table is seeded:</p>
-      <pre>
-        {`# from demo/logs\ndocker compose up -d\nnpm run seed`}
-      </pre>
+      <pre>{`# from demo/logs\ndocker compose up -d\nnpm run seed`}</pre>
     </div>
   );
 }
