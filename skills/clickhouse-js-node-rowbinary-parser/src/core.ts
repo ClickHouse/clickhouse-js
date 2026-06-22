@@ -25,6 +25,13 @@ export class RowBinaryState {
   pos = 0;
 
   /**
+   * Node-only skill, so the input is a `Buffer`: number reads go through
+   * {@link RowBinaryState.view} (DataView), while `String`/`FixedString` use the
+   * fast `buf.toString("utf8", ...)`.
+   */
+  readonly buf: Buffer;
+
+  /**
    * `DataView` over the same bytes, for fixed-width integer/float reads. Built
    * with the buffer's own `byteOffset`/`byteLength`: a `Buffer` is often a window
    * into a larger pooled `ArrayBuffer`, so `new DataView(buf.buffer)` alone would
@@ -32,7 +39,8 @@ export class RowBinaryState {
    */
   readonly view: DataView;
 
-  constructor(readonly buf: Buffer) {
+  constructor(buf: Buffer) {
+    this.buf = buf;
     this.view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   }
 }
