@@ -19,6 +19,12 @@
   },
   "type": "module",
   "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/reader.js",
   "module": "./dist/reader.js",
   "types": "./dist/reader.d.ts",
