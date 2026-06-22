@@ -1,15 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { readDynamic } from "../src/dynamic.js";
 import { readJSON } from "../src/json.js";
 
 const J = "SETTINGS allow_experimental_json_type = 1, enable_json_type = 1";
 
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(
-    await query(`SELECT ${expr} ${J} FORMAT RowBinary`),
-  );
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(await query(`SELECT ${expr} ${J} FORMAT RowBinary`));
 }
 
 describe("readJSON", () => {
@@ -61,8 +59,8 @@ describe("readJSON", () => {
   // JSON nested inside a Dynamic: the 0x30 tag's type-encoding header precedes
   // the body, which readDynamicType consumes before delegating to readJSON.
   describe("inside a Dynamic (tag 0x30, with the type-encoding header)", () => {
-    async function dyn(expr: string): Promise<RowBinaryState> {
-      return new RowBinaryState(
+    async function dyn(expr: string): Promise<Cursor> {
+      return new Cursor(
         await query(
           `SELECT CAST(${expr} AS Dynamic) ${J}, allow_experimental_dynamic_type = 1 FORMAT RowBinary`,
         ),
@@ -92,7 +90,7 @@ describe("readJSON", () => {
     it("throws NeedMoreData for every incomplete prefix (0 .. full.length-1)", async () => {
       const full = await query(`SELECT '{"a":1}'::JSON ${J} FORMAT RowBinary`);
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readJSON(r);

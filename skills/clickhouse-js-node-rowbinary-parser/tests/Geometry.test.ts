@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { readGeometry } from "../src/geo.js";
 
 // Geometry's variant has "similar" alternatives (LineString/Ring), so the type
 // needs allow_suspicious_variant_types; the value still casts through a geo type.
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(
     await query(
       `SELECT ${expr} SETTINGS allow_suspicious_variant_types = 1 FORMAT RowBinary`,
     ),
@@ -50,7 +50,7 @@ describe("readGeometry", () => {
         "SELECT CAST(CAST((1.5, 2.5) AS Point) AS Geometry) SETTINGS allow_suspicious_variant_types = 1 FORMAT RowBinary",
       );
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readGeometry(r);

@@ -1,11 +1,11 @@
-import { RowBinaryState, advance } from "./core.js";
+import { Cursor, advance } from "./core.js";
 
 /**
  * Read an `IPv4`: stored as a 4-byte little-endian `UInt32`. Returns the raw
  * 32-bit value (the little-endian load already orders the octets); pass it to
  * {@link formatIPv4} for the dotted-quad string.
  */
-export function readIPv4(state: RowBinaryState): number {
+export function readIPv4(state: Cursor): number {
   return state.view.getUint32(advance(state, 4), true);
 }
 
@@ -17,7 +17,7 @@ export function readIPv4(state: RowBinaryState): number {
  * whole response chunk in memory. If the value must outlive the row/response,
  * copy it with `Buffer.from(...)`.
  */
-export function readIPv6(state: RowBinaryState): Buffer {
+export function readIPv6(state: Cursor): Buffer {
   const start = advance(state, 16);
   return state.buf.subarray(start, start + 16);
 }

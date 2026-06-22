@@ -1,4 +1,4 @@
-import { type Reader, RowBinaryState, advance } from "./core.js";
+import { type Reader, Cursor, advance } from "./core.js";
 import { readUVarint } from "./varint.js";
 
 /**
@@ -9,7 +9,7 @@ import { readUVarint } from "./varint.js";
  * columns, read `state.buf.subarray(start, start + len)` and skip the decode to
  * keep the raw bytes.
  */
-export function readString(state: RowBinaryState): string {
+export function readString(state: Cursor): string {
   const len = readUVarint(state);
   const start = advance(state, len);
   return state.buf.toString("utf8", start, start + len);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { readUInt64 } from "../src/integers.js";
 import { coalesceChunks, streamRowBatches } from "../src/stream.js";
 import { readString } from "../src/strings.js";
@@ -115,7 +115,7 @@ describe("coalesceChunks (debounce small chunks before streaming)", () => {
 
   it("composes in front of streamRowBatches: 1-byte chunks decode correctly", async () => {
     type Row = { id: bigint; s: string };
-    const readRow = (s: RowBinaryState): Row => ({
+    const readRow = (s: Cursor): Row => ({
       id: readUInt64(s),
       s: readString(s),
     });

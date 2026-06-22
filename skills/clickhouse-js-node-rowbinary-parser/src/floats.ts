@@ -1,4 +1,4 @@
-import { RowBinaryState, advance } from "./core.js";
+import { Cursor, advance } from "./core.js";
 
 /**
  * Scratch view for widening a `BFloat16`: its 16 bits are the top half of an
@@ -7,12 +7,12 @@ import { RowBinaryState, advance } from "./core.js";
 const bf16Scratch = new DataView(new ArrayBuffer(4));
 
 /** Read a `Float32`: 4 bytes, little-endian IEEE 754 single precision. */
-export function readFloat32(state: RowBinaryState): number {
+export function readFloat32(state: Cursor): number {
   return state.view.getFloat32(advance(state, 4), true);
 }
 
 /** Read a `Float64`: 8 bytes, little-endian IEEE 754 double precision. */
-export function readFloat64(state: RowBinaryState): number {
+export function readFloat64(state: Cursor): number {
   return state.view.getFloat64(advance(state, 8), true);
 }
 
@@ -25,7 +25,7 @@ export function readFloat64(state: RowBinaryState): number {
  * function. That is safe because the read is synchronous; do NOT introduce an
  * `await`/`yield` between the `setUint32` and the `getFloat32`.
  */
-export function readBFloat16(state: RowBinaryState): number {
+export function readBFloat16(state: Cursor): number {
   const bits = state.view.getUint16(advance(state, 2), true);
   bf16Scratch.setUint32(0, bits * 0x10000, true);
   return bf16Scratch.getFloat32(0, true);

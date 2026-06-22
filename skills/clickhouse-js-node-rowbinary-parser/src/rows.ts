@@ -1,4 +1,4 @@
-import { NeedMoreData, type Reader, RowBinaryState } from "./core.js";
+import { NeedMoreData, type Reader } from "./core.js";
 
 /**
  * Drive `readRow` over every row of a plain `RowBinary` result into an array.
@@ -29,7 +29,7 @@ import { NeedMoreData, type Reader, RowBinaryState } from "./core.js";
  *   const drive = readRows(readRow);
  *   let committed = 0;
  *   for (const chunk of chunks) {              // chunk = growing prefix
- *     const s = new RowBinaryState(chunk);
+ *     const s = new Cursor(chunk);
  *     s.pos = committed;
  *     emit(drive(s));                          // complete rows in this chunk
  *     committed = s.pos;                        // start of the straddling row

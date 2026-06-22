@@ -1,4 +1,4 @@
-import { type Reader, RowBinaryState } from "./core.js";
+import { type Reader, Cursor } from "./core.js";
 import { readRows } from "./rows.js";
 
 /** Empty buffer reused as the "no carry" sentinel between chunks. */
@@ -128,7 +128,7 @@ export async function* streamRowBatches<T>(
     const work =
       carry.length === 0 ? incoming : Buffer.concat([carry, incoming]);
 
-    const state = new RowBinaryState(work);
+    const state = new Cursor(work);
     const rows = drive(state);
     if (rows.length > 0) yield rows;
 

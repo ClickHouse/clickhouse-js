@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { type OrderRow, readOrderRow } from "../src/examples/orders.js";
 import { readRows } from "../src/rows.js";
 
@@ -30,7 +30,7 @@ describe("example: orders (UUID / Decimal / Enum via raw VALUES)", () => {
           `(3, 'ffffffff-ffff-ffff-ffff-ffffffffffff', -9.99, 'done')`,
       );
 
-      const r = new RowBinaryState(
+      const r = new Cursor(
         await query(
           `SELECT id, uid, price, status FROM ${t} ORDER BY id FORMAT RowBinary`,
         ),

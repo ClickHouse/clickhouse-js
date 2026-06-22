@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { type ProfileRow, readProfileRow } from "../src/examples/profiles.js";
 import { readRows } from "../src/rows.js";
 
@@ -27,7 +27,7 @@ describe("example: profiles (Array + Nullable via JSONEachRow)", () => {
           rows.map((r) => JSON.stringify(r)).join("\n"),
       );
 
-      const r = new RowBinaryState(
+      const r = new Cursor(
         await query(
           `SELECT id, tags, score FROM ${t} ORDER BY id FORMAT RowBinary`,
         ),

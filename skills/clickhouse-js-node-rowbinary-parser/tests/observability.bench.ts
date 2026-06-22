@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import { query } from "./clickhouse.js";
-import { type Reader, RowBinaryState } from "../src/core.js";
+import { type Reader, Cursor } from "../src/core.js";
 import {
   type ObsRow,
   readObsRow,
@@ -35,7 +35,7 @@ const BUF = await query(
 );
 
 function decodeAll(read: Reader<ObsRow>): ObsRow[] {
-  const s = new RowBinaryState(BUF);
+  const s = new Cursor(BUF);
   const out: ObsRow[] = [];
   while (s.pos < s.buf.length) out.push(read(s));
   return out;

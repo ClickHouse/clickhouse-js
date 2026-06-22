@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import { query } from "./clickhouse.js";
-import { type Reader, RowBinaryState } from "../src/core.js";
+import { type Reader, Cursor } from "../src/core.js";
 import {
   type IotRow,
   readIotRow,
@@ -41,7 +41,7 @@ const JSON_COMPACT_BUF = await query(`${SELECT} FORMAT JSONCompactEachRow`);
 // --- decoders ---------------------------------------------------------------
 
 function decodeRowBinary(read: Reader<IotRow>): IotRow[] {
-  const s = new RowBinaryState(RB_BUF);
+  const s = new Cursor(RB_BUF);
   const out: IotRow[] = [];
   while (s.pos < s.buf.length) out.push(read(s));
   return out;

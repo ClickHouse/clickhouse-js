@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { type EventRow, readEventRow } from "../src/examples/events.js";
 import { readRows } from "../src/rows.js";
 
@@ -29,7 +29,7 @@ describe("example: events (scalars via JSONEachRow)", () => {
           rows.map((r) => JSON.stringify(r)).join("\n"),
       );
 
-      const r = new RowBinaryState(
+      const r = new Cursor(
         await query(
           `SELECT id, name, ts FROM ${t} ORDER BY id FORMAT RowBinary`,
         ),

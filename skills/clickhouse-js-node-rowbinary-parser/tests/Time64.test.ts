@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { formatTime64, readTime64 } from "../src/time.js";
 
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(
     await query(
       `SELECT ${expr} SETTINGS enable_time_time64_type = 1 FORMAT RowBinary`,
     ),
@@ -32,7 +32,7 @@ describe("readTime64", () => {
         "SELECT toTime64('12:34:56.123', 3) SETTINGS enable_time_time64_type = 1 FORMAT RowBinary",
       );
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readTime64(3)(r);

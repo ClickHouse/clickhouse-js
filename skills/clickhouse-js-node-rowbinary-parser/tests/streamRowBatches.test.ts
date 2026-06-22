@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { readUInt64 } from "../src/integers.js";
 import { type SmallChunkStats, streamRowBatches } from "../src/stream.js";
 import { readString } from "../src/strings.js";
@@ -20,7 +20,7 @@ async function* chunked(buf: Buffer, size: number): AsyncGenerator<Buffer> {
 }
 
 type Row = { id: bigint; s: string };
-const readRow = (s: RowBinaryState): Row => ({
+const readRow = (s: Cursor): Row => ({
   id: readUInt64(s),
   s: readString(s),
 });

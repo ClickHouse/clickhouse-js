@@ -7,7 +7,7 @@ import {
   readTuple,
   readVariant,
 } from "../src/composite.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { readDynamic } from "../src/dynamic.js";
 import { readInt32, readUInt8 } from "../src/integers.js";
 import { readJSON } from "../src/json.js";
@@ -41,11 +41,11 @@ const SETTINGS = [
   "allow_suspicious_low_cardinality_types = 1",
 ].join(", ");
 
-async function framed(expr: string): Promise<RowBinaryState> {
+async function framed(expr: string): Promise<Cursor> {
   const sql =
     `SELECT toInt32(${LEAD}) AS a, ${expr} AS x, toInt32(${TRAIL}) AS b` +
     ` SETTINGS ${SETTINGS} FORMAT RowBinary`;
-  return new RowBinaryState(await query(sql));
+  return new Cursor(await query(sql));
 }
 
 // Shared inner readers, written once so the nesting reads cleanly below.

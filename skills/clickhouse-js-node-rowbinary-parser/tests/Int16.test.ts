@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { readInt16 } from "../src/integers.js";
 
 /**
  * Int16 is 2 bytes, little-endian, two's-complement. Each case selects the
  * value with `FORMAT RowBinary` and decodes the bytes the server produces.
  */
-async function int16Reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(
-    await query(`SELECT toInt16(${expr}) FORMAT RowBinary`),
-  );
+async function int16Reader(expr: string): Promise<Cursor> {
+  return new Cursor(await query(`SELECT toInt16(${expr}) FORMAT RowBinary`));
 }
 
 describe("readInt16", () => {
@@ -52,14 +50,14 @@ describe("readInt16", () => {
     const ab = Uint8Array.from([0xaa, 0xbb, 0xcc, 0x02, 0x01]).buffer; // 258 at offset 3
     const sub = Buffer.from(ab, 3, 2);
     expect(sub.byteOffset).toBe(3);
-    expect(readInt16(new RowBinaryState(sub))).toBe(258);
+    expect(readInt16(new Cursor(sub))).toBe(258);
   });
 
   describe("advance() edge cases", () => {
     it("throws NeedMoreData for every incomplete prefix (0 .. full.length-1)", async () => {
       const full = await query("SELECT toInt16(-12345) FORMAT RowBinary");
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readInt16(r);
