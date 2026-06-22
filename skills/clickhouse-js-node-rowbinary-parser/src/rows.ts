@@ -1,4 +1,4 @@
-import { NeedMoreData, type Reader, Cursor } from "./core.js";
+import { NeedMoreData, type Reader } from "./core.js";
 
 /**
  * Drive `readRow` over every row of a plain `RowBinary` result into an array.

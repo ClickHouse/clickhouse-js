@@ -20,11 +20,14 @@ export default async function LogsPageView({
   const page = Number(pageParam ?? "1");
 
   let data: LogsPage | null = null;
-  let error: string | null = null;
+  let failed = false;
   try {
     data = await fetchLogsPage(page, PAGE_SIZE);
   } catch (e) {
-    error = e instanceof Error ? e.message : String(e);
+    // The underlying error can carry ClickHouse SQL/server details, so log it
+    // server-side and show the user a generic message instead.
+    console.error("fetchLogsPage failed:", e);
+    failed = true;
   }
 
   return (
@@ -38,8 +41,8 @@ export default async function LogsPageView({
         </p>
       </header>
 
-      {error || !data ? (
-        <EmptyState message={error} />
+      {failed || !data ? (
+        <EmptyState message="Couldn't load logs from ClickHouse." />
       ) : data.total === 0 ? (
         <EmptyState message="The demo_logs table is empty." />
       ) : (
@@ -67,7 +70,9 @@ function LogsTable({ data }: { data: LogsPage }) {
         </thead>
         <tbody>
           {data.rows.map((row) => (
-            <tr key={row.traceId}>
+            // Real logs can share a trace across rows; combine with the
+            // timestamp to keep React keys unique.
+            <tr key={`${row.traceId}-${row.timestamp.getTime()}`}>
               <td className="mono">{fmtTime(row.timestamp)}</td>
               <td>
                 <span className={`level ${row.level}`}>{row.level}</span>
@@ -116,7 +121,7 @@ function EmptyState({ message }: { message?: string | null }) {
       <p>No logs to show{message ? `: ${message}` : "."}</p>
       <p>Make sure ClickHouse is running and the table is seeded:</p>
       <pre>
-        {`# from the repo root\ndocker compose up -d\n\n# from demo/logs\nnpm run seed`}
+        {`# from demo/logs\ndocker compose up -d\nnpm run seed`}
       </pre>
     </div>
   );

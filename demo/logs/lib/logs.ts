@@ -15,7 +15,7 @@ import {
   type Reader,
 } from "@clickhouse/rowbinary";
 
-import { command, queryRowBinary } from "./clickhouse";
+import { queryRowBinary } from "./clickhouse";
 
 export const LOGS_TABLE = "demo_logs";
 
@@ -151,31 +151,4 @@ async function fetchTotal(): Promise<number> {
   const s = new Cursor(buffer);
   // count() is UInt64 → bigint on the wire; the table is demo-sized, so it fits a Number.
   return Number(s.view.getBigUint64(0, true));
-}
-
-/** True if the demo table exists and has at least one row. */
-export async function tableHasData(): Promise<boolean> {
-  try {
-    return (await fetchTotal()) > 0;
-  } catch {
-    return false;
-  }
-}
-
-/** Used by the seed script to (re)create the table. */
-export async function createTable(): Promise<void> {
-  await command(
-    `CREATE TABLE IF NOT EXISTS ${LOGS_TABLE} (
-       timestamp   DateTime64(3),
-       level       Enum8('debug' = 1, 'info' = 2, 'warn' = 3, 'error' = 4),
-       service     LowCardinality(String),
-       host        IPv4,
-       trace_id    UUID,
-       status      UInt16,
-       duration_ms Float64,
-       message     String
-     )
-     ENGINE = MergeTree
-     ORDER BY timestamp`,
-  );
 }

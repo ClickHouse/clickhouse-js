@@ -51,19 +51,3 @@ export async function queryRowBinary(sql: string): Promise<Buffer> {
   const arrayBuffer = await res.arrayBuffer();
   return Buffer.from(arrayBuffer);
 }
-
-/** Run a statement that returns no rows (DDL / INSERT). */
-export async function command(sql: string): Promise<void> {
-  const res = await fetch(endpoint(), {
-    method: "POST",
-    headers: authHeaders(),
-    body: sql,
-  });
-  if (!res.ok) {
-    throw new Error(
-      `ClickHouse command failed (${res.status}): ${await res.text()}`,
-    );
-  }
-  // Drain the (empty) body so the socket can be reused.
-  await res.arrayBuffer();
-}

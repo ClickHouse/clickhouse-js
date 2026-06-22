@@ -50,7 +50,7 @@ From this directory (`demo/logs`):
 
 ```bash
 npm install          # installs Next + the local @clickhouse/rowbinary tarball
-npm run seed         # create demo_logs and insert 1000 rows (pass a number to change: npm run seed 50000)
+npm run seed         # create demo_logs and insert 1000 rows (pass a number to change: npm run seed -- 50000)
 npm run dev          # http://localhost:3000
 ```
 

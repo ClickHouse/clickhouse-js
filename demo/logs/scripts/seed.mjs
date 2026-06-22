@@ -10,6 +10,10 @@
  *   node scripts/seed.mjs           # 1000 rows
  *   node scripts/seed.mjs 50000     # custom row count
  *
+ * Via the package script, forward the count after `--`:
+ *
+ *   npm run seed -- 50000
+ *
  * Connection comes from the same env vars the app uses (CLICKHOUSE_URL etc.),
  * defaulting to this repo's docker-compose ClickHouse on localhost:8123.
  */
