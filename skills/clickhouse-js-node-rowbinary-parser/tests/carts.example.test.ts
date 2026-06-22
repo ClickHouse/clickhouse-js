@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { type CartRow, readCartRow } from "../src/examples/carts.js";
 import { readRows } from "../src/rows.js";
 
@@ -37,7 +37,7 @@ describe("example: carts (nested generics via JSONEachRow)", () => {
           rows.map((r) => JSON.stringify(r)).join("\n"),
       );
 
-      const r = new RowBinaryState(
+      const r = new Cursor(
         await query(
           `SELECT cart_id, items, discounts FROM ${t} ORDER BY cart_id FORMAT RowBinary`,
         ),

@@ -1,4 +1,4 @@
-import { RowBinaryState, advance } from "./core.js";
+import { Cursor, advance } from "./core.js";
 
 /**
  * Read a LEB128 unsigned varint (used for string/array lengths).
@@ -26,7 +26,7 @@ import { RowBinaryState, advance } from "./core.js";
  * rather than toggling here. E.g. a `readUVarint32` for lengths guaranteed to be
  * 32-bit would unroll only the first five bytes and throw past 2^32 - 1.
  */
-export function readUVarint(state: RowBinaryState): number {
+export function readUVarint(state: Cursor): number {
   // Each byte reserves its space through `advance(1)` (the bounds check), but
   // the read itself stays inlined as `state.buf[...]` rather than calling
   // readUInt8 — this is the hottest loop in the reader.

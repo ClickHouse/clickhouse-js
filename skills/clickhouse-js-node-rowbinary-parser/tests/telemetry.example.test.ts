@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import {
   type TelemetryRow,
   readTelemetryRow,
@@ -47,7 +47,7 @@ describe("example: telemetry (composite columns via JSONEachRow)", () => {
           rows.map((r) => JSON.stringify(r)).join("\n"),
       );
 
-      const r = new RowBinaryState(
+      const r = new Cursor(
         await query(
           `SELECT host, tags, cpu, region, window FROM ${t} ORDER BY host FORMAT RowBinary`,
         ),

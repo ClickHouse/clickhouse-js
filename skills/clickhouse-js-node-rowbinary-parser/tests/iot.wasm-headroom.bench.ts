@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { type IotRow, readIotRowFast } from "../src/examples/iot.js";
 
 /**
@@ -44,7 +44,7 @@ const ROW_BYTES = 41;
 
 // 1. Current output contract: an array of row objects.
 function decodeRows(): IotRow[] {
-  const s = new RowBinaryState(BUF);
+  const s = new Cursor(BUF);
   const out: IotRow[] = [];
   while (s.pos < s.buf.length) out.push(readIotRowFast(s));
   return out;

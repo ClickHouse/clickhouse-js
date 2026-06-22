@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { readUInt128 } from "../src/integers.js";
 
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(await query(`SELECT ${expr} FORMAT RowBinary`));
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));
 }
 
 const MAX = 340282366920938463463374607431768211455n; // 2^128 - 1
@@ -31,7 +31,7 @@ describe("readUInt128", () => {
     it("throws NeedMoreData for every incomplete prefix (0 .. full.length-1)", async () => {
       const full = await query("SELECT toUInt128(5) FORMAT RowBinary");
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readUInt128(r);

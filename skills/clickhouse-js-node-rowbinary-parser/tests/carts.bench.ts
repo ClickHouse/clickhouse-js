@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import { query } from "./clickhouse.js";
-import { type Reader, RowBinaryState } from "../src/core.js";
+import { type Reader, Cursor } from "../src/core.js";
 import {
   type CartRow,
   readCartRow,
@@ -22,7 +22,7 @@ const BUF = await query(
 );
 
 function decodeAll(read: Reader<CartRow>): CartRow[] {
-  const s = new RowBinaryState(BUF);
+  const s = new Cursor(BUF);
   const out: CartRow[] = [];
   while (s.pos < s.buf.length) out.push(read(s));
   return out;

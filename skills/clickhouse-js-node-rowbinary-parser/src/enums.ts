@@ -1,4 +1,4 @@
-import { RowBinaryState, advance } from "./core.js";
+import { Cursor, advance } from "./core.js";
 
 /**
  * Read an `Enum8`: the value's underlying signed `Int8`. The name<->value map
@@ -13,7 +13,7 @@ import { RowBinaryState, advance } from "./core.js";
  *     const STATUS = { 1: "active", 2: "closed" } as const;
  *     const readStatusEnum = (s) => STATUS[readInt8(s) as keyof typeof STATUS];
  */
-export function readEnum8(state: RowBinaryState): number {
+export function readEnum8(state: Cursor): number {
   return state.view.getInt8(advance(state, 1));
 }
 
@@ -23,6 +23,6 @@ export function readEnum8(state: RowBinaryState): number {
  * keeping the number, or a generated per-enum reader with a baked-in constant
  * map so the JIT can optimize each enum's decode independently.
  */
-export function readEnum16(state: RowBinaryState): number {
+export function readEnum16(state: Cursor): number {
   return state.view.getInt16(advance(state, 2), true);
 }

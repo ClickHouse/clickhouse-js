@@ -1,4 +1,4 @@
-import { RowBinaryState, advance } from "./core.js";
+import { Cursor, advance } from "./core.js";
 
 /**
  * `UUID_HEX16[b]` packs the two lowercase ASCII hex chars of byte `b`, low char
@@ -29,7 +29,7 @@ UUID_OUT[8] = UUID_OUT[13] = UUID_OUT[18] = UUID_OUT[23] = 0x2d; // '-'
  * FAST ALTERNATIVE: if you stringify every UUID, use {@link formatUUIDTable}
  * (lookup table, no BigInt, ~1.6x faster).
  */
-export function readUUID(state: RowBinaryState): Buffer {
+export function readUUID(state: Cursor): Buffer {
   const start = advance(state, 16);
   return state.buf.subarray(start, start + 16);
 }
@@ -42,7 +42,7 @@ export function readUUID(state: RowBinaryState): Buffer {
  * `Buffer.readBigUInt64LE`: V8 inlines the DataView accessors, measurably faster
  * for 8-byte reads. For the canonical string, use {@link readUUID} + {@link formatUUID}.
  */
-export function readUUIDBigInt(state: RowBinaryState): bigint {
+export function readUUIDBigInt(state: Cursor): bigint {
   const start = advance(state, 16);
   const hi = state.view.getBigUint64(start, true);
   const lo = state.view.getBigUint64(start + 8, true);
@@ -55,7 +55,7 @@ export function readUUIDBigInt(state: RowBinaryState): bigint {
  * (skips `hi << 64 | lo`) and a compact two-value key for comparison/dedup. For
  * the canonical string, use {@link readUUID} + {@link formatUUID}.
  */
-export function readUUIDHiLo(state: RowBinaryState): [hi: bigint, lo: bigint] {
+export function readUUIDHiLo(state: Cursor): [hi: bigint, lo: bigint] {
   const start = advance(state, 16);
   const hi = state.view.getBigUint64(start, true);
   const lo = state.view.getBigUint64(start + 8, true);

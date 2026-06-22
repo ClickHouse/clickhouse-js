@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { readInt8 } from "../src/integers.js";
 
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(await query(`SELECT ${expr} FORMAT RowBinary`));
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));
 }
 
 describe("readInt8", () => {
@@ -30,7 +30,7 @@ describe("readInt8", () => {
     it("throws NeedMoreData for every incomplete prefix (0 .. full.length-1)", async () => {
       const full = await query("SELECT toInt8(-1) FORMAT RowBinary");
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readInt8(r);

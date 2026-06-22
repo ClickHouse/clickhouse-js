@@ -7,7 +7,7 @@ import {
   readTuple,
   readVariant,
 } from "../src/composite.js";
-import { NeedMoreData, type Reader, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, type Reader, Cursor } from "../src/core.js";
 import { readInt32, readUInt8 } from "../src/integers.js";
 import { readString } from "../src/strings.js";
 
@@ -258,14 +258,14 @@ describe("type combinations (generated, one-leaf-at-a-time)", () => {
       const full = await framedBytes(c.expr);
 
       // 1. framed: decodes correctly AND consumes exactly its bytes.
-      const r = new RowBinaryState(full);
+      const r = new Cursor(full);
       expect(readInt32(r)).toBe(LEAD);
       expect(c.read(r)).toEqual(c.expected);
       expect(readInt32(r), `${c.label}: x over/under-read`).toBe(TRAIL);
 
       // 2. truncation sweep: every incomplete prefix must starve, never desync.
       for (let len = 0; len < full.length; len++) {
-        const p = new RowBinaryState(full.subarray(0, len));
+        const p = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readInt32(p);

@@ -1,4 +1,4 @@
-import { type Reader, RowBinaryState } from "./core.js";
+import { type Reader, Cursor } from "./core.js";
 import { readInt32, readInt64, readUInt16, readUInt32 } from "./integers.js";
 
 /**
@@ -18,7 +18,7 @@ export type Nanoseconds = number;
  * SAFE TO TOGGLE: a `Date` is an object allocation per value. On a hot path that
  * only needs the calendar number, read the raw `UInt16` (days) instead.
  */
-export function readDate(state: RowBinaryState): Date {
+export function readDate(state: Cursor): Date {
   return new Date(readUInt16(state) * 86_400_000);
 }
 
@@ -27,7 +27,7 @@ export function readDate(state: RowBinaryState): Date {
  * returned as a JS `Date` at UTC midnight (pre-1970 dates are negative day
  * counts, which `Date` handles).
  */
-export function readDate32(state: RowBinaryState): Date {
+export function readDate32(state: Cursor): Date {
   return new Date(readInt32(state) * 86_400_000);
 }
 
@@ -36,7 +36,7 @@ export function readDate32(state: RowBinaryState): Date {
  * as a JS `Date` (exact at second resolution). The instant is UTC-based; a
  * column's timezone is display metadata, not in the bytes.
  */
-export function readDateTime(state: RowBinaryState): Date {
+export function readDateTime(state: Cursor): Date {
   return new Date(readUInt32(state) * 1000);
 }
 
@@ -76,7 +76,7 @@ export function readDateTime64(precision: number): Reader<[Date, Nanoseconds]> {
  * instant is represented losslessly with no separate fraction. Specialized
  * variant of {@link readDateTime64} with the scale baked in.
  */
-export function readDateTime64P3(state: RowBinaryState): Date {
+export function readDateTime64P3(state: Cursor): Date {
   return new Date(Number(readInt64(state)));
 }
 
@@ -85,7 +85,7 @@ export function readDateTime64P3(state: RowBinaryState): Date {
  * truncated to whole seconds plus the sub-second remainder in microseconds.
  * Specialized variant of {@link readDateTime64}.
  */
-export function readDateTime64P6(state: RowBinaryState): [Date, Microseconds] {
+export function readDateTime64P6(state: Cursor): [Date, Microseconds] {
   const ticks = readInt64(state);
   let sec = ticks / 1_000_000n;
   let frac = ticks % 1_000_000n; // microseconds within the second
@@ -101,7 +101,7 @@ export function readDateTime64P6(state: RowBinaryState): [Date, Microseconds] {
  * truncated to whole seconds plus the sub-second remainder in nanoseconds.
  * Specialized variant of {@link readDateTime64} with the scale baked in.
  */
-export function readDateTime64P9(state: RowBinaryState): [Date, Nanoseconds] {
+export function readDateTime64P9(state: Cursor): [Date, Nanoseconds] {
   const ticks = readInt64(state);
   let sec = ticks / 1_000_000_000n;
   let frac = ticks % 1_000_000_000n; // nanoseconds within the second

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { readVariant } from "../src/composite.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { readFloat64 } from "../src/floats.js";
 import { readUInt64, readUInt8 } from "../src/integers.js";
 import { readString } from "../src/strings.js";
 
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(
     await query(
       `SELECT ${expr} SETTINGS allow_experimental_variant_type = 1 FORMAT RowBinary`,
     ),
@@ -50,7 +50,7 @@ describe("readVariant", () => {
         "SELECT CAST(42 AS Variant(UInt8, String)) SETTINGS allow_experimental_variant_type = 1 FORMAT RowBinary",
       );
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readVariant([readString, readUInt8])(r);

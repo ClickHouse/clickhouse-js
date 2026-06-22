@@ -1,4 +1,4 @@
-import { RowBinaryState } from "./core.js";
+import { Cursor } from "./core.js";
 import { readInt64 } from "./integers.js";
 
 /** The 11 `Interval` units, in ClickHouse's ascending order. */
@@ -49,6 +49,6 @@ export type IntervalValue = readonly [count: bigint, unit: IntervalUnit];
  * all; the caller knows the unit from the column type. Returns a `bigint`; wrap
  * in `Number(...)` if the counts are known to fit in 53 bits.
  */
-export function readInterval(state: RowBinaryState): bigint {
+export function readInterval(state: Cursor): bigint {
   return readInt64(state);
 }

@@ -1,4 +1,4 @@
-import { RowBinaryState } from "./core.js";
+import { Cursor } from "./core.js";
 import { readUVarint } from "./varint.js";
 import { readString } from "./strings.js";
 import { readDynamic } from "./dynamic.js";
@@ -22,7 +22,7 @@ import { readDynamic } from "./dynamic.js";
  * serializes those paths' values WITHOUT a type tag, so they cannot be decoded
  * without the schema; read each typed path with its known `T` reader instead.
  */
-export function readJSON(state: RowBinaryState): Map<string, unknown> {
+export function readJSON(state: Cursor): Map<string, unknown> {
   const n = readUVarint(state);
   const out = new Map<string, unknown>();
   for (let i = 0; i < n; i++) {

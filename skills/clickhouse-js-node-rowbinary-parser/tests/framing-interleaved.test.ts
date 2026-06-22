@@ -7,7 +7,7 @@ import {
   readTuple,
   readVariant,
 } from "../src/composite.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { readDynamic } from "../src/dynamic.js";
 import { readInt32, readUInt8 } from "../src/integers.js";
 import { readJSON } from "../src/json.js";
@@ -39,11 +39,11 @@ const SETTINGS = [
 ].join(", ");
 
 /** Build `i32(LEAD), X, Y, i32(TRAIL)` and return a reader over the bytes. */
-async function framed(exprX: string, exprY: string): Promise<RowBinaryState> {
+async function framed(exprX: string, exprY: string): Promise<Cursor> {
   const sql =
     `SELECT toInt32(${LEAD}) AS a, ${exprX} AS x, ${exprY} AS y,` +
     ` toInt32(${TRAIL}) AS b SETTINGS ${SETTINGS} FORMAT RowBinary`;
-  return new RowBinaryState(await query(sql));
+  return new Cursor(await query(sql));
 }
 
 // Inner-reader shorthands, as in framing-nested.test.ts.

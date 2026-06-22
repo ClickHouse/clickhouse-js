@@ -5,7 +5,7 @@
  * sub-parsers a given result actually needs — the latter is what a generated
  * parser should do, copying just the modules its column types require.
  *
- * - core      — RowBinaryState, Reader<T>, advance, NeedMoreData
+ * - core      — Cursor, Reader<T>, advance, NeedMoreData
  * - varint    — readUVarint
  * - integers  — readUInt8..readUInt256, readInt8..readInt256
  * - bool / enums / floats

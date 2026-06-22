@@ -1,7 +1,7 @@
 import "server-only";
 
 import {
-  RowBinaryState,
+  Cursor,
   readRows,
   readDateTime64P3,
   readEnum8,
@@ -133,7 +133,7 @@ export async function fetchLogsPage(
     fetchTotal(),
   ]);
 
-  const rows = readLogRows(new RowBinaryState(buffer));
+  const rows = readLogRows(new Cursor(buffer));
   return {
     rows,
     page: safePage,
@@ -148,7 +148,7 @@ async function fetchTotal(): Promise<number> {
   const buffer = await queryRowBinary(
     `SELECT count() FROM ${LOGS_TABLE} FORMAT RowBinary`,
   );
-  const s = new RowBinaryState(buffer);
+  const s = new Cursor(buffer);
   // count() is UInt64 → bigint on the wire; the table is demo-sized, so it fits a Number.
   return Number(s.view.getBigUint64(0, true));
 }

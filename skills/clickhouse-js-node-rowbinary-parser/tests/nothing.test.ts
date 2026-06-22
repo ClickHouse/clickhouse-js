@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { readArray, readNullable } from "../src/composite.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { readNothing } from "../src/nothing.js";
 
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(await query(`SELECT ${expr} FORMAT RowBinary`));
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));
 }
 
 /**
@@ -43,7 +43,7 @@ describe("Nothing (zero-width — only appears as Array(Nothing) / Nullable(Noth
     it("Array(Nothing): throws NeedMoreData for every incomplete prefix", async () => {
       const full = await query("SELECT [] FORMAT RowBinary"); // single 0x00 count byte
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readArray(() => {
@@ -59,7 +59,7 @@ describe("Nothing (zero-width — only appears as Array(Nothing) / Nullable(Noth
     it("Nullable(Nothing): throws NeedMoreData for every incomplete prefix", async () => {
       const full = await query("SELECT NULL FORMAT RowBinary"); // single 0x01 flag byte
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readNullable(() => {

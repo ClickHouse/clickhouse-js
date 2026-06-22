@@ -1,4 +1,4 @@
-import { RowBinaryState } from "./core.js";
+import { Cursor } from "./core.js";
 import { readFloat64 } from "./floats.js";
 import { readUInt8 } from "./integers.js";
 import { readUVarint } from "./varint.js";
@@ -10,7 +10,7 @@ export type Point = [x: number, y: number];
 // are monomorphic (no sub-readers) — the generator can emit them as-is.
 
 /** Read a `Point`: `Tuple(Float64, Float64)` -> `[x, y]`. */
-export function readPoint(state: RowBinaryState): Point {
+export function readPoint(state: Cursor): Point {
   const x = readFloat64(state);
   const y = readFloat64(state);
   return [x, y];
@@ -21,7 +21,7 @@ export function readPoint(state: RowBinaryState): Point {
  * `LineString` has the identical wire (see {@link readLineString}). `readPoint`
  * is inlined here (two `readFloat64`s) to drop a call per point on this hot path.
  */
-export function readRing(state: RowBinaryState): Point[] {
+export function readRing(state: Cursor): Point[] {
   const n = readUVarint(state);
   const out: Point[] = [];
   for (let i = 0; i < n; i++) {
@@ -36,7 +36,7 @@ export function readRing(state: RowBinaryState): Point[] {
  * Read a `LineString`: `Array(Point)` (identical wire to a `Ring`). Points are
  * inlined (two `readFloat64`s) to drop a call per point on this hot path.
  */
-export function readLineString(state: RowBinaryState): Point[] {
+export function readLineString(state: Cursor): Point[] {
   const n = readUVarint(state);
   const out: Point[] = [];
   for (let i = 0; i < n; i++) {
@@ -48,7 +48,7 @@ export function readLineString(state: RowBinaryState): Point[] {
 }
 
 /** Read a `Polygon`: `Array(Ring)` — the outer ring first, then any holes. */
-export function readPolygon(state: RowBinaryState): Point[][] {
+export function readPolygon(state: Cursor): Point[][] {
   const n = readUVarint(state);
   const out: Point[][] = [];
   for (let i = 0; i < n; i++) out.push(readRing(state));
@@ -56,7 +56,7 @@ export function readPolygon(state: RowBinaryState): Point[][] {
 }
 
 /** Read a `MultiLineString`: `Array(LineString)` (identical wire to a `Polygon`). */
-export function readMultiLineString(state: RowBinaryState): Point[][] {
+export function readMultiLineString(state: Cursor): Point[][] {
   const n = readUVarint(state);
   const out: Point[][] = [];
   for (let i = 0; i < n; i++) out.push(readLineString(state));
@@ -64,7 +64,7 @@ export function readMultiLineString(state: RowBinaryState): Point[][] {
 }
 
 /** Read a `MultiPolygon`: `Array(Polygon)`. */
-export function readMultiPolygon(state: RowBinaryState): Point[][][] {
+export function readMultiPolygon(state: Cursor): Point[][][] {
   const n = readUVarint(state);
   const out: Point[][][] = [];
   for (let i = 0; i < n; i++) out.push(readPolygon(state));
@@ -83,7 +83,7 @@ export function readMultiPolygon(state: RowBinaryState): Point[][][] {
  * which geo type it was. If you need the kind, branch on the discriminant.
  */
 export function readGeometry(
-  state: RowBinaryState,
+  state: Cursor,
 ): Point | Point[] | Point[][] | Point[][][] | null {
   const discriminant = readUInt8(state);
   switch (discriminant) {

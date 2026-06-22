@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { readUInt64 } from "../src/integers.js";
 import { readString } from "../src/strings.js";
 
@@ -19,7 +19,7 @@ import { readString } from "../src/strings.js";
 describe("advance() and NeedMoreData", () => {
   it("throws NeedMoreData when a fixed-width read crosses the end, leaving pos put", async () => {
     const full = await query("SELECT toUInt64(1) FORMAT RowBinary"); // 8 bytes
-    const r = new RowBinaryState(full.subarray(0, 5)); // one byte short of nothing
+    const r = new Cursor(full.subarray(0, 5)); // one byte short of nothing
     let thrown: unknown;
     try {
       readUInt64(r);
@@ -34,7 +34,7 @@ describe("advance() and NeedMoreData", () => {
     // "hello" -> 1 varint length byte (0x05) + 5 bytes. Reveal length + 2 body
     // bytes: the varint read succeeds, the body read starves.
     const full = await query("SELECT 'hello' FORMAT RowBinary"); // 6 bytes
-    const r = new RowBinaryState(full.subarray(0, 3));
+    const r = new Cursor(full.subarray(0, 3));
     let thrown: unknown;
     try {
       readString(r);
@@ -64,7 +64,7 @@ describe("advance() and NeedMoreData", () => {
       let avail = 0;
       while (committed < full.length) {
         avail = Math.min(full.length, avail + chunk);
-        const r = new RowBinaryState(full.subarray(0, avail));
+        const r = new Cursor(full.subarray(0, avail));
         r.pos = committed;
         try {
           while (r.pos < r.buf.length) {

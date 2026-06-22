@@ -1,4 +1,4 @@
-import { type Reader, RowBinaryState } from "./core.js";
+import { type Reader, Cursor } from "./core.js";
 import { readInt32, readInt64 } from "./integers.js";
 
 /** Semantic alias for `number` marking a seconds value (see {@link readTime}). */
@@ -15,7 +15,7 @@ export type ScaledTicks = readonly [ticks: bigint, precision: number];
  * Read a `Time`: 4-byte signed `Int32` seconds-of-day (range ±999:59:59).
  * Returns the raw seconds; pass it to {@link formatTime}.
  */
-export function readTime(state: RowBinaryState): Seconds {
+export function readTime(state: Cursor): Seconds {
   return readInt32(state);
 }
 

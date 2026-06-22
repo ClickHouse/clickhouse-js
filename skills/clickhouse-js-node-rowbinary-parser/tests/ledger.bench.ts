@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import { query } from "./clickhouse.js";
-import { type Reader, RowBinaryState } from "../src/core.js";
+import { type Reader, Cursor } from "../src/core.js";
 import { type DecimalValue, formatDecimal } from "../src/decimals.js";
 import {
   type LedgerRow,
@@ -54,7 +54,7 @@ const JSON_COMPACT_STR_BUF = await query(
 // --- decoders ---------------------------------------------------------------
 
 function decodeRowBinary(read: Reader<LedgerRow>): LedgerRow[] {
-  const s = new RowBinaryState(RB_BUF);
+  const s = new Cursor(RB_BUF);
   const out: LedgerRow[] = [];
   while (s.pos < s.buf.length) out.push(read(s));
   return out;

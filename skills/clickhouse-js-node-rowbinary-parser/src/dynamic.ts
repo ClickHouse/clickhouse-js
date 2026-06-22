@@ -1,4 +1,4 @@
-import { type Reader, RowBinaryState } from "./core.js";
+import { type Reader, Cursor } from "./core.js";
 import { readUVarint } from "./varint.js";
 import {
   readInt8,
@@ -62,7 +62,7 @@ import { readJSON } from "./json.js";
  * For a Dynamic-heavy hot path where the same few types recur, parse the type
  * once and reuse the returned reader across rows instead of re-parsing.
  */
-export function readDynamic(state: RowBinaryState): unknown {
+export function readDynamic(state: Cursor): unknown {
   return readDynamicType(state)(state);
 }
 
@@ -83,7 +83,7 @@ export function readDynamic(state: RowBinaryState): unknown {
  * with the tag value so you can extend this switch for the types your data
  * actually contains.
  */
-export function readDynamicType(state: RowBinaryState): Reader<unknown> {
+export function readDynamicType(state: Cursor): Reader<unknown> {
   const tag = readUInt8(state);
   switch (tag) {
     // Nothing — a stored NULL. Zero value bytes.

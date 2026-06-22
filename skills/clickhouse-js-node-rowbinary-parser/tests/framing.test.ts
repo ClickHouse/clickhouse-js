@@ -10,7 +10,7 @@ import {
   readTupleNamed,
   readVariant,
 } from "../src/composite.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import {
   readDate,
   readDate32,
@@ -93,11 +93,11 @@ const SETTINGS = [
  * the bytes. Each test reads the leading sentinel, X, and the trailing sentinel
  * itself.
  */
-async function framed(expr: string): Promise<RowBinaryState> {
+async function framed(expr: string): Promise<Cursor> {
   const sql =
     `SELECT toInt32(${LEAD}) AS a, ${expr} AS x, toInt32(${TRAIL}) AS b` +
     ` SETTINGS ${SETTINGS} FORMAT RowBinary`;
-  return new RowBinaryState(await query(sql));
+  return new Cursor(await query(sql));
 }
 
 describe("framing: i32, X, i32 — the middle reader must stop at the exact byte", () => {

@@ -21,12 +21,12 @@ export const NeedMoreData = Symbol("RowBinary.NeedMoreData");
  * pulls in only the per-type readers a result needs. `view`/`buf` are public so
  * those free functions can reach them.
  */
-export class RowBinaryState {
+export class Cursor {
   pos = 0;
 
   /**
    * Node-only skill, so the input is a `Buffer`: number reads go through
-   * {@link RowBinaryState.view} (DataView), while `String`/`FixedString` use the
+   * {@link Cursor.view} (DataView), while `String`/`FixedString` use the
    * fast `buf.toString("utf8", ...)`.
    */
   readonly buf: Buffer;
@@ -51,7 +51,7 @@ export class RowBinaryState {
  * `readArray`) take sub-`Reader`s and return a `Reader`, so types compose with no
  * per-element closures.
  */
-export type Reader<T> = (state: RowBinaryState) => T;
+export type Reader<T> = (state: Cursor) => T;
 
 /**
  * Reserve `n` bytes for the next read: bounds-check them, advance the cursor past
@@ -68,7 +68,7 @@ export type Reader<T> = (state: RowBinaryState) => T;
  * for that case can drop `advance` and read against `state.pos` directly, trading
  * streaming tolerance for one fewer compare per read.
  */
-export function advance(state: RowBinaryState, n: number): number {
+export function advance(state: Cursor, n: number): number {
   const start = state.pos;
   const next = start + n;
   if (next > state.buf.length) throw NeedMoreData;

@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import {
   type IotRow,
   decodeIotColumnar,
@@ -28,7 +28,7 @@ const SELECT =
 const BUF = await query(`${SELECT} FORMAT RowBinary`);
 
 function decodeRows(): IotRow[] {
-  const s = new RowBinaryState(BUF);
+  const s = new Cursor(BUF);
   const out: IotRow[] = [];
   while (s.pos < s.buf.length) out.push(readIotRowFast(s));
   return out;

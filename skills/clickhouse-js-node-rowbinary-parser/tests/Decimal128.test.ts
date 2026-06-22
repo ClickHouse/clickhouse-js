@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { formatDecimal, readDecimal128 } from "../src/decimals.js";
 
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(await query(`SELECT ${expr} FORMAT RowBinary`));
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));
 }
 
 describe("readDecimal128", () => {
@@ -30,7 +30,7 @@ describe("readDecimal128", () => {
         "SELECT toDecimal128('-123.456789', 6) FORMAT RowBinary",
       );
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readDecimal128(6)(r);

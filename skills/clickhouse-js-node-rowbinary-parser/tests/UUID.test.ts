@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { formatUUID, formatUUIDTable, readUUID } from "../src/uuid.js";
 
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(await query(`SELECT ${expr} FORMAT RowBinary`));
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));
 }
 
 describe("readUUID", () => {
@@ -103,7 +103,7 @@ describe("readUUID", () => {
         "SELECT toUUID('61f0c404-5cb3-11e7-907b-a6006ad3dba0') FORMAT RowBinary",
       );
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readUUID(r);

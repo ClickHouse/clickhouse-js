@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { readQBit } from "../src/composite.js";
-import { NeedMoreData, RowBinaryState } from "../src/core.js";
+import { NeedMoreData, Cursor } from "../src/core.js";
 import { readBFloat16, readFloat32, readFloat64 } from "../src/floats.js";
 import { readUInt8 } from "../src/integers.js";
 
 // QBit is experimental; the type needs allow_experimental_qbit_type.
-async function reader(expr: string): Promise<RowBinaryState> {
-  return new RowBinaryState(
+async function reader(expr: string): Promise<Cursor> {
+  return new Cursor(
     await query(
       `SELECT ${expr} SETTINGS allow_experimental_qbit_type = 1 FORMAT RowBinary`,
     ),
@@ -58,7 +58,7 @@ describe("QBit (transparent in RowBinary — decode as Array(element_type))", ()
         "SELECT [1.0, 2.0]::QBit(Float32, 2) SETTINGS allow_experimental_qbit_type = 1 FORMAT RowBinary",
       );
       for (let len = 0; len < full.length; len++) {
-        const r = new RowBinaryState(full.subarray(0, len));
+        const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
           readQBit(readFloat32)(r);

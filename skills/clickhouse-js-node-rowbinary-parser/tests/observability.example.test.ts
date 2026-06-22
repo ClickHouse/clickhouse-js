@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import {
   type ObsRow,
   readObsRow,
@@ -37,11 +37,11 @@ describe("example: observability (Variant / DateTime64 / LowCardinality / nested
   it("API and optimized readers agree, consume exactly, and decode the gotchas", async () => {
     const buf = await query(SQL(64));
 
-    const a = new RowBinaryState(buf);
+    const a = new Cursor(buf);
     const viaApi: ObsRow[] = readRows(readObsRow)(a);
     expect(a.pos, "API reader consumes the whole buffer").toBe(a.buf.length);
 
-    const b = new RowBinaryState(buf);
+    const b = new Cursor(buf);
     const viaFast: ObsRow[] = readRows(readObsRowFast)(b);
     expect(b.pos, "fast reader consumes the whole buffer").toBe(b.buf.length);
 

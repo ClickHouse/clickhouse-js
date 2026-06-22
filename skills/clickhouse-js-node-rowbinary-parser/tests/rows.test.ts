@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { RowBinaryState } from "../src/core.js";
+import { Cursor } from "../src/core.js";
 import { readInt32, readUInt64 } from "../src/integers.js";
 import { readRows } from "../src/rows.js";
 import { readString } from "../src/strings.js";
@@ -24,7 +24,7 @@ import { readString } from "../src/strings.js";
  */
 describe("multiple rows from one buffer", () => {
   it("fixed-width single column: read a known row count in a loop", async () => {
-    const r = new RowBinaryState(
+    const r = new Cursor(
       await query("SELECT toInt32(number) FROM numbers(5) FORMAT RowBinary"),
     );
     const out: number[] = [];
@@ -34,7 +34,7 @@ describe("multiple rows from one buffer", () => {
   });
 
   it("two fixed-width columns per row", async () => {
-    const r = new RowBinaryState(
+    const r = new Cursor(
       await query(
         "SELECT toUInt64(number), toInt32(-number) FROM numbers(4) FORMAT RowBinary",
       ),
@@ -54,7 +54,7 @@ describe("multiple rows from one buffer", () => {
     // repeat('x', number) yields strings of length 0,1,2,3,4 — every row has a
     // different byte width, so alignment depends entirely on readString
     // consuming exactly its varint length + bytes.
-    const r = new RowBinaryState(
+    const r = new Cursor(
       await query(
         "SELECT repeat('x', number) FROM numbers(5) FORMAT RowBinary",
       ),
@@ -66,7 +66,7 @@ describe("multiple rows from one buffer", () => {
   });
 
   it("mixed fixed + variable columns per row", async () => {
-    const r = new RowBinaryState(
+    const r = new Cursor(
       await query(
         "SELECT number AS n, repeat('ab', number) AS s FROM numbers(3) FORMAT RowBinary",
       ),
@@ -85,7 +85,7 @@ describe("multiple rows from one buffer", () => {
     // With no row count on the wire, a reader that doesn't know N up front
     // loops until the cursor reaches the buffer end. This works precisely
     // because each row consumes exactly its bytes — the end is a row boundary.
-    const r = new RowBinaryState(
+    const r = new Cursor(
       await query("SELECT toInt32(number) FROM numbers(10) FORMAT RowBinary"),
     );
     const out: number[] = [];
@@ -95,7 +95,7 @@ describe("multiple rows from one buffer", () => {
   });
 
   it("zero rows: an empty result is an empty buffer", async () => {
-    const r = new RowBinaryState(
+    const r = new Cursor(
       await query("SELECT toInt32(1) WHERE 0 FORMAT RowBinary"),
     );
     expect(r.buf.length).toBe(0);
@@ -107,7 +107,7 @@ describe("multiple rows from one buffer", () => {
 
   describe("readRows() helper: the position-bounded loop as a method", () => {
     it("reads every row via a per-row callback", async () => {
-      const r = new RowBinaryState(
+      const r = new Cursor(
         await query(
           "SELECT number AS id, repeat('ab', number) AS name FROM numbers(3) FORMAT RowBinary",
         ),
@@ -125,7 +125,7 @@ describe("multiple rows from one buffer", () => {
     });
 
     it("returns [] for an empty result", async () => {
-      const r = new RowBinaryState(
+      const r = new Cursor(
         await query("SELECT toInt32(1) WHERE 0 FORMAT RowBinary"),
       );
       expect(readRows(readInt32)(r)).toEqual([]);
@@ -142,7 +142,7 @@ describe("multiple rows from one buffer", () => {
 
       // Find the byte offset where row 2 (0-indexed) ends, by decoding the full
       // buffer once and committing per row.
-      const probe = new RowBinaryState(full);
+      const probe = new Cursor(full);
       const ends: number[] = [];
       readRows((s) => {
         readUInt64(s);
@@ -151,7 +151,7 @@ describe("multiple rows from one buffer", () => {
         return null;
       })(probe);
       // Cut the buffer one byte before the end so the LAST row is truncated.
-      const r = new RowBinaryState(full.subarray(0, full.length - 1));
+      const r = new Cursor(full.subarray(0, full.length - 1));
       const rows = readRows((s) => ({
         id: readUInt64(s),
         s: readString(s),
@@ -185,7 +185,7 @@ describe("multiple rows from one buffer", () => {
         let avail = 0;
         while (committed < full.length) {
           avail = Math.min(full.length, avail + chunk);
-          const r = new RowBinaryState(full.subarray(0, avail));
+          const r = new Cursor(full.subarray(0, avail));
           r.pos = committed;
           rows.push(
             ...readRows((s) => ({ id: readUInt64(s), s: readString(s) }))(r),
@@ -199,7 +199,7 @@ describe("multiple rows from one buffer", () => {
     });
 
     it("still propagates a non-NeedMoreData error from the row reader", async () => {
-      const r = new RowBinaryState(
+      const r = new Cursor(
         await query("SELECT toInt32(1) FROM numbers(3) FORMAT RowBinary"),
       );
       const boom = new Error("decode fault");
