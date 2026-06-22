@@ -4,13 +4,13 @@ import type {
   ImplementationDetails,
   JSONHandling,
   ResponseHeaders,
-} from "@clickhouse/client-common";
+} from "./common/index";
 import {
   type BaseClickHouseClientConfigOptions,
   type CompressionMethod,
   type ConnectionParams,
   numberConfigURLValue,
-} from "@clickhouse/client-common";
+} from "./common/index";
 import type http from "http";
 import type https from "node:https";
 import type Stream from "stream";

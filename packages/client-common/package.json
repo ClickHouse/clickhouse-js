@@ -1,6 +1,6 @@
 {
   "name": "@clickhouse/client-common",
-  "description": "Official JS client for ClickHouse DB - common types",
+  "description": "DEPRECATED: this package is no longer used by @clickhouse/client or @clickhouse/client-web; the shared code is now bundled into each client package. Install @clickhouse/client (Node.js) or @clickhouse/client-web (Web) instead.",
   "homepage": "https://clickhouse.com",
   "version": "1.23.0",
   "license": "Apache-2.0",

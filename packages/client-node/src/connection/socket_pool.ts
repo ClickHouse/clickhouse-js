@@ -15,7 +15,7 @@ import {
   type JSONHandling,
   type CompressionMethod,
   type RequestCompression,
-} from "@clickhouse/client-common";
+} from "../common/index";
 import { getAsText, isStream } from "../utils";
 import {
   createRequestCompressor,

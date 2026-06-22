@@ -7,7 +7,7 @@ export { type NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions
 export { ResultSet, type StreamReadable } from "./result_set";
 export { drainStream } from "./connection/stream";
 
-/** Re-export @clickhouse/client-common types */
+/** Re-export common (formerly @clickhouse/client-common) types */
 export {
   type BaseClickHouseClientConfigOptions,
   type BaseQueryParams,
@@ -61,14 +61,14 @@ export {
   type ClickHouseSpanAttributes,
   type ClickHouseSpanStatus,
   type ClickHouseSpanName,
-} from "@clickhouse/client-common";
+} from "./common/index";
 
 /**
- * Re-export @clickhouse/client-common runtime values.
+ * Re-export common (formerly @clickhouse/client-common) runtime values.
  *
  * These are intentionally re-exported through local bindings (rather than a direct
- * `export { ... } from '@clickhouse/client-common'`) so that the `@deprecated` JSDoc tags
- * applied to them in `@clickhouse/client-common` are NOT propagated to consumers of this package.
+ * `export { ... } from './common/index'`) so that the `@deprecated` JSDoc tags
+ * applied to them in `./common/index` are NOT propagated to consumers of this package.
  * Importing these values from `@clickhouse/client` is the recommended, non-deprecated path.
  */
 import {
@@ -92,7 +92,7 @@ import {
   ClickHouseSpanStatusCode as ClickHouseSpanStatusCode_,
   ClickHouseSpanKind as ClickHouseSpanKind_,
   defaultJSONHandling as defaultJSONHandling_,
-} from "@clickhouse/client-common";
+} from "./common/index";
 
 export const ClickHouseError = ClickHouseError_;
 export type ClickHouseError = ClickHouseError_;

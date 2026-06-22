@@ -3,8 +3,8 @@ import type {
   InsertValues,
   JSONHandling,
   ValuesEncoder,
-} from "@clickhouse/client-common";
-import { encodeJSON, isSupportedRawFormat } from "@clickhouse/client-common";
+} from "../common/index";
+import { encodeJSON, isSupportedRawFormat } from "../common/index";
 import Stream from "stream";
 import { isStream, mapStream } from "./stream";
 
