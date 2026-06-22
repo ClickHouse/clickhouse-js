@@ -4,12 +4,15 @@ name: "publish: rowbinary parser"
 # package (the RowBinary parser skill). It is NOT part of the npm workspace
 # lockstep release driven by publish.yml — it carries its own version in
 # skills/clickhouse-js-node-rowbinary-parser/package.json and ships on its own
-# cadence. Triggered manually; the `publish` job gates on typecheck/test/build,
-# publishes the version currently in package.json with the "latest" tag using
-# npm OIDC authentication and provenance, then pushes a matching git tag. The
-# `e2e` job waits for the freshly published version to appear on the registry
-# and verifies it installs and imports in a throwaway downstream project across
-# the supported Node versions.
+# cadence. Triggered manually, and — like publish.yml — must be dispatched from
+# the `release` branch: the npm-publish environment is protected so only that
+# branch may deploy (the repo's human-in-the-loop release gate). Dispatches from
+# any other ref are skipped by the job-level `if` guard below. The `publish` job
+# gates on typecheck/test/build, publishes the version currently in package.json
+# with the "latest" tag using npm OIDC authentication and provenance, then pushes
+# a matching git tag. The `e2e` job waits for the freshly published version to
+# appear on the registry and verifies it installs and imports in a throwaway
+# downstream project across the supported Node versions.
 
 permissions:
   contents: read
@@ -24,6 +27,9 @@ on:
 
 jobs:
   publish:
+    # The npm-publish environment only permits the release branch to deploy;
+    # skip cleanly on any other ref instead of failing the protection check.
+    if: github.ref == 'refs/heads/release'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: npm-publish
