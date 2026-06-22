@@ -1,0 +1,144 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0e14;
+  --panel: #11151f;
+  --border: #222937;
+  --text: #d7dce5;
+  --muted: #8a93a6;
+  --debug: #6b7280;
+  --info: #3b82f6;
+  --warn: #f59e0b;
+  --error: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+header h1 {
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+header p {
+  margin: 0 0 24px;
+  color: var(--muted);
+}
+
+header code {
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+td.msg {
+  white-space: normal;
+  color: var(--text);
+}
+
+td.mono,
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.level {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+.level.debug { color: var(--debug); }
+.level.info  { color: var(--info); }
+.level.warn  { color: var(--warn); }
+.level.error { color: var(--error); }
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.pager a,
+.pager span.disabled {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  text-decoration: none;
+  color: var(--text);
+}
+
+.pager span.disabled {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+.pager .status {
+  color: var(--muted);
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.empty {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.empty pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+  color: var(--text);
+}
