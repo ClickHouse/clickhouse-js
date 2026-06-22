@@ -19,7 +19,11 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font:
+    14px/1.5 ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 main {
@@ -93,10 +97,18 @@ td.mono,
   font-size: 11px;
   letter-spacing: 0.03em;
 }
-.level.debug { color: var(--debug); }
-.level.info  { color: var(--info); }
-.level.warn  { color: var(--warn); }
-.level.error { color: var(--error); }
+.level.debug {
+  color: var(--debug);
+}
+.level.info {
+  color: var(--info);
+}
+.level.warn {
+  color: var(--warn);
+}
+.level.error {
+  color: var(--error);
+}
 
 .pager {
   display: flex;
