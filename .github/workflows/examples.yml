@@ -7,15 +7,37 @@ on:
     branches:
       - main
       - release
-    paths-ignore:
-      - "**/*.md"
-      - "LICENSE"
-      - "benchmarks/**"
+    paths:
+      - "packages/**"
+      - "examples/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "vitest.node.config.ts"
+      - "vitest.node.setup.ts"
+      - "vitest.web.config.ts"
+      - "vitest.web.setup.ts"
+      - ".github/workflows/examples.yml"
   pull_request:
-    paths-ignore:
-      - "**/*.md"
-      - "LICENSE"
-      - "benchmarks/**"
+    paths:
+      - "packages/**"
+      - "examples/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "vitest.node.config.ts"
+      - "vitest.node.setup.ts"
+      - "vitest.web.config.ts"
+      - "vitest.web.setup.ts"
+      - ".github/workflows/examples.yml"
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"

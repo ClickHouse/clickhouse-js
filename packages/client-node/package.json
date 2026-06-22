@@ -2,7 +2,7 @@
   "name": "@clickhouse/client",
   "description": "Official JS client for ClickHouse DB - Node.js implementation",
   "homepage": "https://clickhouse.com",
-  "version": "1.22.0",
+  "version": "1.23.0",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
@@ -32,19 +32,23 @@
       {
         "name": "clickhouse-js-node-troubleshooting",
         "path": "./skills/clickhouse-js-node-troubleshooting"
+      },
+      {
+        "name": "clickhouse-js-node-rowbinary-parser",
+        "path": "./skills/clickhouse-js-node-rowbinary-parser"
       }
     ]
   },
   "scripts": {
     "pack": "npm pack",
-    "prepack": "rm -rf skills && cp ../../README.md ../../LICENSE . && cp -r ../../skills .",
+    "prepack": "rm -rf skills && cp ../../README.md ../../LICENSE . && cp -r ../../skills . && RBP=skills/clickhouse-js-node-rowbinary-parser && rm -rf $RBP/tests $RBP/node_modules $RBP/dist $RBP/package.json $RBP/package-lock.json $RBP/tsconfig.json $RBP/tsconfig.build.json $RBP/vitest.config.ts $RBP/.gitignore $RBP/LICENSE $RBP/eval_result*.md",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",
     "build": "rm -rf dist; tsc"
   },
   "dependencies": {
-    "@clickhouse/client-common": "1.22.0"
+    "@clickhouse/client-common": "1.23.0"
   },
   "devDependencies": {
     "simdjson": "^0.9.2"
