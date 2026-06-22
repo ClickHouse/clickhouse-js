@@ -33,13 +33,14 @@ Official JS client for [ClickHouse](https://clickhouse.com/), written purely in 
 
 The client has zero external dependencies and is optimized for maximum performance.
 
-The repository consists of three packages:
+The repository consists of four packages:
 
 - `@clickhouse/client` - a version of the client designed for Node.js platform only. It is built on top of [HTTP](https://nodejs.org/api/http.html)
   and [Stream](https://nodejs.org/api/stream.html) APIs; supports streaming for both selects and inserts.
 - `@clickhouse/client-web` - a version of the client built on top of [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
   and [Web Streams](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) APIs; supports streaming for selects.
   Compatible with Chrome/Firefox browsers and Cloudflare workers.
+- `@clickhouse/client-common` - shared common types and the base framework for building a custom client implementation.
 - `@clickhouse/rowbinary` - a library for reading (and soon writing) ClickHouse RowBinary format.
 
 ## Installation
