@@ -7,12 +7,15 @@ name: "publish: rowbinary parser"
 # cadence. Triggered manually, and — like publish.yml — must be dispatched from
 # the `release` branch: the npm-publish environment is protected so only that
 # branch may deploy (the repo's human-in-the-loop release gate). Dispatches from
-# any other ref are skipped by the job-level `if` guard below. The `publish` job
-# gates on typecheck/test/build, publishes the version currently in package.json
-# with the "latest" tag using npm OIDC authentication and provenance, then pushes
-# a matching git tag. The `e2e` job waits for the freshly published version to
-# appear on the registry and verifies it installs and imports in a throwaway
-# downstream project across the supported Node versions.
+# any other ref are skipped by the job-level `if` guard below.
+#
+# The release branch is itself protected, so the unit suite is not re-run here.
+# The `publish` job instead builds, packs the tarball, installs that exact
+# tarball into a throwaway project and smoke-tests its imports, and only then
+# publishes the same tarball with the "latest" tag (npm OIDC + provenance) and
+# pushes a matching git tag. The `e2e` job then repeats the smoke test against
+# the freshly published version on the registry across the supported Node
+# versions.
 
 permissions:
   contents: read
@@ -54,12 +57,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm test
-
       - name: Build
         run: npm run build
 
@@ -70,9 +67,39 @@ jobs:
           echo "Publishing @clickhouse/rowbinary@$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Publish to npm
+      - name: Pack the tarball
+        id: pack
         # prepack copies the repo-root LICENSE and rebuilds dist before packing.
-        run: npm publish --access public --provenance
+        run: |
+          set -euo pipefail
+          TARBALL=$(npm pack --pack-destination "$RUNNER_TEMP" | tail -1)
+          echo "Packed: $TARBALL"
+          echo "tarball=$RUNNER_TEMP/$TARBALL" >> "$GITHUB_OUTPUT"
+
+      - name: Pre-publish smoke test (install the packed tarball)
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          cd "$work"
+          npm init -y >/dev/null 2>&1
+          npm install "$TARBALL"
+          # Verify both the main barrel entry and a subpath export resolve and
+          # expose their parsers, from the exact artifact we are about to publish.
+          node --input-type=module -e "
+            import * as rb from '@clickhouse/rowbinary';
+            import * as ints from '@clickhouse/rowbinary/integers';
+            if (typeof rb.readRows !== 'function') throw new Error('readRows missing from main export');
+            if (typeof ints.readUInt8 !== 'function') throw new Error('readUInt8 missing from subpath export');
+            console.log('OK: packed tarball imports cleanly');
+          "
+
+      - name: Publish to npm
+        # Publish the exact tarball that passed the pre-publish smoke test.
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: npm publish "$TARBALL" --access public --provenance
 
       - name: Create and push release git tag
         env:
