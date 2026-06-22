@@ -6,17 +6,35 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - "**/*.md"
-      - "LICENSE"
-      - "benchmarks/**"
-      - "skills/**"
+    paths:
+      - "packages/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "vitest.node.config.ts"
+      - "vitest.node.setup.ts"
+      - "vitest.web.config.ts"
+      - "vitest.web.setup.ts"
+      - ".github/workflows/tests-node.yml"
   pull_request:
-    paths-ignore:
-      - "**/*.md"
-      - "LICENSE"
-      - "benchmarks/**"
-      - "skills/**"
+    paths:
+      - "packages/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "vitest.node.config.ts"
+      - "vitest.node.setup.ts"
+      - "vitest.web.config.ts"
+      - "vitest.web.setup.ts"
+      - ".github/workflows/tests-node.yml"
 
   schedule:
     - cron: "0 9 * * *"
