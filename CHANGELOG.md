@@ -1,3 +1,9 @@
+# 1.23.0
+
+- (Node.js) Added a RowBinary reader library and agent skill under [`skills/clickhouse-js-node-rowbinary-parser`](./skills/clickhouse-js-node-rowbinary-parser). It ships type-specific, monomorphizable building blocks for decoding `RowBinary` / `RowBinaryWithNames` / `RowBinaryWithNamesAndTypes` streams (full-buffer and chunked), plus a skill that guides an agent to generate bespoke high-performance parsers from a query's column types. The skill is bundled into `@clickhouse/client` (registered in `agents.skills`) and is also published independently as the [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary) package. A matching RowBinary writer is planned. ([#864])
+
+## New features
+
 # 1.22.0
 
 ## New features
@@ -5,8 +11,6 @@
 - (Node.js) The `compression.request` / `compression.response` client options now accept an explicit codec via an object, in addition to the existing boolean: `true` keeps gzip (backwards compatible), and `{ codec: "zstd" }` selects zstd. The object form is intentionally extensible for future codecs and codec-specific options. zstd typically yields a similar-or-better ratio than gzip at noticeably lower CPU cost (gzip/DEFLATE is comparatively CPU-heavy and decompressed single-threaded by the ClickHouse server), and it uses the built-in `zlib` zstd support, so it requires **Node.js >= 22.15.0** (`@clickhouse/client` throws a clear error at client creation otherwise). Response decompression is driven by the server's actual `Content-Encoding`, so it degrades gracefully. The request object form also accepts an optional `level` (`{ codec, level }`) to set the codec-specific compression level (zlib level for gzip, zstd compression level for zstd); the response compression level is controlled by the server. Supported only by `@clickhouse/client` (Node.js); `@clickhouse/client-web` rejects the `zstd` codec at client creation.
 
 - (Node.js) Brotli (`{ codec: "br" }`) is now supported for `compression.request` / `compression.response`, alongside gzip and zstd. Unlike zstd, Brotli is available on every supported Node.js version (no minimum-version requirement). The `compression.request` option is a per-codec discriminated union, so each codec exposes its own tuning option: a `level` for gzip/zstd, a `quality` for Brotli (`{ codec: "br", quality }`). When omitted, Brotli defaults to quality 4 for request bodies, since zlib's brotli default of 11 (max) is far too slow for a streaming insert path. Response decompression follows the server's `Content-Encoding`. Supported only by `@clickhouse/client` (Node.js).
-
-- (Node.js) Added a RowBinary reader library and agent skill under [`skills/clickhouse-js-node-rowbinary-parser`](./skills/clickhouse-js-node-rowbinary-parser). It ships type-specific, monomorphizable building blocks for decoding `RowBinary` / `RowBinaryWithNames` / `RowBinaryWithNamesAndTypes` streams (full-buffer and chunked), plus a skill that guides an agent to generate bespoke high-performance parsers from a query's column types. The skill is bundled into `@clickhouse/client` (registered in `agents.skills`) and is also published independently as the [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary) package. A matching RowBinary writer is planned. ([#864])
 
 ## Internal changes (`@clickhouse/client-common`)
 
