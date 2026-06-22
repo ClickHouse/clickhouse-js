@@ -14,14 +14,14 @@ import assert from "node:assert";
 
 const t = parseColumnType("Nullable(UInt64)");
 console.log('parseColumnType("Nullable(UInt64)") =>', JSON.stringify(t));
-assert.equal(t.type, "Nullable");
-assert.equal(t.value.columnType, "UInt64");
+assert.strictEqual(t.type, "Nullable");
+assert.strictEqual(t.value.columnType, "UInt64");
 
 const sm = SettingsMap.from({ max_block_size: "1000" });
 console.log("SettingsMap.toString() =>", sm.toString());
-assert.equal(typeof sm.toString(), "string");
+assert.strictEqual(typeof sm.toString(), "string");
 
-assert.equal(typeof ClickHouseError, "function");
+assert.strictEqual(typeof ClickHouseError, "function");
 
 console.log(
   "OK (ESM): all common-origin imports resolved and executed from the installed package",

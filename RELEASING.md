@@ -3,7 +3,7 @@
 Tools required (for verifying a published build and promoting npm tags locally):
 
 - Node.js >= `20.x`
-- NPM >= `11.x`
+- npm >= `11.x` — newer than the npm bundled with Node.js `20.x`/`22.x` (`10.x`). Either upgrade npm in place (`npm install -g npm@latest`) or use Node.js `24.x`, which already ships npm `11.x`.
 
 Packages are versioned and released independently. Release one package at a time; to release several, repeat the steps below for each. Versions are bumped through the GitHub Actions workflows — there is no local version-bump script.
 

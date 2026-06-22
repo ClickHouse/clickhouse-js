@@ -11,14 +11,14 @@ const {
 
 const t = parseColumnType("Array(String)");
 console.log('parseColumnType("Array(String)") =>', JSON.stringify(t));
-assert.equal(t.type, "Array");
-assert.equal(t.value.columnType, "String");
+assert.strictEqual(t.type, "Array");
+assert.strictEqual(t.value.columnType, "String");
 
 const sm = SettingsMap.from({ max_block_size: "1000" });
 console.log("SettingsMap.toString() =>", sm.toString());
-assert.equal(typeof sm.toString(), "string");
+assert.strictEqual(typeof sm.toString(), "string");
 
-assert.equal(typeof ClickHouseError, "function");
+assert.strictEqual(typeof ClickHouseError, "function");
 
 console.log(
   "OK (CJS): all common-origin imports resolved and executed from the installed package",
