@@ -1,0 +1,68 @@
+name: Lockfile age audit
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lockfile-age-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      # Step-level skip (not job-level) so the job still completes with status "success"
+      # when the label is set — required for branch protection to be satisfied.
+      - name: Honor lockfile-age-skip label
+        id: skip
+        env:
+          SKIP: ${{ contains(github.event.pull_request.labels.*.name, 'lockfile-age-skip') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$SKIP" == "true" ]]; then
+            echo "lockfile-age-skip label present — audit will be bypassed."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        if: steps.skip.outputs.skip == 'false'
+        with:
+          fetch-depth: 0
+      - name: Ensure base ref is fetched
+        if: steps.skip.outputs.skip == 'false'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --quiet origin "$BASE_REF":"refs/remotes/origin/$BASE_REF"
+      - name: Detect package-lock.json change
+        id: lockfile
+        if: steps.skip.outputs.skip == 'false'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed_files=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+          if echo "$changed_files" | grep -qx 'package-lock.json'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        if: steps.skip.outputs.skip == 'false' && steps.lockfile.outputs.changed == 'true'
+        with:
+          node-version: "22"
+      - name: Audit new package-lock.json entries against 7-day age gate
+        if: steps.skip.outputs.skip == 'false' && steps.lockfile.outputs.changed == 'true'
+        env:
+          MIN_AGE_DAYS: "7"
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/ci/lockfile-age-audit.mjs
