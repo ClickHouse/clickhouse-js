@@ -88,6 +88,14 @@ export type NodeClickHouseClientConfigOptions =
      *  (`tls`, `keep_alive`, `http_agent`, `max_open_connections`, …) are
      *  ignored.
      *
+     *  This is a deliberately narrow, internal experiment to unblock the chDB
+     *  integration — NOT the start of a public pluggable-backend / plugin system.
+     *  The {@link Connection} contract is intentionally not re-exported from the
+     *  package entrypoint, so a backend must deep-import or structurally match its
+     *  shape; that friction is by design and signals the API may change. Keeping
+     *  the client's public surface slim avoids a second client family mirroring the
+     *  whole public API.
+     *
      *  @experimental unstable API; used only for integrating with chDB;
      *  @more https://github.com/chdb-io/chdb-node/pull/52
      *  @default undefined */
