@@ -27,14 +27,13 @@ layer). Instead, this reimplements just the type grammar on a minimal AST:
   Tuple special cases, then the generic parametric-argument loop;
 - plain structs for the AST (`include/chdt/ast.h`) instead of `IAST` + `Field`.
 
-## Building
+## Build and test
 
 ```bash
+rm -rf build # clean the build dir for a fresh run
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
-
-This produces `libchdt_datatype_parser.a` and the `chdt-parse` CLI.
 
 ## Usage
 
@@ -61,15 +60,15 @@ echo "Enum8('a' = 1, 'b' = 2)" | ./build/chdt-parse
 
 Node types and slots match the server (format v2):
 
-| `type`           | slots                                                    |
-|------------------|----------------------------------------------------------|
-| `DataType`       | `name`, `arguments?` (present iff the type had `(...)`)  |
-| `EnumDataType`   | `name`, `values` (array of `{ name, value }`)            |
-| `TupleDataType`  | `name`, `arguments?`, `element_names?` (named tuples)    |
-| `NameTypePair`   | `name`, `data_type` (a `Nested(...)` element)            |
-| `Literal`        | `value_type`, `value` (64-bit ints as JSON strings)      |
-| `Function`       | `name`, `is_operator?`, `arguments` (e.g. `max_types=5`) |
-| `Identifier`     | `name`, `name_parts?`                                    |
+| `type`          | slots                                                    |
+| --------------- | -------------------------------------------------------- |
+| `DataType`      | `name`, `arguments?` (present iff the type had `(...)`)  |
+| `EnumDataType`  | `name`, `values` (array of `{ name, value }`)            |
+| `TupleDataType` | `name`, `arguments?`, `element_names?` (named tuples)    |
+| `NameTypePair`  | `name`, `data_type` (a `Nested(...)` element)            |
+| `Literal`       | `value_type`, `value` (64-bit ints as JSON strings)      |
+| `Function`      | `name`, `is_operator?`, `arguments` (e.g. `max_types=5`) |
+| `Identifier`    | `name`, `name_parts?`                                    |
 
 `EnumDataType.values` and `TupleDataType.element_names` are carried here exactly
 as the server emits them since format v2.
@@ -103,5 +102,9 @@ multi-word aliases (`DOUBLE PRECISION`, `CHAR VARYING`, `INT SIGNED`, …).
   `test/cases_unsupported.txt` are rejected.
 
 ```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCLICKHOUSE_BINARY=/work/ClickHouse/build/programs/clickhouse
+cmake --build build
 ctest --test-dir build --output-on-failure
 ```
+
+When the AST format changes get merged the special build `/work/ClickHouse/build/programs/clickhouse` wouldn't be needed.
