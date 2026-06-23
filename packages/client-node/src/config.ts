@@ -93,7 +93,8 @@ export type NodeClickHouseClientConfigOptions =
      *  (`createChdbConnection({ path: ':memory:' })`) — so the same
      *  higher-level client API can target either a remote ClickHouse server
      *  or an in-process backend with a one-line change at construction.
-     *  See `docs/design/pluggable-connection.md`.
+     *  See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/design/pluggable-connection.md
+     *  for the full design and the asymmetric upstream-clean rationale.
      *
      *  @experimental - unstable API; it might be a subject to change in the
      *                  future; please provide your feedback in the repository.
