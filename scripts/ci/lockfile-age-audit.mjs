@@ -130,7 +130,9 @@ const violations = []
 const errors = []
 
 async function checkOne({ name, version }) {
-  const url = `https://registry.npmjs.org/${name.replace('/', '%2F')}`
+  // Scoped names contain '/' which must be percent-encoded for the registry URL.
+  // encodeURIComponent handles all unsafe chars (replace('/', ...) only hits the first).
+  const url = `https://registry.npmjs.org/${encodeURIComponent(name)}`
   let res
   try {
     res = await fetch(url, { headers: { Accept: 'application/vnd.npm.install-v1+json' } })
