@@ -12,7 +12,7 @@ import type {
   ConnPingResult,
   ConnQueryResult,
   ResponseHeaders,
-} from "@clickhouse/client-common";
+} from "../common/index";
 import {
   buildMultipartBody,
   serializeQueryParamsForUrl,
@@ -23,8 +23,8 @@ import {
   transformUrl,
   withHttpSettings,
   ClickHouseLogLevel,
-} from "@clickhouse/client-common";
-import { type ConnPingParams } from "@clickhouse/client-common";
+} from "../common/index";
+import { type ConnPingParams } from "../common/index";
 import crypto from "crypto";
 import type Http from "http";
 import type Https from "node:https";

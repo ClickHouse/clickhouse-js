@@ -8,19 +8,19 @@ import type {
   ResultJSONType,
   ResultStream,
   Row,
-} from "@clickhouse/client-common";
+} from "./common/index";
 import {
   extractErrorAtTheEndOfChunk,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
   recordSpanError,
-} from "@clickhouse/client-common";
+} from "./common/index";
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
   validateStreamFormat,
-} from "@clickhouse/client-common";
+} from "./common/index";
 import { Buffer } from "buffer";
 import type { Readable, TransformCallback } from "stream";
 import Stream, { Transform } from "stream";

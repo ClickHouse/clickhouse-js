@@ -1,5 +1,10 @@
 name: "bump-version"
 
+# Manually bump a single package's version and open a release PR against main.
+# Each package has its own job; the required `package` input selects which one
+# runs. Packages are versioned independently, so there is no "bump everything"
+# option - dispatch the workflow once per package you want to release.
+
 on:
   workflow_dispatch:
     inputs:
@@ -11,14 +16,26 @@ on:
           - patch
           - minor
           - major
+      package:
+        description: "Package to bump"
+        required: true
+        type: choice
+        options:
+          - "@clickhouse/client"
+          - "@clickhouse/client-web"
+          # The common package is deprecated, but can still be bumped on its own.
+          - "@clickhouse/client-common"
 
 permissions: {}
 
 concurrency:
   group: ${{ github.repository }}-${{ github.workflow }}
   cancel-in-progress: false
+
 jobs:
-  bump:
+  bump_client:
+    name: "Bump @clickhouse/client"
+    if: inputs.package == '@clickhouse/client'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -34,41 +51,134 @@ jobs:
         with:
           node-version: 24
 
-      - name: Calculate new version
+      - name: Bump version
+        id: version
+        env:
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          CURRENT=$(node -p "require('./packages/client-node/package.json').version")
+          npm --workspace @clickhouse/client version --no-git-tag-version "$BUMP_TYPE"
+          NEW=$(node -p "require('./packages/client-node/package.json').version")
+          echo "export default \"$NEW\";" > packages/client-node/src/version.ts
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, push branch, and open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW: ${{ steps.version.outputs.new }}
+          CURRENT: ${{ steps.version.outputs.current }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          BRANCH="release-client-${NEW}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "chore: bump @clickhouse/client version to ${NEW}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: bump @clickhouse/client version to ${NEW}" \
+            --body "Bumps \`@clickhouse/client\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
+            --base main \
+            --head "$BRANCH"
+
+  bump_client_web:
+    name: "Bump @clickhouse/client-web"
+    if: inputs.package == '@clickhouse/client-web'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Bump version
+        id: version
+        env:
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          CURRENT=$(node -p "require('./packages/client-web/package.json').version")
+          npm --workspace @clickhouse/client-web version --no-git-tag-version "$BUMP_TYPE"
+          NEW=$(node -p "require('./packages/client-web/package.json').version")
+          echo "export default \"$NEW\";" > packages/client-web/src/version.ts
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, push branch, and open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW: ${{ steps.version.outputs.new }}
+          CURRENT: ${{ steps.version.outputs.current }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          BRANCH="release-client-web-${NEW}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "chore: bump @clickhouse/client-web version to ${NEW}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: bump @clickhouse/client-web version to ${NEW}" \
+            --body "Bumps \`@clickhouse/client-web\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
+            --base main \
+            --head "$BRANCH"
+
+  bump_client_common:
+    name: "Bump @clickhouse/client-common (deprecated)"
+    if: inputs.package == '@clickhouse/client-common'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Bump version
         id: version
         env:
           BUMP_TYPE: ${{ inputs.bump_type }}
         run: |
           CURRENT=$(node -p "require('./packages/client-common/package.json').version")
-          NEW=$(CURRENT="$CURRENT" node -e "
-            const m = process.env.CURRENT.match(/^(\d+)\.(\d+)\.(\d+)$/);
-            if (!m) throw new Error('Version ' + process.env.CURRENT + ' is not a strict x.y.z release; bump manually.');
-            const [, major, minor, patch] = m.map(Number);
-            if (process.env.BUMP_TYPE === 'major') process.stdout.write((major+1) + '.0.0');
-            else if (process.env.BUMP_TYPE === 'minor') process.stdout.write(major + '.' + (minor+1) + '.0');
-            else process.stdout.write(major + '.' + minor + '.' + (patch+1));
-          ")
+          npm --workspace @clickhouse/client-common version --no-git-tag-version "$BUMP_TYPE"
+          NEW=$(node -p "require('./packages/client-common/package.json').version")
+          echo "export default \"$NEW\";" > packages/client-common/src/version.ts
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
 
-      - name: Bump version in packages
-        run: .scripts/update_version.sh "${{ steps.version.outputs.new }}"
-
-      - name: Commit and push branch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "release-${{ steps.version.outputs.new }}"
-          git add .
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new }}"
-          git push origin "release-${{ steps.version.outputs.new }}"
-
-      - name: Create pull request
+      - name: Commit, push branch, and open PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW: ${{ steps.version.outputs.new }}
+          CURRENT: ${{ steps.version.outputs.current }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
         run: |
+          BRANCH="release-client-common-${NEW}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "chore: bump @clickhouse/client-common version to ${NEW}"
+          git push origin "$BRANCH"
           gh pr create \
-            --title "chore: bump version to ${{ steps.version.outputs.new }}" \
-            --body "Bumps version from \`${{ steps.version.outputs.current }}\` to \`${{ steps.version.outputs.new }}\` (${{ inputs.bump_type }} bump)." \
+            --title "chore: bump @clickhouse/client-common version to ${NEW}" \
+            --body "Bumps \`@clickhouse/client-common\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
             --base main \
-            --head "release-${{ steps.version.outputs.new }}"
+            --head "$BRANCH"

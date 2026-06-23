@@ -11,6 +11,12 @@ on:
       - packages/client-common/package.json
       - packages/client-node/package.json
       - packages/client-web/package.json
+  # Always validate the full skills packaging E2E on pull requests that target
+  # the release branch, regardless of which paths changed, so every release is
+  # gated by the same QA suite as the other test workflows.
+  pull_request:
+    branches:
+      - release
 
 jobs:
   skills-packaging:

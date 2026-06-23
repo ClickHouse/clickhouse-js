@@ -6,6 +6,8 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    cooldown:
+      default-days: 7
     groups:
       workflows:
         dependency-type: "development"
@@ -14,6 +16,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    cooldown:
+      default-days: 7
+      exclude:
+        - "@clickhouse/*"
     groups:
       dev-dependencies:
         dependency-type: "development"

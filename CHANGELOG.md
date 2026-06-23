@@ -1,3 +1,15 @@
+# 1.23.0
+
+## Migration Notes
+
+- The `@clickhouse/client-common` package is deprecated. `@clickhouse/client` (Node.js) and `@clickhouse/client-web` (Web) no longer depend on it; the shared code is now bundled into each client package. Everything previously importable from `@clickhouse/client-common` should be imported from `@clickhouse/client` or `@clickhouse/client-web` instead. The `@clickhouse/client-common` package itself will no longer receive updates. ([#845])
+
+## New features
+
+- (Node.js) Added a RowBinary reader library and agent skill under [`skills/clickhouse-js-node-rowbinary-parser`](./skills/clickhouse-js-node-rowbinary-parser). It ships type-specific, monomorphizable building blocks for decoding `RowBinary` / `RowBinaryWithNames` / `RowBinaryWithNamesAndTypes` streams (full-buffer and chunked), plus a skill that guides an agent to generate bespoke high-performance parsers from a query's column types. The skill is bundled into `@clickhouse/client` (registered in `agents.skills`) and is also published independently as the [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary) package. A matching RowBinary writer is planned. ([#864])
+
+- (Node.js, `@experimental`) Added an additive `connection?: Connection<Stream.Readable>` option to `createClient` that lets a caller plug an externally-built backend `Connection`-like object in place of the default HTTP(S) factory. Only supposed to be used for testing the `chDB` integration. ([#879])
+
 # 1.22.0
 
 ## New features
@@ -64,6 +76,8 @@ await client.query({
 [#825]: https://github.com/ClickHouse/clickhouse-js/pull/825
 [#827]: https://github.com/ClickHouse/clickhouse-js/pull/827
 [#828]: https://github.com/ClickHouse/clickhouse-js/pull/828
+[#845]: https://github.com/ClickHouse/clickhouse-js/pull/845
+[#864]: https://github.com/ClickHouse/clickhouse-js/pull/864
 
 ## Bug Fixes
 

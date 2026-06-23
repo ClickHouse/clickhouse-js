@@ -3,7 +3,7 @@ import Https from "https";
 import type { NodeConnectionParams } from "./node_base_connection";
 import type { RequestParams } from "./socket_pool";
 import { NodeBaseConnection } from "./node_base_connection";
-import { withCompressionHeaders } from "@clickhouse/client-common";
+import { withCompressionHeaders } from "../common/index";
 
 export class NodeCustomAgentConnection extends NodeBaseConnection {
   private readonly httpRequestFn: typeof Http.request | typeof Https.request;
