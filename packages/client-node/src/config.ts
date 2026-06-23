@@ -96,8 +96,8 @@ export type NodeClickHouseClientConfigOptions =
      *  the client's public surface slim avoids a second client family mirroring the
      *  whole public API.
      *
-     *  @experimental unstable API; used only for integrating with chDB;
-     *  @more https://github.com/chdb-io/chdb-node/pull/52
+     *  @experimental - unstable API; used only for integrating with chDB.
+     *  @see https://github.com/chdb-io/chdb-node/pull/52
      *  @default undefined */
     connection?: Connection<Stream.Readable>;
   };
