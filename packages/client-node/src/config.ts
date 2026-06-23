@@ -83,21 +83,21 @@ export type NodeClickHouseClientConfigOptions =
     /** Pre-built backend connection to use for this client instead of the
      *  default HTTP(S) connection factory. When provided, the client routes
      *  every method (`query` / `insert` / `command` / `exec` / `ping` /
-     *  `close`) through this connection's implementation of the public
+     *  `close`) through this connection's implementation of the internal
      *  {@link Connection} contract, and the HTTP-related options above
      *  (`tls`, `keep_alive`, `http_agent`, `max_open_connections`, …) are
      *  ignored.
      *
-     *  This is the integration point for pluggable backends — most notably
-     *  an embedded `chdb-node` connection
-     *  (`createChdbConnection({ path: ':memory:' })`) — so the same
-     *  higher-level client API can target either a remote ClickHouse server
-     *  or an in-process backend with a one-line change at construction.
-     *  See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/design/pluggable-connection.md
-     *  for the full design and the asymmetric upstream-clean rationale.
+     *  This is a deliberately narrow, internal experiment to unblock the chDB
+     *  integration — NOT the start of a public pluggable-backend / plugin system.
+     *  The {@link Connection} contract is intentionally not re-exported from the
+     *  package entrypoint, so a backend must deep-import or structurally match its
+     *  shape; that friction is by design and signals the API may change. Keeping
+     *  the client's public surface slim avoids a second client family mirroring the
+     *  whole public API.
      *
-     *  @experimental - unstable API; it might be a subject to change in the
-     *                  future; please provide your feedback in the repository.
+     *  @experimental - unstable API; used only for integrating with chDB.
+     *  @see https://github.com/chdb-io/chdb-node/pull/52
      *  @default undefined */
     connection?: Connection<Stream.Readable>;
   };
