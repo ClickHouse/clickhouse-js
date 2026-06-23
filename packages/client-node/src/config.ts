@@ -8,6 +8,7 @@ import type {
 import {
   type BaseClickHouseClientConfigOptions,
   type CompressionMethod,
+  type Connection,
   type ConnectionParams,
   numberConfigURLValue,
 } from "./common/index";
@@ -79,6 +80,25 @@ export type NodeClickHouseClientConfigOptions =
      *  through to the request options.
      *  @default undefined */
     max_response_headers_size?: number;
+    /** Pre-built backend connection to use for this client instead of the
+     *  default HTTP(S) connection factory. When provided, the client routes
+     *  every method (`query` / `insert` / `command` / `exec` / `ping` /
+     *  `close`) through this connection's implementation of the public
+     *  {@link Connection} contract, and the HTTP-related options above
+     *  (`tls`, `keep_alive`, `http_agent`, `max_open_connections`, …) are
+     *  ignored.
+     *
+     *  This is the integration point for pluggable backends — most notably
+     *  an embedded `chdb-node` connection
+     *  (`createChdbConnection({ path: ':memory:' })`) — so the same
+     *  higher-level client API can target either a remote ClickHouse server
+     *  or an in-process backend with a one-line change at construction.
+     *  See `docs/design/pluggable-connection.md`.
+     *
+     *  @experimental - unstable API; it might be a subject to change in the
+     *                  future; please provide your feedback in the repository.
+     *  @default undefined */
+    connection?: Connection<Stream.Readable>;
   };
 
 interface BasicTLSOptions {
