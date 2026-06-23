@@ -88,16 +88,8 @@ export type NodeClickHouseClientConfigOptions =
      *  (`tls`, `keep_alive`, `http_agent`, `max_open_connections`, …) are
      *  ignored.
      *
-     *  This is the integration point for pluggable backends — most notably
-     *  an embedded `chdb-node` connection
-     *  (`createChdbConnection({ path: ':memory:' })`) — so the same
-     *  higher-level client API can target either a remote ClickHouse server
-     *  or an in-process backend with a one-line change at construction.
-     *  See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/design/pluggable-connection.md
-     *  for the full design and the asymmetric upstream-clean rationale.
-     *
-     *  @experimental - unstable API; it might be a subject to change in the
-     *                  future; please provide your feedback in the repository.
+     *  @experimental unstable API; used only for integrating with chDB;
+     *  @more https://github.com/chdb-io/chdb-node/pull/52
      *  @default undefined */
     connection?: Connection<Stream.Readable>;
   };
