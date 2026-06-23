@@ -83,7 +83,7 @@ export type NodeClickHouseClientConfigOptions =
     /** Pre-built backend connection to use for this client instead of the
      *  default HTTP(S) connection factory. When provided, the client routes
      *  every method (`query` / `insert` / `command` / `exec` / `ping` /
-     *  `close`) through this connection's implementation of the public
+     *  `close`) through this connection's implementation of the internal
      *  {@link Connection} contract, and the HTTP-related options above
      *  (`tls`, `keep_alive`, `http_agent`, `max_open_connections`, …) are
      *  ignored.
