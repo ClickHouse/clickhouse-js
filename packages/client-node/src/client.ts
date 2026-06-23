@@ -25,8 +25,20 @@ export class NodeClickHouseClient extends ClickHouseClient<Stream.Readable> {
 export function createClient(
   config?: NodeClickHouseClientConfigOptions,
 ): NodeClickHouseClient {
+  // If the caller injected a pre-built Connection (pluggable-backend path
+  // — see NodeClickHouseClientConfigOptions.connection), override the
+  // default HTTP make_connection factory to return THAT connection
+  // instead. The factory is invoked with (config, params) by the shared
+  // Client; we ignore both because the injected connection is already
+  // fully built by its own factory (e.g.
+  // `createChdbConnection({ path: ':memory:' })`).
+  const injected = config?.connection;
+  const impl =
+    injected !== undefined
+      ? { ...NodeConfigImpl, make_connection: () => injected }
+      : NodeConfigImpl;
   return new ClickHouseClient<Stream.Readable>({
-    impl: NodeConfigImpl,
+    impl,
     ...(config || {}),
   }) as NodeClickHouseClient;
 }

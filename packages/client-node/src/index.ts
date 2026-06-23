@@ -61,6 +61,22 @@ export {
   type ClickHouseSpanAttributes,
   type ClickHouseSpanStatus,
   type ClickHouseSpanName,
+  // Pluggable Connection contract — re-exported for third-party backends
+  // (e.g. chdb-node) implementing `createClient({ connection })`.
+  type Connection,
+  type ConnBaseQueryParams,
+  type ConnBaseResult,
+  type ConnQueryResult,
+  type ConnInsertParams,
+  type ConnInsertResult,
+  type ConnExecParams,
+  type ConnExecResult,
+  type ConnCommandResult,
+  type ConnPingParams,
+  type ConnPingResult,
+  type ConnOperation,
+  type ClickHouseSummary,
+  type WithClickHouseSummary,
 } from "./common/index";
 
 /**
