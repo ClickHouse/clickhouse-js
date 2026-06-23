@@ -7,7 +7,13 @@
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
-const MIN_AGE_DAYS = parseInt(process.env.MIN_AGE_DAYS ?? '7', 10)
+const MIN_AGE_DAYS = Number.parseInt(process.env.MIN_AGE_DAYS ?? '7', 10)
+if (!Number.isFinite(MIN_AGE_DAYS) || MIN_AGE_DAYS <= 0) {
+  console.error(
+    `MIN_AGE_DAYS must be a positive integer (got: ${process.env.MIN_AGE_DAYS ?? '7'})`,
+  )
+  process.exit(2)
+}
 const BASE_REF = process.env.GITHUB_BASE_REF || 'main'
 const cutoffMs = Date.now() - MIN_AGE_DAYS * 86400_000
 
