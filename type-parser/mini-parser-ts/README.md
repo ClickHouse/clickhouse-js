@@ -17,14 +17,14 @@ parser's output across the full test corpus.
 
 The module structure tracks the C++ sources one-to-one:
 
-| TypeScript          | ported from (C++)                | role                                    |
-| ------------------- | -------------------------------- | --------------------------------------- |
-| `src/ast.ts`        | `include/chdt/ast.h`             | the AST node shape + `makeNode` factory |
-| `src/lexer.ts`      | `src/lexer.{h,cpp}`              | the purpose-built tokenizer             |
-| `src/parser.ts`     | `src/parser.cpp` + `parser.h`    | the `ParserDataType::parseImpl` port    |
-| `src/json.ts`       | `src/json.cpp`                   | the byte-faithful JSON serializer       |
-| `src/index.ts`      | —                                | public barrel                           |
-| `tool/main.ts`      | `tool/main.cpp`                  | the `chdt-parse` CLI                     |
+| TypeScript      | ported from (C++)             | role                                    |
+| --------------- | ----------------------------- | --------------------------------------- |
+| `src/ast.ts`    | `include/chdt/ast.h`          | the AST node shape + `makeNode` factory |
+| `src/lexer.ts`  | `src/lexer.{h,cpp}`           | the purpose-built tokenizer             |
+| `src/parser.ts` | `src/parser.cpp` + `parser.h` | the `ParserDataType::parseImpl` port    |
+| `src/json.ts`   | `src/json.cpp`                | the byte-faithful JSON serializer       |
+| `src/index.ts`  | —                             | public barrel                           |
+| `tool/main.ts`  | `tool/main.cpp`               | the `chdt-parse` CLI                    |
 
 The lexer and parser deliberately preserve the original control flow, branch
 ordering, helper names, and `pos` save/restore points. A few signatures changed
@@ -48,8 +48,8 @@ import { parseDataType, toJSON } from "@clickhouse/datatype-parser";
 
 const r = parseDataType("Tuple(a UInt8, b String)");
 if (r.ok()) {
-  console.log(toJSON(r.ast!));      // pretty (2-space) JSON
-  console.log(toJSON(r.ast!, -1));  // compact JSON
+  console.log(toJSON(r.ast!)); // pretty (2-space) JSON
+  console.log(toJSON(r.ast!, -1)); // compact JSON
 } else {
   console.error(r.error!.message, r.error!.position);
 }
@@ -142,7 +142,7 @@ npm run test:oracle -- --clickhouse /path/to/clickhouse
 
 The oracle compares against the server's **parser** (`ParserDataType`), which is
 what this library mirrors. To additionally confirm that every type in the corpus
-is a *real* ClickHouse type — not just syntactically well-formed — there is a
+is a _real_ ClickHouse type — not just syntactically well-formed — there is a
 check that **instantiates** each type against any stock running server (no
 AST-JSON support needed; over the HTTP interface):
 
@@ -161,6 +161,5 @@ factory** later rejects — e.g. partial tuple naming (`Tuple(a UInt8, String)`)
 `Nullable` inside `Variant`, `Nullable(Tuple(...))`, `Dynamic(max_types = 255)`,
 the `BINARY` alias without a size, and the legacy `Object('json')` (removed in
 recent servers). These are deliberate parser test inputs — this is a type-string
-*parser*, not a type validator — so they are allowlisted, and `validate:live`
-exits non-zero only on an *unexpected* failure.
-
+_parser_, not a type validator — so they are allowlisted, and `validate:live`
+exits non-zero only on an _unexpected_ failure.

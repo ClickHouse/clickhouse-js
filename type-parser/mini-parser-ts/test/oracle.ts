@@ -31,10 +31,14 @@ export function findColumnDataType(node: unknown, column: string): unknown {
 /// server error (invalid type) or an unexpected AST shape.
 export function serverDataType(clickhouse: string, typeStr: string): unknown {
   const sql = `EXPLAIN AST json = 1 CREATE TABLE t (c ${typeStr}) ENGINE = Null`;
-  const out = spawnSync(clickhouse, ["local", "--format", "TSVRaw", "-q", sql], {
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  const out = spawnSync(
+    clickhouse,
+    ["local", "--format", "TSVRaw", "-q", sql],
+    {
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
   if (out.status !== 0) {
     throw new Error(`server failed: ${(out.stderr ?? "").trim()}`);
   }

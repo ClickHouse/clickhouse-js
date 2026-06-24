@@ -51,7 +51,9 @@ function main(): number {
       expected = canon(serverDataType(clickhouse, typeStr));
       actual = canon(toolDataType(typeStr));
     } catch (exc) {
-      console.log(`ERROR ${JSON.stringify(typeStr)}: ${(exc as Error).message}`);
+      console.log(
+        `ERROR ${JSON.stringify(typeStr)}: ${(exc as Error).message}`,
+      );
       failures++;
       continue;
     }

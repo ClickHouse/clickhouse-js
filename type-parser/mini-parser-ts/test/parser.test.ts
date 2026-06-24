@@ -30,7 +30,11 @@ test("nested parametric type", () => {
     type: "DataType",
     name: "Array",
     arguments: [
-      { type: "DataType", name: "Nullable", arguments: [{ type: "DataType", name: "UInt64" }] },
+      {
+        type: "DataType",
+        name: "Nullable",
+        arguments: [{ type: "DataType", name: "UInt64" }],
+      },
     ],
   });
 });
@@ -98,13 +102,19 @@ test("Dynamic(max_types = 5) parses to an equals Function argument", () => {
 });
 
 test("SQL-standard multi-word alias", () => {
-  assert.deepEqual(json("DOUBLE PRECISION"), { type: "DataType", name: "DOUBLE PRECISION" });
+  assert.deepEqual(json("DOUBLE PRECISION"), {
+    type: "DataType",
+    name: "DOUBLE PRECISION",
+  });
 });
 
 test("compact output has no whitespace", () => {
   const r = parseDataType("Array(String)");
   assert.ok(r.ok());
-  assert.equal(toJSON(r.ast!, -1), '{"type":"DataType","name":"Array","arguments":[{"type":"DataType","name":"String"}]}');
+  assert.equal(
+    toJSON(r.ast!, -1),
+    '{"type":"DataType","name":"Array","arguments":[{"type":"DataType","name":"String"}]}',
+  );
 });
 
 test("deliberately-unsupported types are rejected with a hard error", () => {

@@ -30,7 +30,9 @@ function main(): number {
     }
   }
 
-  console.log(`\n${cases.length - failures}/${cases.length} correctly rejected`);
+  console.log(
+    `\n${cases.length - failures}/${cases.length} correctly rejected`,
+  );
   return failures ? 1 : 0;
 }
 

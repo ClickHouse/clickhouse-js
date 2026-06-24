@@ -91,7 +91,12 @@ class Writer {
 
 /// Emit `"key": ` prefix; flips `flag.first` to false (mirrors the C++
 /// `bool & first`).
-function writeKey(w: Writer, key: string, flag: FirstFlag, depth: number): void {
+function writeKey(
+  w: Writer,
+  key: string,
+  flag: FirstFlag,
+  depth: number,
+): void {
   if (!flag.first) w.out.push(0x2c /* ',' */);
   flag.first = false;
   w.newlineIndent(depth + 1);

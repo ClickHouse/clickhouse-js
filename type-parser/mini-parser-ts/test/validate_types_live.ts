@@ -43,7 +43,11 @@ interface Failure {
   message: string;
 }
 
-async function probe(url: string, typeStr: string, i: number): Promise<Failure | null> {
+async function probe(
+  url: string,
+  typeStr: string,
+  i: number,
+): Promise<Failure | null> {
   const sql = `CREATE TEMPORARY TABLE _chdt_probe_${i} (c ${typeStr})`;
   const resp = await fetch(url, { method: "POST", body: sql });
   if (resp.ok) {
@@ -68,7 +72,9 @@ async function main(): Promise<number> {
   const cases = readCases(join(here, "cases.txt"));
   /// Types the parser handles (and whose AST matches the server) but that the
   /// type factory refuses to instantiate — documented & expected, not bugs.
-  const expectedNonInstantiable = new Set(readCases(join(here, "non_instantiable.txt")));
+  const expectedNonInstantiable = new Set(
+    readCases(join(here, "non_instantiable.txt")),
+  );
 
   /// Confirm reachability up front.
   try {
@@ -83,34 +89,52 @@ async function main(): Promise<number> {
   let done = 0;
   for (let start = 0; start < cases.length; start += CONCURRENCY) {
     const batch = cases.slice(start, start + CONCURRENCY);
-    const results = await Promise.all(batch.map((t, k) => probe(url, t, start + k)));
+    const results = await Promise.all(
+      batch.map((t, k) => probe(url, t, start + k)),
+    );
     for (const f of results) if (f) failures.push(f);
     done += batch.length;
     process.stderr.write(`  ... ${done}/${cases.length}\n`);
   }
 
   const expected = failures.filter((f) => expectedNonInstantiable.has(f.type));
-  const unexpected = failures.filter((f) => !expectedNonInstantiable.has(f.type));
+  const unexpected = failures.filter(
+    (f) => !expectedNonInstantiable.has(f.type),
+  );
 
   console.log(`\nchecked ${cases.length} types`);
   console.log(`instantiated OK: ${cases.length - failures.length}`);
-  console.log(`expected non-instantiable (allowlisted, see non_instantiable.txt): ${expected.length}`);
+  console.log(
+    `expected non-instantiable (allowlisted, see non_instantiable.txt): ${expected.length}`,
+  );
   console.log(`UNEXPECTED failures: ${unexpected.length}`);
 
   if (expected.length) {
-    console.log(`\n## expected non-instantiable (parser-valid by design — NOT inventions)`);
-    for (const f of expected) console.log(`- ${f.type}\n    Code ${f.code}: ${f.message.split("\n")[0]}`);
+    console.log(
+      `\n## expected non-instantiable (parser-valid by design — NOT inventions)`,
+    );
+    for (const f of expected)
+      console.log(
+        `- ${f.type}\n    Code ${f.code}: ${f.message.split("\n")[0]}`,
+      );
   }
   if (unexpected.length) {
     console.log(`\n## UNEXPECTED — server does not accept these (review!)`);
-    for (const f of unexpected) console.log(`- ${f.type}\n    Code ${f.code}: ${f.message.split("\n")[0]}`);
+    for (const f of unexpected)
+      console.log(
+        `- ${f.type}\n    Code ${f.code}: ${f.message.split("\n")[0]}`,
+      );
   }
 
   /// Also flag anything allowlisted that now DOES instantiate (stale entry).
-  const okSet = new Set(cases.filter((t) => !failures.some((f) => f.type === t)));
+  const okSet = new Set(
+    cases.filter((t) => !failures.some((f) => f.type === t)),
+  );
   const stale = [...expectedNonInstantiable].filter((t) => okSet.has(t));
   if (stale.length) {
-    console.log(`\n## stale allowlist entries (now instantiate — remove from non_instantiable.txt)`);
+    console.log(
+      `\n## stale allowlist entries (now instantiate — remove from non_instantiable.txt)`,
+    );
     for (const t of stale) console.log(`- ${t}`);
   }
 

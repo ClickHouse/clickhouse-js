@@ -15,7 +15,10 @@ export const SNAPSHOT_DIR = join(here, "snapshots");
 /// A stable filename for a type string (content-addressed, so reordering
 /// cases.txt never churns filenames).
 export function snapshotName(typeStr: string): string {
-  return createHash("sha1").update(typeStr, "utf8").digest("hex").slice(0, 16) + ".json";
+  return (
+    createHash("sha1").update(typeStr, "utf8").digest("hex").slice(0, 16) +
+    ".json"
+  );
 }
 
 export function snapshotPath(typeStr: string): string {

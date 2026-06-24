@@ -18,13 +18,26 @@
 /// The clickhouse binary must be built from
 /// https://github.com/peter-leonov-ch/ClickHouse/pull/1.
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+  appendFileSync,
+} from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { canon, deepEqual, readCases } from "./cases.js";
 import { serverDataType, toolDataType } from "./oracle.js";
-import { SNAPSHOT_DIR, snapshotName, snapshotPath, type Snapshot } from "./snapshots.js";
+import {
+  SNAPSHOT_DIR,
+  snapshotName,
+  snapshotPath,
+  type Snapshot,
+} from "./snapshots.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -57,7 +70,9 @@ function main(): number {
   /// appended. Dedup by exact (trimmed) string across both sources.
   const existing = readCases(args.cases);
   const existingSet = new Set(existing);
-  const candidates = existsSync(args.candidates) ? readCases(args.candidates) : [];
+  const candidates = existsSync(args.candidates)
+    ? readCases(args.candidates)
+    : [];
 
   const order: string[] = [];
   const seen = new Set<string>();
@@ -83,7 +98,10 @@ function main(): number {
     try {
       expected = serverDataType(args.clickhouse, typeStr);
     } catch (exc) {
-      rejected.push({ type: typeStr, reason: `server: ${(exc as Error).message}` });
+      rejected.push({
+        type: typeStr,
+        reason: `server: ${(exc as Error).message}`,
+      });
       continue;
     }
 
@@ -91,12 +109,20 @@ function main(): number {
     try {
       actual = toolDataType(typeStr);
     } catch (exc) {
-      divergent.push({ type: typeStr, expected: JSON.stringify(canon(expected)), actual: `(${(exc as Error).message})` });
+      divergent.push({
+        type: typeStr,
+        expected: JSON.stringify(canon(expected)),
+        actual: `(${(exc as Error).message})`,
+      });
       continue;
     }
 
     if (!deepEqual(expected, actual)) {
-      divergent.push({ type: typeStr, expected: JSON.stringify(canon(expected)), actual: JSON.stringify(canon(actual)) });
+      divergent.push({
+        type: typeStr,
+        expected: JSON.stringify(canon(expected)),
+        actual: JSON.stringify(canon(actual)),
+      });
       continue;
     }
 
@@ -130,7 +156,9 @@ function main(): number {
   const reportLines: string[] = [];
   reportLines.push(`# snapshot update report`);
   reportLines.push(`candidates considered: ${order.length}`);
-  reportLines.push(`kept (snapshotted):    ${kept.length}  (new in cases.txt: ${newKept.length})`);
+  reportLines.push(
+    `kept (snapshotted):    ${kept.length}  (new in cases.txt: ${newKept.length})`,
+  );
   reportLines.push(`rejected by server:    ${rejected.length}`);
   reportLines.push(`divergent (server!=parser): ${divergent.length}`);
   reportLines.push(`pruned stale snapshots: ${pruned}`);
@@ -139,14 +167,19 @@ function main(): number {
     for (const r of rejected) reportLines.push(`- ${r.type}\n    ${r.reason}`);
   }
   if (divergent.length) {
-    reportLines.push(`\n## divergent (server accepted but parser output differs)`);
+    reportLines.push(
+      `\n## divergent (server accepted but parser output differs)`,
+    );
     for (const d of divergent) {
       reportLines.push(`- ${d.type}`);
       reportLines.push(`    expected: ${d.expected}`);
       reportLines.push(`    actual:   ${d.actual}`);
     }
   }
-  writeFileSync(join(here, "snapshots_report.txt"), reportLines.join("\n") + "\n");
+  writeFileSync(
+    join(here, "snapshots_report.txt"),
+    reportLines.join("\n") + "\n",
+  );
 
   console.log(reportLines.slice(0, 6).join("\n"));
   console.log(`\nreport: test/snapshots_report.txt`);
