@@ -138,3 +138,29 @@ directly, useful while iterating:
 npm run test:oracle -- --clickhouse /path/to/clickhouse
 ```
 
+### Confirming the corpus is real (no invented types)
+
+The oracle compares against the server's **parser** (`ParserDataType`), which is
+what this library mirrors. To additionally confirm that every type in the corpus
+is a *real* ClickHouse type — not just syntactically well-formed — there is a
+check that **instantiates** each type against any stock running server (no
+AST-JSON support needed; over the HTTP interface):
+
+```bash
+npm run validate:live -- --url http://localhost:8124/
+```
+
+It runs `CREATE TEMPORARY TABLE _probe (c <TYPE>)` (session-scoped, nothing
+persisted) with the relevant experimental settings enabled, so an unknown type
+family fails with `UNKNOWN_TYPE`. As of the latest run, **347/356 instantiate
+and 0 are unexpected**.
+
+The remaining 9 are listed in `test/non_instantiable.txt`: types the parser
+accepts (and whose AST matches the server's parser) but that the server's **type
+factory** later rejects — e.g. partial tuple naming (`Tuple(a UInt8, String)`),
+`Nullable` inside `Variant`, `Nullable(Tuple(...))`, `Dynamic(max_types = 255)`,
+the `BINARY` alias without a size, and the legacy `Object('json')` (removed in
+recent servers). These are deliberate parser test inputs — this is a type-string
+*parser*, not a type validator — so they are allowlisted, and `validate:live`
+exits non-zero only on an *unexpected* failure.
+

@@ -41,15 +41,6 @@ interface Failure {
   type: string;
   code: number | null;
   message: string;
-  invented: boolean;
-}
-
-/// A failure proves we "invented" a type only when the family is unknown or the
-/// type string does not even parse. Everything else (a real type rejected for
-/// some other reason) is not an invention.
-function isInvented(code: number | null, message: string): boolean {
-  if (code === 50 /* UNKNOWN_TYPE */ || code === 62 /* SYNTAX_ERROR */) return true;
-  return /Unknown data type family|UNKNOWN_TYPE|SYNTAX_ERROR/i.test(message);
 }
 
 async function probe(url: string, typeStr: string, i: number): Promise<Failure | null> {
@@ -62,7 +53,7 @@ async function probe(url: string, typeStr: string, i: number): Promise<Failure |
   const body = (await resp.text()).trim();
   const m = body.match(/^Code:\s*(\d+)\./);
   const code = m ? Number(m[1]) : null;
-  return { type: typeStr, code, message: body, invented: isInvented(code, body) };
+  return { type: typeStr, code, message: body };
 }
 
 async function main(): Promise<number> {
@@ -75,6 +66,9 @@ async function main(): Promise<number> {
 
   const here = dirname(fileURLToPath(import.meta.url));
   const cases = readCases(join(here, "cases.txt"));
+  /// Types the parser handles (and whose AST matches the server) but that the
+  /// type factory refuses to instantiate — documented & expected, not bugs.
+  const expectedNonInstantiable = new Set(readCases(join(here, "non_instantiable.txt")));
 
   /// Confirm reachability up front.
   try {
@@ -95,24 +89,32 @@ async function main(): Promise<number> {
     process.stderr.write(`  ... ${done}/${cases.length}\n`);
   }
 
-  const invented = failures.filter((f) => f.invented);
-  const other = failures.filter((f) => !f.invented);
+  const expected = failures.filter((f) => expectedNonInstantiable.has(f.type));
+  const unexpected = failures.filter((f) => !expectedNonInstantiable.has(f.type));
 
   console.log(`\nchecked ${cases.length} types`);
   console.log(`instantiated OK: ${cases.length - failures.length}`);
-  console.log(`invented (UNKNOWN_TYPE / parse error): ${invented.length}`);
-  console.log(`other failures (real type, other constraint): ${other.length}`);
+  console.log(`expected non-instantiable (allowlisted, see non_instantiable.txt): ${expected.length}`);
+  console.log(`UNEXPECTED failures: ${unexpected.length}`);
 
-  if (other.length) {
-    console.log(`\n## other failures (NOT inventions — real types blocked by some constraint)`);
-    for (const f of other) console.log(`- ${f.type}\n    Code ${f.code}: ${f.message.split("\n")[0]}`);
+  if (expected.length) {
+    console.log(`\n## expected non-instantiable (parser-valid by design — NOT inventions)`);
+    for (const f of expected) console.log(`- ${f.type}\n    Code ${f.code}: ${f.message.split("\n")[0]}`);
   }
-  if (invented.length) {
-    console.log(`\n## INVENTED TYPES (do not exist on the server)`);
-    for (const f of invented) console.log(`- ${f.type}\n    Code ${f.code}: ${f.message.split("\n")[0]}`);
+  if (unexpected.length) {
+    console.log(`\n## UNEXPECTED — server does not accept these (review!)`);
+    for (const f of unexpected) console.log(`- ${f.type}\n    Code ${f.code}: ${f.message.split("\n")[0]}`);
   }
 
-  return invented.length ? 1 : 0;
+  /// Also flag anything allowlisted that now DOES instantiate (stale entry).
+  const okSet = new Set(cases.filter((t) => !failures.some((f) => f.type === t)));
+  const stale = [...expectedNonInstantiable].filter((t) => okSet.has(t));
+  if (stale.length) {
+    console.log(`\n## stale allowlist entries (now instantiate — remove from non_instantiable.txt)`);
+    for (const t of stale) console.log(`- ${t}`);
+  }
+
+  return unexpected.length ? 1 : 0;
 }
 
 process.exit(await main());

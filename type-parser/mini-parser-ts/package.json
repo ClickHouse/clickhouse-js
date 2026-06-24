@@ -15,7 +15,8 @@
     "test": "node --import tsx --test test/*.test.ts",
     "test:oracle": "tsx test/oracle_compare.ts",
     "test:unsupported": "tsx test/check_unsupported.ts",
-    "snapshot:update": "tsx test/update_snapshots.ts"
+    "snapshot:update": "tsx test/update_snapshots.ts",
+    "validate:live": "tsx test/validate_types_live.ts"
   },
   "devDependencies": {
     "tsx": "^4.22.4",
