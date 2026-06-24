@@ -10,6 +10,12 @@
 
 - (Node.js, `@experimental`) Added an additive `connection?: Connection<Stream.Readable>` option to `createClient` that lets a caller plug an externally-built backend `Connection`-like object in place of the default HTTP(S) factory. Only supposed to be used for testing the `chDB` integration. ([#879])
 
+## Improvements
+
+- (Node.js) Security hardening: the client no longer threads the raw SQL statement, bound query parameter values, or credentials into the connection/transport layer or the error-logging path. Previously the full request params object (which carries the `query` text, `query_params` values, and `auth`) and the request `URLSearchParams` (which encodes the SQL and bound parameters) were passed into the internal `error`-level log helper, and the raw `query` was carried into the socket layer; none of these were ever emitted, but they are now removed entirely so they cannot be logged by accident. Error logs continue to include only non-sensitive diagnostics (operation, `connection_id`, `query_id`, `session_id`, `with_abort_signal`, and `clickhouse_settings`). ([#883])
+
+[#883]: https://github.com/ClickHouse/clickhouse-js/pull/883
+
 # 1.22.0
 
 ## New features

@@ -66,7 +66,6 @@ describe("[Node.js] NodeHttpConnection", () => {
         url,
         headers: {},
         abort_signal: abortController.signal,
-        query: "SELECT 1",
         query_id: "test-query-id",
         log_writer: new LogWriter(
           new TestLogger(),
@@ -101,7 +100,6 @@ describe("[Node.js] NodeHttpConnection", () => {
         url,
         headers: {},
         abort_signal: abortController.signal,
-        query: "SELECT 1",
         query_id: "test-query-id",
         log_writer: new LogWriter(
           new TestLogger(),

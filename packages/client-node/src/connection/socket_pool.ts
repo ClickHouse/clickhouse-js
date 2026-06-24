@@ -38,7 +38,6 @@ export interface RequestParams {
   // if the response contains an error, ignore it and return the stream as-is
   ignore_error_response?: boolean;
   parse_summary?: boolean;
-  query: string;
   query_id: string;
   log_writer: LogWriter;
   log_level: ClickHouseLogLevel;

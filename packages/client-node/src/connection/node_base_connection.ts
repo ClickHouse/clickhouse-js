@@ -118,7 +118,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         });
         result = await this.request(
           {
-            query: PingQuery,
             method: "GET",
             url: transformUrl({ url: this.params.url, searchParams }),
             abort_signal: controller.signal,
@@ -132,7 +131,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       } else {
         result = await this.request(
           {
-            query: "ping",
             method: "GET",
             url: transformUrl({ url: this.params.url, pathname: "/ping" }),
             abort_signal: controller.signal,
@@ -252,7 +250,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           abort_signal: controller.signal,
           response_compression_codec: responseCompressionCodec,
           headers,
-          query: params.query,
           query_id,
           log_writer,
           log_level,
@@ -270,8 +267,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.logRequestError({
         op: "Query",
         query_id: query_id,
-        query_params: params,
-        search_params: searchParams,
+        session_id: params.session_id,
+        with_abort_signal: params.abort_signal !== undefined,
         err: err as Error,
         extra_args: {
           decompress_response: responseCompressionCodec,
@@ -310,7 +307,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             request_compression: this.params.compression.compress_request,
             parse_summary: true,
             headers: this.buildRequestHeaders(params),
-            query: params.query,
             query_id,
             log_writer,
             log_level,
@@ -332,8 +328,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.logRequestError({
         op: "Insert",
         query_id: query_id,
-        query_params: params,
-        search_params: searchParams,
+        session_id: params.session_id,
+        with_abort_signal: params.abort_signal !== undefined,
         err: err as Error,
         extra_args: {
           clickhouse_settings: params.clickhouse_settings ?? {},
@@ -505,7 +501,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     op,
     err,
     query_id,
-    query_params,
+    session_id,
+    with_abort_signal,
     extra_args,
   }: LogRequestErrorParams) {
     if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
@@ -516,8 +513,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           operation: op,
           connection_id: this.connectionId,
           query_id,
-          with_abort_signal: query_params.abort_signal !== undefined,
-          session_id: query_params.session_id,
+          with_abort_signal,
+          session_id,
           ...extra_args,
         },
       });
@@ -573,7 +570,6 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             try_decompress_response_stream: tryDecompressResponseStream,
             ignore_error_response: ignoreErrorResponse,
             headers: this.buildRequestHeaders(params),
-            query: params.query,
             query_id,
             log_writer,
             log_level,
@@ -592,8 +588,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.logRequestError({
         op: params.op,
         query_id: query_id,
-        query_params: params,
-        search_params: searchParams,
+        session_id: params.session_id,
+        with_abort_signal: params.abort_signal !== undefined,
         err: err as Error,
         extra_args: {
           clickhouse_settings: params.clickhouse_settings ?? {},
@@ -624,8 +620,8 @@ interface LogRequestErrorParams {
   op: ConnOperation;
   err: Error;
   query_id: string;
-  query_params: ConnBaseQueryParams;
-  search_params: URLSearchParams | undefined;
+  session_id: string | undefined;
+  with_abort_signal: boolean;
   extra_args: Record<string, unknown>;
 }
 
