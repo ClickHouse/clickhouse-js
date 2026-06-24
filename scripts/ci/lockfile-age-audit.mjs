@@ -26,23 +26,38 @@ const REGISTRY_HOSTS = ["registry.npmjs.org", "registry.npmmirror.com"];
 
 // Classify an entry's `resolved` field:
 //   'registry' — an allowed HTTPS registry tarball; audited against the age gate.
-//   'foreign'  — a URL, but not an allowed HTTPS registry host (alternative registry,
-//                plain http, git+https, etc.). This is a bypass vector for the age gate,
-//                so we fail closed on newly-added foreign entries (escape hatch: the
+//   'foreign'  — present but not an allowed HTTPS registry tarball (alternative
+//                registry, plain http, git+https, or a non-URL string from a
+//                hand-edited lockfile). A bypass vector for the age gate, so we fail
+//                closed on newly-added foreign entries (escape hatch: the
 //                'lockfile-age-skip' PR label).
-//   'local'    — no resolved URL at all (workspace source dirs, file: links); not a
-//                downloaded artifact, so there is nothing to age-check.
+//   'local'    — no resolved URL at all (workspace source dirs) or a file: dependency;
+//                not a registry download, so there is nothing to age-check.
 function classifyResolved(resolved) {
   if (!resolved || typeof resolved !== "string") return "local";
   let u;
   try {
     u = new URL(resolved);
   } catch {
-    return "local";
+    // A present-but-unparseable resolved string (e.g. a hand-edited lockfile)
+    // must not slip through the gate — fail closed.
+    return "foreign";
   }
+  if (u.protocol === "file:") return "local";
   if (u.protocol === "https:" && REGISTRY_HOSTS.includes(u.host))
     return "registry";
   return "foreign";
+}
+
+// Render a `resolved` value for CI logs without leaking any embedded credentials
+// (e.g. https://user:token@host/...). `URL.host` excludes userinfo, query, and path.
+function redactResolved(resolved) {
+  try {
+    const u = new URL(resolved);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return "<unparseable resolved field>";
+  }
 }
 
 function isPreapproved(name) {
@@ -163,7 +178,7 @@ const registryEntries = [];
 for (const value of added.values()) {
   if (value.kind === "foreign") {
     errors.push(
-      `${value.name}@${value.version}: resolved from a non-registry source (${value.resolved}) — not covered by the age gate`,
+      `${value.name}@${value.version}: resolved from a non-registry source (${redactResolved(value.resolved)}) — not covered by the age gate`,
     );
   } else {
     registryEntries.push(value);
