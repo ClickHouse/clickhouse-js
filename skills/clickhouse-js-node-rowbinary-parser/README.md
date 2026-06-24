@@ -107,6 +107,7 @@ import {
   type DecimalValue,
   streamRowBatches,
 } from "@clickhouse/rowbinary";
+import { createClient } from "@clickhouse/client";
 
 type OrderRow = { id: number; uid: string; price: DecimalValue; status: number };
 
@@ -116,15 +117,9 @@ const readOrderRow: Reader<OrderRow> = (s) => ({
   price: readDecimal64(2)(s),
   status: readEnum8(s),
 });
-```
 
-### `@clickhouse/client` (Node.js)
-
-`exec` resolves to a Node `Stream.Readable`. It is already an
-`AsyncIterable<Buffer>`, so pass `stream` straight into `streamRowBatches`:
-
-```ts
-import { createClient } from "@clickhouse/client";
+// `exec` resolves to a Node `Stream.Readable`. It is already an
+// `AsyncIterable<Buffer>`, so pass `stream` straight into  `streamRowBatches`:
 
 const client = createClient();
 
@@ -138,46 +133,6 @@ for await (const rows of streamRowBatches(stream, readOrderRow)) {
 
 await client.close();
 ```
-
-### `@clickhouse/client-web` (Web)
-
-Here `exec` resolves to a Web `ReadableStream<Uint8Array>`. Adapt it to an async
-iterable of chunks before handing it to `streamRowBatches` (a plain `for await`
-over a `ReadableStream` is not yet supported everywhere):
-
-```ts
-import { createClient } from "@clickhouse/client-web";
-
-async function* toChunks(rs: ReadableStream<Uint8Array>) {
-  const reader = rs.getReader();
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) return;
-      yield value;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-const client = createClient();
-
-const { stream } = await client.exec({
-  query: "SELECT id, uid, price, status FROM orders FORMAT RowBinary",
-});
-
-for await (const rows of streamRowBatches(toChunks(stream), readOrderRow)) {
-  for (const row of rows) console.log(row);
-}
-
-await client.close();
-```
-
-> **Note:** this library uses Node's `Buffer`, so the `@clickhouse/client-web`
-> path applies when that client runs on a server-side / edge runtime where
-> `Buffer` exists (Node.js, Bun, Deno). In-browser usage is out of scope — see
-> [Scope](#scope).
 
 ## Why it's worth it
 
