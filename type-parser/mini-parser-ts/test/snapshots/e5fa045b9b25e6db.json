@@ -1,0 +1,14 @@
+{
+  "type": "FixedString(1024)",
+  "data_type": {
+    "type": "DataType",
+    "name": "FixedString",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "UInt64",
+        "value": "1024"
+      }
+    ]
+  }
+}

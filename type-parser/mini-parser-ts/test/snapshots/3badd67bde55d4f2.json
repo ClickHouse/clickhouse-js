@@ -1,0 +1,49 @@
+{
+  "type": "Map(String, Array(Tuple(id UInt64, vals Array(Nullable(Float64)))))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Map",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "TupleDataType",
+            "name": "Tuple",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "UInt64"
+              },
+              {
+                "type": "DataType",
+                "name": "Array",
+                "arguments": [
+                  {
+                    "type": "DataType",
+                    "name": "Nullable",
+                    "arguments": [
+                      {
+                        "type": "DataType",
+                        "name": "Float64"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "element_names": [
+              "id",
+              "vals"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

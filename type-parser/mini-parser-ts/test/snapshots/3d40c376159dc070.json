@@ -1,0 +1,26 @@
+{
+  "type": "Tuple(first String, second String, third String)",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "String"
+      }
+    ],
+    "element_names": [
+      "first",
+      "second",
+      "third"
+    ]
+  }
+}

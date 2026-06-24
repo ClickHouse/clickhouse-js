@@ -1,0 +1,17 @@
+{
+  "type": "Enum8('' = 0, 'nonempty' = 1)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum8",
+    "values": [
+      {
+        "name": "",
+        "value": 0
+      },
+      {
+        "name": "nonempty",
+        "value": 1
+      }
+    ]
+  }
+}

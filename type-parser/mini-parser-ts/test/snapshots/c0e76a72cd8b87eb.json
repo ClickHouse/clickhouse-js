@@ -1,0 +1,39 @@
+{
+  "type": "Array(Tuple(Enum8('a' = 1, 'b' = 2), Array(UInt8)))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "TupleDataType",
+        "name": "Tuple",
+        "arguments": [
+          {
+            "type": "EnumDataType",
+            "name": "Enum8",
+            "values": [
+              {
+                "name": "a",
+                "value": 1
+              },
+              {
+                "name": "b",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "type": "DataType",
+            "name": "Array",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "UInt8"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

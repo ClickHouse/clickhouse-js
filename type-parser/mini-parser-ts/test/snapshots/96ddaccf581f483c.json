@@ -1,0 +1,7 @@
+{
+  "type": "Ring",
+  "data_type": {
+    "type": "DataType",
+    "name": "Ring"
+  }
+}

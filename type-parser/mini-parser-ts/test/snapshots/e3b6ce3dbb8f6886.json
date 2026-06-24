@@ -1,0 +1,19 @@
+{
+  "type": "Enum16('alpha', 'beta')",
+  "data_type": {
+    "type": "DataType",
+    "name": "Enum16",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "alpha"
+      },
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "beta"
+      }
+    ]
+  }
+}

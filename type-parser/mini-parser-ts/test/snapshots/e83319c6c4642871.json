@@ -1,0 +1,14 @@
+{
+  "type": "Decimal128(38)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Decimal128",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "UInt64",
+        "value": "38"
+      }
+    ]
+  }
+}

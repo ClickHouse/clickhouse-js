@@ -1,0 +1,7 @@
+{
+  "type": "TINYINT UNSIGNED",
+  "data_type": {
+    "type": "DataType",
+    "name": "TINYINT UNSIGNED"
+  }
+}

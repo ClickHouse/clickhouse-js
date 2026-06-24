@@ -1,0 +1,17 @@
+{
+  "type": "Enum8('with space' = 1, 'another one' = 2)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum8",
+    "values": [
+      {
+        "name": "with space",
+        "value": 1
+      },
+      {
+        "name": "another one",
+        "value": 2
+      }
+    ]
+  }
+}

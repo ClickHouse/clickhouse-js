@@ -1,0 +1,56 @@
+{
+  "type": "Tuple(a Array(UInt8), b Map(String, UInt64), c Tuple(p Int8, q Int8))",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "UInt8"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "Map",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "String"
+          },
+          {
+            "type": "DataType",
+            "name": "UInt64"
+          }
+        ]
+      },
+      {
+        "type": "TupleDataType",
+        "name": "Tuple",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Int8"
+          },
+          {
+            "type": "DataType",
+            "name": "Int8"
+          }
+        ],
+        "element_names": [
+          "p",
+          "q"
+        ]
+      }
+    ],
+    "element_names": [
+      "a",
+      "b",
+      "c"
+    ]
+  }
+}
