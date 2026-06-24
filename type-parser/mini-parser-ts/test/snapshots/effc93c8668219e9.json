@@ -17,10 +17,6 @@
         "name": "Polygon"
       }
     ],
-    "element_names": [
-      "p",
-      "r",
-      "poly"
-    ]
+    "element_names": ["p", "r", "poly"]
   }
 }

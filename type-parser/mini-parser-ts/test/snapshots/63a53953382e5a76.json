@@ -13,9 +13,6 @@
         "name": "String"
       }
     ],
-    "element_names": [
-      "id",
-      "name"
-    ]
+    "element_names": ["id", "name"]
   }
 }

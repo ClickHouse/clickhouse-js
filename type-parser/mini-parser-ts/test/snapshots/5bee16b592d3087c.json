@@ -17,10 +17,6 @@
         "name": "Float64"
       }
     ],
-    "element_names": [
-      "id",
-      "name",
-      "score"
-    ]
+    "element_names": ["id", "name", "score"]
   }
 }

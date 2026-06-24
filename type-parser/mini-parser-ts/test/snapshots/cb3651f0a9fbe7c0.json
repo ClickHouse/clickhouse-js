@@ -19,9 +19,6 @@
         ]
       }
     ],
-    "element_names": [
-      "key",
-      "payload"
-    ]
+    "element_names": ["key", "payload"]
   }
 }

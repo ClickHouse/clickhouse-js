@@ -13,9 +13,6 @@
         "name": "String"
       }
     ],
-    "element_names": [
-      "a",
-      ""
-    ]
+    "element_names": ["a", ""]
   }
 }

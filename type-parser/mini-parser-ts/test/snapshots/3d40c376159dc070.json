@@ -17,10 +17,6 @@
         "name": "String"
       }
     ],
-    "element_names": [
-      "first",
-      "second",
-      "third"
-    ]
+    "element_names": ["first", "second", "third"]
   }
 }

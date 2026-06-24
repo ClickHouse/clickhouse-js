@@ -28,10 +28,7 @@
               "name": "Int8"
             }
           ],
-          "element_names": [
-            "x",
-            "y"
-          ]
+          "element_names": ["x", "y"]
         }
       }
     ]

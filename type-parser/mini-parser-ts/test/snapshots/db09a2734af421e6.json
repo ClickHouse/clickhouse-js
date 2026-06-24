@@ -31,9 +31,6 @@
         ]
       }
     ],
-    "element_names": [
-      "ts",
-      "val"
-    ]
+    "element_names": ["ts", "val"]
   }
 }

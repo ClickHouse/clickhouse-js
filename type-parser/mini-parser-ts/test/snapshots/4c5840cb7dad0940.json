@@ -21,11 +21,6 @@
         "name": "UInt64"
       }
     ],
-    "element_names": [
-      "a",
-      "b",
-      "c",
-      "d"
-    ]
+    "element_names": ["a", "b", "c", "d"]
   }
 }

@@ -37,10 +37,7 @@
                 ]
               }
             ],
-            "element_names": [
-              "id",
-              "vals"
-            ]
+            "element_names": ["id", "vals"]
           }
         ]
       }

@@ -17,10 +17,6 @@
         "name": "Bool"
       }
     ],
-    "element_names": [
-      "id",
-      "",
-      "flag"
-    ]
+    "element_names": ["id", "", "flag"]
   }
 }

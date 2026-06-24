@@ -45,10 +45,7 @@
             ]
           }
         ],
-        "element_names": [
-          "created",
-          "tags"
-        ]
+        "element_names": ["created", "tags"]
       }
     ]
   }

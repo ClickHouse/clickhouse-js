@@ -49,15 +49,9 @@
             ]
           }
         ],
-        "element_names": [
-          "x",
-          "y"
-        ]
+        "element_names": ["x", "y"]
       }
     ],
-    "element_names": [
-      "a",
-      "b"
-    ]
+    "element_names": ["a", "b"]
   }
 }

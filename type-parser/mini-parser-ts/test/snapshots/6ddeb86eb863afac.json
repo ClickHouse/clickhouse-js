@@ -47,17 +47,11 @@
                 "name": "Float64"
               }
             ],
-            "element_names": [
-              "ts",
-              "val"
-            ]
+            "element_names": ["ts", "val"]
           }
         ]
       }
     ],
-    "element_names": [
-      "meta",
-      "data"
-    ]
+    "element_names": ["meta", "data"]
   }
 }

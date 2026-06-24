@@ -17,19 +17,13 @@
             "name": "UInt8"
           }
         ],
-        "element_names": [
-          "x",
-          "y"
-        ]
+        "element_names": ["x", "y"]
       },
       {
         "type": "DataType",
         "name": "String"
       }
     ],
-    "element_names": [
-      "a",
-      "b"
-    ]
+    "element_names": ["a", "b"]
   }
 }

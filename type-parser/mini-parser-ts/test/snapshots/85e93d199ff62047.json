@@ -35,10 +35,6 @@
         ]
       }
     ],
-    "element_names": [
-      "a",
-      "b",
-      "c"
-    ]
+    "element_names": ["a", "b", "c"]
   }
 }
