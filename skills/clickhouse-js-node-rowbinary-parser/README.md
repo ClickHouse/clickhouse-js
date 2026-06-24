@@ -80,6 +80,105 @@ npx skills add ClickHouse/clickhouse-js/skills/clickhouse-js-node-rowbinary-pars
 < Reading skill clickhouse-js-node-rowbinary-parser…
 ```
 
+## Using it with the ClickHouse JS client
+
+This library only **decodes** the bytes — it doesn't open connections. Pair it
+with the official client to fetch a `RowBinary` response and feed the byte chunks
+into `streamRowBatches(chunks, readRow)`.
+
+`RowBinary` isn't one of the formats the client decodes itself, so don't use
+`client.query({ format: ... })` for it. Instead use `client.exec({ query })` with
+the `FORMAT RowBinary` clause written into the SQL yourself — `exec` hands back the
+**raw, undecoded byte stream** of the response, which is exactly what this library
+consumes. (Use plain `RowBinary`, not `RowBinaryWithNamesAndTypes`, unless your
+reader also skips the leading names/types header.)
+
+The row reader below is the `orders` example from [EXAMPLES.md](EXAMPLES.md); swap
+in the reader the skill generates for your own columns.
+
+```ts
+import {
+  type Reader,
+  readUInt8,
+  readUUID,
+  formatUUID,
+  readDecimal64,
+  readEnum8,
+  type DecimalValue,
+  streamRowBatches,
+} from "@clickhouse/rowbinary";
+
+type OrderRow = { id: number; uid: string; price: DecimalValue; status: number };
+
+const readOrderRow: Reader<OrderRow> = (s) => ({
+  id: readUInt8(s),
+  uid: formatUUID(readUUID(s)),
+  price: readDecimal64(2)(s),
+  status: readEnum8(s),
+});
+```
+
+### `@clickhouse/client` (Node.js)
+
+`exec` resolves to a Node `Stream.Readable`. It is already an
+`AsyncIterable<Buffer>`, so pass `stream` straight into `streamRowBatches`:
+
+```ts
+import { createClient } from "@clickhouse/client";
+
+const client = createClient();
+
+const { stream } = await client.exec({
+  query: "SELECT id, uid, price, status FROM orders FORMAT RowBinary",
+});
+
+for await (const rows of streamRowBatches(stream, readOrderRow)) {
+  for (const row of rows) console.log(row); // { id, uid, price: [unscaled, scale], status }
+}
+
+await client.close();
+```
+
+### `@clickhouse/client-web` (Web)
+
+Here `exec` resolves to a Web `ReadableStream<Uint8Array>`. Adapt it to an async
+iterable of chunks before handing it to `streamRowBatches` (a plain `for await`
+over a `ReadableStream` is not yet supported everywhere):
+
+```ts
+import { createClient } from "@clickhouse/client-web";
+
+async function* toChunks(rs: ReadableStream<Uint8Array>) {
+  const reader = rs.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      yield value;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+const client = createClient();
+
+const { stream } = await client.exec({
+  query: "SELECT id, uid, price, status FROM orders FORMAT RowBinary",
+});
+
+for await (const rows of streamRowBatches(toChunks(stream), readOrderRow)) {
+  for (const row of rows) console.log(row);
+}
+
+await client.close();
+```
+
+> **Note:** this library uses Node's `Buffer`, so the `@clickhouse/client-web`
+> path applies when that client runs on a server-side / edge runtime where
+> `Buffer` exists (Node.js, Bun, Deno). In-browser usage is out of scope — see
+> [Scope](#scope).
+
 ## Why it's worth it
 
 Four pillars — speed, correctness, judgment, and lifting smaller models:
