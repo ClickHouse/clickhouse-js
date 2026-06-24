@@ -1,0 +1,21 @@
+{
+  "type": "Tuple(Int32, Int32, Int32)",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Int32"
+      },
+      {
+        "type": "DataType",
+        "name": "Int32"
+      },
+      {
+        "type": "DataType",
+        "name": "Int32"
+      }
+    ]
+  }
+}

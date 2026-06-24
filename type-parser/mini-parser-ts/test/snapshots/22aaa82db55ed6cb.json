@@ -1,0 +1,13 @@
+{
+  "type": "LowCardinality(UInt64)",
+  "data_type": {
+    "type": "DataType",
+    "name": "LowCardinality",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt64"
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "type": "BYTEA",
+  "data_type": {
+    "type": "DataType",
+    "name": "BYTEA"
+  }
+}

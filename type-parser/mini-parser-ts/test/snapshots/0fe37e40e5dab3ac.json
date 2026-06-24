@@ -1,0 +1,7 @@
+{
+  "type": "INTEGER",
+  "data_type": {
+    "type": "DataType",
+    "name": "INTEGER"
+  }
+}

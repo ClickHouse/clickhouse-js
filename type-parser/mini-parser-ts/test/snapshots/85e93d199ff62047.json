@@ -1,0 +1,44 @@
+{
+  "type": "Tuple(a Nullable(UUID), b Nullable(IPv6), c Nullable(Date32))",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "UUID"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "IPv6"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Date32"
+          }
+        ]
+      }
+    ],
+    "element_names": [
+      "a",
+      "b",
+      "c"
+    ]
+  }
+}

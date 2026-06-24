@@ -17,12 +17,11 @@
 /// https://github.com/peter-leonov-ch/ClickHouse/pull/1 (the AST-format changes
 /// this parser mirrors live in that PR).
 
-import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { parseDataType, toJSON } from "../src/index.js";
 import { canon, deepEqual, readCases } from "./cases.js";
+import { serverDataType, toolDataType } from "./oracle.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -38,53 +37,6 @@ function parseArgs(argv: string[]): { clickhouse: string; cases: string } {
     process.exit(2);
   }
   return { clickhouse, cases };
-}
-
-/// Depth-first search for the ColumnDeclaration named `column`.
-function findColumnDataType(node: unknown, column: string): unknown {
-  if (Array.isArray(node)) {
-    for (const v of node) {
-      const found = findColumnDataType(v, column);
-      if (found !== undefined) return found;
-    }
-  } else if (node !== null && typeof node === "object") {
-    const obj = node as Record<string, unknown>;
-    if (obj["type"] === "ColumnDeclaration" && obj["name"] === column) {
-      return obj["data_type"];
-    }
-    for (const v of Object.values(obj)) {
-      const found = findColumnDataType(v, column);
-      if (found !== undefined) return found;
-    }
-  }
-  return undefined;
-}
-
-function serverDataType(clickhouse: string, typeStr: string): unknown {
-  const sql = `EXPLAIN AST json = 1 CREATE TABLE t (c ${typeStr}) ENGINE = Null`;
-  const out = spawnSync(clickhouse, ["local", "--format", "TSVRaw", "-q", sql], {
-    encoding: "utf8",
-  });
-  if (out.status !== 0) {
-    throw new Error(`server failed: ${(out.stderr ?? "").trim()}`);
-  }
-  const doc = JSON.parse(out.stdout) as { version?: number; ast: unknown };
-  if (doc.version !== 2) {
-    throw new Error(`unexpected format version ${doc.version}`);
-  }
-  const dt = findColumnDataType(doc.ast, "c");
-  if (dt === undefined) {
-    throw new Error("could not locate column data_type in server AST");
-  }
-  return dt;
-}
-
-function toolDataType(typeStr: string): unknown {
-  const result = parseDataType(typeStr);
-  if (!result.ok()) {
-    throw new Error(`parse failed: ${result.error!.message}`);
-  }
-  return JSON.parse(toJSON(result.ast!));
 }
 
 function main(): number {

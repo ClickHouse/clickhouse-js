@@ -1,0 +1,27 @@
+{
+  "type": "Tuple(key String, payload Array(UInt8))",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "UInt8"
+          }
+        ]
+      }
+    ],
+    "element_names": [
+      "key",
+      "payload"
+    ]
+  }
+}

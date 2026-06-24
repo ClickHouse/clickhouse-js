@@ -1,0 +1,31 @@
+{
+  "type": "Nested(ts DateTime, vals Array(Float64))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nested",
+    "arguments": [
+      {
+        "type": "NameTypePair",
+        "name": "ts",
+        "data_type": {
+          "type": "DataType",
+          "name": "DateTime"
+        }
+      },
+      {
+        "type": "NameTypePair",
+        "name": "vals",
+        "data_type": {
+          "type": "DataType",
+          "name": "Array",
+          "arguments": [
+            {
+              "type": "DataType",
+              "name": "Float64"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

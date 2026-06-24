@@ -1,0 +1,26 @@
+{
+  "type": "Tuple(a UInt8, String, c Float64)",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt8"
+      },
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "Float64"
+      }
+    ],
+    "element_names": [
+      "a",
+      "",
+      "c"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "type": "IntervalMinute",
+  "data_type": {
+    "type": "DataType",
+    "name": "IntervalMinute"
+  }
+}

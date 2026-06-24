@@ -1,0 +1,13 @@
+{
+  "type": "LowCardinality(Float64)",
+  "data_type": {
+    "type": "DataType",
+    "name": "LowCardinality",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Float64"
+      }
+    ]
+  }
+}

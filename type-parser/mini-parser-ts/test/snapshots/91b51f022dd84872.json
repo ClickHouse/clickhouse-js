@@ -1,0 +1,7 @@
+{
+  "type": "Date32",
+  "data_type": {
+    "type": "DataType",
+    "name": "Date32"
+  }
+}

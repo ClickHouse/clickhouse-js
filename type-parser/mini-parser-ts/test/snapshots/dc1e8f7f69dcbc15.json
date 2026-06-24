@@ -1,0 +1,17 @@
+{
+  "type": "Map(String, String)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Map",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "String"
+      }
+    ]
+  }
+}

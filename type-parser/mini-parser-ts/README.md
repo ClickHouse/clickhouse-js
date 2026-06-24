@@ -98,19 +98,43 @@ multi-word aliases (`DOUBLE PRECISION`, `CHAR VARYING`, `INT SIGNED`, …).
 ## Tests
 
 ```bash
-npm test              # node:test unit suite — no external dependencies
+npm test                  # node:test: unit suite + snapshot corpus — NO clickhouse needed
 npm run test:unsupported  # asserts the deferred types are rejected
-npm run test:oracle -- --clickhouse /path/to/clickhouse
 ```
 
+`npm test` requires **no `clickhouse` binary** — it runs entirely against
+checked-in fixtures:
+
 - **unit** (`test/parser.test.ts`) — pins representative AST shapes and all the
-  deliberate rejections; needs nothing but Node.
-- **unsupported** (`test/check_unsupported.ts`) — asserts the types in
-  `test/cases_unsupported.txt` are rejected.
-- **oracle** (`test/oracle_compare.ts`) — for each type in `test/cases.txt`,
-  compares the parser's JSON against the `data_type` subtree the real server
-  emits for `CREATE TABLE t (c <TYPE>) ENGINE = Null`. Needs a `clickhouse`
-  binary built from
-  https://github.com/peter-leonov-ch/ClickHouse/pull/1 — the AST-format changes
-  this parser mirrors live in that PR, so a stock server build will not match.
+  deliberate rejections.
+- **snapshot** (`test/snapshot.test.ts`) — for every type in `test/cases.txt`
+  (356 and counting), compares the parser's JSON against a checked-in static
+  snapshot of the real server's `data_type` subtree, in `test/snapshots/`
+  (one `<sha1>.json` per query). Because a snapshot is only written when the
+  server accepted the type **and** the parser matched it, "parser == snapshot"
+  means "parser == server".
+
+### Regenerating / extending the snapshot corpus
+
+The snapshots are captured from a real server by `update_snapshots.ts`, which
+needs a `clickhouse` binary built from
+https://github.com/peter-leonov-ch/ClickHouse/pull/1 (the AST-format changes
+this parser mirrors live in that PR; a stock build will not match):
+
+```bash
+npm run snapshot:update -- --clickhouse /path/to/clickhouse
+```
+
+It validates every type in `test/cases.txt` plus any in `test/candidates.txt`
+(a seed list of additional types), keeps only those the server accepts and the
+parser matches, appends new keepers to `cases.txt`, writes a snapshot per kept
+query, and prunes orphans. Types the server rejects or where the parser diverges
+are dropped and listed in `test/snapshots_report.txt` (never silently added).
+
+There is also a live comparison that skips the snapshots and queries the server
+directly, useful while iterating:
+
+```bash
+npm run test:oracle -- --clickhouse /path/to/clickhouse
+```
 

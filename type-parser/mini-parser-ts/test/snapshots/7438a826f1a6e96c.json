@@ -1,0 +1,33 @@
+{
+  "type": "Variant(Int8, Int16, Int32, Int64, Int128, Int256)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Variant",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Int8"
+      },
+      {
+        "type": "DataType",
+        "name": "Int16"
+      },
+      {
+        "type": "DataType",
+        "name": "Int32"
+      },
+      {
+        "type": "DataType",
+        "name": "Int64"
+      },
+      {
+        "type": "DataType",
+        "name": "Int128"
+      },
+      {
+        "type": "DataType",
+        "name": "Int256"
+      }
+    ]
+  }
+}
