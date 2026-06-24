@@ -117,8 +117,9 @@ class Parser {
     );
   }
 
-  /// Consume `count` consecutive Word tokens iff they match `words`
-  /// (case-insensitive). Returns the original-cased joined match or "".
+  /// Consume consecutive Word tokens iff they all match `words`
+  /// (case-insensitive). On a full match, advances `pos` past them and returns
+  /// true; otherwise leaves `pos` unchanged and returns false.
   private matchWords(words: string[]): boolean {
     let p = this.pos;
     for (const w of words) {

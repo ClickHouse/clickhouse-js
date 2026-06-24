@@ -10,7 +10,12 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-add_compile_options(-Wall -Wextra)
+# Warning flags are GCC/Clang-specific; guard them so MSVC builds still work.
+if(MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra)
+endif()
 
 add_library(chdt_datatype_parser
     src/lexer.cpp

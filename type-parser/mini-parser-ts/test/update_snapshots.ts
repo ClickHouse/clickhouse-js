@@ -22,7 +22,6 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
-  readFileSync,
   rmSync,
   writeFileSync,
   appendFileSync,
