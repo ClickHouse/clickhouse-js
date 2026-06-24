@@ -44,7 +44,7 @@ npm run typecheck  # tsc --noEmit
 Library:
 
 ```ts
-import { parseDataType, toJSON } from "chdt-datatype-parser";
+import { parseDataType, toJSON } from "@clickhouse/datatype-parser";
 
 const r = parseDataType("Tuple(a UInt8, b String)");
 if (r.ok()) {
