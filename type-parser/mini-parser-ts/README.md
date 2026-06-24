@@ -1,0 +1,116 @@
+# chdt-ts — standalone ClickHouse data-type parser (TypeScript)
+
+A small, self-contained TypeScript library that parses a ClickHouse **data-type
+string** (the kind sent in the types row of `RowBinaryWithNamesAndTypes`, e.g.
+`Array(Nullable(UInt64))`, `Tuple(a UInt8, b String)`, `Enum8('a' = 1)`,
+`Decimal(10, 2)`) into a JSON AST.
+
+It is a faithful port of the C++ `chdt` library (see `../mini-parser-extracted`),
+which is itself extracted from the server's `ParserDataType`
+(`src/Parsers/ParserDataType.cpp`). It has **no runtime dependencies** — only the
+Node.js standard library. The JSON it emits mirrors the data-type subtree of the
+frozen `EXPLAIN AST json = 1` document (format **version 2**), so its output is a
+drop-in match for what the server produces — and is **byte-identical** to the C++
+parser's output across the full test corpus.
+
+## Layout
+
+The module structure tracks the C++ sources one-to-one:
+
+| TypeScript          | ported from (C++)                | role                                    |
+| ------------------- | -------------------------------- | --------------------------------------- |
+| `src/ast.ts`        | `include/chdt/ast.h`             | the AST node shape + `makeNode` factory |
+| `src/lexer.ts`      | `src/lexer.{h,cpp}`              | the purpose-built tokenizer             |
+| `src/parser.ts`     | `src/parser.cpp` + `parser.h`    | the `ParserDataType::parseImpl` port    |
+| `src/json.ts`       | `src/json.cpp`                   | the byte-faithful JSON serializer       |
+| `src/index.ts`      | —                                | public barrel                           |
+| `tool/main.ts`      | `tool/main.cpp`                  | the `chdt-parse` CLI                     |
+
+The lexer and parser deliberately preserve the original control flow, branch
+ordering, helper names, and `pos` save/restore points. A few signatures changed
+where C++ used out-parameters (`std::string &`): `parseIdentifier` and
+`decodeQuoted` return small result objects instead.
+
+## Install & build
+
+```bash
+npm install
+npm run build      # emits dist/ (JS + .d.ts)
+npm run typecheck  # tsc --noEmit
+```
+
+## Usage
+
+Library:
+
+```ts
+import { parseDataType, toJSON } from "chdt-datatype-parser";
+
+const r = parseDataType("Tuple(a UInt8, b String)");
+if (r.ok()) {
+  console.log(toJSON(r.ast!));      // pretty (2-space) JSON
+  console.log(toJSON(r.ast!, -1));  // compact JSON
+} else {
+  console.error(r.error!.message, r.error!.position);
+}
+```
+
+CLI (no build step needed — runs via `tsx`):
+
+```bash
+npm run parse -- "Array(Nullable(UInt64))"
+echo "Enum8('a' = 1, 'b' = 2)" | npm run parse
+
+# or, after `npm run build`:
+node dist/tool/main.js "Tuple(a UInt8, b String)"
+```
+
+## Output shape
+
+Node types and slots match the server (format v2):
+
+| `type`          | slots                                                    |
+| --------------- | -------------------------------------------------------- |
+| `DataType`      | `name`, `arguments?` (present iff the type had `(...)`)  |
+| `EnumDataType`  | `name`, `values` (array of `{ name, value }`)            |
+| `TupleDataType` | `name`, `arguments?`, `element_names?` (named tuples)    |
+| `NameTypePair`  | `name`, `data_type` (a `Nested(...)` element)            |
+| `Literal`       | `value_type`, `value` (64-bit ints as JSON strings)      |
+| `Function`      | `name`, `is_operator?`, `arguments` (e.g. `max_types=5`) |
+| `Identifier`    | `name`, `name_parts?`                                    |
+
+## Coverage
+
+Supported: scalars, parametric types with literal args (`Decimal`,
+`FixedString`, `DateTime64`, …), nested type args (`Array`, `Map`, `Nullable`,
+`LowCardinality`, `Variant`, …), enums (explicit → `EnumDataType`;
+auto-assigned → generic `DataType`), named/unnamed/mixed tuples, `Nested`,
+`Dynamic(max_types = N)`, the legacy `Object('json')`, and the SQL-standard
+multi-word aliases (`DOUBLE PRECISION`, `CHAR VARYING`, `INT SIGNED`, …).
+
+**Deliberately not supported yet** (the parser returns a clear error):
+
+- `AggregateFunction` / `SimpleAggregateFunction` — needs the function-expression
+  parser the server reaches for here.
+- the new `JSON(...)` object-argument syntax (`JSON(a.b UInt32, SKIP x)`). Bare
+  `JSON` and legacy `Object('json')` parse fine.
+
+## Tests
+
+```bash
+npm test              # node:test unit suite — no external dependencies
+npm run test:unsupported  # asserts the deferred types are rejected
+npm run test:oracle -- --clickhouse /path/to/clickhouse
+```
+
+- **unit** (`test/parser.test.ts`) — pins representative AST shapes and all the
+  deliberate rejections; needs nothing but Node.
+- **unsupported** (`test/check_unsupported.ts`) — asserts the types in
+  `test/cases_unsupported.txt` are rejected.
+- **oracle** (`test/oracle_compare.ts`) — for each type in `test/cases.txt`,
+  compares the parser's JSON against the `data_type` subtree the real server
+  emits for `CREATE TABLE t (c <TYPE>) ENGINE = Null`. Needs a `clickhouse`
+  binary built from
+  https://github.com/peter-leonov-ch/ClickHouse/pull/1 — the AST-format changes
+  this parser mirrors live in that PR, so a stock server build will not match.
+
