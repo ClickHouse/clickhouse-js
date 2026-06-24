@@ -119,7 +119,8 @@ const readOrderRow: Reader<OrderRow> = (s) => ({
 });
 
 // `exec` resolves to a Node `Stream.Readable`. It is already an
-// `AsyncIterable<Buffer>`, so pass `stream` straight into  `streamRowBatches`:
+// `AsyncIterable<Uint8Array>` (chunks are `Buffer`/`Uint8Array`, which
+// `streamRowBatches` normalizes), so pass `stream` straight in:
 
 const client = createClient();
 
