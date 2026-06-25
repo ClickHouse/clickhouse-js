@@ -1,0 +1,7 @@
+{
+  "type": "CHARACTER VARYING",
+  "data_type": {
+    "type": "DataType",
+    "name": "CHARACTER VARYING"
+  }
+}

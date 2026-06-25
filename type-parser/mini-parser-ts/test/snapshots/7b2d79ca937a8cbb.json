@@ -1,0 +1,7 @@
+{
+  "type": "LineString",
+  "data_type": {
+    "type": "DataType",
+    "name": "LineString"
+  }
+}

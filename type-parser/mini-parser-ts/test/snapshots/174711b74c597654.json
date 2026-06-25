@@ -1,0 +1,17 @@
+{
+  "type": "Enum8('neg' = -128, 'pos' = 127)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum8",
+    "values": [
+      {
+        "name": "neg",
+        "value": -128
+      },
+      {
+        "name": "pos",
+        "value": 127
+      }
+    ]
+  }
+}

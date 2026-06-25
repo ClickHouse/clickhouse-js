@@ -29,6 +29,7 @@ export {
   type ErrorLogParams,
   type WarnLogParams,
   type ClickHouseSettings,
+  type ClickHouseSettingsInterface,
   type MergeTreeSettings,
   type Row,
   type ResponseJSON,

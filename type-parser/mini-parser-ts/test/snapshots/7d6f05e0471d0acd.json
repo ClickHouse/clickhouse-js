@@ -1,0 +1,7 @@
+{
+  "type": "IntervalMicrosecond",
+  "data_type": {
+    "type": "DataType",
+    "name": "IntervalMicrosecond"
+  }
+}

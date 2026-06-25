@@ -1,0 +1,7 @@
+{
+  "type": "MEDIUMTEXT",
+  "data_type": {
+    "type": "DataType",
+    "name": "MEDIUMTEXT"
+  }
+}

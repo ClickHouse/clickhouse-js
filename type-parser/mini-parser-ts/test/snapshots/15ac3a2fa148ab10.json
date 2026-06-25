@@ -1,0 +1,17 @@
+{
+  "type": "Map(Int32, String)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Map",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Int32"
+      },
+      {
+        "type": "DataType",
+        "name": "String"
+      }
+    ]
+  }
+}

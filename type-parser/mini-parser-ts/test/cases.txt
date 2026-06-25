@@ -1,0 +1,380 @@
+# Supported data types, one per line. Each is compared against the
+# data_type subtree the ClickHouse server emits for
+#   EXPLAIN AST json = 1 CREATE TABLE t (c <TYPE>) ENGINE = Null
+# Blank lines and #-comments are ignored.
+
+# scalars
+UInt8
+Int64
+Float64
+String
+Date
+DateTime
+UUID
+Bool
+IPv4
+IPv6
+
+# parametric with literal args
+FixedString(16)
+Decimal(10, 2)
+Decimal(38, 10)
+Decimal32(4)
+DateTime64(3)
+DateTime64(3, 'UTC')
+DateTime('UTC')
+
+# nested type args
+Nullable(UInt64)
+Array(String)
+Array(Array(Int32))
+Array(Nullable(UInt64))
+Map(String, UInt64)
+Map(String, Array(UInt8))
+LowCardinality(String)
+LowCardinality(Nullable(String))
+Array(Tuple(Float64, Float64))
+
+# tuples
+Tuple(UInt8, String)
+Tuple(a UInt8, b String)
+Tuple(a UInt8, String)
+Tuple(Decimal(10, 2), Nullable(String))
+
+# enums (explicit -> EnumDataType; auto-assigned -> generic DataType)
+Enum8('a' = 1, 'b' = 2)
+Enum16('x' = -1, 'y' = 100)
+Enum('a' = 1, 'b' = 2)
+Enum8('a', 'b')
+
+# nested table type
+Nested(a UInt8, b String)
+Nested(a Array(UInt8), b Tuple(x UInt8, y String))
+
+# SQL-standard multi-word aliases
+DOUBLE PRECISION
+CHAR VARYING
+INT SIGNED
+INT UNSIGNED
+
+# legacy object + dynamic
+Object('json')
+Dynamic
+Dynamic(max_types = 5)
+
+# misc families harvested from the fixture corpus
+Variant(UInt8, String)
+varchar
+varchar(255)
+BFloat16
+Time
+int
+Int
+
+# === generated cases (validated against the server oracle; see update_snapshots.ts) ===
+UInt16
+UInt32
+UInt64
+UInt128
+UInt256
+Int8
+Int16
+Int32
+Int128
+Int256
+Float32
+Decimal(9, 0)
+Decimal(18, 4)
+Decimal(76, 20)
+Decimal(1, 0)
+Decimal(2, 1)
+Decimal(38, 0)
+Decimal(38, 38)
+Decimal(76, 0)
+Decimal(76, 76)
+Decimal(20, 5)
+Decimal(30, 15)
+Decimal(50, 25)
+Decimal32(0)
+Decimal32(2)
+Decimal32(9)
+Decimal64(0)
+Decimal64(4)
+Decimal64(18)
+Decimal128(0)
+Decimal128(10)
+Decimal128(38)
+Decimal256(0)
+Decimal256(20)
+Decimal256(76)
+Date32
+DateTime('Europe/Amsterdam')
+DateTime('America/New_York')
+DateTime('Asia/Tokyo')
+DateTime64(0)
+DateTime64(1)
+DateTime64(2)
+DateTime64(4)
+DateTime64(5)
+DateTime64(6)
+DateTime64(7)
+DateTime64(8)
+DateTime64(9)
+DateTime64(6, 'Europe/Amsterdam')
+DateTime64(9, 'Asia/Tokyo')
+DateTime64(0, 'America/Los_Angeles')
+Time64(0)
+Time64(3)
+Time64(6)
+Time64(9)
+FixedString(1)
+FixedString(2)
+FixedString(4)
+FixedString(8)
+FixedString(32)
+FixedString(64)
+FixedString(128)
+FixedString(255)
+FixedString(256)
+FixedString(1024)
+Enum8('a' = 1, 'b' = 2, 'c' = 3)
+Enum8('red' = 0, 'green' = 1, 'blue' = 2)
+Enum8('x' = -1, 'y' = 0, 'z' = 1)
+Enum8('neg' = -128, 'pos' = 127)
+Enum8('a')
+Enum8('a', 'b', 'c')
+Enum8('one', 'two', 'three', 'four')
+Enum16('x' = -1, 'y' = 100, 'z' = 1000)
+Enum16('small' = 1, 'big' = 30000)
+Enum16('min' = -32768, 'max' = 32767)
+Enum16('a' = 1, 'b' = 2, 'c' = 3, 'd' = 4, 'e' = 5)
+Enum16('alpha', 'beta')
+Enum('hello world' = 1, 'foo bar' = 2)
+Enum8('with space' = 1, 'another one' = 2)
+Enum8('a.b.c' = 1, 'x.y.z' = 2)
+Enum8('café' = 1, 'naïve' = 2)
+Enum16('日本語' = 1, 'español' = 2, 'русский' = 3)
+Enum8('' = 0, 'nonempty' = 1)
+Enum8('UPPER' = 1, 'lower' = 2, 'MiXeD' = 3)
+Enum16('a' = 1, 'b' = 2, 'c' = 3, 'd' = 4, 'e' = 5, 'f' = 6, 'g' = 7, 'h' = 8)
+Array(UInt8)
+Array(Int64)
+Array(Float64)
+Array(UUID)
+Array(Date)
+Array(DateTime)
+Array(Bool)
+Array(IPv4)
+Array(IPv6)
+Array(FixedString(16))
+Array(Decimal(18, 4))
+Array(DateTime64(3, 'UTC'))
+Array(Enum8('a' = 1, 'b' = 2))
+Array(Array(UInt8))
+Array(Array(String))
+Array(Array(Array(Int32)))
+Array(Array(Array(Array(Float64))))
+Array(Nullable(String))
+Array(LowCardinality(String))
+Array(Array(Nullable(Decimal(18, 4))))
+Map(String, String)
+Map(String, Float64)
+Map(Int32, String)
+Map(UInt64, UInt64)
+Map(UUID, String)
+Map(FixedString(8), UInt32)
+Map(Date, UInt64)
+Map(LowCardinality(String), UInt32)
+Map(Enum8('a' = 1, 'b' = 2), String)
+Map(String, Array(String))
+Map(UUID, Array(LowCardinality(String)))
+Map(String, Map(String, UInt64))
+Map(String, Tuple(UInt8, String))
+Map(Int64, Nullable(Float64))
+Map(String, Array(Map(String, UInt64)))
+Map(LowCardinality(String), Array(Nullable(Decimal(18, 4))))
+Nullable(UInt8)
+Nullable(UInt16)
+Nullable(UInt32)
+Nullable(UInt128)
+Nullable(UInt256)
+Nullable(Int8)
+Nullable(Int32)
+Nullable(Int64)
+Nullable(Float32)
+Nullable(Float64)
+Nullable(String)
+Nullable(FixedString(16))
+Nullable(UUID)
+Nullable(Date)
+Nullable(Date32)
+Nullable(DateTime)
+Nullable(DateTime('UTC'))
+Nullable(DateTime64(3))
+Nullable(DateTime64(3, 'UTC'))
+Nullable(Decimal(18, 4))
+Nullable(Decimal64(4))
+Nullable(IPv4)
+Nullable(IPv6)
+Nullable(Bool)
+Nullable(Enum8('a' = 1, 'b' = 2))
+LowCardinality(FixedString(8))
+LowCardinality(FixedString(32))
+LowCardinality(Nullable(FixedString(16)))
+LowCardinality(Date)
+LowCardinality(Date32)
+LowCardinality(DateTime)
+LowCardinality(UInt8)
+LowCardinality(UInt32)
+LowCardinality(UInt64)
+LowCardinality(Int32)
+LowCardinality(Int64)
+LowCardinality(Float64)
+LowCardinality(Nullable(UInt32))
+Variant(UInt64, String)
+Variant(Int32, Float64)
+Variant(String, UInt64, Float64)
+Variant(UInt8, Int16, UInt32)
+Variant(String, Array(UInt8), Map(String, UInt64))
+Variant(Date, DateTime, DateTime64(3))
+Variant(UInt8, UInt16, UInt32, UInt64)
+Variant(String, FixedString(16), UUID, IPv4, IPv6)
+Variant(Int8, Int16, Int32, Int64, Int128, Int256)
+Variant(Tuple(UInt8, String), Array(Float64))
+Variant(Nullable(UInt64), String)
+Tuple(UInt8)
+Tuple(String, UInt64, Float64)
+Tuple(Int32, Int32, Int32)
+Tuple(UInt8, UInt16, UInt32, UInt64)
+Tuple(String, String, String, String, String)
+Tuple(UInt8, String, Float64, Date, UUID, Bool)
+Tuple(Int8, Int16, Int32, Int64, Int128, Int256, UInt8)
+Tuple(UInt8, UInt16, UInt32, UInt64, Int8, Int16, Int32, Int64)
+Tuple(a UInt8)
+Tuple(id UInt64, name String, score Float64)
+Tuple(x Int32, y Int32, z Int32)
+Tuple(first String, second String, third String)
+Tuple(a UInt8, b UInt16, c UInt32, d UInt64)
+Tuple(ts DateTime64(3, 'UTC'), val Nullable(Float64))
+Tuple(key String, payload Array(UInt8))
+Tuple(a UInt8, String, c Float64)
+Tuple(UInt8, b String, Float64)
+Tuple(id UInt64, String, flag Bool)
+Tuple(Tuple(UInt8, String), Float64)
+Tuple(a Tuple(x UInt8, y UInt8), b String)
+Tuple(Array(Int32), Map(String, Float64), Nullable(DateTime64(3, 'UTC')))
+Tuple(a Array(UInt8), b Map(String, UInt64), c Tuple(p Int8, q Int8))
+Array(Tuple(UInt8, String))
+Array(Tuple(LowCardinality(String), Array(Nullable(Decimal(18, 4)))))
+Nested(id UInt64, name String, score Float64)
+Nested(x Int32, y Int32)
+Nested(key String, value Array(UInt8))
+Nested(ts DateTime, vals Array(Float64))
+Nested(a UInt8, b Tuple(x Int8, y Int8))
+Nested(name String, tags Array(LowCardinality(String)))
+Nested(outer UInt8, inner Nested(a UInt8, b String))
+Dynamic(max_types = 1)
+Dynamic(max_types = 10)
+Dynamic(max_types = 16)
+Dynamic(max_types = 32)
+Dynamic(max_types = 100)
+Dynamic(max_types = 255)
+Point
+Ring
+LineString
+MultiLineString
+Polygon
+MultiPolygon
+IntervalNanosecond
+IntervalMicrosecond
+IntervalMillisecond
+IntervalSecond
+IntervalMinute
+IntervalHour
+IntervalDay
+IntervalWeek
+IntervalMonth
+IntervalQuarter
+IntervalYear
+CHAR
+CHARACTER
+CHARACTER VARYING
+NCHAR
+NVARCHAR
+VARCHAR(64)
+CHAR(10)
+NATIONAL CHARACTER
+NATIONAL CHAR VARYING
+BINARY
+BINARY VARYING
+BINARY LARGE OBJECT
+CHAR LARGE OBJECT
+INT
+INTEGER
+INTEGER SIGNED
+INT(11)
+INT(10) UNSIGNED
+TINYINT
+SMALLINT
+MEDIUMINT
+BIGINT
+TINYINT UNSIGNED
+BIGINT SIGNED
+FLOAT
+REAL
+DOUBLE
+DEC(10, 2)
+NUMERIC(10, 2)
+FIXED(10, 2)
+BLOB
+TEXT
+MEDIUMTEXT
+LONGTEXT
+BYTEA
+BOOL
+BOOLEAN
+SET
+YEAR
+TIME
+BIT
+Array(Map(String, Tuple(a UInt8, b Array(Nullable(String)))))
+Array(Array(Map(String, Array(UInt8))))
+Map(String, Array(Tuple(id UInt64, vals Array(Nullable(Float64)))))
+Tuple(a Array(Map(String, UInt64)), b Tuple(x Array(Int8), y Nullable(String)))
+Array(Nullable(Tuple(UInt8, String)))
+Map(LowCardinality(String), Map(UUID, Array(Nullable(DateTime64(3, 'UTC')))))
+Array(Variant(UInt64, String, Array(Float64)))
+Tuple(v Variant(Int32, String), arr Array(Map(String, Nullable(UInt64))))
+Map(FixedString(16), Tuple(a Decimal(38, 10), b Array(LowCardinality(String))))
+Array(Array(Array(Tuple(UInt8, Nullable(String), Map(String, Float64)))))
+Nullable(Decimal256(40))
+Tuple(p Point, r Ring, poly Polygon)
+Array(Point)
+Array(Polygon)
+Map(String, MultiPolygon)
+Array(Map(LowCardinality(String), Array(Tuple(a UInt8, b Nullable(Decimal(18, 6))))))
+Tuple(meta Map(String, String), data Array(Tuple(ts DateTime64(9, 'UTC'), val Float64)))
+Array(Tuple(a UInt8, b UInt16, c Tuple(d Int32, e Array(Nullable(String)))))
+Map(Int64, Variant(String, UInt64, Array(Float64)))
+LowCardinality(Nullable(FixedString(8)))
+Array(LowCardinality(Nullable(String)))
+Map(String, Nullable(Decimal(38, 18)))
+Tuple(a Nullable(UUID), b Nullable(IPv6), c Nullable(Date32))
+Array(Tuple(Enum8('a' = 1, 'b' = 2), Array(UInt8)))
+Nested(coords Tuple(lat Float64, lon Float64), labels Array(LowCardinality(String)))
+Map(UUID, Tuple(created DateTime64(3, 'UTC'), tags Array(LowCardinality(String))))
+Array(Map(String, Variant(Int64, Float64, String)))
+Array(  Nullable( UInt64 ) )
+Tuple(a   UInt8,  b   String)
+Decimal(10,2)
+Decimal( 10 , 2 )
+Map( String , UInt64 )
+Array( Array( Int32 ) )
+Nullable( Float64 )
+LowCardinality(  String  )
+DateTime64( 3 , 'UTC' )
+Tuple( id UInt64 , name String )
+Enum8( 'a' = 1 , 'b' = 2 )
+FixedString( 16 )
+Variant( UInt64 , String )
+Dynamic( max_types = 8 )

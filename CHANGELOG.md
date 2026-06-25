@@ -10,6 +10,8 @@
 
 - (Node.js, `@experimental`) Added an additive `connection?: Connection<Stream.Readable>` option to `createClient` that lets a caller plug an externally-built backend `Connection`-like object in place of the default HTTP(S) factory. Only supposed to be used for testing the `chDB` integration. ([#879])
 
+- Added `ClickHouseSettingsInterface`, a package-neutral structural counterpart to `ClickHouseSettings`, exported from `@clickhouse/client`, `@clickhouse/client-web`, and `@clickhouse/client-common`. It is identical to `ClickHouseSettings` except that its index signature omits `SettingsMap` (a class with a private member, which TypeScript compares nominally). Because each client package now bundles its own copy of the common module, their `ClickHouseSettings` types are mutually unassignable; `ClickHouseSettingsInterface` is structurally identical across all three packages and assignable into each package's `ClickHouseSettings`, so a consumer that shares a single settings-producing helper across both the Node.js and Web clients can type it against this one type without casts. Values typed as `SettingsMap` cannot be carried through it — use `ClickHouseSettings` if you need them. ([#889])
+
 # 1.22.0
 
 ## New features
@@ -78,6 +80,7 @@ await client.query({
 [#828]: https://github.com/ClickHouse/clickhouse-js/pull/828
 [#845]: https://github.com/ClickHouse/clickhouse-js/pull/845
 [#864]: https://github.com/ClickHouse/clickhouse-js/pull/864
+[#889]: https://github.com/ClickHouse/clickhouse-js/pull/889
 
 ## Bug Fixes
 

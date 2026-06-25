@@ -1,0 +1,21 @@
+{
+  "type": "Enum16('日本語' = 1, 'español' = 2, 'русский' = 3)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum16",
+    "values": [
+      {
+        "name": "日本語",
+        "value": 1
+      },
+      {
+        "name": "español",
+        "value": 2
+      },
+      {
+        "name": "русский",
+        "value": 3
+      }
+    ]
+  }
+}

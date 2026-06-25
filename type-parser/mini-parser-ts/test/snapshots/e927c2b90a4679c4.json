@@ -1,0 +1,14 @@
+{
+  "type": "DateTime('Asia/Tokyo')",
+  "data_type": {
+    "type": "DataType",
+    "name": "DateTime",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "Asia/Tokyo"
+      }
+    ]
+  }
+}

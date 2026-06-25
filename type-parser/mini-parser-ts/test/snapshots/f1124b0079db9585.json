@@ -1,0 +1,31 @@
+{
+  "type": "Array(Array(Array(Array(Float64))))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Array",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "Array",
+                "arguments": [
+                  {
+                    "type": "DataType",
+                    "name": "Float64"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

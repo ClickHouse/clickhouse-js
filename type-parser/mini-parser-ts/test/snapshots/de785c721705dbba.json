@@ -1,0 +1,7 @@
+{
+  "type": "IntervalQuarter",
+  "data_type": {
+    "type": "DataType",
+    "name": "IntervalQuarter"
+  }
+}
