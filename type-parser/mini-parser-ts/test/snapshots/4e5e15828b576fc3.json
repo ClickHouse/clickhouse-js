@@ -52,10 +52,7 @@
             ]
           }
         ],
-        "element_names": [
-          "a",
-          "b"
-        ]
+        "element_names": ["a", "b"]
       }
     ]
   }

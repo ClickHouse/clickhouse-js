@@ -34,10 +34,7 @@
               "name": "String"
             }
           ],
-          "element_names": [
-            "x",
-            "y"
-          ]
+          "element_names": ["x", "y"]
         }
       }
     ]

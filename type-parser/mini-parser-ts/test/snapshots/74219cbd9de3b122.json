@@ -9,8 +9,6 @@
         "name": "UInt8"
       }
     ],
-    "element_names": [
-      "a"
-    ]
+    "element_names": ["a"]
   }
 }

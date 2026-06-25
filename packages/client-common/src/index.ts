@@ -96,6 +96,7 @@ export {
 } from "./clickhouse_types";
 export {
   type ClickHouseSettings,
+  type ClickHouseSettingsInterface,
   type MergeTreeSettings,
   /** @deprecated Import `SettingsMap` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   SettingsMap,

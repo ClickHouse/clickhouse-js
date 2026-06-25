@@ -41,16 +41,9 @@
             "name": "Int8"
           }
         ],
-        "element_names": [
-          "p",
-          "q"
-        ]
+        "element_names": ["p", "q"]
       }
     ],
-    "element_names": [
-      "a",
-      "b",
-      "c"
-    ]
+    "element_names": ["a", "b", "c"]
   }
 }

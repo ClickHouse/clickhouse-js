@@ -45,9 +45,6 @@
         ]
       }
     ],
-    "element_names": [
-      "v",
-      "arr"
-    ]
+    "element_names": ["v", "arr"]
   }
 }

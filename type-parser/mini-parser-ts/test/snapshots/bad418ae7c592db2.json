@@ -17,10 +17,6 @@
         "name": "Int32"
       }
     ],
-    "element_names": [
-      "x",
-      "y",
-      "z"
-    ]
+    "element_names": ["x", "y", "z"]
   }
 }

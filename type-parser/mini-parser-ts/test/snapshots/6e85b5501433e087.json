@@ -41,17 +41,10 @@
                 ]
               }
             ],
-            "element_names": [
-              "d",
-              "e"
-            ]
+            "element_names": ["d", "e"]
           }
         ],
-        "element_names": [
-          "a",
-          "b",
-          "c"
-        ]
+        "element_names": ["a", "b", "c"]
       }
     ]
   }
