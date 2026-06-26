@@ -7,7 +7,7 @@ import type {
   ParsedColumnSimple,
   ParsedColumnTuple,
 } from "../../src/parse";
-import { parseTupleType } from "../../src/parse";
+import { parseColumnType, parseTupleType } from "../../src/parse";
 
 describe("Columns types parser - Tuple", () => {
   it("should parse Tuple with simple types", async () => {
@@ -150,6 +150,112 @@ describe("Columns types parser - Tuple", () => {
     sourceType: "String",
     columnType: "String",
   };
+});
+
+describe("Columns types parser - named Tuple", () => {
+  it("should parse a named Tuple (as returned by DESCRIBE TABLE)", () => {
+    // Regression test for https://github.com/ClickHouse/clickhouse-java/issues/889
+    // (mirrored in clickhouse-js): named Tuple elements `<name> <Type>` used to
+    // throw `Unsupported column type` because the name was not stripped.
+    const sourceType = "Tuple(s String, i Int64)";
+    const expected: ParsedColumnTuple = {
+      type: "Tuple",
+      elements: [
+        { type: "Simple", columnType: "String", sourceType: "String" },
+        { type: "Simple", columnType: "Int64", sourceType: "Int64" },
+      ],
+      elementNames: ["s", "i"],
+      sourceType,
+    };
+    expect(parseColumnType(sourceType)).toEqual(expected);
+  });
+
+  it("should parse nested named Tuples and keep names at each level", () => {
+    const sourceType =
+      "Tuple(arr Array(Int64), inner Tuple(x UInt8, y String))";
+    const expected: ParsedColumnTuple = {
+      type: "Tuple",
+      elements: [
+        {
+          type: "Array",
+          value: { type: "Simple", columnType: "Int64", sourceType: "Int64" },
+          dimensions: 1,
+          sourceType: "Array(Int64)",
+        },
+        {
+          type: "Tuple",
+          elements: [
+            { type: "Simple", columnType: "UInt8", sourceType: "UInt8" },
+            { type: "Simple", columnType: "String", sourceType: "String" },
+          ],
+          elementNames: ["x", "y"],
+          sourceType: "Tuple(x UInt8, y String)",
+        },
+      ],
+      elementNames: ["arr", "inner"],
+      sourceType,
+    };
+    expect(parseColumnType(sourceType)).toEqual(expected);
+  });
+
+  it("should parse backtick-quoted element names with commas/parens", () => {
+    // ClickHouse backtick-quotes element names that contain special characters;
+    // the comma inside the name must not split the elements.
+    const sourceType = "Tuple(`a,b` Int64, c UInt8)";
+    const expected: ParsedColumnTuple = {
+      type: "Tuple",
+      elements: [
+        { type: "Simple", columnType: "Int64", sourceType: "Int64" },
+        { type: "Simple", columnType: "UInt8", sourceType: "UInt8" },
+      ],
+      elementNames: ["a,b", "c"],
+      sourceType,
+    };
+    expect(parseColumnType(sourceType)).toEqual(expected);
+  });
+
+  it("should parse a named Tuple nested inside an Array", () => {
+    // The element name must be stripped when the named Tuple is reached via a
+    // container type (Array(Tuple(...))), not only at the top level.
+    const sourceType = "Array(Tuple(s String, i Int64))";
+    expect(parseColumnType(sourceType)).toEqual({
+      type: "Array",
+      value: {
+        type: "Tuple",
+        elements: [
+          { type: "Simple", columnType: "String", sourceType: "String" },
+          { type: "Simple", columnType: "Int64", sourceType: "Int64" },
+        ],
+        elementNames: ["s", "i"],
+        sourceType: "Tuple(s String, i Int64)",
+      },
+      dimensions: 1,
+      sourceType,
+    });
+  });
+
+  it("should take a backtick-quoted name containing a backslash verbatim", () => {
+    // ClickHouse emits backslashes inside backtick-quoted names verbatim, so the
+    // name spans literally up to the closing backtick (no unescaping).
+    const sourceType = "Tuple(`a\\b` Int64)";
+    const expected: ParsedColumnTuple = {
+      type: "Tuple",
+      elements: [{ type: "Simple", columnType: "Int64", sourceType: "Int64" }],
+      elementNames: ["a\\b"],
+      sourceType,
+    };
+    expect(parseColumnType(sourceType)).toEqual(expected);
+  });
+
+  it("should not set elementNames for unnamed Tuples", () => {
+    // Contrast case: unnamed Tuples must keep their previous shape (no names).
+    const result = parseColumnType("Tuple(String, UInt8)") as ParsedColumnTuple;
+    expect(result.elementNames).toBeUndefined();
+    expect(result.elements).toEqual([
+      { type: "Simple", columnType: "String", sourceType: "String" },
+      { type: "Simple", columnType: "UInt8", sourceType: "UInt8" },
+    ]);
+  });
 });
 
 function joinElements(expected: ParsedColumnTuple) {

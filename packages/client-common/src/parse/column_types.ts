@@ -148,6 +148,12 @@ export interface ParsedColumnTuple {
   type: "Tuple";
   /** Element types are arbitrary, including Map, Array, and Tuple. */
   elements: ParsedColumnType[];
+  /** Element names for a named Tuple, e.g. `Tuple(s String, i Int64)` yields
+   *  `["s", "i"]`, aligned by index with {@link elements}. ClickHouse requires
+   *  either all or none of the elements to be named, so this is only present
+   *  (and always has the same length as {@link elements}) for named Tuples;
+   *  it is `undefined` for unnamed Tuples such as `Tuple(String, Int64)`. */
+  elementNames?: string[];
   sourceType: string;
 }
 
@@ -513,14 +519,58 @@ export function parseTupleType({
     });
   }
   columnType = columnType.slice(TuplePrefix.length, -1);
-  const elements = getElementsTypes({ columnType, sourceType }, 1).map((type) =>
-    parseColumnType(type),
+  // Named Tuples (e.g. Tuple(s String, i Int64), as returned by DESCRIBE TABLE)
+  // prefix each element with its name; strip it before parsing the element type
+  // and surface the collected names via `elementNames`.
+  const split = getElementsTypes({ columnType, sourceType }, 1).map(
+    splitTupleElement,
   );
-  return {
+  const elements = split.map(({ type }) => parseColumnType(type));
+  const result: ParsedColumnTuple = {
     type: "Tuple",
     elements,
     sourceType,
   };
+  // ClickHouse requires either all or none of the elements to be named.
+  if (split.every(({ name }) => name !== undefined)) {
+    result.elementNames = split.map(({ name }) => name as string);
+  }
+  return result;
+}
+
+/** Splits an optional leading element name from a Tuple element definition.
+ *  Named Tuple elements are serialized as `<name> <Type>` (e.g. `s String`),
+ *  where the name is either an unquoted identifier (`[A-Za-z_][A-Za-z0-9_]*`)
+ *  or a backtick-quoted identifier for names with special characters
+ *  (e.g. `` `my field` String ``). Unnamed elements (e.g. `String`,
+ *  `Array(UInt8)`, `Decimal(10, 2)`) have no leading identifier followed by
+ *  whitespace and are returned unchanged with no name. */
+function splitTupleElement(element: string): {
+  name?: string;
+  type: string;
+} {
+  if (element.charCodeAt(0) === BacktickASCII) {
+    // Backtick-quoted name, used by ClickHouse for names with special
+    // characters (e.g. `` `my field` `` or `` `a,b` ``). The name spans up to
+    // the next backtick; ClickHouse emits the inner characters verbatim, so no
+    // unescaping is applied here.
+    const end = element.indexOf("`", 1);
+    if (end > 0) {
+      const type = element.slice(end + 1).replace(/^\s+/, "");
+      if (type.length > 0) {
+        return { name: element.slice(1, end), type };
+      }
+    }
+    // Malformed (no closing backtick, or no type after it): treat as unnamed
+    // and let parseColumnType surface the error on the original string.
+    return { type: element };
+  }
+  // Unquoted name: a leading identifier directly followed by whitespace.
+  const match = /^([A-Za-z_][A-Za-z0-9_]*)\s+/.exec(element);
+  if (match) {
+    return { name: match[1], type: element.slice(match[0].length) };
+  }
+  return { type: element };
 }
 
 export function parseArrayType({
@@ -704,9 +754,13 @@ export function getElementsTypes(
    *  The most complicated cases are values names in the self-defined Enum types:
    *  * `Tuple(Enum8('f\'()' = 1))`  ->  `f\'()`
    *  * `Tuple(Enum8('(' = 1))`      ->  `(`
+   *  Backtick-quoted element names of named Tuples are handled the same way, so
+   *  commas and parens inside a name do not split the element:
+   *  * `Tuple(`a,b` Int8, c UInt8)` -> [`` `a,b` Int8 ``, `c UInt8`]
    *  See also: {@link parseEnumType }, which works similarly (but has to deal with the indices following the names). */
   let openParens = 0;
   let quoteOpen = false;
+  let backtickOpen = false;
   let charEscaped = false;
   let lastElementIndex = 0;
   for (let i = 0; i < columnType.length; i++) {
@@ -714,10 +768,12 @@ export function getElementsTypes(
       charEscaped = false;
     } else if (columnType.charCodeAt(i) === BackslashASCII) {
       charEscaped = true;
-    } else if (columnType.charCodeAt(i) === SingleQuoteASCII) {
+    } else if (columnType.charCodeAt(i) === SingleQuoteASCII && !backtickOpen) {
       quoteOpen = !quoteOpen; // unescaped quote
+    } else if (columnType.charCodeAt(i) === BacktickASCII && !quoteOpen) {
+      backtickOpen = !backtickOpen; // unescaped backtick (named Tuple element)
     } else {
-      if (!quoteOpen) {
+      if (!quoteOpen && !backtickOpen) {
         if (columnType.charCodeAt(i) === LeftParenASCII) {
           openParens++;
         } else if (columnType.charCodeAt(i) === RightParenASCII) {
@@ -775,3 +831,4 @@ const CommaASCII = 44 as const;
 const ZeroASCII = 48 as const;
 const NineASCII = 57 as const;
 const BackslashASCII = 92 as const;
+const BacktickASCII = 96 as const;
