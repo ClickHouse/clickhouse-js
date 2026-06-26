@@ -7,8 +7,8 @@
 ///
 /// This is the TypeScript port of the C++ `chdt/parser.cpp`.
 
-import { EnumValue, makeNode, Node, NodeKind } from "./ast.js";
-import { Token, tokenize, TokenType } from "./lexer.js";
+import { type EnumValue, makeNode, type Node, NodeKind } from "./ast.ts";
+import { type Token, tokenize, TokenType } from "./lexer.ts";
 
 /// Public entry point types (ported from parser.h).
 export interface ParseError {

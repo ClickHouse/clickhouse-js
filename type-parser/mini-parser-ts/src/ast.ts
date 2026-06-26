@@ -11,15 +11,20 @@
 /// to that kind populated; we mirror that exactly (rather than a discriminated
 /// union) so the parser port stays line-for-line faithful to the original.
 
-export enum NodeKind {
-  DataType = "DataType", /// generic type: name + optional argument list
-  EnumDataType = "EnumDataType", /// Enum / Enum8 / Enum16 with fully explicit values
-  TupleDataType = "TupleDataType", /// Tuple, with optional element names
-  NameTypePair = "NameTypePair", /// `name Type` element of a Nested(...)
-  Literal = "Literal", /// numeric / string argument (e.g. Decimal(10, 2))
-  Function = "Function", /// operator/function argument (e.g. `max_types = 5`)
-  Identifier = "Identifier", /// bare identifier argument
-}
+/// A plain `const` object rather than a TS `enum`, so the source is erasable
+/// and runs under Node's native type-stripping (which rejects `enum`). The
+/// companion type below makes `NodeKind` usable as both a value and a type,
+/// exactly as the enum was.
+export const NodeKind = {
+  DataType: "DataType", /// generic type: name + optional argument list
+  EnumDataType: "EnumDataType", /// Enum / Enum8 / Enum16 with fully explicit values
+  TupleDataType: "TupleDataType", /// Tuple, with optional element names
+  NameTypePair: "NameTypePair", /// `name Type` element of a Nested(...)
+  Literal: "Literal", /// numeric / string argument (e.g. Decimal(10, 2))
+  Function: "Function", /// operator/function argument (e.g. `max_types = 5`)
+  Identifier: "Identifier", /// bare identifier argument
+} as const;
+export type NodeKind = (typeof NodeKind)[keyof typeof NodeKind];
 
 export interface EnumValue {
   name: string;

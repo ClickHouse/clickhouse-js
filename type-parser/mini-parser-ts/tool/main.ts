@@ -11,7 +11,7 @@
 
 import { readFileSync } from "node:fs";
 
-import { parseDataType, toJSON } from "../src/index.js";
+import { parseDataType, toJSON } from "../src/index.ts";
 
 function readStdin(): string {
   try {

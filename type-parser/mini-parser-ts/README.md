@@ -55,7 +55,7 @@ if (r.ok()) {
 }
 ```
 
-CLI (no build step needed — runs via `tsx`):
+CLI (no build step needed — runs on Node.js 24+ native TypeScript support):
 
 ```bash
 npm run parse -- "Array(Nullable(UInt64))"

@@ -11,7 +11,7 @@
 /// the `\u%04x` fallback). All bytes >= 0x20 are pushed through verbatim. At
 /// the end we decode the buffer back to a (byte-identical) JS string.
 
-import { NodeKind, type Node } from "./ast.js";
+import { NodeKind, type Node } from "./ast.ts";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8");

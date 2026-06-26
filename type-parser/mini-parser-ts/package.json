@@ -40,7 +40,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepack": "npm run build",
-    "parse": "tsx tool/main.ts",
+    "parse": "node tool/main.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "test:oracle": "tsx test/oracle_compare.ts",
     "test:unsupported": "tsx test/check_unsupported.ts",
