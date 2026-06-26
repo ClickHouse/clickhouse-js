@@ -49,3 +49,4 @@ export * from "./simpleAggregateFunction.js";
 export * from "./nested.js";
 export * from "./nothing.js";
 export * from "./aggregateFunction.js";
+export * from "./compile.js";
