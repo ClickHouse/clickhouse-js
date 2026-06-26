@@ -2,78 +2,9 @@ import { describe, expect, it } from "vitest";
 import { Cursor } from "../src/core.js";
 import {
   compileRowBinaryWithNamesAndTypes,
-  readHeader,
   typeStringToReader,
 } from "../src/compile.js";
-
-/**
- * A tiny RowBinaryWithNamesAndTypes ENCODER, just enough to drive the compiler
- * offline (the rest of the suite reads bytes from a live server). It mirrors the
- * wire the server would produce so these tests need no ClickHouse.
- */
-class Writer {
-  private readonly parts: Buffer[] = [];
-
-  uvarint(n: number): this {
-    const out: number[] = [];
-    let v = n;
-    do {
-      let b = v & 0x7f;
-      v >>>= 7;
-      if (v !== 0) b |= 0x80;
-      out.push(b);
-    } while (v !== 0);
-    this.parts.push(Buffer.from(out));
-    return this;
-  }
-
-  string(s: string): this {
-    const b = Buffer.from(s, "utf8");
-    return this.uvarint(b.length).raw(b);
-  }
-
-  u8(n: number): this {
-    return this.raw(Buffer.from([n & 0xff]));
-  }
-
-  u32(n: number): this {
-    const b = Buffer.alloc(4);
-    b.writeUInt32LE(n >>> 0);
-    return this.raw(b);
-  }
-
-  raw(b: Buffer): this {
-    this.parts.push(b);
-    return this;
-  }
-
-  done(): Buffer {
-    return Buffer.concat(this.parts);
-  }
-}
-
-/** Encode just the WithNamesAndTypes header (count, names, types). */
-function header(w: Writer, names: string[], types: string[]): Writer {
-  w.uvarint(names.length);
-  for (const n of names) w.string(n);
-  for (const t of types) w.string(t);
-  return w;
-}
-
-describe("readHeader", () => {
-  it("reads column count, names, then types and stops at the first row", () => {
-    const w = header(new Writer(), ["id", "name"], ["UInt32", "String"]);
-    w.u32(7).string("x"); // one row, so we can check the cursor lands on it
-    const s = new Cursor(w.done());
-
-    expect(readHeader(s)).toEqual({
-      names: ["id", "name"],
-      types: ["UInt32", "String"],
-    });
-    // Cursor now points at the row payload.
-    expect(s.buf.readUInt32LE(s.pos)).toBe(7);
-  });
-});
+import { Writer, header } from "./rowBinaryWriter.js";
 
 describe("typeStringToReader (AST -> combinator fold)", () => {
   it("folds a nested composite type into a working reader", () => {
