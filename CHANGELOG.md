@@ -12,6 +12,12 @@
 
 - Added `ClickHouseSettingsInterface`, a package-neutral structural counterpart to `ClickHouseSettings`, exported from `@clickhouse/client`, `@clickhouse/client-web`, and `@clickhouse/client-common`. It is identical to `ClickHouseSettings` except that its index signature omits `SettingsMap` (a class with a private member, which TypeScript compares nominally). Because each client package now bundles its own copy of the common module, their `ClickHouseSettings` types are mutually unassignable; `ClickHouseSettingsInterface` is structurally identical across all three packages and assignable into each package's `ClickHouseSettings`, so a consumer that shares a single settings-producing helper across both the Node.js and Web clients can type it against this one type without casts. Values typed as `SettingsMap` cannot be carried through it — use `ClickHouseSettings` if you need them. ([#889])
 
+## Bug fixes
+
+- The `@experimental` `parseColumnType` now parses **named** `Tuple` types such as `Tuple(s String, i Int64)` (the shape returned by `DESCRIBE TABLE` and the `RowBinaryWithNamesAndTypes` / `Native` headers), which previously threw `ColumnTypeParseError: Unsupported column type`. Element names — including backtick-quoted names with special characters — are stripped before each element type is parsed, and are surfaced via a new optional `ParsedColumnTuple.elementNames` (present only for named Tuples; unnamed Tuples are unchanged). ([#892])
+
+[#892]: https://github.com/ClickHouse/clickhouse-js/pull/892
+
 # 1.22.0
 
 ## New features
