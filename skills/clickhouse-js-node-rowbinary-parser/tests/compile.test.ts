@@ -1,25 +1,29 @@
 import { describe, expect, it } from "vitest";
+import { query } from "./clickhouse.js";
 import { Cursor } from "../src/core.js";
 import {
   compileRowBinaryWithNamesAndTypes,
   typeStringToReader,
 } from "../src/compile.js";
-import { Writer, header } from "./rowBinaryWriter.js";
+
+/** Raw value bytes for one expression (`FORMAT RowBinary`, no header). */
+async function rowBinary(expr: string): Promise<Cursor> {
+  return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));
+}
+
+/** A full `RowBinaryWithNamesAndTypes` response (header + rows) as a cursor. */
+async function withNamesAndTypes(select: string): Promise<Cursor> {
+  return new Cursor(await query(`${select} FORMAT RowBinaryWithNamesAndTypes`));
+}
 
 describe("typeStringToReader (AST -> combinator fold)", () => {
-  it("folds a nested composite type into a working reader", () => {
-    // Array(Nullable(UInt32)) with values [1, NULL, 3].
-    const w = new Writer()
-      .uvarint(3) // array length
-      .u8(0)
-      .u32(1) // present, 1
-      .u8(1) // NULL
-      .u8(0)
-      .u32(3); // present, 3
-    const s = new Cursor(w.done());
-
-    const read = typeStringToReader("Array(Nullable(UInt32))");
-    expect(read(s)).toEqual([1, null, 3]);
+  it("folds a nested composite type into a working reader", async () => {
+    const s = await rowBinary("CAST([1, NULL, 3] AS Array(Nullable(UInt32)))");
+    expect(typeStringToReader("Array(Nullable(UInt32))")(s)).toEqual([
+      1,
+      null,
+      3,
+    ]);
   });
 
   it("surfaces a clear error for an unsupported type", () => {
@@ -30,26 +34,16 @@ describe("typeStringToReader (AST -> combinator fold)", () => {
 });
 
 describe("compileRowBinaryWithNamesAndTypes", () => {
-  it("compiles a header and decodes the rest of the stream into rows", () => {
-    const w = header(
-      new Writer(),
-      ["id", "name", "score"],
-      ["UInt32", "Nullable(String)", "Float64"],
-    );
-    // row 1: 1, "alice", 1.5
-    w.u32(1).u8(0).string("alice");
-    const f1 = Buffer.alloc(8);
-    f1.writeDoubleLE(1.5);
-    w.raw(f1);
-    // row 2: 2, NULL, 2.5
-    w.u32(2).u8(1);
-    const f2 = Buffer.alloc(8);
-    f2.writeDoubleLE(2.5);
-    w.raw(f2);
+  it("compiles a header and decodes the rest of the stream into rows", async () => {
+    const s = await withNamesAndTypes(`
+      SELECT id, name, score FROM (
+        SELECT toUInt32(1) AS id, CAST('alice' AS Nullable(String)) AS name, toFloat64(1.5) AS score
+        UNION ALL
+        SELECT toUInt32(2) AS id, CAST(NULL AS Nullable(String)) AS name, toFloat64(2.5) AS score
+      ) ORDER BY id
+    `);
 
-    const s = new Cursor(w.done());
     const compiled = compileRowBinaryWithNamesAndTypes(s);
-
     expect(compiled.names).toEqual(["id", "name", "score"]);
     expect(compiled.types).toEqual(["UInt32", "Nullable(String)", "Float64"]);
 
@@ -61,21 +55,13 @@ describe("compileRowBinaryWithNamesAndTypes", () => {
     expect(s.pos).toBe(s.buf.length); // consumed exactly
   });
 
-  it("handles a named Tuple and a Map column", () => {
-    const w = header(
-      new Writer(),
-      ["pair", "counts"],
-      ["Tuple(a UInt32, b UInt32)", "Map(String, UInt32)"],
-    );
-    // row: pair=(10, 20), counts={"x":1,"y":2}
-    w.u32(10).u32(20); // tuple: two values back to back
-    w.uvarint(2) // map pair count
-      .string("x")
-      .u32(1)
-      .string("y")
-      .u32(2);
+  it("handles a named Tuple and a Map column", async () => {
+    const s = await withNamesAndTypes(`
+      SELECT
+        CAST((10, 20) AS Tuple(a UInt32, b UInt32)) AS pair,
+        CAST(map('x', toUInt32(1), 'y', toUInt32(2)) AS Map(String, UInt32)) AS counts
+    `);
 
-    const s = new Cursor(w.done());
     const compiled = compileRowBinaryWithNamesAndTypes(s);
     const rows = compiled.readRows(s);
 
