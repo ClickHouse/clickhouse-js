@@ -60,9 +60,6 @@ CLI (no build step needed — runs via `tsx`):
 ```bash
 npm run parse -- "Array(Nullable(UInt64))"
 echo "Enum8('a' = 1, 'b' = 2)" | npm run parse
-
-# or, after `npm run build`:
-node dist/tool/main.js "Tuple(a UInt8, b String)"
 ```
 
 ## Output shape
