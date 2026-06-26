@@ -756,7 +756,7 @@ export function getElementsTypes(
    *  * `Tuple(Enum8('(' = 1))`      ->  `(`
    *  Backtick-quoted element names of named Tuples are handled the same way, so
    *  commas and parens inside a name do not split the element:
-   *  * `Tuple(`a,b` Int8, c UInt8)` -> [`` `a,b` Int8 ``, `c UInt8`]
+   *  * `` Tuple(`a,b` Int8, c UInt8) `` -> `` [`a,b` Int8, c UInt8] ``
    *  See also: {@link parseEnumType }, which works similarly (but has to deal with the indices following the names). */
   let openParens = 0;
   let quoteOpen = false;
