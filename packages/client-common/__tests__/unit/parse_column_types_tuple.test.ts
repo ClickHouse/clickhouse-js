@@ -7,7 +7,11 @@ import type {
   ParsedColumnSimple,
   ParsedColumnTuple,
 } from "../../src/parse";
-import { parseColumnType, parseTupleType } from "../../src/parse";
+import {
+  ColumnTypeParseError,
+  parseColumnType,
+  parseTupleType,
+} from "../../src/parse";
 
 describe("Columns types parser - Tuple", () => {
   it("should parse Tuple with simple types", async () => {
@@ -255,6 +259,38 @@ describe("Columns types parser - named Tuple", () => {
       { type: "Simple", columnType: "String", sourceType: "String" },
       { type: "Simple", columnType: "UInt8", sourceType: "UInt8" },
     ]);
+  });
+
+  it("treats a backtick-quoted element name with no closing backtick as unnamed", () => {
+    // Malformed: an opening backtick with no closing one cannot be a valid name,
+    // so the element is left untouched (not stripped) and passed verbatim to
+    // parseColumnType, which surfaces the parse error on the original string.
+    let error: unknown;
+    try {
+      parseColumnType("Tuple(`foo Int64)");
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(ColumnTypeParseError);
+    expect((error as ColumnTypeParseError).args).toEqual({
+      columnType: "`foo Int64",
+    });
+  });
+
+  it("treats a backtick-quoted element name with no element type as unnamed", () => {
+    // Malformed: a closing backtick but no type after it is not a valid named
+    // element either, so the element is again passed through verbatim and
+    // parseColumnType surfaces the error.
+    let error: unknown;
+    try {
+      parseColumnType("Tuple(`foo`)");
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(ColumnTypeParseError);
+    expect((error as ColumnTypeParseError).args).toEqual({
+      columnType: "`foo`",
+    });
   });
 });
 
