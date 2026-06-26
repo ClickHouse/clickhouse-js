@@ -85,7 +85,8 @@
   },
   "workspaces": [
     "./packages/*",
-    "./tests/clickhouse-test-runner"
+    "./tests/clickhouse-test-runner",
+    "./type-parser/mini-parser-ts"
   ],
   "files": [
     "dist"

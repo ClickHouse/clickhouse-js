@@ -39,6 +39,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint --max-warnings=0 .",
+    "lint:fix": "eslint . --fix",
     "prepack": "npm run build",
     "parse": "node tool/main.ts",
     "test": "node --import tsx --test test/*.test.ts",
