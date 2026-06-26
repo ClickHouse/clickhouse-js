@@ -24,7 +24,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ClickHouse/clickhouse-js.git",
-    "directory": "type-parser/mini-parser-ts"
+    "directory": "packages/datatype-parser"
   },
   "keywords": [
     "clickhouse",
