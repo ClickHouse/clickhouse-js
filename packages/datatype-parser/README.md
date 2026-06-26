@@ -5,7 +5,7 @@ string** (the kind sent in the types row of `RowBinaryWithNamesAndTypes`, e.g.
 `Array(Nullable(UInt64))`, `Tuple(a UInt8, b String)`, `Enum8('a' = 1)`,
 `Decimal(10, 2)`) into a JSON AST.
 
-It is a faithful port of the C++ `chdt` library (see `../../type-parser/mini-parser-extracted`),
+It is a faithful port of the C++ `chdt` library (see `./reference-cpp-extracted-parser`),
 which is itself extracted from the server's `ParserDataType`
 (`src/Parsers/ParserDataType.cpp`). It has **no runtime dependencies** — only the
 Node.js standard library. The JSON it emits mirrors the data-type subtree of the

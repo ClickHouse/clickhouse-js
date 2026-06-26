@@ -29,6 +29,14 @@ export default defineConfig(
     },
   },
   {
-    ignores: ["dist", "node_modules", "eslint.config.mjs"],
+    // reference-cpp-extracted-parser is the C++ source this library was ported
+    // from; it has no lintable TypeScript, and its CMake build/ tree generates
+    // `compiler_depend.ts` timestamp files that are not real TS.
+    ignores: [
+      "dist",
+      "node_modules",
+      "eslint.config.mjs",
+      "reference-cpp-extracted-parser",
+    ],
   },
 );
