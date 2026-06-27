@@ -106,3 +106,4 @@ export {
 export { writeLowCardinality } from "./lowCardinality.js";
 export { writeSimpleAggregateFunction } from "./simpleAggregateFunction.js";
 export { writeNested } from "./nested.js";
+export { writeNothing } from "./nothing.js";
