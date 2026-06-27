@@ -132,4 +132,28 @@ describe("parseDataType", () => {
     expect(r.ok()).toBe(false);
     expect(r.error!.message).toMatch(/trailing input/);
   });
+
+  it("rejects a malformed exponent and never emits invalid JSON", () => {
+    /// A bare exponent (`e`/`E` with no following digits) must be rejected by
+    /// the lexer. Otherwise it would tokenize as a Float64 literal whose raw
+    /// text is written verbatim into the JSON `value`, producing invalid JSON
+    /// such as `"value":1e`.
+    for (const typeStr of [
+      "Decimal(1e, 2)",
+      "Decimal(1e+, 2)",
+      "FixedString(1e)",
+    ]) {
+      const r = parseDataType(typeStr);
+      expect(r.ok(), `expected ${typeStr} to be rejected`).toBe(false);
+      expect(r.error!.message).toMatch(/exponent/);
+    }
+
+    /// A well-formed exponent still parses, and its Float64 literal serializes
+    /// to valid JSON.
+    const good = parseDataType("Decimal(1e3, 2)");
+    expect(good.ok()).toBe(true);
+    const out = toJSON(good.ast!);
+    expect(() => JSON.parse(out)).not.toThrow();
+    expect(out).toContain('"value": 1e3');
+  });
 });

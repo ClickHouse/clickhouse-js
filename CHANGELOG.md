@@ -4,9 +4,13 @@
 
 - The `@clickhouse/client-common` package is deprecated. `@clickhouse/client` (Node.js) and `@clickhouse/client-web` (Web) no longer depend on it; the shared code is now bundled into each client package. Everything previously importable from `@clickhouse/client-common` should be imported from `@clickhouse/client` or `@clickhouse/client-web` instead. The `@clickhouse/client-common` package itself will no longer receive updates. ([#845])
 
+- The `parseColumnType` function and its `SimpleColumnTypes` companion (exported from `@clickhouse/client`, `@clickhouse/client-web`, and `@clickhouse/client-common`) are deprecated and slated for removal in a future major version. They are superseded by the new standalone [`@clickhouse/datatype-parser`](https://www.npmjs.com/package/@clickhouse/datatype-parser) package (`parseDataType` plus its `Node` AST), which parses the full ClickHouse data-type grammar and emits an AST that mirrors the server's. ([#893])
+
 ## New features
 
 - (Node.js) Added a RowBinary reader library and agent skill under [`skills/clickhouse-js-node-rowbinary-parser`](./skills/clickhouse-js-node-rowbinary-parser). It ships type-specific, monomorphizable building blocks for decoding `RowBinary` / `RowBinaryWithNames` / `RowBinaryWithNamesAndTypes` streams (full-buffer and chunked), plus a skill that guides an agent to generate bespoke high-performance parsers from a query's column types. The skill is bundled into `@clickhouse/client` (registered in `agents.skills`) and is also published independently as the [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary) package. A matching RowBinary writer is planned. ([#864])
+
+- Published the [`@clickhouse/datatype-parser`](https://www.npmjs.com/package/@clickhouse/datatype-parser) package: a small, dependency-free standalone parser for ClickHouse data-type strings (the kind sent in the types row of `RowBinaryWithNamesAndTypes`, e.g. `Array(Nullable(UInt64))`, `Tuple(a UInt8, b String)`, `Enum8('a' = 1)`). It is a faithful port of the server's `ParserDataType` and emits a JSON AST that is byte-identical to the server's `EXPLAIN AST json = 1` data-type subtree. It supersedes the deprecated `parseColumnType` (see Migration Notes). ([#893])
 
 - (Node.js, `@experimental`) Added an additive `connection?: Connection<Stream.Readable>` option to `createClient` that lets a caller plug an externally-built backend `Connection`-like object in place of the default HTTP(S) factory. Only supposed to be used for testing the `chDB` integration. ([#879])
 
@@ -81,6 +85,7 @@ await client.query({
 [#845]: https://github.com/ClickHouse/clickhouse-js/pull/845
 [#864]: https://github.com/ClickHouse/clickhouse-js/pull/864
 [#889]: https://github.com/ClickHouse/clickhouse-js/pull/889
+[#893]: https://github.com/ClickHouse/clickhouse-js/pull/893
 
 ## Bug Fixes
 

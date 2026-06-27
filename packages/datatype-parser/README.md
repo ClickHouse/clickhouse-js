@@ -308,7 +308,6 @@ The module structure tracks the C++ sources one-to-one:
 | `src/parser.ts` | `src/parser.cpp` + `parser.h` | the `ParserDataType::parseImpl` port    |
 | `src/json.ts`   | `src/json.cpp`                | the byte-faithful JSON serializer       |
 | `src/index.ts`  | —                             | public barrel                           |
-| `tool/main.ts`  | `tool/main.cpp`               | the `chdt-parse` CLI                    |
 
 The lexer and parser deliberately preserve the original control flow, branch
 ordering, helper names, and `pos` save/restore points. A few signatures changed

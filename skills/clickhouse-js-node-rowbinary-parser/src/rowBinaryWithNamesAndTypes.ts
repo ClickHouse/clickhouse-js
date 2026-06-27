@@ -13,7 +13,6 @@ import { parseDataType } from "@clickhouse/datatype-parser";
 
 import type { Reader, Cursor } from "./core.js";
 import { readHeader } from "./header.js";
-import { readTupleNamed } from "./composite.js";
 import { readRows } from "./rows.js";
 import { astToReader, RowBinaryTypeError } from "./compile.js";
 
@@ -131,9 +130,26 @@ export function compileRowBinaryWithNamesAndTypes(
   const { names, types } = readHeader(state);
   const columnReaders = types.map((t) => resolveType(t));
 
-  const fields: Record<string, Reader<unknown>> = {};
-  for (let i = 0; i < names.length; i++) fields[names[i]!] = columnReaders[i]!;
-  const readRow = readTupleNamed(fields);
+  // Build the row reader POSITIONALLY — by column index, NOT by keying the
+  // readers on column name and handing them to `readTupleNamed`. The header is
+  // an ordered list and RowBinary has no row delimiter, so every row MUST read
+  // exactly these readers, in exactly this order. Keying readers by name first
+  // would corrupt the stream on legal-but-awkward headers:
+  //   - duplicate column names (e.g. two `SELECT 1 AS x, 2 AS x`) collapse to a
+  //     single entry in a `Record`, so fewer readers run than there are columns;
+  //   - integer-like names (`0`, `1`, …) are reordered ahead of string keys by
+  //     `Object.keys()`, so the readers would run out of header order.
+  // Either desyncs the cursor and misreads every subsequent row. Reading by
+  // index sidesteps both. The row OBJECT is still keyed by name; on a duplicate
+  // name the last column with that name wins in the object, but every column is
+  // still consumed off the wire in order, so the cursor stays in sync.
+  const readRow: Reader<Row> = (s) => {
+    const row: Row = {};
+    for (let i = 0; i < columnReaders.length; i++) {
+      row[names[i]!] = columnReaders[i]!(s);
+    }
+    return row;
+  };
 
   return { names, types, columnReaders, readRow, readRows: readRows(readRow) };
 }

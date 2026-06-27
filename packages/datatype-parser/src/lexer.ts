@@ -276,12 +276,21 @@ export function tokenize(input: string): Token[] {
         ++pos;
         while (pos < n && isDigit(input[pos] as string)) ++pos;
       }
-      /// exponent
+      /// exponent — `e`/`E`, an optional sign, then AT LEAST ONE digit. A bare
+      /// exponent like `1e` or `1e+` is malformed and must be rejected: without
+      /// this guard it tokenizes as a Number whose raw text (`1e`) is emitted
+      /// verbatim into a Float64 Literal's JSON `value`, yielding invalid JSON
+      /// (`"value":1e`). Fail loudly here instead.
       if (pos < n && (input[pos] === "e" || input[pos] === "E")) {
         is_float = true;
         ++pos;
         if (pos < n && (input[pos] === "+" || input[pos] === "-")) ++pos;
+        const exp_digits_start = pos;
         while (pos < n && isDigit(input[pos] as string)) ++pos;
+        if (pos === exp_digits_start) {
+          fail(start, "malformed number: exponent has no digits");
+          break;
+        }
       }
       tokens.push({
         type: TokenType.Number,

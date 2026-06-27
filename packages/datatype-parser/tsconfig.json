@@ -20,7 +20,6 @@
   },
   "include": [
     "src/**/*.ts",
-    "tool/**/*.ts",
     "test/**/*.ts",
     "bench/**/*.ts",
     "vitest.config.ts"
