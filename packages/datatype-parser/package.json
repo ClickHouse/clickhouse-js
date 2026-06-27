@@ -1,6 +1,6 @@
 {
   "name": "@clickhouse/datatype-parser",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Standalone ClickHouse data-type string parser — a TypeScript port of the chdt C++ library.",
   "license": "Apache-2.0",
   "type": "module",
