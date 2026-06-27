@@ -63,12 +63,12 @@ npm i @clickhouse/client-web
 
 Node.js must be available in the environment to run the Node.js client. The client is compatible with all the [maintained](https://github.com/nodejs/release#readme) Node.js releases.
 
-| Node.js version | Supported?  |
-| --------------- | ----------- |
-| 24.x            | ✔           |
-| 22.x            | ✔           |
-| 20.x            | ✔           |
-| 18.x            | Best effort |
+| Node.js version | Supported? |
+| --------------- | ---------- |
+| 26.x            | ✔          |
+| 24.x            | ✔          |
+| 22.x            | ✔          |
+| 20.x            | ✔          |
 
 ### TypeScript
 

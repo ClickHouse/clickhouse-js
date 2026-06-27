@@ -2,6 +2,8 @@
 
 ## Migration Notes
 
+- Node.js 26.x was added to the CI matrix, and Node.js 18.x is no longer supported. The `engines.node` floor of `@clickhouse/client` (previously `>=16`) and `@clickhouse/datatype-parser` (previously `>=18.0.0`) was raised to `>=20`. Node.js 20.x, 22.x, 24.x, and 26.x are supported and exercised in CI.
+
 - The `@clickhouse/client-common` package is deprecated. `@clickhouse/client` (Node.js) and `@clickhouse/client-web` (Web) no longer depend on it; the shared code is now bundled into each client package. Everything previously importable from `@clickhouse/client-common` should be imported from `@clickhouse/client` or `@clickhouse/client-web` instead. The `@clickhouse/client-common` package itself will no longer receive updates. ([#845])
 
 - The `parseColumnType` function and its `SimpleColumnTypes` companion (exported from `@clickhouse/client`, `@clickhouse/client-web`, and `@clickhouse/client-common`) are deprecated and slated for removal in a future major version. They are superseded by the new standalone [`@clickhouse/datatype-parser`](https://www.npmjs.com/package/@clickhouse/datatype-parser) package (`parseDataType` plus its `Node` AST), which parses the full ClickHouse data-type grammar and emits an AST that mirrors the server's. ([#893])
