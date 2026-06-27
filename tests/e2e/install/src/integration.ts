@@ -7,33 +7,34 @@
 // publish workflow's e2e job (which installs the package by its published
 // version and starts a single-node ClickHouse), so it validates the actual npm
 // tarball a consumer would receive, not the local build.
+//
+// NOTE: this file is run via `node src/integration.ts` across Node 20/22/24.
+// Node 20 does not strip TypeScript types, so this must stay free of TS-only
+// syntax (no type annotations, `as` casts, etc.) — plain JS in a .ts file, like
+// src/index.ts.
 const assert = require("assert");
 const { createClient, ClickHouseError } = require("@clickhouse/client");
-
-// The e2e job starts ClickHouse via docker-compose just before this runs; poll
-// ping briefly so we don't race the container coming up.
-async function waitForClickHouse(client: any) {
-  const maxAttempts = 30;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const res = await client.ping();
-      if (res.success) return;
-    } catch {
-      // not ready yet
-    }
-    if (attempt === maxAttempts) {
-      throw new Error("ClickHouse did not become available in time");
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-}
 
 async function main() {
   // Defaults target http://localhost:8123 with the default user, matching the
   // single-node `clickhouse` service from docker-compose.yml.
   const client = createClient();
   try {
-    await waitForClickHouse(client);
+    // The e2e job starts ClickHouse via docker-compose just before this runs;
+    // poll ping briefly so we don't race the container coming up.
+    const maxAttempts = 30;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const res = await client.ping();
+        if (res.success) break;
+      } catch {
+        // not ready yet
+      }
+      if (attempt === maxAttempts) {
+        throw new Error("ClickHouse did not become available in time");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
 
     const table = `e2e_install_${Date.now()}`;
     await client.command({
@@ -71,7 +72,7 @@ async function main() {
 
     // A bad query must surface as a ClickHouseError instance from the SAME
     // installed package (a single bundle => one class identity).
-    let caught: unknown;
+    let caught;
     try {
       await client.query({
         query: "SELECT * FROM table_that_does_not_exist_e2e",
