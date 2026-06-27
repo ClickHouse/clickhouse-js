@@ -134,14 +134,18 @@ export default defineConfig({
     // node setup/util files import, so under `dist` we repoint it at the built
     // node `dist`.
     //
-    // Under `dist`, ALL client specifiers (incl. `@clickhouse/client-common`)
-    // resolve to the node client's own bundle. The node client bundles the
-    // common sources (client-common is deprecated and not a runtime dep), so a
-    // real consumer gets common-origin symbols — `ClickHouseError`, value
-    // classes like `SettingsMap`/`TupleParam` — from `@clickhouse/client`, not
-    // from a separate `client-common`. Pointing them all at one bundle keeps a
-    // single class identity, so the client's internal `instanceof` checks on
-    // test-provided values (and the tests' own `instanceof` assertions) hold.
+    // Under `dist`, the node and common specifiers aliased below
+    // (`@clickhouse/client`, `@clickhouse/client-common`, and the internal
+    // `@clickhouse/client-node`) all resolve to the node client's own bundle.
+    // The node client bundles the common sources (client-common is deprecated
+    // and not a runtime dep), so a real consumer gets common-origin symbols —
+    // `ClickHouseError`, value classes like `SettingsMap`/`TupleParam` — from
+    // `@clickhouse/client`, not from a separate `client-common`. Pointing them
+    // at one bundle keeps a single class identity, so the client's internal
+    // `instanceof` checks on test-provided values (and the tests' own
+    // `instanceof` assertions) hold. (`@clickhouse/client-web`, imported by the
+    // oss-dependents suite, is not aliased here — it resolves through
+    // node_modules to the web client's own dist.)
     alias:
       testTarget === "dist"
         ? {

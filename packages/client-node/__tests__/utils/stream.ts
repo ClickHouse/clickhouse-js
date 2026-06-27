@@ -18,9 +18,12 @@ export function makeObjectStream() {
   });
 }
 
-// Test-local helper to fully read a stream into a string. Mirrors the client's
-// internal `getAsText`, kept here so the integration specs depend only on the
-// published package surface (and stay runnable against the built `dist`).
+// Test-local helper to fully read a stream into a string. This is a simplified
+// stand-in for the client's internal `getAsText` — it deliberately omits the
+// internal RangeError message normalization ("Invalid string length" / "Out of
+// memory"), which these tests don't exercise. Kept here so the integration
+// specs depend only on the published package surface (and stay runnable against
+// the built `dist`).
 export async function getAsText(stream: Stream.Readable): Promise<string> {
   let text = "";
   const textDecoder = new TextDecoder();
