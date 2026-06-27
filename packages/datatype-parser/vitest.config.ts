@@ -1,9 +1,10 @@
 import { defineConfig } from "vitest/config";
 
-// The unit/snapshot suite runs on `node --test` (see package.json `test`);
-// vitest is used only for the benchmarks here.
 export default defineConfig({
   test: {
+    // Unit + snapshot suite (the `test:*`/`snapshot:*` tsx scripts in
+    // package.json are separate live-server tools, not vitest specs).
+    include: ["test/**/*.test.ts"],
     benchmark: {
       include: ["bench/**/*.bench.ts"],
     },

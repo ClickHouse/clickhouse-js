@@ -22,13 +22,10 @@ export default defineConfig(
   },
   {
     // The CLI entry point and the test/snapshot/oracle/bench harnesses are
-    // scripts that legitimately write to stdout/stderr. The `test/` files use
-    // node:test, whose `test()`/`describe()` return promises that are
-    // intentionally not awaited at the top level.
+    // scripts that legitimately write to stdout/stderr.
     files: ["tool/**/*.ts", "test/**/*.ts", "bench/**/*.ts"],
     rules: {
       "no-console": "off",
-      "@typescript-eslint/no-floating-promises": "off",
     },
   },
   {
