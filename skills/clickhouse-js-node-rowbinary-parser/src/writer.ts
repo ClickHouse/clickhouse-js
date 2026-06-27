@@ -25,3 +25,17 @@
  */
 export { Sink, reserve, type Writer } from "./core.js";
 export { writeUVarint } from "./varint.js";
+export {
+  writeUInt8,
+  writeInt8,
+  writeUInt16,
+  writeInt16,
+  writeUInt32,
+  writeInt32,
+  writeUInt64,
+  writeInt64,
+  writeUInt128,
+  writeInt128,
+  writeUInt256,
+  writeInt256,
+} from "./integers.js";
