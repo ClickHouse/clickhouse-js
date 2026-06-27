@@ -105,3 +105,4 @@ export {
 } from "./geo.js";
 export { writeLowCardinality } from "./lowCardinality.js";
 export { writeSimpleAggregateFunction } from "./simpleAggregateFunction.js";
+export { writeNested } from "./nested.js";
