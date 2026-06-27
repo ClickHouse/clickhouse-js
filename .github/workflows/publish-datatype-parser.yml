@@ -55,6 +55,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
+        # datatype-parser is an npm workspace package, so install the whole
+        # workspace from the repo root (overriding this job's package-dir
+        # default). A scoped `npm ci` from the package dir still fires the root
+        # lifecycle scripts (postinstall/parquet-wasm, prepare/husky) but
+        # without their dev-only devDependencies, which breaks the install. The
+        # remaining steps run from packages/datatype-parser as usual.
+        working-directory: ${{ github.workspace }}
         run: npm ci
 
       - name: Build
