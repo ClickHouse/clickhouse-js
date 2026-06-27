@@ -62,7 +62,7 @@
     "prepack": "cp ../../LICENSE . && npm run build"
   },
   "dependencies": {
-    "@clickhouse/datatype-parser": "^0.1.0"
+    "@clickhouse/datatype-parser": "^0.1.1"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
