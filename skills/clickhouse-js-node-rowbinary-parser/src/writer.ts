@@ -42,3 +42,10 @@ export {
 export { writeBool } from "./bool.js";
 export { writeEnum8, writeEnum16 } from "./enums.js";
 export { writeFloat32, writeFloat64, writeBFloat16 } from "./floats.js";
+export {
+  writeDecimal32,
+  writeDecimal64,
+  writeDecimal128,
+  writeDecimal256,
+  parseDecimal,
+} from "./decimals.js";
