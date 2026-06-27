@@ -49,3 +49,8 @@ export {
   writeDecimal256,
   parseDecimal,
 } from "./decimals.js";
+export {
+  writeString,
+  writeFixedString,
+  writeFixedStringBytes,
+} from "./strings.js";
