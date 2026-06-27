@@ -21,9 +21,9 @@ export default defineConfig(
     },
   },
   {
-    // The CLI entry point and the test/snapshot/oracle harness are scripts that
-    // legitimately write to stdout/stderr.
-    files: ["tool/**/*.ts", "test/**/*.ts"],
+    // The CLI entry point and the test/snapshot/oracle/bench harnesses are
+    // scripts that legitimately write to stdout/stderr.
+    files: ["tool/**/*.ts", "test/**/*.ts", "bench/**/*.ts"],
     rules: {
       "no-console": "off",
     },

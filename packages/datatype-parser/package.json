@@ -43,6 +43,7 @@
     "lint:fix": "eslint . --fix",
     "prepack": "npm run build",
     "parse": "node tool/main.ts",
+    "bench": "tsx bench/parse.bench.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "test:oracle": "tsx test/oracle_compare.ts",
     "test:unsupported": "tsx test/check_unsupported.ts",
