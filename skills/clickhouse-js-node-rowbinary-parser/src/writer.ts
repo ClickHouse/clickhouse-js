@@ -93,3 +93,13 @@ export {
   type VariantValue,
 } from "./composite.js";
 export { writeRows } from "./rows.js";
+export {
+  writePoint,
+  writeRing,
+  writeLineString,
+  writePolygon,
+  writeMultiLineString,
+  writeMultiPolygon,
+  writeGeometry,
+  type GeometryValue,
+} from "./geo.js";
