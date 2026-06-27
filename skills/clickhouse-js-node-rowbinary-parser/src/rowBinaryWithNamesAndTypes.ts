@@ -15,7 +15,7 @@ import type { Reader, Cursor } from "./core.js";
 import { readHeader } from "./header.js";
 import { readTupleNamed } from "./composite.js";
 import { readRows } from "./rows.js";
-import { astToReader } from "./compile.js";
+import { astToReader, RowBinaryTypeError } from "./compile.js";
 
 /** One decoded row, keyed by column name. */
 export type Row = Record<string, unknown>;
@@ -44,15 +44,17 @@ export interface CompiledStream {
 
 /**
  * Parse one ClickHouse type string and fold it into a {@link Reader}. Throws a
- * descriptive error if the parser rejects the string (e.g. the deliberately
- * unsupported `AggregateFunction` / `SimpleAggregateFunction`).
+ * {@link RowBinaryTypeError} if the parser rejects the string (e.g. the
+ * deliberately unsupported `AggregateFunction` / `SimpleAggregateFunction`) —
+ * carrying the `typeString` and the parse `position`.
  */
 export function typeStringToReader(typeStr: string): Reader<unknown> {
   const result = parseDataType(typeStr);
   if (!result.ok()) {
     const err = result.error!;
-    throw new Error(
-      `cannot compile type ${JSON.stringify(typeStr)}: ${err.message} (at position ${err.position})`,
+    throw new RowBinaryTypeError(
+      `cannot compile type ${JSON.stringify(typeStr)}: ${err.message}`,
+      { typeString: typeStr, position: err.position },
     );
   }
   return astToReader(result.ast!);

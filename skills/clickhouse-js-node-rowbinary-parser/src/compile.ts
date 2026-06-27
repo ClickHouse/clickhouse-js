@@ -77,6 +77,38 @@ import { readJSON } from "./json.js";
 import { readDynamic } from "./dynamic.js";
 
 /**
+ * Thrown when a ClickHouse type cannot be turned into a RowBinary reader —
+ * either the type string did not parse, or the parsed type is unsupported or
+ * malformed for RowBinary decoding (`AggregateFunction`, a missing argument, a
+ * malformed `Nested(...)`, …).
+ *
+ * A dedicated class so callers can `catch (e) { if (e instanceof
+ * RowBinaryTypeError) … }` and branch on a bad-type error specifically rather
+ * than string-matching a generic `Error`. Note the standalone
+ * `@clickhouse/datatype-parser` is itself NON-throwing (it returns a
+ * `ParseResult`); this is the error the compile layer raises on top of it.
+ */
+export class RowBinaryTypeError extends Error {
+  /** The full ClickHouse type string being compiled, when the throw site knows it. */
+  readonly typeString?: string;
+  /**
+   * Byte offset into `typeString` where parsing stopped — set for PARSE
+   * failures (from the underlying parser), undefined for fold-time errors.
+   */
+  readonly position?: number;
+
+  constructor(
+    message: string,
+    options: { typeString?: string; position?: number } = {},
+  ) {
+    super(message);
+    this.name = "RowBinaryTypeError";
+    this.typeString = options.typeString;
+    this.position = options.position;
+  }
+}
+
+/**
  * The fold itself: turn a parsed type-AST node into a value {@link Reader},
  * recursing into element / key / field types for composites. The shape mirrors
  * the server's `EXPLAIN AST` data-type subtree (see the parser's `ast.ts`).
@@ -94,7 +126,7 @@ export function astToReader(node: Node): Reader<unknown> {
     default:
       // Literal / Function / Identifier / NameTypePair are argument nodes,
       // consumed by their parent — never a standalone column type.
-      throw new Error(
+      throw new RowBinaryTypeError(
         `cannot build a column reader for a ${node.kind} node (${node.name || "?"})`,
       );
   }
@@ -166,7 +198,7 @@ function dataTypeReader(node: Node): Reader<unknown> {
       if (node.name.startsWith("Interval")) return readInterval;
       const leaf = NULLARY[node.name];
       if (leaf !== undefined) return leaf;
-      throw new Error(`unsupported RowBinary type: ${node.name}`);
+      throw new RowBinaryTypeError(`unsupported RowBinary type: ${node.name}`);
     }
   }
 }
@@ -206,7 +238,9 @@ function nestedReader(node: Node): Reader<unknown> {
   const fields: Record<string, Reader<unknown>> = {};
   for (const child of node.arguments) {
     if (child.kind !== NodeKind.NameTypePair || child.data_type === null) {
-      throw new Error("malformed Nested(...): expected name/type pairs");
+      throw new RowBinaryTypeError(
+        "malformed Nested(...): expected name/type pairs",
+      );
     }
     fields[child.name] = astToReader(child.data_type);
   }
@@ -266,7 +300,9 @@ const NULLARY: Record<string, Reader<unknown>> = {
 function requireArg(node: Node, index: number): Node {
   const arg = node.arguments[index];
   if (arg === undefined) {
-    throw new Error(`type ${node.name} is missing argument ${index}`);
+    throw new RowBinaryTypeError(
+      `type ${node.name} is missing argument ${index}`,
+    );
   }
   return arg;
 }
@@ -274,7 +310,9 @@ function requireArg(node: Node, index: number): Node {
 /** Reads an integer out of a `Literal` argument node (e.g. the N in FixedString(N)). */
 function literalInt(node: Node): number {
   if (node.kind !== NodeKind.Literal) {
-    throw new Error(`expected a literal argument, got a ${node.kind} node`);
+    throw new RowBinaryTypeError(
+      `expected a literal argument, got a ${node.kind} node`,
+    );
   }
   return Number(node.value);
 }

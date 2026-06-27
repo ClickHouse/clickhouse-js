@@ -7,6 +7,7 @@ import {
   typeStringToReader,
   type Row,
 } from "../src/rowBinaryWithNamesAndTypes.js";
+import { RowBinaryTypeError } from "../src/compile.js";
 
 /** Raw value bytes for one expression (`FORMAT RowBinary`, no header). */
 async function rowBinary(expr: string): Promise<Cursor> {
@@ -51,10 +52,19 @@ describe("typeStringToReader (AST -> combinator fold)", () => {
     ]);
   });
 
-  it("surfaces a clear error for an unsupported type", () => {
-    expect(() => typeStringToReader("AggregateFunction(sum, UInt64)")).toThrow(
-      /cannot compile type/,
-    );
+  it("throws a typed RowBinaryTypeError (with typeString + position) for an unsupported type", () => {
+    const type = "AggregateFunction(sum, UInt64)";
+    let err: unknown;
+    try {
+      typeStringToReader(type);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(RowBinaryTypeError);
+    const typed = err as RowBinaryTypeError;
+    expect(typed.message).toMatch(/cannot compile type/);
+    expect(typed.typeString).toBe(type);
+    expect(typeof typed.position).toBe("number");
   });
 });
 
