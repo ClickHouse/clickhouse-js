@@ -82,3 +82,13 @@ export {
   parseTime64,
 } from "./time.js";
 export { writeInterval } from "./interval.js";
+export {
+  writeNullable,
+  writeArray,
+  writeQBit,
+  writeTuple,
+  writeTupleNamed,
+  writeMap,
+  writeVariant,
+  type VariantValue,
+} from "./composite.js";
