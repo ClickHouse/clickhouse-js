@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { parseArgs, printUsage } from "./args.js";
 import { appendLog, resolveLogPath, safeForLog } from "./log.js";
 import { splitQueries } from "./split-queries.js";
+import { buildStatements, type Statement } from "./test-hint.js";
 import { handleExtractFromConfig } from "./extract-from-config.js";
 import { executeWithClient } from "./backends/client.js";
 
@@ -51,12 +52,14 @@ async function main(): Promise<void> {
     return;
   }
 
-  const queries = args.multiquery ? splitQueries(query) : [query.trim()];
-  if (queries.length === 0) {
-    process.stderr.write(
-      "No query provided. Use --query or pipe SQL via stdin.\n",
-    );
-    process.exitCode = 1;
+  const statements: Statement[] = args.multiquery
+    ? buildStatements(splitQueries(query))
+    : [{ sql: query.trim(), expectedError: null }];
+  if (statements.length === 0) {
+    // The input contained only comments/whitespace (e.g. a leftover error
+    // hint after the final statement). Nothing to run; exit cleanly like the
+    // native client would.
+    appendLog(logPath, "no_executable_statements=true");
     return;
   }
 
@@ -68,13 +71,16 @@ async function main(): Promise<void> {
   appendLog(logPath, "send_logs_level=" + safeForLog(args.sendLogsLevel));
   appendLog(logPath, "max_insert_threads=" + safeForLog(args.maxInsertThreads));
   appendLog(logPath, "server_settings=" + JSON.stringify(args.serverSettings));
-  appendLog(logPath, "queries_count=" + String(queries.length));
-  for (const q of queries) {
-    appendLog(logPath, "query=" + q);
+  appendLog(logPath, "queries_count=" + String(statements.length));
+  for (const stmt of statements) {
+    appendLog(logPath, "query=" + stmt.sql);
+    if (stmt.expectedError !== null) {
+      appendLog(logPath, "expected_error=" + stmt.expectedError.label);
+    }
   }
 
   try {
-    await executeWithClient({ args, queries, logPath });
+    await executeWithClient({ args, statements, logPath });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     appendLog(logPath, "error=" + msg);
