@@ -1,8 +1,8 @@
 import { vi, expect, it, describe, beforeEach, afterEach } from "vitest";
 import { getHeadersTestParams } from "@test/utils/parametrized";
 import Http from "http";
-import type { ClickHouseClient } from "../../src";
-import { createClient } from "../../src";
+import type { ClickHouseClient } from "@clickhouse/client";
+import { createClient } from "@clickhouse/client";
 import { emitResponseBody, stubClientRequest } from "../utils/http_stubs";
 
 describe("[Node.js] Client", () => {

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { TestEnv, isOnEnv } from "@test/utils/test_env";
 import http from "http";
 import Http from "http";
-import { createClient } from "../../src";
+import { createClient } from "@clickhouse/client";
 
 /** HTTPS agent tests are in tls.test.ts as it requires a secure connection. */
 

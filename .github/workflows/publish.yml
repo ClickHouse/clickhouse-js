@@ -341,6 +341,14 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
+      - name: Start ClickHouse (stable) in Docker
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
       - name: Setup NodeJS ${{ matrix.node }}
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
@@ -401,3 +409,9 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ env.PUBLISHED_VERSION }}
         run: node src/index.ts
+
+      # End-to-end integration against the installed package and a live
+      # single-node ClickHouse (started above): create/insert/select, stream,
+      # and confirm a bad query surfaces as a ClickHouseError.
+      - name: Run integration tests against the published package
+        run: node src/integration.ts

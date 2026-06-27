@@ -1,0 +1,112 @@
+name: "dist"
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - release
+    paths:
+      - "packages/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "vitest.node.config.ts"
+      - "vitest.node.setup.ts"
+      - "vitest.web.config.ts"
+      - "vitest.web.setup.ts"
+      - ".github/workflows/tests-dist.yml"
+  pull_request:
+    paths:
+      - "packages/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "vitest.node.config.ts"
+      - "vitest.node.setup.ts"
+      - "vitest.web.config.ts"
+      - "vitest.web.setup.ts"
+      - ".github/workflows/tests-dist.yml"
+
+  schedule:
+    - cron: "0 9 * * *"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+# Integration tests resolved against the BUILT `dist` packages (TEST_TARGET=dist)
+# instead of the workspace `src`. This is the published-surface / bundle guard:
+# it catches build output, packaging, and single-bundle module-identity issues
+# (e.g. a value class like SettingsMap/TupleParam resolving to a second copy and
+# breaking the client's internal `instanceof` checks) that the fast, build-free
+# `src` loop cannot. Behavioural coverage across Node/ClickHouse versions already
+# runs in the `node`/`web` workflows, so this targets only the stable ClickHouse
+# release on a local single-node instance with the canonical Node.js version.
+jobs:
+  node-dist-integration:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Start ClickHouse (stable) in Docker
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      # test:node:integration:dist builds the workspace packages first, then runs
+      # the node integration suite with TEST_TARGET=dist.
+      - name: Run node integration tests against dist
+        run: npm run test:node:integration:dist
+
+  web-dist-integration:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Start ClickHouse (stable) in Docker
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install chromium
+
+      # test:web:integration:dist builds the workspace packages first, then runs
+      # the web integration suite with TEST_TARGET=dist.
+      - name: Run web integration tests against dist
+        env:
+          BROWSER: chromium
+        run: npm run test:web:integration:dist

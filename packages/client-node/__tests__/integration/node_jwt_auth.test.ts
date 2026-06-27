@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
 import { TestEnv, isOnEnv } from "@test/utils/test_env";
 import { EnvKeys, getFromEnv, maybeGetFromEnv } from "@test/utils/env";
-import { createClient } from "../../src";
-import type { NodeClickHouseClient } from "../../src/client";
+import { createClient } from "@clickhouse/client";
+import type { ClickHouseClient } from "@clickhouse/client";
 
 describe.skipIf(!isOnEnv(TestEnv.Cloud))("[Node.js] JWT auth", () => {
-  let jwtClient: NodeClickHouseClient;
+  let jwtClient: ClickHouseClient;
   let url: string;
   let jwt: string | undefined;
 

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { ClickHouseClient } from "@clickhouse/client-common";
 import { createTestClient } from "@test/utils";
-import { getAsText } from "../../src/utils";
-import { ResultSet } from "../../src";
+import { getAsText } from "../utils/stream";
+import { ResultSet } from "@clickhouse/client-web";
 
 describe("[Web] exec result streaming", () => {
   let client: ClickHouseClient<ReadableStream>;

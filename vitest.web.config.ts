@@ -23,6 +23,23 @@ if (
   );
 }
 
+// Which build of the client the `@clickhouse/*` specifiers resolve to:
+//   src  (default) - the raw TypeScript sources (via the `unittest` export
+//                    condition), for a fast, build-free loop.
+//   dist           - the compiled packages, exactly as a published consumer
+//                    sees them (run `npm run build` first). An e2e-style guard
+//                    against the built artifact / public surface.
+// TEST_TARGET is orthogonal to TEST_MODE (which only selects the spec files).
+// Caveat: only specs that import EXCLUSIVELY via the `@clickhouse/*` names
+// retarget cleanly; specs that also reach into `../../src` directly keep
+// importing source for those paths regardless.
+const testTarget = process.env.TEST_TARGET ?? "src";
+if (testTarget !== "src" && testTarget !== "dist") {
+  throw new Error(
+    `Unsupported TEST_TARGET: [${testTarget}]. Supported targets are: src, dist.`,
+  );
+}
+
 const collections = {
   unit: [
     "packages/client-common/__tests__/unit/*.test.ts",
@@ -120,19 +137,47 @@ export default defineConfig({
       instances: [{ browser }],
     },
   },
+  // In `dist` mode the web client resolves to its published CJS bundle; force
+  // Vite to pre-bundle it (as a real bundler-based consumer would) so its named
+  // exports are exposed to the browser ESM imports.
+  optimizeDeps:
+    testTarget === "dist" ? { include: ["@clickhouse/client-web"] } : undefined,
   resolve: {
-    // Use the unittest entry point to get the source files instead of built files
-    conditions: ["unittest"],
-    alias: {
-      "@clickhouse/client-common": fileURLToPath(
-        new URL("./packages/client-common/src", import.meta.url),
-      ),
-      "@clickhouse/client-web": fileURLToPath(
-        new URL("./packages/client-web", import.meta.url),
-      ),
-      "@test": fileURLToPath(
-        new URL("./packages/client-common/__tests__", import.meta.url),
-      ),
-    },
+    // Driven by TEST_TARGET (see above). With `src` (default), the `unittest`
+    // export condition + aliases resolve the raw sources. With `dist`, we drop
+    // them so the published `default` export (dist/index.js) and the
+    // node_modules workspace symlinks resolve to the BUILT packages (run
+    // `npm run build` first).
+    conditions: testTarget === "dist" ? [] : ["unittest"],
+    // Under `dist`, both client specifiers resolve to the web client's own
+    // bundle. The web client bundles the common sources (client-common is
+    // deprecated and not a runtime dep), so a real consumer gets common-origin
+    // symbols — value classes like `SettingsMap`/`TupleParam`, `ClickHouseError`
+    // — from `@clickhouse/client-web`. Pointing both at one bundle keeps a
+    // single class identity, so `instanceof` checks (the client's internal ones
+    // on test-provided values, and the tests' own) hold.
+    alias:
+      testTarget === "dist"
+        ? {
+            // Redirect the deprecated common package NAME to the web client
+            // package NAME (not a path) so it resolves through the published
+            // entry — Vite pre-bundles the CJS dist and its named exports stay
+            // intact, and common-origin symbols share the client's one bundle.
+            "@clickhouse/client-common": "@clickhouse/client-web",
+            "@test": fileURLToPath(
+              new URL("./packages/client-common/__tests__", import.meta.url),
+            ),
+          }
+        : {
+            "@clickhouse/client-common": fileURLToPath(
+              new URL("./packages/client-common/src", import.meta.url),
+            ),
+            "@clickhouse/client-web": fileURLToPath(
+              new URL("./packages/client-web", import.meta.url),
+            ),
+            "@test": fileURLToPath(
+              new URL("./packages/client-common/__tests__", import.meta.url),
+            ),
+          },
   },
 });
