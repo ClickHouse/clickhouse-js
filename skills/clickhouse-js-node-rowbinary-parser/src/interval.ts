@@ -1,5 +1,6 @@
-import { Cursor } from "./core.js";
+import { Cursor, Sink } from "./core.js";
 import { readInt64 } from "./integers.js";
+import { writeInt64 } from "./integers.js";
 
 /** The 11 `Interval` units, in ClickHouse's ascending order. */
 export type IntervalUnit =
@@ -51,4 +52,13 @@ export type IntervalValue = readonly [count: bigint, unit: IntervalUnit];
  */
 export function readInterval(state: Cursor): bigint {
   return readInt64(state);
+}
+
+/**
+ * Write an `Interval` — any of `IntervalNanosecond` ... `IntervalYear`: a signed
+ * `Int64` count of the unit. The inverse of {@link readInterval}; the unit lives
+ * in the column type, not the bytes, so all 11 interval types share this writer.
+ */
+export function writeInterval(sink: Sink, value: bigint): void {
+  writeInt64(sink, value);
 }

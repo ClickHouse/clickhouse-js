@@ -75,3 +75,10 @@ export {
   writeDateTime64P6,
   writeDateTime64P9,
 } from "./datetime.js";
+export {
+  writeTime,
+  writeTime64,
+  parseTime,
+  parseTime64,
+} from "./time.js";
+export { writeInterval } from "./interval.js";
