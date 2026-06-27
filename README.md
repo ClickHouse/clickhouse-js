@@ -69,7 +69,6 @@ Node.js must be available in the environment to run the Node.js client. The clie
 | 24.x            | ✔           |
 | 22.x            | ✔           |
 | 20.x            | ✔           |
-| 18.x            | Best effort |
 
 ### TypeScript
 
