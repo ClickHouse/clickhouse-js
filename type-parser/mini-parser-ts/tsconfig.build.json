@@ -1,5 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "comment": "Build config for publishing: emits only the library (src) + CLI (tool), never the test harness.",
-  "include": ["src/**/*.ts", "tool/**/*.ts"]
-}

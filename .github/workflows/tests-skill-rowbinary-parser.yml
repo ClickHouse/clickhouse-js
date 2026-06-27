@@ -9,10 +9,14 @@ on:
     paths:
       - .github/workflows/tests-skill-rowbinary-parser.yml
       - skills/clickhouse-js-node-rowbinary-parser/**
+      # The skill depends on @clickhouse/datatype-parser; rerun against local
+      # parser changes so a parser regression cannot pass this suite unnoticed.
+      - packages/datatype-parser/**
   pull_request:
     paths:
       - .github/workflows/tests-skill-rowbinary-parser.yml
       - skills/clickhouse-js-node-rowbinary-parser/**
+      - packages/datatype-parser/**
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
@@ -33,8 +37,21 @@ jobs:
         with:
           node-version: 24
 
+      # Build + pack the in-repo @clickhouse/datatype-parser so the skill is
+      # exercised against THIS checkout, not the version published to npm. The
+      # committed package.json keeps a published range for end users; we only
+      # override node_modules below (`npm install <tarball> --no-save`).
+      - name: Pack local @clickhouse/datatype-parser
+        working-directory: ${{ github.workspace }}
+        run: |
+          npm ci
+          npm pack --workspace @clickhouse/datatype-parser --pack-destination "${{ runner.temp }}"
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Use the local datatype-parser build
+        run: npm install "${{ runner.temp }}"/clickhouse-datatype-parser-*.tgz --no-save
 
       - name: Typecheck
         run: npm run typecheck
@@ -68,8 +85,21 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      # Build + pack the in-repo @clickhouse/datatype-parser so the skill is
+      # exercised against THIS checkout, not the version published to npm. The
+      # committed package.json keeps a published range for end users; we only
+      # override node_modules below (`npm install <tarball> --no-save`).
+      - name: Pack local @clickhouse/datatype-parser
+        working-directory: ${{ github.workspace }}
+        run: |
+          npm ci
+          npm pack --workspace @clickhouse/datatype-parser --pack-destination "${{ runner.temp }}"
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Use the local datatype-parser build
+        run: npm install "${{ runner.temp }}"/clickhouse-datatype-parser-*.tgz --no-save
 
       - name: Run unit tests
         run: npm test

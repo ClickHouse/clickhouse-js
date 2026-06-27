@@ -117,9 +117,9 @@ export type {
   JSONHandling,
 } from "./parse";
 export {
-  /** @deprecated Import `SimpleColumnTypes` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
+  /** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. (Also: import client APIs from `@clickhouse/client`/`@clickhouse/client-web`, not `@clickhouse/client-common`.) */
   SimpleColumnTypes,
-  /** @deprecated Import `parseColumnType` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
+  /** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. (Also: import client APIs from `@clickhouse/client`/`@clickhouse/client-web`, not `@clickhouse/client-common`.) */
   parseColumnType,
   /** @deprecated Import `defaultJSONHandling` from `@clickhouse/client` (Node.js) or `@clickhouse/client-web` (Web) instead. Importing it from `@clickhouse/client-common` is deprecated. */
   defaultJSONHandling,

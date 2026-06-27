@@ -8,20 +8,24 @@
 ///
 /// This is a faithful TypeScript port of the original C++ lexer.
 
-export enum TokenType {
-  End = "End", /// end of input
-  Word = "Word", /// bare identifier / keyword, e.g. UInt8, Array, SIGNED
-  QuotedIdent = "QuotedIdent", /// `backtick` or "double"-quoted identifier (decoded)
-  Number = "Number", /// numeric literal (raw text, no sign)
-  String = "String", /// single-quoted string literal (decoded)
-  OpeningParen = "OpeningParen", /// (
-  ClosingParen = "ClosingParen", /// )
-  Comma = "Comma", /// ,
-  Equals = "Equals", /// =
-  Minus = "Minus", /// -
-  Dot = "Dot", /// .
-  Error = "Error", /// malformed token; `text` holds the message
-}
+/// A plain `const` object rather than a TS `enum`, so the source is erasable
+/// and runs under Node's native type-stripping (which rejects `enum`). The
+/// companion type below makes `TokenType` usable as both a value and a type.
+export const TokenType = {
+  End: "End", /// end of input
+  Word: "Word", /// bare identifier / keyword, e.g. UInt8, Array, SIGNED
+  QuotedIdent: "QuotedIdent", /// `backtick` or "double"-quoted identifier (decoded)
+  Number: "Number", /// numeric literal (raw text, no sign)
+  String: "String", /// single-quoted string literal (decoded)
+  OpeningParen: "OpeningParen", /// (
+  ClosingParen: "ClosingParen", /// )
+  Comma: "Comma", /// ,
+  Equals: "Equals", /// =
+  Minus: "Minus", /// -
+  Dot: "Dot", /// .
+  Error: "Error", /// malformed token; `text` holds the message
+} as const;
+export type TokenType = (typeof TokenType)[keyof typeof TokenType];
 
 export interface Token {
   type: TokenType;

@@ -11,7 +11,18 @@
 /// the `\u%04x` fallback). All bytes >= 0x20 are pushed through verbatim. At
 /// the end we decode the buffer back to a (byte-identical) JS string.
 
-import { NodeKind, type Node } from "./ast.js";
+import { NodeKind, type Node } from "./ast.ts";
+
+/// `TextEncoder` / `TextDecoder` are runtime globals in every environment this
+/// library supports (Node >= 18 and all modern browsers), but they are not part
+/// of the `ES2022` lib this package compiles against. Declare just the slice we
+/// use here, rather than pulling in the whole `DOM` lib (which would leak
+/// `window`/`name`/… globals into every file and could mask typos) or adding an
+/// `@types/node` devDependency to an otherwise dependency-free package.
+declare const TextEncoder: new () => { encode(input: string): Uint8Array };
+declare const TextDecoder: new (label?: string) => {
+  decode(input?: Uint8Array): string;
+};
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8");

@@ -6,13 +6,13 @@
 /// into a JSON-serializable AST that mirrors the server's `EXPLAIN AST json = 1`
 /// data-type subtree (format version 2).
 
-export { parseDataType } from "./parser.js";
-export type { ParseError, ParseResult } from "./parser.js";
+export { parseDataType } from "./parser.ts";
+export type { ParseError, ParseResult } from "./parser.ts";
 
-export { toJSON } from "./json.js";
+export { toJSON } from "./json.ts";
 
-export { NodeKind, makeNode } from "./ast.js";
-export type { Node, EnumValue } from "./ast.js";
+export { NodeKind, makeNode } from "./ast.ts";
+export type { Node, EnumValue } from "./ast.ts";
 
-export { tokenize, TokenType } from "./lexer.js";
-export type { Token } from "./lexer.js";
+export { tokenize, TokenType } from "./lexer.ts";
+export type { Token } from "./lexer.ts";

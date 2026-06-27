@@ -6,13 +6,13 @@
 /// only written when the server accepted the type AND the parser matched it,
 /// "parser output equals snapshot" is equivalent to "parser equals server".
 ///
-/// Run with: npm test   (node --import tsx --test test/*.test.ts)
+/// Run with: npm test   (vitest run)
 
-import { strict as assert } from "node:assert";
 import { existsSync, readFileSync } from "node:fs";
-import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+
+import { describe, expect, it } from "vitest";
 
 import { canon, readCases } from "./cases.js";
 import { toolDataType } from "./oracle.js";
@@ -21,20 +21,22 @@ import { snapshotPath, type Snapshot } from "./snapshots.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const cases = readCases(join(here, "cases.txt"));
 
-test(`snapshot corpus is non-empty`, () => {
-  assert.ok(cases.length > 0, "cases.txt has no cases");
-});
-
-for (const typeStr of cases) {
-  test(`matches server snapshot: ${typeStr}`, () => {
-    const path = snapshotPath(typeStr);
-    assert.ok(
-      existsSync(path),
-      `missing snapshot for ${JSON.stringify(typeStr)} — run: npm run snapshot:update -- --clickhouse <path>`,
-    );
-    const snap = JSON.parse(readFileSync(path, "utf8")) as Snapshot;
-    const expected = canon(snap.data_type);
-    const actual = canon(toolDataType(typeStr));
-    assert.deepEqual(actual, expected);
+describe("snapshot corpus", () => {
+  it("is non-empty", () => {
+    expect(cases.length, "cases.txt has no cases").toBeGreaterThan(0);
   });
-}
+
+  for (const typeStr of cases) {
+    it(`matches server snapshot: ${typeStr}`, () => {
+      const path = snapshotPath(typeStr);
+      expect(
+        existsSync(path),
+        `missing snapshot for ${JSON.stringify(typeStr)} — run: npm run snapshot:update -- --clickhouse <path>`,
+      ).toBe(true);
+      const snap = JSON.parse(readFileSync(path, "utf8")) as Snapshot;
+      const expected = canon(snap.data_type);
+      const actual = canon(toolDataType(typeStr));
+      expect(actual).toEqual(expected);
+    });
+  }
+});

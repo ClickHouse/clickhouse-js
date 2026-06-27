@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "comment": "Build config for publishing: emits only the library (src) into dist/, never the CLI or test harness.",
+  "compilerOptions": {
+    "rootDir": "src"
+  },
+  "include": ["src/**/*.ts"]
+}
