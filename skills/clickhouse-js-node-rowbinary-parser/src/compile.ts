@@ -1,34 +1,23 @@
 /**
- * A compiler-like bridge from a ClickHouse type STRING to a RowBinary
- * {@link Reader}. Given the `RowBinaryWithNamesAndTypes` header — the column
- * names and their type strings the server writes before the row data — it:
+ * The fold: turn a parsed ClickHouse data-type AST (from
+ * `@clickhouse/datatype-parser`) into a RowBinary value {@link Reader}.
  *
- *   1. reads the header off the cursor (column count, names, type strings),
- *   2. parses each type string into an AST with `@clickhouse/datatype-parser`,
- *   3. FOLDS that AST into a tree of combinator calls from this library
- *      (`readArray(readNullable(readUInt32))`, `readMap(readString, ...)`, …),
- *   4. wraps the per-column readers in a named-tuple row reader and hands back a
- *      {@link readRows} driver that decodes the REST of the stream.
+ * AST in, reader out — nothing else. Reading the `RowBinaryWithNamesAndTypes`
+ * header, parsing type strings, and assembling a row reader live in
+ * `rowBinaryWithNamesAndTypes.ts`; this module is just the type-to-reader
+ * mapping.
  *
- * This is the unoptimized reference path: it composes the existing GENERIC
- * curried combinators at runtime, exactly as a hand-written reader would. There
- * is no code generation and no monomorphization here — those are the deliberate
- * next step (see the `MONOMORPHIZE` notes throughout the combinator modules).
- * The point of this module is just the faithful AST → combinator fold.
- *
- * The fold mirrors {@link readDynamicType} in `dynamic.ts`, which performs the
- * same "type → Reader" mapping but driven by ClickHouse's BINARY type encoding;
- * here the driver is the textual type and its parsed AST.
+ * It composes the existing GENERIC curried combinators at runtime, exactly as a
+ * hand-written reader would — no code generation and no monomorphization (those
+ * are the deliberate next step; see the `MONOMORPHIZE` notes throughout the
+ * combinator modules). The shape mirrors {@link readDynamicType} in
+ * `dynamic.ts`, which performs the same "type → Reader" mapping but driven by
+ * ClickHouse's BINARY type encoding rather than the textual type's AST.
  */
 
-import {
-  parseDataType,
-  NodeKind,
-  type Node,
-} from "@clickhouse/datatype-parser";
+import { NodeKind, type Node } from "@clickhouse/datatype-parser";
 
-import type { Reader, Cursor } from "./core.js";
-import { readHeader } from "./header.js";
+import type { Reader } from "./core.js";
 import {
   readInt8,
   readInt16,
@@ -86,48 +75,6 @@ import {
 } from "./geo.js";
 import { readJSON } from "./json.js";
 import { readDynamic } from "./dynamic.js";
-import { readRows } from "./rows.js";
-
-/** One decoded row, keyed by column name. */
-export type Row = Record<string, unknown>;
-
-/**
- * The product of compiling a `RowBinaryWithNamesAndTypes` header: the column
- * metadata, the per-column readers, and — the headline — `readRows`, the
- * {@link Reader} that decodes every remaining row of the stream.
- */
-export interface CompiledStream {
-  /** Column names, in stream order (from the header). */
-  names: string[];
-  /** Column type strings, in stream order (from the header). */
-  types: string[];
-  /** One folded reader per column, in stream order. */
-  columnReaders: Reader<unknown>[];
-  /** Reads exactly one row into a `{ [name]: value }` object. */
-  readRow: Reader<Row>;
-  /**
-   * Reads the REST of the stream (all rows after the header) into an array.
-   * Streaming-aware via {@link readRows}: on a partial trailing row it rewinds
-   * to the last complete row and returns what it has.
-   */
-  readRows: Reader<Row[]>;
-}
-
-/**
- * Parse one ClickHouse type string and fold it into a {@link Reader}. Throws a
- * descriptive error if the parser rejects the string (e.g. the deliberately
- * unsupported `AggregateFunction` / `SimpleAggregateFunction`).
- */
-export function typeStringToReader(typeStr: string): Reader<unknown> {
-  const result = parseDataType(typeStr);
-  if (!result.ok()) {
-    const err = result.error!;
-    throw new Error(
-      `cannot compile type ${JSON.stringify(typeStr)}: ${err.message} (at position ${err.position})`,
-    );
-  }
-  return astToReader(result.ast!);
-}
 
 /**
  * The fold itself: turn a parsed type-AST node into a value {@link Reader},
@@ -330,27 +277,4 @@ function literalInt(node: Node): number {
     throw new Error(`expected a literal argument, got a ${node.kind} node`);
   }
   return Number(node.value);
-}
-
-/**
- * The headline entry point. Reads the `RowBinaryWithNamesAndTypes` header off
- * `state`, compiles each column type into a combinator reader, and returns the
- * column metadata plus the readers — including `readRows`, the reader for the
- * REST of the stream. After this call the cursor sits at the first row, so:
- *
- *   const s = new Cursor(buf);
- *   const { names, readRows } = compileRowBinaryWithNamesAndTypes(s);
- *   const rows = readRows(s);   // decode every remaining row
- */
-export function compileRowBinaryWithNamesAndTypes(
-  state: Cursor,
-): CompiledStream {
-  const { names, types } = readHeader(state);
-  const columnReaders = types.map(typeStringToReader);
-
-  const fields: Record<string, Reader<unknown>> = {};
-  for (let i = 0; i < names.length; i++) fields[names[i]!] = columnReaders[i]!;
-  const readRow = readTupleNamed(fields);
-
-  return { names, types, columnReaders, readRow, readRows: readRows(readRow) };
 }

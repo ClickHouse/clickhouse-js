@@ -51,3 +51,4 @@ export * from "./nothing.js";
 export * from "./aggregateFunction.js";
 export * from "./header.js";
 export * from "./compile.js";
+export * from "./rowBinaryWithNamesAndTypes.js";
