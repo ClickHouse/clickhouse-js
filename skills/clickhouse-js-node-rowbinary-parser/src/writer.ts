@@ -60,3 +60,9 @@ export {
   writeUUIDHiLo,
   parseUUID,
 } from "./uuid.js";
+export {
+  writeIPv4,
+  writeIPv6,
+  parseIPv4,
+  parseIPv6,
+} from "./ip.js";
