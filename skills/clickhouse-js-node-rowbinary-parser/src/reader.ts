@@ -24,6 +24,20 @@
  *   lowCardinality (readLowCardinality), simpleAggregateFunction
  *   (readSimpleAggregateFunction), nested (readNested), nothing (readNothing),
  *   aggregateFunction (readAggregateFunction)
+ *
+ * Runtime schema path — compile a reader from the type STRINGS rather than
+ * hand-/code-generating one. Use this when the column types are not known until
+ * the response arrives (or you just want a generic decoder); for a fixed,
+ * known schema the specialized straight-line reader is faster.
+ * - header   — readHeader: the RowBinaryWithNamesAndTypes preamble (column
+ *              names + type strings) off the cursor
+ * - compile  — astToReader: fold one parsed type AST (from
+ *              `@clickhouse/datatype-parser`) into a value Reader. AST in,
+ *              reader out — the type-to-combinator mapping, nothing else
+ * - rowBinaryWithNamesAndTypes — typeStringToReader (parse a type string +
+ *              fold) and compileRowBinaryWithNamesAndTypes (read the header,
+ *              compile every column, return a `readRows` driver for the rest of
+ *              the stream): the end-to-end runtime entry point
  */
 export * from "./core.js";
 export * from "./varint.js";
