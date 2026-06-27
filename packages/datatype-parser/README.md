@@ -1,4 +1,4 @@
-# chdt-ts — standalone ClickHouse data-type parser (TypeScript)
+# @clickhouse/datatype-parser
 
 A small, self-contained TypeScript library that parses a ClickHouse **data-type
 string** (the kind sent in the types row of `RowBinaryWithNamesAndTypes`, e.g.
@@ -12,6 +12,290 @@ Node.js standard library. The JSON it emits mirrors the data-type subtree of the
 frozen `EXPLAIN AST json = 1` document (format **version 2**), so its output is a
 drop-in match for what the server produces — and is **byte-identical** to the C++
 parser's output across the full test corpus.
+
+## Install & build
+
+```bash
+npm install @clickhouse/datatype-parser
+```
+
+## Usage
+
+Library:
+
+```ts
+import { parseDataType, toJSON } from "@clickhouse/datatype-parser";
+
+const r = parseDataType("Tuple(a UInt8, b String)");
+if (r.ok()) {
+  console.log(toJSON(r.ast!)); // pretty (2-space) JSON
+  console.log(toJSON(r.ast!, -1)); // compact JSON
+} else {
+  console.error(r.error!.message, r.error!.position);
+}
+```
+
+## AST
+
+```sql
+Tuple(
+  id UInt64,
+  name LowCardinality(String),
+  price Decimal(18, 4),
+  ts DateTime64(9, 'UTC'),
+  tags Array(LowCardinality(Nullable(String))),
+  attrs Map(String, Array(Nullable(Int32))),
+  status Enum8('active' = 1, 'closed' = -2),
+  coords Array(Tuple(Float64, Float64)),
+  meta Nested(k String, v UInt32),
+  fixed FixedString(16),
+  dyn Dynamic(max_types = 8),
+  variant Variant(UInt64, String, Array(UInt8)),
+  raw Object('json')
+)
+```
+
+```json
+{
+  "type": "TupleDataType",
+  "name": "Tuple",
+  "arguments": [
+    {
+      "type": "DataType",
+      "name": "UInt64"
+    },
+    {
+      "type": "DataType",
+      "name": "LowCardinality",
+      "arguments": [
+        {
+          "type": "DataType",
+          "name": "String"
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "Decimal",
+      "arguments": [
+        {
+          "type": "Literal",
+          "value_type": "UInt64",
+          "value": "18"
+        },
+        {
+          "type": "Literal",
+          "value_type": "UInt64",
+          "value": "4"
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "DateTime64",
+      "arguments": [
+        {
+          "type": "Literal",
+          "value_type": "UInt64",
+          "value": "9"
+        },
+        {
+          "type": "Literal",
+          "value_type": "String",
+          "value": "UTC"
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "Array",
+      "arguments": [
+        {
+          "type": "DataType",
+          "name": "LowCardinality",
+          "arguments": [
+            {
+              "type": "DataType",
+              "name": "Nullable",
+              "arguments": [
+                {
+                  "type": "DataType",
+                  "name": "String"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "Map",
+      "arguments": [
+        {
+          "type": "DataType",
+          "name": "String"
+        },
+        {
+          "type": "DataType",
+          "name": "Array",
+          "arguments": [
+            {
+              "type": "DataType",
+              "name": "Nullable",
+              "arguments": [
+                {
+                  "type": "DataType",
+                  "name": "Int32"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "EnumDataType",
+      "name": "Enum8",
+      "values": [
+        {
+          "name": "active",
+          "value": 1
+        },
+        {
+          "name": "closed",
+          "value": -2
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "Array",
+      "arguments": [
+        {
+          "type": "TupleDataType",
+          "name": "Tuple",
+          "arguments": [
+            {
+              "type": "DataType",
+              "name": "Float64"
+            },
+            {
+              "type": "DataType",
+              "name": "Float64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "Nested",
+      "arguments": [
+        {
+          "type": "NameTypePair",
+          "name": "k",
+          "data_type": {
+            "type": "DataType",
+            "name": "String"
+          }
+        },
+        {
+          "type": "NameTypePair",
+          "name": "v",
+          "data_type": {
+            "type": "DataType",
+            "name": "UInt32"
+          }
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "FixedString",
+      "arguments": [
+        {
+          "type": "Literal",
+          "value_type": "UInt64",
+          "value": "16"
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "Dynamic",
+      "arguments": [
+        {
+          "type": "Function",
+          "name": "equals",
+          "is_operator": true,
+          "arguments": [
+            {
+              "type": "Identifier",
+              "name": "max_types"
+            },
+            {
+              "type": "Literal",
+              "value_type": "UInt64",
+              "value": "8"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "Variant",
+      "arguments": [
+        {
+          "type": "DataType",
+          "name": "UInt64"
+        },
+        {
+          "type": "DataType",
+          "name": "String"
+        },
+        {
+          "type": "DataType",
+          "name": "Array",
+          "arguments": [
+            {
+              "type": "DataType",
+              "name": "UInt8"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "DataType",
+      "name": "Object",
+      "arguments": [
+        {
+          "type": "Literal",
+          "value_type": "String",
+          "value": "json"
+        }
+      ]
+    }
+  ],
+  "element_names": [
+    "id",
+    "name",
+    "price",
+    "ts",
+    "tags",
+    "attrs",
+    "status",
+    "coords",
+    "meta",
+    "fixed",
+    "dyn",
+    "variant",
+    "raw"
+  ]
+}
+```
 
 ## Layout
 
@@ -31,35 +315,12 @@ ordering, helper names, and `pos` save/restore points. A few signatures changed
 where C++ used out-parameters (`std::string &`): `parseIdentifier` and
 `decodeQuoted` return small result objects instead.
 
-## Install & build
+## Development
 
 ```bash
 npm install
 npm run build      # emits dist/ (JS + .d.ts)
 npm run typecheck  # tsc --noEmit
-```
-
-## Usage
-
-Library:
-
-```ts
-import { parseDataType, toJSON } from "@clickhouse/datatype-parser";
-
-const r = parseDataType("Tuple(a UInt8, b String)");
-if (r.ok()) {
-  console.log(toJSON(r.ast!)); // pretty (2-space) JSON
-  console.log(toJSON(r.ast!, -1)); // compact JSON
-} else {
-  console.error(r.error!.message, r.error!.position);
-}
-```
-
-CLI (no build step needed — runs on Node.js 24+ native TypeScript support):
-
-```bash
-npm run parse -- "Array(Nullable(UInt64))"
-echo "Enum8('a' = 1, 'b' = 2)" | npm run parse
 ```
 
 ## Output shape
