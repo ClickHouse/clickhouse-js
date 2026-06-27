@@ -1,0 +1,27 @@
+/**
+ * Barrel re-export of the RowBinary WRITER — the encode mirror of `reader.ts`,
+ * split by type family across the same per-type modules. Import from here for
+ * everything in one place, or from a specific module (e.g. `./integers.js`,
+ * `./strings.js`) to pull in only the sub-writers a given result needs — the
+ * latter is what a generated encoder should do, copying just the modules its
+ * column types require.
+ *
+ * Each `writeX` is the inverse of the matching `readX`: it appends the value's
+ * RowBinary bytes to a {@link Sink} (the write-side mirror of the reader's
+ * `Cursor`). Leaf writers are `Writer<T>`s directly; combinators (e.g.
+ * `writeArray`) take sub-writers and return a `Writer`, so types compose with no
+ * per-element closures — exactly like the reader combinators.
+ *
+ *   const sink = new Sink();
+ *   writeUInt8(sink, 255);
+ *   sink.bytes(); // the encoded RowBinary
+ *
+ * - core   — Sink, Writer<T>, reserve (mirror of Cursor, Reader<T>, advance)
+ * - varint — writeUVarint
+ *
+ * The dynamic AST-based encode path (the inverse of `compile.ts` /
+ * `rowBinaryWithNamesAndTypes.ts` / `dynamic.ts`) is intentionally NOT part of
+ * this barrel yet.
+ */
+export { Sink, reserve, type Writer } from "./core.js";
+export { writeUVarint } from "./varint.js";
