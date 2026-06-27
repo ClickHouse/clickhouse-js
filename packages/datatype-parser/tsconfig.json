@@ -18,5 +18,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "tool/**/*.ts", "test/**/*.ts", "bench/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "tool/**/*.ts",
+    "test/**/*.ts",
+    "bench/**/*.ts",
+    "vitest.config.ts"
+  ]
 }
