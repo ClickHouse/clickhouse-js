@@ -1,6 +1,6 @@
 import net, { type AddressInfo } from "net";
 import { afterEach, describe, it } from "vitest";
-import { createClient } from "../../src";
+import { createClient } from "@clickhouse/client";
 import type { ClickHouseClient } from "@clickhouse/client-common";
 
 // Verifies that the Node.js client honors the `max_response_headers_size`

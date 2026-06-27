@@ -15,6 +15,26 @@ if (
   );
 }
 
+// Which build of the client the `@clickhouse/*` specifiers resolve to:
+//   src  (default) - the raw TypeScript sources, for a fast, build-free loop.
+//   dist           - the compiled packages, exactly as a published consumer
+//                    sees them (run `npm run build` first). An e2e-style guard
+//                    against the built artifact / public surface.
+// TEST_TARGET is orthogonal to TEST_MODE (which only selects the spec files),
+// so e.g. `TEST_TARGET=dist TEST_MODE=integration` runs the integration specs
+// against the built packages. Caveat: only specs that import EXCLUSIVELY via
+// the `@clickhouse/*` names retarget cleanly; specs that also reach into
+// `../../src` directly (most unit/integration specs do) keep importing source
+// for those paths regardless. The `oss-dependents` collection imports only the
+// published names, so it is a true built-surface guard and defaults to `dist`.
+const testTarget =
+  process.env.TEST_TARGET ?? (testMode === "oss-dependents" ? "dist" : "src");
+if (testTarget !== "src" && testTarget !== "dist") {
+  throw new Error(
+    `Unsupported TEST_TARGET: [${testTarget}]. Supported targets are: src, dist.`,
+  );
+}
+
 const collections = {
   unit: [
     "packages/client-node/__tests__/unit/*.test.ts",
@@ -39,11 +59,11 @@ const collections = {
     "packages/client-common/__tests__/integration/*.test.ts",
   ],
   // Runnable reproductions of how the top OSS dependents use the client.
-  // Unlike the other (fast, build-free) modes, these are e2e-style guards: they
-  // import the public package names and resolve to the BUILT workspace packages
-  // (see the resolve.alias note below), so a breaking change in the published
-  // surface fails the matching consumer's test. `npm run build` must run first.
-  // See packages/client-node/__tests__/oss-dependents.
+  // These specs import only the public package names, so they default to
+  // TEST_TARGET=dist (see above) and resolve to the BUILT workspace packages:
+  // a breaking change in the published surface fails the matching consumer's
+  // test. `npm run build` must run first. See
+  // packages/client-node/__tests__/oss-dependents.
   "oss-dependents": ["packages/client-node/__tests__/oss-dependents/*.test.ts"],
   all: [
     "packages/client-common/__tests__/unit/*.test.ts",
@@ -104,22 +124,35 @@ export default defineConfig({
     retry: process.env.CI ? 2 : 0,
   },
   resolve: {
-    // The oss-dependents specs import the published package names (`@clickhouse/
-    // client`, `-web`, `-common`) exactly as the upstream dependents do; those
-    // resolve through the node_modules workspace symlinks to the BUILT packages
-    // (run `npm run build` first) — an e2e-style guard against the published
-    // surface rather than `src`. `@clickhouse/client-node` is not a real package
-    // name (the node client publishes as `@clickhouse/client`); it is an
-    // internal alias the shared node setup/util files import, so we repoint it
-    // at the built node `dist` for this mode. Every other mode aliases the
-    // workspace `src` instead for a fast, build-free unit/integration loop.
+    // Driven by TEST_TARGET (see above). With `dist`, the published package
+    // names (`@clickhouse/client`, `-web`, `-common`) resolve through the
+    // node_modules workspace symlinks to the BUILT packages (run `npm run build`
+    // first) — an e2e-style guard against the published surface. With `src`,
+    // they alias the workspace sources for a fast, build-free loop.
+    // `@clickhouse/client-node` is not a real package name (the node client
+    // publishes as `@clickhouse/client`); it is an internal alias the shared
+    // node setup/util files import, so under `dist` we repoint it at the built
+    // node `dist`.
+    //
+    // Under `dist`, ALL client specifiers (incl. `@clickhouse/client-common`)
+    // resolve to the node client's own bundle. The node client bundles the
+    // common sources (client-common is deprecated and not a runtime dep), so a
+    // real consumer gets common-origin symbols — `ClickHouseError`, value
+    // classes like `SettingsMap`/`TupleParam` — from `@clickhouse/client`, not
+    // from a separate `client-common`. Pointing them all at one bundle keeps a
+    // single class identity, so the client's internal `instanceof` checks on
+    // test-provided values (and the tests' own `instanceof` assertions) hold.
     alias:
-      testMode === "oss-dependents"
+      testTarget === "dist"
         ? {
+            "@clickhouse/client": "packages/client-node/dist",
+            "@clickhouse/client-common": "packages/client-node/dist",
             "@clickhouse/client-node": "packages/client-node/dist",
             "@test": "packages/client-common/__tests__",
           }
         : {
+            // The published node name, imported by the integration specs.
+            "@clickhouse/client": "packages/client-node/src",
             "@clickhouse/client-common": "packages/client-common/src",
             "@clickhouse/client-node": "packages/client-node/src",
             "@test": "packages/client-common/__tests__",
