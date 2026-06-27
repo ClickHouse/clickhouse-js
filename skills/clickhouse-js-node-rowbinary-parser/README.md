@@ -109,7 +109,12 @@ import {
 } from "@clickhouse/rowbinary";
 import { createClient } from "@clickhouse/client";
 
-type OrderRow = { id: number; uid: string; price: DecimalValue; status: number };
+type OrderRow = {
+  id: number;
+  uid: string;
+  price: DecimalValue;
+  status: number;
+};
 
 const readOrderRow: Reader<OrderRow> = (s) => ({
   id: readUInt8(s),
