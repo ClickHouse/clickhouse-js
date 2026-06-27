@@ -62,6 +62,17 @@ function isEnumTypeUpper(u: string): boolean {
   return u === "ENUM" || u === "ENUM8" || u === "ENUM16";
 }
 
+/// Does `text` parse in FULL as a numeric literal — the TS equivalent of the
+/// C++ `strtod` (float) / `strtoull` (integer) + end-pointer check? The lexer
+/// is deliberately lenient and can hand back a half-formed lexeme such as `1e`
+/// (an exponent with no digits); those must be rejected. Integer lexemes the
+/// lexer emits are pure digit runs (so always valid); floats may carry a
+/// malformed exponent, so the optional exponent here requires >= 1 digit.
+function isFullyParsedNumber(text: string, isFloat: boolean): boolean {
+  if (isFloat) return /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(text);
+  return /^\d+$/.test(text);
+}
+
 class Parser {
   private tokens: Token[];
   private pos = 0;
@@ -466,13 +477,31 @@ class Parser {
       this.advance();
     }
     if (this.type() !== TokenType.Number) return null;
+
+    /// The lexer only SKIPS over a number without checking correctness (the
+    /// server's `Lexer` does the same: "not to parse a number or check
+    /// correctness, but only to skip it"). The server then rejects a malformed
+    /// literal when it converts the token text into a `Field`; this port has no
+    /// such stage, so validate here by parsing the lexeme in full. Without it a
+    /// bare exponent like `1e` would be emitted verbatim into a `Float64`
+    /// literal's JSON `value`, yielding invalid JSON (`"value":1e`). Mirrors the
+    /// C++ `strtod` / `strtoull` + end-pointer check in `parser.cpp`.
+    const text = this.cur().text;
+    if (!isFullyParsedNumber(text, this.cur().is_float)) {
+      this.setHardError(
+        this.cur().begin,
+        `malformed numeric literal: '${text}'`,
+      );
+      return null;
+    }
+
     const node = makeNode(NodeKind.Literal);
     node.value_type = this.cur().is_float
       ? "Float64"
       : negative
         ? "Int64"
         : "UInt64";
-    node.value = (negative ? "-" : "") + this.cur().text;
+    node.value = (negative ? "-" : "") + text;
     this.advance();
     return node;
   }

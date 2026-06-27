@@ -133,11 +133,12 @@ describe("parseDataType", () => {
     expect(r.error!.message).toMatch(/trailing input/);
   });
 
-  it("rejects a malformed exponent and never emits invalid JSON", () => {
-    /// A bare exponent (`e`/`E` with no following digits) must be rejected by
-    /// the lexer. Otherwise it would tokenize as a Float64 literal whose raw
-    /// text is written verbatim into the JSON `value`, producing invalid JSON
-    /// such as `"value":1e`.
+  it("rejects a malformed numeric literal and never emits invalid JSON", () => {
+    /// The lexer is lenient and only skips over a number; a bare exponent
+    /// (`e`/`E` with no following digits) is rejected later, when
+    /// `parseNumberLiteral` parses the lexeme in full. Otherwise it would land
+    /// in a Float64 literal whose raw text is written verbatim into the JSON
+    /// `value`, producing invalid JSON such as `"value":1e`.
     for (const typeStr of [
       "Decimal(1e, 2)",
       "Decimal(1e+, 2)",
@@ -145,7 +146,7 @@ describe("parseDataType", () => {
     ]) {
       const r = parseDataType(typeStr);
       expect(r.ok(), `expected ${typeStr} to be rejected`).toBe(false);
-      expect(r.error!.message).toMatch(/exponent/);
+      expect(r.error!.message).toMatch(/malformed numeric literal/);
     }
 
     /// A well-formed exponent still parses, and its Float64 literal serializes

@@ -5,3 +5,9 @@ AggregateFunction(1, quantiles(0.5), Float64)
 SimpleAggregateFunction(sum, UInt64)
 JSON(max_dynamic_paths = 16)
 JSON(a.b UInt32, SKIP x)
+# Malformed numeric literals: the lexer skips over them without checking
+# correctness, so they must be rejected when the lexeme is parsed into a value
+# (see parseNumberLiteral). A bare exponent has no digits.
+Decimal(1e, 2)
+DateTime64(1e+)
+Enum8('a' = 1e)

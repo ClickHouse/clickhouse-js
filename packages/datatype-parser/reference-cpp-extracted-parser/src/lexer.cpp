@@ -166,25 +166,15 @@ std::vector<Token> tokenize(const std::string & input)
                 while (pos < n && isDigit(input[pos]))
                     ++pos;
             }
-            /// exponent — `e`/`E`, an optional sign, then AT LEAST ONE digit. A bare
-            /// exponent like `1e` or `1e+` is malformed and must be rejected: without
-            /// this guard it tokenizes as a Number whose raw text (`1e`) is emitted
-            /// verbatim into a Float64 Literal's JSON `value`, yielding invalid JSON
-            /// (`"value":1e`). Fail loudly here instead.
+            /// exponent
             if (pos < n && (input[pos] == 'e' || input[pos] == 'E'))
             {
                 is_float = true;
                 ++pos;
                 if (pos < n && (input[pos] == '+' || input[pos] == '-'))
                     ++pos;
-                const size_t exp_digits_start = pos;
                 while (pos < n && isDigit(input[pos]))
                     ++pos;
-                if (pos == exp_digits_start)
-                {
-                    fail(start, "malformed number: exponent has no digits");
-                    break;
-                }
             }
             tokens.push_back({TokenType::Number, input.substr(start, pos - start), is_float, start});
             continue;
