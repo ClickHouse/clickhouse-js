@@ -66,3 +66,12 @@ export {
   parseIPv4,
   parseIPv6,
 } from "./ip.js";
+export {
+  writeDate,
+  writeDate32,
+  writeDateTime,
+  writeDateTime64,
+  writeDateTime64P3,
+  writeDateTime64P6,
+  writeDateTime64P9,
+} from "./datetime.js";
