@@ -1,4 +1,4 @@
-import { Cursor, advance } from "./core.js";
+import { Cursor, advance, Sink, reserve } from "./core.js";
 
 /**
  * `UUID_HEX16[b]` packs the two lowercase ASCII hex chars of byte `b`, low char
@@ -150,4 +150,59 @@ export function formatUUIDTable(b: Buffer): string {
   UUID_OUT[34] = p & 0xff;
   UUID_OUT[35] = p >>> 8;
   return UUID_OUT.toString("latin1");
+}
+
+/**
+ * Parse a canonical `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` UUID string into the
+ * raw 16 wire bytes — the inverse of {@link formatUUID}. ClickHouse stores a
+ * UUID as two little-endian `UInt64` halves (high then low), so the 32 hex
+ * digits are split at the midpoint and each half written little-endian. Pair
+ * with {@link writeUUID}.
+ */
+export function parseUUID(text: string): Buffer {
+  const hex = text.replace(/-/g, "");
+  if (hex.length !== 32) {
+    throw new RangeError(`RowBinary: invalid UUID string ${JSON.stringify(text)}`);
+  }
+  const v = BigInt("0x" + hex);
+  const b = Buffer.allocUnsafe(16);
+  b.writeBigUInt64LE(v >> 64n, 0); // high half -> first 8 bytes
+  b.writeBigUInt64LE(v & 0xffffffffffffffffn, 8); // low half -> last 8 bytes
+  return b;
+}
+
+/**
+ * Write a `UUID` from its raw 16 wire bytes (as produced by {@link readUUID} or
+ * {@link parseUUID}): copied verbatim. The inverse of {@link readUUID}. Throws
+ * unless exactly 16 bytes are given.
+ */
+export function writeUUID(sink: Sink, value: Uint8Array): void {
+  if (value.length !== 16) {
+    throw new RangeError(
+      `RowBinary: UUID must be 16 bytes, got ${value.length}`,
+    );
+  }
+  const o = reserve(sink, 16);
+  sink.buf.set(value, o);
+}
+
+/**
+ * Write a `UUID` from a single 128-bit `bigint` (`hi << 64 | lo`) — the inverse
+ * of {@link readUUIDBigInt}. The high 64 bits go to the first little-endian
+ * `UInt64` half, the low 64 bits to the second.
+ */
+export function writeUUIDBigInt(sink: Sink, value: bigint): void {
+  const o = reserve(sink, 16);
+  sink.view.setBigUint64(o, BigInt.asUintN(64, value >> 64n), true);
+  sink.view.setBigUint64(o + 8, BigInt.asUintN(64, value), true);
+}
+
+/**
+ * Write a `UUID` from its two raw little-endian `UInt64` halves `[hi, lo]` — the
+ * inverse of {@link readUUIDHiLo}, the faithful wire split with no combining work.
+ */
+export function writeUUIDHiLo(sink: Sink, [hi, lo]: [bigint, bigint]): void {
+  const o = reserve(sink, 16);
+  sink.view.setBigUint64(o, hi, true);
+  sink.view.setBigUint64(o + 8, lo, true);
 }

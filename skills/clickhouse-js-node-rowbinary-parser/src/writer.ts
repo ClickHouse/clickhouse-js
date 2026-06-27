@@ -54,3 +54,9 @@ export {
   writeFixedString,
   writeFixedStringBytes,
 } from "./strings.js";
+export {
+  writeUUID,
+  writeUUIDBigInt,
+  writeUUIDHiLo,
+  parseUUID,
+} from "./uuid.js";
