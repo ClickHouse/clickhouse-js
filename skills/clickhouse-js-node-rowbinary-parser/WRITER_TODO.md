@@ -30,24 +30,24 @@ round-trip test against a live ClickHouse server.
 
 ## Types / writers
 
-- [ ] **core** — `Sink`, `Writer<T>`, `reserve`, `Sink.bytes()`; `writer.ts` barrel
-- [ ] **varint** — `writeUVarint`
-- [ ] **integers** — `writeUInt8`..`writeUInt256`, `writeInt8`..`writeInt256`
-- [ ] **bool** — `writeBool`
-- [ ] **enums** — `writeEnum8`, `writeEnum16`
-- [ ] **floats** — `writeFloat32`, `writeFloat64`, `writeBFloat16`
-- [ ] **decimals** — `writeDecimal32`/`64`/`128`/`256`
-- [ ] **strings** — `writeString`, `writeFixedString`, `writeFixedStringBytes`
-- [ ] **uuid** — `writeUUID`, `writeUUIDBigInt`, `writeUUIDHiLo`, `parseUUID`
-- [ ] **ip** — `writeIPv4`, `writeIPv6`, `parseIPv4`, `parseIPv6`
-- [ ] **datetime** — `writeDate`, `writeDate32`, `writeDateTime`, `writeDateTime64`(+`P3`/`P6`/`P9`)
-- [ ] **time** — `writeTime`, `writeTime64`
-- [ ] **interval** — `writeInterval`
-- [ ] **composite** — `writeNullable`, `writeArray`, `writeQBit`, `writeTuple`, `writeTupleNamed`, `writeMap`, `writeVariant`
-- [ ] **rows** — `writeRows`
-- [ ] **geo** — `writePoint`, `writeRing`, `writeLineString`, `writePolygon`, `writeMultiLineString`, `writeMultiPolygon`, `writeGeometry`
-- [ ] **lowCardinality** — `writeLowCardinality`
-- [ ] **simpleAggregateFunction** — `writeSimpleAggregateFunction`
-- [ ] **nested** — `writeNested`
-- [ ] **nothing** — `writeNothing`
-- [ ] **aggregateFunction** — `writeAggregateFunction`
+- [x] **core** — `Sink`, `Writer<T>`, `reserve`, `Sink.bytes()`; `writer.ts` barrel
+- [x] **varint** — `writeUVarint`
+- [x] **integers** — `writeUInt8`..`writeUInt256`, `writeInt8`..`writeInt256`
+- [x] **bool** — `writeBool`
+- [x] **enums** — `writeEnum8`, `writeEnum16`
+- [x] **floats** — `writeFloat32`, `writeFloat64`, `writeBFloat16`
+- [x] **decimals** — `writeDecimal32`/`64`/`128`/`256`
+- [x] **strings** — `writeString`, `writeFixedString`, `writeFixedStringBytes`
+- [x] **uuid** — `writeUUID`, `writeUUIDBigInt`, `writeUUIDHiLo`, `parseUUID`
+- [x] **ip** — `writeIPv4`, `writeIPv6`, `parseIPv4`, `parseIPv6`
+- [x] **datetime** — `writeDate`, `writeDate32`, `writeDateTime`, `writeDateTime64`(+`P3`/`P6`/`P9`)
+- [x] **time** — `writeTime`, `writeTime64`
+- [x] **interval** — `writeInterval`
+- [x] **composite** — `writeNullable`, `writeArray`, `writeQBit`, `writeTuple`, `writeTupleNamed`, `writeMap`, `writeVariant`
+- [x] **rows** — `writeRows`
+- [x] **geo** — `writePoint`, `writeRing`, `writeLineString`, `writePolygon`, `writeMultiLineString`, `writeMultiPolygon`, `writeGeometry`
+- [x] **lowCardinality** — `writeLowCardinality`
+- [x] **simpleAggregateFunction** — `writeSimpleAggregateFunction`
+- [x] **nested** — `writeNested`
+- [x] **nothing** — `writeNothing`
+- [x] **aggregateFunction** — `writeAggregateFunction`
