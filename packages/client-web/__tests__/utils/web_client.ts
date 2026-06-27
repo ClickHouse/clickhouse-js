@@ -1,9 +1,9 @@
 import { createTestClient } from "@test/utils";
-import type { ClickHouseClientConfigOptions } from "../../src";
-import type { WebClickHouseClient } from "../../src/client";
+import type { ClickHouseClientConfigOptions } from "@clickhouse/client-web";
+import type { ClickHouseClient } from "@clickhouse/client-web";
 
 export function createWebTestClient(
   config: ClickHouseClientConfigOptions = {},
-): WebClickHouseClient {
-  return createTestClient(config) as unknown as WebClickHouseClient;
+): ClickHouseClient {
+  return createTestClient(config) as unknown as ClickHouseClient;
 }

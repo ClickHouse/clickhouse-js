@@ -3,7 +3,7 @@ import type Stream from "stream";
 import type {
   ClickHouseClient,
   ClickHouseClientConfigOptions,
-} from "../../src";
+} from "@clickhouse/client";
 
 export function createNodeTestClient(
   config: ClickHouseClientConfigOptions = {},
