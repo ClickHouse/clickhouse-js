@@ -1,4 +1,4 @@
-import { NeedMoreData, type Reader } from "./core.js";
+import { NeedMoreData, type Reader, type Writer } from "./core.js";
 
 /**
  * Drive `readRow` over every row of a plain `RowBinary` result into an array.
@@ -54,5 +54,22 @@ export function readRows<T>(readRow: Reader<T>): Reader<T[]> {
       state.pos = committed; // drop the partial trailing row; resume next chunk
     }
     return out;
+  };
+}
+
+/**
+ * Drive `writeRow` over every row of an array into a plain `RowBinary` payload —
+ * the encode mirror of {@link readRows}. Rows are concatenated with NO count,
+ * length prefix, or delimiter (just as the reader expects), so `writeRow` must
+ * emit EXACTLY one row's bytes. Curried: `writeRows(writeRow)` returns a
+ * `Writer<readonly T[]>`.
+ *
+ * There is no streaming/`NeedMoreData` concern on the write side: the `Sink`
+ * owns and grows its buffer, so a row is never half-written. When generating
+ * code, inline the per-column writes into the loop body, mirroring the reader.
+ */
+export function writeRows<T>(writeRow: Writer<T>): Writer<readonly T[]> {
+  return (sink, rows) => {
+    for (const row of rows) writeRow(sink, row);
   };
 }

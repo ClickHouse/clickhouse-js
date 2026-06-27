@@ -92,3 +92,4 @@ export {
   writeVariant,
   type VariantValue,
 } from "./composite.js";
+export { writeRows } from "./rows.js";
