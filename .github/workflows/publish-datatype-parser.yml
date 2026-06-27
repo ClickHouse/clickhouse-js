@@ -55,7 +55,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        run: npm ci
+        # Run from the package dir, which resolves to the root workspace
+        # install. --ignore-scripts skips the root lifecycle scripts
+        # (postinstall/parquet-wasm, prepare/husky) that target dev-only
+        # devDependencies absent from this scoped install. The datatype-parser
+        # package itself has no install scripts; its build runs as a separate
+        # step below.
+        run: npm ci --ignore-scripts
 
       - name: Build
         run: npm run build
