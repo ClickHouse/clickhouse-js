@@ -3,6 +3,7 @@ import { query } from "./clickhouse.js";
 import { Cursor } from "../src/core.js";
 import {
   compileRowBinaryWithNamesAndTypes,
+  createTypeReaderCache,
   typeStringToReader,
   type Row,
 } from "../src/rowBinaryWithNamesAndTypes.js";
@@ -522,5 +523,56 @@ describe("compileRowBinaryWithNamesAndTypes", () => {
         ["y", 2],
       ]),
     );
+  });
+
+  it("accepts a custom resolver (a shared reader cache)", async () => {
+    const cache = createTypeReaderCache();
+    let calls = 0;
+    const resolve = (t: string) => {
+      calls++;
+      return cache(t);
+    };
+
+    const s = await withNamesAndTypes("SELECT toUInt32(1) AS id, 'x' AS name");
+    const compiled = compileRowBinaryWithNamesAndTypes(s, resolve);
+    expect(compiled.readRows(s)).toEqual([{ id: 1, name: "x" }]);
+    expect(calls).toBe(2); // resolver consulted once per column
+  });
+});
+
+describe("createTypeReaderCache (LRU, keyed by type string)", () => {
+  it("returns the same reader instance for a repeated type, distinct for others", () => {
+    const cache = createTypeReaderCache();
+    const a = cache("Array(UInt8)");
+    expect(cache("Array(UInt8)")).toBe(a); // hit -> same instance
+    expect(cache("Array(UInt16)")).not.toBe(a); // different type -> different reader
+  });
+
+  it("evicts least-recently-used past maxSize, but a hit refreshes recency", () => {
+    // Use composite types: each compile of e.g. `Array(UInt8)` allocates a FRESH
+    // closure (readArray(...)), so instance identity actually reflects the cache.
+    // (A nullary scalar like `UInt8` returns the shared module-level readUInt8
+    // singleton every time, so it could never show an eviction.)
+    const cache = createTypeReaderCache(2);
+    const a1 = cache("Array(UInt8)"); //   [A8]
+    const b1 = cache("Array(UInt16)"); //  [A8, A16]
+    expect(cache("Array(UInt8)")).toBe(a1); // hit -> refresh -> [A16, A8]
+
+    cache("Array(UInt32)"); // insert -> size 3 -> evict LRU (A16) -> [A8, A32]
+
+    // Array(UInt8) was refreshed by the hit above, so it survived (same closure).
+    expect(cache("Array(UInt8)")).toBe(a1);
+    // Array(UInt16) was the least-recently-used, so it was evicted and now
+    // recompiles to a DIFFERENT closure — this is what proves eviction happened.
+    expect(cache("Array(UInt16)")).not.toBe(b1);
+  });
+
+  it("does not cache a parse failure", () => {
+    const cache = createTypeReaderCache();
+    expect(() => cache("AggregateFunction(sum, UInt64)")).toThrow(
+      /cannot compile type/,
+    );
+    // A valid type still resolves afterwards (the failure left no poisoned entry).
+    expect(typeof cache("UInt8")).toBe("function");
   });
 });
