@@ -103,3 +103,4 @@ export {
   writeGeometry,
   type GeometryValue,
 } from "./geo.js";
+export { writeLowCardinality } from "./lowCardinality.js";
