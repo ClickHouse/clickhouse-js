@@ -87,14 +87,3 @@ jobs:
       - name: Run OSS-dependent integration tests
         run: |
           npm run test:node:oss-dependents
-
-  success:
-    needs: ["oss-dependents-tests"]
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fail if any needed job failed or was cancelled
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        run: exit 1
-      - name: All OSS-dependent tests passed
-        run: echo "All OSS-dependent tests passed! 🎉"

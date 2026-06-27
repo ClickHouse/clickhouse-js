@@ -110,14 +110,3 @@ jobs:
         env:
           BROWSER: chromium
         run: npm run test:web:integration:dist
-
-  success:
-    needs: ["node-dist-integration", "web-dist-integration"]
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fail if any needed job failed or was cancelled
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        run: exit 1
-      - name: All dist integration tests passed
-        run: echo "All dist integration tests passed! 🎉"

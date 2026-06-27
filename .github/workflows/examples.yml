@@ -133,10 +133,3 @@ jobs:
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
         run: |
           npm run run-examples
-
-  success:
-    needs: ["code-quality", "run-examples"]
-    runs-on: ubuntu-latest
-    steps:
-      - name: All examples checks passed
-        run: echo "All examples checks passed! 🎉"

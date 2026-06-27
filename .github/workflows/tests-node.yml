@@ -357,24 +357,3 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: true
-
-  success:
-    needs:
-      [
-        "code-quality",
-        "common-unit-tests",
-        "unit-tests",
-        "integration-tests-local-single-node",
-        "integration-tests-local-cluster",
-        "integration-tests-cloud",
-      ]
-    # Run even if some needed jobs were skipped (e.g. cloud jobs on PRs from forks),
-    # but still fail if any of them failed or were cancelled.
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fail if any needed job failed or was cancelled
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        run: exit 1
-      - name: All tests passed
-        run: echo "All tests passed! 🎉"
