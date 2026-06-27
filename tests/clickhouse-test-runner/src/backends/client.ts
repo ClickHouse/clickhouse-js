@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { createClient } from "@clickhouse/client";
+import { ClickHouseLogLevel, createClient } from "@clickhouse/client";
 import type { ParsedArgs } from "../args.js";
 import { appendLog } from "../log.js";
+import { errorMatchesExpectation, type Statement } from "../test-hint.js";
 
 export interface BackendOptions {
   args: ParsedArgs;
-  queries: string[];
+  statements: Statement[];
   logPath: string;
 }
 
@@ -30,7 +31,7 @@ function buildClickHouseSettings(
 }
 
 export async function executeWithClient(opts: BackendOptions): Promise<void> {
-  const { args, queries, logPath } = opts;
+  const { args, statements, logPath } = opts;
   const proto = args.secure ? "https" : "http";
   const url = `${proto}://${args.host}:${args.port}`;
   // Use a dedicated per-invocation session_id so that settings applied via
@@ -48,25 +49,58 @@ export async function executeWithClient(opts: BackendOptions): Promise<void> {
     password: args.password,
     database: args.database,
     session_id: sessionId,
+    // The client logs request errors to stderr by default. We surface failures
+    // ourselves (and deliberately swallow errors matched by a `-- { serverError
+    // ... }` hint), and upstream `clickhouse-test` fails any test that writes to
+    // stderr — so keep the client itself silent.
+    log: { level: ClickHouseLogLevel.OFF },
   });
 
   const clickhouse_settings = buildClickHouseSettings(args);
 
   try {
-    for (const q of queries) {
-      appendLog(logPath, "executing_query=" + q);
-      const result = await client.exec({
-        query: q,
-        clickhouse_settings,
-      });
-      for await (const chunk of result.stream) {
-        process.stdout.write(chunk);
+    for (const stmt of statements) {
+      appendLog(logPath, "executing_query=" + stmt.sql);
+      let execError: unknown = null;
+      try {
+        const result = await client.exec({
+          query: stmt.sql,
+          clickhouse_settings,
+        });
+        for await (const chunk of result.stream) {
+          process.stdout.write(chunk);
+        }
+      } catch (err) {
+        execError = err;
+      }
+
+      const expected = stmt.expectedError;
+      if (expected !== null) {
+        // The statement is annotated with `-- { serverError ... }`: an error is
+        // the success path, and the absence of one is a failure.
+        if (execError === null) {
+          throw new Error(
+            `Expected error (${expected.label}) but the query succeeded: ${stmt.sql}`,
+          );
+        }
+        if (!errorMatchesExpectation(execError, expected)) {
+          const actual =
+            execError instanceof Error ? execError.message : String(execError);
+          throw new Error(
+            `Expected error (${expected.label}) but got a different error: ${actual}`,
+          );
+        }
+        appendLog(logPath, "expected_error_matched=" + expected.label);
+        continue;
+      }
+
+      if (execError !== null) {
+        const msg =
+          execError instanceof Error ? execError.message : String(execError);
+        appendLog(logPath, "error=" + msg);
+        throw execError;
       }
     }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    appendLog(logPath, "error=" + msg);
-    throw err;
   } finally {
     await client.close();
   }

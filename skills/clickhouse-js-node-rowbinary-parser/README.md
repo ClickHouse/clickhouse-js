@@ -80,6 +80,61 @@ npx skills add ClickHouse/clickhouse-js/skills/clickhouse-js-node-rowbinary-pars
 < Reading skill clickhouse-js-node-rowbinary-parser…
 ```
 
+## Using it with the ClickHouse JS client
+
+This library only **decodes** the bytes — it doesn't open connections. Pair it
+with the official client to fetch a `RowBinary` response and feed the byte chunks
+into `streamRowBatches(chunks, readRow)`.
+
+`RowBinary` isn't one of the formats the client decodes itself, so don't use
+`client.query({ format: ... })` for it. Instead use `client.exec({ query })` with
+the `FORMAT RowBinary` clause written into the SQL yourself — `exec` hands back the
+**raw, undecoded byte stream** of the response, which is exactly what this library
+consumes. (Use plain `RowBinary`, not `RowBinaryWithNamesAndTypes`, unless your
+reader also skips the leading names/types header.)
+
+The row reader below is the `orders` example from [EXAMPLES.md](EXAMPLES.md); swap
+in the reader the skill generates for your own columns.
+
+```ts
+import {
+  type Reader,
+  readUInt8,
+  readUUID,
+  formatUUID,
+  readDecimal64,
+  readEnum8,
+  type DecimalValue,
+  streamRowBatches,
+} from "@clickhouse/rowbinary";
+import { createClient } from "@clickhouse/client";
+
+type OrderRow = { id: number; uid: string; price: DecimalValue; status: number };
+
+const readOrderRow: Reader<OrderRow> = (s) => ({
+  id: readUInt8(s),
+  uid: formatUUID(readUUID(s)),
+  price: readDecimal64(2)(s),
+  status: readEnum8(s),
+});
+
+// `exec` resolves to a Node `Stream.Readable`. It is already an
+// `AsyncIterable<Uint8Array>` (chunks are `Buffer`/`Uint8Array`, which
+// `streamRowBatches` normalizes), so pass `stream` straight in:
+
+const client = createClient();
+
+const { stream } = await client.exec({
+  query: "SELECT id, uid, price, status FROM orders FORMAT RowBinary",
+});
+
+for await (const rows of streamRowBatches(stream, readOrderRow)) {
+  for (const row of rows) console.log(row); // { id, uid, price: [unscaled, scale], status }
+}
+
+await client.close();
+```
+
 ## Why it's worth it
 
 Four pillars — speed, correctness, judgment, and lifting smaller models:
