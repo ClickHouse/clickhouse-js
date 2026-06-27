@@ -129,6 +129,13 @@ than shipping a generic, runtime-driven decoder, it emits straight-line code
 that reads each column in order, so the parser only contains the logic the
 specific result shape needs.
 
+**Schema only known at runtime?** `compileRowBinaryWithNamesAndTypes(cursor)`
+reads the `RowBinaryWithNamesAndTypes` header and folds each column type into a
+reader on the fly (type strings parsed by `@clickhouse/datatype-parser`),
+returning a `readRows` driver for the rest of the stream — a generic, no-codegen
+path for dynamic schemas. The specialized codegen above stays the fast path when
+the types are fixed.
+
 ## Correctness on the gotcha-heavy types
 
 For a plain `UInt64, String, DateTime` result a strong model already writes fast,

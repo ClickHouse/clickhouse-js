@@ -61,6 +61,9 @@
     "typecheck": "tsc --noEmit",
     "prepack": "cp ../../LICENSE . && npm run build"
   },
+  "dependencies": {
+    "@clickhouse/datatype-parser": "^0.1.2"
+  },
   "devDependencies": {
     "@types/node": "^26.0.0",
     "typescript": "^6.0.3",

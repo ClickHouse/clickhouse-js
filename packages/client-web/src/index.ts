@@ -107,7 +107,9 @@ export const StreamableFormats = StreamableFormats_;
 export const StreamableJSONFormats = StreamableJSONFormats_;
 export const SingleDocumentJSONFormats = SingleDocumentJSONFormats_;
 export const RecordsJSONFormats = RecordsJSONFormats_;
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export const parseColumnType = parseColumnType_;
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export const SimpleColumnTypes = SimpleColumnTypes_;
 export const isProgressRow = isProgressRow_;
 export const isRow = isRow_;

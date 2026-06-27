@@ -84,6 +84,19 @@ bandwidth). Measured in `tests/iot.columnar.bench.ts`; rationale in
 - **Hybrid:** store columnar, expose a lazy `rowAt(i)` accessor that builds an
   object only for rows actually touched (see `iotRowAt` in `src/examples/iot.ts`).
 
+## Fourth: are the column types known ahead of time?
+
+- **Known (the default).** Generate a straight-line reader specialized to those
+  types — everything below.
+- **Only at runtime** (the schema varies, or you just want to decode an arbitrary
+  `RowBinaryWithNamesAndTypes` stream). Call
+  `compileRowBinaryWithNamesAndTypes(cursor)` (`src/rowBinaryWithNamesAndTypes.ts`):
+  it reads the header, folds each column type's AST into a `Reader`
+  (`astToReader`, `src/compile.ts`; type strings parsed by
+  `@clickhouse/datatype-parser`), and returns a `readRows` driver for the rest of
+  the stream. Generic and unoptimized (no codegen), so prefer the specialized
+  path whenever the types are fixed.
+
 ## Core guidance
 
 When generating a parser, follow these:
@@ -165,6 +178,9 @@ The readers live as real code under `src/`, split by type family.
 | `JSON`                                                                                                                                         | `src/json.ts`                                                                                                                                                         |
 | The whole result — loop rows to EOF (`readRows`)                                                                                               | `src/rows.ts`                                                                                                                                                         |
 | A chunked HTTP response — `streamRowBatches`, `coalesceChunks`                                                                                 | `src/stream.ts`                                                                                                                                                       |
+| The `RowBinaryWithNamesAndTypes` header — column names + type strings (`readHeader`)                                                           | `src/header.ts`                                                                                                                                                       |
+| Fold one parsed type AST into a `Reader` (`astToReader`) — AST in, reader out                                                                  | `src/compile.ts`                                                                                                                                                      |
+| **Types known only at runtime** — compile a whole header into a row reader (`compileRowBinaryWithNamesAndTypes`, `typeStringToReader`)         | `src/rowBinaryWithNamesAndTypes.ts`                                                                                                                                   |
 | **Numeric/fixed-width result read column-wise** (aggregate/scan/plot, hand to a Worker/WASM) → decode into typed arrays, not row objects (~4x) | `src/columnar.ts` (`streamSensorColumns` — streaming, yields transferable typed-array batches); `decodeIotColumnar` in `src/examples/iot.ts` is the whole-buffer form |
 | `LowCardinality(T)` — transparent, decode as `T`                                                                                               | `src/lowCardinality.ts`                                                                                                                                               |
 | `SimpleAggregateFunction(f, T)` — transparent, decode as `T`                                                                                   | `src/simpleAggregateFunction.ts`                                                                                                                                      |

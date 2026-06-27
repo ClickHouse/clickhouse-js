@@ -474,9 +474,30 @@ private:
         }
         if (type() != TokenType::Number)
             return nullptr;
+
+        /// The lexer only skips over a number without checking correctness (the
+        /// server's `Lexer` does the same: "not to parse a number or check
+        /// correctness, but only to skip it"). The server then rejects a
+        /// malformed literal when it converts the token text into a `Field`; we
+        /// have no such stage, so we validate here by parsing the lexeme in
+        /// full. Without this, a bare exponent like `1e` would be emitted
+        /// verbatim into a `Float64` literal's JSON `value`, yielding invalid
+        /// JSON (`"value":1e`). Fail loudly instead.
+        const std::string & text = cur().text;
+        char * end_ptr = nullptr;
+        if (cur().is_float)
+            std::strtod(text.c_str(), &end_ptr);
+        else
+            std::strtoull(text.c_str(), &end_ptr, 10);
+        if (end_ptr != text.c_str() + text.size())
+        {
+            setHardError(cur().begin, "malformed numeric literal: '" + text + "'");
+            return nullptr;
+        }
+
         auto node = Node::make(NodeKind::Literal);
         node->value_type = cur().is_float ? "Float64" : (negative ? "Int64" : "UInt64");
-        node->value = (negative ? "-" : "") + cur().text;
+        node->value = (negative ? "-" : "") + text;
         advance();
         return node;
     }
