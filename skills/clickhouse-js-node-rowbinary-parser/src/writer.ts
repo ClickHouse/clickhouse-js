@@ -39,3 +39,6 @@ export {
   writeUInt256,
   writeInt256,
 } from "./integers.js";
+export { writeBool } from "./bool.js";
+export { writeEnum8, writeEnum16 } from "./enums.js";
+export { writeFloat32, writeFloat64, writeBFloat16 } from "./floats.js";
