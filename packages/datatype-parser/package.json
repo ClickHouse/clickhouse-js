@@ -41,6 +41,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",
+    "pack": "npm pack",
     "prepack": "npm run build",
     "parse": "node tool/main.ts",
     "bench": "vitest bench --run",
