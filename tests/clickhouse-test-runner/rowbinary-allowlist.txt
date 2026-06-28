@@ -17,6 +17,7 @@
 # intentionally excluded. Regenerate by running both backends over
 # upstream-allowlist.txt and keeping the byte-identical results.
 #
+
 00001_select_1
 00003_reinterpret_as_string
 00006_extremes_and_subquery_from
@@ -38,6 +39,7 @@
 00027_distinct_and_order_by
 00027_simple_argMinArray
 00030_alter_table
+00031_parser_number
 00032_fixed_string_to_string
 00033_fixed_string_to_string
 00034_fixed_string_to_number
@@ -145,6 +147,8 @@
 00188_constants_as_arguments_of_aggregate_functions
 00190_non_constant_array_of_constant_data
 00192_least_greatest
+00194_identity
+00196_float32_formatting
 00197_if_fixed_string
 00198_group_by_empty_arrays
 00201_array_uniq
@@ -165,6 +169,7 @@
 00232_format_readable_size
 00233_position_function_family
 00233_position_function_sql_comparibilty
+00234_disjunctive_equality_chains_optimization
 00237_group_by_arrays
 00238_removal_of_temporary_columns
 00239_type_conversion_in_in
@@ -177,6 +182,7 @@
 00259_hashing_tuples
 00260_like_and_curly_braces
 00263_merge_aggregates_and_overflow
+00264_uniq_many_args
 00266_read_overflow_mode
 00267_tuple_array_access_operators_priority
 00268_aliases_without_as_keyword
@@ -291,6 +297,7 @@
 00488_non_ascii_column_names
 00490_special_line_separators_and_characters_outside_of_bmp
 00490_with_select
+00498_array_functions_concat_slice_push_pop
 00498_bitwise_aggregate_functions
 00499_json_enum_insert
 00500_point_in_polygon_2d_const
@@ -318,6 +325,7 @@
 00530_arrays_of_nothing
 00532_topk_generic
 00533_uniq_array
+00534_exp10
 00535_parse_float_scientific
 00537_quarters
 00538_datediff
@@ -467,10 +475,12 @@
 00755_avg_value_size_hint_passing
 00756_power_alias
 00759_kodieg
+00760_insert_json_with_defaults
 00760_url_functions_overflow
 00761_lower_utf8_bug
 00765_sql_compatibility_aliases
 00780_unaligned_array_join
+00799_function_dry_run
 00800_low_cardinality_array_group_by_arg
 00800_low_cardinality_empty_array
 00801_daylight_saving_time_hour_underflow
@@ -510,9 +520,11 @@
 00870_t64_codec
 00871_t64_codec_signed
 00873_t64_codec_date
+00874_issue_3495
 00876_wrong_arraj_join_column
 00880_decimal_in_key
 00881_unknown_identifier_in_in
+00882_multiple_join_no_alias
 00897_flatten
 00898_quantile_timing_parameter_check
 00901_joint_entropy
@@ -837,6 +849,7 @@
 01457_compile_expressions_fuzzer
 01457_order_by_limit
 01457_order_by_nulls_first
+01458_count_digits
 01458_is_decimal_overflow
 01458_named_tuple_millin
 01460_allow_dollar_and_number_in_identifier
@@ -854,6 +867,7 @@
 01492_format_readable_quantity
 01493_table_function_null
 01495_subqueries_in_with_statement_2
+01495_subqueries_in_with_statement_4
 01496_signedness_conversion_monotonicity
 01497_alias_on_default_array
 01497_extract_all_groups_empty_match
@@ -888,6 +902,7 @@
 01550_mutation_subquery
 01552_impl_aggfunc_cloneresize
 01554_bloom_filter_index_big_integer_uuid
+01554_interpreter_integer_float
 01555_or_fill
 01556_if_null
 01560_cancel_agg_func_combinator_native_name_constraint
@@ -950,6 +965,7 @@
 01665_substring_ubsan
 01666_date_lut_buffer_overflow
 01666_great_circle_distance_ubsan
+01668_avg_weighted_ubsan
 01668_test_toMonth_mysql_dialect
 01669_join_or_duplicates
 01669_test_toYear_mysql_dialect
@@ -966,10 +982,12 @@
 01676_range_hashed_dictionary
 01676_round_int_ubsan
 01677_array_enumerate_bug
+01678_great_circle_angle
 01679_format_readable_time_delta_inf
 01680_predicate_pushdown_union_distinct_subquery
 01681_arg_min_max_if_fix
 01684_geohash_ubsan
+01685_json_extract_double_as_float
 01690_quantilesTiming_ubsan
 01700_deltasum
 01700_mod_negative_type_promotion
@@ -1403,6 +1421,7 @@
 02494_array_function_range
 02494_parser_string_binary_literal
 02495_sum_if_to_count_if_bug
+02497_analyzer_sum_if_count_if_pass_crash_fix
 02497_storage_join_right_assert
 02499_analyzer_set_index
 02499_escaped_quote_schema_inference
@@ -1547,6 +1566,7 @@
 02771_if_constant_folding
 02771_jit_functions_comparison_crash
 02771_log_faminy_truncate_count
+02782_inconsistent_formatting_and_constant_folding
 02782_values_null_to_lc_nullable
 02783_date_predicate_optimizations
 02784_move_all_conditions_to_prewhere_analyzer_asan
@@ -1585,6 +1605,7 @@
 02812_subquery_operators
 02813_any_value
 02813_array_agg
+02813_float_parsing
 02813_func_today_and_alias
 02813_system_licenses_base
 02814_order_by_tuple_window_function
@@ -1612,6 +1633,7 @@
 02861_filter_pushdown_const_bug
 02861_interpolate_alias_precedence
 02861_uuid_format_serialization
+02862_uuid_reinterpret_as_numeric
 02863_mutation_where_in_set_result_cache_pipeline_stuck_bug
 02864_filtered_url_with_globs
 02864_profile_event_part_lock
@@ -1697,6 +1719,7 @@
 02962_max_joined_block_rows
 02963_single_value_destructor
 02965_projection_with_partition_pruning
+02966_float32_promotion
 02968_analyzer_join_column_not_found
 02968_sumMap_with_nan
 02969_functions_to_subcolumns_if_null
@@ -1787,6 +1810,7 @@
 03047_analyzer_alias_join
 03047_group_by_field_identified_aggregation
 03048_not_found_column_xxx_in_block
+03050_select_one_one_one
 03051_many_ctes
 03052_query_hash_includes_aliases
 03054_analyzer_join_alias
@@ -1871,6 +1895,7 @@
 03165_distinct_with_window_func_crash
 03167_fancy_quotes_off_by_one
 03167_parametrized_view_with_cte
+03168_cld2_tsan
 03168_fuzz_multiIf_short_circuit
 03169_cache_complex_dict_short_circuit_bug
 03169_display_column_names_in_footer
@@ -2136,6 +2161,7 @@
 03599_bad_date_and_datetimes_inference
 03600_analyzer_setting_bool
 03600_replace_fixed_string_bug
+03601_histogram_quantile
 03601_insert_squashing_remove_const
 03601_replace_regex_fixedstring_empty_needle
 03602_query_system_tables_definer
