@@ -95,6 +95,24 @@ The goals of the refactor are:
   discover it. The [`Skills E2E`](.github/workflows/e2e-skills.yml) workflow
   (`tests/e2e/skills/check.js`) asserts that the packaged tarball contains the declared skills.
 
+## RowBinary skill (`@clickhouse/rowbinary`) tests
+
+The [`skills/clickhouse-js-node-rowbinary-parser`](skills/clickhouse-js-node-rowbinary-parser) package
+has a symmetric reader/writer codebase, and its tests follow a few conventions worth preserving:
+
+- **Reader and writer tests are separate files.** Readers are tested in `tests/*.test.ts`; writers in
+  `tests/*.write.test.ts`. Keep the two independent: a writer test must **never** decode its bytes back
+  through a reader (and vice versa), so a bug on one side cannot mask a bug on the other. Writer tests
+  assert the encoded bytes against **live ClickHouse output** as the source of truth.
+- **Each case is an isolated `it()` with a fully-inline body.** Write the assertion out per case, e.g.
+  `expect(encode(writer, value)).toEqual(await query("SELECT … FORMAT RowBinary"))`. Do **not** hide the
+  assertion behind a thunk-factory helper (`it("name", expectFoo(...))`), and do **not** wrap the query
+  in a per-file helper — embed the literal SQL inline, including any `SETTINGS` clause, so the full
+  query is visible in the test. The only shared helpers are the generic `query()` (`tests/clickhouse.ts`,
+  runs SQL → bytes) and `encode()` (`tests/encode.ts`, value → bytes). Repeating SQL across cases is
+  fine; reviewability beats DRY here. See [`tests/Integers.write.test.ts`](skills/clickhouse-js-node-rowbinary-parser/tests/Integers.write.test.ts)
+  as the canonical example.
+
 ## Embedded docs
 
 The [`docs/`](docs) directory holds long-form troubleshooting / how-to pages that log messages and
