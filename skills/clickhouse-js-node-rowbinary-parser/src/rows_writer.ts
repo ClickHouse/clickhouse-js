@@ -31,9 +31,10 @@ const DEFAULT_BUFFER_SIZE = 64 * 1024;
  *   for (const chunk of drive(rows, 64 * 1024)) send(chunk);
  *
  * OVERSIZED ROWS: when a single row won't fit even an empty buffer, the buffer is
- * GROWN (doubled) and the row retried — never dropped, never thrown. Each growth
- * `console.warn`s so an under-sized `bufferSize` or a pathologically large row
- * doesn't pass unnoticed.
+ * GROWN (doubled) and the row retried — never dropped, never thrown. The first
+ * time this happens `writeRows` `console.warn`s ONCE (the buffer may keep doubling
+ * after that) so an under-sized `bufferSize` or a pathologically large row doesn't
+ * pass unnoticed.
  *
  * When generating code, inline the per-column writes into the loop body,
  * mirroring the reader.
@@ -43,6 +44,7 @@ export function writeRows<T>(
 ): (rows: Iterable<T>, bufferSize?: number) => Generator<Buffer, void, void> {
   return function* (rows, bufferSize = DEFAULT_BUFFER_SIZE) {
     let size = bufferSize;
+    let warned = false;
     let sink = new Sink(Buffer.allocUnsafe(size));
     for (const row of rows) {
       while (true) {
@@ -57,10 +59,13 @@ export function writeRows<T>(
             // retry the SAME row — never drop it. Nothing was written, so the
             // discarded sink had no bytes to flush.
             size *= 2;
-            console.warn(
-              `RowBinary writeRows: a row didn't fit; grew the buffer to ${size} bytes. ` +
-                `Raise bufferSize if this recurs.`,
-            );
+            if (!warned) {
+              warned = true;
+              console.warn(
+                `RowBinary writeRows: a row didn't fit bufferSize=${bufferSize}; ` +
+                  `growing the buffer beyond it (possibly more than once). Raise bufferSize.`,
+              );
+            }
             sink = new Sink(Buffer.allocUnsafe(size));
             continue;
           }

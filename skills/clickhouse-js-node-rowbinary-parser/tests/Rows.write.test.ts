@@ -79,16 +79,16 @@ describe("writeRows", () => {
     expect(a).toEqual(snapshot); // `a` must be untouched
   });
 
-  it("grows the buffer to fit a row larger than bufferSize, warning on each growth", async () => {
+  it("grows the buffer to fit a row larger than bufferSize, warning once", async () => {
     const expected = await query(sql);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       // bufferSize 4 can't hold even one 17-byte row: the buffer doubles
-      // (4→8→16→32) until the row fits — no data lost, nothing thrown — and each
-      // growth warns.
+      // (4→8→16→32) until the row fits — no data lost, nothing thrown — and it
+      // warns exactly once even though it grew several times.
       expect(encodeRows(writeRow, rows, 4)).toEqual(expected);
-      expect(warn).toHaveBeenCalled();
-      expect(warn.mock.calls[0]?.[0]).toMatch(/grew the buffer to \d+ bytes/);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]?.[0]).toMatch(/didn't fit bufferSize=4/);
     } finally {
       warn.mockRestore();
     }
