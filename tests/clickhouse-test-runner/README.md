@@ -26,9 +26,9 @@ environment variable:
   settings handling. Comparison is the upstream `.reference` diff.
 
 - **`rowbinary`** — for each result-returning statement that has no explicit
-  `FORMAT` clause, request `RowBinaryWithNamesAndTypes`, decode it with
-  [`@clickhouse/rowbinary`](../../skills/clickhouse-js-node-rowbinary-parser)'s
-  dynamic header→reader path, and re-render the rows as `TabSeparated` so the
+  `FORMAT` clause, request `RowBinaryWithNamesAndTypes`, decode it with the
+  published [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary)
+  package's dynamic header→reader path, and re-render the rows as `TabSeparated` so the
   same `.reference` diff still applies. This makes the upstream SQL suite a
   breadth test of the RowBinary parser: ClickHouse is the byte oracle, the
   `.reference` is the value oracle. DDL / `INSERT` / `SET` / explicit-`FORMAT`
@@ -48,13 +48,10 @@ UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
   tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
 ```
 
-The `rowbinary` backend depends on `@clickhouse/rowbinary`, a `file:` dependency
-on the in-repo skill whose `dist/` is gitignored — build it once before running:
-
-```bash
-npm --prefix skills/clickhouse-js-node-rowbinary-parser install
-npm --prefix skills/clickhouse-js-node-rowbinary-parser run build
-```
+The `rowbinary` backend depends on the published `@clickhouse/rowbinary` package
+(installed by the normal `npm install`), so it validates the same parser build
+that ships to users. The skill's in-repo source is covered separately by its own
+suite (`.github/workflows/tests-skill-rowbinary-parser.yml`).
 
 ## Build
 

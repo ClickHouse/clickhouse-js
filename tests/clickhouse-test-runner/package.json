@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@clickhouse/client": "*",
-    "@clickhouse/rowbinary": "file:../../skills/clickhouse-js-node-rowbinary-parser"
+    "@clickhouse/rowbinary": "^0.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

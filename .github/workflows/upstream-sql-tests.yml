@@ -102,14 +102,6 @@ jobs:
           npm install
           npm run build
 
-      - name: "Build @clickhouse/rowbinary parser (file: dep, dist not committed)"
-        # The rowbinary backend imports @clickhouse/rowbinary, a `file:` workspace
-        # dependency whose dist/ is gitignored. The skill is NOT part of the npm
-        # workspace, so the root build above does not produce it — build it here.
-        run: |
-          npm --prefix skills/clickhouse-js-node-rowbinary-parser install
-          npm --prefix skills/clickhouse-js-node-rowbinary-parser run build
-
       - name: Make upstream test script executable
         run: |
           chmod +x tests/clickhouse-test-runner/.upstream/ClickHouse/tests/clickhouse-test
