@@ -8,23 +8,22 @@ import {
 } from "../src/strings_writer.js";
 
 describe("writeString", () => {
-  /** Encode the JS string and match ClickHouse's RowBinary for `'literal'`. */
-  function expectString(literal: string, value: string) {
-    return async () =>
-      expect(encode(writeString, value)).toEqual(
-        await query(`SELECT ${literal} FORMAT RowBinary`),
-      );
-  }
-  it("encodes the empty string", expectString("''", ""));
-  it("encodes an ASCII string", expectString("'hello'", "hello"));
-  it(
-    "encodes a multi-byte UTF-8 string",
-    expectString("'héllo · 日本'", "héllo · 日本"),
-  );
-  it(
-    "encodes a string longer than a 1-byte varint length",
-    expectString("repeat('x', 300)", "x".repeat(300)),
-  );
+  it("encodes the empty string", async () =>
+    expect(encode(writeString, "")).toEqual(
+      await query("SELECT '' FORMAT RowBinary"),
+    ));
+  it("encodes an ASCII string", async () =>
+    expect(encode(writeString, "hello")).toEqual(
+      await query("SELECT 'hello' FORMAT RowBinary"),
+    ));
+  it("encodes a multi-byte UTF-8 string", async () =>
+    expect(encode(writeString, "héllo · 日本")).toEqual(
+      await query("SELECT 'héllo · 日本' FORMAT RowBinary"),
+    ));
+  it("encodes a string longer than a 1-byte varint length", async () =>
+    expect(encode(writeString, "x".repeat(300))).toEqual(
+      await query("SELECT repeat('x', 300) FORMAT RowBinary"),
+    ));
 
   it("writes raw (non-UTF-8) bytes from a Uint8Array", () => {
     // varint length 3, then the raw bytes verbatim.

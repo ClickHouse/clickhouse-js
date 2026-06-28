@@ -36,48 +36,62 @@ describe("writeEnum8 / writeEnum16", () => {
 });
 
 describe("writeFloat32", () => {
-  /** Encode `value` and assert it matches ClickHouse's `toFloat32`. */
-  function expectFloat32(sql: string, value: number) {
-    return async () =>
-      expect(encode(writeFloat32, value)).toEqual(
-        await query(`SELECT toFloat32(${sql}) FORMAT RowBinary`),
-      );
-  }
-  it("encodes 0", expectFloat32("0", 0));
-  it("encodes 1.5", expectFloat32("1.5", 1.5));
-  it("encodes -3.25", expectFloat32("-3.25", -3.25));
-  it(
-    "encodes the max finite float32",
-    expectFloat32("3.4028234663852886e38", 3.4028234663852886e38),
-  );
-  it("encodes Infinity", expectFloat32("inf", Infinity));
+  it("encodes 0", async () =>
+    expect(encode(writeFloat32, 0)).toEqual(
+      await query("SELECT toFloat32(0) FORMAT RowBinary"),
+    ));
+  it("encodes 1.5", async () =>
+    expect(encode(writeFloat32, 1.5)).toEqual(
+      await query("SELECT toFloat32(1.5) FORMAT RowBinary"),
+    ));
+  it("encodes -3.25", async () =>
+    expect(encode(writeFloat32, -3.25)).toEqual(
+      await query("SELECT toFloat32(-3.25) FORMAT RowBinary"),
+    ));
+  it("encodes the max finite float32", async () =>
+    expect(encode(writeFloat32, 3.4028234663852886e38)).toEqual(
+      await query("SELECT toFloat32(3.4028234663852886e38) FORMAT RowBinary"),
+    ));
+  it("encodes Infinity", async () =>
+    expect(encode(writeFloat32, Infinity)).toEqual(
+      await query("SELECT toFloat32(inf) FORMAT RowBinary"),
+    ));
 });
 
 describe("writeFloat64", () => {
-  function expectFloat64(sql: string, value: number) {
-    return async () =>
-      expect(encode(writeFloat64, value)).toEqual(
-        await query(`SELECT toFloat64(${sql}) FORMAT RowBinary`),
-      );
-  }
-  it("encodes 0", expectFloat64("0", 0));
-  it("encodes 1.5", expectFloat64("1.5", 1.5));
-  it("encodes -3.25", expectFloat64("-3.25", -3.25));
-  it(
-    "encodes the max finite float64",
-    expectFloat64("1.7976931348623157e308", 1.7976931348623157e308),
-  );
+  it("encodes 0", async () =>
+    expect(encode(writeFloat64, 0)).toEqual(
+      await query("SELECT toFloat64(0) FORMAT RowBinary"),
+    ));
+  it("encodes 1.5", async () =>
+    expect(encode(writeFloat64, 1.5)).toEqual(
+      await query("SELECT toFloat64(1.5) FORMAT RowBinary"),
+    ));
+  it("encodes -3.25", async () =>
+    expect(encode(writeFloat64, -3.25)).toEqual(
+      await query("SELECT toFloat64(-3.25) FORMAT RowBinary"),
+    ));
+  it("encodes the max finite float64", async () =>
+    expect(encode(writeFloat64, 1.7976931348623157e308)).toEqual(
+      await query("SELECT toFloat64(1.7976931348623157e308) FORMAT RowBinary"),
+    ));
 });
 
 describe("writeBFloat16", () => {
-  function expectBFloat16(sql: string, value: number) {
-    return async () =>
-      expect(encode(writeBFloat16, value)).toEqual(
-        await query(`SELECT toBFloat16(${sql}) FORMAT RowBinary`),
-      );
-  }
-  it("encodes 0", expectBFloat16("0", 0));
-  it("encodes 1.5", expectBFloat16("1.5", 1.5));
-  it("encodes -3.25", expectBFloat16("-3.25", -3.25));
-  it("encodes 100", expectBFloat16("100", 100));
+  it("encodes 0", async () =>
+    expect(encode(writeBFloat16, 0)).toEqual(
+      await query("SELECT toBFloat16(0) FORMAT RowBinary"),
+    ));
+  it("encodes 1.5", async () =>
+    expect(encode(writeBFloat16, 1.5)).toEqual(
+      await query("SELECT toBFloat16(1.5) FORMAT RowBinary"),
+    ));
+  it("encodes -3.25", async () =>
+    expect(encode(writeBFloat16, -3.25)).toEqual(
+      await query("SELECT toBFloat16(-3.25) FORMAT RowBinary"),
+    ));
+  it("encodes 100", async () =>
+    expect(encode(writeBFloat16, 100)).toEqual(
+      await query("SELECT toBFloat16(100) FORMAT RowBinary"),
+    ));
 });

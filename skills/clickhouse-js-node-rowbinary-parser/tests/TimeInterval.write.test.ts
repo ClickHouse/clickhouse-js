@@ -9,32 +9,35 @@ import {
 } from "../src/time_writer.js";
 import { writeInterval } from "../src/interval_writer.js";
 
+/**
+ * The RowBinary bytes ClickHouse emits for a Time/Time64 expression — the source
+ * of truth. The `Time`/`Time64` types are behind a setting, so it is enabled here.
+ */
+function chTime(expr: string): Promise<Buffer> {
+  return query(
+    `SELECT ${expr} SETTINGS enable_time_time64_type = 1 FORMAT RowBinary`,
+  );
+}
+
 describe("writeTime", () => {
-  /** Encode the parsed seconds-of-day and match ClickHouse's `Time`. */
-  function expectTime(literal: string) {
-    return async () =>
-      expect(encode(writeTime, parseTime(literal))).toEqual(
-        await query(
-          `SELECT CAST('${literal}' AS Time) SETTINGS enable_time_time64_type = 1 FORMAT RowBinary`,
-        ),
-      );
-  }
-  it("encodes 12:34:56", expectTime("12:34:56"));
-  it("encodes a negative -01:02:03", expectTime("-01:02:03"));
+  it("encodes 12:34:56", async () =>
+    expect(encode(writeTime, parseTime("12:34:56"))).toEqual(
+      await chTime("CAST('12:34:56' AS Time)"),
+    ));
+  it("encodes a negative -01:02:03", async () =>
+    expect(encode(writeTime, parseTime("-01:02:03"))).toEqual(
+      await chTime("CAST('-01:02:03' AS Time)"),
+    ));
 });
 
 describe("writeTime64", () => {
   it("encodes Time64(3)", async () =>
     expect(encode(writeTime64, parseTime64("12:34:56.789", 3))).toEqual(
-      await query(
-        "SELECT toTime64('12:34:56.789', 3) SETTINGS enable_time_time64_type = 1 FORMAT RowBinary",
-      ),
+      await chTime("toTime64('12:34:56.789', 3)"),
     ));
   it("encodes a negative Time64(6)", async () =>
     expect(encode(writeTime64, parseTime64("-01:02:03.000004", 6))).toEqual(
-      await query(
-        "SELECT toTime64('-01:02:03.000004', 6) SETTINGS enable_time_time64_type = 1 FORMAT RowBinary",
-      ),
+      await chTime("toTime64('-01:02:03.000004', 6)"),
     ));
 });
 
@@ -52,17 +55,16 @@ describe("parseTime64", () => {
 });
 
 describe("writeInterval", () => {
-  /** Encode the unit count and match ClickHouse's interval. */
-  function expectInterval(expr: string, count: bigint) {
-    return async () =>
-      expect(encode(writeInterval, count)).toEqual(
-        await query(`SELECT ${expr} FORMAT RowBinary`),
-      );
-  }
-  it("encodes toIntervalDay(7)", expectInterval("toIntervalDay(7)", 7n));
-  it(
-    "encodes a negative toIntervalSecond(-90)",
-    expectInterval("toIntervalSecond(-90)", -90n),
-  );
-  it("encodes toIntervalYear(2)", expectInterval("toIntervalYear(2)", 2n));
+  it("encodes toIntervalDay(7)", async () =>
+    expect(encode(writeInterval, 7n)).toEqual(
+      await query("SELECT toIntervalDay(7) FORMAT RowBinary"),
+    ));
+  it("encodes a negative toIntervalSecond(-90)", async () =>
+    expect(encode(writeInterval, -90n)).toEqual(
+      await query("SELECT toIntervalSecond(-90) FORMAT RowBinary"),
+    ));
+  it("encodes toIntervalYear(2)", async () =>
+    expect(encode(writeInterval, 2n)).toEqual(
+      await query("SELECT toIntervalYear(2) FORMAT RowBinary"),
+    ));
 });

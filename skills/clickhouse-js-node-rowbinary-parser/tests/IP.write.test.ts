@@ -9,18 +9,28 @@ import {
   parseIPv6,
 } from "../src/ip_writer.js";
 
+/** The RowBinary bytes ClickHouse emits for `fn('ip')` — the source of truth. */
+function chBytes(fn: string, ip: string): Promise<Buffer> {
+  return query(`SELECT ${fn}('${ip}') FORMAT RowBinary`);
+}
+
 describe("writeIPv4", () => {
-  /** Encode the parsed address and match ClickHouse's `toIPv4`. */
-  function expectIPv4(ip: string) {
-    return async () =>
-      expect(encode(writeIPv4, parseIPv4(ip))).toEqual(
-        await query(`SELECT toIPv4('${ip}') FORMAT RowBinary`),
-      );
-  }
-  it("encodes 0.0.0.0", expectIPv4("0.0.0.0"));
-  it("encodes 1.2.3.4", expectIPv4("1.2.3.4"));
-  it("encodes 192.168.0.1", expectIPv4("192.168.0.1"));
-  it("encodes 255.255.255.255", expectIPv4("255.255.255.255"));
+  it("encodes 0.0.0.0", async () =>
+    expect(encode(writeIPv4, parseIPv4("0.0.0.0"))).toEqual(
+      await chBytes("toIPv4", "0.0.0.0"),
+    ));
+  it("encodes 1.2.3.4", async () =>
+    expect(encode(writeIPv4, parseIPv4("1.2.3.4"))).toEqual(
+      await chBytes("toIPv4", "1.2.3.4"),
+    ));
+  it("encodes 192.168.0.1", async () =>
+    expect(encode(writeIPv4, parseIPv4("192.168.0.1"))).toEqual(
+      await chBytes("toIPv4", "192.168.0.1"),
+    ));
+  it("encodes 255.255.255.255", async () =>
+    expect(encode(writeIPv4, parseIPv4("255.255.255.255"))).toEqual(
+      await chBytes("toIPv4", "255.255.255.255"),
+    ));
 });
 
 describe("parseIPv4", () => {
@@ -31,17 +41,26 @@ describe("parseIPv4", () => {
 });
 
 describe("writeIPv6", () => {
-  function expectIPv6(ip: string) {
-    return async () =>
-      expect(encode(writeIPv6, parseIPv6(ip))).toEqual(
-        await query(`SELECT toIPv6('${ip}') FORMAT RowBinary`),
-      );
-  }
-  it("encodes ::", expectIPv6("::"));
-  it("encodes ::1", expectIPv6("::1"));
-  it("encodes 2001:db8::1", expectIPv6("2001:db8::1"));
-  it("encodes fe80::a6:6ad3:dba0:1", expectIPv6("fe80::a6:6ad3:dba0:1"));
-  it("encodes the IPv4-mapped ::ffff:1.2.3.4", expectIPv6("::ffff:1.2.3.4"));
+  it("encodes ::", async () =>
+    expect(encode(writeIPv6, parseIPv6("::"))).toEqual(
+      await chBytes("toIPv6", "::"),
+    ));
+  it("encodes ::1", async () =>
+    expect(encode(writeIPv6, parseIPv6("::1"))).toEqual(
+      await chBytes("toIPv6", "::1"),
+    ));
+  it("encodes 2001:db8::1", async () =>
+    expect(encode(writeIPv6, parseIPv6("2001:db8::1"))).toEqual(
+      await chBytes("toIPv6", "2001:db8::1"),
+    ));
+  it("encodes fe80::a6:6ad3:dba0:1", async () =>
+    expect(encode(writeIPv6, parseIPv6("fe80::a6:6ad3:dba0:1"))).toEqual(
+      await chBytes("toIPv6", "fe80::a6:6ad3:dba0:1"),
+    ));
+  it("encodes the IPv4-mapped ::ffff:1.2.3.4", async () =>
+    expect(encode(writeIPv6, parseIPv6("::ffff:1.2.3.4"))).toEqual(
+      await chBytes("toIPv6", "::ffff:1.2.3.4"),
+    ));
 
   it("rejects non-16-byte input", () =>
     expect(() =>
