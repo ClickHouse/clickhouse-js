@@ -13,6 +13,8 @@ const SAMPLE = "61f0c404-5cb3-11e7-907b-a6006ad3dba0";
 // ClickHouse stores a UUID as two little-endian UInt64 halves (high then low).
 const HI = 0x61f0c4045cb311e7n;
 const LO = 0x907ba6006ad3dba0n;
+// The same UUID as one 128-bit value (hi in the high 64 bits, lo in the low).
+const HI_LO_UUID: bigint = (HI << 64n) | LO;
 const WIRE = [
   0xe7,
   0x11,
@@ -39,7 +41,7 @@ describe("UUID writers", () => {
     ));
 
   it("writeUUIDBigInt splits a 128-bit bigint into the two LE halves", async () =>
-    expect(encode(writeUUIDBigInt, (HI << 64n) | LO)).toEqual(
+    expect(encode(writeUUIDBigInt, HI_LO_UUID)).toEqual(
       await query(`SELECT toUUID('${SAMPLE}') FORMAT RowBinary`),
     ));
 
