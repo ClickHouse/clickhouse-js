@@ -1,7 +1,36 @@
+import { channel } from "node:diagnostics_channel";
 import { BufferFull, Sink, type Writer } from "./core_writer.js";
 
 /** Default sink size when `writeRows` isn't given one — a typical flush chunk. */
 const DEFAULT_BUFFER_SIZE = 64 * 1024;
+
+/**
+ * Payload of {@link FLUSH_CHANNEL_NAME}, published once per buffer `writeRows`
+ * flushes — the hook for buffer-capacity-utilization metrics (e.g. an OTEL
+ * `used_bytes` / `capacity_bytes` counter pair, divided in the backend for a
+ * byte-weighted average fill). Identity (table, `query_id`, …) is deliberately
+ * NOT here: carry it in `AsyncLocalStorage` and read it in the subscriber, which
+ * runs synchronously on the publisher's call stack, so its async context is live.
+ */
+export interface WriteRowsFlush {
+  /** Bytes actually written into the buffer just flushed (`<= capacityBytes`). */
+  usedBytes: number;
+  /** That buffer's capacity; doubles from `bufferSize` to fit an oversized row. */
+  capacityBytes: number;
+  /** Why it flushed: `"full"` mid-stream (next row overflowed) or `"end"` (rows ran out). */
+  reason: "full" | "end";
+}
+
+/**
+ * `node:diagnostics_channel` name {@link writeRows} publishes a {@link WriteRowsFlush}
+ * on per flushed buffer. Subscribe to observe buffer-capacity utilization; with no
+ * subscriber `writeRows` skips the publish entirely (a single `hasSubscribers`
+ * check per buffer, off the per-row path), so it's free when unused.
+ */
+export const FLUSH_CHANNEL_NAME = "@clickhouse/rowbinary:writeRows.flush";
+
+/** Created once — `channel()` is idempotent (same name → same object). */
+const flushChannel = channel(FLUSH_CHANNEL_NAME);
 
 /**
  * Drive `writeRow` over every row of an iterable into a plain `RowBinary` payload
@@ -35,6 +64,10 @@ const DEFAULT_BUFFER_SIZE = 64 * 1024;
  * time this happens `writeRows` `console.warn`s ONCE (the buffer may keep doubling
  * after that) so an under-sized `bufferSize` or a pathologically large row doesn't
  * pass unnoticed.
+ *
+ * METRICS: each flushed buffer is published as a {@link WriteRowsFlush} on the
+ * {@link FLUSH_CHANNEL_NAME} diagnostics channel — wire it to a utilization metric.
+ * No subscriber means no publish (one `hasSubscribers` check per buffer).
  *
  * When generating code, inline the per-column writes into the loop body,
  * mirroring the reader.
@@ -70,11 +103,26 @@ export function writeRows<T>(
             continue;
           }
           sink.pos = committed; // drop the partially written row, then flush
+          if (flushChannel.hasSubscribers)
+            flushChannel.publish({
+              usedBytes: committed,
+              capacityBytes: size,
+              reason: "full",
+            } satisfies WriteRowsFlush);
           yield sink.bytes();
           sink = new Sink(Buffer.allocUnsafe(size)); // fresh buffer; retry the row
         }
       }
     }
-    if (sink.pos > 0) yield sink.bytes(); // the final batch
+    if (sink.pos > 0) {
+      // the final batch
+      if (flushChannel.hasSubscribers)
+        flushChannel.publish({
+          usedBytes: sink.pos,
+          capacityBytes: size,
+          reason: "end",
+        } satisfies WriteRowsFlush);
+      yield sink.bytes();
+    }
   };
 }

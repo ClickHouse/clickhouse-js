@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import diagnostics_channel from "node:diagnostics_channel";
 import { query } from "./clickhouse.js";
-import { writeRows } from "../src/rows_writer.js";
+import {
+  writeRows,
+  FLUSH_CHANNEL_NAME,
+  type WriteRowsFlush,
+} from "../src/rows_writer.js";
 import { type Writer } from "../src/core_writer.js";
 import { writeTupleNamed } from "../src/composite_writer.js";
 import { writeUInt64, writeUInt32 } from "../src/integers_writer.js";
@@ -102,5 +107,65 @@ describe("writeRows", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+
+  /** Run `body` with a subscriber on the flush channel, collecting every event. */
+  function withFlushEvents(body: () => void): WriteRowsFlush[] {
+    const events: WriteRowsFlush[] = [];
+    const onMessage = (msg: unknown) => events.push(msg as WriteRowsFlush);
+    diagnostics_channel.subscribe(FLUSH_CHANNEL_NAME, onMessage);
+    try {
+      body();
+    } finally {
+      diagnostics_channel.unsubscribe(FLUSH_CHANNEL_NAME, onMessage);
+    }
+    return events;
+  }
+
+  it("publishes a flush event per buffer — every 'full' batch fills its capacity, then one 'end'", () => {
+    // bufferSize 20 holds one 17-byte row: rows 0..3 each flush a 'full' buffer
+    // when the next row overflows, row 4 comes out as the 'end' batch.
+    const events = withFlushEvents(() => encodeRows(writeRow, rows, 20));
+    expect(events.map((e) => e.reason)).toEqual([
+      "full",
+      "full",
+      "full",
+      "full",
+      "end",
+    ]);
+    // Every buffer reports its real capacity, and used never exceeds it.
+    for (const e of events) {
+      expect(e.capacityBytes).toBe(20);
+      expect(e.usedBytes).toBeLessThanOrEqual(e.capacityBytes);
+    }
+    // The four mid-stream flushes each carried exactly one 17-byte row.
+    expect(events.slice(0, 4).every((e) => e.usedBytes === 17)).toBe(true);
+    // Summed used bytes equal the whole payload — nothing is double-counted.
+    const total = events.reduce((n, e) => n + e.usedBytes, 0);
+    expect(total).toBe(encodeRows(writeRow, rows).length);
+  });
+
+  it("reports the grown capacity on the flush of an oversized row", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      // bufferSize 4 grows to 32 to fit a 17-byte row; the published capacity
+      // must be the grown size, not the original 4.
+      const events = withFlushEvents(() => encodeRows(writeRow, rows, 4));
+      expect(events.every((e) => e.capacityBytes === 32)).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("stops publishing to a subscriber once it unsubscribes", () => {
+    const events: WriteRowsFlush[] = [];
+    const onMessage = (msg: unknown) => events.push(msg as WriteRowsFlush);
+    diagnostics_channel.subscribe(FLUSH_CHANNEL_NAME, onMessage);
+    encodeRows(writeRow, rows, 20);
+    const afterFirst = events.length;
+    expect(afterFirst).toBeGreaterThan(0);
+    diagnostics_channel.unsubscribe(FLUSH_CHANNEL_NAME, onMessage);
+    encodeRows(writeRow, rows, 20); // a second run with no subscriber
+    expect(events.length).toBe(afterFirst); // nothing more delivered
   });
 });

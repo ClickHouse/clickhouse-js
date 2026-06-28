@@ -88,7 +88,11 @@ export {
   writeVariant,
   type VariantValue,
 } from "./composite_writer.js";
-export { writeRows } from "./rows_writer.js";
+export {
+  writeRows,
+  FLUSH_CHANNEL_NAME,
+  type WriteRowsFlush,
+} from "./rows_writer.js";
 export {
   writePoint,
   writeRing,
