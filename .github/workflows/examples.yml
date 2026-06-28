@@ -17,10 +17,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/examples.yml"
   pull_request:
     paths:
@@ -33,10 +33,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/examples.yml"
 
 concurrency:

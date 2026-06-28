@@ -46,7 +46,17 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",
-    "build": "rm -rf dist; tsc"
+    "build": "rm -rf dist; tsc",
+    "test:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=unit vitest",
+    "test:unit:bun": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=unit bun --bun vitest",
+    "test:integration": "TEST_MODE=integration vitest",
+    "test:integration:tls": "TEST_MODE=tls vitest",
+    "test:integration:dist": "npm --prefix ../.. run build && TEST_TARGET=dist TEST_MODE=integration vitest",
+    "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster TEST_MODE=integration vitest",
+    "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud TEST_MODE=integration vitest",
+    "test:oss-dependents": "TEST_MODE=oss-dependents vitest",
+    "test:all": "TEST_MODE=all vitest",
+    "test:coverage": "VITEST_COVERAGE=true TEST_MODE=all vitest"
   },
   "dependencies": {},
   "devDependencies": {

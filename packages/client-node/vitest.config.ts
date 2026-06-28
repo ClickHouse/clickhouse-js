@@ -1,17 +1,21 @@
 import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "node:url";
+
+// Embedded in the node client package, but rooted at the repo so the shared
+// (common) sources and specs are reachable. The node and web packages run the
+// common tests so the common code is exercised and shows up in coverage.
+const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const testMode = process.env.TEST_MODE;
 if (
   testMode !== "unit" &&
   testMode !== "integration" &&
   testMode !== "tls" &&
-  testMode !== "common" &&
-  testMode !== "common-integration" &&
   testMode !== "oss-dependents" &&
   testMode !== "all"
 ) {
   throw new Error(
-    `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, tls, common, common-integration, oss-dependents, all.`,
+    `Unsupported TEST_MODE: [${testMode}]. Supported modes are: unit, integration, tls, oss-dependents, all.`,
   );
 }
 
@@ -37,26 +41,21 @@ if (testTarget !== "src" && testTarget !== "dist") {
 
 const collections = {
   unit: [
+    "packages/client-common/__tests__/unit/*.test.ts",
+    "packages/client-common/__tests__/utils/*.test.ts",
     "packages/client-node/__tests__/unit/*.test.ts",
     "packages/client-node/__tests__/utils/*.test.ts",
   ],
   integration: [
-    "packages/client-node/__tests__/integration/*.test.ts",
     "packages/client-common/__tests__/integration/*.test.ts",
+    "packages/client-node/__tests__/integration/*.test.ts",
   ],
   // TLS tests require a specific environment setup
   // This list is integration + TLS tests
   tls: [
+    "packages/client-common/__tests__/integration/*.test.ts",
     "packages/client-node/__tests__/integration/*.test.ts",
-    "packages/client-common/__tests__/integration/*.test.ts",
     "packages/client-node/__tests__/tls/*.test.ts",
-  ],
-  common: [
-    "packages/client-common/__tests__/unit/*.test.ts",
-    "packages/client-common/__tests__/utils/*.test.ts",
-  ],
-  "common-integration": [
-    "packages/client-common/__tests__/integration/*.test.ts",
   ],
   // Runnable reproductions of how the top OSS dependents use the client.
   // These specs import only the public package names, so they default to
@@ -78,6 +77,7 @@ const collections = {
 };
 
 export default defineConfig({
+  root,
   test: {
     // Increase maxWorkers to speed up integration tests
     // as we're not bound by the CPU here.
@@ -86,7 +86,7 @@ export default defineConfig({
     hookTimeout: 300_000,
     testTimeout: 300_000,
     slowTestThreshold: testMode === "unit" ? 10_000 : undefined,
-    setupFiles: ["vitest.node.setup.ts"],
+    setupFiles: ["packages/client-node/vitest.setup.ts"],
     include: collections[testMode],
     coverage: {
       enabled: process.env.VITEST_COVERAGE === "true",
@@ -118,7 +118,7 @@ export default defineConfig({
           process.env.VITEST_OTEL_ENABLED === "true" &&
           // not set in dependabot PRs
           !!process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
-        sdkPath: "./vitest.node.otel.js",
+        sdkPath: "./packages/client-node/vitest.otel.js",
       },
     },
     retry: process.env.CI ? 2 : 0,
