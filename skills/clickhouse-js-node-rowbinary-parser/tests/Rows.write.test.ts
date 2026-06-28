@@ -118,6 +118,15 @@ describe("writeRows", () => {
     }
   });
 
+  it("rejects a non-positive or non-integer bufferSize instead of looping forever", () => {
+    // 0 / NaN would make the growth loop spin (size *= 2 never escapes 0/NaN);
+    // fail fast on first .next() with a clear error.
+    for (const bad of [0, -1, NaN, 1.5, Infinity]) {
+      const gen = writeRows(writeRow)(rows, bad);
+      expect(() => gen.next()).toThrow(/bufferSize must be a positive integer/);
+    }
+  });
+
   /** Run `body` with a subscriber on the flush channel, collecting every event. */
   function withFlushEvents(body: () => void): WriteRowsFlush[] {
     const events: WriteRowsFlush[] = [];

@@ -31,7 +31,7 @@ export interface WriteRowsFlush {
 
 /**
  * `node:diagnostics_channel` name {@link writeRows} publishes a {@link WriteRowsFlush}
- * on per flushed buffer. Subscribe to observe buffer-capacity utilization; with no
+ * once per flushed buffer. Subscribe to observe buffer-capacity utilization; with no
  * subscriber `writeRows` skips the publish entirely (a single `hasSubscribers`
  * check per buffer, off the per-row path), so it's free when unused.
  */
@@ -84,6 +84,12 @@ export function writeRows<T>(
   writeRow: Writer<T>,
 ): (rows: Iterable<T>, bufferSize?: number) => Generator<Buffer, void, void> {
   return function* (rows, bufferSize = DEFAULT_BUFFER_SIZE) {
+    if (!Number.isSafeInteger(bufferSize) || bufferSize <= 0)
+      // Guard the growth loop: a 0 / NaN / negative size makes the first row
+      // overflow forever (`size *= 2` never escapes 0/NaN), so fail fast instead.
+      throw new RangeError(
+        `RowBinary writeRows: bufferSize must be a positive integer, got ${bufferSize}`,
+      );
     let size = bufferSize;
     let warned = false;
     let sink = new Sink(Buffer.allocUnsafe(size));
