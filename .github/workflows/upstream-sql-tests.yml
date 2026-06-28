@@ -44,6 +44,12 @@ jobs:
       fail-fast: false
       matrix:
         clickhouse: [head, latest]
+        # passthrough: stream ClickHouse's own TabSeparated text (transport /
+        # session / settings coverage). rowbinary: decode
+        # RowBinaryWithNamesAndTypes through @clickhouse/rowbinary and re-render
+        # to TabSeparated, exercising the dynamic header->reader path. Each
+        # backend has its own allowlist (see the "Run upstream SQL tests" step).
+        backend: [passthrough, rowbinary]
         # Round-robin shards keep each job at roughly one minute so the
         # upstream SQL tests no longer dominate PR CI runtime. Bump
         # `shard` and `SHARD_TOTAL` together if the allowlist grows enough
@@ -106,14 +112,21 @@ jobs:
           CLICKHOUSE_CLIENT_CLI_LOG: ${{ github.workspace }}/upstream-run.log
           SHARD_INDEX: ${{ matrix.shard }}
           SHARD_TOTAL: 10
+          TEST_RUNNER_BACKEND: ${{ matrix.backend }}
         run: |
+          # The rowbinary backend can only validate tests whose decoded types it
+          # can render back to TabSeparated, so it runs a dedicated (smaller)
+          # allowlist; passthrough runs the full one.
+          if [ "${TEST_RUNNER_BACKEND}" = "rowbinary" ]; then
+            export UPSTREAM_TEST_LIST="${{ github.workspace }}/tests/clickhouse-test-runner/rowbinary-allowlist.txt"
+          fi
           bash tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
 
       - name: Upload test artifacts
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: upstream-sql-tests-${{ matrix.clickhouse }}-shard-${{ matrix.shard }}
+          name: upstream-sql-tests-${{ matrix.backend }}-${{ matrix.clickhouse }}-shard-${{ matrix.shard }}
           retention-days: 14
           if-no-files-found: ignore
           path: |
