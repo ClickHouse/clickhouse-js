@@ -79,7 +79,8 @@ export function writeMultiPolygon(
  * MultiPolygon(2), Point(3), Polygon(4), Ring(5); `0xFF` = NULL.
  */
 export type GeometryValue =
-  readonly [discriminant: number, value: unknown] | null;
+  | readonly [discriminant: number, value: unknown]
+  | null;
 
 /**
  * Write a `Geometry`: a 1-byte discriminant then the chosen geo type's value. The
