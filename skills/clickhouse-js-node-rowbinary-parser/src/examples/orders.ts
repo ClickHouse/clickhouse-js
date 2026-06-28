@@ -1,7 +1,6 @@
 import { type Reader, advance } from "../core.js";
 import { type DecimalValue, readDecimal64 } from "../decimals.js";
-import { readEnum8 } from "../enums.js";
-import { readUInt8 } from "../integers.js";
+import { readInt8, readUInt8 } from "../integers.js";
 import { formatUUID, formatUUIDTable, readUUID } from "../uuid.js";
 
 /**
@@ -15,9 +14,11 @@ import { formatUUID, formatUUIDTable, readUUID } from "../uuid.js";
  *
  * Shows the parse/format split and faithful values: `uid` is read as raw bytes
  * then formatted with `formatUUID`; `price` stays the exact `[unscaled, scale]`
- * pair (`[1234n, 2]` == 12.34), not a lossy float; `status` decodes to the
- * underlying `Int8` value (1/2/3), the name<->value map being type metadata, not
- * on the wire. The declared scale `2` is baked into `readDecimal64(2)`.
+ * pair (`[1234n, 2]` == 12.34), not a lossy float; `status` is read as the raw
+ * underlying `Int8` (1/2/3) with `readInt8` — a hand-written reader that bakes
+ * in the schema can skip name resolution, whereas the generic `readEnum8(map)`
+ * (used by the dynamic/header path) resolves the value to its name. The declared
+ * scale `2` is baked into `readDecimal64(2)`.
  */
 export type OrderRow = {
   id: number;
@@ -30,7 +31,7 @@ export const readOrderRow: Reader<OrderRow> = (s) => ({
   id: readUInt8(s),
   uid: formatUUID(readUUID(s)),
   price: readDecimal64(2)(s),
-  status: readEnum8(s),
+  status: readInt8(s),
 });
 
 /**

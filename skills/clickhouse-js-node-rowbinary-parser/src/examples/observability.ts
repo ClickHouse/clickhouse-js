@@ -7,9 +7,8 @@ import {
 } from "../composite.js";
 import { type Reader, advance } from "../core.js";
 import { readDateTime64P3 } from "../datetime.js";
-import { readEnum8 } from "../enums.js";
 import { readFloat64 } from "../floats.js";
-import { readInt64, readUInt64 } from "../integers.js";
+import { readInt8, readInt64, readUInt64 } from "../integers.js";
 import { readString } from "../strings.js";
 import { formatUUID, formatUUIDTable, readUUID } from "../uuid.js";
 import { readUVarint } from "../varint.js";
@@ -60,7 +59,7 @@ export type ObsRow = {
 export const readObsRow: Reader<ObsRow> = (s) => ({
   id: readUInt64(s),
   ts: readDateTime64P3(s).toISOString(),
-  level: readEnum8(s),
+  level: readInt8(s),
   traceId: formatUUID(readUUID(s)),
   payload: readVariant([readFloat64, readInt64, readString])(s),
   tags: readMap(readString, readString)(s),

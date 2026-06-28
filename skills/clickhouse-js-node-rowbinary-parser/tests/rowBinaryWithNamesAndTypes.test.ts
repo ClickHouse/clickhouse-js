@@ -248,16 +248,16 @@ describe("decimals (width chosen by precision)", () => {
   });
 });
 
-describe("enums (value is the underlying int)", () => {
+describe("enums (resolve to the value's name)", () => {
   it("Enum8", async () => {
     expect(
       await value("SELECT CAST('b' AS Enum8('a' = 1, 'b' = 2)) AS v"),
-    ).toEqual(2);
+    ).toEqual("b");
   });
   it("Enum16", async () => {
     expect(
       await value("SELECT CAST('y' AS Enum16('x' = -1, 'y' = 100)) AS v"),
-    ).toEqual(100);
+    ).toEqual("y");
   });
 });
 

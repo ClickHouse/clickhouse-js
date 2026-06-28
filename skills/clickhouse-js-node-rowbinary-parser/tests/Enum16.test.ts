@@ -8,22 +8,45 @@ async function reader(expr: string): Promise<Cursor> {
 }
 
 describe("readEnum16", () => {
-  it("decodes a 16-bit underlying value", async () => {
+  it("resolves a 16-bit underlying value to its name", async () => {
+    const read = readEnum16(
+      new Map([
+        [1, "small"],
+        [300, "big"],
+      ]),
+    );
     const r = await reader("CAST('big' AS Enum16('small' = 1, 'big' = 300))");
-    const value = readEnum16(r);
-    expect(value).toBe(300);
+    expect(read(r)).toBe("big");
     expect(r.pos).toBe(2);
   });
 
-  it("decodes a negative enum value", async () => {
-    const value = readEnum16(
-      await reader("CAST('lo' AS Enum16('lo' = -1000, 'hi' = 1000))"),
+  it("resolves a negative enum value", async () => {
+    const read = readEnum16(
+      new Map([
+        [-1000, "lo"],
+        [1000, "hi"],
+      ]),
     );
-    expect(value).toBe(-1000);
+    expect(
+      read(await reader("CAST('lo' AS Enum16('lo' = -1000, 'hi' = 1000))")),
+    ).toBe("lo");
+  });
+
+  it("falls back to the stringified integer for an unmapped value", () => {
+    // Wire bytes for Int16 300 (little-endian) with an empty map => "300".
+    expect(readEnum16(new Map())(new Cursor(Buffer.from([0x2c, 0x01])))).toBe(
+      "300",
+    );
   });
 
   describe("advance() edge cases", () => {
     it("throws NeedMoreData for every incomplete prefix (0 .. full.length-1)", async () => {
+      const read = readEnum16(
+        new Map([
+          [1, "small"],
+          [300, "big"],
+        ]),
+      );
       const full = await query(
         "SELECT CAST('big' AS Enum16('small' = 1, 'big' = 300)) FORMAT RowBinary",
       );
@@ -31,7 +54,7 @@ describe("readEnum16", () => {
         const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
-          readEnum16(r);
+          read(r);
         } catch (e) {
           thrown = e;
         }

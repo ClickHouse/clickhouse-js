@@ -15,6 +15,7 @@ import {
   readUInt256,
 } from "./integers.js";
 import { readBool } from "./bool.js";
+import { readEnum8, readEnum16 } from "./enums.js";
 import { readFloat32, readFloat64 } from "./floats.js";
 import { readString, readFixedString } from "./strings.js";
 import { readUUID } from "./uuid.js";
@@ -143,23 +144,26 @@ export function readDynamicType(state: Cursor): Reader<unknown> {
       return readString;
     case 0x16:
       return readFixedString(readUVarint(state));
-    // Enum8 / Enum16: a count then (name String, value Int8/Int16) pairs. The
-    // name<->value map is metadata; the stored value is the underlying int.
+    // Enum8 / Enum16: a count then (name String, value Int8/Int16) pairs. We
+    // collect them into the name<->value map so the value resolves to its name,
+    // matching the textual-type path in compile.ts.
     case 0x17: {
       const n = readUVarint(state);
+      const map = new Map<number, string>();
       for (let i = 0; i < n; i++) {
-        readString(state);
-        readInt8(state);
+        const name = readString(state);
+        map.set(readInt8(state), name);
       }
-      return readInt8;
+      return readEnum8(map);
     }
     case 0x18: {
       const n = readUVarint(state);
+      const map = new Map<number, string>();
       for (let i = 0; i < n; i++) {
-        readString(state);
-        readInt16(state);
+        const name = readString(state);
+        map.set(readInt16(state), name);
       }
-      return readInt16;
+      return readEnum16(map);
     }
     // Decimals: header carries precision P then scale S (both varint). Only S
     // matters for decoding; P is consumed and dropped. Returns [unscaled, S].

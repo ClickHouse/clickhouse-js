@@ -8,25 +8,43 @@ async function reader(expr: string): Promise<Cursor> {
 }
 
 describe("readEnum8", () => {
-  it("decodes the underlying value and resolves the name via a lookup", async () => {
+  it("resolves the underlying value to its name via the supplied map", async () => {
+    const read = readEnum8(
+      new Map([
+        [1, "a"],
+        [2, "b"],
+      ]),
+    );
     const r = await reader("CAST('b' AS Enum8('a' = 1, 'b' = 2))");
-    const value = readEnum8(r);
-    expect(value).toBe(2);
+    expect(read(r)).toBe("b");
     expect(r.pos).toBe(1);
-    // The name map comes from the column's type definition, not the wire.
-    const NAMES: Record<number, string> = { 1: "a", 2: "b" };
-    expect(NAMES[value]).toBe("b");
   });
 
-  it("decodes a negative enum value", async () => {
-    const value = readEnum8(
-      await reader("CAST('x' AS Enum8('x' = -1, 'y' = 2))"),
+  it("resolves a negative enum value", async () => {
+    const read = readEnum8(
+      new Map([
+        [-1, "x"],
+        [2, "y"],
+      ]),
     );
-    expect(value).toBe(-1);
+    expect(read(await reader("CAST('x' AS Enum8('x' = -1, 'y' = 2))"))).toBe(
+      "x",
+    );
+  });
+
+  it("falls back to the stringified integer for an unmapped value", () => {
+    // Wire byte 0x05 with an empty map => no name => "5".
+    expect(readEnum8(new Map())(new Cursor(Buffer.from([5])))).toBe("5");
   });
 
   describe("advance() edge cases", () => {
     it("throws NeedMoreData for every incomplete prefix (0 .. full.length-1)", async () => {
+      const read = readEnum8(
+        new Map([
+          [1, "a"],
+          [2, "b"],
+        ]),
+      );
       const full = await query(
         "SELECT CAST('b' AS Enum8('a' = 1, 'b' = 2)) FORMAT RowBinary",
       );
@@ -34,7 +52,7 @@ describe("readEnum8", () => {
         const r = new Cursor(full.subarray(0, len));
         let thrown: unknown;
         try {
-          readEnum8(r);
+          read(r);
         } catch (e) {
           thrown = e;
         }
