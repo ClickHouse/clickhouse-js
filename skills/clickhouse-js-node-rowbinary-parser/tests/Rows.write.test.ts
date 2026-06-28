@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { query } from "./clickhouse.js";
 import { writeRows } from "../src/rows_writer.js";
 import { type Writer } from "../src/core_writer.js";
@@ -27,8 +27,9 @@ function encodeRows(
   write: Writer<Row>,
   rows: Iterable<Row>,
   bufferSize = 4096,
+  maxSize?: number,
 ): Buffer {
-  return Buffer.concat([...writeRows(write)(rows, bufferSize)]);
+  return Buffer.concat([...writeRows(write)(rows, bufferSize, maxSize)]);
 }
 
 describe("writeRows", () => {
@@ -79,8 +80,35 @@ describe("writeRows", () => {
     expect(a).toEqual(snapshot); // `a` must be untouched
   });
 
-  it("throws when a single row can't fit in an empty buffer", () => {
-    const gen = writeRows(writeRow)(rows, 4); // too small for even one row
-    expect(() => gen.next()).toThrow(/single row exceeds the sink buffer/);
+  it("grows the buffer to fit a row larger than bufferSize", async () => {
+    // bufferSize 4 can't hold even one 17-byte row: the buffer must double
+    // (4→8→16→32) until the row fits, with no data lost and nothing thrown.
+    const expected = await query(sql);
+    expect(encodeRows(writeRow, rows, 4)).toEqual(expected);
+  });
+
+  it("warns once when growth passes maxSize, but still fits the row", async () => {
+    const expected = await query(sql);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      // bufferSize 4, maxSize 16: fitting a 17-byte row grows to 32 (> 16),
+      // so it warns — once — and still encodes the full result.
+      const out = encodeRows(writeRow, rows, 4, 16);
+      expect(out).toEqual(expected);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]?.[0]).toMatch(/past maxSize=16/);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("does not warn while growth stays within maxSize (default Infinity)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      encodeRows(writeRow, rows, 4); // maxSize defaults to Infinity
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

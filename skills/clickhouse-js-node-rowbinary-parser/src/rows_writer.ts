@@ -15,30 +15,45 @@ const DEFAULT_BUFFER_SIZE = 64 * 1024;
  * `reserve`, and a plain `(sink, rows) => void` would let that escape mid-row,
  * leaving the caller unable to tell how many rows actually made it in. Instead
  * this owns the sink: it catches `BufferFull`, rewinds to the last COMPLETE row
- * boundary (never a half-written row), `yield`s that buffer, and starts a FRESH
+ * boundary (never a half-written row), `yield`s that batch, and starts a FRESH
  * `Sink` for the rows that didn't fit. Because each flush gets its own buffer,
  * every yielded `Buffer` stays valid after the generator resumes — safe to retain
  * or hand to an async sink, no copy needed. The caller supplies a `bufferSize`,
  * not a sink, and `rows` is an `Iterable<T>` (not a fixed array), so the same
  * driver handles a future infinite/streaming row source unchanged.
  *
- * The driver loop is just a `for...of` — the generator yields every buffer
- * including the trailing partial one, so there's nothing to flush afterwards:
+ * The driver loop is just a `for...of` — the generator yields each batch of whole
+ * rows whenever it stops accumulating (on overflow, or when the rows run out), so
+ * the final batch comes through the same channel and there's nothing to flush
+ * afterwards:
  *
  *   const drive = writeRows(writeRow);
  *   for (const chunk of drive(rows, 64 * 1024)) send(chunk);
  *
+ * OVERSIZED ROWS: when a single row won't fit even an empty buffer, the buffer is
+ * GROWN (doubled) and the row retried — never dropped, never thrown. `maxSize`
+ * (default `Infinity`, i.e. grow silently) is a soft threshold: once growing past
+ * it to fit a row, `writeRows` `console.warn`s ONCE so a pathologically large row
+ * or an under-sized `bufferSize` doesn't pass unnoticed, but still grows to fit it.
+ *
  * When generating code, inline the per-column writes into the loop body,
  * mirroring the reader.
- *
- * @throws if a single row can't fit an empty buffer — it never will, so rather
- * than spin forever this throws. Set `bufferSize` above your largest row.
  */
 export function writeRows<T>(
   writeRow: Writer<T>,
-): (rows: Iterable<T>, bufferSize?: number) => Generator<Buffer, void, void> {
-  return function* (rows, bufferSize = DEFAULT_BUFFER_SIZE) {
-    let sink = new Sink(Buffer.allocUnsafe(bufferSize));
+): (
+  rows: Iterable<T>,
+  bufferSize?: number,
+  maxSize?: number,
+) => Generator<Buffer, void, void> {
+  return function* (
+    rows,
+    bufferSize = DEFAULT_BUFFER_SIZE,
+    maxSize = Infinity,
+  ) {
+    let size = bufferSize;
+    let warned = false;
+    let sink = new Sink(Buffer.allocUnsafe(size));
     for (const row of rows) {
       while (true) {
         const committed = sink.pos; // start of this row — the last clean boundary
@@ -47,17 +62,28 @@ export function writeRows<T>(
           break; // row written cleanly — on to the next
         } catch (e) {
           if (e !== BufferFull) throw e;
-          if (committed === 0)
-            // an empty buffer couldn't hold even this one row — it never will
-            throw new Error(
-              "RowBinary writeRows: a single row exceeds the sink buffer; enlarge bufferSize",
-            );
+          if (committed === 0) {
+            // An empty buffer couldn't hold even this one row: double it and
+            // retry the SAME row — never drop it. Nothing was written, so the
+            // discarded sink had no bytes to flush.
+            size *= 2;
+            if (size > maxSize && !warned) {
+              warned = true;
+              console.warn(
+                `RowBinary writeRows: a row forced the buffer to grow to ${size} bytes, ` +
+                  `past maxSize=${maxSize}. Growing to fit it anyway — raise bufferSize/maxSize ` +
+                  `or check for unexpectedly large rows.`,
+              );
+            }
+            sink = new Sink(Buffer.allocUnsafe(size));
+            continue;
+          }
           sink.pos = committed; // drop the partially written row, then flush
           yield sink.bytes();
-          sink = new Sink(Buffer.allocUnsafe(bufferSize)); // fresh buffer; retry the row
+          sink = new Sink(Buffer.allocUnsafe(size)); // fresh buffer; retry the row
         }
       }
     }
-    if (sink.pos > 0) yield sink.bytes(); // the trailing, partial buffer
+    if (sink.pos > 0) yield sink.bytes(); // the final batch
   };
 }
