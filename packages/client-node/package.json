@@ -21,7 +21,8 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "skills"
+    "skills",
+    "CHANGELOG.md"
   ],
   "agents": {
     "skills": [
