@@ -340,14 +340,28 @@ describe("framing: i32, X, i32 — the middle reader must stop at the exact byte
     it("Enum8", async () => {
       const r = await framed("CAST('b' AS Enum8('a' = 1, 'b' = 2))");
       expect(readInt32(r)).toBe(LEAD);
-      expect(readEnum8(r)).toBe(2);
+      expect(
+        readEnum8(
+          new Map([
+            [1, "a"],
+            [2, "b"],
+          ]),
+        )(r),
+      ).toBe("b");
       expect(readInt32(r)).toBe(TRAIL);
     });
 
     it("Enum16", async () => {
       const r = await framed("CAST('big' AS Enum16('small' = 1, 'big' = 300))");
       expect(readInt32(r)).toBe(LEAD);
-      expect(readEnum16(r)).toBe(300);
+      expect(
+        readEnum16(
+          new Map([
+            [1, "small"],
+            [300, "big"],
+          ]),
+        )(r),
+      ).toBe("big");
       expect(readInt32(r)).toBe(TRAIL);
     });
   });
