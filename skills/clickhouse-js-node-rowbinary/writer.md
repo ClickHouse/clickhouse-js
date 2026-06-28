@@ -5,68 +5,60 @@ Encoding JS values into a `RowBinary` payload to send to ClickHouse. Read
 format?") and the principles that apply to **both** directions; this file covers
 what's specific to **writing**. Reading? See [reader.md](reader.md).
 
-Each `writeX` encodes one value: it appends that value's RowBinary bytes to a
-`Sink` — an object wrapping a byte buffer and the current write offset. Leaf
-writers (`writeUInt8`, `writeString`, …) are `Writer<T>` functions with the shape
-`(sink, value) => void`. Combinators (`writeArray`, `writeTuple`, …) take
-sub-writers and return a `Writer`, so composite types compose with no per-element
-closures. Import the barrel as `@clickhouse/rowbinary/writer`, or a per-type
-module for just what you need. (Structurally this is the mirror of the decode
-side in [reader.md](reader.md), but you don't need the read side to write.)
-
-```ts
-const sink = new Sink(Buffer.allocUnsafe(64));
-writeUInt8(sink, 255);
-sink.bytes(); // the encoded RowBinary
-```
+Each `writeX` encodes one value, appending its RowBinary bytes to a `Sink` (a
+caller-supplied byte buffer plus the current write offset — state only, no write
+methods). Leaf writers (`writeUInt8`, `writeString`, …) encode directly;
+combinators (`writeArray`, `writeTuple`, …) take sub-writers and return a writer,
+so composite types compose with no per-element closures. For the `Sink`/`Writer<T>`
+types and how to drain the encoded bytes, see `src/writers/core.ts`. Import the
+barrel as `@clickhouse/rowbinary/writer`, or a per-type module for just what you
+need. (Structurally this is the mirror of the decode side in
+[reader.md](reader.md), but you don't need the read side to write.)
 
 ## Writer guidance
 
 On top of the shared principles in [SKILL.md](SKILL.md), the write path has its own:
 
-- **Reserve before you write.** `reserve(sink, n)` ensures the sink has room for
-  `n` more bytes and returns the offset to write them at; if the buffer can't fit
-  them it throws `BufferFull`. Every leaf writer reserves the bytes it needs and
-  writes at that returned offset.
+- **Reserve before you write.** Every fixed-width write goes through `reserve()`,
+  which bounds-checks against the fixed-length buffer and throws the `BufferFull`
+  sentinel when the chunk is full — your cue to flush what's written and continue
+  into a fresh buffer. Exact signature, return value, and throw contract are in
+  `src/writers/core.ts`.
 
-- **Coalesce `reserve()` across adjacent fixed-width columns.** A run of
-  neighbouring fixed-width columns has a known combined size, so call `reserve()`
-  ONCE for the whole run and write each value at a constant offset, rather than
-  reserving per column.
+- **Coalesce `reserve()` across a run of adjacent fixed-width columns.** Their
+  combined size is statically known, so reserve ONCE for the whole run and write
+  each value at a constant offset off the returned base — one bounds-check instead
+  of one per column. Only applies where every column in the run is fixed-width (a
+  variable-width writer like `writeString` reserves on its own).
 
-- **Hoist the sink buffer/view into locals.** Declare the working buffer and view
-  once at the top of the generated writer and keep the write offset in a **local
-  variable**, operating on it directly instead of re-reading it from the sink
-  object on every write.
+- **Hoist sink state into locals in the generated writer.** `Sink.buf`/`Sink.view`
+  are `readonly`, so bind them to locals once at the top and address them directly
+  instead of through `sink.` on every write. Keep the write position (`sink.pos`)
+  in a local too — but sync it back to `sink.pos` before any `reserve()` or
+  `BufferFull` throw, since those read and mutate it to decide capacity and where a
+  flushed buffer resumes.
 
-- **Stream large results with `writeRows`.** `writeRows(writeRow)` is a
-  **streaming generator** over a fixed buffer (`bufferSize`, default 64 KiB), not
-  a one-shot `Writer<readonly T[]>`. It yields a batch of whole rows each time
-  the buffer fills — rewinding so a half-written row never leaks — and starts a
-  fresh buffer for the rest, so a result larger than the buffer (or an unbounded
-  row source) streams out chunk by chunk. An oversized row grows the buffer
-  (doubling) rather than failing. Per-buffer fill is published on the
-  `@clickhouse/rowbinary:writeRows.flush` `node:diagnostics_channel`
-  (`FLUSH_CHANNEL_NAME`, `WriteRowsFlush`) for buffer-utilization metrics.
-
-  ```ts
-  const writeRow = writeTupleNamed({ id: writeUInt64, name: writeString });
-  for (const chunk of writeRows(writeRow)(rows, 64 * 1024)) send(chunk);
-  ```
+- **Stream the whole result with `writeRows`, not a one-shot writer.** When you
+  need to encode a large or unbounded row source, reach for `writeRows` rather than
+  a `Writer<readonly T[]>`: it owns a fixed buffer and yields it as a generator,
+  streaming the result out chunk by chunk instead of demanding it all fit at once.
+  It never leaks a half-written row (it rewinds to the last whole-row boundary
+  before flushing) and never fails on a single big row (it grows the buffer to fit).
+  It also publishes a per-flush diagnostics-channel event for buffer-utilization
+  metrics. Signature, default buffer size, channel name and payload type, the
+  growth/rewind details, and a usage example are all in `src/writers/rows.ts`.
 
 - **No defensive validation on the hot path.** Don't add `isFinite`/`NaN`/range
-  checks to `writeX`; the value is assumed correct and an invalid one is a
-  programming error — document the precondition in JSDoc instead. Prefer letting
-  the ClickHouse server reject bad bytes over guarding client-side. Two narrow
-  exceptions: checks that keep the **framing** in sync (`writeIPv6` requires
-  exactly 16 bytes, since a wrong length shifts every following field) and
-  **zero-cost parse-time helpers** (string → bytes, before anything is on the
-  wire — e.g. `parseIPv6` rejecting malformed groups). See [AGENTS.md](AGENTS.md).
+  checks to `writeX`; document the precondition in JSDoc instead. Two narrow
+  exceptions — framing-keeping checks and zero-cost parse-time helpers — are
+  spelled out in [AGENTS.md](AGENTS.md); `src/writers/ip.ts` is the worked
+  example (`writeIPv6`, `parseIPv6`).
 
-- **Floor, don't round, on lossy time conversions.** `writeDate`/`writeDate32`
-  floor to the calendar day and `writeDateTime` floors to the whole second, so a
-  non-midnight `Date` or sub-second `DateTime` is never rounded up to the wrong
-  encoding.
+- **Lossy time conversions floor, never round.** Every date/time writer in
+  `src/writers/datetime.ts` drops the sub-unit it can't encode by flooring toward
+  −∞, so a caller's value is never silently shifted *up* to the wrong
+  day/second/tick and pre-1970 instants stay correct (not rounded toward the
+  epoch). See its JSDoc for the per-function specifics.
 
 ## Writer type family references
 

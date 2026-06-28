@@ -61,6 +61,10 @@ export function parseIPv4(text: string): number {
  * `formatIPv6`, accepting the canonical forms it emits (`::` zero-run compression
  * and the `::ffff:a.b.c.d` IPv4-mapped form) as well as the fully expanded form.
  * Pair with {@link writeIPv6}.
+ *
+ * Rejects malformed input (throws): a parse-time helper validates because it
+ * must produce exactly 16 well-defined bytes and there is no hot loop or server
+ * to fall back on — see the "No defensive validation" exceptions in AGENTS.md.
  */
 export function parseIPv6(text: string): Buffer {
   const halves = text.split("::");
