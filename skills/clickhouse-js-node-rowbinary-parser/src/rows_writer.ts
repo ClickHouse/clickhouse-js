@@ -31,28 +31,18 @@ const DEFAULT_BUFFER_SIZE = 64 * 1024;
  *   for (const chunk of drive(rows, 64 * 1024)) send(chunk);
  *
  * OVERSIZED ROWS: when a single row won't fit even an empty buffer, the buffer is
- * GROWN (doubled) and the row retried — never dropped, never thrown. `maxSize`
- * (default `Infinity`, i.e. grow silently) is a soft threshold: once growing past
- * it to fit a row, `writeRows` `console.warn`s ONCE so a pathologically large row
- * or an under-sized `bufferSize` doesn't pass unnoticed, but still grows to fit it.
+ * GROWN (doubled) and the row retried — never dropped, never thrown. Each growth
+ * `console.warn`s so an under-sized `bufferSize` or a pathologically large row
+ * doesn't pass unnoticed.
  *
  * When generating code, inline the per-column writes into the loop body,
  * mirroring the reader.
  */
 export function writeRows<T>(
   writeRow: Writer<T>,
-): (
-  rows: Iterable<T>,
-  bufferSize?: number,
-  maxSize?: number,
-) => Generator<Buffer, void, void> {
-  return function* (
-    rows,
-    bufferSize = DEFAULT_BUFFER_SIZE,
-    maxSize = Infinity,
-  ) {
+): (rows: Iterable<T>, bufferSize?: number) => Generator<Buffer, void, void> {
+  return function* (rows, bufferSize = DEFAULT_BUFFER_SIZE) {
     let size = bufferSize;
-    let warned = false;
     let sink = new Sink(Buffer.allocUnsafe(size));
     for (const row of rows) {
       while (true) {
@@ -67,14 +57,10 @@ export function writeRows<T>(
             // retry the SAME row — never drop it. Nothing was written, so the
             // discarded sink had no bytes to flush.
             size *= 2;
-            if (size > maxSize && !warned) {
-              warned = true;
-              console.warn(
-                `RowBinary writeRows: a row forced the buffer to grow to ${size} bytes, ` +
-                  `past maxSize=${maxSize}. Growing to fit it anyway — raise bufferSize/maxSize ` +
-                  `or check for unexpectedly large rows.`,
-              );
-            }
+            console.warn(
+              `RowBinary writeRows: a row didn't fit; grew the buffer to ${size} bytes. ` +
+                `Raise bufferSize if this recurs.`,
+            );
             sink = new Sink(Buffer.allocUnsafe(size));
             continue;
           }

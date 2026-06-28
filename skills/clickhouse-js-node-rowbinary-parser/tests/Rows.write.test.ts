@@ -27,9 +27,8 @@ function encodeRows(
   write: Writer<Row>,
   rows: Iterable<Row>,
   bufferSize = 4096,
-  maxSize?: number,
 ): Buffer {
-  return Buffer.concat([...writeRows(write)(rows, bufferSize, maxSize)]);
+  return Buffer.concat([...writeRows(write)(rows, bufferSize)]);
 }
 
 describe("writeRows", () => {
@@ -80,32 +79,25 @@ describe("writeRows", () => {
     expect(a).toEqual(snapshot); // `a` must be untouched
   });
 
-  it("grows the buffer to fit a row larger than bufferSize", async () => {
-    // bufferSize 4 can't hold even one 17-byte row: the buffer must double
-    // (4→8→16→32) until the row fits, with no data lost and nothing thrown.
-    const expected = await query(sql);
-    expect(encodeRows(writeRow, rows, 4)).toEqual(expected);
-  });
-
-  it("warns once when growth passes maxSize, but still fits the row", async () => {
+  it("grows the buffer to fit a row larger than bufferSize, warning on each growth", async () => {
     const expected = await query(sql);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      // bufferSize 4, maxSize 16: fitting a 17-byte row grows to 32 (> 16),
-      // so it warns — once — and still encodes the full result.
-      const out = encodeRows(writeRow, rows, 4, 16);
-      expect(out).toEqual(expected);
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0]?.[0]).toMatch(/past maxSize=16/);
+      // bufferSize 4 can't hold even one 17-byte row: the buffer doubles
+      // (4→8→16→32) until the row fits — no data lost, nothing thrown — and each
+      // growth warns.
+      expect(encodeRows(writeRow, rows, 4)).toEqual(expected);
+      expect(warn).toHaveBeenCalled();
+      expect(warn.mock.calls[0]?.[0]).toMatch(/grew the buffer to \d+ bytes/);
     } finally {
       warn.mockRestore();
     }
   });
 
-  it("does not warn while growth stays within maxSize (default Infinity)", () => {
+  it("does not warn when every row fits the buffer", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      encodeRows(writeRow, rows, 4); // maxSize defaults to Infinity
+      encodeRows(writeRow, rows); // default 4096 fits every row
       expect(warn).not.toHaveBeenCalled();
     } finally {
       warn.mockRestore();
