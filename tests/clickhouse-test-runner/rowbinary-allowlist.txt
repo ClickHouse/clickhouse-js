@@ -756,6 +756,7 @@
 01292_quantile_array_bug
 01293_external_sorting_limit_bug
 01296_pipeline_stuck
+01300_polygon_convex_hull
 01303_polygons_equals
 01305_array_join_prewhere_in_subquery
 01307_polygon_perimeter
@@ -1518,6 +1519,7 @@
 02690_subquery_identifiers
 02691_multiple_joins_backtick_identifiers
 02692_multiple_joins_unicode
+02699_polygons_sym_difference_rollup
 02700_regexp_operator
 02705_grouping_keys_equal_keys
 02705_projection_and_ast_optimizations_bug
@@ -2053,6 +2055,7 @@
 03354_translate_crap
 03356_analyzer_unused_scalar_subquery
 03358_block_structure_match
+03359_point_in_polygon_index
 03363_constant_nullable_key
 03363_function_keccak256
 03364_pretty_json_bool
