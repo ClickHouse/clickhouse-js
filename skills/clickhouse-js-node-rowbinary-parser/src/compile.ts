@@ -115,10 +115,12 @@ export class RowBinaryTypeError extends Error {
  */
 export function astToReader(node: Node): Reader<unknown> {
   switch (node.kind) {
-    case NodeKind.EnumDataType:
-      // Explicit-value enum: the wire value is the underlying int; the
-      // name<->value map is metadata we don't need to decode.
-      return node.name === "Enum16" ? readEnum16 : readEnum8;
+    case NodeKind.EnumDataType: {
+      // Explicit-value enum: the wire value is the underlying int, which we
+      // resolve to its NAME via the `'name' = value` pairs the type carries.
+      const map = enumNameMap(node);
+      return node.name === "Enum16" ? readEnum16(map) : readEnum8(map);
+    }
     case NodeKind.TupleDataType:
       return tupleReader(node);
     case NodeKind.DataType:
@@ -185,12 +187,13 @@ function dataTypeReader(node: Node): Reader<unknown> {
       return readDecimal128(literalInt(requireArg(node, 0)));
     case "Decimal256":
       return readDecimal256(literalInt(requireArg(node, 0)));
-    // Auto-assigned enums arrive as a plain DataType (no explicit values); the
-    // wire value is still the underlying int.
+    // A bare `Enum8`/`Enum16` (no explicit values — only reachable from a
+    // hand-written type string) has no names to resolve, so the reader falls
+    // back to the stringified underlying int.
     case "Enum8":
-      return readEnum8;
+      return readEnum8(new Map());
     case "Enum16":
-      return readEnum16;
+      return readEnum16(new Map());
 
     default: {
       // Interval<Unit> (IntervalSecond, IntervalDay, …): all decode to the
@@ -245,6 +248,13 @@ function nestedReader(node: Node): Reader<unknown> {
     fields[child.name] = astToReader(child.data_type);
   }
   return readNested(fields);
+}
+
+/** Builds an enum's underlying-int -> name lookup from its `'name' = value` pairs. */
+function enumNameMap(node: Node): ReadonlyMap<number, string> {
+  const map = new Map<number, string>();
+  for (const ev of node.values) map.set(Number(ev.value), ev.name);
+  return map;
 }
 
 /** Folds `Decimal(P, S)` to the right width by precision P; scale S drives decoding. */

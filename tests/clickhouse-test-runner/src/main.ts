@@ -6,6 +6,7 @@ import { splitQueries } from "./split-queries.js";
 import { buildStatements, type Statement } from "./test-hint.js";
 import { handleExtractFromConfig } from "./extract-from-config.js";
 import { executeWithClient } from "./backends/client.js";
+import { executeWithRowBinary } from "./backends/rowbinary.js";
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -79,8 +80,27 @@ async function main(): Promise<void> {
     }
   }
 
+  // Backend selection is via env (the upstream runner controls argv): the
+  // RowBinary backend exercises the @clickhouse/rowbinary decode path; the
+  // default passthrough backend streams ClickHouse's own TabSeparated text.
+  // Reject an unknown value rather than silently falling back to passthrough,
+  // which would hide a typo'd TEST_RUNNER_BACKEND in CI.
+  const backend = process.env["TEST_RUNNER_BACKEND"] ?? "passthrough";
+  if (backend !== "passthrough" && backend !== "rowbinary") {
+    process.stderr.write(
+      `Error: unknown TEST_RUNNER_BACKEND "${backend}" (expected "passthrough" or "rowbinary")\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+  appendLog(logPath, "backend=" + backend);
+
   try {
-    await executeWithClient({ args, statements, logPath });
+    if (backend === "rowbinary") {
+      await executeWithRowBinary({ args, statements, logPath });
+    } else {
+      await executeWithClient({ args, statements, logPath });
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     appendLog(logPath, "error=" + msg);

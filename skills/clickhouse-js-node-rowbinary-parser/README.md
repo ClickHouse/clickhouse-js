@@ -35,7 +35,7 @@ const readOrderRow: Reader<OrderRow> = (s) => ({
   id: readUInt8(s),
   uid: formatUUID(readUUID(s)),
   price: readDecimal64(2)(s),
-  status: readEnum8(s),
+  status: readInt8(s), // raw enum int; `readEnum8(map)` resolves it to the name
 });
 ```
 
@@ -100,22 +100,27 @@ in the reader the skill generates for your own columns.
 import {
   type Reader,
   readUInt8,
+  readInt8,
   readUUID,
   formatUUID,
   readDecimal64,
-  readEnum8,
   type DecimalValue,
   streamRowBatches,
 } from "@clickhouse/rowbinary";
 import { createClient } from "@clickhouse/client";
 
-type OrderRow = { id: number; uid: string; price: DecimalValue; status: number };
+type OrderRow = {
+  id: number;
+  uid: string;
+  price: DecimalValue;
+  status: number;
+};
 
 const readOrderRow: Reader<OrderRow> = (s) => ({
   id: readUInt8(s),
   uid: formatUUID(readUUID(s)),
   price: readDecimal64(2)(s),
-  status: readEnum8(s),
+  status: readInt8(s), // raw enum int; `readEnum8(map)` resolves it to the name
 });
 
 // `exec` resolves to a Node `Stream.Readable`. It is already an
