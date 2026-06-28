@@ -29,6 +29,27 @@ describe("renderValue — top level (escaped, unquoted)", () => {
     expect(render("Float64", NaN)).toBe("nan");
   });
 
+  it("float64 signed zero and exponent style match ClickHouse", () => {
+    expect(render("Float64", -0)).toBe("-0");
+    expect(render("Float64", 0)).toBe("0");
+    // positive exponents drop the '+' (1e+21 -> 1e21); negatives keep the '-'
+    expect(render("Float64", 1e21)).toBe("1e21");
+    expect(render("Float64", 1e-10)).toBe("1e-10");
+  });
+
+  it("float32 renders the shortest single-precision round-trip, not the widened double", () => {
+    // Math.fround(0.26894) === the value ClickHouse decodes; String() of that
+    // double is 0.2689400017261505, but ClickHouse prints the shortest form.
+    expect(render("Float32", Math.fround(0.26894))).toBe("0.26894");
+    expect(render("Float32", Math.fround(-0.76159))).toBe("-0.76159");
+    expect(render("Float32", Math.fround(0.1))).toBe("0.1");
+    expect(render("Float32", Math.fround(1 / 3))).toBe("0.33333334");
+    expect(render("Float32", Math.fround(3.4028235e38))).toBe("3.4028235e38");
+    expect(render("Float32", -0)).toBe("-0");
+    expect(render("Float32", Infinity)).toBe("inf");
+    expect(render("Float32", NaN)).toBe("nan");
+  });
+
   it("bool", () => {
     expect(render("Bool", true)).toBe("true");
     expect(render("Bool", false)).toBe("false");

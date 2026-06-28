@@ -75,12 +75,48 @@ function escapeQuoted(s: string): string {
   return s.replace(/[\\\t\n\r\0']/g, (c) => QUOTED_ESCAPES[c]!);
 }
 
-/** ClickHouse float text: finite values match JS shortest round-trip; specials are lower-case words. */
-function formatFloat(n: number): string {
+/** ClickHouse's lower-case words for the non-finite floats and signed zero, else null. */
+function floatSpecial(n: number): string | null {
   if (Number.isNaN(n)) return "nan";
   if (n === Infinity) return "inf";
   if (n === -Infinity) return "-inf";
-  return String(n);
+  if (n === 0) return Object.is(n, -0) ? "-0" : "0";
+  return null;
+}
+
+/**
+ * Reconcile JS's number text with ClickHouse's: ClickHouse writes a positive
+ * exponent without the `+` (`3.4028235e38`, not JS's `3.4028235e+38`); negative
+ * exponents (`1e-10`) already match.
+ */
+function chFloatText(s: string): string {
+  return s.replace("e+", "e");
+}
+
+/**
+ * ClickHouse `Float64` text: the shortest decimal that round-trips to the
+ * double, which is exactly what `String(number)` produces in V8 (and what
+ * ClickHouse emits).
+ */
+function formatFloat(n: number): string {
+  return floatSpecial(n) ?? chFloatText(String(n));
+}
+
+/**
+ * ClickHouse `Float32` text. The parser widens a Float32 to a JS double, so
+ * `String(n)` would print the double's full precision (e.g. `0.2689400017261505`
+ * for a value ClickHouse prints as `0.26894`). ClickHouse instead emits the
+ * shortest decimal that round-trips to the *single*-precision value, so search
+ * increasing precisions for the shortest string whose `Math.fround` is `n`.
+ */
+function formatFloat32(n: number): string {
+  const special = floatSpecial(n);
+  if (special !== null) return special;
+  for (let p = 1; p < 9; p++) {
+    const candidate = Number(n.toPrecision(p));
+    if (Math.fround(candidate) === n) return chFloatText(String(candidate));
+  }
+  return chFloatText(String(n));
 }
 
 const pad2 = (n: number): string => String(n).padStart(2, "0");
@@ -215,6 +251,7 @@ export function renderValue(
     case "Bool":
       return value ? "true" : "false";
     case "Float32":
+      return formatFloat32(value as number);
     case "Float64":
     case "BFloat16":
       return formatFloat(value as number);
