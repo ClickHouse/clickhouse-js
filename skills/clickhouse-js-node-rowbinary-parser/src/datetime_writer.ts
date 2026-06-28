@@ -9,6 +9,12 @@ const MS_PER_DAY = 86_400_000;
  * `getTime() / 86_400_000` recovers the whole-day count exactly. A non-midnight
  * input is floored to its calendar day (matching ClickHouse's truncation),
  * never rounded up into the next day.
+ *
+ * PRECONDITION: a valid `Date` whose day count fits the `UInt16` range
+ * (1970-01-01 … ~2149-06-06). Like every leaf writer (see `writeUVarint`) this
+ * is not range-checked — an invalid or out-of-range `Date` (e.g. a pre-1970 one,
+ * which belongs in {@link writeDate32}) is a programming error; the resulting
+ * bytes are rejected server-side.
  */
 export function writeDate(sink: Sink, value: Date): void {
   sink.view.setUint16(
@@ -23,6 +29,9 @@ export function writeDate(sink: Sink, value: Date): void {
  * negative for pre-1970 dates. The inverse of `readDate32`. A non-midnight input
  * is floored toward -inf to its calendar day, so pre-1970 instants land on the
  * correct (more negative) day rather than rounding toward the epoch.
+ *
+ * PRECONDITION: a valid `Date` whose day count fits `Int32`. Not range-checked
+ * (as elsewhere) — an invalid `Date` is a programming error, rejected server-side.
  */
 export function writeDate32(sink: Sink, value: Date): void {
   sink.view.setInt32(
@@ -37,6 +46,10 @@ export function writeDate32(sink: Sink, value: Date): void {
  * the column timezone is metadata, not in the bytes. Sub-second components are
  * floored away (matching the reader and `writeDateTime64`'s `Math.floor`), never
  * rounded up to the next second.
+ *
+ * PRECONDITION: a valid `Date` whose Unix-seconds fit the `UInt32` range
+ * (1970-01-01 … 2106-02-07). Not range-checked (as elsewhere) — an invalid or
+ * out-of-range `Date` is a programming error, rejected server-side.
  */
 export function writeDateTime(sink: Sink, value: Date): void {
   sink.view.setUint32(
