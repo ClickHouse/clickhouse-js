@@ -16,27 +16,30 @@ export function writePoint(sink: Sink, [x, y]: Point): void {
 
 /**
  * Write a `Ring`: `Array(Point)` — a LEB128 point count, then each point. The
- * inverse of `readRing`; each point is one `reserve(16)` plus two inlined
- * `setFloat64`s (one bounds check, no call per coordinate), mirroring the reader.
+ * inverse of `readRing`; a SINGLE `reserve(16 * length)` covers the whole point
+ * block (one bounds check per ring, not per point), then the coordinates are
+ * written into it inline, mirroring the reader.
  */
 export function writeRing(sink: Sink, points: readonly Point[]): void {
   writeUVarint(sink, points.length);
+  const o = reserve(sink, points.length * 16);
   for (let i = 0; i < points.length; i++) {
     const [x, y] = points[i]!;
-    const o = reserve(sink, 16);
-    sink.view.setFloat64(o, x, true);
-    sink.view.setFloat64(o + 8, y, true);
+    const p = o + i * 16;
+    sink.view.setFloat64(p, x, true);
+    sink.view.setFloat64(p + 8, y, true);
   }
 }
 
 /** Write a `LineString`: `Array(Point)` (identical wire to a `Ring`). Inverse of `readLineString`. */
 export function writeLineString(sink: Sink, points: readonly Point[]): void {
   writeUVarint(sink, points.length);
+  const o = reserve(sink, points.length * 16);
   for (let i = 0; i < points.length; i++) {
     const [x, y] = points[i]!;
-    const o = reserve(sink, 16);
-    sink.view.setFloat64(o, x, true);
-    sink.view.setFloat64(o + 8, y, true);
+    const p = o + i * 16;
+    sink.view.setFloat64(p, x, true);
+    sink.view.setFloat64(p + 8, y, true);
   }
 }
 
