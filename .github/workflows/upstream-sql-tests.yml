@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       upstream_ref:
-        description: "ClickHouse/ClickHouse ref to check out"
+        description: "ClickHouse/ClickHouse ref to check out (defaults to the pinned commit)"
         required: false
-        default: "master"
+        default: ""
         type: string
   schedule:
     - cron: "0 5 * * *"
@@ -29,6 +29,13 @@ concurrency:
 
 env:
   UPSTREAM_REPO: "ClickHouse/ClickHouse"
+  # Pinned ClickHouse commit for the upstream test suite. Floating `master`
+  # drifts ahead of the `head`/`latest` server images (e.g. new tests using
+  # settings the image doesn't know yet -> "Unknown setting ..."), which
+  # spuriously reds this workflow. This SHA is a known-good snapshot (last green
+  # run); bump it deliberately, or override per-run via the workflow_dispatch
+  # `upstream_ref` input.
+  UPSTREAM_REF: "edc2b4454dfed0453003168ee672a1249e7f46e9"
   # Network resilience: npm's default of 2 fetch retries is not enough for
   # the transient registry errors (ECONNRESET) we regularly hit in CI.
   NPM_CONFIG_FETCH_RETRIES: "5"
@@ -63,7 +70,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: ${{ env.UPSTREAM_REPO }}
-          ref: ${{ github.event.inputs.upstream_ref || 'master' }}
+          ref: ${{ github.event.inputs.upstream_ref || env.UPSTREAM_REF }}
           path: tests/clickhouse-test-runner/.upstream/ClickHouse
           sparse-checkout: |
             tests/clickhouse-test

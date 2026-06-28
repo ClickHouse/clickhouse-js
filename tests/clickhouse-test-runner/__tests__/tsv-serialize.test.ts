@@ -161,6 +161,41 @@ describe("renderValue — composites", () => {
     ]);
     expect(render("Map(String, Array(UInt8))", m)).toBe("{'a':[1,2],'b':[3]}");
   });
+
+  it("geo types render as Point tuples and their array nestings", () => {
+    // shapes mirror @clickhouse/rowbinary: Point [x,y]; Ring/LineString
+    // Point[]; Polygon/MultiLineString Point[][]; MultiPolygon Point[][][].
+    expect(render("Point", [1.5, 2.5])).toBe("(1.5,2.5)");
+    expect(
+      render("Ring", [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ]),
+    ).toBe("[(0,0),(1,0),(1,1)]");
+    expect(render("LineString", [[0, 0]])).toBe("[(0,0)]");
+    expect(
+      render("Polygon", [
+        [
+          [0, 0],
+          [1, 0],
+        ],
+        [[0.1, 0.1]],
+      ]),
+    ).toBe("[[(0,0),(1,0)],[(0.1,0.1)]]");
+    expect(
+      render("MultiPolygon", [
+        [
+          [
+            [0, 0],
+            [1, 0],
+          ],
+        ],
+      ]),
+    ).toBe("[[[(0,0),(1,0)]]]");
+    // geo renders identically in a nested context
+    expect(render("Array(Point)", [[1.5, 2.5]])).toBe("[(1.5,2.5)]");
+  });
 });
 
 describe("compileRowRenderers", () => {

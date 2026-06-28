@@ -147,6 +147,20 @@ function formatDateTime64(value: unknown, precision: number): string {
   return `${base}.${String(frac).padStart(precision, "0")}`;
 }
 
+/** A geo `Point` decodes to `[x, y]` (two Float64s) and renders as `(x,y)`. */
+function renderPoint(value: unknown): string {
+  const [x, y] = value as [number, number];
+  return `(${formatFloat(x)},${formatFloat(y)})`;
+}
+
+/** `[elem,elem,…]` for the array-of-Point geo nestings (Ring/Polygon/Multi*). */
+function renderPointArray(
+  value: unknown,
+  renderElem: (e: unknown) => string,
+): string {
+  return `[${(value as unknown[]).map(renderElem).join(",")}]`;
+}
+
 /** Map a decoded enum integer to its name via the explicit `'name' = value` pairs in the type. */
 function enumName(node: Node, value: unknown): string {
   const v = BigInt(value as number);
@@ -217,6 +231,21 @@ export function renderValue(
       );
       return `{${entries.join(",")}}`;
     }
+
+    // --- geo: fixed nestings of Point (a Float64 pair). ClickHouse renders
+    // these the same in any context, so `nested` is irrelevant here.
+    case "Point":
+      return renderPoint(value);
+    case "Ring":
+    case "LineString":
+      return renderPointArray(value, renderPoint);
+    case "Polygon":
+    case "MultiLineString":
+      return renderPointArray(value, (r) => renderPointArray(r, renderPoint));
+    case "MultiPolygon":
+      return renderPointArray(value, (poly) =>
+        renderPointArray(poly, (r) => renderPointArray(r, renderPoint)),
+      );
 
     // --- stringish (unquoted+escaped at top level, single-quoted when nested) ---
     case "String":
