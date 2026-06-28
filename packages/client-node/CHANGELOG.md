@@ -1,17 +1,3 @@
-> [!IMPORTANT]
-> **This repository-wide changelog is frozen.** New entries now live in each
-> package's own `CHANGELOG.md`:
->
-> - `@clickhouse/client` → [`packages/client-node/CHANGELOG.md`](packages/client-node/CHANGELOG.md)
-> - `@clickhouse/client-web` → [`packages/client-web/CHANGELOG.md`](packages/client-web/CHANGELOG.md)
-> - `@clickhouse/client-common` (deprecated) → [`packages/client-common/CHANGELOG.md`](packages/client-common/CHANGELOG.md)
-> - `@clickhouse/datatype-parser` → [`packages/datatype-parser/CHANGELOG.md`](packages/datatype-parser/CHANGELOG.md)
-> - `@clickhouse/rowbinary` → [`skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md`](skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md)
->
-> The history below (through `@clickhouse/client` 1.23.0) is retained for
-> reference and was copied as-is into each client package's changelog as the
-> starting point for the split.
-
 # 1.23.0
 
 ## Migration Notes
@@ -24,7 +10,7 @@
 
 ## New features
 
-- (Node.js) Added a RowBinary reader library and agent skill under [`skills/clickhouse-js-node-rowbinary-parser`](./skills/clickhouse-js-node-rowbinary-parser). It ships type-specific, monomorphizable building blocks for decoding `RowBinary` / `RowBinaryWithNames` / `RowBinaryWithNamesAndTypes` streams (full-buffer and chunked), plus a skill that guides an agent to generate bespoke high-performance parsers from a query's column types. The skill is bundled into `@clickhouse/client` (registered in `agents.skills`) and is also published independently as the [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary) package. A matching RowBinary writer is planned. ([#864])
+- (Node.js) Added a RowBinary reader library and agent skill under [`skills/clickhouse-js-node-rowbinary-parser`](../../skills/clickhouse-js-node-rowbinary-parser). It ships type-specific, monomorphizable building blocks for decoding `RowBinary` / `RowBinaryWithNames` / `RowBinaryWithNamesAndTypes` streams (full-buffer and chunked), plus a skill that guides an agent to generate bespoke high-performance parsers from a query's column types. The skill is bundled into `@clickhouse/client` (registered in `agents.skills`) and is also published independently as the [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary) package. A matching RowBinary writer is planned. ([#864])
 
 - Published the [`@clickhouse/datatype-parser`](https://www.npmjs.com/package/@clickhouse/datatype-parser) package: a small, dependency-free standalone parser for ClickHouse data-type strings (the kind sent in the types row of `RowBinaryWithNamesAndTypes`, e.g. `Array(Nullable(UInt64))`, `Tuple(a UInt8, b String)`, `Enum8('a' = 1)`). It is a faithful port of the server's `ParserDataType` and emits a JSON AST that is byte-identical to the server's `EXPLAIN AST json = 1` data-type subtree. It supersedes the deprecated `parseColumnType` (see Migration Notes). ([#893])
 
@@ -55,13 +41,13 @@ Why: a single `boolean` could not express which codec to use or its level, and a
 
 ## Documentation
 
-- Added two **tracer adapter recipes** to [`docs/howto/tracing.md`](./docs/howto/tracing.md) and [`examples/node/coding/otel_tracing.ts`](./examples/node/coding/otel_tracing.ts), demonstrating how common OpenTelemetry auto-instrumentation options compose as thin userland wrappers around the `tracer` API instead of being baked into the client: `requireParentSpan` (skip ClickHouse spans when there is no active parent span — e.g. background health checks) and suppressing the duplicate nested HTTP spans emitted by `@opentelemetry/instrumentation-http` (via `suppressTracing` from `@opentelemetry/core`).
+- Added two **tracer adapter recipes** to [`docs/howto/tracing.md`](../../docs/howto/tracing.md) and [`examples/node/coding/otel_tracing.ts`](../../examples/node/coding/otel_tracing.ts), demonstrating how common OpenTelemetry auto-instrumentation options compose as thin userland wrappers around the `tracer` API instead of being baked into the client: `requireParentSpan` (skip ClickHouse spans when there is no active parent span — e.g. background health checks) and suppressing the duplicate nested HTTP spans emitted by `@opentelemetry/instrumentation-http` (via `suppressTracing` from `@opentelemetry/core`).
 
 # 1.21.0
 
 ## New features
 
-- The tracer API (unreleased, introduced in [#776]) now follows the [OpenTelemetry database semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/sql/) and matches the attribute vocabulary of the Rust client ([clickhouse-rs](https://github.com/ClickHouse/clickhouse-rs)); see [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the documentation. In particular ([#828]):
+- The tracer API (unreleased, introduced in [#776]) now follows the [OpenTelemetry database semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/sql/) and matches the attribute vocabulary of the Rust client ([clickhouse-rs](https://github.com/ClickHouse/clickhouse-rs)); see [`docs/howto/tracing.md`](../../docs/howto/tracing.md) for the documentation. In particular ([#828]):
   - Spans now carry `db.system.name` (instead of `db.system`), `server.address` + `server.port` (instead of a combined `host:port`), `clickhouse.request.query_id` / `clickhouse.request.session_id` (instead of `clickhouse.query_id` / `clickhouse.session_id`), `clickhouse.response.format` on `query` and `clickhouse.request.format` on `insert` (instead of `clickhouse.format`), and `db.operation.name` + `db.collection.name` on `insert` (instead of `clickhouse.table`).
   - The span status is left unset on success (per the OTEL spec recommendation for client spans, previously set to `OK`); on failure, the span gets the `error.type` attribute (the error class name) and, for server-side errors, `clickhouse.error.code` (the numeric ClickHouse error code).
   - Spans record response-side attributes: `db.response.status_code` (HTTP status) and, when the `X-ClickHouse-Summary` header is available, `clickhouse.summary.*` counters (`read_rows`, `written_rows`, etc.).
@@ -115,7 +101,7 @@ await client.query({
 
 ## New Features
 
-- Added an optional **tracer API** that the user can pass through the client config (`tracer`) and that gets called around key lifecycle operations (`query`, `command`, `exec`, `insert`, `ping`). The `ClickHouseTracer` interface is a structural subset of the OpenTelemetry `Tracer`/`Span` APIs, so a raw OTEL tracer (`trace.getTracer(...)`) can be passed to the client as-is - but the client itself ships no tracing dependency. Each operation runs inside `tracer.startActiveSpan(...)`, so auto-instrumented child spans nest under the ClickHouse operation spans; for OpenTelemetry, this requires the `AsyncLocalStorageContextManager` to be registered (the default in the OpenTelemetry Node.js SDK). Tracer exceptions are NOT caught, so a broken tracer will break client operations. See [`docs/howto/tracing.md`](./docs/howto/tracing.md) for the full surface description, and [`examples/node/coding/otel_tracing.ts`](./examples/node/coding/otel_tracing.ts) for a runnable Node.js example. ([#776])
+- Added an optional **tracer API** that the user can pass through the client config (`tracer`) and that gets called around key lifecycle operations (`query`, `command`, `exec`, `insert`, `ping`). The `ClickHouseTracer` interface is a structural subset of the OpenTelemetry `Tracer`/`Span` APIs, so a raw OTEL tracer (`trace.getTracer(...)`) can be passed to the client as-is - but the client itself ships no tracing dependency. Each operation runs inside `tracer.startActiveSpan(...)`, so auto-instrumented child spans nest under the ClickHouse operation spans; for OpenTelemetry, this requires the `AsyncLocalStorageContextManager` to be registered (the default in the OpenTelemetry Node.js SDK). Tracer exceptions are NOT caught, so a broken tracer will break client operations. See [`docs/howto/tracing.md`](../../docs/howto/tracing.md) for the full surface description, and [`examples/node/coding/otel_tracing.ts`](../../examples/node/coding/otel_tracing.ts) for a runnable Node.js example. ([#776])
 
 ```ts
 import { createClient } from "@clickhouse/client";
@@ -595,7 +581,7 @@ A minor release to allow further investigation regarding uncaught error issues w
 
 ## New features
 
-- Added `JSONEachRowWithProgress` format support, `ProgressRow` interface, and `isProgressRow` type guard. See [this Node.js example](./examples/node/select_json_each_row_with_progress.ts) for more details. It should work similarly with the Web version.
+- Added `JSONEachRowWithProgress` format support, `ProgressRow` interface, and `isProgressRow` type guard. See [this Node.js example](../../examples/node/select_json_each_row_with_progress.ts) for more details. It should work similarly with the Web version.
 - (Experimental) Exposed the `parseColumnType` function that takes a string representation of a ClickHouse type (e.g., `FixedString(16)`, `Nullable(Int32)`, etc.) and returns an AST-like object that represents the type. For example:
 
   ```ts
@@ -930,7 +916,7 @@ async function runQuery(
 }
 ```
 
-If you are interested in more details, see the [related test](./packages/client-node/__tests__/integration/node_query_format_types.test.ts) (featuring a great ESLint plugin [expect-types](https://github.com/JoshuaKGoldberg/eslint-plugin-expect-type)) in the client package.
+If you are interested in more details, see the [related test](../../packages/client-node/__tests__/integration/node_query_format_types.test.ts) (featuring a great ESLint plugin [expect-types](https://github.com/JoshuaKGoldberg/eslint-plugin-expect-type)) in the client package.
 
 ### URL configuration
 
@@ -984,7 +970,7 @@ Currently not supported via URL:
 - `log.LoggerClass`
 - (Node.js only) `tls_ca_cert`, `tls_cert`, `tls_key`.
 
-See also: [URL configuration example](./examples/url_configuration.ts).
+See also: [URL configuration example](../../examples/url_configuration.ts).
 
 ### Performance
 
@@ -1089,8 +1075,8 @@ await client.insert({
 
 See also the new examples:
 
-- [Including specific columns](./examples/insert_specific_columns.ts) or [excluding certain ones instead](./examples/insert_exclude_columns.ts)
-- [Leveraging this feature](./examples/insert_ephemeral_columns.ts) when working with
+- [Including specific columns](../../examples/insert_specific_columns.ts) or [excluding certain ones instead](../../examples/insert_exclude_columns.ts)
+- [Leveraging this feature](../../examples/insert_ephemeral_columns.ts) when working with
   [ephemeral columns](https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral)
   ([#217](https://github.com/ClickHouse/clickhouse-js/issues/217))
 
@@ -1099,7 +1085,7 @@ See also the new examples:
 ### New features
 
 - (Node.js only) `X-ClickHouse-Summary` response header is now parsed when working with `insert`/`exec`/`command` methods.
-  See the [related test](./packages/client-node/__tests__/integration/node_summary.test.ts) for more details.
+  See the [related test](../../packages/client-node/__tests__/integration/node_summary.test.ts) for more details.
   NB: it is guaranteed to be correct only for non-streaming scenarios.
   Web version does not currently support this due to CORS limitations. ([#210](https://github.com/ClickHouse/clickhouse-js/issues/210))
 
@@ -1113,8 +1099,8 @@ See also the new examples:
 
 - Added [Parquet format](https://clickhouse.com/docs/en/integrations/data-formats/parquet) streaming support.
   See the new examples:
-  [insert from a file](./examples/node/insert_file_stream_parquet.ts),
-  [select into a file](./examples/node/select_parquet_as_file.ts).
+  [insert from a file](../../examples/node/insert_file_stream_parquet.ts),
+  [select into a file](../../examples/node/select_parquet_as_file.ts).
 
 ## 0.2.5 (Common, Node.js, Web)
 

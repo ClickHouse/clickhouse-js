@@ -15,7 +15,8 @@
   },
   "private": false,
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "exports": {
     "types": "./dist/index.d.ts",

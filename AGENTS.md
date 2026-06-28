@@ -139,11 +139,18 @@ For every pull request review, make sure to provide an evaluation of the followi
 
 1. When reviewing code changes, it is important to consider the impact on the API quality and stability. For example, if the code changes involve modifying the library's public API surface (such as exported functions, classes, or types) or adding new public APIs, it is important to ensure that the changes are well-documented and do not break existing functionality for users of the library.
 
-2. When introducing new features, fixing bugs, or making any change to observable behavior or the public API, you **must update [`CHANGELOG.md`](CHANGELOG.md) in the same PR** — do not defer it to "release time" or leave it only in the PR description. This satisfies the PR template checklist item ("A human-readable description of the changes was provided to include in CHANGELOG"). Follow the existing format exactly:
-   - Entries go under the **top-most version heading**. If the most recent `# x.y.z` heading corresponds to an **already-released** version (check `git tag`), open a **new** top-level `# x.y.z` heading that matches the unreleased version in `package.json` (e.g. the `version` field of [`packages/client-common/package.json`](packages/client-common/package.json)); otherwise append to the existing top heading.
+2. When introducing new features, fixing bugs, or making any change to observable behavior or the public API, you **must update the changelog of every affected package in the same PR** — do not defer it to "release time" or leave it only in the PR description. This satisfies the PR template checklist item ("A human-readable description of the changes was provided to include in CHANGELOG"). Each package keeps its own changelog (the repository-wide [`CHANGELOG.md`](CHANGELOG.md) is **frozen** — do not add new entries there):
+   - `@clickhouse/client` → [`packages/client-node/CHANGELOG.md`](packages/client-node/CHANGELOG.md)
+   - `@clickhouse/client-web` → [`packages/client-web/CHANGELOG.md`](packages/client-web/CHANGELOG.md)
+   - `@clickhouse/client-common` (deprecated) → [`packages/client-common/CHANGELOG.md`](packages/client-common/CHANGELOG.md)
+   - `@clickhouse/datatype-parser` → [`packages/datatype-parser/CHANGELOG.md`](packages/datatype-parser/CHANGELOG.md)
+   - `@clickhouse/rowbinary` → [`skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md`](skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md)
+
+   A change to shared code that is bundled into both clients (the common module) affects **both** `@clickhouse/client` and `@clickhouse/client-web`, so update both of their changelogs. Follow the existing format exactly:
+   - Entries go under the **top-most version heading** of that package's changelog. If the most recent `# x.y.z` heading corresponds to an **already-released** version (check `git tag`), open a **new** top-level `# x.y.z` heading that matches the unreleased version in that package's `package.json`; otherwise append to the existing top heading.
    - Group entries under lowercase section headings, reusing the ones already in the file: `## New features`, `## Improvements`, `## Bug fixes` (and `## Migration Notes` / `## Breaking changes` when relevant).
    - Write a concise, human-readable entry, add an example usage when it helps, and end it with a PR reference link, e.g. `([#825])` plus a matching `[#825]: https://github.com/ClickHouse/clickhouse-js/pull/<n>` reference at the bottom of the section.
    - When a change is Node.js- or Web-only, say so explicitly in the entry (e.g. "(Node.js only)").
-   - Run `npx prettier --write CHANGELOG.md` before committing.
+   - Run `npx prettier --write` on the changelog file(s) you touched before committing.
 
 3. Additionally, make sure that the official documentation is in sync with the changes.
