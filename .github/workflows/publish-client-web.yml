@@ -1,0 +1,131 @@
+name: "publish: client-web"
+
+# Publish + release for @clickhouse/client-web (the Web client).
+#
+# Split out of the former all-in-one publish.yml so each client package
+# publishes on its own. Two triggers, like the standalone-package workflows:
+#   - push to `release` -> publishes the "head" pre-release tag (internal beta).
+#   - manual workflow_dispatch -> publishes the "latest" tag and pushes the
+#     release git tag. The `main` branch never publishes.
+# Both use npm OIDC authentication with provenance, and both deploy through the
+# protected `npm-publish` environment (release branch only + manual approval).
+#
+# The push trigger is path-scoped to this package's own sources (each client
+# package vendors its own copy of the common module, so they no longer share
+# build inputs) plus the repo-root files its published tarball depends on.
+
+permissions:
+  contents: read
+  id-token: write # Required for npm OIDC authentication and provenance
+
+concurrency:
+  # event_name separates the head (push) and latest (workflow_dispatch) runs so
+  # a manual publish never cancels an in-progress head publish (or vice versa).
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  # for the latest workflow
+  workflow_dispatch:
+  # for the head workflow
+  push:
+    branches:
+      - release
+    paths:
+      - "packages/client-web/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "README.md"
+      - "LICENSE"
+      - ".github/workflows/publish-client-web.yml"
+
+env:
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
+
+jobs:
+  head:
+    name: "Publish @clickhouse/client-web (head)"
+    if: github.ref == 'refs/heads/release' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set head pre-release version
+        run: |
+          BASE_VERSION=$(node -p "require('./packages/client-web/package.json').version")
+          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
+          echo "Setting version to: $HEAD_VERSION"
+          npm --workspace @clickhouse/client-web version --no-git-tag-version "$HEAD_VERSION"
+          echo "export default \"$HEAD_VERSION\";" > packages/client-web/src/version.ts
+
+      - name: Build the package
+        run: npm --workspace @clickhouse/client-web run build
+
+      - name: Publish @clickhouse/client-web with head tag
+        run: |
+          npm --workspace @clickhouse/client-web publish \
+            --access public \
+            --provenance \
+            --tag head
+
+  publish:
+    name: "Publish @clickhouse/client-web"
+    if: github.ref == 'refs/heads/release' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: write # Required to push the release git tag
+      id-token: write # Required for npm OIDC authentication and provenance
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      packages: "@clickhouse/client-web"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get the release version
+        id: version
+        run: |
+          BASE_VERSION=$(node -p "require('./packages/client-web/package.json').version")
+          echo "Using version: $BASE_VERSION"
+          echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build the package
+        run: npm --workspace @clickhouse/client-web run build
+
+      - name: Publish @clickhouse/client-web to the latest tag (implicit)
+        run: |
+          npm --workspace @clickhouse/client-web publish \
+            --access public \
+            --provenance
+
+      - name: Create and push release git tag
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: .scripts/push_release_tag.sh "client-web-${RELEASE_VERSION}"

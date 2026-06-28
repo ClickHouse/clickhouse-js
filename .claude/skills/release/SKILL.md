@@ -50,14 +50,18 @@ This skill is the source of truth for the release process. It supersedes the old
    (c) the GitHub Release text. Never push to `release` directly — if the release
    PR needs fixes, route them through `main` (see the `fix-release-pr` skill).
 
-> ⚠️ **Known coupling (TODO: decouple per package).** The automatic `head` publish
-> in `publish.yml` is **all-or-nothing**: any push to `release` that touches
-> `packages/**` re-publishes a `head` build of **all three** client packages
-> (client, client-web, client-common), even if you only bumped one. The manual
-> `latest` publish _is_ per-package. The standalone packages
-> (`datatype-parser`, `rowbinary`) are fully independent. This coupling should be
-> reworked so each client package publishes independently — flag it if it gets in
-> the way, but do not try to fix it as part of a release.
+> **One workflow per package.** Each package has its own publish workflow:
+>
+> - `@clickhouse/client` → `publish-client.yml`
+> - `@clickhouse/client-web` → `publish-client-web.yml`
+> - `@clickhouse/client-common` → `publish-client-common.yml`
+> - `@clickhouse/datatype-parser` → `publish-datatype-parser.yml`
+> - `@clickhouse/rowbinary` → `publish-skill-rowbinary-parser.yml`
+>
+> Each client workflow has two triggers: an automatic `head` publish on push to
+> `release` (path-scoped to that package's own sources, so a change to one client
+> no longer republishes the others) and a manual `latest` publish via
+> `workflow_dispatch`. The standalone packages have the manual trigger only.
 
 ---
 
@@ -127,21 +131,26 @@ gh pr create --base release --head main \
 
 ### Step 4 — Watch the automatic `head` publish + e2e
 
-Merging into `release` pushes to `release`, which triggers `publish.yml` to
-publish a `head` pre-release build (an **internal beta — not tracked** as a
-GitHub Release) of the client packages, followed by an automatic `e2e` job that
-installs the published version across Node 20/22/24/26 and runs integration
-tests against a live ClickHouse.
+Merging into `release` pushes to `release`, which triggers the **path-scoped**
+`head` publish for each package whose sources changed (`publish-client.yml`,
+`publish-client-web.yml`, `publish-client-common.yml`). It publishes a `head`
+pre-release build (an **internal beta — not tracked** as a GitHub Release); the
+Node.js client workflow then runs an automatic `e2e` job that installs the
+published version across Node 20/22/24/26 and runs integration tests against a
+live ClickHouse.
 
-- This publish runs under the `npm-publish` environment → **it pauses for manual
-  approval**. Find the run, give the human the approval link, and wait:
+- These publishes run under the `npm-publish` environment → **they pause for
+  manual approval**. Find the run(s) — one per package that changed — give the
+  human the approval link, and wait:
   ```bash
-  gh run list --workflow=publish.yml --branch release --limit 3
+  gh run list --workflow=publish-client.yml --branch release --limit 3
   gh run view <run-id> --json url -q .url      # hand this URL to the human to approve
   gh run watch <run-id>                        # waits for completion
   ```
-- The `e2e` job in `publish.yml` is sufficient verification — **no manual `@head`
-  testing is needed**. Just watch it.
+  (Use `publish-client-web.yml` / `publish-client-common.yml` for the other
+  packages.)
+- The `e2e` job in `publish-client.yml` is sufficient verification — **no manual
+  `@head` testing is needed**. Just watch it.
 - **If e2e fails:** the broken build is already on npm under the `head` tag.
   Suggest moving that tag out of the way so nobody installs it, e.g.:
   ```bash
@@ -151,26 +160,27 @@ tests against a live ClickHouse.
 
 ### Step 5 — Publish to `latest` (manual dispatch, per package)
 
-Once the `head` e2e is green, dispatch `publish.yml` **manually, per package**,
-from the `release` branch. This builds, publishes to the `latest` tag (npm OIDC +
-provenance), and pushes a git tag (`client-<ver>`, `client-web-<ver>`, or
-`client-common-<ver>`):
+Once the `head` e2e is green, dispatch the package's publish workflow **manually**
+from the `release` branch (no inputs). This builds, publishes to the `latest` tag
+(npm OIDC + provenance), and pushes a git tag (`client-<ver>`, `client-web-<ver>`,
+or `client-common-<ver>`):
 
 ```bash
-gh workflow run publish.yml --ref release -f package='@clickhouse/client'
+gh workflow run publish-client.yml --ref release          # @clickhouse/client
+# gh workflow run publish-client-web.yml --ref release     # @clickhouse/client-web
+# gh workflow run publish-client-common.yml --ref release  # @clickhouse/client-common (deprecated)
 ```
 
 This also runs under `npm-publish` → **approval gate again**. Same drill: hand
 over the approval URL, then watch:
 
 ```bash
-gh run list --workflow=publish.yml --branch release --event workflow_dispatch --limit 1
+gh run list --workflow=publish-client.yml --branch release --event workflow_dispatch --limit 1
 gh run view <run-id> --json url -q .url
 gh run watch <run-id>
 ```
 
-Repeat for each package being released (e.g. dispatch again with
-`-f package='@clickhouse/client-web'`).
+Repeat for each package being released, dispatching its own workflow.
 
 For the deprecated `@clickhouse/client-common`, if you ever cut one, also confirm
 its npm deprecation notice is in place (it should already be).
@@ -274,8 +284,8 @@ Same as Part A, Step 6, using the standalone tag (`datatype-parser-v<ver>` /
 1. Verify/fix the top section of the package's own `CHANGELOG.md` (e.g. `packages/client-node/CHANGELOG.md`) on `main` (quick PR if wrong).
 2. `gh workflow run bump-version.yml --ref main -f package=… -f bump_type=…` → review & merge the bump PR to `main`.
 3. `gh pr create --base release --head main` → review the whole release PR → merge.
-4. Auto `head` publish + e2e on push to `release` → **approve** at `npm-publish`, watch e2e. (If e2e fails: retag the bad build to `debugging`, fix forward.)
-5. `gh workflow run publish.yml --ref release -f package=…` per package → **approve**, watch.
+4. Auto `head` publish (per-package `publish-client*.yml`, path-scoped) + e2e on push to `release` → **approve** at `npm-publish`, watch e2e. (If e2e fails: retag the bad build to `debugging`, fix forward.)
+5. `gh workflow run publish-client.yml --ref release` (or `-web` / `-common`) per package → **approve**, watch.
 6. `gh release create <client-…-tag> --notes-file <changelog-section>` (no `--title`, not prerelease); backfill missing releases.
 
 **Standalone packages (datatype-parser / rowbinary):**

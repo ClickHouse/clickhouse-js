@@ -1,0 +1,247 @@
+name: "publish: client"
+
+# Publish + release for @clickhouse/client (the Node.js client).
+#
+# Split out of the former all-in-one publish.yml so each client package
+# publishes on its own. Two triggers, like the standalone-package workflows:
+#   - push to `release` -> publishes the "head" pre-release tag (internal beta).
+#   - manual workflow_dispatch -> publishes the "latest" tag and pushes the
+#     release git tag. The `main` branch never publishes.
+# Both use npm OIDC authentication with provenance, and both deploy through the
+# protected `npm-publish` environment (release branch only + manual approval).
+#
+# The push trigger is path-scoped to this package's own sources (each client
+# package vendors its own copy of the common module, so they no longer share
+# build inputs) plus the repo-root files its published tarball depends on
+# (README/LICENSE, the bundled skills/, and the shared lockfile/tsconfig).
+#
+# Before publishing, a smoke test packs the freshly built package into a
+# tarball, installs it into a throwaway app, and runs ESM + CJS checks against
+# it (.scripts/smoke_test_pack.sh). After a successful publish, the `e2e` job
+# waits for the version to surface on the npm registry, installs that exact
+# version into a tiny downstream project, and verifies it is usable.
+
+permissions:
+  contents: read
+  id-token: write # Required for npm OIDC authentication and provenance
+
+concurrency:
+  # event_name separates the head (push) and latest (workflow_dispatch) runs so
+  # a manual publish never cancels an in-progress head publish (or vice versa).
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  # for the latest workflow
+  workflow_dispatch:
+  # for the head workflow
+  push:
+    branches:
+      - release
+    paths:
+      - "packages/client-node/**"
+      - "skills/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "README.md"
+      - "LICENSE"
+      - ".github/workflows/publish-client.yml"
+
+env:
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
+
+jobs:
+  head:
+    name: "Publish @clickhouse/client (head)"
+    if: github.ref == 'refs/heads/release' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      packages: "@clickhouse/client"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set head pre-release version
+        id: version
+        run: |
+          BASE_VERSION=$(node -p "require('./packages/client-node/package.json').version")
+          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
+          echo "Setting version to: $HEAD_VERSION"
+          npm --workspace @clickhouse/client version --no-git-tag-version "$HEAD_VERSION"
+          echo "export default \"$HEAD_VERSION\";" > packages/client-node/src/version.ts
+          echo "version=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build the package
+        run: npm --workspace @clickhouse/client run build
+
+      - name: Smoke test the packed tarball
+        run: .scripts/smoke_test_pack.sh @clickhouse/client
+
+      - name: Publish @clickhouse/client with head tag
+        run: |
+          npm --workspace @clickhouse/client publish \
+            --access public \
+            --provenance \
+            --tag head
+
+  publish:
+    name: "Publish @clickhouse/client"
+    if: github.ref == 'refs/heads/release' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: write # Required to push the release git tag
+      id-token: write # Required for npm OIDC authentication and provenance
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      packages: "@clickhouse/client"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get the release version
+        id: version
+        run: |
+          BASE_VERSION=$(node -p "require('./packages/client-node/package.json').version")
+          echo "Using version: $BASE_VERSION"
+          echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build the package
+        run: npm --workspace @clickhouse/client run build
+
+      - name: Smoke test the packed tarball
+        run: .scripts/smoke_test_pack.sh @clickhouse/client
+
+      - name: Publish @clickhouse/client to the latest tag (implicit)
+        run: |
+          npm --workspace @clickhouse/client publish \
+            --access public \
+            --provenance
+
+      - name: Create and push release git tag
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: .scripts/push_release_tag.sh "client-${RELEASE_VERSION}"
+
+  e2e:
+    name: e2e (node ${{ matrix.node }})
+    needs: [head, publish]
+    # Runs whether the published version came from the head job or the manual
+    # latest publish.
+    if: |
+      always() &&
+      (needs.head.result == 'success' || needs.publish.result == 'success')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        node: [20, 22, 24, 26]
+    defaults:
+      run:
+        working-directory: tests/e2e/install
+    env:
+      PUBLISHED_VERSION: ${{ needs.head.outputs.version || needs.publish.outputs.version }}
+      PUBLISHED_PACKAGES: ${{ needs.head.outputs.packages || needs.publish.outputs.packages }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Start ClickHouse (stable) in Docker
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: ${{ matrix.node }}
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Wait for ${{ env.PUBLISHED_VERSION }} to be available on npm
+        run: |
+          set -euo pipefail
+          if [ -z "${PUBLISHED_VERSION}" ]; then
+            echo "PUBLISHED_VERSION is empty; cannot wait for npm publication." >&2
+            exit 1
+          fi
+          if [ -z "${PUBLISHED_PACKAGES}" ]; then
+            echo "PUBLISHED_PACKAGES is empty; cannot wait for npm publication." >&2
+            exit 1
+          fi
+          read -r -a packages <<< "${PUBLISHED_PACKAGES}"
+          # Poll the registry for up to ~5 minutes per package. New versions
+          # usually surface in seconds, but the registry CDN can lag.
+          max_attempts=60
+          sleep_seconds=5
+          for pkg in "${packages[@]}"; do
+            echo "Waiting for ${pkg}@${PUBLISHED_VERSION} to be available on npm..."
+            attempt=1
+            while true; do
+              if npm view "${pkg}@${PUBLISHED_VERSION}" version >/dev/null 2>&1; then
+                echo "  ${pkg}@${PUBLISHED_VERSION} is available."
+                break
+              fi
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Timed out waiting for ${pkg}@${PUBLISHED_VERSION} on npm" >&2
+                exit 1
+              fi
+              echo "  attempt ${attempt}/${max_attempts}: not available yet, sleeping ${sleep_seconds}s..."
+              attempt=$((attempt + 1))
+              sleep "$sleep_seconds"
+            done
+          done
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install the packages at the published version
+        run: |
+          set -euo pipefail
+          read -r -a packages <<< "${PUBLISHED_PACKAGES}"
+          specs=()
+          for pkg in "${packages[@]}"; do
+            specs+=("${pkg}@${PUBLISHED_VERSION}")
+          done
+          npm install "${specs[@]}"
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run client code
+        env:
+          EXPECTED_VERSION: ${{ env.PUBLISHED_VERSION }}
+        run: node src/index.ts
+
+      # End-to-end integration against the installed package and a live
+      # single-node ClickHouse (started above): create/insert/select, stream,
+      # and confirm a bad query surfaces as a ClickHouseError.
+      - name: Run integration tests against the published package
+        run: node src/integration.ts
