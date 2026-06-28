@@ -1,4 +1,4 @@
-import { type Reader, type Writer } from "./core.js";
+import { type Reader } from "./core.js";
 
 /**
  * `LowCardinality(T)` is TRANSPARENT in RowBinary: it is encoded byte-for-byte
@@ -16,14 +16,3 @@ import { type Reader, type Writer } from "./core.js";
  */
 export const readLowCardinality = <T>(readValue: Reader<T>): Reader<T> =>
   readValue;
-
-/**
- * `LowCardinality(T)` is TRANSPARENT in RowBinary (no dictionary layer on the
- * wire), so there is nothing extra to encode: use `T`'s own writer directly.
- * This identity combinator mirrors {@link readLowCardinality} and returns the
- * inner writer unchanged:
- *
- *   writeLowCardinality(writeString) === writeString
- */
-export const writeLowCardinality = <T>(writeValue: Writer<T>): Writer<T> =>
-  writeValue;

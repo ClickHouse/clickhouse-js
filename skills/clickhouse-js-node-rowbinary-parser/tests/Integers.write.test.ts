@@ -1,21 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { roundTrip } from "./roundTrip.js";
-import type { Reader, Writer } from "../src/core.js";
-import {
-  readUInt8,
-  readInt8,
-  readUInt16,
-  readInt16,
-  readUInt32,
-  readInt32,
-  readUInt64,
-  readInt64,
-  readUInt128,
-  readInt128,
-  readUInt256,
-  readInt256,
-} from "../src/integers.js";
+import { encode } from "./encode.js";
 import {
   writeUInt8,
   writeInt8,
@@ -29,42 +14,155 @@ import {
   writeInt128,
   writeUInt256,
   writeInt256,
-} from "../src/integers.js";
+} from "../src/integers_writer.js";
 
-/** Pair a reader with its matching writer into a byte-level round-trip closure. */
-function rt<T>(read: Reader<T>, write: Writer<T>): (bytes: Buffer) => Buffer {
-  return (bytes) => roundTrip(bytes, read, write).encoded;
+/** The RowBinary bytes ClickHouse emits for `cast('literal')` — the source of truth. */
+function chBytes(cast: string, literal: string): Promise<Buffer> {
+  return query(`SELECT ${cast}('${literal}') FORMAT RowBinary`);
 }
 
-interface IntCase {
-  name: string;
-  cast: string;
-  rt: (bytes: Buffer) => Buffer;
-  values: string[];
-}
+describe("writeUInt8", () => {
+  it("encodes 0", async () =>
+    expect(encode(writeUInt8, 0)).toEqual(await chBytes("toUInt8", "0")));
+  it("encodes 255", async () =>
+    expect(encode(writeUInt8, 255)).toEqual(await chBytes("toUInt8", "255")));
+});
 
-const cases: IntCase[] = [
-  { name: "UInt8", cast: "toUInt8", rt: rt(readUInt8, writeUInt8), values: ["0", "255"] },
-  { name: "Int8", cast: "toInt8", rt: rt(readInt8, writeInt8), values: ["-128", "0", "127"] },
-  { name: "UInt16", cast: "toUInt16", rt: rt(readUInt16, writeUInt16), values: ["0", "65535"] },
-  { name: "Int16", cast: "toInt16", rt: rt(readInt16, writeInt16), values: ["-32768", "0", "32767"] },
-  { name: "UInt32", cast: "toUInt32", rt: rt(readUInt32, writeUInt32), values: ["0", "4294967295"] },
-  { name: "Int32", cast: "toInt32", rt: rt(readInt32, writeInt32), values: ["-2147483648", "0", "2147483647"] },
-  { name: "UInt64", cast: "toUInt64", rt: rt(readUInt64, writeUInt64), values: ["0", "18446744073709551615"] },
-  { name: "Int64", cast: "toInt64", rt: rt(readInt64, writeInt64), values: ["-9223372036854775808", "0", "9223372036854775807"] },
-  { name: "UInt128", cast: "toUInt128", rt: rt(readUInt128, writeUInt128), values: ["0", "340282366920938463463374607431768211455"] },
-  { name: "Int128", cast: "toInt128", rt: rt(readInt128, writeInt128), values: ["-170141183460469231731687303715884105728", "0", "170141183460469231731687303715884105727"] },
-  { name: "UInt256", cast: "toUInt256", rt: rt(readUInt256, writeUInt256), values: ["0", "115792089237316195423570985008687907853269984665640564039457584007913129639935"] },
-  { name: "Int256", cast: "toInt256", rt: rt(readInt256, writeInt256), values: ["-57896044618658097711785492504343953926634992332820282019728792003956564819968", "0", "57896044618658097711785492504343953926634992332820282019728792003956564819967"] },
-];
+describe("writeInt8", () => {
+  it("encodes -128", async () =>
+    expect(encode(writeInt8, -128)).toEqual(await chBytes("toInt8", "-128")));
+  it("encodes 0", async () =>
+    expect(encode(writeInt8, 0)).toEqual(await chBytes("toInt8", "0")));
+  it("encodes 127", async () =>
+    expect(encode(writeInt8, 127)).toEqual(await chBytes("toInt8", "127")));
+});
 
-for (const c of cases) {
-  describe(`write${c.name}`, () => {
-    for (const v of c.values) {
-      it(`round-trips ${c.cast}(${v})`, async () => {
-        const bytes = await query(`SELECT ${c.cast}('${v}') FORMAT RowBinary`);
-        expect(c.rt(bytes)).toEqual(bytes);
-      });
-    }
-  });
-}
+describe("writeUInt16", () => {
+  it("encodes 0", async () =>
+    expect(encode(writeUInt16, 0)).toEqual(await chBytes("toUInt16", "0")));
+  it("encodes 65535", async () =>
+    expect(encode(writeUInt16, 65535)).toEqual(
+      await chBytes("toUInt16", "65535"),
+    ));
+});
+
+describe("writeInt16", () => {
+  it("encodes -32768", async () =>
+    expect(encode(writeInt16, -32768)).toEqual(
+      await chBytes("toInt16", "-32768"),
+    ));
+  it("encodes 32767", async () =>
+    expect(encode(writeInt16, 32767)).toEqual(
+      await chBytes("toInt16", "32767"),
+    ));
+});
+
+describe("writeUInt32", () => {
+  it("encodes 0", async () =>
+    expect(encode(writeUInt32, 0)).toEqual(await chBytes("toUInt32", "0")));
+  it("encodes 4294967295", async () =>
+    expect(encode(writeUInt32, 4294967295)).toEqual(
+      await chBytes("toUInt32", "4294967295"),
+    ));
+});
+
+describe("writeInt32", () => {
+  it("encodes -2147483648", async () =>
+    expect(encode(writeInt32, -2147483648)).toEqual(
+      await chBytes("toInt32", "-2147483648"),
+    ));
+  it("encodes 2147483647", async () =>
+    expect(encode(writeInt32, 2147483647)).toEqual(
+      await chBytes("toInt32", "2147483647"),
+    ));
+});
+
+describe("writeUInt64", () => {
+  it("encodes 0", async () =>
+    expect(encode(writeUInt64, 0n)).toEqual(await chBytes("toUInt64", "0")));
+  it("encodes 2^64 - 1", async () =>
+    expect(encode(writeUInt64, 18446744073709551615n)).toEqual(
+      await chBytes("toUInt64", "18446744073709551615"),
+    ));
+});
+
+describe("writeInt64", () => {
+  it("encodes -2^63", async () =>
+    expect(encode(writeInt64, -9223372036854775808n)).toEqual(
+      await chBytes("toInt64", "-9223372036854775808"),
+    ));
+  it("encodes 2^63 - 1", async () =>
+    expect(encode(writeInt64, 9223372036854775807n)).toEqual(
+      await chBytes("toInt64", "9223372036854775807"),
+    ));
+});
+
+describe("writeUInt128", () => {
+  it("encodes 0", async () =>
+    expect(encode(writeUInt128, 0n)).toEqual(await chBytes("toUInt128", "0")));
+  it("encodes 2^128 - 1", async () =>
+    expect(
+      encode(writeUInt128, 340282366920938463463374607431768211455n),
+    ).toEqual(
+      await chBytes("toUInt128", "340282366920938463463374607431768211455"),
+    ));
+});
+
+describe("writeInt128", () => {
+  it("encodes -2^127", async () =>
+    expect(
+      encode(writeInt128, -170141183460469231731687303715884105728n),
+    ).toEqual(
+      await chBytes("toInt128", "-170141183460469231731687303715884105728"),
+    ));
+  it("encodes 2^127 - 1", async () =>
+    expect(
+      encode(writeInt128, 170141183460469231731687303715884105727n),
+    ).toEqual(
+      await chBytes("toInt128", "170141183460469231731687303715884105727"),
+    ));
+});
+
+describe("writeUInt256", () => {
+  it("encodes 0", async () =>
+    expect(encode(writeUInt256, 0n)).toEqual(await chBytes("toUInt256", "0")));
+  it("encodes 2^256 - 1", async () =>
+    expect(
+      encode(
+        writeUInt256,
+        115792089237316195423570985008687907853269984665640564039457584007913129639935n,
+      ),
+    ).toEqual(
+      await chBytes(
+        "toUInt256",
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      ),
+    ));
+});
+
+describe("writeInt256", () => {
+  it("encodes -2^255", async () =>
+    expect(
+      encode(
+        writeInt256,
+        -57896044618658097711785492504343953926634992332820282019728792003956564819968n,
+      ),
+    ).toEqual(
+      await chBytes(
+        "toInt256",
+        "-57896044618658097711785492504343953926634992332820282019728792003956564819968",
+      ),
+    ));
+  it("encodes 2^255 - 1", async () =>
+    expect(
+      encode(
+        writeInt256,
+        57896044618658097711785492504343953926634992332820282019728792003956564819967n,
+      ),
+    ).toEqual(
+      await chBytes(
+        "toInt256",
+        "57896044618658097711785492504343953926634992332820282019728792003956564819967",
+      ),
+    ));
+});

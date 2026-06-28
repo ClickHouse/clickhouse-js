@@ -1,59 +1,58 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor, Sink } from "../src/core.js";
-import {
-  readUUID,
-  readUUIDBigInt,
-  readUUIDHiLo,
-  formatUUID,
-  parseUUID,
-} from "../src/uuid.js";
+import { encode } from "./encode.js";
+import { Sink } from "../src/core_writer.js";
 import {
   writeUUID,
   writeUUIDBigInt,
   writeUUIDHiLo,
-} from "../src/uuid.js";
+  parseUUID,
+} from "../src/uuid_writer.js";
 
 const SAMPLE = "61f0c404-5cb3-11e7-907b-a6006ad3dba0";
+// ClickHouse stores a UUID as two little-endian UInt64 halves (high then low).
+const HI = 0x61f0c4045cb311e7n;
+const LO = 0x907ba6006ad3dba0n;
+const WIRE = [
+  0xe7,
+  0x11,
+  0xb3,
+  0x5c,
+  0x04,
+  0xc4,
+  0xf0,
+  0x61, // high half, little-endian
+  0xa0,
+  0xdb,
+  0xd3,
+  0x6a,
+  0x00,
+  0xa6,
+  0x7b,
+  0x90, // low half, little-endian
+];
 
-async function uuidBytes(): Promise<Buffer> {
+function uuidBytes(): Promise<Buffer> {
   return query(`SELECT toUUID('${SAMPLE}') FORMAT RowBinary`);
 }
 
 describe("UUID writers", () => {
-  it("writeUUID round-trips the raw bytes", async () => {
-    const bytes = await uuidBytes();
-    const value = readUUID(new Cursor(bytes));
-    const sink = new Sink();
-    writeUUID(sink, value);
-    expect(Buffer.from(sink.bytes())).toEqual(bytes);
-  });
+  it("writeUUID copies the raw 16 wire bytes verbatim", async () =>
+    expect(encode(writeUUID, Buffer.from(WIRE))).toEqual(await uuidBytes()));
 
-  it("writeUUIDBigInt round-trips", async () => {
-    const bytes = await uuidBytes();
-    const value = readUUIDBigInt(new Cursor(bytes));
-    const sink = new Sink();
-    writeUUIDBigInt(sink, value);
-    expect(Buffer.from(sink.bytes())).toEqual(bytes);
-  });
+  it("writeUUIDBigInt splits a 128-bit bigint into the two LE halves", async () =>
+    expect(encode(writeUUIDBigInt, (HI << 64n) | LO)).toEqual(
+      await uuidBytes(),
+    ));
 
-  it("writeUUIDHiLo round-trips", async () => {
-    const bytes = await uuidBytes();
-    const value = readUUIDHiLo(new Cursor(bytes));
-    const sink = new Sink();
-    writeUUIDHiLo(sink, value);
-    expect(Buffer.from(sink.bytes())).toEqual(bytes);
-  });
+  it("writeUUIDHiLo writes the two raw [hi, lo] halves", async () =>
+    expect(encode(writeUUIDHiLo, [HI, LO])).toEqual(await uuidBytes()));
 
-  it("parseUUID is the inverse of formatUUID and matches the wire", async () => {
-    const bytes = await uuidBytes();
-    expect(formatUUID(readUUID(new Cursor(bytes)))).toBe(SAMPLE);
-    const sink = new Sink();
-    writeUUID(sink, parseUUID(SAMPLE));
-    expect(Buffer.from(sink.bytes())).toEqual(bytes);
-  });
+  it("parseUUID turns the canonical string into the wire bytes", () =>
+    expect([...parseUUID(SAMPLE)]).toEqual(WIRE));
 
-  it("writeUUID rejects non-16-byte input", () => {
-    expect(() => writeUUID(new Sink(), Buffer.alloc(15))).toThrow(RangeError);
-  });
+  it("writeUUID rejects non-16-byte input", () =>
+    expect(() =>
+      writeUUID(new Sink(Buffer.allocUnsafe(16)), Buffer.alloc(15)),
+    ).toThrow(RangeError));
 });

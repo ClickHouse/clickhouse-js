@@ -1,51 +1,86 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { roundTrip } from "./roundTrip.js";
-import {
-  readDecimal32,
-  readDecimal64,
-  readDecimal128,
-  readDecimal256,
-  formatDecimal,
-  parseDecimal,
-} from "../src/decimals.js";
+import { encode } from "./encode.js";
 import {
   writeDecimal32,
   writeDecimal64,
   writeDecimal128,
   writeDecimal256,
-} from "../src/decimals.js";
+  parseDecimal,
+} from "../src/decimals_writer.js";
+import { type DecimalValue } from "../src/decimals.js";
+import { type Writer } from "../src/core_writer.js";
 
-describe("writeDecimal*", () => {
-  const cases = [
-    { name: "Decimal32", type: "Decimal32(4)", scale: 4, read: readDecimal32, write: writeDecimal32, values: ["1.5", "-12345.6789", "0"] },
-    { name: "Decimal64", type: "Decimal64(2)", scale: 2, read: readDecimal64, write: writeDecimal64, values: ["1.50", "-9999999999.99", "0"] },
-    { name: "Decimal128", type: "Decimal128(10)", scale: 10, read: readDecimal128, write: writeDecimal128, values: ["3.1415926535", "-1.0000000001"] },
-    { name: "Decimal256", type: "Decimal256(20)", scale: 20, read: readDecimal256, write: writeDecimal256, values: ["2.71828182845904523536", "-0.00000000000000000001"] },
-  ];
-  for (const c of cases) {
-    for (const v of c.values) {
-      it(`${c.name} round-trips ${v}`, async () => {
-        const bytes = await query(
-          `SELECT CAST('${v}', '${c.type}') FORMAT RowBinary`,
-        );
-        expect(roundTrip(bytes, c.read(c.scale), c.write).encoded).toEqual(
-          bytes,
-        );
-      });
-    }
-  }
+/** Encode `value` (built from a string via parseDecimal) and match ClickHouse. */
+function expectDecimal(
+  type: string,
+  scale: number,
+  write: Writer<DecimalValue>,
+  literal: string,
+) {
+  return async () =>
+    expect(encode(write, parseDecimal(literal, scale))).toEqual(
+      await query(`SELECT CAST('${literal}', '${type}') FORMAT RowBinary`),
+    );
+}
+
+describe("writeDecimal32", () => {
+  it("encodes 1.5", expectDecimal("Decimal32(4)", 4, writeDecimal32, "1.5"));
+  it(
+    "encodes -12345.6789",
+    expectDecimal("Decimal32(4)", 4, writeDecimal32, "-12345.6789"),
+  );
+  it("encodes 0", expectDecimal("Decimal32(4)", 4, writeDecimal32, "0"));
+});
+
+describe("writeDecimal64", () => {
+  it("encodes 1.50", expectDecimal("Decimal64(2)", 2, writeDecimal64, "1.50"));
+  it(
+    "encodes -9999999999.99",
+    expectDecimal("Decimal64(2)", 2, writeDecimal64, "-9999999999.99"),
+  );
+});
+
+describe("writeDecimal128", () => {
+  it(
+    "encodes 3.1415926535",
+    expectDecimal("Decimal128(10)", 10, writeDecimal128, "3.1415926535"),
+  );
+  it(
+    "encodes -1.0000000001",
+    expectDecimal("Decimal128(10)", 10, writeDecimal128, "-1.0000000001"),
+  );
+});
+
+describe("writeDecimal256", () => {
+  it(
+    "encodes 2.71828182845904523536",
+    expectDecimal(
+      "Decimal256(20)",
+      20,
+      writeDecimal256,
+      "2.71828182845904523536",
+    ),
+  );
+  it(
+    "encodes -0.00000000000000000001",
+    expectDecimal(
+      "Decimal256(20)",
+      20,
+      writeDecimal256,
+      "-0.00000000000000000001",
+    ),
+  );
 });
 
 describe("parseDecimal", () => {
-  it("is the inverse of formatDecimal", () => {
-    expect(parseDecimal("1.5000", 4)).toEqual([15000n, 4]);
-    expect(parseDecimal("-12345.6789", 4)).toEqual([-123456789n, 4]);
-    expect(parseDecimal("0.00", 2)).toEqual([0n, 2]);
-    expect(formatDecimal(parseDecimal("3.14", 2))).toBe("3.14");
-  });
-  it("pads a short fraction and truncates a long one", () => {
-    expect(parseDecimal("1.5", 4)).toEqual([15000n, 4]);
-    expect(parseDecimal("1.56789", 2)).toEqual([156n, 2]);
-  });
+  it("scales the integer and fraction parts", () =>
+    expect(parseDecimal("1.5000", 4)).toEqual([15000n, 4]));
+  it("handles a negative value", () =>
+    expect(parseDecimal("-12345.6789", 4)).toEqual([-123456789n, 4]));
+  it("handles zero", () => expect(parseDecimal("0.00", 2)).toEqual([0n, 2]));
+  it("right-pads a short fraction to the scale", () =>
+    expect(parseDecimal("1.5", 4)).toEqual([15000n, 4]));
+  it("truncates a fraction longer than the scale", () =>
+    expect(parseDecimal("1.56789", 2)).toEqual([156n, 2]));
 });

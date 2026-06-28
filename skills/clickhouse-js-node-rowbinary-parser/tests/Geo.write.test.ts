@@ -1,15 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor, Sink } from "../src/core.js";
-import {
-  readPoint,
-  readRing,
-  readLineString,
-  readPolygon,
-  readMultiLineString,
-  readMultiPolygon,
-  readGeometry,
-} from "../src/geo.js";
+import { encode } from "./encode.js";
 import {
   writePoint,
   writeRing,
@@ -18,62 +9,84 @@ import {
   writeMultiLineString,
   writeMultiPolygon,
   writeGeometry,
-  type GeometryValue,
-} from "../src/geo.js";
-import { readUInt8 } from "../src/integers.js";
+} from "../src/geo_writer.js";
+import { type Point } from "../src/geo.js";
 
-function rt<T>(
-  bytes: Buffer,
-  read: (c: Cursor) => T,
-  write: (s: Sink, v: T) => void,
-): Buffer {
-  const value = read(new Cursor(bytes));
-  const sink = new Sink();
-  write(sink, value);
-  return Buffer.from(sink.bytes());
-}
+const ring: Point[] = [
+  [0, 0],
+  [1, 2],
+];
+const polygon: Point[][] = [
+  [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+  ],
+];
 
 describe("geo writers", () => {
-  const cases: Array<{ name: string; expr: string; read: (c: Cursor) => unknown; write: (s: Sink, v: never) => void }> = [
-    { name: "Point", expr: "CAST((1.5, 2.5) AS Point)", read: readPoint, write: writePoint as never },
-    { name: "Ring", expr: "CAST([(0, 0), (1, 2)] AS Ring)", read: readRing, write: writeRing as never },
-    { name: "LineString", expr: "CAST([(0, 0), (1, 2)] AS LineString)", read: readLineString, write: writeLineString as never },
-    { name: "Polygon", expr: "CAST([[(0, 0), (1, 0), (1, 1)]] AS Polygon)", read: readPolygon, write: writePolygon as never },
-    { name: "MultiLineString", expr: "CAST([[(0, 0), (1, 2)], [(3, 4)]] AS MultiLineString)", read: readMultiLineString, write: writeMultiLineString as never },
-    { name: "MultiPolygon", expr: "CAST([[[(0, 0), (1, 0), (1, 1)]]] AS MultiPolygon)", read: readMultiPolygon, write: writeMultiPolygon as never },
-  ];
-  for (const c of cases) {
-    it(`round-trips ${c.name}`, async () => {
-      const bytes = await query(`SELECT ${c.expr} FORMAT RowBinary`);
-      expect(rt(bytes, c.read, c.write as (s: Sink, v: unknown) => void)).toEqual(bytes);
-    });
-  }
+  it("encodes a Point", async () =>
+    expect(encode(writePoint, [1.5, 2.5])).toEqual(
+      await query("SELECT CAST((1.5, 2.5) AS Point) FORMAT RowBinary"),
+    ));
+  it("encodes a Ring", async () =>
+    expect(encode(writeRing, ring)).toEqual(
+      await query("SELECT CAST([(0, 0), (1, 2)] AS Ring) FORMAT RowBinary"),
+    ));
+  it("encodes a LineString", async () =>
+    expect(encode(writeLineString, ring)).toEqual(
+      await query(
+        "SELECT CAST([(0, 0), (1, 2)] AS LineString) FORMAT RowBinary",
+      ),
+    ));
+  it("encodes a Polygon", async () =>
+    expect(encode(writePolygon, polygon)).toEqual(
+      await query(
+        "SELECT CAST([[(0, 0), (1, 0), (1, 1)]] AS Polygon) FORMAT RowBinary",
+      ),
+    ));
+  it("encodes a MultiLineString", async () =>
+    expect(
+      encode(writeMultiLineString, [
+        [
+          [0, 0],
+          [1, 2],
+        ],
+        [[3, 4]],
+      ]),
+    ).toEqual(
+      await query(
+        "SELECT CAST([[(0, 0), (1, 2)], [(3, 4)]] AS MultiLineString) FORMAT RowBinary",
+      ),
+    ));
+  it("encodes a MultiPolygon", async () =>
+    expect(encode(writeMultiPolygon, [polygon])).toEqual(
+      await query(
+        "SELECT CAST([[[(0, 0), (1, 0), (1, 1)]]] AS MultiPolygon) FORMAT RowBinary",
+      ),
+    ));
 });
 
 describe("writeGeometry", () => {
-  it("round-trips each alternative (tagged with its discriminant)", async () => {
-    const exprs = [
-      "CAST((1.5, 2.5) AS Point)",
-      "CAST([(0, 0), (1, 2)] AS LineString)",
-      "CAST([[(0, 0), (1, 0), (1, 1)]] AS Polygon)",
-    ];
-    for (const expr of exprs) {
-      const bytes = await query(
-        `SELECT CAST(${expr} AS Geometry) SETTINGS allow_suspicious_variant_types = 1 FORMAT RowBinary`,
-      );
-      // Peek the discriminant, decode the value with readGeometry, re-encode tagged.
-      const d = readUInt8(new Cursor(bytes));
-      const value = readGeometry(new Cursor(bytes));
-      const tagged: GeometryValue = [d, value];
-      const sink = new Sink();
-      writeGeometry(sink, tagged);
-      expect(Buffer.from(sink.bytes())).toEqual(bytes);
-    }
-  });
+  /** Encode a tagged Geometry value and match ClickHouse's `Geometry`. */
+  function geometryBytes(expr: string): Promise<Buffer> {
+    return query(
+      `SELECT CAST(${expr} AS Geometry) SETTINGS allow_suspicious_variant_types = 1 FORMAT RowBinary`,
+    );
+  }
 
-  it("writes NULL as a single 0xFF byte", () => {
-    const sink = new Sink();
-    writeGeometry(sink, null);
-    expect([...sink.bytes()]).toEqual([0xff]);
-  });
+  it("encodes a Point (discriminant 3)", async () =>
+    expect(encode(writeGeometry, [3, [1.5, 2.5]])).toEqual(
+      await geometryBytes("CAST((1.5, 2.5) AS Point)"),
+    ));
+  it("encodes a LineString (discriminant 0)", async () =>
+    expect(encode(writeGeometry, [0, ring])).toEqual(
+      await geometryBytes("CAST([(0, 0), (1, 2)] AS LineString)"),
+    ));
+  it("encodes a Polygon (discriminant 4)", async () =>
+    expect(encode(writeGeometry, [4, polygon])).toEqual(
+      await geometryBytes("CAST([[(0, 0), (1, 0), (1, 1)]] AS Polygon)"),
+    ));
+  it("encodes NULL as a single 0xFF byte", () =>
+    expect([...encode(writeGeometry, null)]).toEqual([0xff]));
 });

@@ -1,4 +1,4 @@
-import { type Reader, type Writer } from "./core.js";
+import { type Reader } from "./core.js";
 
 /**
  * `SimpleAggregateFunction(func, T)` is TRANSPARENT in RowBinary: the column
@@ -18,14 +18,3 @@ import { type Reader, type Writer } from "./core.js";
 export const readSimpleAggregateFunction = <T>(
   readValue: Reader<T>,
 ): Reader<T> => readValue;
-
-/**
- * `SimpleAggregateFunction(func, T)` is TRANSPARENT in RowBinary — the column
- * holds a finished value of `T` — so encode the inner `T` directly. Identity
- * combinator mirroring {@link readSimpleAggregateFunction}:
- *
- *   writeSimpleAggregateFunction(writeUInt64) === writeUInt64
- */
-export const writeSimpleAggregateFunction = <T>(
-  writeValue: Writer<T>,
-): Writer<T> => writeValue;

@@ -1,58 +1,50 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor, Sink } from "../src/core.js";
-import {
-  readIPv4,
-  readIPv6,
-  formatIPv4,
-  formatIPv6,
-} from "../src/ip.js";
+import { encode } from "./encode.js";
+import { Sink } from "../src/core_writer.js";
 import {
   writeIPv4,
   writeIPv6,
   parseIPv4,
   parseIPv6,
-} from "../src/ip.js";
+} from "../src/ip_writer.js";
 
-describe("writeIPv4 / parseIPv4", () => {
-  for (const ip of ["0.0.0.0", "1.2.3.4", "192.168.0.1", "255.255.255.255"]) {
-    it(`round-trips ${ip}`, async () => {
-      const bytes = await query(`SELECT toIPv4('${ip}') FORMAT RowBinary`);
-      const value = readIPv4(new Cursor(bytes));
-      expect(formatIPv4(value)).toBe(ip);
-      const sink = new Sink();
-      writeIPv4(sink, value);
-      expect(Buffer.from(sink.bytes())).toEqual(bytes);
-      // parseIPv4 is the inverse of formatIPv4.
-      const sink2 = new Sink();
-      writeIPv4(sink2, parseIPv4(ip));
-      expect(Buffer.from(sink2.bytes())).toEqual(bytes);
-    });
+describe("writeIPv4", () => {
+  /** Encode the parsed address and match ClickHouse's `toIPv4`. */
+  function expectIPv4(ip: string) {
+    return async () =>
+      expect(encode(writeIPv4, parseIPv4(ip))).toEqual(
+        await query(`SELECT toIPv4('${ip}') FORMAT RowBinary`),
+      );
   }
+  it("encodes 0.0.0.0", expectIPv4("0.0.0.0"));
+  it("encodes 1.2.3.4", expectIPv4("1.2.3.4"));
+  it("encodes 192.168.0.1", expectIPv4("192.168.0.1"));
+  it("encodes 255.255.255.255", expectIPv4("255.255.255.255"));
 });
 
-describe("writeIPv6 / parseIPv6", () => {
-  for (const ip of [
-    "::",
-    "::1",
-    "2001:db8::1",
-    "fe80::a6:6ad3:dba0:1",
-    "::ffff:1.2.3.4",
-  ]) {
-    it(`round-trips ${ip}`, async () => {
-      const bytes = await query(`SELECT toIPv6('${ip}') FORMAT RowBinary`);
-      const value = readIPv6(new Cursor(bytes));
-      const sink = new Sink();
-      writeIPv6(sink, value);
-      expect(Buffer.from(sink.bytes())).toEqual(bytes);
-      // parseIPv6 must reproduce the same wire bytes from the formatted string.
-      const sink2 = new Sink();
-      writeIPv6(sink2, parseIPv6(formatIPv6(value)));
-      expect(Buffer.from(sink2.bytes())).toEqual(bytes);
-    });
-  }
+describe("parseIPv4", () => {
+  it("packs the dotted quad big-endian", () =>
+    expect(parseIPv4("1.2.3.4")).toBe(0x01020304));
+  it("rejects an out-of-range octet", () =>
+    expect(() => parseIPv4("1.2.3.256")).toThrow(RangeError));
+});
 
-  it("writeIPv6 rejects non-16-byte input", () => {
-    expect(() => writeIPv6(new Sink(), Buffer.alloc(4))).toThrow(RangeError);
-  });
+describe("writeIPv6", () => {
+  function expectIPv6(ip: string) {
+    return async () =>
+      expect(encode(writeIPv6, parseIPv6(ip))).toEqual(
+        await query(`SELECT toIPv6('${ip}') FORMAT RowBinary`),
+      );
+  }
+  it("encodes ::", expectIPv6("::"));
+  it("encodes ::1", expectIPv6("::1"));
+  it("encodes 2001:db8::1", expectIPv6("2001:db8::1"));
+  it("encodes fe80::a6:6ad3:dba0:1", expectIPv6("fe80::a6:6ad3:dba0:1"));
+  it("encodes the IPv4-mapped ::ffff:1.2.3.4", expectIPv6("::ffff:1.2.3.4"));
+
+  it("rejects non-16-byte input", () =>
+    expect(() =>
+      writeIPv6(new Sink(Buffer.allocUnsafe(16)), Buffer.alloc(4)),
+    ).toThrow(RangeError));
 });

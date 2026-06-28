@@ -1,4 +1,4 @@
-import { type Reader, advance, Sink, reserve } from "./core.js";
+import { type Reader, advance } from "./core.js";
 
 /**
  * Maps an enum's underlying integer to its name. Built from the type's
@@ -37,21 +37,4 @@ export function readEnum16(valueToName: EnumNameMap): Reader<string> {
 function resolveName(valueToName: EnumNameMap, value: number): string {
   const name = valueToName.get(value);
   return name !== undefined ? name : String(value);
-}
-
-/**
- * Write an `Enum8`: the value's underlying signed `Int8` (1 byte). Mirror of
- * {@link readEnum8} — the name<->value map lives in the column type, so take the
- * raw numeric value.
- */
-export function writeEnum8(sink: Sink, value: number): void {
-  sink.view.setInt8(reserve(sink, 1), value);
-}
-
-/**
- * Write an `Enum16`: the value's underlying signed `Int16` (2 bytes,
- * little-endian). Mirror of {@link readEnum16}.
- */
-export function writeEnum16(sink: Sink, value: number): void {
-  sink.view.setInt16(reserve(sink, 2), value, true);
 }

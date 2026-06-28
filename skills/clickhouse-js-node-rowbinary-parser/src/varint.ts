@@ -1,4 +1,4 @@
-import { Cursor, advance, Sink, reserve } from "./core.js";
+import { Cursor, advance } from "./core.js";
 
 /**
  * Read a LEB128 unsigned varint (used for string/array lengths).
@@ -67,39 +67,4 @@ export function readUVarint(state: Cursor): number {
     );
   }
   return result + byte * 562949953421312; // 2^49
-}
-
-/**
- * Write a LEB128 unsigned varint — the encode mirror of {@link readUVarint}
- * (used for string/array/map lengths).
- *
- * Takes a JS `number`, so it is NOT bigint-friendly: only values up to
- * `Number.MAX_SAFE_INTEGER` (2^53 - 1) are representable, and a negative or
- * non-finite value is a programming error. Each iteration emits 7 payload bits
- * low-first, setting the high continuation bit while more bits remain.
- *
- * The loop uses `/` and `%` (not `>>>`/`&`): JS bitwise operators are 32-bit and
- * would corrupt values past bit 31, exactly as the reader multiplies rather than
- * shifts. The overwhelmingly common 1-2 byte case costs one or two iterations.
- *
- * If you genuinely need lengths beyond 2^53, write a bigint version with a bigint
- * accumulator instead of widening this one.
- */
-export function writeUVarint(sink: Sink, value: number): void {
-  if (value < 0 || !Number.isInteger(value) || value > Number.MAX_SAFE_INTEGER) {
-    throw new RangeError(
-      "RowBinary: varint must be an integer in [0, Number.MAX_SAFE_INTEGER]",
-    );
-  }
-  let v = value;
-  // 7 bits per byte; at most 8 bytes for values <= 2^53 - 1. Reserve FIRST, then
-  // index `sink.buf` — a grow inside reserve() can swap the buffer out, so
-  // `sink.buf[reserve(...)]` would write into the stale, discarded buffer.
-  while (v >= 0x80) {
-    const o = reserve(sink, 1);
-    sink.buf[o] = (v % 128) | 0x80;
-    v = Math.floor(v / 128);
-  }
-  const o = reserve(sink, 1);
-  sink.buf[o] = v;
 }

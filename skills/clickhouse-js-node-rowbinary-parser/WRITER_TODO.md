@@ -3,21 +3,25 @@
 The package ships a complete RowBinary **reader** (decode). This is the plan for
 the matching **writer** (encode), mirroring the reader module-for-module: every
 `readX` gets a `writeX` counterpart that appends the value's RowBinary bytes to a
-growable output buffer (`Sink`), and each writer lands in its own commit with a
-round-trip test against a live ClickHouse server.
+fixed-length output buffer (`Sink`), and each writer lands in its own commit with
+a round-trip test against a live ClickHouse server.
 
 ## Design
 
-- `Sink` is the write-side mirror of the reader's `Cursor`: it owns a growable
-  `Buffer` + `DataView` and a write position. `reserve(sink, n)` is the mirror of
-  `advance(state, n)` — it grows the buffer if needed, advances the position, and
-  returns the offset the write starts at. `sink.bytes()` returns the written
-  slice.
+- `Sink` is the write-side mirror of the reader's `Cursor`: it wraps a
+  caller-supplied, FIXED-length `Buffer` + `DataView` and a write position.
+  `reserve(sink, n)` is the mirror of `advance(state, n)` — it bounds-checks the
+  next `n` bytes, advances the position, and returns the offset the write starts
+  at. Just as `advance` throws `NeedMoreData` on underflow, `reserve` throws
+  `NeedMoreSpace` on overflow (the buffer is not grown); a driver flushes the
+  bytes written so far and continues into a fresh buffer. `sink.bytes()` returns
+  the written slice.
 - `Writer<T> = (sink: Sink, value: T) => void` is the mirror of `Reader<T>`.
 - Combinators mirror the reader's: `writeArray(writeElement)`,
   `writeNullable(writeValue)`, etc. take sub-writers and return a `Writer`.
-- Writers live next to their readers in the same per-type modules; `writer.ts` is
-  the barrel mirror of `reader.ts`.
+- The readers stay untouched in their per-type modules; each writer lands in a
+  parallel `*_writer.ts` module (`core_writer.ts`, `integers_writer.ts`, …) and
+  `writer.ts` is the barrel mirror of `reader.ts`.
 
 ## Out of scope (for now)
 
