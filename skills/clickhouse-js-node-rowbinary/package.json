@@ -48,6 +48,8 @@
     "dist",
     "src",
     "SKILL.md",
+    "reader.md",
+    "writer.md",
     "README.md",
     "EXAMPLES.md",
     "CHANGELOG.md"
