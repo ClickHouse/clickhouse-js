@@ -68,9 +68,11 @@ export async function executeWithRowBinary(
       query: `${q}\nFORMAT RowBinaryWithNamesAndTypes`,
       clickhouse_settings,
     });
-    const chunks: Buffer[] = [];
+    // `result.stream` yields Uint8Array chunks; Buffer.concat accepts them and
+    // returns a Buffer (what Cursor needs), so no per-chunk cast is required.
+    const chunks: Uint8Array[] = [];
     for await (const chunk of result.stream) {
-      chunks.push(chunk as Buffer);
+      chunks.push(chunk);
     }
     const buf = Buffer.concat(chunks);
     // A statement that produced no result set at all (e.g. a misclassified
@@ -87,15 +89,17 @@ export async function executeWithRowBinary(
     // header. The cursor sits at the first row after the header; the response is
     // fully buffered, so we read complete rows until the bytes are exhausted.
     const n = columnReaders.length;
-    let out = "";
+    const lines: string[] = [];
     while (cursor.pos < buf.length) {
       const cells = new Array<string>(n);
       for (let i = 0; i < n; i++) {
         cells[i] = renderers[i]!(columnReaders[i]!(cursor));
       }
-      out += cells.join("\t") + "\n";
+      lines.push(cells.join("\t"));
     }
-    process.stdout.write(out);
+    // Join once (a row is terminated by \n, so the block ends with one too)
+    // rather than growing a string per row.
+    if (lines.length > 0) process.stdout.write(lines.join("\n") + "\n");
   }
 }
 

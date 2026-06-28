@@ -83,7 +83,16 @@ async function main(): Promise<void> {
   // Backend selection is via env (the upstream runner controls argv): the
   // RowBinary backend exercises the @clickhouse/rowbinary decode path; the
   // default passthrough backend streams ClickHouse's own TabSeparated text.
+  // Reject an unknown value rather than silently falling back to passthrough,
+  // which would hide a typo'd TEST_RUNNER_BACKEND in CI.
   const backend = process.env["TEST_RUNNER_BACKEND"] ?? "passthrough";
+  if (backend !== "passthrough" && backend !== "rowbinary") {
+    process.stderr.write(
+      `Error: unknown TEST_RUNNER_BACKEND "${backend}" (expected "passthrough" or "rowbinary")\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
   appendLog(logPath, "backend=" + backend);
 
   try {

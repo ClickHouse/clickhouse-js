@@ -80,6 +80,10 @@ describe("renderValue — top level (escaped, unquoted)", () => {
     expect(render("DateTime64(6)", [d, 123_456_000])).toBe(
       "2020-01-02 03:04:05.123456",
     );
+    // Sub-precision nanoseconds are TRUNCATED, not rounded (round would give .124).
+    expect(render("DateTime64(3)", [d, 123_999_999])).toBe(
+      "2020-01-02 03:04:05.123",
+    );
   });
 
   it("uuid / ipv4 / ipv6 from their decoded byte/number forms", () => {

@@ -140,7 +140,10 @@ function formatDateTime64(value: unknown, precision: number): string {
   const [d, ns] = value as [Date, number];
   const base = formatDateTime(d);
   if (precision <= 0) return base;
-  const frac = Math.round(ns / 10 ** (9 - precision));
+  // TRUNCATE toward the precision, matching ClickHouse's text output — never
+  // round, which could nudge the fraction up to 10^precision and would then
+  // need to carry into the seconds field.
+  const frac = Math.trunc(ns / 10 ** (9 - precision));
   return `${base}.${String(frac).padStart(precision, "0")}`;
 }
 
