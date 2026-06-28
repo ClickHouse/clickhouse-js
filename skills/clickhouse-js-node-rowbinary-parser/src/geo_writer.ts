@@ -92,20 +92,29 @@ export const writeGeometry: Writer<GeometryValue> = (sink, value) => {
     writeUInt8(sink, 0xff);
     return;
   }
+  // The discriminant byte is written inside each case, only after the switch
+  // has accepted it — an out-of-range value throws from `default` before the
+  // sink is advanced, so it never leaves a partially-written payload behind
+  // (mirrors `writeVariant`).
   const [discriminant, geo] = value;
-  writeUInt8(sink, discriminant);
   switch (discriminant) {
     case 0:
+      writeUInt8(sink, discriminant);
       return writeLineString(sink, geo as Point[]);
     case 1:
+      writeUInt8(sink, discriminant);
       return writeMultiLineString(sink, geo as Point[][]);
     case 2:
+      writeUInt8(sink, discriminant);
       return writeMultiPolygon(sink, geo as Point[][][]);
     case 3:
+      writeUInt8(sink, discriminant);
       return writePoint(sink, geo as Point);
     case 4:
+      writeUInt8(sink, discriminant);
       return writePolygon(sink, geo as Point[][]);
     case 5:
+      writeUInt8(sink, discriminant);
       return writeRing(sink, geo as Point[]);
     default:
       throw new RangeError(
