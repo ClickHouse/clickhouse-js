@@ -50,7 +50,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clickhouse: [head, latest]
+        # Only the released `latest` image. The nightly `head` image rebuilds
+        # ~twice a day and routinely ships EXPLAIN/plan/index output changes and
+        # new settings ahead of any released server, spuriously reding this
+        # workflow (and every PR that touches the test runner). `latest` is a
+        # stable target; bleeding-edge coverage is not worth the daily noise.
+        clickhouse: [latest]
         # passthrough: stream ClickHouse's own TabSeparated text (transport /
         # session / settings coverage). rowbinary: decode
         # RowBinaryWithNamesAndTypes through @clickhouse/rowbinary and re-render
