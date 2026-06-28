@@ -62,3 +62,14 @@ describe("writeIPv6", () => {
       writeIPv6(new Sink(Buffer.allocUnsafe(16)), Buffer.alloc(4)),
     ).toThrow(RangeError));
 });
+
+describe("parseIPv6 validation", () => {
+  it("rejects a non-hex group instead of silently encoding 0", () =>
+    expect(() => parseIPv6("2001:db8::gggg")).toThrow(RangeError));
+  it("rejects a negative group instead of wrapping to 0xffff", () =>
+    expect(() => parseIPv6("2001:db8::-1")).toThrow(RangeError));
+  it("rejects an over-long (5-digit) group", () =>
+    expect(() => parseIPv6("2001:db8::12345")).toThrow(RangeError));
+  it("rejects an empty group", () =>
+    expect(() => parseIPv6("2001:db8:::1")).toThrow(RangeError));
+});

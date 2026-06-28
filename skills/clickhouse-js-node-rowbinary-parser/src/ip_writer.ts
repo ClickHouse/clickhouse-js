@@ -80,7 +80,15 @@ export function parseIPv6(text: string): Buffer {
         const v4 = parseIPv4(part);
         groups.push((v4 >>> 16) & 0xffff, v4 & 0xffff);
       } else {
-        groups.push(parseInt(part, 16) & 0xffff);
+        // 1–4 hex digits only. Parsing strictly rather than `parseInt(...) &
+        // 0xffff` rejects malformed groups instead of silently turning them
+        // into 0 (`NaN & 0xffff`) or wrapping negatives like "-1" to 0xffff.
+        if (!/^[0-9a-fA-F]{1,4}$/.test(part)) {
+          throw new RangeError(
+            `RowBinary: invalid IPv6 group ${JSON.stringify(part)}`,
+          );
+        }
+        groups.push(parseInt(part, 16));
       }
     }
     return groups;
