@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { writeRows } from "../src/rows_writer.js";
-import { Sink, type Writer } from "../src/core_writer.js";
+import { type Writer } from "../src/core_writer.js";
 import { writeTupleNamed } from "../src/composite_writer.js";
 import { writeUInt64, writeUInt32 } from "../src/integers_writer.js";
 import { writeString } from "../src/strings_writer.js";
@@ -19,22 +19,16 @@ const writeRow = writeTupleNamed<Row>({
 });
 
 /**
- * Drive `writeRows` to completion, flushing each yielded full buffer and the
- * trailing partial one, and concatenate everything — the canonical driver loop.
- * `capacity` sizes the (fixed) sink buffer, so a small value forces the overflow
- * + flush path; the default fits the rows under test in one buffer.
+ * Drive `writeRows` to completion and concatenate every yielded buffer — the
+ * canonical driver loop. `bufferSize` sizes each (fixed) sink, so a small value
+ * forces the overflow + flush path; the default fits the rows in one buffer.
  */
 function encodeRows(
   write: Writer<Row>,
   rows: Iterable<Row>,
-  capacity = 4096,
+  bufferSize = 4096,
 ): Buffer {
-  const sink = new Sink(Buffer.allocUnsafe(capacity));
-  const parts: Buffer[] = [];
-  for (const full of writeRows(write)(sink, rows))
-    parts.push(Buffer.from(full));
-  parts.push(Buffer.from(sink.bytes()));
-  return Buffer.concat(parts);
+  return Buffer.concat([...writeRows(write)(rows, bufferSize)]);
 }
 
 describe("writeRows", () => {
@@ -63,23 +57,30 @@ describe("writeRows", () => {
   });
 
   it("yields at row boundaries, never a half-written row", () => {
-    // Capacity holds two rows + change but not three, so the first yield must
+    // bufferSize holds two rows + change but not three, so the first yield must
     // land exactly on a row boundary (a whole number of rows), not mid-row.
-    const sink = new Sink(Buffer.allocUnsafe(40));
-    const gen = writeRows(writeRow)(sink, rows);
+    const gen = writeRows(writeRow)(rows, 40);
     const first = gen.next();
     expect(first.done).toBe(false);
     // Decode-free boundary check: the flushed prefix must be a prefix of the
-    // full encoding AND a whole number of rows (re-encoding that many rows into
-    // a roomy buffer reproduces exactly the flushed bytes).
+    // full encoding (and thus a whole number of rows).
     const full = encodeRows(writeRow, rows);
     const flushed = first.value as Buffer;
     expect(full.subarray(0, flushed.length)).toEqual(flushed);
   });
 
+  it("yields independent buffers — a flushed buffer survives the next iteration", () => {
+    // Each flush gets a fresh buffer, so an earlier yield isn't clobbered when
+    // the generator resumes. Collect two buffers, then assert the first is intact.
+    const gen = writeRows(writeRow)(rows, 20);
+    const a = gen.next().value as Buffer;
+    const snapshot = Buffer.from(a); // independent copy of what we saw first
+    gen.next(); // resume: writes the next row into a NEW buffer
+    expect(a).toEqual(snapshot); // `a` must be untouched
+  });
+
   it("throws when a single row can't fit in an empty buffer", () => {
-    const sink = new Sink(Buffer.allocUnsafe(4)); // too small for even one row
-    const gen = writeRows(writeRow)(sink, rows);
+    const gen = writeRows(writeRow)(rows, 4); // too small for even one row
     expect(() => gen.next()).toThrow(/single row exceeds the sink buffer/);
   });
 });
