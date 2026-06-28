@@ -135,9 +135,10 @@ Merging into `release` pushes to `release`, which triggers the **path-scoped**
 `head` publish for each package whose sources changed (`publish-client.yml`,
 `publish-client-web.yml`, `publish-client-common.yml`). It publishes a `head`
 pre-release build (an **internal beta — not tracked** as a GitHub Release); the
-Node.js client workflow then runs an automatic `e2e` job that installs the
-published version across Node 20/22/24/26 and runs integration tests against a
-live ClickHouse.
+client workflows then run an automatic `e2e` job against the published version
+and a live ClickHouse — the Node.js client installs it across Node 20/22/24/26
+and runs integration tests, and the Web client runs a real-browser smoke
+(chromium + firefox) via Playwright.
 
 - These publishes run under the `npm-publish` environment → **they pause for
   manual approval**. Find the run(s) — one per package that changed — give the
@@ -149,8 +150,8 @@ live ClickHouse.
   ```
   (Use `publish-client-web.yml` / `publish-client-common.yml` for the other
   packages.)
-- The `e2e` job in `publish-client.yml` is sufficient verification — **no manual
-  `@head` testing is needed**. Just watch it.
+- The `e2e` job in `publish-client.yml` / `publish-client-web.yml` is sufficient
+  verification — **no manual `@head` testing is needed**. Just watch it.
 - **If e2e fails:** the broken build is already on npm under the `head` tag.
   Suggest moving that tag out of the way so nobody installs it, e.g.:
   ```bash
