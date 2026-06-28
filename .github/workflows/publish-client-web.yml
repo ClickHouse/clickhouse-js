@@ -54,6 +54,9 @@ jobs:
     if: github.ref == 'refs/heads/release' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: npm-publish
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      packages: "@clickhouse/client-web"
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -68,12 +71,14 @@ jobs:
         run: npm ci
 
       - name: Set head pre-release version
+        id: version
         run: |
           BASE_VERSION=$(node -p "require('./packages/client-web/package.json').version")
           HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
           echo "Setting version to: $HEAD_VERSION"
           npm --workspace @clickhouse/client-web version --no-git-tag-version "$HEAD_VERSION"
           echo "export default \"$HEAD_VERSION\";" > packages/client-web/src/version.ts
+          echo "version=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build the package
         run: npm --workspace @clickhouse/client-web run build
@@ -129,3 +134,92 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: .scripts/push_release_tag.sh "client-web-${RELEASE_VERSION}"
+
+  e2e:
+    name: e2e (node ${{ matrix.node }})
+    needs: [head, publish]
+    # Runs whether the published version came from the head job or the manual
+    # latest publish.
+    if: |
+      always() &&
+      (needs.head.result == 'success' || needs.publish.result == 'success')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        node: [20, 22, 24, 26]
+    defaults:
+      run:
+        working-directory: tests/e2e/install
+    env:
+      PUBLISHED_VERSION: ${{ needs.head.outputs.version || needs.publish.outputs.version }}
+      PUBLISHED_PACKAGES: ${{ needs.head.outputs.packages || needs.publish.outputs.packages }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Start ClickHouse (stable) in Docker
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: ${{ matrix.node }}
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Wait for ${{ env.PUBLISHED_VERSION }} to be available on npm
+        run: |
+          set -euo pipefail
+          if [ -z "${PUBLISHED_VERSION}" ]; then
+            echo "PUBLISHED_VERSION is empty; cannot wait for npm publication." >&2
+            exit 1
+          fi
+          if [ -z "${PUBLISHED_PACKAGES}" ]; then
+            echo "PUBLISHED_PACKAGES is empty; cannot wait for npm publication." >&2
+            exit 1
+          fi
+          read -r -a packages <<< "${PUBLISHED_PACKAGES}"
+          # Poll the registry for up to ~5 minutes per package. New versions
+          # usually surface in seconds, but the registry CDN can lag.
+          max_attempts=60
+          sleep_seconds=5
+          for pkg in "${packages[@]}"; do
+            echo "Waiting for ${pkg}@${PUBLISHED_VERSION} to be available on npm..."
+            attempt=1
+            while true; do
+              if npm view "${pkg}@${PUBLISHED_VERSION}" version >/dev/null 2>&1; then
+                echo "  ${pkg}@${PUBLISHED_VERSION} is available."
+                break
+              fi
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Timed out waiting for ${pkg}@${PUBLISHED_VERSION} on npm" >&2
+                exit 1
+              fi
+              echo "  attempt ${attempt}/${max_attempts}: not available yet, sleeping ${sleep_seconds}s..."
+              attempt=$((attempt + 1))
+              sleep "$sleep_seconds"
+            done
+          done
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install the packages at the published version
+        run: |
+          set -euo pipefail
+          read -r -a packages <<< "${PUBLISHED_PACKAGES}"
+          specs=()
+          for pkg in "${packages[@]}"; do
+            specs+=("${pkg}@${PUBLISHED_VERSION}")
+          done
+          npm install "${specs[@]}"
+
+      # Light e2e against the installed @clickhouse/client-web and a live
+      # single-node ClickHouse (started above): import, ping, simple query, and
+      # confirm a bad query surfaces as a ClickHouseError.
+      - name: Run the light Web e2e against the published package
+        run: node src/web.ts
