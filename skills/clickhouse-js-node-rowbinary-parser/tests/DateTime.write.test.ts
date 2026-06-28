@@ -33,6 +33,28 @@ describe("writeDateTime", () => {
     ));
 });
 
+// Sub-day / sub-second inputs are floored to the encoded unit, never rounded
+// up. Asserted purely (encode-vs-encode against the truncated instant) so the
+// cases run without a live ClickHouse and can't be masked by a reader.
+describe("date/time flooring", () => {
+  it("floors a near-midnight Date down to its own calendar day", () =>
+    expect(
+      encode(writeDate, new Date(Date.UTC(2021, 6, 7, 23, 59, 59))),
+    ).toEqual(encode(writeDate, new Date(Date.UTC(2021, 6, 7)))));
+
+  it("floors a pre-1970 Date32 toward the earlier day, not the epoch", () =>
+    expect(
+      encode(writeDate32, new Date(Date.UTC(1969, 11, 31, 12, 0, 0))),
+    ).toEqual(encode(writeDate32, new Date(Date.UTC(1969, 11, 31)))));
+
+  it("floors a sub-second DateTime down, never up to the next second", () =>
+    expect(
+      encode(writeDateTime, new Date(Date.UTC(2021, 6, 7, 18, 30, 0, 600))),
+    ).toEqual(
+      encode(writeDateTime, new Date(Date.UTC(2021, 6, 7, 18, 30, 0))),
+    ));
+});
+
 describe("writeDateTime64", () => {
   const wholeSecond = new Date(Date.UTC(2021, 6, 7, 18, 30, 0));
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { encode } from "./encode.js";
+import { Sink } from "../src/core_writer.js";
 import {
   writePoint,
   writeRing,
@@ -88,4 +89,12 @@ describe("writeGeometry", () => {
     ));
   it("encodes NULL as a single 0xFF byte", () =>
     expect([...encode(writeGeometry, null)]).toEqual([0xff]));
+
+  it("throws on an unknown discriminant without writing the byte", () => {
+    const sink = new Sink(Buffer.allocUnsafe(16));
+    expect(() => writeGeometry(sink, [6, [1, 2]])).toThrow(RangeError);
+    // The discriminant is validated before the byte is written, so a rejected
+    // value leaves no partial payload behind.
+    expect(sink.bytes().length).toBe(0);
+  });
 });

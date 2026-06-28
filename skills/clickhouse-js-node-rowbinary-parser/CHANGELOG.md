@@ -25,8 +25,11 @@
   for (const chunk of writeRows(writeRow)(rows, 64 * 1024)) send(chunk);
   ```
 
+  Writer edge-case hardening: `writeDate`/`writeDate32`/`writeDateTime` floor to the calendar day / whole second instead of rounding (so a non-midnight `Date` or sub-second `DateTime` no longer rounds up); `parseIPv6` rejects malformed hex groups instead of silently encoding `0`; and `writeGeometry` validates the discriminant before writing its byte, so an out-of-range value can't leave a partial payload. ([#916])
+
 [#911]: https://github.com/ClickHouse/clickhouse-js/pull/911
 [#915]: https://github.com/ClickHouse/clickhouse-js/pull/915
+[#916]: https://github.com/ClickHouse/clickhouse-js/pull/916
 
 # 0.1.2
 
