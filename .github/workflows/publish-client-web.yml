@@ -136,7 +136,7 @@ jobs:
         run: .scripts/push_release_tag.sh "client-web-${RELEASE_VERSION}"
 
   e2e:
-    name: e2e (node ${{ matrix.node }})
+    name: e2e (browser ${{ matrix.browser }})
     needs: [head, publish]
     # Runs whether the published version came from the head job or the manual
     # latest publish.
@@ -147,16 +147,19 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [20, 22, 24, 26]
+        # Matches the browsers exercised by the main web suite (WebKit is not
+        # tested at the moment).
+        browser: [chromium, firefox]
     defaults:
       run:
-        working-directory: tests/e2e/install
+        working-directory: tests/e2e/web-browser
     env:
       PUBLISHED_VERSION: ${{ needs.head.outputs.version || needs.publish.outputs.version }}
-      PUBLISHED_PACKAGES: ${{ needs.head.outputs.packages || needs.publish.outputs.packages }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
+      # The single-node service sends CORS headers, so the browser can reach it
+      # cross-origin from the vitest page (see its config.xml).
       - name: Start ClickHouse (stable) in Docker
         uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
         env:
@@ -165,10 +168,10 @@ jobs:
           compose-file: "docker-compose.yml"
           down-flags: "--volumes"
 
-      - name: Setup NodeJS ${{ matrix.node }}
+      - name: Setup NodeJS
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 24
           registry-url: "https://registry.npmjs.org"
 
       - name: Wait for ${{ env.PUBLISHED_VERSION }} to be available on npm
@@ -178,48 +181,40 @@ jobs:
             echo "PUBLISHED_VERSION is empty; cannot wait for npm publication." >&2
             exit 1
           fi
-          if [ -z "${PUBLISHED_PACKAGES}" ]; then
-            echo "PUBLISHED_PACKAGES is empty; cannot wait for npm publication." >&2
-            exit 1
-          fi
-          read -r -a packages <<< "${PUBLISHED_PACKAGES}"
-          # Poll the registry for up to ~5 minutes per package. New versions
-          # usually surface in seconds, but the registry CDN can lag.
+          pkg="@clickhouse/client-web"
+          # Poll the registry for up to ~5 minutes. New versions usually surface
+          # in seconds, but the registry CDN can lag.
           max_attempts=60
           sleep_seconds=5
-          for pkg in "${packages[@]}"; do
-            echo "Waiting for ${pkg}@${PUBLISHED_VERSION} to be available on npm..."
-            attempt=1
-            while true; do
-              if npm view "${pkg}@${PUBLISHED_VERSION}" version >/dev/null 2>&1; then
-                echo "  ${pkg}@${PUBLISHED_VERSION} is available."
-                break
-              fi
-              if [ "$attempt" -ge "$max_attempts" ]; then
-                echo "Timed out waiting for ${pkg}@${PUBLISHED_VERSION} on npm" >&2
-                exit 1
-              fi
-              echo "  attempt ${attempt}/${max_attempts}: not available yet, sleeping ${sleep_seconds}s..."
-              attempt=$((attempt + 1))
-              sleep "$sleep_seconds"
-            done
+          attempt=1
+          echo "Waiting for ${pkg}@${PUBLISHED_VERSION} to be available on npm..."
+          while true; do
+            if npm view "${pkg}@${PUBLISHED_VERSION}" version >/dev/null 2>&1; then
+              echo "  ${pkg}@${PUBLISHED_VERSION} is available."
+              break
+            fi
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "Timed out waiting for ${pkg}@${PUBLISHED_VERSION} on npm" >&2
+              exit 1
+            fi
+            echo "  attempt ${attempt}/${max_attempts}: not available yet, sleeping ${sleep_seconds}s..."
+            attempt=$((attempt + 1))
+            sleep "$sleep_seconds"
           done
 
       - name: Install dependencies
         run: npm install
 
-      - name: Install the packages at the published version
-        run: |
-          set -euo pipefail
-          read -r -a packages <<< "${PUBLISHED_PACKAGES}"
-          specs=()
-          for pkg in "${packages[@]}"; do
-            specs+=("${pkg}@${PUBLISHED_VERSION}")
-          done
-          npm install "${specs[@]}"
+      - name: Install the Playwright browser
+        run: npx playwright install ${{ matrix.browser }}
 
-      # Light e2e against the installed @clickhouse/client-web and a live
-      # single-node ClickHouse (started above): import, ping, simple query, and
-      # confirm a bad query surfaces as a ClickHouseError.
-      - name: Run the light Web e2e against the published package
-        run: node src/web.ts
+      - name: Install @clickhouse/client-web at the published version
+        run: npm install "@clickhouse/client-web@${PUBLISHED_VERSION}"
+
+      # Real-browser e2e: vitest's Vite bundler serves the installed package to a
+      # Playwright-driven browser and runs it against the live ClickHouse started
+      # above (import, ping, query, streaming, ClickHouseError on a bad query).
+      - name: Run the Web browser e2e against the published package
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: npm test
