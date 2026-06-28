@@ -63,7 +63,6 @@ export function parseIPv4(text: string): number {
  * Pair with {@link writeIPv6}.
  */
 export function parseIPv6(text: string): Buffer {
-  const out = Buffer.alloc(16);
   const halves = text.split("::");
   if (halves.length > 2) {
     throw new RangeError(
@@ -98,6 +97,10 @@ export function parseIPv6(text: string): Buffer {
       `RowBinary: invalid IPv6 string ${JSON.stringify(text)}`,
     );
   }
+  // SAFE: allocUnsafe — the loop below writes all 16 bytes (out[0..15] for the
+  // 8 groups), and `out` is only allocated here, past every throw, so an
+  // uninitialized buffer is never returned.
+  const out = Buffer.allocUnsafe(16);
   for (let i = 0; i < 8; i++) {
     out[2 * i] = (groups[i]! >>> 8) & 0xff;
     out[2 * i + 1] = groups[i]! & 0xff;

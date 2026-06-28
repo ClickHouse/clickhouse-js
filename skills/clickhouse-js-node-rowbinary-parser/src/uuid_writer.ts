@@ -15,8 +15,8 @@ export function parseUUID(text: string): Buffer {
     );
   }
   const v = BigInt("0x" + hex);
-  // allocUnsafe is safe here: the two writeBigUInt64LE calls below overwrite all
-  // 16 bytes (offsets 0..7 and 8..15), so no uninitialized pool memory survives.
+  // SAFE: allocUnsafe — the two writeBigUInt64LE calls below overwrite all 16
+  // bytes (offsets 0..7 and 8..15), so no uninitialized pool memory survives.
   const b = Buffer.allocUnsafe(16);
   b.writeBigUInt64LE(v >> 64n, 0); // high half -> first 8 bytes
   b.writeBigUInt64LE(v & 0xffffffffffffffffn, 8); // low half -> last 8 bytes
