@@ -22,24 +22,24 @@ export function writePoint(sink: Sink, [x, y]: Point): void {
  */
 export function writeRing(sink: Sink, points: readonly Point[]): void {
   writeUVarint(sink, points.length);
-  const o = reserve(sink, points.length * 16);
+  let p = reserve(sink, points.length * 16);
   for (let i = 0; i < points.length; i++) {
     const [x, y] = points[i]!;
-    const p = o + i * 16;
     sink.view.setFloat64(p, x, true);
     sink.view.setFloat64(p + 8, y, true);
+    p += 16;
   }
 }
 
 /** Write a `LineString`: `Array(Point)` (identical wire to a `Ring`). Inverse of `readLineString`. */
 export function writeLineString(sink: Sink, points: readonly Point[]): void {
   writeUVarint(sink, points.length);
-  const o = reserve(sink, points.length * 16);
+  let p = reserve(sink, points.length * 16);
   for (let i = 0; i < points.length; i++) {
     const [x, y] = points[i]!;
-    const p = o + i * 16;
     sink.view.setFloat64(p, x, true);
     sink.view.setFloat64(p + 8, y, true);
+    p += 16;
   }
 }
 
