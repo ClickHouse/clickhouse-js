@@ -1,4 +1,4 @@
-import { Sink, reserve } from "./core_writer.js";
+import { Sink, reserve } from "./core.js";
 
 /**
  * Write a LEB128 unsigned varint — the encode mirror of `readUVarint` (used for

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Sink, reserve, BufferFull } from "../src/writers/core_writer.js";
+import { Sink, reserve, BufferFull } from "../src/writers/core.js";
 import { encode } from "./encode.js";
-import { writeUVarint } from "../src/writers/varint_writer.js";
+import { writeUVarint } from "../src/writers/varint.js";
 
 /** A fresh sink over a fixed buffer of `capacity` bytes. */
 function sink(capacity: number): Sink {

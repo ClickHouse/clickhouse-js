@@ -1,5 +1,5 @@
-import { type Writer } from "./core_writer.js";
-import { writeArray, writeTupleNamed } from "./composite_writer.js";
+import { type Writer } from "./core.js";
+import { writeArray, writeTupleNamed } from "./composite.js";
 
 /**
  * Inverse of `readNested`: `Nested(...)` has no wire format of its own, so for the

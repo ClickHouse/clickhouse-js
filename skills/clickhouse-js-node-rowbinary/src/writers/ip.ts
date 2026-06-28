@@ -1,4 +1,4 @@
-import { Sink, reserve } from "./core_writer.js";
+import { Sink, reserve } from "./core.js";
 
 /**
  * Write an `IPv4`: the raw 32-bit value (as produced by `readIPv4`) as a 4-byte

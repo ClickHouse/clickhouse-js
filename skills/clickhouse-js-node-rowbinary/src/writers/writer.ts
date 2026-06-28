@@ -1,8 +1,8 @@
 /**
  * Barrel re-export of the RowBinary WRITER — the encode mirror of `reader.ts`,
- * split by type family across parallel `*_writer.ts` modules (the readers stay in
+ * split by type family across parallel `*.ts` modules (the readers stay in
  * their own files untouched). Import from here for everything in one place, or
- * from a specific module (e.g. `./integers_writer.js`, `./strings_writer.js`) to
+ * from a specific module (e.g. `./integers.js`, `./strings.js`) to
  * pull in only the sub-writers a given result needs — the latter is what a
  * generated encoder should do, copying just the modules its column types require.
  *
@@ -16,15 +16,15 @@
  *   writeUInt8(sink, 255);
  *   sink.bytes(); // the encoded RowBinary
  *
- * - core_writer — Sink, Writer<T>, reserve (mirror of Cursor, Reader<T>, advance)
- * - varint_writer — writeUVarint
+ * - core — Sink, Writer<T>, reserve (mirror of Cursor, Reader<T>, advance)
+ * - varint — writeUVarint
  *
  * The dynamic AST-based encode path (the inverse of `compile.ts` /
  * `rowBinaryWithNamesAndTypes.ts` / `dynamic.ts`) is intentionally NOT part of
  * this barrel yet.
  */
-export { Sink, reserve, BufferFull, type Writer } from "./core_writer.js";
-export { writeUVarint } from "./varint_writer.js";
+export { Sink, reserve, BufferFull, type Writer } from "./core.js";
+export { writeUVarint } from "./varint.js";
 export {
   writeUInt8,
   writeInt8,
@@ -38,30 +38,30 @@ export {
   writeInt128,
   writeUInt256,
   writeInt256,
-} from "./integers_writer.js";
-export { writeBool } from "./bool_writer.js";
-export { writeEnum8, writeEnum16 } from "./enums_writer.js";
-export { writeFloat32, writeFloat64, writeBFloat16 } from "./floats_writer.js";
+} from "./integers.js";
+export { writeBool } from "./bool.js";
+export { writeEnum8, writeEnum16 } from "./enums.js";
+export { writeFloat32, writeFloat64, writeBFloat16 } from "./floats.js";
 export {
   writeDecimal32,
   writeDecimal64,
   writeDecimal128,
   writeDecimal256,
   parseDecimal,
-} from "./decimals_writer.js";
+} from "./decimals.js";
 export {
   writeString,
   writeStringBytes,
   writeFixedString,
   writeFixedStringBytes,
-} from "./strings_writer.js";
+} from "./strings.js";
 export {
   writeUUID,
   writeUUIDBigInt,
   writeUUIDHiLo,
   parseUUID,
-} from "./uuid_writer.js";
-export { writeIPv4, writeIPv6, parseIPv4, parseIPv6 } from "./ip_writer.js";
+} from "./uuid.js";
+export { writeIPv4, writeIPv6, parseIPv4, parseIPv6 } from "./ip.js";
 export {
   writeDate,
   writeDate32,
@@ -70,14 +70,14 @@ export {
   writeDateTime64P3,
   writeDateTime64P6,
   writeDateTime64P9,
-} from "./datetime_writer.js";
+} from "./datetime.js";
 export {
   writeTime,
   writeTime64,
   parseTime,
   parseTime64,
-} from "./time_writer.js";
-export { writeInterval } from "./interval_writer.js";
+} from "./time.js";
+export { writeInterval } from "./interval.js";
 export {
   writeNullable,
   writeArray,
@@ -87,12 +87,12 @@ export {
   writeMap,
   writeVariant,
   type VariantValue,
-} from "./composite_writer.js";
+} from "./composite.js";
 export {
   writeRows,
   FLUSH_CHANNEL_NAME,
   type WriteRowsFlush,
-} from "./rows_writer.js";
+} from "./rows.js";
 export {
   writePoint,
   writeRing,
@@ -102,9 +102,9 @@ export {
   writeMultiPolygon,
   writeGeometry,
   type GeometryValue,
-} from "./geo_writer.js";
-export { writeLowCardinality } from "./lowCardinality_writer.js";
-export { writeSimpleAggregateFunction } from "./simpleAggregateFunction_writer.js";
-export { writeNested } from "./nested_writer.js";
-export { writeNothing } from "./nothing_writer.js";
-export { writeAggregateFunction } from "./aggregateFunction_writer.js";
+} from "./geo.js";
+export { writeLowCardinality } from "./lowCardinality.js";
+export { writeSimpleAggregateFunction } from "./simpleAggregateFunction.js";
+export { writeNested } from "./nested.js";
+export { writeNothing } from "./nothing.js";
+export { writeAggregateFunction } from "./aggregateFunction.js";

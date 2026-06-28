@@ -1,4 +1,4 @@
-import { type Writer } from "./core_writer.js";
+import { type Writer } from "./core.js";
 
 /**
  * `LowCardinality(T)` is TRANSPARENT in RowBinary (no dictionary layer on the

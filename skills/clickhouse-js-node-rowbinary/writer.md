@@ -70,32 +70,32 @@ On top of the shared principles in [SKILL.md](SKILL.md), the write path has its 
 
 ## Writer type family references
 
-The writers live as real code under `src/writers/`, one `*_writer.ts` per type
-family.
+The writers live as real code under `src/writers/`, one file per type family
+(same basenames as the readers, under the `writers/` directory).
 
 | Value to encode (trigger)                                                                                                                      | Open                                          |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| **Always** — sink state, `reserve()`, `BufferFull`, `Writer<T>`                                                                                | `src/writers/core_writer.ts`                  |
-| LEB128 length/count prefixes for `String`/`Array`/`Map` (`writeUVarint`)                                                                       | `src/writers/varint_writer.ts`                |
-| `Int8`–`Int256`, `UInt8`–`UInt256`                                                                                                             | `src/writers/integers_writer.ts`              |
-| `Bool` (`writeBool`)                                                                                                                           | `src/writers/bool_writer.ts`                  |
-| `Enum8`, `Enum16` (`writeEnum8`/`writeEnum16`; pass the raw int)                                                                               | `src/writers/enums_writer.ts`                 |
-| `Float32`, `Float64`, `BFloat16`                                                                                                               | `src/writers/floats_writer.ts`                |
-| `Decimal32/64/128/256`, `Decimal(P, S)` (`parseDecimal`)                                                                                       | `src/writers/decimals_writer.ts`              |
-| `String`, `FixedString(N)` (`writeString`/`writeStringBytes`/`writeFixedString`)                                                               | `src/writers/strings_writer.ts`               |
-| `UUID` (`writeUUID`, `parseUUID`)                                                                                                              | `src/writers/uuid_writer.ts`                  |
-| `IPv4`, `IPv6` (`writeIPv4`/`writeIPv6`, `parseIPv4`/`parseIPv6`)                                                                              | `src/writers/ip_writer.ts`                    |
-| `Date`, `Date32`, `DateTime`, `DateTime(tz)`, `DateTime64(P[, tz])`                                                                            | `src/writers/datetime_writer.ts`              |
-| `Time`, `Time64(P)` (`parseTime`/`parseTime64`)                                                                                                | `src/writers/time_writer.ts`                  |
-| `IntervalNanosecond` … `IntervalYear`                                                                                                          | `src/writers/interval_writer.ts`              |
-| `Array(T)`, `Map(K, V)`, `Tuple(...)`, `Nullable(T)`, `Variant(...)`, `QBit(...)`                                                              | `src/writers/composite_writer.ts`             |
-| `Point`, `Ring`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `Geometry`                                                        | `src/writers/geo_writer.ts`                   |
-| The whole result — write rows from a value source (`writeRows`)                                                                                | `src/writers/rows_writer.ts`                  |
-| `LowCardinality(T)` — transparent, encode as `T`                                                                                               | `src/writers/lowCardinality_writer.ts`        |
-| `SimpleAggregateFunction(f, T)` — transparent, encode as `T`                                                                                   | `src/writers/simpleAggregateFunction_writer.ts` |
-| `Nested(...)` — no wire of its own; `Array(Tuple(...))`                                                                                        | `src/writers/nested_writer.ts`                |
-| `Nothing` — zero-width, never encoded (only wrapped)                                                                                           | `src/writers/nothing_writer.ts`               |
-| `AggregateFunction(...)` — opaque state; produce server-side                                                                                   | `src/writers/aggregateFunction_writer.ts`     |
+| **Always** — sink state, `reserve()`, `BufferFull`, `Writer<T>`                                                                                | `src/writers/core.ts`                  |
+| LEB128 length/count prefixes for `String`/`Array`/`Map` (`writeUVarint`)                                                                       | `src/writers/varint.ts`                |
+| `Int8`–`Int256`, `UInt8`–`UInt256`                                                                                                             | `src/writers/integers.ts`              |
+| `Bool` (`writeBool`)                                                                                                                           | `src/writers/bool.ts`                  |
+| `Enum8`, `Enum16` (`writeEnum8`/`writeEnum16`; pass the raw int)                                                                               | `src/writers/enums.ts`                 |
+| `Float32`, `Float64`, `BFloat16`                                                                                                               | `src/writers/floats.ts`                |
+| `Decimal32/64/128/256`, `Decimal(P, S)` (`parseDecimal`)                                                                                       | `src/writers/decimals.ts`              |
+| `String`, `FixedString(N)` (`writeString`/`writeStringBytes`/`writeFixedString`)                                                               | `src/writers/strings.ts`               |
+| `UUID` (`writeUUID`, `parseUUID`)                                                                                                              | `src/writers/uuid.ts`                  |
+| `IPv4`, `IPv6` (`writeIPv4`/`writeIPv6`, `parseIPv4`/`parseIPv6`)                                                                              | `src/writers/ip.ts`                    |
+| `Date`, `Date32`, `DateTime`, `DateTime(tz)`, `DateTime64(P[, tz])`                                                                            | `src/writers/datetime.ts`              |
+| `Time`, `Time64(P)` (`parseTime`/`parseTime64`)                                                                                                | `src/writers/time.ts`                  |
+| `IntervalNanosecond` … `IntervalYear`                                                                                                          | `src/writers/interval.ts`              |
+| `Array(T)`, `Map(K, V)`, `Tuple(...)`, `Nullable(T)`, `Variant(...)`, `QBit(...)`                                                              | `src/writers/composite.ts`             |
+| `Point`, `Ring`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `Geometry`                                                        | `src/writers/geo.ts`                   |
+| The whole result — write rows from a value source (`writeRows`)                                                                                | `src/writers/rows.ts`                  |
+| `LowCardinality(T)` — transparent, encode as `T`                                                                                               | `src/writers/lowCardinality.ts`        |
+| `SimpleAggregateFunction(f, T)` — transparent, encode as `T`                                                                                   | `src/writers/simpleAggregateFunction.ts` |
+| `Nested(...)` — no wire of its own; `Array(Tuple(...))`                                                                                        | `src/writers/nested.ts`                |
+| `Nothing` — zero-width, never encoded (only wrapped)                                                                                           | `src/writers/nothing.ts`               |
+| `AggregateFunction(...)` — opaque state; produce server-side                                                                                   | `src/writers/aggregateFunction.ts`     |
 
 **No writer counterpart yet** — these reader paths are decode-only for now:
 `dynamic.ts`, `json.ts`, `stream.ts`, the `RowBinaryWithNamesAndTypes`

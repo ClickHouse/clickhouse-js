@@ -1,5 +1,5 @@
 import { channel } from "node:diagnostics_channel";
-import { BufferFull, Sink, type Writer } from "./core_writer.js";
+import { BufferFull, Sink, type Writer } from "./core.js";
 
 /** Default sink size when `writeRows` isn't given one — a typical flush chunk. */
 const DEFAULT_BUFFER_SIZE = 64 * 1024;

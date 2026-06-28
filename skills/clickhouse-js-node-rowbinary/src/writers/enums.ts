@@ -1,4 +1,4 @@
-import { Sink, reserve } from "./core_writer.js";
+import { Sink, reserve } from "./core.js";
 
 /**
  * Write an `Enum8`: the value's underlying signed `Int8` (1 byte). Mirror of

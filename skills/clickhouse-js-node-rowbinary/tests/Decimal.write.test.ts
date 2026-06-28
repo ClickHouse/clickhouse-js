@@ -7,7 +7,7 @@ import {
   writeDecimal128,
   writeDecimal256,
   parseDecimal,
-} from "../src/writers/decimals_writer.js";
+} from "../src/writers/decimals.js";
 
 describe("writeDecimal32", () => {
   it("encodes 1.5", async () =>

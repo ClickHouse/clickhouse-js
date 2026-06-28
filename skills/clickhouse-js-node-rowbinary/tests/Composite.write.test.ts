@@ -8,9 +8,9 @@ import {
   writeTupleNamed,
   writeMap,
   writeVariant,
-} from "../src/writers/composite_writer.js";
-import { writeInt32, writeUInt32 } from "../src/writers/integers_writer.js";
-import { writeString } from "../src/writers/strings_writer.js";
+} from "../src/writers/composite.js";
+import { writeInt32, writeUInt32 } from "../src/writers/integers.js";
+import { writeString } from "../src/writers/strings.js";
 
 describe("writeNullable", () => {
   it("encodes a present value (flag 0 then the value)", async () =>

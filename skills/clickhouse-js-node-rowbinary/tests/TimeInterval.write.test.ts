@@ -6,8 +6,8 @@ import {
   writeTime64,
   parseTime,
   parseTime64,
-} from "../src/writers/time_writer.js";
-import { writeInterval } from "../src/writers/interval_writer.js";
+} from "../src/writers/time.js";
+import { writeInterval } from "../src/writers/interval.js";
 
 describe("writeTime", () => {
   it("encodes 12:34:56", async () =>

@@ -5,11 +5,11 @@ import {
   writeRows,
   FLUSH_CHANNEL_NAME,
   type WriteRowsFlush,
-} from "../src/writers/rows_writer.js";
-import { type Writer } from "../src/writers/core_writer.js";
-import { writeTupleNamed } from "../src/writers/composite_writer.js";
-import { writeUInt64, writeUInt32 } from "../src/writers/integers_writer.js";
-import { writeString } from "../src/writers/strings_writer.js";
+} from "../src/writers/rows.js";
+import { type Writer } from "../src/writers/core.js";
+import { writeTupleNamed } from "../src/writers/composite.js";
+import { writeUInt64, writeUInt32 } from "../src/writers/integers.js";
+import { writeString } from "../src/writers/strings.js";
 
 type Row = {
   id: bigint;

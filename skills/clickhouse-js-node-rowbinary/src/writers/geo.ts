@@ -1,7 +1,7 @@
-import { type Writer, Sink, reserve } from "./core_writer.js";
+import { type Writer, Sink, reserve } from "./core.js";
 import { type Point } from "../readers/geo.js";
-import { writeUInt8 } from "./integers_writer.js";
-import { writeUVarint } from "./varint_writer.js";
+import { writeUInt8 } from "./integers.js";
+import { writeUVarint } from "./varint.js";
 
 /**
  * Write a `Point`: `Tuple(Float64, Float64)` -> `[x, y]`. Inverse of `readPoint`.

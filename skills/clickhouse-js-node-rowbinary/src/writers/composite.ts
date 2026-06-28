@@ -1,6 +1,6 @@
-import { type Writer } from "./core_writer.js";
-import { writeUInt8 } from "./integers_writer.js";
-import { writeUVarint } from "./varint_writer.js";
+import { type Writer } from "./core.js";
+import { writeUInt8 } from "./integers.js";
+import { writeUVarint } from "./varint.js";
 
 // --- Writers: the encode mirror of the combinators in `composite.ts`. Each takes
 // sub-WRITERS (instead of sub-readers) and returns a Writer; MONOMORPHIZE when

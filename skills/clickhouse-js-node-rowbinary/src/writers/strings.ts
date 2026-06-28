@@ -1,5 +1,5 @@
-import { type Writer, Sink, reserve } from "./core_writer.js";
-import { writeUVarint } from "./varint_writer.js";
+import { type Writer, Sink, reserve } from "./core.js";
+import { writeUVarint } from "./varint.js";
 
 /**
  * Write a `String` from a JS string: a varint byte-length prefix followed by the

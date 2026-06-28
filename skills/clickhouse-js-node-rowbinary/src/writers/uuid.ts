@@ -1,4 +1,4 @@
-import { Sink, reserve } from "./core_writer.js";
+import { Sink, reserve } from "./core.js";
 
 /**
  * Parse a canonical `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` UUID string into the

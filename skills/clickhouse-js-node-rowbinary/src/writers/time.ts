@@ -1,6 +1,6 @@
-import { type Writer, Sink } from "./core_writer.js";
+import { type Writer, Sink } from "./core.js";
 import { type ScaledTicks, type Seconds } from "../readers/time.js";
-import { writeInt32, writeInt64 } from "./integers_writer.js";
+import { writeInt32, writeInt64 } from "./integers.js";
 
 /**
  * Write a `Time`: 4-byte signed `Int32` seconds-of-day. The inverse of `readTime`;

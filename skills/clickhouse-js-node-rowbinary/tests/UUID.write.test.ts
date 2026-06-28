@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { encode } from "./encode.js";
-import { Sink } from "../src/writers/core_writer.js";
+import { Sink } from "../src/writers/core.js";
 import {
   writeUUID,
   writeUUIDBigInt,
   writeUUIDHiLo,
   parseUUID,
-} from "../src/writers/uuid_writer.js";
+} from "../src/writers/uuid.js";
 
 const SAMPLE = "61f0c404-5cb3-11e7-907b-a6006ad3dba0";
 // ClickHouse stores a UUID as two little-endian UInt64 halves (high then low).

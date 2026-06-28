@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { encode } from "./encode.js";
-import { writeNothing } from "../src/writers/nothing_writer.js";
-import { writeArray, writeNullable } from "../src/writers/composite_writer.js";
+import { writeNothing } from "../src/writers/nothing.js";
+import { writeArray, writeNullable } from "../src/writers/composite.js";
 
 describe("writeNothing", () => {
   it("throws if ever invoked directly", () =>

@@ -1,4 +1,4 @@
-import { type Writer } from "./core_writer.js";
+import { type Writer } from "./core.js";
 
 /**
  * Inverse of `readNothing`: a `Nothing` value is NEVER written either. It only

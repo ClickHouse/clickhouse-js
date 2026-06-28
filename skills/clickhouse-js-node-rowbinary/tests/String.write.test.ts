@@ -6,7 +6,7 @@ import {
   writeStringBytes,
   writeFixedString,
   writeFixedStringBytes,
-} from "../src/writers/strings_writer.js";
+} from "../src/writers/strings.js";
 
 describe("writeString", () => {
   it("encodes the empty string", async () =>

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { encode } from "./encode.js";
-import { writeBool } from "../src/writers/bool_writer.js";
-import { writeEnum8, writeEnum16 } from "../src/writers/enums_writer.js";
+import { writeBool } from "../src/writers/bool.js";
+import { writeEnum8, writeEnum16 } from "../src/writers/enums.js";
 import {
   writeFloat32,
   writeFloat64,
   writeBFloat16,
-} from "../src/writers/floats_writer.js";
+} from "../src/writers/floats.js";
 
 describe("writeBool", () => {
   it("encodes true as 0x01", async () =>

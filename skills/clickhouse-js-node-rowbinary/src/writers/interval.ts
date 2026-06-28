@@ -1,4 +1,4 @@
-import { writeInt64 } from "./integers_writer.js";
+import { writeInt64 } from "./integers.js";
 
 /**
  * Write an `Interval` — any of `IntervalNanosecond` ... `IntervalYear`: a signed

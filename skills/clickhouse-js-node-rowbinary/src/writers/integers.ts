@@ -1,4 +1,4 @@
-import { Sink, reserve } from "./core_writer.js";
+import { Sink, reserve } from "./core.js";
 
 // --- Writers: the encode mirror of the readers in `integers.ts`. Each writeX is
 // the inverse of the matching readX.

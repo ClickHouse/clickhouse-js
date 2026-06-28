@@ -1,4 +1,4 @@
-import { Sink, reserve } from "./core_writer.js";
+import { Sink, reserve } from "./core.js";
 
 /** Write a `Float32`: 4 bytes, little-endian IEEE 754. Mirror of `readFloat32`. */
 export function writeFloat32(sink: Sink, value: number): void {

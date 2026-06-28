@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { encode } from "./encode.js";
-import { Sink } from "../src/writers/core_writer.js";
+import { Sink } from "../src/writers/core.js";
 import {
   writeIPv4,
   writeIPv6,
   parseIPv4,
   parseIPv6,
-} from "../src/writers/ip_writer.js";
+} from "../src/writers/ip.js";
 
 describe("writeIPv4", () => {
   it("encodes 0.0.0.0", async () =>

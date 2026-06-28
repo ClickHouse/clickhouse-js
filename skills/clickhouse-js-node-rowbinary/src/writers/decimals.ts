@@ -1,11 +1,11 @@
-import { type Writer } from "./core_writer.js";
+import { type Writer } from "./core.js";
 import { type DecimalValue } from "../readers/decimals.js";
 import {
   writeInt32,
   writeInt64,
   writeInt128,
   writeInt256,
-} from "./integers_writer.js";
+} from "./integers.js";
 
 /**
  * Parse a fixed-point decimal string into a {@link DecimalValue} at the given

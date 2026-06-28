@@ -1,4 +1,4 @@
-import { type Writer } from "./core_writer.js";
+import { type Writer } from "./core.js";
 
 /**
  * `SimpleAggregateFunction(func, T)` is TRANSPARENT in RowBinary — the column
