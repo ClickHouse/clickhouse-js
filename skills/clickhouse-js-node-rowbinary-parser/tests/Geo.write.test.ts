@@ -68,24 +68,23 @@ describe("geo writers", () => {
 });
 
 describe("writeGeometry", () => {
-  /** Encode a tagged Geometry value and match ClickHouse's `Geometry`. */
-  function geometryBytes(expr: string): Promise<Buffer> {
-    return query(
-      `SELECT CAST(${expr} AS Geometry) SETTINGS allow_suspicious_variant_types = 1 FORMAT RowBinary`,
-    );
-  }
-
   it("encodes a Point (discriminant 3)", async () =>
     expect(encode(writeGeometry, [3, [1.5, 2.5]])).toEqual(
-      await geometryBytes("CAST((1.5, 2.5) AS Point)"),
+      await query(
+        "SELECT CAST(CAST((1.5, 2.5) AS Point) AS Geometry) SETTINGS allow_suspicious_variant_types = 1 FORMAT RowBinary",
+      ),
     ));
   it("encodes a LineString (discriminant 0)", async () =>
     expect(encode(writeGeometry, [0, ring])).toEqual(
-      await geometryBytes("CAST([(0, 0), (1, 2)] AS LineString)"),
+      await query(
+        "SELECT CAST(CAST([(0, 0), (1, 2)] AS LineString) AS Geometry) SETTINGS allow_suspicious_variant_types = 1 FORMAT RowBinary",
+      ),
     ));
   it("encodes a Polygon (discriminant 4)", async () =>
     expect(encode(writeGeometry, [4, polygon])).toEqual(
-      await geometryBytes("CAST([[(0, 0), (1, 0), (1, 1)]] AS Polygon)"),
+      await query(
+        "SELECT CAST(CAST([[(0, 0), (1, 0), (1, 1)]] AS Polygon) AS Geometry) SETTINGS allow_suspicious_variant_types = 1 FORMAT RowBinary",
+      ),
     ));
   it("encodes NULL as a single 0xFF byte", () =>
     expect([...encode(writeGeometry, null)]).toEqual([0xff]));

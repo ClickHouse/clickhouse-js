@@ -80,18 +80,18 @@ describe("writeVariant", () => {
   // Variant(Int32, String) sorts by type name: ["Int32", "String"].
   const writeV = writeVariant([writeInt32, writeString]);
 
-  function variantBytes(expr: string): Promise<Buffer> {
-    return query(
-      `SELECT CAST(${expr}, 'Variant(Int32, String)') SETTINGS allow_experimental_variant_type = 1 FORMAT RowBinary`,
-    );
-  }
-
   it("encodes the Int32 alternative (discriminant 0)", async () =>
-    expect(encode(writeV, [0, -5])).toEqual(await variantBytes("toInt32(-5)")));
+    expect(encode(writeV, [0, -5])).toEqual(
+      await query(
+        "SELECT CAST(toInt32(-5), 'Variant(Int32, String)') SETTINGS allow_experimental_variant_type = 1 FORMAT RowBinary",
+      ),
+    ));
 
   it("encodes the String alternative (discriminant 1)", async () =>
     expect(encode(writeV, [1, "hello"])).toEqual(
-      await variantBytes("'hello'"),
+      await query(
+        "SELECT CAST('hello', 'Variant(Int32, String)') SETTINGS allow_experimental_variant_type = 1 FORMAT RowBinary",
+      ),
     ));
 
   it("encodes NULL as a single 0xFF byte", () =>

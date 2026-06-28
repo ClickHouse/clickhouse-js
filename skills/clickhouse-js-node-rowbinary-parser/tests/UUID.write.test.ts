@@ -32,21 +32,21 @@ const WIRE = [
   0x90, // low half, little-endian
 ];
 
-function uuidBytes(): Promise<Buffer> {
-  return query(`SELECT toUUID('${SAMPLE}') FORMAT RowBinary`);
-}
-
 describe("UUID writers", () => {
   it("writeUUID copies the raw 16 wire bytes verbatim", async () =>
-    expect(encode(writeUUID, Buffer.from(WIRE))).toEqual(await uuidBytes()));
+    expect(encode(writeUUID, Buffer.from(WIRE))).toEqual(
+      await query(`SELECT toUUID('${SAMPLE}') FORMAT RowBinary`),
+    ));
 
   it("writeUUIDBigInt splits a 128-bit bigint into the two LE halves", async () =>
     expect(encode(writeUUIDBigInt, (HI << 64n) | LO)).toEqual(
-      await uuidBytes(),
+      await query(`SELECT toUUID('${SAMPLE}') FORMAT RowBinary`),
     ));
 
   it("writeUUIDHiLo writes the two raw [hi, lo] halves", async () =>
-    expect(encode(writeUUIDHiLo, [HI, LO])).toEqual(await uuidBytes()));
+    expect(encode(writeUUIDHiLo, [HI, LO])).toEqual(
+      await query(`SELECT toUUID('${SAMPLE}') FORMAT RowBinary`),
+    ));
 
   it("parseUUID turns the canonical string into the wire bytes", () =>
     expect([...parseUUID(SAMPLE)]).toEqual(WIRE));

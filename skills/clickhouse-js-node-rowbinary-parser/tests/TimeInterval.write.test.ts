@@ -9,35 +9,33 @@ import {
 } from "../src/time_writer.js";
 import { writeInterval } from "../src/interval_writer.js";
 
-/**
- * The RowBinary bytes ClickHouse emits for a Time/Time64 expression — the source
- * of truth. The `Time`/`Time64` types are behind a setting, so it is enabled here.
- */
-function chTime(expr: string): Promise<Buffer> {
-  return query(
-    `SELECT ${expr} SETTINGS enable_time_time64_type = 1 FORMAT RowBinary`,
-  );
-}
-
 describe("writeTime", () => {
   it("encodes 12:34:56", async () =>
     expect(encode(writeTime, parseTime("12:34:56"))).toEqual(
-      await chTime("CAST('12:34:56' AS Time)"),
+      await query(
+        "SELECT CAST('12:34:56' AS Time) SETTINGS enable_time_time64_type = 1 FORMAT RowBinary",
+      ),
     ));
   it("encodes a negative -01:02:03", async () =>
     expect(encode(writeTime, parseTime("-01:02:03"))).toEqual(
-      await chTime("CAST('-01:02:03' AS Time)"),
+      await query(
+        "SELECT CAST('-01:02:03' AS Time) SETTINGS enable_time_time64_type = 1 FORMAT RowBinary",
+      ),
     ));
 });
 
 describe("writeTime64", () => {
   it("encodes Time64(3)", async () =>
     expect(encode(writeTime64, parseTime64("12:34:56.789", 3))).toEqual(
-      await chTime("toTime64('12:34:56.789', 3)"),
+      await query(
+        "SELECT toTime64('12:34:56.789', 3) SETTINGS enable_time_time64_type = 1 FORMAT RowBinary",
+      ),
     ));
   it("encodes a negative Time64(6)", async () =>
     expect(encode(writeTime64, parseTime64("-01:02:03.000004", 6))).toEqual(
-      await chTime("toTime64('-01:02:03.000004', 6)"),
+      await query(
+        "SELECT toTime64('-01:02:03.000004', 6) SETTINGS enable_time_time64_type = 1 FORMAT RowBinary",
+      ),
     ));
 });
 
