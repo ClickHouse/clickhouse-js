@@ -1,7 +1,7 @@
-import { type Reader, advance } from "../core.js";
-import { readDateTime64P3 } from "../datetime.js";
-import { readFloat32, readFloat64 } from "../floats.js";
-import { readUInt8, readUInt32 } from "../integers.js";
+import { type Reader, advance } from "../readers/core.js";
+import { readDateTime64P3 } from "../readers/datetime.js";
+import { readFloat32, readFloat64 } from "../readers/floats.js";
+import { readUInt8, readUInt32 } from "../readers/integers.js";
 
 /**
  * Example: a table of IoT sensor readings — the dense, fixed-width NUMERIC case

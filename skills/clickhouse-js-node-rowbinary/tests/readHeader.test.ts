@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor } from "../src/core.js";
-import { readHeader } from "../src/header.js";
+import { Cursor } from "../src/readers/core.js";
+import { readHeader } from "../src/readers/header.js";
 
 /** Fetch a `RowBinaryWithNamesAndTypes` response (header + rows) as a cursor. */
 async function withNamesAndTypes(select: string): Promise<Cursor> {

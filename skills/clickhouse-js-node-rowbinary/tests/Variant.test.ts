@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { readVariant } from "../src/composite.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readFloat64 } from "../src/floats.js";
-import { readUInt64, readUInt8 } from "../src/integers.js";
-import { readString } from "../src/strings.js";
+import { readVariant } from "../src/readers/composite.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readFloat64 } from "../src/readers/floats.js";
+import { readUInt64, readUInt8 } from "../src/readers/integers.js";
+import { readString } from "../src/readers/strings.js";
 
 async function reader(expr: string): Promise<Cursor> {
   return new Cursor(

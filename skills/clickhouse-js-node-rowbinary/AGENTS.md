@@ -1,6 +1,6 @@
 # Recommendations for AI agents — `@clickhouse/rowbinary`
 
-Guidance for the [`clickhouse-js-node-rowbinary-parser`](.) package (the RowBinary parser library and agent skill). See the [repo-root `AGENTS.md`](../../AGENTS.md) for cross-cutting guidance.
+Guidance for the [`clickhouse-js-node-rowbinary`](.) package (the RowBinary codec library and agent skill). See the [repo-root `AGENTS.md`](../../AGENTS.md) for cross-cutting guidance.
 
 This package has a symmetric reader/writer codebase.
 

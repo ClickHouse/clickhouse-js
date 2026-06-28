@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor } from "../src/core.js";
-import { readInt32, readUInt64 } from "../src/integers.js";
-import { readRows } from "../src/rows.js";
-import { readString } from "../src/strings.js";
+import { Cursor } from "../src/readers/core.js";
+import { readInt32, readUInt64 } from "../src/readers/integers.js";
+import { readRows } from "../src/readers/rows.js";
+import { readString } from "../src/readers/strings.js";
 
 /**
  * Multi-row tests: plain `RowBinary` concatenates rows back-to-back with no row

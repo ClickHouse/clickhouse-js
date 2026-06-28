@@ -1,10 +1,10 @@
-import { type Reader, advance } from "../core.js";
+import { type Reader, advance } from "../readers/core.js";
 import {
   type DecimalValue,
   readDecimal64,
   readDecimal128,
-} from "../decimals.js";
-import { readInt64, readUInt128, readUInt256 } from "../integers.js";
+} from "../readers/decimals.js";
+import { readInt64, readUInt128, readUInt256 } from "../readers/integers.js";
 
 /**
  * Example: a financial ledger — the WIDE-NUMERIC case where RowBinary wins on

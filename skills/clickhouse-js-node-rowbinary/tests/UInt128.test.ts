@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readUInt128 } from "../src/integers.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readUInt128 } from "../src/readers/integers.js";
 
 async function reader(expr: string): Promise<Cursor> {
   return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));

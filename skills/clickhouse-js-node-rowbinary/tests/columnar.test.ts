@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { streamSensorColumns } from "../src/columnar.js";
+import { streamSensorColumns } from "../src/readers/columnar.js";
 
 /**
  * Eval for the streaming columnar decoder (`streamSensorColumns`). The example

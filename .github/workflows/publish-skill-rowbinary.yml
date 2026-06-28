@@ -1,9 +1,9 @@
-name: "publish: rowbinary parser"
+name: "publish: rowbinary"
 
 # Independent publish + release for the standalone @clickhouse/rowbinary
-# package (the RowBinary parser skill). Like the per-package client publish
+# package (the RowBinary codec skill). Like the per-package client publish
 # workflows (publish-client*.yml), it carries its own version in
-# skills/clickhouse-js-node-rowbinary-parser/package.json and ships on its own
+# skills/clickhouse-js-node-rowbinary/package.json and ships on its own
 # cadence. Triggered manually, and — like those workflows — must be dispatched from
 # the `release` branch: the npm-publish environment is protected so only that
 # branch may deploy (the repo's human-in-the-loop release gate). Dispatches from
@@ -49,7 +49,7 @@ jobs:
       id-token: write # Required for npm OIDC authentication and provenance
     defaults:
       run:
-        working-directory: skills/clickhouse-js-node-rowbinary-parser
+        working-directory: skills/clickhouse-js-node-rowbinary
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -97,7 +97,7 @@ jobs:
           # expose their parsers, from the exact artifact we are about to publish.
           node --input-type=module -e "
             import * as rb from '@clickhouse/rowbinary';
-            import * as ints from '@clickhouse/rowbinary/integers';
+            import * as ints from '@clickhouse/rowbinary/readers/integers';
             if (typeof rb.readRows !== 'function') throw new Error('readRows missing from main export');
             if (typeof ints.readUInt8 !== 'function') throw new Error('readUInt8 missing from subpath export');
             console.log('OK: packed tarball imports cleanly');
@@ -181,7 +181,7 @@ jobs:
           # expose their parsers to a downstream consumer.
           node --input-type=module -e "
             import * as rb from '@clickhouse/rowbinary';
-            import * as ints from '@clickhouse/rowbinary/integers';
+            import * as ints from '@clickhouse/rowbinary/readers/integers';
             if (typeof rb.readRows !== 'function') throw new Error('readRows missing from main export');
             if (typeof ints.readUInt8 !== 'function') throw new Error('readUInt8 missing from subpath export');
             console.log('OK: @clickhouse/rowbinary@${PUBLISHED_VERSION} imports cleanly');

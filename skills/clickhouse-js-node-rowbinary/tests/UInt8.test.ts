@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readUInt8 } from "../src/integers.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readUInt8 } from "../src/readers/integers.js";
 
 describe("readUInt8", () => {
   it("reads sequential unsigned bytes", () => {

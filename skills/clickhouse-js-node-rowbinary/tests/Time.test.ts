@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { formatTime, readTime } from "../src/time.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { formatTime, readTime } from "../src/readers/time.js";
 
 // Time / Time64 need enable_time_time64_type; pass it inline via SETTINGS.
 async function reader(expr: string): Promise<Cursor> {

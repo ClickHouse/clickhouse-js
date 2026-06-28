@@ -6,10 +6,10 @@ import {
   readNullable,
   readTuple,
   readVariant,
-} from "../src/composite.js";
-import { NeedMoreData, type Reader, Cursor } from "../src/core.js";
-import { readInt32, readUInt8 } from "../src/integers.js";
-import { readString } from "../src/strings.js";
+} from "../src/readers/composite.js";
+import { NeedMoreData, type Reader, Cursor } from "../src/readers/core.js";
+import { readInt32, readUInt8 } from "../src/readers/integers.js";
+import { readString } from "../src/readers/strings.js";
 
 /**
  * GENERATED type-combination coverage — the systematic companion to the curated,

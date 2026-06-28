@@ -1,5 +1,5 @@
 import { bench, describe } from "vitest";
-import { parseIPv4, parseIPv6 } from "../src/ip_writer.js";
+import { parseIPv4, parseIPv6 } from "../src/writers/ip_writer.js";
 
 /**
  * Benchmark: the string -> raw-bytes IP parsers. `parseIPv6` is the heavier one

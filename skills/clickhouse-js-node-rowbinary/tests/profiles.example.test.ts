@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor } from "../src/core.js";
+import { Cursor } from "../src/readers/core.js";
 import { type ProfileRow, readProfileRow } from "../src/examples/profiles.js";
-import { readRows } from "../src/rows.js";
+import { readRows } from "../src/readers/rows.js";
 
 /**
  * Runs the `profiles` example end to end (Array + Nullable). Populated via

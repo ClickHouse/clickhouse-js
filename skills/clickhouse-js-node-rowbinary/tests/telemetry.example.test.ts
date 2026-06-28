@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor } from "../src/core.js";
+import { Cursor } from "../src/readers/core.js";
 import {
   type TelemetryRow,
   readTelemetryRow,
 } from "../src/examples/telemetry.js";
-import { readRows } from "../src/rows.js";
+import { readRows } from "../src/readers/rows.js";
 
 /**
  * Runs the `telemetry` example end to end (Map / Array / Nullable / named

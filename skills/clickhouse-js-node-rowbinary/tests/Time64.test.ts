@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { formatTime64, readTime64 } from "../src/time.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { formatTime64, readTime64 } from "../src/readers/time.js";
 
 async function reader(expr: string): Promise<Cursor> {
   return new Cursor(

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readUInt64 } from "../src/integers.js";
-import { readString } from "../src/strings.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readUInt64 } from "../src/readers/integers.js";
+import { readString } from "../src/readers/strings.js";
 
 /**
  * `advance` / `NeedMoreData` tests: the per-read "need more bytes" throw that is

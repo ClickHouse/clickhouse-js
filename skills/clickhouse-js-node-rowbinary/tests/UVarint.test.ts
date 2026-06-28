@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readUVarint } from "../src/varint.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readUVarint } from "../src/readers/varint.js";
 
 /**
  * RowBinary prefixes every String with its length as a LEB128 unsigned varint.

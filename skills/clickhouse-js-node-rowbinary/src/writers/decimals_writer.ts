@@ -1,5 +1,5 @@
 import { type Writer } from "./core_writer.js";
-import { type DecimalValue } from "./decimals.js";
+import { type DecimalValue } from "../readers/decimals.js";
 import {
   writeInt32,
   writeInt64,

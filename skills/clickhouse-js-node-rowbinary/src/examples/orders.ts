@@ -1,7 +1,7 @@
-import { type Reader, advance } from "../core.js";
-import { type DecimalValue, readDecimal64 } from "../decimals.js";
-import { readInt8, readUInt8 } from "../integers.js";
-import { formatUUID, formatUUIDTable, readUUID } from "../uuid.js";
+import { type Reader, advance } from "../readers/core.js";
+import { type DecimalValue, readDecimal64 } from "../readers/decimals.js";
+import { readInt8, readUInt8 } from "../readers/integers.js";
+import { formatUUID, formatUUIDTable, readUUID } from "../readers/uuid.js";
 
 /**
  * Example: an orders table — UUID, Decimal, and Enum (awkward-as-JSON types).

@@ -6,12 +6,12 @@ import {
   readNullable,
   readTuple,
   readVariant,
-} from "../src/composite.js";
-import { Cursor } from "../src/core.js";
-import { readDynamic } from "../src/dynamic.js";
-import { readInt32, readUInt8 } from "../src/integers.js";
-import { readJSON } from "../src/json.js";
-import { readString } from "../src/strings.js";
+} from "../src/readers/composite.js";
+import { Cursor } from "../src/readers/core.js";
+import { readDynamic } from "../src/readers/dynamic.js";
+import { readInt32, readUInt8 } from "../src/readers/integers.js";
+import { readJSON } from "../src/readers/json.js";
+import { readString } from "../src/readers/strings.js";
 
 /**
  * Framing tests for NESTED self-describing / variable-length types — the place

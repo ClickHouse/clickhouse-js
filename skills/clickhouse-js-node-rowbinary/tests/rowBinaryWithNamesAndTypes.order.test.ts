@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Cursor } from "../src/core.js";
-import { compileRowBinaryWithNamesAndTypes } from "../src/rowBinaryWithNamesAndTypes.js";
+import { Cursor } from "../src/readers/core.js";
+import { compileRowBinaryWithNamesAndTypes } from "../src/readers/rowBinaryWithNamesAndTypes.js";
 
 // Offline regression tests (no server) for the wire-order guarantee of the
 // row reader: every row must read EXACTLY one reader per header column, in

@@ -1,8 +1,8 @@
-import { readArray, readNullable } from "../composite.js";
-import { type Reader, advance } from "../core.js";
-import { readInt32, readUInt32 } from "../integers.js";
-import { readString } from "../strings.js";
-import { readUVarint } from "../varint.js";
+import { readArray, readNullable } from "../readers/composite.js";
+import { type Reader, advance } from "../readers/core.js";
+import { readInt32, readUInt32 } from "../readers/integers.js";
+import { readString } from "../readers/strings.js";
+import { readUVarint } from "../readers/varint.js";
 
 /**
  * Example: a profiles table — Array and Nullable wrappers.

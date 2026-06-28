@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { readArray } from "../src/composite.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readUInt64, readUInt8 } from "../src/integers.js";
-import { readSimpleAggregateFunction } from "../src/simpleAggregateFunction.js";
+import { readArray } from "../src/readers/composite.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readUInt64, readUInt8 } from "../src/readers/integers.js";
+import { readSimpleAggregateFunction } from "../src/readers/simpleAggregateFunction.js";
 
 async function reader(expr: string): Promise<Cursor> {
   return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));

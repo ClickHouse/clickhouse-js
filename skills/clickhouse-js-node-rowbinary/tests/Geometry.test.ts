@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readGeometry } from "../src/geo.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readGeometry } from "../src/readers/geo.js";
 
 // Geometry's variant has "similar" alternatives (LineString/Ring), so the type
 // needs allow_suspicious_variant_types; the value still casts through a geo type.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { encode } from "./encode.js";
-import { Sink } from "../src/core_writer.js";
+import { Sink } from "../src/writers/core_writer.js";
 import {
   writePoint,
   writeRing,
@@ -10,8 +10,8 @@ import {
   writeMultiLineString,
   writeMultiPolygon,
   writeGeometry,
-} from "../src/geo_writer.js";
-import { type Point } from "../src/geo.js";
+} from "../src/writers/geo_writer.js";
+import { type Point } from "../src/readers/geo.js";
 
 const ring: Point[] = [
   [0, 0],

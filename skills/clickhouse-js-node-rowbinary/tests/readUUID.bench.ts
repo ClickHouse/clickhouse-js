@@ -1,5 +1,5 @@
 import { bench, describe } from "vitest";
-import { formatUUID, formatUUIDTable } from "../src/reader.js";
+import { formatUUID, formatUUIDTable } from "../src/readers/reader.js";
 
 /**
  * Benchmark: the BigInt-based formatUUID vs the lookup-table formatUUIDTable

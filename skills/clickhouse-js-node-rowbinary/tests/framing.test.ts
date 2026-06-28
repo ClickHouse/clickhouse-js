@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { readBool } from "../src/bool.js";
+import { readBool } from "../src/readers/bool.js";
 import {
   readArray,
   readMap,
@@ -9,23 +9,23 @@ import {
   readTuple,
   readTupleNamed,
   readVariant,
-} from "../src/composite.js";
-import { Cursor } from "../src/core.js";
+} from "../src/readers/composite.js";
+import { Cursor } from "../src/readers/core.js";
 import {
   readDate,
   readDate32,
   readDateTime,
   readDateTime64,
-} from "../src/datetime.js";
+} from "../src/readers/datetime.js";
 import {
   readDecimal128,
   readDecimal256,
   readDecimal32,
   readDecimal64,
-} from "../src/decimals.js";
-import { readDynamic } from "../src/dynamic.js";
-import { readEnum16, readEnum8 } from "../src/enums.js";
-import { readBFloat16, readFloat32, readFloat64 } from "../src/floats.js";
+} from "../src/readers/decimals.js";
+import { readDynamic } from "../src/readers/dynamic.js";
+import { readEnum16, readEnum8 } from "../src/readers/enums.js";
+import { readBFloat16, readFloat32, readFloat64 } from "../src/readers/floats.js";
 import {
   readGeometry,
   readLineString,
@@ -34,7 +34,7 @@ import {
   readPoint,
   readPolygon,
   readRing,
-} from "../src/geo.js";
+} from "../src/readers/geo.js";
 import {
   readInt128,
   readInt16,
@@ -48,13 +48,13 @@ import {
   readUInt32,
   readUInt64,
   readUInt8,
-} from "../src/integers.js";
-import { readInterval } from "../src/interval.js";
-import { formatIPv4, formatIPv6, readIPv4, readIPv6 } from "../src/ip.js";
-import { readJSON } from "../src/json.js";
-import { readFixedString, readString } from "../src/strings.js";
-import { readTime, readTime64 } from "../src/time.js";
-import { formatUUID, readUUID } from "../src/uuid.js";
+} from "../src/readers/integers.js";
+import { readInterval } from "../src/readers/interval.js";
+import { formatIPv4, formatIPv6, readIPv4, readIPv6 } from "../src/readers/ip.js";
+import { readJSON } from "../src/readers/json.js";
+import { readFixedString, readString } from "../src/readers/strings.js";
+import { readTime, readTime64 } from "../src/readers/time.js";
+import { formatUUID, readUUID } from "../src/readers/uuid.js";
 
 /**
  * Framing tests: every type is placed as the MIDDLE column between two distinct

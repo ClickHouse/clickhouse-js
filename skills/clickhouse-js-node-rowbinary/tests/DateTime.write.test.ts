@@ -9,7 +9,7 @@ import {
   writeDateTime64P3,
   writeDateTime64P6,
   writeDateTime64P9,
-} from "../src/datetime_writer.js";
+} from "../src/writers/datetime_writer.js";
 
 describe("writeDate / writeDate32", () => {
   it("encodes a Date as days since the epoch", async () =>

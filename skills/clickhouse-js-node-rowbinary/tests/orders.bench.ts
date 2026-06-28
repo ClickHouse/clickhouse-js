@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import { query } from "./clickhouse.js";
-import { type Reader, Cursor } from "../src/core.js";
+import { type Reader, Cursor } from "../src/readers/core.js";
 import {
   type OrderRow,
   readOrderRow,

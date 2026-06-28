@@ -1,14 +1,22 @@
 ---
-name: clickhouse-js-node-rowbinary-parser
+name: clickhouse-js-node-rowbinary
 description: >
-  Generate TypeScript/JavaScript code that reads and decodes ClickHouse
-  RowBinary streams from the ClickHouse HTTP server.
-  Use this skill whenever a user wants to parse `RowBinary`,
+  Generate TypeScript/JavaScript code that reads/decodes AND writes/encodes
+  ClickHouse RowBinary streams for the ClickHouse HTTP server.
+  Use this skill whenever a user wants to parse or produce `RowBinary`,
   `RowBinaryWithNames`, or `RowBinaryWithNamesAndTypes`.
   Node.js only, doesn't cover browsers.
 ---
 
-# ClickHouse JS RowBinary Parser Generator for Node.js
+# ClickHouse JS RowBinary Codec Generator for Node.js
+
+This skill generates both directions of the wire format: **readers** (decode
+bytes → values, the original focus) and **writers** (encode values → bytes, the
+mirror). Most of the guidance below frames the read path, but the same judgment
+— format choice, monomorphization, inlining leaf ops, coalescing fixed-width
+runs — applies symmetrically to the write path. The per-type code is split by
+direction under `src/readers/` and `src/writers/`; see the two reference tables
+below.
 
 ## First: is RowBinary even the right format?
 
@@ -77,7 +85,7 @@ bandwidth). Measured in `tests/iot.columnar.bench.ts`; rationale in
   complete-row count is `(chunk.length / stride) | 0`, and the leftover bytes
   carry to the next chunk. Yield one typed-array batch per chunk, each owning a
   fresh transferable `ArrayBuffer` (see `streamSensorColumns` in
-  `src/columnar.ts`).
+  `src/readers/columnar.ts`).
 - **Stay row-oriented when** downstream code is row-shaped, the row is
   string-dominated (columnar's win is numeric — a JS string allocates either
   way), or the schema is nested/heterogeneous (`Array`/`Map`/`Tuple`).
@@ -90,9 +98,9 @@ bandwidth). Measured in `tests/iot.columnar.bench.ts`; rationale in
   types — everything below.
 - **Only at runtime** (the schema varies, or you just want to decode an arbitrary
   `RowBinaryWithNamesAndTypes` stream). Call
-  `compileRowBinaryWithNamesAndTypes(cursor)` (`src/rowBinaryWithNamesAndTypes.ts`):
+  `compileRowBinaryWithNamesAndTypes(cursor)` (`src/readers/rowBinaryWithNamesAndTypes.ts`):
   it reads the header, folds each column type's AST into a `Reader`
-  (`astToReader`, `src/compile.ts`; type strings parsed by
+  (`astToReader`, `src/readers/compile.ts`; type strings parsed by
   `@clickhouse/datatype-parser`), and returns a `readRows` driver for the rest of
   the stream. Generic and unoptimized (no codegen), so prefer the specialized
   path whenever the types are fixed.
@@ -153,40 +161,79 @@ When generating a parser, follow these:
 - **TypeScript by default.** Generate TypeScript parsers and helpers unless the
   user explicitly asks for plain JavaScript.
 
-## Type family references
+## Reader type family references
 
-The readers live as real code under `src/`, split by type family.
+The readers live as real code under `src/readers/`, split by type family.
 
 | Result contains (trigger)                                                                                                                      | Open                                                                                                                                                                  |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Always** — cursor state, `advance()`, `NeedMoreData`, `Reader<T>`                                                                            | `src/core.ts`                                                                                                                                                         |
-| LEB128 length/count prefixes for `String`/`Array`/`Map` (`readUVarint`)                                                                        | `src/varint.ts`                                                                                                                                                       |
-| `Int8`–`Int256`, `UInt8`–`UInt256`                                                                                                             | `src/integers.ts`                                                                                                                                                     |
-| `Bool`                                                                                                                                         | `src/bool.ts`                                                                                                                                                         |
-| `Enum8`, `Enum16` (resolve to the value's name; `readInt8`/`readInt16` for the raw int)                                                        | `src/enums.ts`                                                                                                                                                        |
-| `Float32`, `Float64`, `BFloat16`                                                                                                               | `src/floats.ts`                                                                                                                                                       |
-| `Decimal32/64/128/256`, `Decimal(P, S)`                                                                                                        | `src/decimals.ts`                                                                                                                                                     |
-| `String`, `FixedString(N)`                                                                                                                     | `src/strings.ts`                                                                                                                                                      |
-| `UUID`                                                                                                                                         | `src/uuid.ts`                                                                                                                                                         |
-| `IPv4`, `IPv6`                                                                                                                                 | `src/ip.ts`                                                                                                                                                           |
-| `Date`, `Date32`, `DateTime`, `DateTime(tz)`, `DateTime64(P[, tz])`                                                                            | `src/datetime.ts`                                                                                                                                                     |
-| `Time`, `Time64(P)`                                                                                                                            | `src/time.ts`                                                                                                                                                         |
-| `IntervalNanosecond` … `IntervalYear`                                                                                                          | `src/interval.ts`                                                                                                                                                     |
-| `Array(T)`, `Map(K, V)`, `Tuple(...)`, `Nullable(T)`, `Variant(...)`, `QBit(...)`                                                              | `src/composite.ts`                                                                                                                                                    |
-| `Point`, `Ring`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `Geometry`                                                        | `src/geo.ts`                                                                                                                                                          |
-| `Dynamic` (and `Variant`/`Interval`/`Nested`/`Dynamic` nested inside it)                                                                       | `src/dynamic.ts`                                                                                                                                                      |
-| `JSON`                                                                                                                                         | `src/json.ts`                                                                                                                                                         |
-| The whole result — loop rows to EOF (`readRows`)                                                                                               | `src/rows.ts`                                                                                                                                                         |
-| A chunked HTTP response — `streamRowBatches`, `coalesceChunks`                                                                                 | `src/stream.ts`                                                                                                                                                       |
-| The `RowBinaryWithNamesAndTypes` header — column names + type strings (`readHeader`)                                                           | `src/header.ts`                                                                                                                                                       |
-| Fold one parsed type AST into a `Reader` (`astToReader`) — AST in, reader out                                                                  | `src/compile.ts`                                                                                                                                                      |
-| **Types known only at runtime** — compile a whole header into a row reader (`compileRowBinaryWithNamesAndTypes`, `typeStringToReader`)         | `src/rowBinaryWithNamesAndTypes.ts`                                                                                                                                   |
-| **Numeric/fixed-width result read column-wise** (aggregate/scan/plot, hand to a Worker/WASM) → decode into typed arrays, not row objects (~4x) | `src/columnar.ts` (`streamSensorColumns` — streaming, yields transferable typed-array batches); `decodeIotColumnar` in `src/examples/iot.ts` is the whole-buffer form |
-| `LowCardinality(T)` — transparent, decode as `T`                                                                                               | `src/lowCardinality.ts`                                                                                                                                               |
-| `SimpleAggregateFunction(f, T)` — transparent, decode as `T`                                                                                   | `src/simpleAggregateFunction.ts`                                                                                                                                      |
-| `Nested(...)` — no wire of its own; `Array(Tuple(...))`                                                                                        | `src/nested.ts`                                                                                                                                                       |
-| `Nothing` — zero-width, never decoded (only wrapped)                                                                                           | `src/nothing.ts`                                                                                                                                                      |
-| `AggregateFunction(...)` — opaque state; finalize server-side                                                                                  | `src/aggregateFunction.ts`                                                                                                                                            |
+| **Always** — cursor state, `advance()`, `NeedMoreData`, `Reader<T>`                                                                            | `src/readers/core.ts`                                                                                                                                                         |
+| LEB128 length/count prefixes for `String`/`Array`/`Map` (`readUVarint`)                                                                        | `src/readers/varint.ts`                                                                                                                                                       |
+| `Int8`–`Int256`, `UInt8`–`UInt256`                                                                                                             | `src/readers/integers.ts`                                                                                                                                                     |
+| `Bool`                                                                                                                                         | `src/readers/bool.ts`                                                                                                                                                         |
+| `Enum8`, `Enum16` (resolve to the value's name; `readInt8`/`readInt16` for the raw int)                                                        | `src/readers/enums.ts`                                                                                                                                                        |
+| `Float32`, `Float64`, `BFloat16`                                                                                                               | `src/readers/floats.ts`                                                                                                                                                       |
+| `Decimal32/64/128/256`, `Decimal(P, S)`                                                                                                        | `src/readers/decimals.ts`                                                                                                                                                     |
+| `String`, `FixedString(N)`                                                                                                                     | `src/readers/strings.ts`                                                                                                                                                      |
+| `UUID`                                                                                                                                         | `src/readers/uuid.ts`                                                                                                                                                         |
+| `IPv4`, `IPv6`                                                                                                                                 | `src/readers/ip.ts`                                                                                                                                                           |
+| `Date`, `Date32`, `DateTime`, `DateTime(tz)`, `DateTime64(P[, tz])`                                                                            | `src/readers/datetime.ts`                                                                                                                                                     |
+| `Time`, `Time64(P)`                                                                                                                            | `src/readers/time.ts`                                                                                                                                                         |
+| `IntervalNanosecond` … `IntervalYear`                                                                                                          | `src/readers/interval.ts`                                                                                                                                                     |
+| `Array(T)`, `Map(K, V)`, `Tuple(...)`, `Nullable(T)`, `Variant(...)`, `QBit(...)`                                                              | `src/readers/composite.ts`                                                                                                                                                    |
+| `Point`, `Ring`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `Geometry`                                                        | `src/readers/geo.ts`                                                                                                                                                          |
+| `Dynamic` (and `Variant`/`Interval`/`Nested`/`Dynamic` nested inside it)                                                                       | `src/readers/dynamic.ts`                                                                                                                                                      |
+| `JSON`                                                                                                                                         | `src/readers/json.ts`                                                                                                                                                         |
+| The whole result — loop rows to EOF (`readRows`)                                                                                               | `src/readers/rows.ts`                                                                                                                                                         |
+| A chunked HTTP response — `streamRowBatches`, `coalesceChunks`                                                                                 | `src/readers/stream.ts`                                                                                                                                                       |
+| The `RowBinaryWithNamesAndTypes` header — column names + type strings (`readHeader`)                                                           | `src/readers/header.ts`                                                                                                                                                       |
+| Fold one parsed type AST into a `Reader` (`astToReader`) — AST in, reader out                                                                  | `src/readers/compile.ts`                                                                                                                                                      |
+| **Types known only at runtime** — compile a whole header into a row reader (`compileRowBinaryWithNamesAndTypes`, `typeStringToReader`)         | `src/readers/rowBinaryWithNamesAndTypes.ts`                                                                                                                                   |
+| **Numeric/fixed-width result read column-wise** (aggregate/scan/plot, hand to a Worker/WASM) → decode into typed arrays, not row objects (~4x) | `src/readers/columnar.ts` (`streamSensorColumns` — streaming, yields transferable typed-array batches); `decodeIotColumnar` in `src/examples/iot.ts` is the whole-buffer form |
+| `LowCardinality(T)` — transparent, decode as `T`                                                                                               | `src/readers/lowCardinality.ts`                                                                                                                                               |
+| `SimpleAggregateFunction(f, T)` — transparent, decode as `T`                                                                                   | `src/readers/simpleAggregateFunction.ts`                                                                                                                                      |
+| `Nested(...)` — no wire of its own; `Array(Tuple(...))`                                                                                        | `src/readers/nested.ts`                                                                                                                                                       |
+| `Nothing` — zero-width, never decoded (only wrapped)                                                                                           | `src/readers/nothing.ts`                                                                                                                                                      |
+| `AggregateFunction(...)` — opaque state; finalize server-side                                                                                  | `src/readers/aggregateFunction.ts`                                                                                                                                            |
+
+## Writer type family references
+
+The writers mirror the readers under `src/writers/`, one `*_writer.ts` per type
+family. Each `writeX` is the inverse of the matching `readX`: it appends a
+value's RowBinary bytes to a `Sink` (the write-side `Cursor`). The same
+core-guidance applies in reverse — monomorphize composites, inline leaf writes,
+coalesce `reserve()` across adjacent fixed-width columns. Import the barrel as
+`@clickhouse/rowbinary/writer`.
+
+| Value to encode (trigger)                                                                                                                      | Open                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| **Always** — sink state, `reserve()`, `BufferFull`, `Writer<T>`                                                                                | `src/writers/core_writer.ts`                  |
+| LEB128 length/count prefixes for `String`/`Array`/`Map` (`writeUVarint`)                                                                       | `src/writers/varint_writer.ts`                |
+| `Int8`–`Int256`, `UInt8`–`UInt256`                                                                                                             | `src/writers/integers_writer.ts`              |
+| `Bool` (`writeBool`)                                                                                                                           | `src/writers/bool_writer.ts`                  |
+| `Enum8`, `Enum16` (`writeEnum8`/`writeEnum16`; pass the raw int)                                                                               | `src/writers/enums_writer.ts`                 |
+| `Float32`, `Float64`, `BFloat16`                                                                                                               | `src/writers/floats_writer.ts`                |
+| `Decimal32/64/128/256`, `Decimal(P, S)` (`parseDecimal`)                                                                                       | `src/writers/decimals_writer.ts`              |
+| `String`, `FixedString(N)` (`writeString`/`writeStringBytes`/`writeFixedString`)                                                               | `src/writers/strings_writer.ts`               |
+| `UUID` (`writeUUID`, `parseUUID`)                                                                                                              | `src/writers/uuid_writer.ts`                  |
+| `IPv4`, `IPv6` (`writeIPv4`/`writeIPv6`, `parseIPv4`/`parseIPv6`)                                                                              | `src/writers/ip_writer.ts`                    |
+| `Date`, `Date32`, `DateTime`, `DateTime(tz)`, `DateTime64(P[, tz])`                                                                            | `src/writers/datetime_writer.ts`              |
+| `Time`, `Time64(P)` (`parseTime`/`parseTime64`)                                                                                                | `src/writers/time_writer.ts`                  |
+| `IntervalNanosecond` … `IntervalYear`                                                                                                          | `src/writers/interval_writer.ts`              |
+| `Array(T)`, `Map(K, V)`, `Tuple(...)`, `Nullable(T)`, `Variant(...)`, `QBit(...)`                                                              | `src/writers/composite_writer.ts`             |
+| `Point`, `Ring`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `Geometry`                                                        | `src/writers/geo_writer.ts`                   |
+| The whole result — write rows from a value source (`writeRows`)                                                                                | `src/writers/rows_writer.ts`                  |
+| `LowCardinality(T)` — transparent, encode as `T`                                                                                               | `src/writers/lowCardinality_writer.ts`        |
+| `SimpleAggregateFunction(f, T)` — transparent, encode as `T`                                                                                   | `src/writers/simpleAggregateFunction_writer.ts` |
+| `Nested(...)` — no wire of its own; `Array(Tuple(...))`                                                                                        | `src/writers/nested_writer.ts`                |
+| `Nothing` — zero-width, never encoded (only wrapped)                                                                                           | `src/writers/nothing_writer.ts`               |
+| `AggregateFunction(...)` — opaque state; produce server-side                                                                                   | `src/writers/aggregateFunction_writer.ts`     |
+
+**No writer counterpart yet** — these reader paths are decode-only for now:
+`dynamic.ts`, `json.ts`, `stream.ts`, the `RowBinaryWithNamesAndTypes`
+header/compile/runtime path (`header.ts`, `compile.ts`,
+`rowBinaryWithNamesAndTypes.ts`), and the columnar typed-array path
+(`columnar.ts`). The AST-based dynamic encode path is intentionally not built.
 
 ## Worked examples
 

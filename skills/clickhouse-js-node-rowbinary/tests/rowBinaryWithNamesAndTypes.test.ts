@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor } from "../src/core.js";
+import { Cursor } from "../src/readers/core.js";
 import {
   compileRowBinaryWithNamesAndTypes,
   createTypeReaderCache,
   typeStringToReader,
   type Row,
-} from "../src/rowBinaryWithNamesAndTypes.js";
-import { RowBinaryTypeError } from "../src/compile.js";
+} from "../src/readers/rowBinaryWithNamesAndTypes.js";
+import { RowBinaryTypeError } from "../src/readers/compile.js";
 
 /** Raw value bytes for one expression (`FORMAT RowBinary`, no header). */
 async function rowBinary(expr: string): Promise<Cursor> {

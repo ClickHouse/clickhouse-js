@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor } from "../src/core.js";
-import { readUInt64 } from "../src/integers.js";
-import { type SmallChunkStats, streamRowBatches } from "../src/stream.js";
-import { readString } from "../src/strings.js";
+import { Cursor } from "../src/readers/core.js";
+import { readUInt64 } from "../src/readers/integers.js";
+import { type SmallChunkStats, streamRowBatches } from "../src/readers/stream.js";
+import { readString } from "../src/readers/strings.js";
 
 /**
  * `streamRowBatches` is the async front door over `readRows`: an async iterable

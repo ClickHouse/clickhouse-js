@@ -1,5 +1,5 @@
 import { type Writer, Sink, reserve } from "./core_writer.js";
-import { type Point } from "./geo.js";
+import { type Point } from "../readers/geo.js";
 import { writeUInt8 } from "./integers_writer.js";
 import { writeUVarint } from "./varint_writer.js";
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { readArray, readTupleNamed } from "../src/composite.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readUInt8 } from "../src/integers.js";
-import { readNested } from "../src/nested.js";
-import { readString } from "../src/strings.js";
+import { readArray, readTupleNamed } from "../src/readers/composite.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readUInt8 } from "../src/readers/integers.js";
+import { readNested } from "../src/readers/nested.js";
+import { readString } from "../src/readers/strings.js";
 
 async function reader(expr: string): Promise<Cursor> {
   return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));

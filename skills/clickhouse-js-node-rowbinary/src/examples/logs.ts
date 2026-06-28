@@ -1,7 +1,7 @@
-import { type Reader, advance } from "../core.js";
-import { readDateTime } from "../datetime.js";
-import { readString } from "../strings.js";
-import { readUVarint } from "../varint.js";
+import { type Reader, advance } from "../readers/core.js";
+import { readDateTime } from "../readers/datetime.js";
+import { readString } from "../readers/strings.js";
+import { readUVarint } from "../readers/varint.js";
 
 /**
  * Example: an application log table — the STRING-HEAVY case where the skill

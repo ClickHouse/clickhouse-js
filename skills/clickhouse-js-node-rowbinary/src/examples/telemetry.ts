@@ -3,12 +3,12 @@ import {
   readMap,
   readNullable,
   readTupleNamed,
-} from "../composite.js";
-import { type Reader, advance } from "../core.js";
-import { readFloat64 } from "../floats.js";
-import { readUInt16, readUInt32 } from "../integers.js";
-import { readString } from "../strings.js";
-import { readUVarint } from "../varint.js";
+} from "../readers/composite.js";
+import { type Reader, advance } from "../readers/core.js";
+import { readFloat64 } from "../readers/floats.js";
+import { readUInt16, readUInt32 } from "../readers/integers.js";
+import { readString } from "../readers/strings.js";
+import { readUVarint } from "../readers/varint.js";
 
 /**
  * Example: a telemetry table — composite readers that nest.

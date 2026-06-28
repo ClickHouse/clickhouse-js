@@ -14,7 +14,7 @@ import {
   writeInt128,
   writeUInt256,
   writeInt256,
-} from "../src/integers_writer.js";
+} from "../src/writers/integers_writer.js";
 
 describe("writeUInt8", () => {
   it("encodes 0", async () =>

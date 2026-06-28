@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { readNullable } from "../src/composite.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readLowCardinality } from "../src/lowCardinality.js";
-import { readString } from "../src/strings.js";
+import { readNullable } from "../src/readers/composite.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readLowCardinality } from "../src/readers/lowCardinality.js";
+import { readString } from "../src/readers/strings.js";
 
 async function reader(expr: string): Promise<Cursor> {
   return new Cursor(await query(`SELECT ${expr} FORMAT RowBinary`));

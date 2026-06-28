@@ -1,5 +1,5 @@
 import { type Writer, Sink } from "./core_writer.js";
-import { type ScaledTicks, type Seconds } from "./time.js";
+import { type ScaledTicks, type Seconds } from "../readers/time.js";
 import { writeInt32, writeInt64 } from "./integers_writer.js";
 
 /**

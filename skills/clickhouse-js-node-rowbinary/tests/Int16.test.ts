@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readInt16 } from "../src/integers.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readInt16 } from "../src/readers/integers.js";
 
 /**
  * Int16 is 2 bytes, little-endian, two's-complement. Each case selects the

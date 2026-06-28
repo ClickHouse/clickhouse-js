@@ -7,7 +7,7 @@ This root file holds repo-wide guidance. Folder-specific guidance lives in neste
 - [`packages/AGENTS.md`](packages/AGENTS.md) — client source packages: log-message conventions, package structure, and intentional node/web duplication.
 - [`examples/AGENTS.md`](examples/AGENTS.md) — the example corpus layout and conventions.
 - [`skills/AGENTS.md`](skills/AGENTS.md) — shipped agent skills and how they are declared.
-  - [`skills/clickhouse-js-node-rowbinary-parser/AGENTS.md`](skills/clickhouse-js-node-rowbinary-parser/AGENTS.md) — `@clickhouse/rowbinary` reader/writer conventions (tests, no defensive validation).
+  - [`skills/clickhouse-js-node-rowbinary/AGENTS.md`](skills/clickhouse-js-node-rowbinary/AGENTS.md) — `@clickhouse/rowbinary` reader/writer conventions (tests, no defensive validation).
 - [`docs/AGENTS.md`](docs/AGENTS.md) — embedded troubleshooting / how-to pages.
 - [`tests/clickhouse-test-runner/AGENTS.md`](tests/clickhouse-test-runner/AGENTS.md) — the upstream SQL test harness and allowlist strategy.
 
@@ -34,7 +34,7 @@ For every pull request review, make sure to provide an evaluation of the followi
    - `@clickhouse/client-web` → [`packages/client-web/CHANGELOG.md`](packages/client-web/CHANGELOG.md)
    - `@clickhouse/client-common` (deprecated) → [`packages/client-common/CHANGELOG.md`](packages/client-common/CHANGELOG.md)
    - `@clickhouse/datatype-parser` → [`packages/datatype-parser/CHANGELOG.md`](packages/datatype-parser/CHANGELOG.md)
-   - `@clickhouse/rowbinary` → [`skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md`](skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md)
+   - `@clickhouse/rowbinary` → [`skills/clickhouse-js-node-rowbinary/CHANGELOG.md`](skills/clickhouse-js-node-rowbinary/CHANGELOG.md)
 
    A change to shared code that is bundled into both clients (the common module) affects **both** `@clickhouse/client` and `@clickhouse/client-web`, so update both of their changelogs. Follow the existing format exactly:
    - Entries go under the **top-most version heading** of that package's changelog. If the most recent `# x.y.z` heading corresponds to an **already-released** version (check `git tag`), open a **new** top-level `# x.y.z` heading that matches the unreleased version in that package's `package.json`; otherwise append to the existing top heading.

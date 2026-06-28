@@ -1,10 +1,10 @@
-# ClickHouse Node.js RowBinary Parser Generator
+# ClickHouse Node.js RowBinary Codec Generator
 
-**If JS had a -O3 compiler flag, this skill would be it.** (for RowBinary parsing)
+**If JS had a -O3 compiler flag, this skill would be it.** (for RowBinary read & write)
 
-A skill and a library that lets a coding agent generate bespoke RowBinary parsers on the first pass from the column type definitions of a ClickHouse response. The [spirit](#the-spirit) behind the approach.
+A skill and a library that lets a coding agent generate bespoke RowBinary codecs on the first pass from the column type definitions of a ClickHouse response. The [spirit](#the-spirit) behind the approach.
 
-**Reader only** for now. Today this covers reading (decoding) RowBinary streams. A matching RowBinary writer (encoding) is planned.
+**Reads and writes.** Both directions are covered: readers (decode bytes → values) and writers (encode values → bytes), split under `src/readers/` and `src/writers/`. The reader path is the more mature one — the writers mirror it type-for-type, with a few decode-only paths (`Dynamic`, `JSON`, the runtime header/compile path, and the columnar typed-array path) not yet mirrored.
 
 ## Status
 
@@ -12,7 +12,7 @@ A skill and a library that lets a coding agent generate bespoke RowBinary parser
 - ✅ Opus 4.8: 71% -> 94.7% pass rate
 - ✅ Haiku 4.5: 52% -> 86.0% pass rate
 - ✅ Composer 2.5 Fast: 3x parser performance
-- ✅ 469/469 tests
+- ✅ 724/724 tests (readers + writers)
 - ✅ type-checked
 - ✅ benchmarked
 
@@ -70,14 +70,14 @@ npx skills-npm setup
 As a skill only:
 
 ```bash
-npx skills add ClickHouse/clickhouse-js/skills/clickhouse-js-node-rowbinary-parser
+npx skills add ClickHouse/clickhouse-js/skills/clickhouse-js-node-rowbinary
 ```
 
 ```console
-> Hey, Claude, tell me what the rowbinary parser skill can do for me.
-> A lot! It generates custom, high-performance RowBinary parsers…
-> Super, generate a parser for the queries in app/src/model.ts.
-< Reading skill clickhouse-js-node-rowbinary-parser…
+> Hey, Claude, tell me what the rowbinary skill can do for me.
+> A lot! It generates custom, high-performance RowBinary readers and writers…
+> Super, generate a reader for the queries in app/src/model.ts.
+< Reading skill clickhouse-js-node-rowbinary…
 ```
 
 ## Using it with the ClickHouse JS client
@@ -268,18 +268,22 @@ Measure, don't assume.
 
 ## Scope
 
-- **In scope:** `RowBinary`, `RowBinaryWithNames`, and
+- **In scope (reading):** `RowBinary`, `RowBinaryWithNames`, and
   `RowBinaryWithNamesAndTypes` decoding for Node.js — full-buffer and streaming
   (chunked) via `advance()`/`NeedMoreData`, `readRows()`, and the async
   `streamRowBatches()` (with a built-in small-chunk warning and the optional
   `coalesceChunks()` debounce filter).
-- **Planned:** RowBinary **writing / encoding** (the inverse of everything above)
+- **In scope (writing):** the inverse encode path — a `writeX` mirroring every
+  `readX`, appending bytes to a `Sink`, plus `writeRows()`. Imported from
+  `@clickhouse/rowbinary/writer`. A handful of decode-only paths are not yet
+  mirrored: `Dynamic`, `JSON`, the runtime header/compile path, and the columnar
+  typed-array path.
 - **Out of scope (for now):** browsers and Edge runtimes, non-RowBinary formats
   (JSON / CSV / TSV / Parquet), and big-endian hosts.
 
 ## The spirit
 
-A RowBinary parser generator is a narrow thing. But it's built as an instance of
+A RowBinary codec generator is a narrow thing. But it's built as an instance of
 a broader bet about what libraries become once a capable LLM is part of the
 toolchain. Three shifts, each already visible in this repo:
 

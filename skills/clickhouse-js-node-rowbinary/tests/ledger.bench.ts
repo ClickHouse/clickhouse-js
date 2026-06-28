@@ -1,7 +1,7 @@
 import { bench, describe } from "vitest";
 import { query } from "./clickhouse.js";
-import { type Reader, Cursor } from "../src/core.js";
-import { type DecimalValue, formatDecimal } from "../src/decimals.js";
+import { type Reader, Cursor } from "../src/readers/core.js";
+import { type DecimalValue, formatDecimal } from "../src/readers/decimals.js";
 import {
   type LedgerRow,
   readLedgerRow,

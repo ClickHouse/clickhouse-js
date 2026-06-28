@@ -1,5 +1,5 @@
 import { type Writer, Sink, reserve } from "./core_writer.js";
-import { type Microseconds, type Nanoseconds } from "./datetime.js";
+import { type Microseconds, type Nanoseconds } from "../readers/datetime.js";
 
 const MS_PER_DAY = 86_400_000;
 

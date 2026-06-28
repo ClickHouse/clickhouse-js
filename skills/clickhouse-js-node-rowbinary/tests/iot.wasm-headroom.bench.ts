@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor } from "../src/core.js";
+import { Cursor } from "../src/readers/core.js";
 import { type IotRow, readIotRowFast } from "../src/examples/iot.js";
 
 /**

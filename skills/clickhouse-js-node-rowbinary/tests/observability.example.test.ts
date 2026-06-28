@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { Cursor } from "../src/core.js";
+import { Cursor } from "../src/readers/core.js";
 import {
   type ObsRow,
   readObsRow,
   readObsRowFast,
 } from "../src/examples/observability.js";
-import { readRows } from "../src/rows.js";
+import { readRows } from "../src/readers/rows.js";
 
 /**
  * The gotcha-heavy example end to end: a single SELECT (no table needed) builds

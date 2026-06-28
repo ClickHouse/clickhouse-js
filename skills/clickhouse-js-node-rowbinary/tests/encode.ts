@@ -1,4 +1,4 @@
-import { Sink, type Writer } from "../src/core_writer.js";
+import { Sink, type Writer } from "../src/writers/core_writer.js";
 
 /**
  * Encode a single value with `write` into a fresh {@link Sink} and return the

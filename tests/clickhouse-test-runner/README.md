@@ -51,7 +51,7 @@ UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
 The `rowbinary` backend depends on the published `@clickhouse/rowbinary` package
 (installed by the normal `npm install`), so it validates the same parser build
 that ships to users. The skill's in-repo source is covered separately by its own
-suite (`.github/workflows/tests-skill-rowbinary-parser.yml`).
+suite (`.github/workflows/tests-skill-rowbinary.yml`).
 
 ## Build
 

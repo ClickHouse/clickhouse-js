@@ -1,21 +1,23 @@
 {
   "name": "@clickhouse/rowbinary",
   "version": "0.2.0",
-  "description": "RowBinary building blocks for Node.js — read/decode ClickHouse RowBinary / RowBinaryWithNames(AndTypes) streams (a matching writer is planned). Ships with the clickhouse-js-node-rowbinary-parser agent skill.",
-  "homepage": "https://github.com/ClickHouse/clickhouse-js/tree/main/skills/clickhouse-js-node-rowbinary-parser",
+  "description": "RowBinary building blocks for Node.js — read and write (decode/encode) ClickHouse RowBinary / RowBinaryWithNames(AndTypes) streams. Ships with the clickhouse-js-node-rowbinary agent skill.",
+  "homepage": "https://github.com/ClickHouse/clickhouse-js/tree/main/skills/clickhouse-js-node-rowbinary",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
     "rowbinary",
     "parser",
     "decoder",
+    "encoder",
+    "writer",
     "streaming",
     "skill"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ClickHouse/clickhouse-js.git",
-    "directory": "skills/clickhouse-js-node-rowbinary-parser"
+    "directory": "skills/clickhouse-js-node-rowbinary"
   },
   "type": "module",
   "sideEffects": false,
@@ -25,13 +27,17 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "./dist/reader.js",
-  "module": "./dist/reader.js",
-  "types": "./dist/reader.d.ts",
+  "main": "./dist/readers/reader.js",
+  "module": "./dist/readers/reader.js",
+  "types": "./dist/readers/reader.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/reader.d.ts",
-      "import": "./dist/reader.js"
+      "types": "./dist/readers/reader.d.ts",
+      "import": "./dist/readers/reader.js"
+    },
+    "./writer": {
+      "types": "./dist/writers/writer.d.ts",
+      "import": "./dist/writers/writer.js"
     },
     "./*": {
       "types": "./dist/*.d.ts",
@@ -49,7 +55,7 @@
   "agents": {
     "skills": [
       {
-        "name": "clickhouse-js-node-rowbinary-parser",
+        "name": "clickhouse-js-node-rowbinary",
         "path": "."
       }
     ]

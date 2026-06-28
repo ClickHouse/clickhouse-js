@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseDataType } from "@clickhouse/datatype-parser";
 import { query } from "./clickhouse.js";
-import { Cursor } from "../src/core.js";
-import { astToReader, RowBinaryTypeError } from "../src/compile.js";
+import { Cursor } from "../src/readers/core.js";
+import { astToReader, RowBinaryTypeError } from "../src/readers/compile.js";
 
 // compile.ts is AST in, reader out. These tests exercise that fold directly:
 // parse a type string, fold it to a Reader, and decode plain RowBinary value

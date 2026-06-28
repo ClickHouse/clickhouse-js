@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
-import { NeedMoreData, Cursor } from "../src/core.js";
-import { readDynamic } from "../src/dynamic.js";
-import { readJSON } from "../src/json.js";
+import { NeedMoreData, Cursor } from "../src/readers/core.js";
+import { readDynamic } from "../src/readers/dynamic.js";
+import { readJSON } from "../src/readers/json.js";
 
 const J = "SETTINGS allow_experimental_json_type = 1, enable_json_type = 1";
 

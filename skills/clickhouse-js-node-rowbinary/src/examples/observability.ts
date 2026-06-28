@@ -4,14 +4,14 @@ import {
   readNullable,
   readTupleNamed,
   readVariant,
-} from "../composite.js";
-import { type Reader, advance } from "../core.js";
-import { readDateTime64P3 } from "../datetime.js";
-import { readFloat64 } from "../floats.js";
-import { readInt8, readInt64, readUInt64 } from "../integers.js";
-import { readString } from "../strings.js";
-import { formatUUID, formatUUIDTable, readUUID } from "../uuid.js";
-import { readUVarint } from "../varint.js";
+} from "../readers/composite.js";
+import { type Reader, advance } from "../readers/core.js";
+import { readDateTime64P3 } from "../readers/datetime.js";
+import { readFloat64 } from "../readers/floats.js";
+import { readInt8, readInt64, readUInt64 } from "../readers/integers.js";
+import { readString } from "../readers/strings.js";
+import { formatUUID, formatUUIDTable, readUUID } from "../readers/uuid.js";
+import { readUVarint } from "../readers/varint.js";
 
 /**
  * Example: an observability/events table — the gotcha-heavy one. It packs the
