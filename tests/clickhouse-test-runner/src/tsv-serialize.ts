@@ -51,23 +51,28 @@ function renderStringish(s: string, nested: boolean): string {
   return nested ? `'${escapeQuoted(s)}'` : escapeRaw(s);
 }
 
-/**
- * TabSeparated top-level escaping (`serializeTextEscaped`): backslash and the
- * row/field delimiters become C-style escapes. Backslash MUST be replaced first
- * so the escapes we introduce are not themselves re-escaped.
- */
+// C-style escapes for the control characters ClickHouse escapes in text
+// formats. Backslash itself is included so a SINGLE-pass `replace` is complete:
+// escaping in one pass (rather than chaining `.replace`s) avoids re-processing
+// the backslashes we introduce, and lets static analysis see that `\` is
+// handled.
+const RAW_ESCAPES: Record<string, string> = {
+  "\\": "\\\\",
+  "\t": "\\t",
+  "\n": "\\n",
+  "\r": "\\r",
+  "\0": "\\0",
+};
+const QUOTED_ESCAPES: Record<string, string> = { ...RAW_ESCAPES, "'": "\\'" };
+
+/** TabSeparated top-level escaping (`serializeTextEscaped`): backslash + delimiters. */
 function escapeRaw(s: string): string {
-  return s
-    .replace(/\\/g, "\\\\")
-    .replace(/\t/g, "\\t")
-    .replace(/\n/g, "\\n")
-    .replace(/\r/g, "\\r")
-    .replace(/\0/g, "\\0");
+  return s.replace(/[\\\t\n\r\0]/g, (c) => RAW_ESCAPES[c]!);
 }
 
 /** Quoted escaping (`serializeTextQuoted`): as {@link escapeRaw} plus the single quote. */
 function escapeQuoted(s: string): string {
-  return escapeRaw(s).replace(/'/g, "\\'");
+  return s.replace(/[\\\t\n\r\0']/g, (c) => QUOTED_ESCAPES[c]!);
 }
 
 /** ClickHouse float text: finite values match JS shortest round-trip; specials are lower-case words. */
