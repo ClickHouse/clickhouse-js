@@ -36,7 +36,10 @@ export async function executeWithRowBinary(
   try {
     for (const stmt of statements) {
       const decode = shouldDecode(stmt.sql);
-      appendLog(logPath, (decode ? "rowbinary_query=" : "passthrough_query=") + stmt.sql);
+      appendLog(
+        logPath,
+        (decode ? "rowbinary_query=" : "passthrough_query=") + stmt.sql,
+      );
       let execError: unknown = null;
       try {
         if (decode) {
