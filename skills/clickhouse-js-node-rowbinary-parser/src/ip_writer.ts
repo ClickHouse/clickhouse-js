@@ -24,9 +24,23 @@ export function writeIPv6(sink: Sink, value: Uint8Array): void {
   sink.buf.set(value, o);
 }
 
+/** Parse one dotted-quad field into a 0..255 octet, throwing on anything else. */
+function parseOctet(part: string): number {
+  const octet = Number(part);
+  if (!Number.isInteger(octet) || octet < 0 || octet > 255) {
+    throw new RangeError(
+      `RowBinary: invalid IPv4 octet ${JSON.stringify(part)}`,
+    );
+  }
+  return octet;
+}
+
 /**
  * Parse a dotted-quad IPv4 string into the raw 32-bit value — the inverse of
  * `formatIPv4`. `"1.2.3.4"` -> `0x01020304`. Pair with {@link writeIPv4}.
+ *
+ * The four octets are read explicitly rather than in a loop (only ever four);
+ * `>>> 0` coerces the assembled value back to an unsigned 32-bit number.
  */
 export function parseIPv4(text: string): number {
   const parts = text.split(".");
@@ -35,17 +49,11 @@ export function parseIPv4(text: string): number {
       `RowBinary: invalid IPv4 string ${JSON.stringify(text)}`,
     );
   }
-  let value = 0;
-  for (const part of parts) {
-    const octet = Number(part);
-    if (!Number.isInteger(octet) || octet < 0 || octet > 255) {
-      throw new RangeError(
-        `RowBinary: invalid IPv4 octet ${JSON.stringify(part)}`,
-      );
-    }
-    value = (value << 8) | octet;
-  }
-  return value >>> 0;
+  const a = parseOctet(parts[0]!);
+  const b = parseOctet(parts[1]!);
+  const c = parseOctet(parts[2]!);
+  const d = parseOctet(parts[3]!);
+  return ((a << 24) | (b << 16) | (c << 8) | d) >>> 0;
 }
 
 /**

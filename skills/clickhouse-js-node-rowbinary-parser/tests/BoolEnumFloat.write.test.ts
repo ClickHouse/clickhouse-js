@@ -94,4 +94,28 @@ describe("writeBFloat16", () => {
     expect(encode(writeBFloat16, 100)).toEqual(
       await query("SELECT toBFloat16(100) FORMAT RowBinary"),
     ));
+
+  // Values whose float32 has nonzero low-16 mantissa bits — truncating to the
+  // high 16 bits (what ClickHouse does) gives a different result than rounding
+  // to nearest, so these pin down that the writer truncates exactly like CH.
+  it("encodes 1.1 (truncates, not rounds, the mantissa)", async () =>
+    expect(encode(writeBFloat16, 1.1)).toEqual(
+      await query("SELECT toBFloat16(1.1) FORMAT RowBinary"),
+    ));
+  it("encodes 1.3", async () =>
+    expect(encode(writeBFloat16, 1.3)).toEqual(
+      await query("SELECT toBFloat16(1.3) FORMAT RowBinary"),
+    ));
+  it("encodes 2.6", async () =>
+    expect(encode(writeBFloat16, 2.6)).toEqual(
+      await query("SELECT toBFloat16(2.6) FORMAT RowBinary"),
+    ));
+  it("encodes 0.1", async () =>
+    expect(encode(writeBFloat16, 0.1)).toEqual(
+      await query("SELECT toBFloat16(0.1) FORMAT RowBinary"),
+    ));
+  it("encodes a negative -1.1 (sign bit preserved)", async () =>
+    expect(encode(writeBFloat16, -1.1)).toEqual(
+      await query("SELECT toBFloat16(-1.1) FORMAT RowBinary"),
+    ));
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Sink, reserve, NeedMoreSpace } from "../src/core_writer.js";
+import { Sink, reserve, BufferFull } from "../src/core_writer.js";
 import { encode } from "./encode.js";
 import { writeUVarint } from "../src/varint_writer.js";
 
@@ -16,7 +16,7 @@ describe("Sink / reserve", () => {
     expect(s.pos).toBe(6);
   });
 
-  it("throws NeedMoreSpace without advancing when the buffer is full", () => {
+  it("throws BufferFull without advancing when the buffer is full", () => {
     const s = sink(4);
     expect(reserve(s, 4)).toBe(0);
     let thrown: unknown;
@@ -25,7 +25,7 @@ describe("Sink / reserve", () => {
     } catch (err) {
       thrown = err;
     }
-    expect(thrown).toBe(NeedMoreSpace);
+    expect(thrown).toBe(BufferFull);
     expect(s.pos).toBe(4); // position is unchanged on overflow
   });
 

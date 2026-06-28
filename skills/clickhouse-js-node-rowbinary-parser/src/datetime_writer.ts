@@ -1,11 +1,5 @@
-import { type Writer, Sink } from "./core_writer.js";
+import { type Writer, Sink, reserve } from "./core_writer.js";
 import { type Microseconds, type Nanoseconds } from "./datetime.js";
-import {
-  writeInt32,
-  writeInt64,
-  writeUInt16,
-  writeUInt32,
-} from "./integers_writer.js";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -15,7 +9,11 @@ const MS_PER_DAY = 86_400_000;
  * `getTime() / 86_400_000` recovers the whole-day count exactly.
  */
 export function writeDate(sink: Sink, value: Date): void {
-  writeUInt16(sink, Math.round(value.getTime() / MS_PER_DAY));
+  sink.view.setUint16(
+    reserve(sink, 2),
+    Math.round(value.getTime() / MS_PER_DAY),
+    true,
+  );
 }
 
 /**
@@ -23,7 +21,11 @@ export function writeDate(sink: Sink, value: Date): void {
  * negative for pre-1970 dates. The inverse of `readDate32`.
  */
 export function writeDate32(sink: Sink, value: Date): void {
-  writeInt32(sink, Math.round(value.getTime() / MS_PER_DAY));
+  sink.view.setInt32(
+    reserve(sink, 4),
+    Math.round(value.getTime() / MS_PER_DAY),
+    true,
+  );
 }
 
 /**
@@ -31,7 +33,11 @@ export function writeDate32(sink: Sink, value: Date): void {
  * the column timezone is metadata, not in the bytes.
  */
 export function writeDateTime(sink: Sink, value: Date): void {
-  writeUInt32(sink, Math.round(value.getTime() / 1000));
+  sink.view.setUint32(
+    reserve(sink, 4),
+    Math.round(value.getTime() / 1000),
+    true,
+  );
 }
 
 /**
@@ -40,8 +46,9 @@ export function writeDateTime(sink: Sink, value: Date): void {
  * `readDateTime64`, which returns `[date, nanoseconds]` (date truncated to whole
  * seconds, nanoseconds the sub-second remainder regardless of P). This recombines
  * them: `ticks = seconds * 10^P + nanoseconds / 10^(9 - P)`. The reader floors
- * seconds toward -inf with a non-negative remainder, so this reconstruction is
- * exact for negative instants too.
+ * seconds toward -inf with a non-negative remainder, so the seconds are computed
+ * with `Math.floor` on the cheap JS-number millisecond value (not bigint division,
+ * which truncates toward zero) — exact for negative instants too.
  */
 export function writeDateTime64(
   precision: number,
@@ -49,8 +56,11 @@ export function writeDateTime64(
   const scale = 10n ** BigInt(precision);
   const nsPerTick = 10n ** BigInt(9 - precision);
   return (sink, [date, nanoseconds]) => {
-    const seconds = BigInt(date.getTime()) / 1000n;
-    writeInt64(sink, seconds * scale + BigInt(nanoseconds) / nsPerTick);
+    const seconds = BigInt(Math.floor(date.getTime() / 1000));
+    sink.buf.writeBigInt64LE(
+      seconds * scale + BigInt(nanoseconds) / nsPerTick,
+      reserve(sink, 8),
+    );
   };
 }
 
@@ -60,7 +70,7 @@ export function writeDateTime64(
  * exactly `getTime()` in milliseconds.
  */
 export function writeDateTime64P3(sink: Sink, value: Date): void {
-  writeInt64(sink, BigInt(value.getTime()));
+  sink.buf.writeBigInt64LE(BigInt(value.getTime()), reserve(sink, 8));
 }
 
 /**
@@ -71,8 +81,11 @@ export function writeDateTime64P6(
   sink: Sink,
   [date, microseconds]: [Date, Microseconds],
 ): void {
-  const seconds = BigInt(date.getTime()) / 1000n;
-  writeInt64(sink, seconds * 1_000_000n + BigInt(microseconds));
+  const seconds = BigInt(Math.floor(date.getTime() / 1000));
+  sink.buf.writeBigInt64LE(
+    seconds * 1_000_000n + BigInt(microseconds),
+    reserve(sink, 8),
+  );
 }
 
 /**
@@ -83,6 +96,9 @@ export function writeDateTime64P9(
   sink: Sink,
   [date, nanoseconds]: [Date, Nanoseconds],
 ): void {
-  const seconds = BigInt(date.getTime()) / 1000n;
-  writeInt64(sink, seconds * 1_000_000_000n + BigInt(nanoseconds));
+  const seconds = BigInt(Math.floor(date.getTime() / 1000));
+  sink.buf.writeBigInt64LE(
+    seconds * 1_000_000_000n + BigInt(nanoseconds),
+    reserve(sink, 8),
+  );
 }

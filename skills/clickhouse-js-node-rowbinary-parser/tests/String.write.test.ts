@@ -3,6 +3,7 @@ import { query } from "./clickhouse.js";
 import { encode } from "./encode.js";
 import {
   writeString,
+  writeStringBytes,
   writeFixedString,
   writeFixedStringBytes,
 } from "../src/strings_writer.js";
@@ -24,12 +25,14 @@ describe("writeString", () => {
     expect(encode(writeString, "x".repeat(300))).toEqual(
       await query("SELECT repeat('x', 300) FORMAT RowBinary"),
     ));
+});
 
+describe("writeStringBytes", () => {
   it("writes raw (non-UTF-8) bytes from a Uint8Array", () => {
     // varint length 3, then the raw bytes verbatim.
-    expect([...encode(writeString, Buffer.from([0xff, 0x00, 0xfe]))]).toEqual([
-      0x03, 0xff, 0x00, 0xfe,
-    ]);
+    expect([
+      ...encode(writeStringBytes, Buffer.from([0xff, 0x00, 0xfe])),
+    ]).toEqual([0x03, 0xff, 0x00, 0xfe]);
   });
 });
 

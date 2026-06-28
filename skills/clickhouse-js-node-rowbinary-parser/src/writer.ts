@@ -23,7 +23,7 @@
  * `rowBinaryWithNamesAndTypes.ts` / `dynamic.ts`) is intentionally NOT part of
  * this barrel yet.
  */
-export { Sink, reserve, NeedMoreSpace, type Writer } from "./core_writer.js";
+export { Sink, reserve, BufferFull, type Writer } from "./core_writer.js";
 export { writeUVarint } from "./varint_writer.js";
 export {
   writeUInt8,
@@ -51,6 +51,7 @@ export {
 } from "./decimals_writer.js";
 export {
   writeString,
+  writeStringBytes,
   writeFixedString,
   writeFixedStringBytes,
 } from "./strings_writer.js";

@@ -29,7 +29,9 @@ export function writeNullable<T>(writeValue: Writer<T>): Writer<T | null> {
 export function writeArray<T>(writeElement: Writer<T>): Writer<readonly T[]> {
   return (sink, values) => {
     writeUVarint(sink, values.length);
-    for (const value of values) writeElement(sink, value);
+    // C-style loop, not for-of: this is a hot path and we don't want the
+    // iterator protocol overhead on a plain array.
+    for (let i = 0; i < values.length; i++) writeElement(sink, values[i]!);
   };
 }
 
@@ -68,7 +70,11 @@ export function writeTupleNamed<T extends Record<string, unknown>>(writers: {
   const fns = writers as Record<string, Writer<unknown>>;
   const keys = Object.keys(fns);
   return (sink, value) => {
-    for (const key of keys) fns[key]!(sink, value[key]);
+    // C-style loop, not for-of: hot path, plain array of keys.
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]!;
+      fns[key]!(sink, value[key]);
+    }
   };
 }
 
@@ -83,6 +89,8 @@ export function writeMap<K, V>(
 ): Writer<ReadonlyMap<K, V>> {
   return (sink, map) => {
     writeUVarint(sink, map.size);
+    // for-of is intentional here: it is the fastest way to iterate a `Map`
+    // (unlike plain arrays, where a C-style index loop wins).
     for (const [key, value] of map) {
       writeKey(sink, key);
       writeValue(sink, value);
@@ -102,8 +110,7 @@ export function writeMap<K, V>(
  * encode-side analog of the `readGeometry` switch.
  */
 export type VariantValue =
-  | readonly [discriminant: number, value: unknown]
-  | null;
+  readonly [discriminant: number, value: unknown] | null;
 
 /**
  * Write a `Variant(T1, ..., Tn)`: a 1-byte discriminant then the chosen

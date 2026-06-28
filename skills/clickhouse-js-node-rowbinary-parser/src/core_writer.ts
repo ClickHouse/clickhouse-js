@@ -1,16 +1,17 @@
 /**
- * Thrown by {@link reserve} when the sink's buffer lacks the bytes a write needs
- * — the encode-side mirror of the reader's `NeedMoreData`. Like the reader, the
- * `Sink` treats its buffer as a FIXED-length window: when a write would overflow
- * it, `reserve` throws this sentinel WITHOUT moving the position, so a driver can
- * flush the bytes written so far down the connection (a transport filter can glue
- * successive buffers back together) and continue into a fresh buffer.
+ * Thrown by {@link reserve} when the sink's buffer is full — i.e. lacks the bytes
+ * a write needs. The encode-side mirror of the reader's `NeedMoreData`. Like the
+ * reader, the `Sink` treats its buffer as a FIXED-length window: when a write
+ * would overflow it, `reserve` throws this sentinel WITHOUT moving the position,
+ * so a driver can flush the bytes written so far down the connection (a transport
+ * filter can glue successive buffers back together) and continue into a fresh
+ * buffer.
  *
  * A bare sentinel, NOT an `Error` subclass, on purpose — exactly as `NeedMoreData`
  * on the read side: constructing an `Error` captures a stack trace (the expensive
  * part of throwing), pure waste on a path that fires once per buffer boundary.
  */
-export const NeedMoreSpace = Symbol("RowBinary.NeedMoreSpace");
+export const BufferFull = Symbol("RowBinary.BufferFull");
 
 /**
  * The write-side mirror of the reader's `Cursor`: the cursor every writer threads
@@ -23,7 +24,7 @@ export const NeedMoreSpace = Symbol("RowBinary.NeedMoreSpace");
  * side). `view`/`buf` are public so those free functions can reach them.
  *
  * Like a `Cursor`, a `Sink` wraps a FIXED-length buffer (supplied by the caller):
- * it never reallocates. {@link reserve} throws {@link NeedMoreSpace} when the next
+ * it never reallocates. {@link reserve} throws {@link BufferFull} when the next
  * write would overflow, the encode mirror of the reader's `advance` throwing
  * `NeedMoreData` on underflow. Size the buffer to a chunk you intend to flush, and
  * pull the written bytes with {@link Sink.bytes}.
@@ -78,14 +79,14 @@ export type Writer<T> = (sink: Sink, value: T) => void;
  *
  *   function writeInt32(s, v) { s.view.setInt32(reserve(s, 4), v, true); }
  *
- * Throws {@link NeedMoreSpace} when fewer than `n` bytes remain, WITHOUT moving
+ * Throws {@link BufferFull} when fewer than `n` bytes remain, WITHOUT moving
  * the position — the buffer is fixed-length, exactly as the reader's input is, so
  * a driver flushes what is written and retries the row into a fresh buffer.
  */
 export function reserve(sink: Sink, n: number): number {
   const start = sink.pos;
   const next = start + n;
-  if (next > sink.buf.length) throw NeedMoreSpace;
+  if (next > sink.buf.length) throw BufferFull;
   sink.pos = next;
   return start;
 }
