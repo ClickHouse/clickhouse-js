@@ -67,11 +67,20 @@ describe("writeRows", () => {
     const gen = writeRows(writeRow)(rows, 40);
     const first = gen.next();
     expect(first.done).toBe(false);
-    // Decode-free boundary check: the flushed prefix must be a prefix of the
-    // full encoding (and thus a whole number of rows).
-    const full = encodeRows(writeRow, rows);
     const flushed = first.value as Buffer;
-    expect(full.subarray(0, flushed.length)).toEqual(flushed);
+    // A prefix check alone is NOT enough — a mid-row split is also a prefix. Prove
+    // the flush ends EXACTLY on a row boundary: collect the per-row cumulative byte
+    // offsets and assert the flushed length is one of them (i.e. a whole number of
+    // rows), AND that the bytes are the matching prefix of the full encoding.
+    const boundaries = new Set<number>();
+    let acc = 0;
+    for (const row of rows) {
+      acc += encodeRows(writeRow, [row]).length;
+      boundaries.add(acc);
+    }
+    expect(boundaries.has(flushed.length)).toBe(true); // ends on a row boundary
+    const full = encodeRows(writeRow, rows);
+    expect(full.subarray(0, flushed.length)).toEqual(flushed); // and is that prefix
   });
 
   it("yields independent buffers — a flushed buffer survives the next iteration", () => {
