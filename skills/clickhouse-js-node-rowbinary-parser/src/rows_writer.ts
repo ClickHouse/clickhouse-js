@@ -17,6 +17,14 @@ export interface WriteRowsFlush {
   usedBytes: number;
   /** That buffer's capacity; doubles from `bufferSize` to fit an oversized row. */
   capacityBytes: number;
+  /**
+   * The configured initial buffer size for this run. `capacityBytes > bufferSize`
+   * means the buffer had to grow to fit an oversized row, and `usedBytes /
+   * bufferSize` is the overflow magnitude — the signal that `bufferSize` is too
+   * small. (Growth is sticky: once grown, every later flush in the run reports the
+   * larger `capacityBytes`, so compare against `bufferSize`, not a prior capacity.)
+   */
+  bufferSize: number;
   /** Why it flushed: `"full"` mid-stream (next row overflowed) or `"end"` (rows ran out). */
   reason: "full" | "end";
 }
@@ -107,6 +115,7 @@ export function writeRows<T>(
             flushChannel.publish({
               usedBytes: committed,
               capacityBytes: size,
+              bufferSize,
               reason: "full",
             } satisfies WriteRowsFlush);
           yield sink.bytes();
@@ -120,6 +129,7 @@ export function writeRows<T>(
         flushChannel.publish({
           usedBytes: sink.pos,
           capacityBytes: size,
+          bufferSize,
           reason: "end",
         } satisfies WriteRowsFlush);
       yield sink.bytes();

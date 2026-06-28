@@ -133,9 +133,11 @@ describe("writeRows", () => {
       "full",
       "end",
     ]);
-    // Every buffer reports its real capacity, and used never exceeds it.
+    // Every buffer reports its real capacity and the configured size; used never
+    // exceeds capacity; nothing grew, so capacity stays at bufferSize.
     for (const e of events) {
       expect(e.capacityBytes).toBe(20);
+      expect(e.bufferSize).toBe(20);
       expect(e.usedBytes).toBeLessThanOrEqual(e.capacityBytes);
     }
     // The four mid-stream flushes each carried exactly one 17-byte row.
@@ -145,13 +147,16 @@ describe("writeRows", () => {
     expect(total).toBe(encodeRows(writeRow, rows).length);
   });
 
-  it("reports the grown capacity on the flush of an oversized row", () => {
+  it("reports the grown capacity and original bufferSize so overflow is identifiable", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      // bufferSize 4 grows to 32 to fit a 17-byte row; the published capacity
-      // must be the grown size, not the original 4.
+      // bufferSize 4 grows to 32 to fit a 17-byte row; the published capacity is
+      // the grown size while bufferSize stays 4, so `capacityBytes > bufferSize`
+      // flags the overflow and `usedBytes / bufferSize` gives its magnitude.
       const events = withFlushEvents(() => encodeRows(writeRow, rows, 4));
       expect(events.every((e) => e.capacityBytes === 32)).toBe(true);
+      expect(events.every((e) => e.bufferSize === 4)).toBe(true);
+      expect(events.every((e) => e.capacityBytes > e.bufferSize)).toBe(true);
     } finally {
       warn.mockRestore();
     }
