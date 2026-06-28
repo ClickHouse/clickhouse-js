@@ -19,7 +19,8 @@
     "test": "vitest run --root ."
   },
   "dependencies": {
-    "@clickhouse/client": "*"
+    "@clickhouse/client": "*",
+    "@clickhouse/rowbinary": "file:../../skills/clickhouse-js-node-rowbinary-parser"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
