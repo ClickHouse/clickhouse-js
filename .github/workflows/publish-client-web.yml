@@ -10,9 +10,12 @@ name: "publish: client-web"
 # Both use npm OIDC authentication with provenance, and both deploy through the
 # protected `npm-publish` environment (release branch only + manual approval).
 #
-# The push trigger is path-scoped to this package's own sources (each client
-# package vendors its own copy of the common module, so they no longer share
-# build inputs) plus the repo-root files its published tarball depends on.
+# The push trigger is path-scoped to this package's own sources, the shared
+# common sources it bundles via the `src/common` symlink
+# (packages/client-common/src), and the repo-root files its published tarball
+# depends on. So a change to only one client no longer republishes the others,
+# but a change to the shared common sources publishes a new head build for
+# every client that bundles them.
 
 permissions:
   contents: read
@@ -33,6 +36,8 @@ on:
       - release
     paths:
       - "packages/client-web/**"
+      # The Web client bundles the common sources via the src/common symlink.
+      - "packages/client-common/**"
       - "package.json"
       - "package-lock.json"
       - "tsconfig.base.json"

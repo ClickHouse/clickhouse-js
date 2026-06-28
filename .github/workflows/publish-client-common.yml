@@ -3,8 +3,9 @@ name: "publish: client-common"
 # Publish + release for @clickhouse/client-common (DEPRECATED).
 #
 # This package is deprecated and effectively frozen: @clickhouse/client and
-# @clickhouse/client-web no longer depend on it (each vendors its own copy of
-# the common module). It can still be cut a final standalone release.
+# @clickhouse/client-web no longer depend on the published package — they build
+# the common sources straight from packages/client-common/src via their
+# src/common symlinks. It can still be cut a final standalone release.
 #
 # Split out of the former all-in-one publish.yml so each client package
 # publishes on its own. Two triggers, like the standalone-package workflows:

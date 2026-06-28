@@ -59,9 +59,16 @@ This skill is the source of truth for the release process. It supersedes the old
 > - `@clickhouse/rowbinary` → `publish-skill-rowbinary-parser.yml`
 >
 > Each client workflow has two triggers: an automatic `head` publish on push to
-> `release` (path-scoped to that package's own sources, so a change to one client
-> no longer republishes the others) and a manual `latest` publish via
-> `workflow_dispatch`. The standalone packages have the manual trigger only.
+> `release` and a manual `latest` publish via `workflow_dispatch`. The standalone
+> packages have the manual trigger only.
+>
+> The client `head` triggers are path-scoped: a change touching only one client's
+> own sources no longer republishes the others. Both `@clickhouse/client` and
+> `@clickhouse/client-web` bundle the shared common sources via the `src/common`
+> symlink (`packages/*/src/common` → `packages/client-common/src`), so
+> `packages/client-common/**` is also an input to both client workflows — a
+> change to the common sources publishes a new `head` for every client that
+> bundles them.
 
 ---
 
