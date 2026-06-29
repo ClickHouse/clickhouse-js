@@ -1,10 +1,10 @@
 name: "publish: datatype parser"
 
 # Independent publish + release for the standalone @clickhouse/datatype-parser
-# package (the data-type string parser). It is NOT part of the npm workspace
-# lockstep release driven by publish.yml — it carries its own version in
+# package (the data-type string parser). Like the per-package client publish
+# workflows (publish-client*.yml), it carries its own version in
 # packages/datatype-parser/package.json and ships on its own cadence. Triggered
-# manually, and — like publish.yml — must be dispatched from the `release`
+# manually, and — like those workflows — must be dispatched from the `release`
 # branch: the npm-publish environment is protected so only that branch may
 # deploy (the repo's human-in-the-loop release gate). Dispatches from any other
 # ref are skipped by the job-level `if` guard below.
@@ -27,6 +27,14 @@ concurrency:
 
 on:
   workflow_dispatch:
+
+env:
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
 
 jobs:
   publish:
@@ -129,7 +137,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        node: [20, 22, 24]
+        node: [20, 22, 24, 26]
     env:
       PUBLISHED_VERSION: ${{ needs.publish.outputs.version }}
     steps:

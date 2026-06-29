@@ -15,6 +15,44 @@ client. It lets us see exactly which upstream SQL tests pass or fail when run
 through `@clickhouse/client`, without having to reimplement the test runner
 itself.
 
+## Backends
+
+The runner can execute queries two ways, selected by the `TEST_RUNNER_BACKEND`
+environment variable:
+
+- **`passthrough`** (default) — set `default_format = TabSeparated` and stream
+  ClickHouse's own output bytes straight to stdout. ClickHouse does all the
+  formatting; this exercises `@clickhouse/client`'s transport, session and
+  settings handling. Comparison is the upstream `.reference` diff.
+
+- **`rowbinary`** — for each result-returning statement that has no explicit
+  `FORMAT` clause, request `RowBinaryWithNamesAndTypes`, decode it with the
+  published [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary)
+  package's dynamic header→reader path, and re-render the rows as `TabSeparated` so the
+  same `.reference` diff still applies. This makes the upstream SQL suite a
+  breadth test of the RowBinary parser: ClickHouse is the byte oracle, the
+  `.reference` is the value oracle. DDL / `INSERT` / `SET` / explicit-`FORMAT`
+  statements fall through to passthrough. A decode or render error fails the
+  statement (it is never silently swallowed), so a test only "passes" if the
+  parser actually reproduced the server's output.
+
+Because the `rowbinary` backend can only validate tests whose decoded types it
+can render back to `TabSeparated`, it runs a dedicated, smaller allowlist
+(`rowbinary-allowlist.txt`) rather than the full `upstream-allowlist.txt`. Point
+`UPSTREAM_TEST_LIST` at it:
+
+```bash
+UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
+  TEST_RUNNER_BACKEND=rowbinary \
+  UPSTREAM_TEST_LIST=tests/clickhouse-test-runner/rowbinary-allowlist.txt \
+  tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
+```
+
+The `rowbinary` backend depends on the published `@clickhouse/rowbinary` package
+(installed by the normal `npm install`), so it validates the same parser build
+that ships to users. The skill's in-repo source is covered separately by its own
+suite (`.github/workflows/tests-skill-rowbinary.yml`).
+
 ## Build
 
 This package is a workspace of the root `clickhouse-js` repository, so it
@@ -59,13 +97,14 @@ export PATH="/path/to/clickhouse-js/tests/clickhouse-test-runner/bin:$PATH"
 
 ## Environment variables
 
-| Variable                    | Default                                                            | Description                                                                                                                             |
-| --------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `CLICKHOUSE_CLIENT_CLI_LOG` | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log` | Path to a log file used to record every shim invocation. Useful for troubleshooting.                                                    |
-| `UPSTREAM_CLICKHOUSE_DIR`   | `tests/clickhouse-test-runner/.upstream/ClickHouse`                | Path to a checkout of `ClickHouse/ClickHouse` containing the upstream test suite.                                                       |
-| `UPSTREAM_TEST_LIST`        | `tests/clickhouse-test-runner/upstream-allowlist.txt`              | Path to a file listing the upstream tests to run (one test name per line, `#` for comments).                                            |
-| `SHARD_INDEX`               | `1`                                                                | 1-based index of the shard to run when sharding the allowlist (must be `<= SHARD_TOTAL`).                                               |
-| `SHARD_TOTAL`               | `1`                                                                | Total number of shards. When `> 1`, only tests at positions where `i % SHARD_TOTAL == SHARD_INDEX - 1` are run (round-robin selection). |
+| Variable                    | Default                                                            | Description                                                                                                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TEST_RUNNER_BACKEND`       | `passthrough`                                                      | Which backend executes queries: `passthrough` (stream ClickHouse's own `TabSeparated`) or `rowbinary` (decode `RowBinaryWithNamesAndTypes` via `@clickhouse/rowbinary` and re-render). See [Backends](#backends). |
+| `CLICKHOUSE_CLIENT_CLI_LOG` | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log` | Path to a log file used to record every shim invocation. Useful for troubleshooting.                                                                                                                              |
+| `UPSTREAM_CLICKHOUSE_DIR`   | `tests/clickhouse-test-runner/.upstream/ClickHouse`                | Path to a checkout of `ClickHouse/ClickHouse` containing the upstream test suite.                                                                                                                                 |
+| `UPSTREAM_TEST_LIST`        | `tests/clickhouse-test-runner/upstream-allowlist.txt`              | Path to a file listing the upstream tests to run (one test name per line, `#` for comments).                                                                                                                      |
+| `SHARD_INDEX`               | `1`                                                                | 1-based index of the shard to run when sharding the allowlist (must be `<= SHARD_TOTAL`).                                                                                                                         |
+| `SHARD_TOTAL`               | `1`                                                                | Total number of shards. When `> 1`, only tests at positions where `i % SHARD_TOTAL == SHARD_INDEX - 1` are run (round-robin selection).                                                                           |
 
 ## Running against the upstream test suite
 

@@ -15,13 +15,14 @@
   },
   "private": false,
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "skills"
+    "skills",
+    "CHANGELOG.md"
   ],
   "agents": {
     "skills": [
@@ -34,14 +35,14 @@
         "path": "./skills/clickhouse-js-node-troubleshooting"
       },
       {
-        "name": "clickhouse-js-node-rowbinary-parser",
-        "path": "./skills/clickhouse-js-node-rowbinary-parser"
+        "name": "clickhouse-js-node-rowbinary",
+        "path": "./skills/clickhouse-js-node-rowbinary"
       }
     ]
   },
   "scripts": {
     "pack": "npm pack",
-    "prepack": "rm -rf skills && cp ../../README.md ../../LICENSE . && cp -r ../../skills . && RBP=skills/clickhouse-js-node-rowbinary-parser && rm -rf $RBP/tests $RBP/node_modules $RBP/dist $RBP/package.json $RBP/package-lock.json $RBP/tsconfig.json $RBP/tsconfig.build.json $RBP/vitest.config.ts $RBP/.gitignore $RBP/LICENSE $RBP/eval_result*.md",
+    "prepack": "rm -rf skills && cp ../../README.md ../../LICENSE . && cp -r ../../skills . && RBP=skills/clickhouse-js-node-rowbinary && rm -rf $RBP/tests $RBP/node_modules $RBP/dist $RBP/package.json $RBP/package-lock.json $RBP/tsconfig.json $RBP/tsconfig.build.json $RBP/vitest.config.ts $RBP/.gitignore $RBP/LICENSE $RBP/eval_result*.md",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",

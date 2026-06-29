@@ -19,7 +19,8 @@
     "test": "vitest run --root ."
   },
   "dependencies": {
-    "@clickhouse/client": "*"
+    "@clickhouse/client": "*",
+    "@clickhouse/rowbinary": "^0.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
