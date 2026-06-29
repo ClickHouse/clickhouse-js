@@ -1,5 +1,5 @@
-import { compileRowBinaryWithNamesAndTypes } from "@clickhouse/rowbinary/rowBinaryWithNamesAndTypes";
-import { Cursor } from "@clickhouse/rowbinary/core";
+import { compileRowBinaryWithNamesAndTypes } from "@clickhouse/rowbinary/readers/rowBinaryWithNamesAndTypes";
+import { Cursor } from "@clickhouse/rowbinary/readers/core";
 import { compileRowRenderers } from "../tsv-serialize.js";
 import { appendLog } from "../log.js";
 import {

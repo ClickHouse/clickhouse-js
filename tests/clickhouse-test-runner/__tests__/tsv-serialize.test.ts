@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseDataType } from "@clickhouse/datatype-parser";
-import { formatUUID } from "@clickhouse/rowbinary/uuid";
+import { formatUUID } from "@clickhouse/rowbinary/readers/uuid";
 import { renderValue, compileRowRenderers } from "../src/tsv-serialize.js";
 
 /**
@@ -100,9 +100,13 @@ describe("renderValue — top level (escaped, unquoted)", () => {
     expect(render("IPv6", ipv6)).toBe("::1");
   });
 
-  it("enum maps the wire integer to its name", () => {
-    expect(render("Enum8('x' = 1, 'y' = 2)", 2)).toBe("y");
-    expect(render("Enum16('a' = 10, 'b' = -20)", -20)).toBe("b");
+  it("renders the enum name the reader already resolved", () => {
+    // @clickhouse/rowbinary resolves Enum8/16 to the NAME (not the wire
+    // integer), so renderValue receives the name string and renders it
+    // stringish: escaped + unquoted at top level, single-quoted when nested.
+    expect(render("Enum8('x' = 1, 'y' = 2)", "y")).toBe("y");
+    expect(render("Enum16('a' = 10, 'b' = -20)", "b")).toBe("b");
+    expect(render("Enum8('x' = 1, 'y' = 2)", "y", true)).toBe("'y'");
   });
 
   it("NULL is backslash-N at top level", () => {
