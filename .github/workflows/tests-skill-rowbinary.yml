@@ -1,0 +1,113 @@
+name: "skill: rowbinary"
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tests-skill-rowbinary.yml
+      - skills/clickhouse-js-node-rowbinary/**
+      # The skill depends on @clickhouse/datatype-parser; rerun against local
+      # parser changes so a parser regression cannot pass this suite unnoticed.
+      - packages/datatype-parser/**
+  pull_request:
+    paths:
+      - .github/workflows/tests-skill-rowbinary.yml
+      - skills/clickhouse-js-node-rowbinary/**
+      - packages/datatype-parser/**
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
+
+jobs:
+  typecheck:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: skills/clickhouse-js-node-rowbinary
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      # Build + pack the in-repo @clickhouse/datatype-parser so the skill is
+      # exercised against THIS checkout, not the version published to npm. The
+      # committed package.json keeps a published range for end users; we only
+      # override node_modules below (`npm install <tarball> --no-save`).
+      - name: Pack local @clickhouse/datatype-parser
+        working-directory: ${{ github.workspace }}
+        run: |
+          npm ci
+          npm pack --workspace @clickhouse/datatype-parser --pack-destination "${{ runner.temp }}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Use the local datatype-parser build
+        run: npm install "${{ runner.temp }}"/clickhouse-datatype-parser-*.tgz --no-save
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  unit-tests:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: skills/clickhouse-js-node-rowbinary
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24, 26]
+        clickhouse: [head, latest]
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          # The skill suite only needs the single-node HTTP server on :8123.
+          compose-file: "docker-compose.yml"
+          services: "clickhouse"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      # Build + pack the in-repo @clickhouse/datatype-parser so the skill is
+      # exercised against THIS checkout, not the version published to npm. The
+      # committed package.json keeps a published range for end users; we only
+      # override node_modules below (`npm install <tarball> --no-save`).
+      - name: Pack local @clickhouse/datatype-parser
+        working-directory: ${{ github.workspace }}
+        run: |
+          npm ci
+          npm pack --workspace @clickhouse/datatype-parser --pack-destination "${{ runner.temp }}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Use the local datatype-parser build
+        run: npm install "${{ runner.temp }}"/clickhouse-datatype-parser-*.tgz --no-save
+
+      - name: Run unit tests
+        run: npm test

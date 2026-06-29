@@ -53,42 +53,6 @@ env:
   NPM_CONFIG_FETCH_TIMEOUT: "600000"
 
 jobs:
-  head:
-    name: "Publish @clickhouse/client-common (head)"
-    if: github.ref == 'refs/heads/release' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: npm-publish
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set head pre-release version
-        run: |
-          BASE_VERSION=$(node -p "require('./packages/client-common/package.json').version")
-          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
-          echo "Setting version to: $HEAD_VERSION"
-          npm --workspace @clickhouse/client-common version --no-git-tag-version "$HEAD_VERSION"
-          echo "export default \"$HEAD_VERSION\";" > packages/client-common/src/version.ts
-
-      - name: Build the package
-        run: npm --workspace @clickhouse/client-common run build
-
-      - name: Publish @clickhouse/client-common with head tag
-        run: |
-          npm --workspace @clickhouse/client-common publish \
-            --access public \
-            --provenance \
-            --tag head
-
   publish:
     name: "Publish @clickhouse/client-common (deprecated)"
     if: github.ref == 'refs/heads/release' && github.event_name == 'workflow_dispatch'

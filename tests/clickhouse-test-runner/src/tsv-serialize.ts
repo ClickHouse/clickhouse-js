@@ -13,8 +13,9 @@
  * The renderer is TYPE-DIRECTED: it walks the column's parsed data-type AST
  * (from `@clickhouse/datatype-parser`, the same AST the parser folds into
  * readers) alongside the decoded value, because the JS value alone is
- * insufficient to reproduce ClickHouse's text — e.g. an `Enum8` decodes to its
- * underlying integer but TSV prints the NAME, which lives only in the type.
+ * insufficient to reproduce ClickHouse's text — e.g. a `DateTime64(P)` decodes
+ * to `[Date, nanoseconds]` but the sub-second precision `P` that decides how
+ * many fractional digits to print lives only in the type.
  *
  * Two text contexts, mirroring ClickHouse's `serializeTextEscaped` (top level)
  * vs `serializeTextQuoted` (inside Array/Tuple/Map):
@@ -33,10 +34,10 @@ import {
   NodeKind,
   type Node,
 } from "@clickhouse/datatype-parser";
-import { formatDecimal } from "@clickhouse/rowbinary/decimals";
-import { formatTime, formatTime64 } from "@clickhouse/rowbinary/time";
-import { formatUUID } from "@clickhouse/rowbinary/uuid";
-import { formatIPv4, formatIPv6 } from "@clickhouse/rowbinary/ip";
+import { formatDecimal } from "@clickhouse/rowbinary/readers/decimals";
+import { formatTime, formatTime64 } from "@clickhouse/rowbinary/readers/time";
+import { formatUUID } from "@clickhouse/rowbinary/readers/uuid";
+import { formatIPv4, formatIPv6 } from "@clickhouse/rowbinary/readers/ip";
 
 /** Thrown when a column type has no TSV renderer yet (see module note). */
 export class TSVRenderError extends Error {
@@ -161,17 +162,6 @@ function renderPointArray(
   return `[${(value as unknown[]).map(renderElem).join(",")}]`;
 }
 
-/** Map a decoded enum integer to its name via the explicit `'name' = value` pairs in the type. */
-function enumName(node: Node, value: unknown): string {
-  const v = BigInt(value as number);
-  for (const ev of node.values) {
-    if (ev.value === v) return ev.name;
-  }
-  throw new TSVRenderError(
-    `enum value ${String(value)} not found in ${node.name}`,
-  );
-}
-
 function requireArg(node: Node, index: number): Node {
   const arg = node.arguments[index];
   if (arg === undefined) {
@@ -201,7 +191,10 @@ export function renderValue(
   if (value === null || value === undefined) return nested ? "NULL" : "\\N";
 
   if (node.kind === NodeKind.EnumDataType) {
-    return renderStringish(enumName(node, value), nested);
+    // @clickhouse/rowbinary's enum readers already resolve the underlying
+    // integer to its NAME via the type's value→name map, so render that string
+    // directly (ClickHouse TSV prints the enum name, not the integer).
+    return renderStringish(String(value), nested);
   }
   if (node.kind === NodeKind.TupleDataType) {
     return renderTuple(node, value);

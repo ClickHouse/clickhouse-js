@@ -130,6 +130,11 @@ export default defineConfig({
     },
     browser: {
       enabled: true,
+      // Run headless by default so the test runner never pops up a browser
+      // window (locally Vitest would otherwise launch a headed browser; it only
+      // defaults to headless in CI). Set BROWSER_HEADED=true to opt back into a
+      // visible browser, e.g. for debugging.
+      headless: process.env.BROWSER_HEADED !== "true",
       provider: playwright(),
       instances: [{ browser }],
     },

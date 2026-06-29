@@ -9,8 +9,8 @@ description: >
   of the packages: `@clickhouse/client` (Node.js), `@clickhouse/client-web`
   (Web), `@clickhouse/client-common` (deprecated, rarely released), the
   standalone `@clickhouse/datatype-parser` (the type parser, under
-  `packages/datatype-parser`), or `@clickhouse/rowbinary` (the RowBinary parser
-  skill/package, under `skills/clickhouse-js-node-rowbinary-parser`). The agent
+  `packages/datatype-parser`), or `@clickhouse/rowbinary` (the RowBinary codec
+  skill/package, under `skills/clickhouse-js-node-rowbinary`). The agent
   drives the GitHub Actions workflows (`gh workflow run`), watches CI, pauses at
   the human-judgment points (PR review, the approval gate, GitHub Release text),
   and hands the deployment-approval link back to the human. Do NOT use this for
@@ -32,8 +32,8 @@ This skill is the source of truth for the release process. It supersedes the old
    - `@clickhouse/client-common` — **deprecated**, effectively frozen; only cut a
      final standalone release if explicitly asked.
    - `@clickhouse/datatype-parser` — standalone type parser (`packages/datatype-parser`)
-   - `@clickhouse/rowbinary` — standalone RowBinary parser skill/package
-     (`skills/clickhouse-js-node-rowbinary-parser`)
+   - `@clickhouse/rowbinary` — standalone RowBinary codec skill/package
+     (`skills/clickhouse-js-node-rowbinary`)
 
    The flow forks into two families — **workspace client packages** (client /
    client-web / client-common) and **standalone packages** (datatype-parser /
@@ -56,7 +56,7 @@ This skill is the source of truth for the release process. It supersedes the old
 > - `@clickhouse/client-web` → `publish-client-web.yml`
 > - `@clickhouse/client-common` → `publish-client-common.yml`
 > - `@clickhouse/datatype-parser` → `publish-datatype-parser.yml`
-> - `@clickhouse/rowbinary` → `publish-skill-rowbinary-parser.yml`
+> - `@clickhouse/rowbinary` → `publish-skill-rowbinary.yml`
 >
 > Each client workflow has two triggers: an automatic `head` publish on push to
 > `release` and a manual `latest` publish via `workflow_dispatch`. The standalone
@@ -233,13 +233,13 @@ beta** for them.
 Edit the version in the package's `package.json` (these have **no** `src/version.ts`):
 
 - `@clickhouse/datatype-parser` → `packages/datatype-parser/package.json`
-- `@clickhouse/rowbinary` → `skills/clickhouse-js-node-rowbinary-parser/package.json`
+- `@clickhouse/rowbinary` → `skills/clickhouse-js-node-rowbinary/package.json`
 
 Do this in a normal PR to `main`, together with the relevant entry in **that
 package's own** `CHANGELOG.md` (verify the changelog as in Part A, Step 1):
 
 - `@clickhouse/datatype-parser` → `packages/datatype-parser/CHANGELOG.md`
-- `@clickhouse/rowbinary` → `skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md`
+- `@clickhouse/rowbinary` → `skills/clickhouse-js-node-rowbinary/CHANGELOG.md`
 
 Merge it.
 
@@ -257,8 +257,8 @@ Dispatch the package's own publish workflow from the `release` branch. These tak
 ```bash
 # type parser:
 gh workflow run publish-datatype-parser.yml --ref release
-# rowbinary parser skill/package:
-gh workflow run publish-skill-rowbinary-parser.yml --ref release
+# rowbinary codec skill/package:
+gh workflow run publish-skill-rowbinary.yml --ref release
 ```
 
 Each workflow builds, packs + smoke-tests the tarball, publishes it to `latest`
@@ -280,7 +280,7 @@ gh run watch <run-id>
 Same as Part A, Step 6, using the standalone tag (`datatype-parser-v<ver>` /
 `rowbinary-v<ver>`) and the notes from that package's own `CHANGELOG.md`
 (`packages/datatype-parser/CHANGELOG.md` or
-`skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md`). No `--title`, no
+`skills/clickhouse-js-node-rowbinary/CHANGELOG.md`). No `--title`, no
 `--prerelease`. Backfill any missing releases.
 
 ---
@@ -300,7 +300,7 @@ Same as Part A, Step 6, using the standalone tag (`datatype-parser-v<ver>` /
 
 1. Bump version in the package's `package.json` + its own `CHANGELOG.md` via a PR to `main` → merge.
 2. `gh pr create --base release --head main` → review → merge.
-3. `gh workflow run publish-datatype-parser.yml --ref release` (or `publish-skill-rowbinary-parser.yml`) → **approve**, watch.
+3. `gh workflow run publish-datatype-parser.yml --ref release` (or `publish-skill-rowbinary.yml`) → **approve**, watch.
 4. `gh release create <…-v…-tag> --notes-file <changelog-section>`; backfill.
 
 **Always:** per package · each package has its **own** `CHANGELOG.md` (root is frozen) · `release` is protected (fix via `main`) · every publish needs `npm-publish` approval · `head` betas are untracked · GitHub Release notes come from the package's `CHANGELOG.md` with no explicit `--title`.
