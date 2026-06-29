@@ -25,7 +25,11 @@ import {
 } from "../src/readers/decimals.js";
 import { readDynamic } from "../src/readers/dynamic.js";
 import { readEnum16, readEnum8 } from "../src/readers/enums.js";
-import { readBFloat16, readFloat32, readFloat64 } from "../src/readers/floats.js";
+import {
+  readBFloat16,
+  readFloat32,
+  readFloat64,
+} from "../src/readers/floats.js";
 import {
   readGeometry,
   readLineString,
@@ -50,7 +54,12 @@ import {
   readUInt8,
 } from "../src/readers/integers.js";
 import { readInterval } from "../src/readers/interval.js";
-import { formatIPv4, formatIPv6, readIPv4, readIPv6 } from "../src/readers/ip.js";
+import {
+  formatIPv4,
+  formatIPv6,
+  readIPv4,
+  readIPv6,
+} from "../src/readers/ip.js";
 import { readJSON } from "../src/readers/json.js";
 import { readFixedString, readString } from "../src/readers/strings.js";
 import { readTime, readTime64 } from "../src/readers/time.js";

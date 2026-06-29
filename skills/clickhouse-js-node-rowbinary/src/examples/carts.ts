@@ -1,4 +1,8 @@
-import { readArray, readNullable, readTupleNamed } from "../readers/composite.js";
+import {
+  readArray,
+  readNullable,
+  readTupleNamed,
+} from "../readers/composite.js";
 import { type Reader, advance } from "../readers/core.js";
 import { readInt32, readUInt16, readUInt32 } from "../readers/integers.js";
 import { readString } from "../readers/strings.js";

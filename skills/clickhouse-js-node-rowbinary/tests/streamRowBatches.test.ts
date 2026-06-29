@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { Cursor } from "../src/readers/core.js";
 import { readUInt64 } from "../src/readers/integers.js";
-import { type SmallChunkStats, streamRowBatches } from "../src/readers/stream.js";
+import {
+  type SmallChunkStats,
+  streamRowBatches,
+} from "../src/readers/stream.js";
 import { readString } from "../src/readers/strings.js";
 
 /**

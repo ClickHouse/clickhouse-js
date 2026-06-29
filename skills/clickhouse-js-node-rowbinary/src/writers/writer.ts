@@ -71,12 +71,7 @@ export {
   writeDateTime64P6,
   writeDateTime64P9,
 } from "./datetime.js";
-export {
-  writeTime,
-  writeTime64,
-  parseTime,
-  parseTime64,
-} from "./time.js";
+export { writeTime, writeTime64, parseTime, parseTime64 } from "./time.js";
 export { writeInterval } from "./interval.js";
 export {
   writeNullable,
@@ -88,11 +83,7 @@ export {
   writeVariant,
   type VariantValue,
 } from "./composite.js";
-export {
-  writeRows,
-  FLUSH_CHANNEL_NAME,
-  type WriteRowsFlush,
-} from "./rows.js";
+export { writeRows, FLUSH_CHANNEL_NAME, type WriteRowsFlush } from "./rows.js";
 export {
   writePoint,
   writeRing,

@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { query } from "./clickhouse.js";
 import { readQBit } from "../src/readers/composite.js";
 import { NeedMoreData, Cursor } from "../src/readers/core.js";
-import { readBFloat16, readFloat32, readFloat64 } from "../src/readers/floats.js";
+import {
+  readBFloat16,
+  readFloat32,
+  readFloat64,
+} from "../src/readers/floats.js";
 import { readUInt8 } from "../src/readers/integers.js";
 
 // QBit is experimental; the type needs allow_experimental_qbit_type.
