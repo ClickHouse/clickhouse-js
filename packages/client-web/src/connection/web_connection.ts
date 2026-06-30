@@ -261,23 +261,27 @@ export class WebConnection implements Connection<ReadableStream> {
       ) {
         return response;
       } else {
-        return Promise.reject(
-          parseError(
-            await getAsText(response.body || new ReadableStream<Uint8Array>()),
-          ),
+        // Throw (rather than `return Promise.reject(...)`) so the rejection is
+        // produced by this async function itself. In the Cloudflare Workers
+        // runtime, a free-standing `Promise.reject(...)` value created here is
+        // momentarily observed without a handler across the preceding `await`
+        // I/O boundary and reported as an unhandled rejection, even though the
+        // caller does handle it.
+        throw parseError(
+          await getAsText(response.body || new ReadableStream<Uint8Array>()),
         );
       }
     } catch (err) {
       clearTimeout(timeout);
       if (isAborted) {
-        return Promise.reject(new Error("The user aborted a request."));
+        throw new Error("The user aborted a request.", { cause: err });
       }
       if (isTimedOut) {
-        return Promise.reject(new Error("Timeout error."));
+        throw new Error("Timeout error.", { cause: err });
       }
       if (err instanceof Error) {
         // maybe it's a ClickHouse error
-        return Promise.reject(parseError(err));
+        throw parseError(err);
       }
       // shouldn't happen
       throw err;

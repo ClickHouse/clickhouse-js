@@ -216,3 +216,34 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: true
+
+  # Runs the web client unit suite inside the Cloudflare Workers runtime
+  # (workerd) via @cloudflare/vitest-pool-workers, in addition to the
+  # browser-based runner above. This guards the web client against the runtime
+  # that real Cloudflare Workers deployments use. Only the unit suite is run
+  # here: it is deterministic and needs no ClickHouse server, whereas the
+  # integration suite exercises runtime-specific behaviours (e.g. fetch abort
+  # semantics) that differ under workerd.
+  unit-tests-workers:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    # The Workers runner disables OpenTelemetry and coverage: the unit suite is
+    # a correctness gate only and does not upload coverage to Codecov.
+    env:
+      VITEST_OTEL_ENABLED: "false"
+      VITEST_COVERAGE: "false"
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run web unit tests in the Cloudflare Workers runtime
+        run: |
+          npm run test:web:unit:workers

@@ -21,9 +21,10 @@ describe("[Web] ping", () => {
     expect(result.success).toBeFalsy();
     // @ts-expect-error
     expect(result.error).toEqual(
-      // Chrome = Failed to fetch; FF = NetworkError when attempting to fetch resource
+      // Chrome = Failed to fetch; FF = NetworkError when attempting to fetch
+      // resource; Cloudflare Workers = Network connection lost.
       expect.objectContaining({
-        message: expect.stringContaining("to fetch"),
+        message: expect.stringMatching(/to fetch|Network connection lost/),
       }),
     );
   });

@@ -11,9 +11,10 @@ describe("[Web] errors parsing", () => {
         query: "SELECT * FROM system.numbers LIMIT 3",
       }),
     ).rejects.toMatchObject(
-      // Chrome = Failed to fetch; FF = NetworkError when attempting to fetch resource
+      // Chrome = Failed to fetch; FF = NetworkError when attempting to fetch
+      // resource; Cloudflare Workers = Network connection lost.
       expect.objectContaining({
-        message: expect.stringContaining("to fetch"),
+        message: expect.stringMatching(/to fetch|Network connection lost/),
       }),
     );
   });

@@ -18,6 +18,14 @@
 
 - Added `ClickHouseSettingsInterface`, a package-neutral structural counterpart to `ClickHouseSettings`, exported from `@clickhouse/client`, `@clickhouse/client-web`, and `@clickhouse/client-common`. It is identical to `ClickHouseSettings` except that its index signature omits `SettingsMap` (a class with a private member, which TypeScript compares nominally). Because each client package now bundles its own copy of the common module, their `ClickHouseSettings` types are mutually unassignable; `ClickHouseSettingsInterface` is structurally identical across all three packages and assignable into each package's `ClickHouseSettings`, so a consumer that shares a single settings-producing helper across both the Node.js and Web clients can type it against this one type without casts. Values typed as `SettingsMap` cannot be carried through it — use `ClickHouseSettings` if you need them. ([#889])
 
+## Bug fixes
+
+- (Web) Fixed spurious unhandled promise rejections when running `@clickhouse/client-web` on the Cloudflare Workers runtime (`workerd`). The connection's request method previously returned free-standing `Promise.reject(...)` values from inside an `async` function; across the preceding `fetch()` I/O boundary, `workerd` briefly observed those promises without a handler and reported them as unhandled rejections, even though the caller awaited and handled them. The rejected values are now thrown directly, so error paths (server-side errors, aborts, timeouts) no longer surface as unhandled rejections. ([#935])
+
+## Improvements
+
+- The web package test suite now additionally runs under the Cloudflare Workers Vitest runner (`@cloudflare/vitest-pool-workers`, executing on `workerd`) on top of the existing Playwright browser runner, so `@clickhouse/client-web` is exercised on the Workers runtime in CI. ([#935])
+
 # 1.22.0
 
 ## New features
@@ -88,6 +96,7 @@ await client.query({
 [#864]: https://github.com/ClickHouse/clickhouse-js/pull/864
 [#889]: https://github.com/ClickHouse/clickhouse-js/pull/889
 [#893]: https://github.com/ClickHouse/clickhouse-js/pull/893
+[#935]: https://github.com/ClickHouse/clickhouse-js/pull/935
 
 ## Bug Fixes
 
