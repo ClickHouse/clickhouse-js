@@ -52,17 +52,23 @@ jobs:
           services: "clickhouse"
           down-flags: "--volumes"
 
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
       - name: Record environment (CPU, Node, ClickHouse version)
         run: |
           echo "Node:       $(node -v)"
           echo "CPU cores:  $(nproc)"
           grep -m1 'model name' /proc/cpuinfo || true
-          echo "ClickHouse: $(curl -s 'http://localhost:8123/?query=SELECT%20version()')"
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24
+          # The server may still be starting; poll briefly so the version is captured.
+          for _ in $(seq 1 30); do
+            chv=$(curl -s 'http://localhost:8123/?query=SELECT%20version()')
+            [ -n "$chv" ] && break
+            sleep 1
+          done
+          echo "ClickHouse: ${chv:-<unavailable>}"
 
       # Build + pack the in-repo @clickhouse/datatype-parser so the skill is
       # benchmarked against THIS checkout, not the version published to npm. The
