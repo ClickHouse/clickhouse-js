@@ -6,12 +6,6 @@ import { fileURLToPath } from "node:url";
 // common tests so the common code is exercised and shows up in coverage.
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
-// The package scripts run vitest via `npm --prefix packages/client-node`, which
-// sets the process cwd to the package dir. Some specs read fixtures/certs via
-// repo-root-relative paths (e.g. node_streaming_e2e, tls), so pin the cwd to the
-// repo root to match `root` above. Workers inherit this cwd when they spawn.
-process.chdir(root);
-
 const testMode = process.env.TEST_MODE;
 if (
   testMode !== "unit" &&

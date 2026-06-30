@@ -9,6 +9,7 @@ import { createClient } from "../../src";
 import Https from "https";
 import http from "http";
 import { vi } from "vitest";
+import { projectPath } from "../utils/paths";
 
 describe("[Node.js] TLS connection", () => {
   let client: ClickHouseClient<Stream.Readable>;
@@ -19,7 +20,9 @@ describe("[Node.js] TLS connection", () => {
     await client.close();
   });
 
-  const certsPath = ".docker/clickhouse/single_node_tls/certificates";
+  const certsPath = projectPath(
+    ".docker/clickhouse/single_node_tls/certificates",
+  );
   const ca_cert = fs.readFileSync(`${certsPath}/ca.crt`);
   const cert = fs.readFileSync(`${certsPath}/client.crt`);
   const key = fs.readFileSync(`${certsPath}/client.key`);

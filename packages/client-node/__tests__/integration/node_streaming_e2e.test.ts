@@ -8,6 +8,7 @@ import { createSimpleTable } from "@test/fixtures/simple_table";
 import { createTestClient } from "@test/utils/client";
 import { guid } from "@test/utils/guid";
 import { genLargeStringsDataset } from "@test/utils/datasets";
+import { projectPath } from "../utils/paths";
 import { tableFromIPC } from "apache-arrow";
 import { Buffer } from "buffer";
 import Fs from "fs";
@@ -39,8 +40,9 @@ describe("[Node.js] streaming e2e", () => {
 
   it("should stream an NDJSON file", async () => {
     // contains id as numbers in JSONCompactEachRow format ["0"]\n["1"]\n...
-    const filename =
-      "packages/client-common/__tests__/fixtures/streaming_e2e_data.ndjson";
+    const filename = projectPath(
+      "packages/client-common/__tests__/fixtures/streaming_e2e_data.ndjson",
+    );
     await client.insert({
       table: tableName,
       values: Fs.createReadStream(filename).pipe(
@@ -74,8 +76,9 @@ describe("[Node.js] streaming e2e", () => {
       output_format_parquet_string_as_string: 1,
     };
 
-    const filename =
-      "packages/client-common/__tests__/fixtures/streaming_e2e_data.parquet";
+    const filename = projectPath(
+      "packages/client-common/__tests__/fixtures/streaming_e2e_data.parquet",
+    );
     await client.insert({
       table: tableName,
       values: Fs.createReadStream(filename),
