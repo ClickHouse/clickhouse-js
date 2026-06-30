@@ -2,6 +2,11 @@ import { defineConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import { fileURLToPath } from "node:url";
 
+// Embedded in the web client package, but rooted at the repo so the shared
+// (common) sources and specs are reachable. The node and web packages run the
+// common tests so the common code is exercised and shows up in coverage.
+const root = fileURLToPath(new URL("../..", import.meta.url));
+
 const browser = process.env.BROWSER ?? "chromium";
 if (browser !== "chromium" && browser !== "firefox" && browser !== "webkit") {
   throw new Error(
@@ -14,8 +19,6 @@ if (
   testMode !== "unit" &&
   testMode !== "integration" &&
   testMode !== "jwt" &&
-  testMode !== "common" &&
-  testMode !== "common-integration" &&
   testMode !== "all"
 ) {
   throw new Error(
@@ -57,13 +60,6 @@ const collections = {
     "packages/client-web/__tests__/integration/*.test.ts",
     "packages/client-web/__tests__/jwt/*.test.ts",
   ],
-  common: [
-    "packages/client-common/__tests__/unit/*.test.ts",
-    "packages/client-common/__tests__/utils/*.test.ts",
-  ],
-  "common-integration": [
-    "packages/client-common/__tests__/integration/*.test.ts",
-  ],
   all: [
     "packages/client-common/__tests__/unit/*.test.ts",
     "packages/client-common/__tests__/utils/*.test.ts",
@@ -75,6 +71,7 @@ const collections = {
 };
 
 export default defineConfig({
+  root,
   test: {
     // Increase maxWorkers to speed up integration tests
     // as we're not bound by the CPU here.
@@ -83,7 +80,7 @@ export default defineConfig({
     hookTimeout: 300_000,
     testTimeout: 300_000,
     slowTestThreshold: testMode === "unit" ? 10_000 : undefined,
-    setupFiles: ["vitest.web.setup.ts"],
+    setupFiles: ["packages/client-web/vitest.setup.ts"],
     include: collections[testMode],
     coverage: {
       enabled: process.env.VITEST_COVERAGE === "true",
@@ -124,11 +121,11 @@ export default defineConfig({
           process.env.VITEST_OTEL_ENABLED === "true" &&
           // not set in dependabot PRs
           !!process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
-        sdkPath: "./vitest.node.otel.js",
+        sdkPath: "./packages/client-node/vitest.otel.js",
         // According to testing, runners hang indefinitely when OTEL is enabled in browser tests,
         // and when they don't the exporter visibly slows the tests down (2x-5x).
         // Tests also crash (their iframe?) when the devtools are open in Chrome.
-        // browserSdkPath: './vitest.web.otel.js',
+        // browserSdkPath: './packages/client-web/vitest.otel.js',
       },
     },
     browser: {
@@ -170,18 +167,18 @@ export default defineConfig({
             // intact, and common-origin symbols share the client's one bundle.
             "@clickhouse/client-common": "@clickhouse/client-web",
             "@test": fileURLToPath(
-              new URL("./packages/client-common/__tests__", import.meta.url),
+              new URL("packages/client-common/__tests__", `file://${root}/`),
             ),
           }
         : {
             "@clickhouse/client-common": fileURLToPath(
-              new URL("./packages/client-common/src", import.meta.url),
+              new URL("packages/client-common/src", `file://${root}/`),
             ),
             "@clickhouse/client-web": fileURLToPath(
-              new URL("./packages/client-web", import.meta.url),
+              new URL("packages/client-web", `file://${root}/`),
             ),
             "@test": fileURLToPath(
-              new URL("./packages/client-common/__tests__", import.meta.url),
+              new URL("packages/client-common/__tests__", `file://${root}/`),
             ),
           },
   },

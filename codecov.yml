@@ -16,18 +16,16 @@ coverage:
 #     ClickHouse `latest`).
 #
 #   flag                       workflow / job
-#   node-common-unit           node / common-unit-tests
 #   node-unit                  node / unit-tests
 #   node-integration-single    node / integration-tests-local-single-node
 #   node-integration-cluster   node / integration-tests-local-cluster
 #   node-integration-cloud     node / integration-tests-cloud
-#   web-common-unit            web  / common-unit-tests
 #   web-all-single             web  / all-tests-local-single-node
 #   web-integration-cluster    web  / integration-tests-local-cluster
 #   web-integration-cloud      web  / integration-tests-cloud
-#                              => 9 uploads total (one per flag)
+#                              => 7 uploads total (one per flag)
 #
-# `after_n_builds` therefore equals the number of flags (9). When a flag is
+# `after_n_builds` therefore equals the number of flags (7). When a flag is
 # added or removed, update this value and the `individual_flags` list to match.
 codecov:
   # Wait for the other CI checks to finish before notifying, in addition to the
@@ -36,11 +34,11 @@ codecov:
     wait_for_ci: true
     # Total number of expected uploads before Codecov posts the final commit
     # status/notification: one upload per flag (see the table above).
-    after_n_builds: 9
+    after_n_builds: 7
 
 comment:
   # Wait for all uploads before posting/updating the PR comment.
-  after_n_builds: 9
+  after_n_builds: 7
 
 flag_management:
   default_rules:
@@ -49,12 +47,10 @@ flag_management:
     # flag uploads exactly once, so per-flag statuses post after a single build.
     carryforward: true
   individual_flags:
-    - name: node-common-unit
     - name: node-unit
     - name: node-integration-single
     - name: node-integration-cluster
     - name: node-integration-cloud
-    - name: web-common-unit
     - name: web-all-single
     - name: web-integration-cluster
     - name: web-integration-cloud
