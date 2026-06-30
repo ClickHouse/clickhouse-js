@@ -47,9 +47,9 @@ support and is not guaranteed.
 import { createClient } from "@clickhouse/client-web";
 
 const client = createClient({
-  url: process.env.CLICKHOUSE_URL ?? "http://localhost:8123",
-  username: process.env.CLICKHOUSE_USER ?? "default",
-  password: process.env.CLICKHOUSE_PASSWORD ?? "",
+  url: "http://localhost:8123",
+  username: "default",
+  password: "",
 });
 
 const resultSet = await client.query({
