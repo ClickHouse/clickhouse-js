@@ -1,0 +1,197 @@
+{
+  "purpose": "Distilled numbers for the @clickhouse/rowbinary blog post. Generated from the existing benchmark suite (npm run bench) + skill end-to-end generation runs. Not a redesign of the eval — uses the bench files as-is.",
+  "environment": {
+    "cpu": "Apple M4 Max",
+    "node": "v24.6.0",
+    "os": "macOS 26.5.1 (build 25F80)",
+    "rowbinary_git_sha": "199f99460ab2fda2c87544bd4a7dad8e7509f60f",
+    "rowbinary_git_ref": "main (HEAD; package @clickhouse/rowbinary 0.2.0, in-repo source — not a release tag)",
+    "clickhouse_server": "26.1.1.200",
+    "bench_runner": "vitest 4.1.9 (tinybench)",
+    "bench_rows_per_schema": 50000,
+    "measured_on": "2026-06-30"
+  },
+  "note_on_ratios": "hz = ops/sec from tinybench (higher = faster). Ratios are point estimates from a single bench pass; rme per benchmark ranged ~0.5%-6.5%. Ratios are robust to that noise at the reported precision.",
+
+  "number_1_json_vs_rowbinary_numeric": {
+    "question": "JSONEachRow vs the generic library-API RowBinary reader, numeric-heavy schemas, identical result sets.",
+    "expectation": "~2-3x in RowBinary's favor",
+    "comparison": "RowBinary API-combinator reader hz / JSONEachRow (JSON.parse) hz",
+    "schemas": {
+      "iot": {
+        "columns": "UInt32, DateTime64(3), Float64 x3, Float32, UInt8",
+        "rowbinary_api_hz": 156.42,
+        "jsoneachrow_hz": 72.94,
+        "ratio": 2.14
+      },
+      "ledger": {
+        "columns": "UInt128, Int64, Decimal128(18) x2, Decimal64(4), UInt256",
+        "rowbinary_api_hz": 81.83,
+        "jsoneachrow_correct_quoted_hz": 24.97,
+        "jsoneachrow_bare_WRONG_hz": 46.27,
+        "ratio_vs_correct_json": 3.28,
+        "ratio_vs_bare_wrong_json": 1.77,
+        "note": "Bare JSONEachRow is 1.77x but SILENTLY WRONG: every UInt128/Int64/Decimal128/UInt256 is rounded to float64. The only correct JSON path quotes the values server-side and re-parses to bigint/decimal by hand — that is the 24.97 hz / 3.28x figure (apples-to-apples on correctness)."
+      }
+    },
+    "mean_ratio": 2.71,
+    "range": "2.1x - 3.3x",
+    "hardware": "Apple M4 Max (local). See ci_cross_check for the AMD EPYC numbers.",
+    "ci_cross_check": {
+      "hardware": "GitHub-hosted ubuntu-latest runner: AMD EPYC 7763 (4 vCPU), Node 24.17.0, ClickHouse 26.6.1.1193",
+      "run_url": "https://github.com/ClickHouse/clickhouse-js/actions/runs/28439460847",
+      "pr": "https://github.com/ClickHouse/clickhouse-js/pull/933",
+      "artifact": "rowbinary-bench-results (JSON, attached to the run)",
+      "iot": {
+        "rowbinary_api_hz": 63.36,
+        "jsoneachrow_hz": 30.56,
+        "ratio": 2.07
+      },
+      "ledger": {
+        "rowbinary_api_hz": 26.72,
+        "jsoneachrow_correct_quoted_hz": 10.81,
+        "ratio_vs_correct_json": 2.47
+      },
+      "mean_ratio": 2.27,
+      "range": "2.1x - 2.5x",
+      "note": "CI runner is noisier (rme +-10-18%, 10-23 samples). The ledger ratio is the hardware-sensitive one: 3.3x on M4 Max, ~2.5x on the 4-core AMD cloud box. IoT is stable (~2.1x) across both."
+    },
+    "verdict": "Expectation met on both hardware profiles. Cross-hardware claim: RowBinary beats a CORRECT JSON decode by ~2.5x-3.3x on numeric-heavy schemas (lower on commodity cloud CPUs, higher on Apple Silicon); iot ~2.1x is stable. The ledger figure is hardware-dependent, so cite the range, not a single number.",
+    "excluded_string_heavy_flag": {
+      "schema": "logs",
+      "columns": "DateTime, LowCardinality(String) x2, String (template), hex trace_id",
+      "finding": "JSON WINS, as the skill's format-choice guidance predicts. JSONEachRow 71.69 hz and JSONCompactEachRow 91.76 hz both beat the RowBinary API reader (58.71 hz); JSONCompact even beats the optimized RowBinary reader (65.88 hz). Correctly excluded from the numeric-heavy aggregate."
+    }
+  },
+
+  "number_2_monomorphic_vs_naive": {
+    "question": "Agent-inlined monomorphic parser vs the naive parser built by composing the library's public per-type read functions in a loop.",
+    "expectation": "~1.5x in the monomorphic parser's favor",
+    "comparison": "optimized/monomorphized reader hz / API-combinator reader hz",
+    "numeric_heavy_schemas_confirming": {
+      "ledger": { "api_hz": 81.83, "fast_hz": 126.89, "ratio": 1.55 },
+      "iot": { "api_hz": 156.42, "fast_hz": 384.29, "ratio": 2.46 },
+      "orders": {
+        "columns": "UInt8, UUID, Decimal64(2), Enum8",
+        "api_hz": 174.48,
+        "fast_hz": 594.87,
+        "ratio": 3.41,
+        "note": "win amplified by swapping the BigInt UUID formatter for the lookup-table formatUUIDTable, not pure monomorphization"
+      }
+    },
+    "holds_across_at_least_3": true,
+    "mean_ratio_numeric": 2.47,
+    "range_numeric": "1.55x - 3.41x",
+    "non_reproducing_flag": {
+      "schema": "events",
+      "columns": "UInt64, String, DateTime (flat scalar row)",
+      "ratio": 1.04,
+      "finding": "1.5x does NOT reproduce here. A flat all-scalar row with no hot per-row formatter and no composite structure gives monomorphization nothing to remove — bounds-check coalescing alone is marginal. This is the documented 'on par, use the simpler API reader' case."
+    },
+    "other_schemas_for_reference": {
+      "carts": 2.15,
+      "telemetry": 1.46,
+      "observability": 1.41,
+      "profiles": 1.31
+    },
+    "verdict": "Expectation met on genuinely numeric-heavy schemas (1.55x-2.46x), holds >=1.5x across ledger/iot/orders. Flagged: events (flat scalar) is ~1.05x."
+  },
+
+  "number_3_generation_cost": {
+    "question": "Per-parser generation cost running the skill end-to-end.",
+    "model": "claude-sonnet-4-6 (Claude Sonnet 4.6)",
+    "pricing_per_mtok": {
+      "input": 3.0,
+      "output": 15.0,
+      "cache_write_5m": 3.75,
+      "cache_read": 0.3
+    },
+    "method": "4 isolated Claude Code subagents, each told to read SKILL.md + follow its routing and generate a monomorphized reader for one numeric-heavy schema. Token counts read from per-agent transcript usage records.",
+    "queries": [
+      "(id Int32, price Float64, qty Int16)",
+      "iot 7-col numeric",
+      "ledger wide ints/decimals",
+      "(a Int64, b Int128, c UInt64, d Float64)"
+    ],
+    "per_parser": {
+      "fixed_numerics": {
+        "total_input_tokens": 234311,
+        "cache_write": 34940,
+        "cache_read": 199359,
+        "output_tokens": 1643,
+        "usd_cache_aware": 0.2155
+      },
+      "iot": {
+        "total_input_tokens": 322077,
+        "cache_write": 33649,
+        "cache_read": 288413,
+        "output_tokens": 2840,
+        "usd_cache_aware": 0.2554
+      },
+      "ledger": {
+        "total_input_tokens": 184836,
+        "cache_write": 21648,
+        "cache_read": 163178,
+        "output_tokens": 2322,
+        "usd_cache_aware": 0.165
+      },
+      "int_precision": {
+        "total_input_tokens": 182230,
+        "cache_write": 20087,
+        "cache_read": 162133,
+        "output_tokens": 1736,
+        "usd_cache_aware": 0.15
+      }
+    },
+    "mean_per_parser": {
+      "tokens_in_total_context": 230864,
+      "unique_tokens_read_skill_footprint": 27581,
+      "tokens_out": 2135,
+      "usd_cache_aware": 0.2,
+      "usd_uncached_upper_bound": 0.72
+    },
+    "note": "tokens_in is total context processed across the agent's multi-turn loop; most of it is cache re-reads of the growing transcript. The ~28k cache-write figure is the meaningful skill footprint (SKILL.md + routed reader source + repo context read once). Cost ~$0.20/parser with the harness's prompt cache; ~$0.72 if billed with no cache discount."
+  },
+
+  "anecdote_uuid_failure_mode": {
+    "question": "Closed-book (memory only), how reliably do Sonnet 4.6 and a control frontier model write a CORRECT RowBinary UUID reader? Does the README's documented coin-flip failure mode reproduce?",
+    "method": "The README eval measures model MEMORY (cold recall), NOT the ability to eventually arrive at the right answer by googling/experimenting. So this is a strict closed-book test: each subagent could use ONLY the Write tool to save its function — no WebFetch, WebSearch, Bash, Read, or any verification. Transcripts confirmed all 10 samples used Write only. 5 samples per model. Each output run against live ClickHouse toUUID('61f0c404-5cb3-11e7-907b-a6006ad3dba0') FORMAT RowBinary = e711b35c04c4f061a0dbd36a00a67b90; canonical text = 61f0c404-5cb3-11e7-907b-a6006ad3dba0.",
+    "memory_only_results": {
+      "sonnet_4_6": {
+        "correct": 2,
+        "total": 5,
+        "fail_rate": 0.6,
+        "wrong_output_all_3_failures": "e711b35c-04c4-f061-a0db-d36a00a67b90",
+        "failure_mode": "hexes the 16 wire bytes in declaration order with NO half-reversal — the silently-wrong scramble. Matches the README's coin-flip claim (~3 of 5 fail)."
+      },
+      "opus_4_8_control": {
+        "correct": 5,
+        "total": 5,
+        "fail_rate": 0.0,
+        "note": "reliably recalls the two little-endian-UInt64-halves layout cold"
+      }
+    },
+    "verdict": "REPRODUCES. Closed-book, Sonnet 4.6 gets RowBinary UUID byte order wrong ~60% of the time (3/5), producing a silently-corrupt value; Opus 4.8 is reliable (5/5). The skill makes it correct-by-construction on every run regardless of model.",
+    "earlier_with_tools_run_CORRECTION": {
+      "what_happened": "An initial single A/B run gave the no-skill agents web + bash. Sonnet then WebFetched the ClickHouse docs (finding the canonical worked example) and Opus answered from memory — both produced correct output, making it look like the failure mode no longer reproduces.",
+      "why_it_was_wrong": "That measured 'can the model eventually get there with tools', not memory. The README measures memory. With tools removed (above), the failure mode clearly reproduces on Sonnet 4.6.",
+      "with_tools_token_counts_for_reference": {
+        "no_skill_sonnet_4_6": {
+          "tokens_in": 126996,
+          "tokens_out": 1241,
+          "path": "ToolSearch+WebFetch doc-lookup then correct"
+        },
+        "no_skill_opus_4_8": {
+          "tokens_in": 56042,
+          "tokens_out": 1112,
+          "path": "no lookups, correct from memory"
+        },
+        "with_skill_sonnet_4_6": {
+          "tokens_in": 161342,
+          "tokens_out": 1110,
+          "path": "read skill, correct by construction, no web lookup"
+        }
+      }
+    }
+  }
+}
