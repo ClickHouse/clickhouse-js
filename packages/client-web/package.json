@@ -25,11 +25,19 @@
   },
   "scripts": {
     "pack": "npm pack",
-    "prepack": "cp ../../README.md ../../LICENSE .",
+    "prepack": "cp ../../LICENSE .",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",
-    "build": "rm -rf dist; tsc"
+    "build": "rm -rf dist; tsc",
+    "test:unit": "CLICKHOUSE_TEST_SKIP_INIT=1 TEST_MODE=unit vitest",
+    "test:integration": "TEST_MODE=integration vitest",
+    "test:integration:dist": "npm --prefix ../.. run build && TEST_TARGET=dist TEST_MODE=integration vitest",
+    "test:integration:local_cluster": "CLICKHOUSE_TEST_ENVIRONMENT=local_cluster TEST_MODE=integration vitest",
+    "test:integration:cloud": "CLICKHOUSE_TEST_ENVIRONMENT=cloud TEST_MODE=integration vitest",
+    "test:integration:cloud:jwt": "CLICKHOUSE_TEST_ENVIRONMENT=cloud TEST_MODE=jwt vitest",
+    "test:all": "TEST_MODE=all vitest",
+    "test:coverage": "VITEST_COVERAGE=true TEST_MODE=all vitest"
   },
   "dependencies": {}
 }

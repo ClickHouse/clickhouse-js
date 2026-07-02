@@ -53,13 +53,12 @@ everyone in the community can safely benefit from your contribution.
 
 We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports both Node.js, Web environments and edge runtimes.
 
-The repository uses three consolidated Vitest configuration files:
+The repository keeps two Vitest configuration files, embedded in the client packages:
 
-- `vitest.client-common.config.ts` - Tests for the common client package
-- `vitest.node.config.ts` - Tests for the Node.js client package
-- `vitest.web.config.ts` - Tests for the Web client package
+- `packages/client-node/vitest.config.ts` - Tests for the Node.js client package
+- `packages/client-web/vitest.config.ts` - Tests for the Web client package
 
-Each config supports multiple test modes controlled by the `TEST_MODE` environment variable, allowing different test scenarios (unit, integration, TLS, etc.) to be run with a single configuration file.
+The shared (common) sources live in `packages/client-common` and are bundled into both clients; the common specs are run as part of the Node.js and Web test suites, so the common code is covered without a separate config. Each config supports multiple test modes controlled by the `TEST_MODE` environment variable, allowing different test scenarios (unit, integration, TLS, etc.) to be run with a single configuration file.
 
 ### Type checking and linting
 
@@ -89,11 +88,11 @@ treat all warnings as errors that must be fixed before merging.
 Does not require a running ClickHouse server.
 
 ```bash
-# Run common unit tests
-npm run test:common:unit
-
-# Run Node.js unit tests
+# Run Node.js unit tests (also runs the common unit tests)
 npm run test:node:unit
+
+# Run Web unit tests (also runs the common unit tests)
+npm run test:web:unit
 ```
 
 ### Running integration tests

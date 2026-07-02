@@ -1,3 +1,11 @@
+# 1.23.1
+
+## Bug Fixes
+
+- Re-export `EXCEPTION_TAG_HEADER_NAME` and `extractErrorAtTheEndOfChunk` from `@clickhouse/client`. Both are part of the (now deprecated) `@clickhouse/client-common` public API but were missed when its surface was bundled into and re-exported from the client packages in 1.23.0 ([#845]). Reported downstream by Langfuse. ([#935])
+
+[#935]: https://github.com/ClickHouse/clickhouse-js/pull/935
+
 # 1.23.0
 
 ## Migration Notes
