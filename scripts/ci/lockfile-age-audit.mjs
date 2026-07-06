@@ -191,10 +191,7 @@ async function checkOne({ name, version }) {
   const url = `https://registry.npmjs.org/${encodeURIComponent(name)}`;
   let res;
   try {
-    // Default (full) packument — the abbreviated `application/vnd.npm.install-v1+json`
-    // response intentionally strips the `time` map, so we have to ask for the full doc
-    // to read publish timestamps.
-    res = await fetch(url, { headers: { Accept: "application/json" } });
+    res = await fetch(url);
   } catch (err) {
     errors.push(`${name}: fetch failed (${err.message})`);
     return;
