@@ -1,0 +1,19 @@
+{
+  "type": "Array(Array(UInt8))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "UInt8"
+          }
+        ]
+      }
+    ]
+  }
+}

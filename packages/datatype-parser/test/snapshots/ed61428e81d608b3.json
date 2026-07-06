@@ -1,0 +1,33 @@
+{
+  "type": "Map(String, Array(Map(String, UInt64)))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Map",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Map",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "String"
+              },
+              {
+                "type": "DataType",
+                "name": "UInt64"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

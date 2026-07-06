@@ -1,0 +1,14 @@
+{
+  "type": "Enum8('a')",
+  "data_type": {
+    "type": "DataType",
+    "name": "Enum8",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "a"
+      }
+    ]
+  }
+}

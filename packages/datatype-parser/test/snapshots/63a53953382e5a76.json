@@ -1,0 +1,18 @@
+{
+  "type": "Tuple( id UInt64 , name String )",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt64"
+      },
+      {
+        "type": "DataType",
+        "name": "String"
+      }
+    ],
+    "element_names": ["id", "name"]
+  }
+}

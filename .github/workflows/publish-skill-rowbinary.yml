@@ -1,0 +1,188 @@
+name: "publish: rowbinary"
+
+# Independent publish + release for the standalone @clickhouse/rowbinary
+# package (the RowBinary codec skill). Like the per-package client publish
+# workflows (publish-client*.yml), it carries its own version in
+# skills/clickhouse-js-node-rowbinary/package.json and ships on its own
+# cadence. Triggered manually, and — like those workflows — must be dispatched from
+# the `release` branch: the npm-publish environment is protected so only that
+# branch may deploy (the repo's human-in-the-loop release gate). Dispatches from
+# any other ref are skipped by the job-level `if` guard below.
+#
+# The release branch is itself protected, so the unit suite is not re-run here.
+# The `publish` job instead builds, packs the tarball, installs that exact
+# tarball into a throwaway project and smoke-tests its imports, and only then
+# publishes the same tarball with the "latest" tag (npm OIDC + provenance) and
+# pushes a matching git tag. The `e2e` job then repeats the smoke test against
+# the freshly published version on the registry across the supported Node
+# versions.
+
+permissions:
+  contents: read
+  id-token: write # Required for npm OIDC authentication and provenance
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+
+env:
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
+
+jobs:
+  publish:
+    # The npm-publish environment only permits the release branch to deploy;
+    # skip cleanly on any other ref instead of failing the protection check.
+    if: github.ref == 'refs/heads/release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm-publish
+    permissions:
+      contents: write # Required to push the release git tag
+      id-token: write # Required for npm OIDC authentication and provenance
+    defaults:
+      run:
+        working-directory: skills/clickhouse-js-node-rowbinary
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Get the release version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Publishing @clickhouse/rowbinary@$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Pack the tarball
+        id: pack
+        # prepack copies the repo-root LICENSE and rebuilds dist before packing.
+        run: |
+          set -euo pipefail
+          TARBALL=$(npm pack --pack-destination "$RUNNER_TEMP" | tail -1)
+          echo "Packed: $TARBALL"
+          echo "tarball=$RUNNER_TEMP/$TARBALL" >> "$GITHUB_OUTPUT"
+
+      - name: Pre-publish smoke test (install the packed tarball)
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          cd "$work"
+          npm init -y >/dev/null 2>&1
+          npm install "$TARBALL"
+          # Verify both the main barrel entry and a subpath export resolve and
+          # expose their parsers, from the exact artifact we are about to publish.
+          node --input-type=module -e "
+            import * as rb from '@clickhouse/rowbinary';
+            import * as ints from '@clickhouse/rowbinary/readers/integers';
+            if (typeof rb.readRows !== 'function') throw new Error('readRows missing from main export');
+            if (typeof ints.readUInt8 !== 'function') throw new Error('readUInt8 missing from subpath export');
+            console.log('OK: packed tarball imports cleanly');
+          "
+
+      - name: Publish to npm
+        # Publish the exact tarball that passed the pre-publish smoke test.
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: npm publish "$TARBALL" --access public --provenance
+
+      - name: Create and push release git tag
+        env:
+          RELEASE_TAG: rowbinary-v${{ steps.version.outputs.version }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Tag ${RELEASE_TAG} already exists on origin; skipping."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${RELEASE_TAG}" -m "Release @clickhouse/rowbinary ${RELEASE_VERSION}"
+          git push origin "refs/tags/${RELEASE_TAG}"
+
+  e2e:
+    name: e2e (node ${{ matrix.node }})
+    needs: publish
+    if: needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: true
+      matrix:
+        node: [20, 22, 24, 26]
+    env:
+      PUBLISHED_VERSION: ${{ needs.publish.outputs.version }}
+    steps:
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: ${{ matrix.node }}
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Wait for @clickhouse/rowbinary@${{ needs.publish.outputs.version }} on npm
+        run: |
+          set -euo pipefail
+          if [ -z "${PUBLISHED_VERSION}" ]; then
+            echo "PUBLISHED_VERSION is empty; cannot wait for npm publication." >&2
+            exit 1
+          fi
+          pkg="@clickhouse/rowbinary"
+          # Poll the registry for up to ~5 minutes. New versions usually surface
+          # in seconds, but the registry CDN can lag.
+          max_attempts=60
+          sleep_seconds=5
+          attempt=1
+          echo "Waiting for ${pkg}@${PUBLISHED_VERSION} to be available on npm..."
+          while true; do
+            if npm view "${pkg}@${PUBLISHED_VERSION}" version >/dev/null 2>&1; then
+              echo "  ${pkg}@${PUBLISHED_VERSION} is available."
+              break
+            fi
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "Timed out waiting for ${pkg}@${PUBLISHED_VERSION} on npm" >&2
+              exit 1
+            fi
+            echo "  attempt ${attempt}/${max_attempts}: not available yet, sleeping ${sleep_seconds}s..."
+            attempt=$((attempt + 1))
+            sleep "$sleep_seconds"
+          done
+
+      - name: Install and import the published package
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          cd "$work"
+          npm init -y >/dev/null 2>&1
+          npm install "@clickhouse/rowbinary@${PUBLISHED_VERSION}"
+          # Verify both the main barrel entry and a subpath export resolve and
+          # expose their parsers to a downstream consumer.
+          node --input-type=module -e "
+            import * as rb from '@clickhouse/rowbinary';
+            import * as ints from '@clickhouse/rowbinary/readers/integers';
+            if (typeof rb.readRows !== 'function') throw new Error('readRows missing from main export');
+            if (typeof ints.readUInt8 !== 'function') throw new Error('readUInt8 missing from subpath export');
+            console.log('OK: @clickhouse/rowbinary@${PUBLISHED_VERSION} imports cleanly');
+          "

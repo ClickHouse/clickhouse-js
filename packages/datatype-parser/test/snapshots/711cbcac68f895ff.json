@@ -1,0 +1,57 @@
+{
+  "type": "Tuple(a Array(Map(String, UInt64)), b Tuple(x Array(Int8), y Nullable(String)))",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Map",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "String"
+              },
+              {
+                "type": "DataType",
+                "name": "UInt64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TupleDataType",
+        "name": "Tuple",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Array",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "Int8"
+              }
+            ]
+          },
+          {
+            "type": "DataType",
+            "name": "Nullable",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "String"
+              }
+            ]
+          }
+        ],
+        "element_names": ["x", "y"]
+      }
+    ],
+    "element_names": ["a", "b"]
+  }
+}

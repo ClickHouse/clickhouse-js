@@ -1,0 +1,13 @@
+{
+  "type": "LowCardinality(Int32)",
+  "data_type": {
+    "type": "DataType",
+    "name": "LowCardinality",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Int32"
+      }
+    ]
+  }
+}

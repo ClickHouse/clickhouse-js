@@ -1,0 +1,20 @@
+{
+  "type": "Array(FixedString(16))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "FixedString",
+        "arguments": [
+          {
+            "type": "Literal",
+            "value_type": "UInt64",
+            "value": "16"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -29,6 +29,7 @@ export {
   type ErrorLogParams,
   type WarnLogParams,
   type ClickHouseSettings,
+  type ClickHouseSettingsInterface,
   type MergeTreeSettings,
   type Row,
   type ResponseJSON,
@@ -91,6 +92,8 @@ import {
   ClickHouseSpanStatusCode as ClickHouseSpanStatusCode_,
   ClickHouseSpanKind as ClickHouseSpanKind_,
   defaultJSONHandling as defaultJSONHandling_,
+  EXCEPTION_TAG_HEADER_NAME as EXCEPTION_TAG_HEADER_NAME_,
+  extractErrorAtTheEndOfChunk as extractErrorAtTheEndOfChunk_,
 } from "./common/index";
 
 export const ClickHouseError = ClickHouseError_;
@@ -106,7 +109,9 @@ export const StreamableFormats = StreamableFormats_;
 export const StreamableJSONFormats = StreamableJSONFormats_;
 export const SingleDocumentJSONFormats = SingleDocumentJSONFormats_;
 export const RecordsJSONFormats = RecordsJSONFormats_;
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export const parseColumnType = parseColumnType_;
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export const SimpleColumnTypes = SimpleColumnTypes_;
 export const isProgressRow = isProgressRow_;
 export const isRow = isRow_;
@@ -117,3 +122,5 @@ export const ClickHouseSpanNames = ClickHouseSpanNames_;
 export const ClickHouseSpanStatusCode = ClickHouseSpanStatusCode_;
 export const ClickHouseSpanKind = ClickHouseSpanKind_;
 export const defaultJSONHandling = defaultJSONHandling_;
+export const EXCEPTION_TAG_HEADER_NAME = EXCEPTION_TAG_HEADER_NAME_;
+export const extractErrorAtTheEndOfChunk = extractErrorAtTheEndOfChunk_;

@@ -1,0 +1,13 @@
+{
+  "type": "Nullable(UUID)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nullable",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UUID"
+      }
+    ]
+  }
+}

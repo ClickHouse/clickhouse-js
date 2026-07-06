@@ -1,0 +1,21 @@
+{
+  "type": "Enum8('x' = -1, 'y' = 0, 'z' = 1)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum8",
+    "values": [
+      {
+        "name": "x",
+        "value": -1
+      },
+      {
+        "name": "y",
+        "value": 0
+      },
+      {
+        "name": "z",
+        "value": 1
+      }
+    ]
+  }
+}

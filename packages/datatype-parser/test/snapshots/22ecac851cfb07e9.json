@@ -1,0 +1,23 @@
+{
+  "type": "Array(Tuple(Float64, Float64))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "TupleDataType",
+        "name": "Tuple",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Float64"
+          },
+          {
+            "type": "DataType",
+            "name": "Float64"
+          }
+        ]
+      }
+    ]
+  }
+}

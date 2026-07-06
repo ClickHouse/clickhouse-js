@@ -1,0 +1,26 @@
+{
+  "type": "LowCardinality(Nullable(FixedString(16)))",
+  "data_type": {
+    "type": "DataType",
+    "name": "LowCardinality",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "FixedString",
+            "arguments": [
+              {
+                "type": "Literal",
+                "value_type": "UInt64",
+                "value": "16"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

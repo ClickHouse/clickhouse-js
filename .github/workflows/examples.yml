@@ -17,10 +17,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/examples.yml"
   pull_request:
     paths:
@@ -33,10 +33,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/examples.yml"
 
 concurrency:
@@ -50,6 +50,12 @@ env:
   OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js,deployment.environment=ci"
   VITEST_OTEL_ENABLED: "true"
   VITEST_COVERAGE: "true"
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
 
 jobs:
   code-quality:
@@ -133,10 +139,3 @@ jobs:
           CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
         run: |
           npm run run-examples
-
-  success:
-    needs: ["code-quality", "run-examples"]
-    runs-on: ubuntu-latest
-    steps:
-      - name: All examples checks passed
-        run: echo "All examples checks passed! 🎉"

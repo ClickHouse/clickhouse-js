@@ -1,0 +1,20 @@
+{
+  "type": "LowCardinality(FixedString(32))",
+  "data_type": {
+    "type": "DataType",
+    "name": "LowCardinality",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "FixedString",
+        "arguments": [
+          {
+            "type": "Literal",
+            "value_type": "UInt64",
+            "value": "32"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,14 +1,36 @@
+> [!IMPORTANT]
+> **This repository-wide changelog is frozen.** New entries now live in each
+> package's own `CHANGELOG.md`:
+>
+> - `@clickhouse/client` → [`packages/client-node/CHANGELOG.md`](packages/client-node/CHANGELOG.md)
+> - `@clickhouse/client-web` → [`packages/client-web/CHANGELOG.md`](packages/client-web/CHANGELOG.md)
+> - `@clickhouse/client-common` (deprecated) → [`packages/client-common/CHANGELOG.md`](packages/client-common/CHANGELOG.md)
+> - `@clickhouse/datatype-parser` → [`packages/datatype-parser/CHANGELOG.md`](packages/datatype-parser/CHANGELOG.md)
+> - `@clickhouse/rowbinary` → [`skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md`](skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md)
+>
+> The history below (through `@clickhouse/client` 1.23.0) is retained for
+> reference and was copied as-is into each client package's changelog as the
+> starting point for the split.
+
 # 1.23.0
 
 ## Migration Notes
 
+- Node.js 26.x was added to the CI matrix, and Node.js 18.x is no longer supported. The `engines.node` floor of `@clickhouse/client` (previously `>=16`) and `@clickhouse/datatype-parser` (previously `>=18.0.0`) was raised to `>=20`. Node.js 20.x, 22.x, 24.x, and 26.x are supported and exercised in CI.
+
 - The `@clickhouse/client-common` package is deprecated. `@clickhouse/client` (Node.js) and `@clickhouse/client-web` (Web) no longer depend on it; the shared code is now bundled into each client package. Everything previously importable from `@clickhouse/client-common` should be imported from `@clickhouse/client` or `@clickhouse/client-web` instead. The `@clickhouse/client-common` package itself will no longer receive updates. ([#845])
+
+- The `parseColumnType` function and its `SimpleColumnTypes` companion (exported from `@clickhouse/client`, `@clickhouse/client-web`, and `@clickhouse/client-common`) are deprecated and slated for removal in a future major version. They are superseded by the new standalone [`@clickhouse/datatype-parser`](https://www.npmjs.com/package/@clickhouse/datatype-parser) package (`parseDataType` plus its `Node` AST), which parses the full ClickHouse data-type grammar and emits an AST that mirrors the server's. ([#893])
 
 ## New features
 
 - (Node.js) Added a RowBinary reader library and agent skill under [`skills/clickhouse-js-node-rowbinary-parser`](./skills/clickhouse-js-node-rowbinary-parser). It ships type-specific, monomorphizable building blocks for decoding `RowBinary` / `RowBinaryWithNames` / `RowBinaryWithNamesAndTypes` streams (full-buffer and chunked), plus a skill that guides an agent to generate bespoke high-performance parsers from a query's column types. The skill is bundled into `@clickhouse/client` (registered in `agents.skills`) and is also published independently as the [`@clickhouse/rowbinary`](https://www.npmjs.com/package/@clickhouse/rowbinary) package. A matching RowBinary writer is planned. ([#864])
 
+- Published the [`@clickhouse/datatype-parser`](https://www.npmjs.com/package/@clickhouse/datatype-parser) package: a small, dependency-free standalone parser for ClickHouse data-type strings (the kind sent in the types row of `RowBinaryWithNamesAndTypes`, e.g. `Array(Nullable(UInt64))`, `Tuple(a UInt8, b String)`, `Enum8('a' = 1)`). It is a faithful port of the server's `ParserDataType` and emits a JSON AST that is byte-identical to the server's `EXPLAIN AST json = 1` data-type subtree. It supersedes the deprecated `parseColumnType` (see Migration Notes). ([#893])
+
 - (Node.js, `@experimental`) Added an additive `connection?: Connection<Stream.Readable>` option to `createClient` that lets a caller plug an externally-built backend `Connection`-like object in place of the default HTTP(S) factory. Only supposed to be used for testing the `chDB` integration. ([#879])
+
+- Added `ClickHouseSettingsInterface`, a package-neutral structural counterpart to `ClickHouseSettings`, exported from `@clickhouse/client`, `@clickhouse/client-web`, and `@clickhouse/client-common`. It is identical to `ClickHouseSettings` except that its index signature omits `SettingsMap` (a class with a private member, which TypeScript compares nominally). Because each client package now bundles its own copy of the common module, their `ClickHouseSettings` types are mutually unassignable; `ClickHouseSettingsInterface` is structurally identical across all three packages and assignable into each package's `ClickHouseSettings`, so a consumer that shares a single settings-producing helper across both the Node.js and Web clients can type it against this one type without casts. Values typed as `SettingsMap` cannot be carried through it — use `ClickHouseSettings` if you need them. ([#889])
 
 # 1.22.0
 
@@ -78,6 +100,8 @@ await client.query({
 [#828]: https://github.com/ClickHouse/clickhouse-js/pull/828
 [#845]: https://github.com/ClickHouse/clickhouse-js/pull/845
 [#864]: https://github.com/ClickHouse/clickhouse-js/pull/864
+[#889]: https://github.com/ClickHouse/clickhouse-js/pull/889
+[#893]: https://github.com/ClickHouse/clickhouse-js/pull/893
 
 ## Bug Fixes
 

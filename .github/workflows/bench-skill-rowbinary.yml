@@ -1,0 +1,101 @@
+name: "skill: rowbinary benchmarks"
+
+# Runs the RowBinary skill's benchmark suite (npm run bench) against a live
+# ClickHouse server so the numbers cited externally (e.g. the @clickhouse/rowbinary
+# blog post: RowBinary vs JSON, monomorphized vs API-combinator readers) have a
+# timestamped, third-party-reproducible CI log + a machine-readable JSON artifact
+# behind them — not just a maintainer's laptop.
+#
+# Decoupled from the correctness suite (tests-skill-rowbinary.yml): benchmarks are
+# slower and their throughput numbers are noisy, so they shouldn't gate every PR.
+# This runs on demand (workflow_dispatch) and on PRs that touch the skill or this
+# workflow.
+
+permissions: {}
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/bench-skill-rowbinary.yml
+      - skills/clickhouse-js-node-rowbinary/**
+      - packages/datatype-parser/**
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
+
+jobs:
+  benchmarks:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: skills/clickhouse-js-node-rowbinary
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Start ClickHouse (latest) in Docker
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          # The benchmarks only need the single-node HTTP server on :8123.
+          compose-file: "docker-compose.yml"
+          services: "clickhouse"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Record environment (CPU, Node, ClickHouse version)
+        run: |
+          echo "Node:       $(node -v)"
+          echo "CPU cores:  $(nproc)"
+          grep -m1 'model name' /proc/cpuinfo || true
+          # The server may still be starting; poll briefly so the version is captured.
+          for _ in $(seq 1 30); do
+            chv=$(curl -s 'http://localhost:8123/?query=SELECT%20version()')
+            [ -n "$chv" ] && break
+            sleep 1
+          done
+          echo "ClickHouse: ${chv:-<unavailable>}"
+
+      # Build + pack the in-repo @clickhouse/datatype-parser so the skill is
+      # benchmarked against THIS checkout, not the version published to npm. The
+      # committed package.json keeps a published range for end users; we only
+      # override node_modules below (`npm install <tarball> --no-save`).
+      - name: Pack local @clickhouse/datatype-parser
+        working-directory: ${{ github.workspace }}
+        run: |
+          npm ci
+          npm pack --workspace @clickhouse/datatype-parser --pack-destination "${{ runner.temp }}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Use the local datatype-parser build
+        run: npm install "${{ runner.temp }}"/clickhouse-datatype-parser-*.tgz --no-save
+
+      # Prints the human-readable tinybench summary (per-bench hz + "Nx faster"
+      # lines, incl. the ledger RowBinary-vs-JSON comparison) to the job log, and
+      # writes the same numbers as JSON for the uploaded artifact.
+      - name: Run benchmarks
+        run: npm run bench -- --outputJson "${{ runner.temp }}/rowbinary-bench-results.json"
+
+      - name: Upload benchmark results (JSON)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: rowbinary-bench-results
+          path: ${{ runner.temp }}/rowbinary-bench-results.json
+          if-no-files-found: error

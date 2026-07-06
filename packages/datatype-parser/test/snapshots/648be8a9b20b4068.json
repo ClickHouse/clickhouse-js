@@ -1,0 +1,13 @@
+{
+  "type": "Array(IPv6)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "IPv6"
+      }
+    ]
+  }
+}

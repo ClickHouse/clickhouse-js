@@ -1,0 +1,225 @@
+name: "publish: client-web"
+
+# Publish + release for @clickhouse/client-web (the Web client).
+#
+# Split out of the former all-in-one publish.yml so each client package
+# publishes on its own. Two triggers, like the standalone-package workflows:
+#   - push to `release` -> publishes the "head" pre-release tag (internal beta).
+#   - manual workflow_dispatch -> publishes the "latest" tag and pushes the
+#     release git tag. The `main` branch never publishes.
+# Both use npm OIDC authentication with provenance, and both deploy through the
+# protected `npm-publish` environment (release branch only + manual approval).
+#
+# The push trigger is path-scoped to this package's own sources, the shared
+# common sources it bundles via the `src/common` symlink
+# (packages/client-common/src), and the repo-root files its published tarball
+# depends on. So a change to only one client no longer republishes the others,
+# but a change to the shared common sources publishes a new head build for
+# every client that bundles them.
+
+permissions:
+  contents: read
+  id-token: write # Required for npm OIDC authentication and provenance
+
+concurrency:
+  # event_name separates the head (push) and latest (workflow_dispatch) runs so
+  # a manual publish never cancels an in-progress head publish (or vice versa).
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  # for the latest workflow
+  workflow_dispatch:
+  # for the head workflow
+  push:
+    branches:
+      - release
+    paths:
+      - "packages/client-web/**"
+      # The Web client bundles the common sources via the src/common symlink.
+      - "packages/client-common/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "README.md"
+      - "LICENSE"
+      - ".github/workflows/publish-client-web.yml"
+
+env:
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
+
+jobs:
+  head:
+    name: "Publish @clickhouse/client-web (head)"
+    if: github.ref == 'refs/heads/release' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      packages: "@clickhouse/client-web"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set head pre-release version
+        id: version
+        run: |
+          BASE_VERSION=$(node -p "require('./packages/client-web/package.json').version")
+          HEAD_VERSION="${BASE_VERSION}-head.${GITHUB_SHA::7}.${GITHUB_RUN_ATTEMPT}"
+          echo "Setting version to: $HEAD_VERSION"
+          npm --workspace @clickhouse/client-web version --no-git-tag-version "$HEAD_VERSION"
+          echo "export default \"$HEAD_VERSION\";" > packages/client-web/src/version.ts
+          echo "version=$HEAD_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build the package
+        run: npm --workspace @clickhouse/client-web run build
+
+      - name: Publish @clickhouse/client-web with head tag
+        run: |
+          npm --workspace @clickhouse/client-web publish \
+            --access public \
+            --provenance \
+            --tag head
+
+  publish:
+    name: "Publish @clickhouse/client-web"
+    if: github.ref == 'refs/heads/release' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: write # Required to push the release git tag
+      id-token: write # Required for npm OIDC authentication and provenance
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      packages: "@clickhouse/client-web"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get the release version
+        id: version
+        run: |
+          BASE_VERSION=$(node -p "require('./packages/client-web/package.json').version")
+          echo "Using version: $BASE_VERSION"
+          echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build the package
+        run: npm --workspace @clickhouse/client-web run build
+
+      - name: Publish @clickhouse/client-web to the latest tag (implicit)
+        run: |
+          npm --workspace @clickhouse/client-web publish \
+            --access public \
+            --provenance
+
+      - name: Create and push release git tag
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: .scripts/push_release_tag.sh "client-web-${RELEASE_VERSION}"
+
+  e2e:
+    name: e2e (browser ${{ matrix.browser }})
+    needs: [head, publish]
+    # Runs whether the published version came from the head job or the manual
+    # latest publish.
+    if: |
+      always() &&
+      (needs.head.result == 'success' || needs.publish.result == 'success')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        # Matches the browsers exercised by the main web suite (WebKit is not
+        # tested at the moment).
+        browser: [chromium, firefox]
+    defaults:
+      run:
+        working-directory: tests/e2e/web-browser
+    env:
+      PUBLISHED_VERSION: ${{ needs.head.outputs.version || needs.publish.outputs.version }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      # The single-node service sends CORS headers, so the browser can reach it
+      # cross-origin from the vitest page (see its config.xml).
+      - name: Start ClickHouse (stable) in Docker
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Wait for ${{ env.PUBLISHED_VERSION }} to be available on npm
+        run: |
+          set -euo pipefail
+          if [ -z "${PUBLISHED_VERSION}" ]; then
+            echo "PUBLISHED_VERSION is empty; cannot wait for npm publication." >&2
+            exit 1
+          fi
+          pkg="@clickhouse/client-web"
+          # Poll the registry for up to ~5 minutes. New versions usually surface
+          # in seconds, but the registry CDN can lag.
+          max_attempts=60
+          sleep_seconds=5
+          attempt=1
+          echo "Waiting for ${pkg}@${PUBLISHED_VERSION} to be available on npm..."
+          while true; do
+            if npm view "${pkg}@${PUBLISHED_VERSION}" version >/dev/null 2>&1; then
+              echo "  ${pkg}@${PUBLISHED_VERSION} is available."
+              break
+            fi
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "Timed out waiting for ${pkg}@${PUBLISHED_VERSION} on npm" >&2
+              exit 1
+            fi
+            echo "  attempt ${attempt}/${max_attempts}: not available yet, sleeping ${sleep_seconds}s..."
+            attempt=$((attempt + 1))
+            sleep "$sleep_seconds"
+          done
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install the Playwright browser
+        run: npx playwright install ${{ matrix.browser }}
+
+      - name: Install @clickhouse/client-web at the published version
+        run: npm install "@clickhouse/client-web@${PUBLISHED_VERSION}"
+
+      # Real-browser e2e: vitest's Vite bundler serves the installed package to a
+      # Playwright-driven browser and runs it against the live ClickHouse started
+      # above (import, ping, query, streaming, ClickHouseError on a bad query).
+      - name: Run the Web browser e2e against the published package
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: npm test

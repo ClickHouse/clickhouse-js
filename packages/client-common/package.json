@@ -17,11 +17,12 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "pack": "npm pack",
-    "prepack": "cp ../../README.md ../../LICENSE .",
+    "prepack": "cp ../../LICENSE .",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",

@@ -1,0 +1,60 @@
+{
+  "name": "@clickhouse/datatype-parser",
+  "version": "0.1.3",
+  "description": "Standalone ClickHouse data-type string parser — a TypeScript port of the chdt C++ library.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClickHouse/clickhouse-js.git",
+    "directory": "packages/datatype-parser"
+  },
+  "keywords": [
+    "clickhouse",
+    "data-type",
+    "parser",
+    "ast",
+    "rowbinary"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint --max-warnings=0 .",
+    "lint:fix": "eslint . --fix",
+    "pack": "npm pack",
+    "prepack": "npm run build",
+    "bench": "vitest bench --run",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:oracle": "tsx test/oracle_compare.ts",
+    "test:unsupported": "tsx test/check_unsupported.ts",
+    "snapshot:update": "tsx test/update_snapshots.ts",
+    "validate:live": "tsx test/validate_types_live.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4",
+    "typescript": "^5.6.0",
+    "vitest": "^4.0.16"
+  }
+}

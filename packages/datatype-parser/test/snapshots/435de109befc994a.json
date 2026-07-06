@@ -1,0 +1,20 @@
+{
+  "type": "Nullable(Decimal64(4))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nullable",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Decimal64",
+        "arguments": [
+          {
+            "type": "Literal",
+            "value_type": "UInt64",
+            "value": "4"
+          }
+        ]
+      }
+    ]
+  }
+}

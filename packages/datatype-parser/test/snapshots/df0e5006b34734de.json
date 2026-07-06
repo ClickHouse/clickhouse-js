@@ -1,0 +1,7 @@
+{
+  "type": "varchar",
+  "data_type": {
+    "type": "DataType",
+    "name": "varchar"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "FIXED(10, 2)",
+  "data_type": {
+    "type": "DataType",
+    "name": "FIXED",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "UInt64",
+        "value": "10"
+      },
+      {
+        "type": "Literal",
+        "value_type": "UInt64",
+        "value": "2"
+      }
+    ]
+  }
+}
