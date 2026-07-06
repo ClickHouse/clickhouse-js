@@ -191,9 +191,7 @@ async function checkOne({ name, version }) {
   const url = `https://registry.npmjs.org/${encodeURIComponent(name)}`;
   let res;
   try {
-    res = await fetch(url, {
-      headers: { Accept: "application/vnd.npm.install-v1+json" },
-    });
+    res = await fetch(url);
   } catch (err) {
     errors.push(`${name}: fetch failed (${err.message})`);
     return;
