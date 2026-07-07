@@ -2,7 +2,7 @@
   "name": "@clickhouse/client",
   "description": "Official JS client for ClickHouse DB - Node.js implementation",
   "homepage": "https://clickhouse.com",
-  "version": "1.23.0",
+  "version": "1.23.1",
   "license": "Apache-2.0",
   "keywords": [
     "clickhouse",
