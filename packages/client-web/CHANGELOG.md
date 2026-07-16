@@ -1,3 +1,11 @@
+# 1.23.2
+
+## Bug Fixes
+
+- `insert`: column names passed via the `columns` parameter (both the array form and the `columns.except` form) are now back-quoted, so names containing spaces or other special characters produce valid SQL instead of a server-side syntax error. Column names that are already quoted (with backticks or double quotes) are passed through unchanged, preserving backward compatibility for callers that pre-quoted them. ([#948])
+
+[#948]: https://github.com/ClickHouse/clickhouse-js/pull/948
+
 # 1.23.1
 
 ## Bug Fixes
