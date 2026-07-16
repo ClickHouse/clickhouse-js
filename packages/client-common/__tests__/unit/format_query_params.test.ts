@@ -249,4 +249,52 @@ describe("formatQueryParams", () => {
       }),
     ).toBe("{'name':'test','flags':[TRUE,FALSE],'tuple':(FALSE,TRUE)}");
   });
+
+  it("formats a Date inside an array as a quoted date string", () => {
+    expect(
+      formatQueryParams({
+        value: [new Date(Date.UTC(2022, 6, 29, 7, 52, 14))],
+      }),
+    ).toBe("['2022-07-29']");
+  });
+
+  it("formats a Date inside a nested array as a quoted date string", () => {
+    expect(
+      formatQueryParams({
+        value: [[new Date(Date.UTC(2023, 4, 5))]],
+      }),
+    ).toBe("[['2023-05-05']]");
+  });
+
+  it("formats a Date inside a tuple as a quoted date string", () => {
+    expect(
+      formatQueryParams({
+        value: new TupleParam([new Date(Date.UTC(2023, 4, 5))]),
+      }),
+    ).toBe("('2023-05-05')");
+  });
+
+  it("formats a Date inside an object value as a quoted date string", () => {
+    expect(
+      formatQueryParams({
+        value: { d: new Date(Date.UTC(2023, 4, 5)) },
+      }),
+    ).toBe("{'d':'2023-05-05'}");
+  });
+
+  it("uses the UTC date and drops the time for a Date inside an array", () => {
+    expect(
+      formatQueryParams({
+        value: [new Date(Date.UTC(2022, 6, 29, 23, 59, 59, 999))],
+      }),
+    ).toBe("['2022-07-29']");
+  });
+
+  it("formats a Date alongside other types inside an array", () => {
+    expect(
+      formatQueryParams({
+        value: [new Date(Date.UTC(2023, 4, 5)), "foo", 42, null],
+      }),
+    ).toBe("['2023-05-05','foo',42,NULL]");
+  });
 });
