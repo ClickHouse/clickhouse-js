@@ -19,6 +19,7 @@ import {
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
+  RecordsJSONFormats,
   validateStreamFormat,
 } from "./common/index";
 import { Buffer } from "buffer";
@@ -193,8 +194,16 @@ export class ResultSet<
       try {
         const text = await getAsText(stream);
         this.span_bytes += Buffer.byteLength(text);
+        const parsed = this.jsonHandling.parse<ResultJSONType<T, Format>>(text);
+        // Record the returned row count for non-streaming consumption too, so
+        // `db.response.returned_rows` is present regardless of the format /
+        // consumption style (see countReturnedRows).
+        const rows = countReturnedRows(parsed, this.format as DataFormat);
+        if (rows !== undefined) {
+          this.addSpanRows(rows);
+        }
         this.finishSpan();
-        return this.jsonHandling.parse(text);
+        return parsed;
       } catch (err) {
         this.finishSpan(err);
         throw err;
@@ -337,3 +346,30 @@ export class ResultSet<
 
 const streamAlreadyConsumedMessage = "Stream has been already consumed";
 const resultSetClosedMessage = "ResultSet has been closed";
+
+/** Best-effort row count for a fully-parsed non-streaming JSON document, used
+ *  to populate `db.response.returned_rows` for `json()` consumption. Returns
+ *  `undefined` when the shape is unrecognized (the attribute is then omitted).
+ *  - `JSONObjectEachRow` (and other record formats) parse to `Record<string, T>`
+ *    -> the number of keys.
+ *  - `JSON`, `JSONCompact`, etc. parse to `{ data: T[], rows: number, ... }`
+ *    -> the reported `rows`, falling back to `data.length`. */
+function countReturnedRows(
+  parsed: unknown,
+  format: DataFormat,
+): number | undefined {
+  if (parsed === null || typeof parsed !== "object") {
+    return undefined;
+  }
+  if ((RecordsJSONFormats as readonly string[]).includes(format)) {
+    return Object.keys(parsed).length;
+  }
+  const obj = parsed as { rows?: unknown; data?: unknown };
+  if (typeof obj.rows === "number") {
+    return obj.rows;
+  }
+  if (Array.isArray(obj.data)) {
+    return obj.data.length;
+  }
+  return undefined;
+}

@@ -67,6 +67,44 @@ describe("[Node.js] ResultSet span tracking", () => {
     expect(span.status).toBeUndefined();
   });
 
+  it("records returned_rows for the non-streaming JSON format via json()", async () => {
+    const span = new RecordedSpan();
+    const body = JSON.stringify({
+      meta: [{ name: "n", type: "UInt8" }],
+      data: [{ n: 1 }, { n: 2 }, { n: 3 }],
+      rows: 3,
+    });
+    const rs = new ResultSet(
+      Readable.from([Buffer.from(body)]),
+      "JSON",
+      "query-id",
+      undefined,
+      undefined,
+      undefined,
+      span,
+    );
+    await rs.json();
+    expect(span.endedTimes).toBe(1);
+    expect(span.attributes["db.response.returned_rows"]).toBe(3);
+  });
+
+  it("records returned_rows for JSONObjectEachRow via json()", async () => {
+    const span = new RecordedSpan();
+    const body = JSON.stringify({ row_1: { n: 1 }, row_2: { n: 2 } });
+    const rs = new ResultSet(
+      Readable.from([Buffer.from(body)]),
+      "JSONObjectEachRow",
+      "query-id",
+      undefined,
+      undefined,
+      undefined,
+      span,
+    );
+    await rs.json();
+    expect(span.endedTimes).toBe(1);
+    expect(span.attributes["db.response.returned_rows"]).toBe(2);
+  });
+
   it("ends the span and records rows + bytes after the stream is fully consumed", async () => {
     const span = new RecordedSpan();
     const rs = makeResultSet(span);
