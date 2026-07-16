@@ -477,6 +477,34 @@ describe("tracer", () => {
     expect(attrs["db.system.name"]).toBe("clickhouse");
   });
 
+  it("ignores db.query.text in span_attributes when the flag is disabled (no leak)", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.query({
+      query: "SELECT 1",
+      span_attributes: { "db.query.text": "SELECT secret FROM secrets" },
+    });
+    // db.query.text must never be settable via span_attributes.
+    expect("db.query.text" in spans[0].initialAttributes).toBe(false);
+  });
+
+  it("does not let span_attributes override db.query.text when the flag is enabled", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(
+      tracer,
+      {},
+      { dangerously_log_query_text: true },
+    );
+    await client.query({
+      query: "SELECT 1",
+      span_attributes: { "db.query.text": "SELECT secret FROM secrets" },
+    });
+    // Only the client-controlled query text is recorded, not the caller's.
+    expect(spans[0].initialAttributes["db.query.text"]).toBe(
+      "SELECT 1 \nFORMAT JSON",
+    );
+  });
+
   it("does not let span_attributes override core attributes", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);

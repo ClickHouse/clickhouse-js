@@ -612,7 +612,11 @@ export class ClickHouseClient<Stream = unknown> {
     // (and the operation-specific `extra`) take precedence on key collisions.
     if (params?.span_attributes !== undefined) {
       for (const [k, v] of Object.entries(params.span_attributes)) {
-        if (v !== undefined) attrs[k] = v;
+        // `db.query.text` is reserved: it must only ever be set through the
+        // `dangerously_log_query_text` path below, so a caller cannot smuggle
+        // the raw SQL onto the span via span_attributes and bypass the
+        // safe-by-default guarantee.
+        if (v !== undefined && k !== "db.query.text") attrs[k] = v;
       }
     }
     attrs["db.system.name"] = "clickhouse";
