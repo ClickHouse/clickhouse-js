@@ -660,10 +660,13 @@ function getServerPort(url: URL): number {
   return url.protocol === "https:" ? 443 : 80;
 }
 
-/** Records HTTP status and `X-ClickHouse-Summary` counters on the span once
- *  the response (headers) arrived. The summary values are complete only when
- *  the query was executed with `wait_end_of_query=1`; see
- *  {@link ClickHouseSummary}. */
+/** Records HTTP status and the `X-ClickHouse-Summary` counters on the span
+ *  once the response (headers) arrived. Every key present in the parsed
+ *  summary is recorded as `clickhouse.summary.<key>` - the set is not
+ *  hardcoded, so server-side additions (e.g. `memory_usage`,
+ *  `real_time_microseconds`) are picked up automatically. The summary values
+ *  are complete only when the query was executed with `wait_end_of_query=1`;
+ *  see {@link ClickHouseSummary}. */
 function setResponseSpanAttributes(
   span: ClickHouseSpan,
   result: WithHttpStatusCode & WithClickHouseSummary,
@@ -674,23 +677,17 @@ function setResponseSpanAttributes(
   }
   const summary = result.summary;
   if (summary !== undefined) {
-    attributes["clickhouse.summary.read_rows"] = summary.read_rows;
-    attributes["clickhouse.summary.read_bytes"] = summary.read_bytes;
-    attributes["clickhouse.summary.written_rows"] = summary.written_rows;
-    attributes["clickhouse.summary.written_bytes"] = summary.written_bytes;
-    attributes["clickhouse.summary.result_rows"] = summary.result_rows;
-    attributes["clickhouse.summary.result_bytes"] = summary.result_bytes;
-    attributes["clickhouse.summary.total_rows_to_read"] =
-      summary.total_rows_to_read;
-    attributes["clickhouse.summary.elapsed_ns"] = summary.elapsed_ns;
-    // Optional fields - only present depending on the ClickHouse server
-    // version; set them only when returned so we never emit `undefined`.
-    if (summary.memory_usage !== undefined) {
-      attributes["clickhouse.summary.memory_usage"] = summary.memory_usage;
-    }
-    if (summary.real_time_microseconds !== undefined) {
-      attributes["clickhouse.summary.real_time_microseconds"] =
-        summary.real_time_microseconds;
+    for (const [key, value] of Object.entries(summary)) {
+      // `ClickHouseSummary` values are strings; guard against unexpected
+      // non-primitive shapes so a malformed header can never break tracing.
+      if (
+        value !== undefined &&
+        (typeof value === "string" ||
+          typeof value === "number" ||
+          typeof value === "boolean")
+      ) {
+        attributes[`clickhouse.summary.${key}`] = value;
+      }
     }
   }
   span.setAttributes(attributes);

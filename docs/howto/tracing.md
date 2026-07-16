@@ -125,10 +125,12 @@ before talking to the server), the client invokes
    one and the connection layer generated it. Once the response arrives, the
    span also gets `db.response.status_code` (HTTP status) and, when the
    `X-ClickHouse-Summary` header is present (e.g. with `wait_end_of_query`),
-   the `clickhouse.summary.*` counters: `read_rows`, `read_bytes`,
-   `written_rows`, `written_bytes`, `result_rows`, `result_bytes`,
-   `total_rows_to_read`, `elapsed_ns`, and — on servers that report them —
-   `memory_usage` (peak query memory, in bytes) and `real_time_microseconds`.
+   the `clickhouse.summary.*` counters. **Every** key present in the parsed
+   summary is recorded (the set is not hardcoded), so you get `read_rows`,
+   `read_bytes`, `written_rows`, `written_bytes`, `result_rows`,
+   `result_bytes`, `total_rows_to_read`, `elapsed_ns`, and — on servers that
+   report them — `memory_usage` (peak query memory, in bytes),
+   `real_time_microseconds`, and any future server-side additions for free.
    These counters are attached to every operation span, including the outer
    `clickhouse.query` span.
 4. On success, the span status is left **unset**, per the OTEL span status
@@ -158,8 +160,11 @@ propagates to the caller of `query` / `command` / `exec` / `insert` /
 >   ends when the result set is fully consumed (`text()`/`json()` resolve, or
 >   the `stream()` is read to completion), closed via `close()`, or fails
 >   (the error is recorded on this span). When it ends it carries the final
->   `clickhouse.response.decoded_bytes` and, for row-streaming consumption,
->   `db.response.returned_rows` metrics.
+>   `clickhouse.response.decoded_bytes` and `db.response.returned_rows`
+>   metrics. `returned_rows` is recorded both for row-streaming consumption
+>   (`stream()`, and `json()` on the streamable JSON formats) and for
+>   non-streaming `json()` on `JSON` / `JSONObjectEachRow` / the other
+>   single-document JSON formats.
 >
 > This split makes it easy to distinguish the original request round-trip from
 > a stream that may never end (e.g. tailing a live materialized view). If the

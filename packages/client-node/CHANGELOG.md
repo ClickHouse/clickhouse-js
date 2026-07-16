@@ -2,11 +2,15 @@
 
 ## New features
 
-- OpenTelemetry: richer, more actionable spans (requested by Langfuse). ([#PR])
+- OpenTelemetry: richer, more actionable spans (requested by Langfuse, [#948]). ([#950])
   - The `X-ClickHouse-Summary` counters are now attached to the `clickhouse.query` span as well (previously only on `command` / `exec` / `insert`), so the request-level metrics are visible on the outer client span.
-  - Added two summary attributes: `clickhouse.summary.total_rows_to_read` and `clickhouse.summary.memory_usage` (peak query memory, in bytes), plus `clickhouse.summary.real_time_microseconds` on servers that report it.
+  - Every key present in the summary header is now recorded as `clickhouse.summary.<key>` (the set is no longer a hardcoded subset). This surfaces `total_rows_to_read` (already typed but never recorded) and `memory_usage` (peak query memory, in bytes; sent by newer servers), and picks up future server-side additions (e.g. `real_time_microseconds`) automatically.
+  - `db.response.returned_rows` is now recorded for non-streaming result consumption too (`json()` on `JSON` / `JSONObjectEachRow` / the other single-document JSON formats), not just row-streaming paths.
   - Added a `span_attributes` field to the per-request query params (`query` / `command` / `exec` / `insert` / `ping`). Use it to enrich the operation span with application-level context — e.g. mirroring the tags you also send via the `log_comment` setting (route, tenant, surface, etc.). Caller-provided attributes never override the client's own `db.*` / `server.*` / `clickhouse.*` attributes.
   - Added a `dangerously_log_query_text` client option (default `false`). When enabled, the raw SQL statement is attached to spans as the OpenTelemetry `db.query.text` attribute and included in the `error`-level logs emitted for a failed request. The query text may contain sensitive literals, which is why it is off by default; bound `query_params` values and credentials are **never** logged or traced regardless of this setting.
+
+[#948]: https://github.com/ClickHouse/clickhouse-js/issues/948
+[#950]: https://github.com/ClickHouse/clickhouse-js/pull/950
 
 ## Bug fixes
 
