@@ -98,6 +98,7 @@ function makePing(impl?: () => Promise<any>) {
 function buildClient(
   tracer: ClickHouseTracer<any> | undefined,
   overrides: Partial<MockConnection> = {},
+  configOverrides: Record<string, unknown> = {},
 ): ClickHouseClient {
   const connection: MockConnection = {
     query: makeQuery(overrides.query),
@@ -112,6 +113,7 @@ function buildClient(
     database: "my_db",
     application: "my_app",
     tracer,
+    ...configOverrides,
     impl: {
       make_connection: () => connection as any,
       make_result_set: ((_s, _f, q, _log, _h, _j, span) => ({
@@ -337,6 +339,8 @@ describe("tracer", () => {
           result_rows: "5",
           result_bytes: "50",
           elapsed_ns: "1000",
+          memory_usage: "4580679",
+          real_time_microseconds: "12345",
         },
       }),
     });
@@ -344,9 +348,148 @@ describe("tracer", () => {
     const attrs = spans[0].attributes;
     expect(attrs["db.response.status_code"]).toBe(200);
     expect(attrs["clickhouse.summary.read_rows"]).toBe("10");
+    expect(attrs["clickhouse.summary.read_bytes"]).toBe("100");
     expect(attrs["clickhouse.summary.written_rows"]).toBe("5");
+    expect(attrs["clickhouse.summary.written_bytes"]).toBe("50");
+    expect(attrs["clickhouse.summary.result_rows"]).toBe("5");
     expect(attrs["clickhouse.summary.result_bytes"]).toBe("50");
+    expect(attrs["clickhouse.summary.total_rows_to_read"]).toBe("10");
     expect(attrs["clickhouse.summary.elapsed_ns"]).toBe("1000");
+    expect(attrs["clickhouse.summary.memory_usage"]).toBe("4580679");
+    expect(attrs["clickhouse.summary.real_time_microseconds"]).toBe("12345");
+  });
+
+  it("records clickhouse.summary.* attributes on the query span when the summary is present", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer, {
+      query: async () => ({
+        stream: {} as any,
+        query_id: "q-1",
+        response_headers: {},
+        http_status_code: 200,
+        summary: {
+          read_rows: "6568",
+          read_bytes: "3894304",
+          written_rows: "0",
+          written_bytes: "0",
+          total_rows_to_read: "6568",
+          result_rows: "0",
+          result_bytes: "0",
+          elapsed_ns: "10693523",
+          memory_usage: "4580679",
+        },
+      }),
+    });
+    await client.query({ query: "SELECT 1" });
+    // The summary is attached to the outer clickhouse.query span.
+    const attrs = spans[0].attributes;
+    expect(spans[0].name).toBe(ClickHouseSpanNames.query);
+    expect(attrs["clickhouse.summary.read_rows"]).toBe("6568");
+    expect(attrs["clickhouse.summary.total_rows_to_read"]).toBe("6568");
+    expect(attrs["clickhouse.summary.elapsed_ns"]).toBe("10693523");
+    expect(attrs["clickhouse.summary.memory_usage"]).toBe("4580679");
+  });
+
+  it("omits optional summary attributes that the server did not return", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer, {
+      command: async () => ({
+        query_id: "c-1",
+        response_headers: {},
+        summary: {
+          read_rows: "10",
+          read_bytes: "100",
+          written_rows: "5",
+          written_bytes: "50",
+          total_rows_to_read: "10",
+          result_rows: "5",
+          result_bytes: "50",
+          elapsed_ns: "1000",
+          // memory_usage / real_time_microseconds absent (older server).
+        },
+      }),
+    });
+    await client.command({ query: "INSERT INTO t SELECT * FROM s" });
+    const attrs = spans[0].attributes;
+    expect("clickhouse.summary.memory_usage" in attrs).toBe(false);
+    expect("clickhouse.summary.real_time_microseconds" in attrs).toBe(false);
+  });
+
+  it("does NOT attach db.query.text by default", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.query({ query: "SELECT secret_column FROM secrets" });
+    expect("db.query.text" in spans[0].initialAttributes).toBe(false);
+  });
+
+  it("attaches db.query.text when dangerously_log_query_text is enabled", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(
+      tracer,
+      {},
+      { dangerously_log_query_text: true },
+    );
+    await client.query({ query: "SELECT 42" });
+    // The query span carries the actual SQL sent (with the FORMAT suffix).
+    expect(spans[0].initialAttributes["db.query.text"]).toBe(
+      "SELECT 42 \nFORMAT JSON",
+    );
+  });
+
+  it("attaches db.query.text for command/exec/insert when enabled", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(
+      tracer,
+      {},
+      { dangerously_log_query_text: true },
+    );
+    await client.command({ query: "CREATE TABLE t (a UInt8) ENGINE = Memory" });
+    await client.exec({ query: "SELECT 1 FORMAT CSV" });
+    await client.insert({ table: "my_table", values: [{ a: 1 }] });
+    const byName = (name: string) => spans.find((s) => s.name === name)!;
+    expect(
+      byName(ClickHouseSpanNames.command).initialAttributes["db.query.text"],
+    ).toBe("CREATE TABLE t (a UInt8) ENGINE = Memory");
+    expect(
+      byName(ClickHouseSpanNames.exec).initialAttributes["db.query.text"],
+    ).toBe("SELECT 1 FORMAT CSV");
+    expect(
+      byName(ClickHouseSpanNames.insert).initialAttributes["db.query.text"],
+    ).toContain("INSERT INTO my_table");
+  });
+
+  it("merges caller-provided span_attributes onto the span", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.query({
+      query: "SELECT 1",
+      span_attributes: {
+        "tag.route": "events.getAgentGraphData",
+        "tag.projectId": "cmbam0px50001ad08fr8ls6ok",
+        "tag.tag_schema_version": 1,
+      },
+    });
+    const attrs = spans[0].initialAttributes;
+    expect(attrs["tag.route"]).toBe("events.getAgentGraphData");
+    expect(attrs["tag.projectId"]).toBe("cmbam0px50001ad08fr8ls6ok");
+    expect(attrs["tag.tag_schema_version"]).toBe(1);
+    // Core semantic-convention attributes are still present.
+    expect(attrs["db.system.name"]).toBe("clickhouse");
+  });
+
+  it("does not let span_attributes override core attributes", async () => {
+    const { tracer, spans } = createRecordingTracer();
+    const client = buildClient(tracer);
+    await client.query({
+      query: "SELECT 1",
+      span_attributes: {
+        "db.system.name": "not-clickhouse",
+        "db.namespace": "hijacked",
+      },
+    });
+    const attrs = spans[0].initialAttributes;
+    expect(attrs["db.system.name"]).toBe("clickhouse");
+    expect(attrs["db.namespace"]).toBe("my_db");
   });
 
   it("emits a span for ping()", async () => {
