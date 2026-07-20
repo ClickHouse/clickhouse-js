@@ -114,7 +114,10 @@ before talking to the server), the client invokes
    `db.operation.name`, `db.collection.name` and `clickhouse.request.sent_rows`
    (insert; the row count is recorded for array-based inserts only),
    `clickhouse.request.query_id`, and
-   `clickhouse.request.session_id`.
+   `clickhouse.request.session_id`. Any per-request
+   [`span_attributes`](#enriching-spans-with-span_attributes) and, when
+   [`dangerously_log_query_text`](#logging-the-raw-query-text) is enabled, the
+   raw SQL as `db.query.text` are merged into this initial bag too.
 2. Inside `fn`, the network operation runs with the span as the active span
    (when the context manager supports it; see above).
 3. `span.setAttributes({ 'clickhouse.request.query_id': <server-assigned id> })` -
@@ -122,7 +125,14 @@ before talking to the server), the client invokes
    one and the connection layer generated it. Once the response arrives, the
    span also gets `db.response.status_code` (HTTP status) and, when the
    `X-ClickHouse-Summary` header is present (e.g. with `wait_end_of_query`),
-   `clickhouse.summary.*` counters (`read_rows`, `written_rows`, …).
+   the `clickhouse.summary.*` counters. **Every** key present in the parsed
+   summary is recorded (the set is not hardcoded), so you get `read_rows`,
+   `read_bytes`, `written_rows`, `written_bytes`, `result_rows`,
+   `result_bytes`, `total_rows_to_read`, `elapsed_ns`, and — on servers that
+   report them — `memory_usage` (peak query memory, in bytes),
+   `real_time_microseconds`, and any future server-side additions for free.
+   These counters are attached to every operation span, including the outer
+   `clickhouse.query` span.
 4. On success, the span status is left **unset**, per the OTEL span status
    spec for client spans. On failure,
    `span.setAttributes({ 'error.type': <error class name> })` (plus
@@ -150,14 +160,72 @@ propagates to the caller of `query` / `command` / `exec` / `insert` /
 >   ends when the result set is fully consumed (`text()`/`json()` resolve, or
 >   the `stream()` is read to completion), closed via `close()`, or fails
 >   (the error is recorded on this span). When it ends it carries the final
->   `clickhouse.response.decoded_bytes` and, for row-streaming consumption,
->   `db.response.returned_rows` metrics.
+>   `clickhouse.response.decoded_bytes` and `db.response.returned_rows`
+>   metrics. `returned_rows` is recorded both for row-streaming consumption
+>   (`stream()`, and `json()` on the streamable JSON formats) and for
+>   non-streaming `json()` on `JSON` / `JSONObjectEachRow` / the other
+>   single-document JSON formats.
 >
 > This split makes it easy to distinguish the original request round-trip from
 > a stream that may never end (e.g. tailing a live materialized view). If the
 > `ResultSet` is never consumed nor closed, the `clickhouse.query.stream` span
 > is never ended. For `command`/`exec`/`insert`/`ping`, a single span ends
 > when the method returns.
+
+## Enriching spans with `span_attributes`
+
+Every request method (`query` / `command` / `exec` / `insert` / `ping`)
+accepts an optional `span_attributes` bag that is merged into the operation
+span. This is the recommended way to attach application-level context to your
+traces — for example, mirroring the tags you also send to ClickHouse via the
+[`log_comment`](https://clickhouse.com/docs/operations/settings/settings#log_comment)
+setting so the same context is visible both in `system.query_log` and in your
+tracing backend:
+
+```ts
+const tag = {
+  route: "events.getAgentGraphData",
+  tenant: "acme",
+  surface: "api",
+};
+
+await client.query({
+  query: "SELECT * FROM events WHERE tenant = {tenant:String}",
+  query_params: { tenant: tag.tenant },
+  // Visible in ClickHouse's system.query_log
+  clickhouse_settings: { log_comment: JSON.stringify(tag) },
+  // Visible on the tracing span
+  span_attributes: {
+    "app.route": tag.route,
+    "app.tenant": tag.tenant,
+    "app.surface": tag.surface,
+  },
+});
+```
+
+Values may be `string`, `number`, or `boolean`. Caller-provided attributes
+**never override** the client's own semantic-convention attributes (`db.*`,
+`server.*`, `clickhouse.*`) on a key collision. `span_attributes` are ignored
+when no tracer is configured.
+
+## Logging the raw query text
+
+By default the client **never** attaches the raw SQL to spans or logs, because
+a statement can contain sensitive data inlined as literals. Set
+`dangerously_log_query_text: true` at client creation to opt in:
+
+```ts
+const client = createClient({
+  tracer: trace.getTracer("clickhouse-js"),
+  dangerously_log_query_text: true,
+});
+```
+
+When enabled, the raw SQL is attached to every operation span as the OTEL
+[`db.query.text`](https://opentelemetry.io/docs/specs/semconv/database/database-spans/#common-attributes)
+attribute, and (Node.js) included in the `error`-level log emitted when a
+request fails. Bound `query_params` values and credentials are **never** logged
+or traced, regardless of this setting.
 
 ## Adapter recipes: `requireParentSpan` and suppressing nested HTTP spans
 
