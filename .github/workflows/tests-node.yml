@@ -158,19 +158,19 @@ jobs:
         log_level: [undefined, TRACE]
         include:
           - node: 24
-            clickhouse: 25.8
+            clickhouse: "25.8"
             log_level: undefined
           - node: 24
-            clickhouse: 26.3
+            clickhouse: "26.3"
             log_level: undefined
           - node: 24
-            clickhouse: 26.5
+            clickhouse: "26.5"
             log_level: undefined
           - node: 24
-            clickhouse: 26.6
+            clickhouse: "26.6"
             log_level: undefined
           - node: 24
-            clickhouse: 26.7
+            clickhouse: "26.7"
             log_level: undefined
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
