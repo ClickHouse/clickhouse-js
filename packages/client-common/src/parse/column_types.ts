@@ -542,13 +542,36 @@ export function parseTupleType({
   }
   columnType = columnType.slice(TuplePrefix.length, -1);
   const elements = getElementsTypes({ columnType, sourceType }, 1).map((type) =>
-    parseColumnType(type),
+    parseTupleElementType(type),
   );
   return {
     type: "Tuple",
     elements,
     sourceType,
   };
+}
+
+function parseTupleElementType(sourceType: string): ParsedColumnType {
+  try {
+    return parseColumnType(sourceType);
+  } catch (originalError) {
+    if (!(originalError instanceof ColumnTypeParseError)) {
+      throw originalError;
+    }
+    const namedElementType = NamedTupleElementPattern.exec(sourceType)?.[1];
+    if (namedElementType === undefined) {
+      throw originalError;
+    }
+
+    try {
+      return parseColumnType(namedElementType);
+    } catch (namedElementError) {
+      if (!(namedElementError instanceof ColumnTypeParseError)) {
+        throw namedElementError;
+      }
+      throw originalError;
+    }
+  }
 }
 
 export function parseArrayType({
@@ -795,6 +818,9 @@ const DateTimePrefix = "DateTime" as const;
 const DateTimeWithTimezonePrefix = "DateTime(" as const;
 const DateTime64Prefix = "DateTime64(" as const;
 const FixedStringPrefix = "FixedString(" as const;
+// Tuple element names may be bare or quoted with backticks/double quotes.
+const NamedTupleElementPattern =
+  /^(?:`(?:\\.|``|[^`])*`|"(?:\\.|""|[^"])*"|\S+)\s+(.+)$/;
 
 const SingleQuoteASCII = 39 as const;
 const LeftParenASCII = 40 as const;
