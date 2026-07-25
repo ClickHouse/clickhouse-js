@@ -551,14 +551,15 @@ export function parseTupleType({
   };
 }
 
-function parseTupleElementType(sourceType: string): ParsedColumnType {
+function parseTupleElementType(elementSourceType: string): ParsedColumnType {
   try {
-    return parseColumnType(sourceType);
+    return parseColumnType(elementSourceType);
   } catch (originalError) {
     if (!(originalError instanceof ColumnTypeParseError)) {
       throw originalError;
     }
-    const namedElementType = NamedTupleElementPattern.exec(sourceType)?.[1];
+    const namedElementType =
+      NamedTupleElementPattern.exec(elementSourceType)?.[1];
     if (namedElementType === undefined) {
       throw originalError;
     }
