@@ -91,7 +91,7 @@ describe("formatQueryParams", () => {
     expect(formatQueryParams({ value: [] })).toBe("[]");
   });
 
-  it("formats a date without timezone", () => {
+  it("formats a scalar date as a Unix timestamp when the type is unknown", () => {
     const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14));
 
     expect(
@@ -127,6 +127,33 @@ describe("formatQueryParams", () => {
         value: new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 5)),
       }),
     ).toBe("1659081134.005");
+  });
+
+  it("formats a Date/Date32 scalar parameter as a UTC date string", () => {
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14));
+
+    for (const columnType of ["Date", "Date32", "Nullable(Date)"]) {
+      expect(formatQueryParams({ value: date, columnType })).toBe("2022-07-29");
+    }
+  });
+
+  it("formats a pre-epoch Date scalar parameter without corruption", () => {
+    const date = new Date(Date.UTC(1969, 11, 31, 23, 59, 59));
+
+    expect(formatQueryParams({ value: date, columnType: "Date" })).toBe(
+      "1969-12-31",
+    );
+  });
+
+  it("keeps the Unix timestamp for a DateTime/DateTime64 scalar parameter", () => {
+    const date = new Date(Date.UTC(2022, 6, 29, 7, 52, 14, 123));
+
+    expect(formatQueryParams({ value: date, columnType: "DateTime" })).toBe(
+      "1659081134.123",
+    );
+    expect(
+      formatQueryParams({ value: date, columnType: "Nullable(DateTime64(3))" }),
+    ).toBe("1659081134.123");
   });
 
   it("does not wrap a string in quotes", () => {
