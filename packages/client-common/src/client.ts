@@ -259,7 +259,10 @@ export class ClickHouseClient<Stream = unknown> {
    * Returns an implementation of {@link BaseResultSet}.
    *
    * The `FORMAT` clause should be specified separately via {@link QueryParams.format} (default is `JSON`);
-   * this method will always append `FORMAT <format>` to the end of {@link QueryParams.query}.
+   * this method appends `FORMAT <format>` to {@link QueryParams.query}. If the query ends with a
+   * top-level `SETTINGS` clause, `FORMAT` is inserted right before it (producing
+   * `... FORMAT <format> SETTINGS ...`), since ClickHouse requires the `SETTINGS` clause to stay last
+   * for some statements (e.g. `DESCRIBE` on older servers); otherwise `FORMAT` is appended at the very end.
    * If the query already contains a `FORMAT` clause, ClickHouse will return a syntax error due to a duplicate `FORMAT`.
    * This is intended behavior.
    * Use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,
@@ -700,7 +703,136 @@ function setResponseSpanAttributes(
 function formatQuery(query: string, format: DataFormat): string {
   query = query.trim();
   query = removeTrailingSemi(query);
+  // A user-supplied query may end with a top-level `SETTINGS ...` clause.
+  // ClickHouse expects `FORMAT` to come *before* such a clause
+  // (`... FORMAT <format> SETTINGS ...`); appending `FORMAT` after it produces
+  // invalid SQL on servers whose parser requires `SETTINGS` to be the trailing
+  // clause of the statement (e.g. `DESCRIBE` on ClickHouse < 24.x).
+  const settingsIndex = trailingSettingsClauseIndex(query);
+  if (settingsIndex !== -1) {
+    const head = query.slice(0, settingsIndex).trimEnd();
+    const settingsClause = query.slice(settingsIndex);
+    return head + " \nFORMAT " + format + " " + settingsClause;
+  }
   return query + " \nFORMAT " + format;
+}
+
+/** Matches a `SETTINGS <name> = ...` clause at the start of a substring. Used to
+ *  distinguish a real trailing `SETTINGS` clause from a `settings`
+ *  identifier/column (which is not followed by a `<name> = ...` settings list). */
+const settingsClauseRe = /^settings\s+\w+\s*=/i;
+
+/** Returns the index of the trailing top-level `SETTINGS` clause in `query`, or
+ *  `-1` if there is none. Only a `SETTINGS` keyword that is outside string
+ *  literals, comments, and brackets — and is immediately followed by a
+ *  `<name> = ...` settings list — is treated as a clause. This deliberately
+ *  ignores `SETTINGS` inside a string literal, a `settings` identifier/column,
+ *  and a subquery's own `SETTINGS` clause (which lives inside parentheses). */
+function trailingSettingsClauseIndex(query: string): number {
+  let depth = 0;
+  let index = -1;
+  let i = 0;
+  const len = query.length;
+  while (i < len) {
+    const ch = query[i];
+    if (ch === "'" || ch === '"' || ch === "`") {
+      i = skipQuoted(query, i);
+      continue;
+    }
+    if (ch === "$") {
+      const afterDollarQuote = skipDollarQuoted(query, i);
+      if (afterDollarQuote !== -1) {
+        i = afterDollarQuote;
+        continue;
+      }
+    }
+    if (ch === "-" && query[i + 1] === "-") {
+      i = skipToLineEnd(query, i + 2);
+      continue;
+    }
+    if (ch === "#") {
+      i = skipToLineEnd(query, i + 1);
+      continue;
+    }
+    if (ch === "/" && query[i + 1] === "*") {
+      i = skipBlockComment(query, i + 2);
+      continue;
+    }
+    if (ch === "(" || ch === "[" || ch === "{") {
+      depth++;
+    } else if (ch === ")" || ch === "]" || ch === "}") {
+      if (depth > 0) depth--;
+    } else if (
+      depth === 0 &&
+      (ch === "s" || ch === "S") &&
+      !isWordChar(query[i - 1]) &&
+      settingsClauseRe.test(query.slice(i))
+    ) {
+      // Record the last top-level match; in a well-formed query there is at most
+      // one, and it is the trailing clause.
+      index = i;
+    }
+    i++;
+  }
+  return index;
+}
+
+function isWordChar(ch: string | undefined): boolean {
+  return ch !== undefined && /[A-Za-z0-9_]/.test(ch);
+}
+
+/** Given the index of an opening quote (`'`, `"`, or `` ` ``), returns the index
+ *  just past the matching closing quote, skipping backslash escapes and doubled
+ *  quotes (`''`, `""`, `` `` ``). An unterminated literal consumes to the end. */
+function skipQuoted(query: string, openIndex: number): number {
+  const quote = query[openIndex];
+  const len = query.length;
+  let i = openIndex + 1;
+  while (i < len) {
+    const ch = query[i];
+    if (ch === "\\") {
+      i += 2;
+      continue;
+    }
+    if (ch === quote) {
+      if (query[i + 1] === quote) {
+        i += 2;
+        continue;
+      }
+      return i + 1;
+    }
+    i++;
+  }
+  return len;
+}
+
+/** If a dollar-quoted string literal (`$$...$$` or `$tag$...$tag$`, ClickHouse
+ *  heredoc syntax) opens at `openIndex`, returns the index just past its closing
+ *  delimiter; otherwise `-1` (the `$` is not a heredoc opener). An unterminated
+ *  literal consumes to the end. */
+function skipDollarQuoted(query: string, openIndex: number): number {
+  const len = query.length;
+  let j = openIndex + 1;
+  while (j < len && query[j] !== "$") {
+    // A heredoc tag is an (optionally empty) identifier; anything else means
+    // this `$` does not open a dollar-quoted literal.
+    if (!isWordChar(query[j])) return -1;
+    j++;
+  }
+  if (j >= len) return -1;
+  const delimiter = query.slice(openIndex, j + 1); // e.g. `$$` or `$tag$`
+  const closeIndex = query.indexOf(delimiter, j + 1);
+  return closeIndex === -1 ? len : closeIndex + delimiter.length;
+}
+
+function skipToLineEnd(query: string, from: number): number {
+  const newlineIndex = query.indexOf("\n", from);
+  return newlineIndex === -1 ? query.length : newlineIndex + 1;
+}
+
+function skipBlockComment(query: string, from: number): number {
+  const endIndex = query.indexOf("*/", from);
+  return endIndex === -1 ? query.length : endIndex + 2;
 }
 
 function removeTrailingSemi(query: string) {
