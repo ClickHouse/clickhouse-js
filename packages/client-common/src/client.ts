@@ -717,10 +717,22 @@ function formatQuery(query: string, format: DataFormat): string {
   return query + " \nFORMAT " + format;
 }
 
-/** Matches a `SETTINGS <name> = ...` clause at the start of a substring. Used to
- *  distinguish a real trailing `SETTINGS` clause from a `settings`
- *  identifier/column (which is not followed by a `<name> = ...` settings list). */
-const settingsClauseRe = /^settings\s+\w+\s*=/i;
+/** Matches a `SETTINGS <name> = ...` clause anchored at a probe position. Used
+ *  to distinguish a real trailing `SETTINGS` clause from a `settings`
+ *  identifier/column (which is not followed by a `<name> = ...` settings list).
+ *  The `y` (sticky) flag anchors the match at `lastIndex`, so a caller probes a
+ *  position via {@link matchesSettingsClauseAt} without allocating a substring
+ *  per probe — keeping the overall scan O(n). */
+const settingsClauseRe = /settings\s+\w+\s*=/iy;
+
+/** Tests whether a `SETTINGS <name> = ...` clause begins exactly at `pos` in
+ *  `query`. Uses the sticky {@link settingsClauseRe} anchored at `pos` via
+ *  `lastIndex`, so no substring is allocated (unlike `re.test(query.slice(pos))`).
+ *  `lastIndex` is reset on every call, so no state leaks between probes. */
+function matchesSettingsClauseAt(query: string, pos: number): boolean {
+  settingsClauseRe.lastIndex = pos;
+  return settingsClauseRe.test(query);
+}
 
 /** Returns the index of the trailing top-level `SETTINGS` clause in `query`, or
  *  `-1` if there is none. Only a `SETTINGS` keyword that is outside string
@@ -766,7 +778,7 @@ function trailingSettingsClauseIndex(query: string): number {
       depth === 0 &&
       (ch === "s" || ch === "S") &&
       !isWordChar(query[i - 1]) &&
-      settingsClauseRe.test(query.slice(i))
+      matchesSettingsClauseAt(query, i)
     ) {
       // Record the last top-level match; in a well-formed query there is at most
       // one, and it is the trailing clause.

@@ -133,6 +133,60 @@ describe("client.query FORMAT clause placement (#970)", () => {
       format: undefined,
       expected: "SELECT 1 \nFORMAT JSON SETTINGS max_threads=1",
     },
+    {
+      name: "ignores SETTINGS inside a string literal that uses a backslash-escaped quote",
+      query: "SELECT 'a\\' SETTINGS b' AS x",
+      format: undefined,
+      expected: "SELECT 'a\\' SETTINGS b' AS x \nFORMAT JSON",
+    },
+    {
+      name: "ignores SETTINGS inside a string literal that uses a doubled-quote escape",
+      query: "SELECT 'a'' SETTINGS b' AS x",
+      format: undefined,
+      expected: "SELECT 'a'' SETTINGS b' AS x \nFORMAT JSON",
+    },
+    {
+      name: "treats an unterminated string literal as running to the end (SETTINGS inside is ignored)",
+      query: "SELECT 'no end SETTINGS x = 1",
+      format: undefined,
+      expected: "SELECT 'no end SETTINGS x = 1 \nFORMAT JSON",
+    },
+    {
+      name: "treats a bare $ (not a dollar-quote opener) as an ordinary char and still finds a trailing SETTINGS",
+      query: "SELECT 1 $ SETTINGS max_threads = 1",
+      format: undefined,
+      expected: "SELECT 1 $ \nFORMAT JSON SETTINGS max_threads = 1",
+    },
+    {
+      name: "treats a trailing $tag with no closing delimiter as an ordinary token",
+      query: "SELECT 1 AS $tag",
+      format: undefined,
+      expected: "SELECT 1 AS $tag \nFORMAT JSON",
+    },
+    {
+      name: "treats an unterminated dollar-quoted string as running to the end (SETTINGS inside is ignored)",
+      query: "SELECT $$abc SETTINGS x = 1",
+      format: undefined,
+      expected: "SELECT $$abc SETTINGS x = 1 \nFORMAT JSON",
+    },
+    {
+      name: "resumes scanning after a line comment's newline and finds a trailing SETTINGS on the next line",
+      query: "SELECT 1 -- c\n SETTINGS max_threads = 1",
+      format: undefined,
+      expected: "SELECT 1 -- c \nFORMAT JSON SETTINGS max_threads = 1",
+    },
+    {
+      name: "treats an unterminated block comment as running to the end (SETTINGS inside is ignored)",
+      query: "SELECT 1 /* unterminated SETTINGS x = 1",
+      format: undefined,
+      expected: "SELECT 1 /* unterminated SETTINGS x = 1 \nFORMAT JSON",
+    },
+    {
+      name: "tolerates an unbalanced closing bracket (depth never goes negative) and still finds a trailing SETTINGS",
+      query: "SELECT 1) SETTINGS max_threads = 1",
+      format: undefined,
+      expected: "SELECT 1) \nFORMAT JSON SETTINGS max_threads = 1",
+    },
   ])("$name", async ({ query, format, expected }) => {
     expect(await wireQuery(query, format)).toBe(expected);
   });
