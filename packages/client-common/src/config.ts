@@ -498,7 +498,7 @@ export function loadConfigOptionsFromURL(
     config.password = decodeURIComponent(url.password);
   }
   if (url.pathname.trim().length > 1) {
-    config.database = url.pathname.slice(1);
+    config.database = decodeURIComponent(url.pathname.slice(1));
   }
   const urlSearchParamsKeys = [...url.searchParams.keys()];
   if (urlSearchParamsKeys.length > 0) {
