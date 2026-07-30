@@ -84,4 +84,31 @@ describe("[Node.js] mid-stream exception tag detection", () => {
       collectRowText(makeResultSet([Buffer.from(body, "latin1")])),
     ).rejects.toThrow("Value passed to 'throwIf' function is non-zero");
   });
+
+  // With output_format_*_crlf_end_of_line the row terminator is itself `\r\n`,
+  // so the `\r`-before-`\n` pre-filter matches at the FIRST row rather than at
+  // the trailer. Detection must still surface the genuine server error
+  // (extractErrorAtTheEndOfChunk always parses the trailer at the end of the
+  // chunk, independent of which newline triggered the check) — not a bogus
+  // row-keyed error — and must not hang.
+  it("surfaces the real exception message when preceding rows are CRLF-terminated", async () => {
+    const errMsg =
+      "Code: 395. DB::Exception: Value passed to 'throwIf' function is non-zero: " +
+      "while executing 'FUNCTION throwIf(equals(number, 3))'. " +
+      "(FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.5.1.882)";
+    const body =
+      "0\r\n1\r\n2\r\n" +
+      "\r\n__exception__\r\n" +
+      tag +
+      "\r\n" +
+      errMsg +
+      "\n" +
+      (errMsg.length + 1) +
+      " " +
+      tag +
+      "\r\n__exception__\r\n";
+    await expect(
+      collectRowText(makeResultSet([Buffer.from(body, "latin1")])),
+    ).rejects.toThrow("Value passed to 'throwIf' function is non-zero");
+  });
 });

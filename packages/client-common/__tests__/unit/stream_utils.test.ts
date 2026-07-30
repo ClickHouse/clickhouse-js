@@ -110,6 +110,30 @@ describe("utils/stream endsWithExceptionMarker", () => {
       expected: false,
     },
     {
+      // Full-length suffix, correct tag, but the two bytes after the tag are
+      // not the `\r\n` separator: a near-miss trailer must be rejected.
+      name: "the tag matches but the bytes after it are not a CRLF separator",
+      chunk: enc(`${tag}XX__exception__\r\n`),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      // Correct tag and `\r\n`, but the fixed marker bytes are wrong: without a
+      // literal `__exception__` this is not a trailer.
+      name: "the tag and CRLF match but the __exception__ marker bytes differ",
+      chunk: enc(`${tag}\r\n${"x".repeat("__exception__".length)}\r\n`),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      // Everything matches except the terminating newline — the closest
+      // possible near-miss to a real trailer must still be rejected.
+      name: "a full-length trailer whose terminating newline byte is corrupted",
+      chunk: enc(`${tag}\r\n__exception__\rX`),
+      checkTag: tag,
+      expected: false,
+    },
+    {
       name: "a trailer exactly one byte too short (missing final newline)",
       chunk: enc(`${tag}\r\n__exception__\r`),
       checkTag: tag,
