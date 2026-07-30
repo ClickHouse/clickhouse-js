@@ -12,6 +12,7 @@ import type {
 import {
   CARET_RETURN,
   extractErrorAtTheEndOfChunk,
+  endsWithExceptionMarker,
   recordSpanError,
 } from "./common/index";
 import {
@@ -195,11 +196,16 @@ export class ResultSet<
           } else {
             let bytesToDecode: Uint8Array;
 
-            // Check for exception in the chunk (only after 25.11)
+            // Check for a mid-stream exception trailer (only after 25.11).
+            // The `\r`-before-`\n` heuristic is a cheap pre-filter; detection is
+            // only confirmed once the chunk actually ends with the exception
+            // marker, so a stray `\r\n` in a successful response body (binary
+            // Parquet, CRLF CSV/TSV rows) is no longer a false positive.
             if (
               exceptionTag !== undefined &&
               idx >= 1 &&
-              chunk[idx - 1] === CARET_RETURN
+              chunk[idx - 1] === CARET_RETURN &&
+              endsWithExceptionMarker(chunk, exceptionTag)
             ) {
               const err = extractErrorAtTheEndOfChunk(chunk, exceptionTag);
               this.finishSpan(err);
