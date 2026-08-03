@@ -1,5 +1,7 @@
 name: 'Verify Docs'
 
+permissions: {}
+
 on:
   pull_request:
     branches:
@@ -14,6 +16,9 @@ on:
       - 'docs/clickhouse-docs/**'
       - '.github/workflows/docs_verify.yml'
 
+env:
+  CLICKHOUSE_DOCS_REF: 21ed77718a5f454680497924d68e9f60a41e026c
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -26,13 +31,12 @@ jobs:
       - name: Checkout docs source
         uses: actions/checkout@v5
 
-      # Fetch the check driver from ClickHouse/ClickHouse rather than vendoring
-      # it. The driver shallow/sparse-clones the aggregator docs plus its CI
-      # scripts (ci/jobs/scripts/docs), so any check scripts come along for free.
+      # Pin the driver and the aggregator snapshot it clones to the same reviewed
+      # commit so the docs checks are deterministic and reproducible.
       - name: Fetch the docs check driver
         run: |
           curl -fsSL -o /tmp/mintlify_docs_check.py \
-            https://raw.githubusercontent.com/ClickHouse/ClickHouse/master/ci/jobs/scripts/docs/mintlify_docs_check.py
+            "https://raw.githubusercontent.com/ClickHouse/ClickHouse/${CLICKHOUSE_DOCS_REF}/ci/jobs/scripts/docs/mintlify_docs_check.py"
 
       # The driver clones the aggregator, replaces the JavaScript client page with this
       # repo's canonical docs (wiping it first), and
@@ -45,6 +49,6 @@ jobs:
         run: |
           python3 /tmp/mintlify_docs_check.py \
             --repo https://github.com/ClickHouse/ClickHouse.git \
-            --ref master \
+            --ref "${CLICKHOUSE_DOCS_REF}" \
             --replace docs/clickhouse-docs:integrations/language-clients/js \
             --scoped
