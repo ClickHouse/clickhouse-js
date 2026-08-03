@@ -29,7 +29,7 @@ jobs:
       image: clickhouse/docs-builder
     steps:
       - name: Checkout docs source
-        uses: actions/checkout@v5
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       # Pin the driver and the aggregator snapshot it clones to the same reviewed
       # commit so the docs checks are deterministic and reproducible.
