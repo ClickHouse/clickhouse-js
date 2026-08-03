@@ -121,9 +121,10 @@ jobs:
       - name: Checkout docs source
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          # Use the released tag, the exact merged PR commit, or the commit
-          # selected for a manual dispatch.
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          # Use the released tag or the trusted target/selected commit. Never
+          # check out PR-controlled code in this privileged workflow.
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
+          persist-credentials: false
 
       - name: Parse target repo
         id: parse
