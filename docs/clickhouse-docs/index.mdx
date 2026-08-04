@@ -252,7 +252,7 @@ interface BaseQueryParams {
   // session_id override; if not specified, the session id will be taken from the client configuration.
   session_id?: string
   // credentials override; if not specified, the client's credentials will be used.
-  auth?: { username: string, password: string }
+  auth?: { username: string; password: string } | { access_token: string }
   // A specific list of roles to use for this query. Overrides the roles set in the client configuration.
   role?: string | Array<string>
 }
