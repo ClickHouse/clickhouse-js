@@ -217,6 +217,28 @@ describe("select with query binding", () => {
       expect(response).toBe('"2022-05-02"\n');
     });
 
+    it("binds a JS Date to a scalar Date/Date32 parameter", async () => {
+      const rs = await client.query({
+        query: "SELECT {d: Date} AS d, {d32: Date32} AS d32",
+        format: "JSONEachRow",
+        query_params: {
+          d: new Date(Date.UTC(2022, 4, 2, 13, 25, 55)),
+          d32: new Date(Date.UTC(2022, 4, 2, 13, 25, 55)),
+        },
+      });
+
+      expect(await rs.json()).toEqual([{ d: "2022-05-02", d32: "2022-05-02" }]);
+    });
+
+    it("binds a JS Date to a scalar Date parameter on the command path", async () => {
+      await client.command({
+        query: "SELECT {d: Date} AS d FORMAT Null",
+        query_params: {
+          d: new Date(Date.UTC(2022, 4, 2, 13, 25, 55)),
+        },
+      });
+    });
+
     it("handles DateTime in a parameterized query", async () => {
       const rs = await client.query({
         query: "SELECT toDateTime({min_time: DateTime})",

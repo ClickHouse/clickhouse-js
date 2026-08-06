@@ -5,15 +5,35 @@ export class TupleParam {
   }
 }
 
+// Matches a `Date` or `Date32` server type (optionally wrapped, e.g. `Nullable(Date)`),
+// but not `DateTime`/`DateTime64`: the `\b` after `Date` fails on the `T` of `DateTime`.
+const DATE_OR_DATE32_PARAM_RE = /\bDate(32)?\b/;
+
+// Extracts the ClickHouse type of a bound parameter from its `{name:Type}` placeholder in the
+// query, so its value can be formatted for that specific type. Returns undefined when unknown.
+export function extractQueryParamType(
+  query: string | undefined,
+  key: string,
+): string | undefined {
+  if (query === undefined) return undefined;
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = query.match(
+    new RegExp(`\\{\\s*${escapedKey}\\s*:\\s*([^}]+?)\\s*\\}`),
+  );
+  return match?.[1];
+}
+
 export function formatQueryParams({
   value,
   wrapStringInQuotes,
   printNullAsKeyword,
+  columnType,
 }: FormatQueryParamsOptions): string {
   return formatQueryParamsInternal({
     value,
     wrapStringInQuotes,
     printNullAsKeyword,
+    columnType,
     isInArrayOrTuple: false,
   });
 }
@@ -22,6 +42,7 @@ function formatQueryParamsInternal({
   value,
   wrapStringInQuotes,
   printNullAsKeyword,
+  columnType,
   isInArrayOrTuple,
 }: FormatQueryParamsOptions & { isInArrayOrTuple: boolean }): string {
   if (value === null || value === undefined) {
@@ -80,15 +101,17 @@ function formatQueryParamsInternal({
   }
 
   if (value instanceof Date) {
+    // Array(Date)/Array(Date32) reject a bare Unix timestamp, so container elements are
+    // always a quoted 'YYYY-MM-DD' string. A scalar is type-directed: Date/Date32 only accept
+    // a date string (a Unix timestamp is rejected with BAD_QUERY_PARAMETER), while
+    // DateTime/DateTime64 keep the timezone-agnostic Unix timestamp so the time of day is
+    // preserved.
     if (isInArrayOrTuple) {
-      // Inside a container each element is parsed by the element type's own
-      // parser: Array(Date)/Array(Date32) reject a bare Unix timestamp and only
-      // accept a quoted date string. A quoted UTC 'YYYY-MM-DD' is the single
-      // representation accepted by every temporal element type (Date, Date32,
-      // DateTime, DateTime64).
       return `'${value.toISOString().slice(0, 10)}'`;
     }
-    // The ClickHouse server parses numbers as time-zone-agnostic Unix timestamps
+    if (columnType !== undefined && DATE_OR_DATE32_PARAM_RE.test(columnType)) {
+      return value.toISOString().slice(0, 10);
+    }
     const unixTimestamp = Math.floor(value.getTime() / 1000)
       .toString()
       .padStart(10, "0");
@@ -152,6 +175,9 @@ interface FormatQueryParamsOptions {
   wrapStringInQuotes?: boolean;
   // For tuples/arrays, it is required to print NULL instead of \N
   printNullAsKeyword?: boolean;
+  // The ClickHouse type of the bound parameter (from `{name:Type}` in the query), used to
+  // pick a type-correct representation for a scalar `Date` value. Undefined when unknown.
+  columnType?: string;
 }
 
 const TabASCII = 9;
