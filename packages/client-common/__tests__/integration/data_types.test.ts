@@ -96,7 +96,6 @@ describe("data types", () => {
       }),
     );
   });
-
   it("should work with decimals", async () => {
     const row1 = {
       id: 1,
