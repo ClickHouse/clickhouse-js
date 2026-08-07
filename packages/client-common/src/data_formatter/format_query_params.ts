@@ -80,6 +80,14 @@ function formatQueryParamsInternal({
   }
 
   if (value instanceof Date) {
+    if (isInArrayOrTuple) {
+      // Inside a container each element is parsed by the element type's own
+      // parser: Array(Date)/Array(Date32) reject a bare Unix timestamp and only
+      // accept a quoted date string. A quoted UTC 'YYYY-MM-DD' is the single
+      // representation accepted by every temporal element type (Date, Date32,
+      // DateTime, DateTime64).
+      return `'${value.toISOString().slice(0, 10)}'`;
+    }
     // The ClickHouse server parses numbers as time-zone-agnostic Unix timestamps
     const unixTimestamp = Math.floor(value.getTime() / 1000)
       .toString()

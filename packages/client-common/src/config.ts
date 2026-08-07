@@ -109,6 +109,22 @@ export interface BaseClickHouseClientConfigOptions {
   /** The name of the application using the JS client.
    *  @default empty string */
   application?: string;
+  /**
+   * DANGEROUS: when enabled, the raw SQL query text is attached to tracing
+   * spans as the OpenTelemetry `db.query.text` attribute and included in the
+   * `error`-level logs emitted when a request fails.
+   *
+   * The query text may contain sensitive data inlined as literals (PII,
+   * secrets, etc.), which is why this is off by default. Note that bound
+   * {@link BaseQueryParams.query_params} values and credentials are **never**
+   * logged or traced, regardless of this setting.
+   *
+   * Only enable this if your tracing/logging backend is trusted and you
+   * understand the implications of persisting query text there.
+   *
+   * @default false
+   */
+  dangerously_log_query_text?: boolean;
   /** Database name to use.
    * @default default */
   database?: string;
@@ -391,6 +407,9 @@ export function getConnectionParams(
     ...(config.use_multipart_params ? { use_multipart_params: true } : {}),
     ...(config.use_multipart_params_auto
       ? { use_multipart_params_auto: true }
+      : {}),
+    ...(config.dangerously_log_query_text
+      ? { dangerously_log_query_text: true }
       : {}),
   };
 }

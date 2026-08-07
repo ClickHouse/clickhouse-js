@@ -16,10 +16,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/tests-oss-dependents.yml"
   pull_request:
     paths:
@@ -31,10 +31,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/tests-oss-dependents.yml"
 
   schedule:
@@ -78,7 +78,7 @@ jobs:
           down-flags: "--volumes"
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 

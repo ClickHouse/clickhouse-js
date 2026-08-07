@@ -19,8 +19,9 @@ export default defineConfig(
     ignores: [
       "./__tests__/**/*.ts",
       "eslint.config.mjs",
-      "vitest.*.config.ts",
-      "vitest.*.setup.ts",
+      "vitest.config.ts",
+      "vitest.setup.ts",
+      "vitest.otel.js",
       "coverage",
       "out",
       "dist",

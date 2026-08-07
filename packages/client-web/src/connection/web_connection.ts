@@ -1,4 +1,5 @@
 import type {
+  ClickHouseSummary,
   ConnBaseQueryParams,
   ConnCommandResult,
   Connection,
@@ -113,6 +114,7 @@ export class WebConnection implements Connection<ReadableStream> {
     return {
       query_id,
       stream: response.body || new ReadableStream<Uint8Array>(),
+      summary: this.getSummary(response),
       response_headers: getResponseHeaders(response),
       http_status_code: response.status,
     };
@@ -125,18 +127,19 @@ export class WebConnection implements Connection<ReadableStream> {
     return {
       query_id: result.query_id,
       stream: result.stream || new ReadableStream<Uint8Array>(),
+      summary: result.summary,
       response_headers: result.response_headers,
       http_status_code: result.http_status_code,
     };
   }
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
-    const { stream, query_id, response_headers, http_status_code } =
+    const { stream, query_id, summary, response_headers, http_status_code } =
       await this.runExec(params);
     if (stream !== null) {
       await stream.cancel();
     }
-    return { query_id, response_headers, http_status_code };
+    return { query_id, summary, response_headers, http_status_code };
   }
 
   async insert<T = unknown>(
@@ -162,6 +165,7 @@ export class WebConnection implements Connection<ReadableStream> {
     }
     return {
       query_id,
+      summary: this.getSummary(response),
       response_headers: getResponseHeaders(response),
       http_status_code: response.status,
     };
@@ -301,10 +305,36 @@ export class WebConnection implements Connection<ReadableStream> {
     });
     return {
       stream: response.body,
+      summary: this.getSummary(response),
       response_headers: getResponseHeaders(response),
       query_id,
       http_status_code: response.status,
     };
+  }
+
+  /** Parse the `X-ClickHouse-Summary` response header into a
+   *  {@link ClickHouseSummary}, or `undefined` if the header is absent or
+   *  cannot be parsed. Parsing failures are logged and swallowed - the summary
+   *  is optional diagnostic metadata and must never fail a request. */
+  private getSummary(response: Response): ClickHouseSummary | undefined {
+    const summaryHeader = response.headers.get("x-clickhouse-summary");
+    if (summaryHeader === null) {
+      return undefined;
+    }
+    const parse = this.params.json?.parse ?? JSON.parse;
+    try {
+      return parse(summaryHeader) as ClickHouseSummary;
+    } catch (err) {
+      this.params.log_writer.warn({
+        module: "WebConnection",
+        message: "Failed to parse X-ClickHouse-Summary header.",
+        args: {
+          "X-ClickHouse-Summary": summaryHeader,
+          error: String(err),
+        },
+      });
+      return undefined;
+    }
   }
 
   private defaultHeadersWithOverride(
@@ -343,6 +373,7 @@ function getResponseHeaders(response: Response): ResponseHeaders {
 interface RunExecResult {
   stream: ReadableStream<Uint8Array> | null;
   query_id: string;
+  summary?: ClickHouseSummary;
   response_headers: ResponseHeaders;
   http_status_code: number;
 }

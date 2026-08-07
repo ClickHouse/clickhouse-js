@@ -92,6 +92,8 @@ import {
   ClickHouseSpanStatusCode as ClickHouseSpanStatusCode_,
   ClickHouseSpanKind as ClickHouseSpanKind_,
   defaultJSONHandling as defaultJSONHandling_,
+  EXCEPTION_TAG_HEADER_NAME as EXCEPTION_TAG_HEADER_NAME_,
+  extractErrorAtTheEndOfChunk as extractErrorAtTheEndOfChunk_,
 } from "./common/index";
 
 export const ClickHouseError = ClickHouseError_;
@@ -120,3 +122,5 @@ export const ClickHouseSpanNames = ClickHouseSpanNames_;
 export const ClickHouseSpanStatusCode = ClickHouseSpanStatusCode_;
 export const ClickHouseSpanKind = ClickHouseSpanKind_;
 export const defaultJSONHandling = defaultJSONHandling_;
+export const EXCEPTION_TAG_HEADER_NAME = EXCEPTION_TAG_HEADER_NAME_;
+export const extractErrorAtTheEndOfChunk = extractErrorAtTheEndOfChunk_;

@@ -12,7 +12,9 @@
   },
   "scripts": {
     "pack": "true",
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/main.js",
+    "build": "npm run build:rowbinary && rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/main.js",
+    "//build:rowbinary": "The in-repo @clickhouse/rowbinary skill is linked via file: (not a workspace, so it stays out of the root install/lint/test sweeps and keeps its own standalone CI). Its dist is gitignored, so build it here — the test runner is the last workspace built, so packages/* (datatype-parser) are already compiled when the skill's tsc resolves them.",
+    "build:rowbinary": "tsc -p ../../skills/clickhouse-js-node-rowbinary/tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",
@@ -20,7 +22,7 @@
   },
   "dependencies": {
     "@clickhouse/client": "*",
-    "@clickhouse/rowbinary": "^0.1.2"
+    "@clickhouse/rowbinary": "file:../../skills/clickhouse-js-node-rowbinary"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

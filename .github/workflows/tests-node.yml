@@ -16,10 +16,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/tests-node.yml"
   pull_request:
     paths:
@@ -31,10 +31,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/tests-node.yml"
 
   schedule:
@@ -66,7 +66,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
 
@@ -100,48 +100,6 @@ jobs:
           fi
           cat prettier-output.txt
 
-  common-unit-tests:
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [20, 22, 24, 26]
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run unit tests
-        run: |
-          npm run test:common:unit:node
-
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
-      - name: Upload coverage to Codecov
-        # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
-        # Upload coverage from a single canonical combination (Node 24) so Codecov
-        # receives exactly one upload per flag (see codecov.yml).
-        if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
-        with:
-          name: node-common-unit
-          flags: node-common-unit
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          fail_ci_if_error: true
-
   unit-tests:
     timeout-minutes: 5
     runs-on: ubuntu-latest
@@ -153,7 +111,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -200,19 +158,19 @@ jobs:
         log_level: [undefined, TRACE]
         include:
           - node: 24
-            clickhouse: 26.2
+            clickhouse: "25.8"
             log_level: undefined
           - node: 24
-            clickhouse: 26.1
+            clickhouse: "26.3"
             log_level: undefined
           - node: 24
-            clickhouse: 25.12
+            clickhouse: "26.5"
             log_level: undefined
           - node: 24
-            clickhouse: 25.11
+            clickhouse: "26.6"
             log_level: undefined
           - node: 24
-            clickhouse: 25.10
+            clickhouse: "26.7"
             log_level: undefined
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -226,7 +184,7 @@ jobs:
           down-flags: "--volumes"
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -284,7 +242,7 @@ jobs:
           down-flags: "--volumes"
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -329,7 +287,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
