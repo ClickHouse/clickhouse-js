@@ -15,8 +15,11 @@
 ## Bug fixes
 
 - Fixed `Array(Date)` / `Array(Date32)` query-parameter binding (and other temporal element types nested in arrays, tuples, and maps). A JS `Date` inside a container was serialized as a bare Unix timestamp (e.g. `[1683244800]`), which the server's `Array(Date)` element parser rejects (`CANNOT_PARSE_INPUT_ASSERTION_FAILED`). Container-nested `Date` values are now emitted as a quoted UTC date string (e.g. `['2023-05-05']`), the one encoding every temporal element type accepts. Note: a `Date` used inside `Array(DateTime)` / `Array(DateTime64)` is now bound at day precision (the time-of-day is dropped), since date-only is the only form `Array(Date)` accepts; scalar `Date` / `DateTime` binding is unchanged. ([#947])
+- Fixed `query()` placing the `FORMAT` clause _after_ a user-supplied trailing `SETTINGS` clause, which produced invalid SQL on ClickHouse servers that require `SETTINGS` to be the last clause of the statement (e.g. `DESCRIBE` on servers older than 24.x). `FORMAT` is now inserted before a trailing top-level `SETTINGS` clause — e.g. `SELECT 1 SETTINGS max_threads = 1` is sent as `SELECT 1 FORMAT JSON SETTINGS max_threads = 1`. A `SETTINGS` keyword inside a string literal, comment, or subquery is left untouched. ([#970], [#972])
 
 [#947]: https://github.com/ClickHouse/clickhouse-js/pull/947
+[#970]: https://github.com/ClickHouse/clickhouse-js/issues/970
+[#972]: https://github.com/ClickHouse/clickhouse-js/pull/972
 
 # 1.23.1
 
