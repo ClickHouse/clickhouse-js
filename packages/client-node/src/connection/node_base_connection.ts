@@ -17,6 +17,7 @@ import {
   buildMultipartBody,
   serializeQueryParamsForUrl,
   formatQueryParams,
+  extractQueryParamType,
   isCredentialsAuth,
   isJWTAuth,
   toSearchParams,
@@ -204,7 +205,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       (params.use_multipart_params_auto ??
         this.params.use_multipart_params_auto)
     ) {
-      const entries = serializeQueryParamsForUrl(queryParams);
+      const entries = serializeQueryParamsForUrl(queryParams, params.query);
       if (entries === null) {
         useMultipart = true;
       } else {
@@ -217,6 +218,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       // When using multipart, query_params are sent in the multipart body
       query_params: useMultipart ? undefined : params.query_params,
       param_entries: urlParamEntries,
+      param_types_query: params.query,
       session_id: params.session_id,
       clickhouse_settings,
       query_id,
@@ -237,7 +239,8 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
       const parts: Record<string, string> = { query: params.query };
       for (const [key, value] of Object.entries(params.query_params)) {
-        parts[`param_${key}`] = formatQueryParams({ value });
+        const columnType = extractQueryParamType(params.query, key);
+        parts[`param_${key}`] = formatQueryParams({ value, columnType });
       }
       body = buildMultipartBody(parts, boundary);
       headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
@@ -553,6 +556,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     );
     const toSearchParamsOptions = {
       query: sendQueryInParams ? params.query : undefined,
+      param_types_query: params.query,
       database: this.params.database,
       query_params: params.query_params,
       session_id: params.session_id,
