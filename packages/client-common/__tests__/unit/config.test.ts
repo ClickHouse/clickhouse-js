@@ -8,6 +8,7 @@ import {
   getConnectionParams,
   LogWriter,
   numberConfigURLValue,
+  toSearchParams,
 } from "../../src/index";
 import { TestLogger } from "../utils/test_logger";
 import type { BaseClickHouseClientConfigOptionsWithURL } from "../../src/config";
@@ -31,6 +32,16 @@ describe("config", () => {
     it("should get all defaults with no extra configuration", async () => {
       const res = prepareConfigWithURL({}, logger, null);
       expect(res).toEqual(defaultConfig);
+    });
+
+    it("should preserve percent sequences in the database option", () => {
+      const config = prepareConfigWithURL(
+        { database: "my%20database" },
+        logger,
+        null,
+      );
+
+      expect(config.database).toBe("my%20database");
     });
 
     it("should fall back to default HTTP/HTTPS port numbers", async () => {
@@ -970,6 +981,32 @@ describe("config", () => {
         database: "analytics",
       });
     });
+
+    it.each([
+      ["spaces", "my%20database", "my database", "my+database"],
+      ["Unicode characters", "分析", "分析", "%E5%88%86%E6%9E%90"],
+      [
+        "literal percent signs",
+        "my%2520database",
+        "my%20database",
+        "my%2520database",
+      ],
+    ])(
+      "should decode %s in database names from URL paths",
+      (_characters, path, database, encodedDatabase) => {
+        const url = new URL(`http://localhost:8124/${path}`);
+        const [, config] = loadConfigOptionsFromURL(url, null);
+        const searchParams = toSearchParams({
+          database: config.database,
+          query_id: "query-id",
+        });
+
+        expect(config.database).toBe(database);
+        expect(searchParams.toString().split("&")).toContain(
+          `database=${encodedDatabase}`,
+        );
+      },
+    );
 
     it("should load only the settings from the URL, without auth", async () => {
       const url = new URL(
