@@ -44,6 +44,40 @@ describe("Columns types parser - Tuple", () => {
     });
   });
 
+  it("should parse Tuple with named elements", async () => {
+    const args: TestArgs[] = [
+      {
+        sourceType: "Tuple(s String, i Int64)",
+        expected: {
+          type: "Tuple",
+          elements: [
+            { type: "Simple", columnType: "String", sourceType: "String" },
+            { type: "Simple", columnType: "Int64", sourceType: "Int64" },
+          ],
+          sourceType: "Tuple(s String, i Int64)",
+        },
+      },
+      {
+        sourceType: 'Tuple(`display name` String, "item count" UInt64)',
+        expected: {
+          type: "Tuple",
+          elements: [
+            { type: "Simple", columnType: "String", sourceType: "String" },
+            { type: "Simple", columnType: "UInt64", sourceType: "UInt64" },
+          ],
+          sourceType: 'Tuple(`display name` String, "item count" UInt64)',
+        },
+      },
+    ];
+    args.forEach(({ expected, sourceType }) => {
+      const result = parseTupleType({ columnType: sourceType, sourceType });
+      expect(
+        result,
+        `Expected ${sourceType} to have ${joinElements(expected)} elements`,
+      ).toEqual(expected);
+    });
+  });
+
   it("should parse Tuple with Decimals", async () => {
     const args: TestArgs[] = [
       {
