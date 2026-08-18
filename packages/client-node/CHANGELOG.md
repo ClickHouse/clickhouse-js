@@ -16,7 +16,11 @@
 
 - Fixed `Array(Date)` / `Array(Date32)` query-parameter binding (and other temporal element types nested in arrays, tuples, and maps). A JS `Date` inside a container was serialized as a bare Unix timestamp (e.g. `[1683244800]`), which the server's `Array(Date)` element parser rejects (`CANNOT_PARSE_INPUT_ASSERTION_FAILED`). Container-nested `Date` values are now emitted as a quoted UTC date string (e.g. `['2023-05-05']`), the one encoding every temporal element type accepts. Note: a `Date` used inside `Array(DateTime)` / `Array(DateTime64)` is now bound at day precision (the time-of-day is dropped), since date-only is the only form `Array(Date)` accepts; scalar `Date` / `DateTime` binding is unchanged. ([#947])
 
+- Re-export ten types from `@clickhouse/client`. All of them are used in the client's own public signatures and were part of the (now deprecated) `@clickhouse/client-common` public API, but were missed when its surface was bundled into and re-exported from the client packages in 1.23.0 ([#845]): `QueryParamsWithFormat` (the `query()` parameter), `PingParams` / `PingParamsWithEndpoint` / `PingParamsWithSelectQuery` (the `ping()` parameter and both members of the union), `ResultJSONType` and `RowJSONType` (returned by `ResultSet.json()` and `Row.json()`), `ResultStream` (returned by `ResultSet.stream()`), and `ClickHouseSummary` / `WithClickHouseSummary` / `WithResponseHeaders` (parts of `InsertResult`, `CommandResult`, and `ExecResult`). ([#997], [#998])
+
 [#947]: https://github.com/ClickHouse/clickhouse-js/pull/947
+[#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
+[#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 
 # 1.23.1
 
