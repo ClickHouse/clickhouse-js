@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 import type {
   DataFormat,
@@ -113,6 +113,28 @@ describe("[Node.js] ValuesEncoder", () => {
           encoded += chunk;
         }
         expect(encoded).toEqual('"foo"\n"bar"\n');
+      }
+    });
+
+    it("should propagate errors thrown while encoding JSON streams", async () => {
+      const row: Record<string, unknown> = {};
+      row.self = row;
+      const values = Stream.Readable.from([row], { objectMode: true });
+      const result = encoder.encodeValues(values, "JSONEachRow");
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+
+      try {
+        await expect(
+          (async () => {
+            for await (const chunk of result) {
+              void chunk;
+            }
+          })(),
+        ).rejects.toThrow(TypeError);
+      } finally {
+        consoleError.mockRestore();
       }
     });
 

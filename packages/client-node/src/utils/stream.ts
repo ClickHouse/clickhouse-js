@@ -51,7 +51,11 @@ export function mapStream(
   return new Stream.Transform({
     objectMode: true,
     transform(chunk, encoding, callback) {
-      callback(null, mapper(chunk));
+      try {
+        callback(null, mapper(chunk));
+      } catch (err) {
+        callback(err as Error);
+      }
     },
   });
 }

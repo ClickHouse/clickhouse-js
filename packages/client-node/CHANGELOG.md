@@ -15,8 +15,10 @@
 ## Bug fixes
 
 - Fixed `Array(Date)` / `Array(Date32)` query-parameter binding (and other temporal element types nested in arrays, tuples, and maps). A JS `Date` inside a container was serialized as a bare Unix timestamp (e.g. `[1683244800]`), which the server's `Array(Date)` element parser rejects (`CANNOT_PARSE_INPUT_ASSERTION_FAILED`). Container-nested `Date` values are now emitted as a quoted UTC date string (e.g. `['2023-05-05']`), the one encoding every temporal element type accepts. Note: a `Date` used inside `Array(DateTime)` / `Array(DateTime64)` is now bound at day precision (the time-of-day is dropped), since date-only is the only form `Array(Date)` accepts; scalar `Date` / `DateTime` binding is unchanged. ([#947])
+- (Node.js) Fixed errors thrown while serializing object-mode JSON insert streams so they are propagated through the stream error channel instead of escaping the transform callback. ([#1011])
 
 [#947]: https://github.com/ClickHouse/clickhouse-js/pull/947
+[#1011]: https://github.com/ClickHouse/clickhouse-js/pull/1011
 
 # 1.23.1
 
