@@ -727,7 +727,29 @@ function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
   );
 }
 
-function getInsertQuery<T>(
+export function quoteIdentifier(identifier: string): string {
+  const trimmed = identifier.trim();
+  if (
+    (trimmed.startsWith("`") && trimmed.endsWith("`")) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"'))
+  ) {
+    return trimmed;
+  }
+  return `\`${trimmed.replace(/`/g, "\\`")}\``;
+}
+
+export function formatTableName(table: string): string {
+  const trimmed = table.trim();
+  if (trimmed.includes(".")) {
+    return trimmed
+      .split(".")
+      .map((part) => quoteIdentifier(part))
+      .join(".");
+  }
+  return quoteIdentifier(trimmed);
+}
+
+export function getInsertQuery<T>(
   params: InsertParams<T>,
   format: DataFormat,
 ): string {
@@ -742,5 +764,5 @@ function getInsertQuery<T>(
       columnsPart = ` (* EXCEPT (${params.columns.except.join(", ")}))`;
     }
   }
-  return `INSERT INTO ${params.table.trim()}${columnsPart} FORMAT ${format}`;
+  return `INSERT INTO ${formatTableName(params.table)}${columnsPart} FORMAT ${format}`;
 }
