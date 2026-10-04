@@ -3,8 +3,8 @@ import { ClickHouseLogLevel } from "@clickhouse/client-common";
 import { createSimpleTable } from "@test/fixtures/simple_table";
 import { guid } from "@test/utils/guid";
 import { sleep } from "@test/utils/sleep";
-import type { ClickHouseClient } from "../../src";
-import type { NodeClickHouseClientConfigOptions } from "../../src/config";
+import type { ClickHouseClient } from "@clickhouse/client";
+import type { ClickHouseClientConfigOptions } from "@clickhouse/client";
 import { createNodeTestClient } from "../utils/node_client";
 
 describe("[Node.js] Keep Alive", () => {
@@ -22,7 +22,7 @@ describe("[Node.js] Keep Alive", () => {
           enabled: true,
           idle_socket_ttl: socketTTL,
         },
-      } as NodeClickHouseClientConfigOptions);
+      } as ClickHouseClientConfigOptions);
       expect(await query(0)).toEqual(1);
       await sleep(socketTTL);
       // this one could've failed without idle socket release
@@ -35,7 +35,7 @@ describe("[Node.js] Keep Alive", () => {
         keep_alive: {
           enabled: true,
         },
-      } as NodeClickHouseClientConfigOptions);
+      } as ClickHouseClientConfigOptions);
       expect(await query(0)).toEqual(1);
       await sleep(socketTTL);
       // this one won't fail cause a new socket will be assigned
@@ -48,7 +48,7 @@ describe("[Node.js] Keep Alive", () => {
           enabled: true,
           idle_socket_ttl: socketTTL,
         },
-      } as NodeClickHouseClientConfigOptions);
+      } as ClickHouseClientConfigOptions);
 
       const results = await Promise.all(
         [...Array(4).keys()].map((n) => query(n)),
@@ -85,7 +85,7 @@ describe("[Node.js] Keep Alive", () => {
           enabled: true,
           idle_socket_ttl: socketTTL,
         },
-      } as NodeClickHouseClientConfigOptions);
+      } as ClickHouseClientConfigOptions);
       tableName = `keep_alive_single_connection_insert_${guid()}`;
       await createSimpleTable(client, tableName);
       await insert(0);
@@ -109,7 +109,7 @@ describe("[Node.js] Keep Alive", () => {
           enabled: true,
           idle_socket_ttl: socketTTL,
         },
-      } as NodeClickHouseClientConfigOptions);
+      } as ClickHouseClientConfigOptions);
       tableName = `keep_alive_multiple_connection_insert_${guid()}`;
       await createSimpleTable(client, tableName);
       await Promise.all([...Array(3).keys()].map((n) => insert(n)));

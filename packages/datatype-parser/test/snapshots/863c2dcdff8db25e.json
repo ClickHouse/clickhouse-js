@@ -1,0 +1,17 @@
+{
+  "type": "Enum16('small' = 1, 'big' = 30000)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum16",
+    "values": [
+      {
+        "name": "small",
+        "value": 1
+      },
+      {
+        "name": "big",
+        "value": 30000
+      }
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "type": "Map(String, Array(UInt8))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Map",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "UInt8"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -2,11 +2,11 @@
 // so that creating a simple client never registers the shared `beforeAll`
 // test-environment initializer and stays runnable without ClickHouse.
 import { createSimpleTestClient } from "@test/utils/simple_client";
-import type { ClickHouseClientConfigOptions } from "../../src";
-import type { WebClickHouseClient } from "../../src/client";
+import type { ClickHouseClientConfigOptions } from "@clickhouse/client-web";
+import type { ClickHouseClient } from "@clickhouse/client-web";
 
 export function createSimpleWebTestClient(
   config: ClickHouseClientConfigOptions = {},
-): WebClickHouseClient {
-  return createSimpleTestClient(config) as unknown as WebClickHouseClient;
+): ClickHouseClient {
+  return createSimpleTestClient(config) as unknown as ClickHouseClient;
 }

@@ -268,6 +268,35 @@ describe("select with query binding", () => {
       const response = await rs.text();
       expect(response).toBe('"2022-05-02 13:25:55.123456789"\n');
     });
+
+    it("handles Array(Date) in a parameterized query", async () => {
+      const rs = await client.query({
+        query: "SELECT {dates: Array(Date)} AS dates",
+        format: "JSONEachRow",
+        query_params: {
+          dates: [
+            new Date(Date.UTC(2023, 4, 5)),
+            new Date(Date.UTC(2021, 0, 2)),
+          ],
+        },
+      });
+
+      expect(await rs.json()).toEqual([
+        { dates: ["2023-05-05", "2021-01-02"] },
+      ]);
+    });
+
+    it("binds a Date inside Array(DateTime) at day precision (time is dropped)", async () => {
+      const rs = await client.query({
+        query: "SELECT {dates: Array(DateTime)} AS dates",
+        format: "JSONEachRow",
+        query_params: {
+          dates: [new Date(Date.UTC(2022, 4, 2, 13, 25, 55))],
+        },
+      });
+
+      expect(await rs.json()).toEqual([{ dates: ["2022-05-02 00:00:00"] }]);
+    });
   });
 
   it("handles an array of strings in a parameterized query", async () => {

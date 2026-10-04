@@ -22,6 +22,8 @@ export interface ConnectionParams {
   log_level: ClickHouseLogLevel;
   keep_alive: { enabled: boolean };
   application_id?: string;
+  /** See {@link BaseClickHouseClientConfigOptions.dangerously_log_query_text}. */
+  dangerously_log_query_text?: boolean;
   http_headers?: Record<string, string>;
   auth: ConnectionAuth;
   json?: JSONHandling;
@@ -98,7 +100,8 @@ export interface ConnBaseResult
   query_id: string;
 }
 
-export interface ConnQueryResult<Stream> extends ConnBaseResult {
+export interface ConnQueryResult<Stream>
+  extends ConnBaseResult, WithClickHouseSummary {
   stream: Stream;
   query_id: string;
 }

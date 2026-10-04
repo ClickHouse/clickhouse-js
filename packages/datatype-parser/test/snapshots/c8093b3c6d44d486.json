@@ -1,0 +1,13 @@
+{
+  "type": "Nullable(Date)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nullable",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Date"
+      }
+    ]
+  }
+}

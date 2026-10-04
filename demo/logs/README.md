@@ -34,7 +34,7 @@ hot path.
 
 ## Prerequisites
 
-- Node 18+ (built/tested on Node 24)
+- Node 20+ (built/tested on Node 24)
 - A running ClickHouse. This demo ships a self-contained one — from **this
   directory** (`demo/logs`):
 

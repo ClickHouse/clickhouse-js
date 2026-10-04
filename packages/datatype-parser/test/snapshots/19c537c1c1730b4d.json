@@ -1,0 +1,13 @@
+{
+  "type": "Nullable(UInt128)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nullable",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt128"
+      }
+    ]
+  }
+}

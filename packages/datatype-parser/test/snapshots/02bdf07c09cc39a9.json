@@ -1,0 +1,31 @@
+{
+  "type": "Nested(key String, value Array(UInt8))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nested",
+    "arguments": [
+      {
+        "type": "NameTypePair",
+        "name": "key",
+        "data_type": {
+          "type": "DataType",
+          "name": "String"
+        }
+      },
+      {
+        "type": "NameTypePair",
+        "name": "value",
+        "data_type": {
+          "type": "DataType",
+          "name": "Array",
+          "arguments": [
+            {
+              "type": "DataType",
+              "name": "UInt8"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

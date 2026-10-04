@@ -1,0 +1,14 @@
+{
+  "type": "Tuple(a UInt8)",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt8"
+      }
+    ],
+    "element_names": ["a"]
+  }
+}

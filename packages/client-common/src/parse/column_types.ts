@@ -1,3 +1,4 @@
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export class ColumnTypeParseError extends Error {
   readonly args: Record<string, unknown>;
   constructor(message: string, args?: Record<string, unknown>) {
@@ -10,6 +11,7 @@ export class ColumnTypeParseError extends Error {
   }
 }
 
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export const SimpleColumnTypes = [
   "Bool",
   "UInt8",
@@ -33,8 +35,10 @@ export const SimpleColumnTypes = [
   "IPv4",
   "IPv6",
 ] as const;
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export type SimpleColumnType = (typeof SimpleColumnTypes)[number];
 
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export interface ParsedColumnSimple {
   type: "Simple";
   /** Without LowCardinality and Nullable. For example:
@@ -45,18 +49,21 @@ export interface ParsedColumnSimple {
   sourceType: string;
 }
 
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export interface ParsedColumnFixedString {
   type: "FixedString";
   sizeBytes: number;
   sourceType: string;
 }
 
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export interface ParsedColumnDateTime {
   type: "DateTime";
   timezone: string | null;
   sourceType: string;
 }
 
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export interface ParsedColumnDateTime64 {
   type: "DateTime64";
   timezone: string | null;
@@ -65,6 +72,7 @@ export interface ParsedColumnDateTime64 {
   sourceType: string;
 }
 
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export interface ParsedColumnEnum {
   type: "Enum";
   /** Index to name */
@@ -79,19 +87,26 @@ export interface ParsedColumnEnum {
  *  * 64 bits  for precision <  19
  *  * 128 bits for precision <  39
  *  * 256 bits for precision >= 39
+ *
+ * @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version.
  */
 export interface DecimalParams {
   precision: number;
   scale: number;
   intSize: 32 | 64 | 128 | 256;
 }
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export interface ParsedColumnDecimal {
   type: "Decimal";
   params: DecimalParams;
   sourceType: string;
 }
 
-/** Tuple, Array or Map itself cannot be Nullable */
+/**
+ * Tuple, Array or Map itself cannot be Nullable
+ *
+ * @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version.
+ */
 export interface ParsedColumnNullable {
   type: "Nullable";
   value:
@@ -107,6 +122,8 @@ export interface ParsedColumnNullable {
 /** Array cannot be Nullable or LowCardinality, but its value type can be.
  *  Arrays can be multidimensional, e.g. Array(Array(Array(T))).
  *  Arrays are allowed to have a Map as the value type.
+ *
+ * @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version.
  */
 export interface ParsedColumnArray {
   type: "Array";
@@ -125,7 +142,10 @@ export interface ParsedColumnArray {
   sourceType: string;
 }
 
-/** @see https://clickhouse.com/docs/en/sql-reference/data-types/map */
+/**
+ * @see https://clickhouse.com/docs/en/sql-reference/data-types/map
+ * @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version.
+ */
 export interface ParsedColumnMap {
   type: "Map";
   /** Possible key types:
@@ -144,6 +164,7 @@ export interface ParsedColumnMap {
   sourceType: string;
 }
 
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export interface ParsedColumnTuple {
   type: "Tuple";
   /** Element types are arbitrary, including Map, Array, and Tuple. */
@@ -151,6 +172,7 @@ export interface ParsedColumnTuple {
   sourceType: string;
 }
 
+/** @deprecated Superseded by the `@clickhouse/datatype-parser` package (`parseDataType` + its `Node` AST); slated for removal in a future major version. */
 export type ParsedColumnType =
   | ParsedColumnSimple
   | ParsedColumnEnum
@@ -164,6 +186,12 @@ export type ParsedColumnType =
   | ParsedColumnMap;
 
 /**
+ * @deprecated Superseded by the standalone `@clickhouse/datatype-parser` package
+ * — use `parseDataType` and its `Node` AST instead. That parser is
+ * server-faithful and already handles the source types listed below as
+ * unsupported here (Geo, (Simple)AggregateFunction, Nested, JSON, Dynamic,
+ * Variant). Slated for removal in a future major version.
+ *
  * @experimental - incomplete, unstable API;
  * originally intended to be used for RowBinary/Native header parsing internally.
  * Currently unsupported source types:

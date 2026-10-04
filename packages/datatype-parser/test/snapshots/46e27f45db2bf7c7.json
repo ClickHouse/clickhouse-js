@@ -1,0 +1,33 @@
+{
+  "type": "Array(Variant(UInt64, String, Array(Float64)))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Variant",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "UInt64"
+          },
+          {
+            "type": "DataType",
+            "name": "String"
+          },
+          {
+            "type": "DataType",
+            "name": "Array",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "Float64"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

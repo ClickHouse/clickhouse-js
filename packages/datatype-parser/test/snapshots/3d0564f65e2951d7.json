@@ -1,0 +1,36 @@
+{
+  "type": "Nested(a UInt8, b Tuple(x Int8, y Int8))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nested",
+    "arguments": [
+      {
+        "type": "NameTypePair",
+        "name": "a",
+        "data_type": {
+          "type": "DataType",
+          "name": "UInt8"
+        }
+      },
+      {
+        "type": "NameTypePair",
+        "name": "b",
+        "data_type": {
+          "type": "TupleDataType",
+          "name": "Tuple",
+          "arguments": [
+            {
+              "type": "DataType",
+              "name": "Int8"
+            },
+            {
+              "type": "DataType",
+              "name": "Int8"
+            }
+          ],
+          "element_names": ["x", "y"]
+        }
+      }
+    ]
+  }
+}

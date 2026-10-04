@@ -1,0 +1,17 @@
+{
+  "type": "Variant(UInt8, String)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Variant",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt8"
+      },
+      {
+        "type": "DataType",
+        "name": "String"
+      }
+    ]
+  }
+}

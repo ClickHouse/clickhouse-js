@@ -1,0 +1,13 @@
+{
+  "type": "Array(Int64)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Int64"
+      }
+    ]
+  }
+}

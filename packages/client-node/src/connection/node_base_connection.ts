@@ -244,23 +244,26 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     }
 
     try {
-      const { response_headers, stream, http_status_code } = await this.request(
-        {
-          method: "POST",
-          url: transformUrl({ url: this.params.url, searchParams }),
-          body,
-          abort_signal: controller.signal,
-          response_compression_codec: responseCompressionCodec,
-          headers,
-          query: params.query,
-          query_id,
-          log_writer,
-          log_level,
-        },
-        "Query",
-      );
+      const { response_headers, stream, summary, http_status_code } =
+        await this.request(
+          {
+            method: "POST",
+            url: transformUrl({ url: this.params.url, searchParams }),
+            body,
+            abort_signal: controller.signal,
+            response_compression_codec: responseCompressionCodec,
+            parse_summary: true,
+            headers,
+            query: params.query,
+            query_id,
+            log_writer,
+            log_level,
+          },
+          "Query",
+        );
       return {
         stream,
+        summary,
         response_headers,
         query_id,
         http_status_code,
@@ -270,8 +273,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.logRequestError({
         op: "Query",
         query_id: query_id,
-        query_params: params,
-        search_params: searchParams,
+        session_id: params.session_id,
+        with_abort_signal: params.abort_signal !== undefined,
+        query: params.query,
         err: err as Error,
         extra_args: {
           decompress_response: responseCompressionCodec,
@@ -332,8 +336,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.logRequestError({
         op: "Insert",
         query_id: query_id,
-        query_params: params,
-        search_params: searchParams,
+        session_id: params.session_id,
+        with_abort_signal: params.abort_signal !== undefined,
+        query: params.query,
         err: err as Error,
         extra_args: {
           clickhouse_settings: params.clickhouse_settings ?? {},
@@ -505,7 +510,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     op,
     err,
     query_id,
-    query_params,
+    session_id,
+    with_abort_signal,
+    query,
     extra_args,
   }: LogRequestErrorParams) {
     if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
@@ -516,8 +523,14 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
           operation: op,
           connection_id: this.connectionId,
           query_id,
-          with_abort_signal: query_params.abort_signal !== undefined,
-          session_id: query_params.session_id,
+          with_abort_signal,
+          session_id,
+          // The raw SQL is only ever logged when the caller has explicitly
+          // opted in. Bound `query_params` values and credentials are never
+          // logged, regardless of this setting.
+          ...(this.params.dangerously_log_query_text && query !== undefined
+            ? { query }
+            : {}),
           ...extra_args,
         },
       });
@@ -592,8 +605,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       this.logRequestError({
         op: params.op,
         query_id: query_id,
-        query_params: params,
-        search_params: searchParams,
+        session_id: params.session_id,
+        with_abort_signal: params.abort_signal !== undefined,
+        query: params.query,
         err: err as Error,
         extra_args: {
           clickhouse_settings: params.clickhouse_settings ?? {},
@@ -624,8 +638,12 @@ interface LogRequestErrorParams {
   op: ConnOperation;
   err: Error;
   query_id: string;
-  query_params: ConnBaseQueryParams;
-  search_params: URLSearchParams | undefined;
+  session_id: string | undefined;
+  with_abort_signal: boolean;
+  /** Raw SQL text. Passed through unconditionally by callers, but only ever
+   *  written to the log when
+   *  {@link ConnectionParams.dangerously_log_query_text} is enabled. */
+  query: string | undefined;
   extra_args: Record<string, unknown>;
 }
 

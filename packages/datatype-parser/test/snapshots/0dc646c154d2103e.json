@@ -1,0 +1,19 @@
+{
+  "type": "Array(Nullable(UInt64))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "UInt64"
+          }
+        ]
+      }
+    ]
+  }
+}

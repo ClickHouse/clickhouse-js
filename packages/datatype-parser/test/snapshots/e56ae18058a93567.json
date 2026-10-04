@@ -1,0 +1,37 @@
+{
+  "type": "Nested(name String, tags Array(LowCardinality(String)))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nested",
+    "arguments": [
+      {
+        "type": "NameTypePair",
+        "name": "name",
+        "data_type": {
+          "type": "DataType",
+          "name": "String"
+        }
+      },
+      {
+        "type": "NameTypePair",
+        "name": "tags",
+        "data_type": {
+          "type": "DataType",
+          "name": "Array",
+          "arguments": [
+            {
+              "type": "DataType",
+              "name": "LowCardinality",
+              "arguments": [
+                {
+                  "type": "DataType",
+                  "name": "String"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

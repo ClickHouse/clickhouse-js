@@ -1,0 +1,7 @@
+{
+  "type": "LONGTEXT",
+  "data_type": {
+    "type": "DataType",
+    "name": "LONGTEXT"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "type": "Decimal64(18)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Decimal64",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "UInt64",
+        "value": "18"
+      }
+    ]
+  }
+}

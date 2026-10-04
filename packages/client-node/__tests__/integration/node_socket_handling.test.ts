@@ -8,7 +8,7 @@ import { createTestClient } from "@test/utils/client";
 import * as http from "http";
 import net from "net";
 import type Stream from "stream";
-import type { NodeClickHouseClientConfigOptions } from "../../src/config";
+import type { ClickHouseClientConfigOptions } from "@clickhouse/client";
 import { AddressInfo } from "net";
 
 const ClientTimeout = 10; // ms
@@ -42,7 +42,7 @@ describe.concurrent("Slow server", () => {
       keep_alive: {
         enable: true,
       },
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
   });
   afterAll(async () => {
     await client.close();
@@ -195,7 +195,7 @@ describe("Resource is not available", () => {
       keep_alive: {
         enable: true,
       },
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
   });
   afterEach(async () => {
     // Free the fixed port between retries: otherwise a retry would find the
@@ -247,7 +247,7 @@ describe.concurrent("Server that drops connections", () => {
       keep_alive: {
         enable: true,
       },
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
 
     const result = await client.ping();
 
@@ -274,7 +274,7 @@ describe.concurrent("Server that drops connections", () => {
       keep_alive: {
         enable: true,
       },
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
 
     const result = await client.ping();
 
@@ -303,7 +303,7 @@ describe.concurrent("Server that drops connections", () => {
       keep_alive: {
         enable: true,
       },
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
 
     const result = await client.ping();
 
@@ -355,7 +355,7 @@ describe.concurrent("Server that drops connections", () => {
         level: 0,
       },
       max_open_connections: 1,
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
 
     expect(await client.ping()).toMatchObject({ success: true });
 

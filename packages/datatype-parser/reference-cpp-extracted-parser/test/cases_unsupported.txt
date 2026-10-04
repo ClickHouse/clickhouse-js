@@ -1,0 +1,7 @@
+# Types that the parser deliberately rejects (see parser.h). Each must make
+# chdt-parse exit non-zero. Blank lines and #-comments are ignored.
+AggregateFunction(sum, UInt64)
+AggregateFunction(1, quantiles(0.5), Float64)
+SimpleAggregateFunction(sum, UInt64)
+JSON(max_dynamic_paths = 16)
+JSON(a.b UInt32, SKIP x)

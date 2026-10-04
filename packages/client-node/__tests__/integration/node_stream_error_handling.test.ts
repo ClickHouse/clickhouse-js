@@ -4,8 +4,8 @@ import {
   streamErrorQueryParams,
 } from "@test/fixtures/stream_errors";
 import { isClickHouseVersionAtLeast } from "@test/utils/server_version";
-import type { ClickHouseClient } from "../../src";
-import type { ClickHouseError } from "../../src";
+import type { ClickHouseClient } from "@clickhouse/client";
+import type { ClickHouseError } from "@clickhouse/client";
 import { createNodeTestClient } from "../utils/node_client";
 
 // See https://github.com/ClickHouse/ClickHouse/pull/88818

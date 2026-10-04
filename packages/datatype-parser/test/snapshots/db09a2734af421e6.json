@@ -1,0 +1,36 @@
+{
+  "type": "Tuple(ts DateTime64(3, 'UTC'), val Nullable(Float64))",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "DateTime64",
+        "arguments": [
+          {
+            "type": "Literal",
+            "value_type": "UInt64",
+            "value": "3"
+          },
+          {
+            "type": "Literal",
+            "value_type": "String",
+            "value": "UTC"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Float64"
+          }
+        ]
+      }
+    ],
+    "element_names": ["ts", "val"]
+  }
+}

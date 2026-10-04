@@ -5,7 +5,7 @@ import type {
 } from "@clickhouse/client-common";
 import { createTableWithFields } from "@test/fixtures/table_with_fields";
 import { guid } from "@test/utils/guid";
-import type { ClickHouseClient, ResultSet } from "../../src";
+import type { ClickHouseClient, ResultSet } from "@clickhouse/client";
 import { createNodeTestClient } from "../utils/node_client";
 
 /* eslint-disable @typescript-eslint/no-unused-expressions */

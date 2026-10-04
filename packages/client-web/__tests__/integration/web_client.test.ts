@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getHeadersTestParams } from "@test/utils/parametrized";
-import { createClient } from "../../src";
+import { createClient } from "@clickhouse/client-web";
 
 describe("[Web] Client", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;

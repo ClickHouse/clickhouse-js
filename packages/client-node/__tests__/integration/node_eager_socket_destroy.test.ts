@@ -8,7 +8,7 @@ import {
 import { createTestClient } from "@test/utils/client";
 import * as http from "http";
 import { AddressInfo } from "net";
-import type { NodeClickHouseClientConfigOptions } from "../../src/config";
+import type { ClickHouseClientConfigOptions } from "@clickhouse/client";
 
 describe("[Node.js] Eager socket destruction", () => {
   afterEach(() => {
@@ -52,7 +52,7 @@ describe("[Node.js] Eager socket destruction", () => {
         LoggerClass: CapturingLogger,
         level: ClickHouseLogLevel.TRACE,
       },
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
 
     try {
       // Capture the current timestamp before the first request so that
@@ -130,7 +130,7 @@ describe("[Node.js] Eager socket destruction", () => {
         LoggerClass: CapturingLogger,
         level: ClickHouseLogLevel.WARN,
       },
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
 
     try {
       // Capture the current timestamp before the first request so that

@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { Row } from "@clickhouse/client-common";
 import { createTestClient } from "@test/utils";
-import type { WebClickHouseClient } from "../../src/client";
+import type { ClickHouseClient } from "@clickhouse/client-web";
 
 describe("[Web] abort request", () => {
-  let client: WebClickHouseClient;
+  let client: ClickHouseClient;
 
   beforeEach(() => {
-    client = createTestClient() as unknown as WebClickHouseClient;
+    client = createTestClient() as unknown as ClickHouseClient;
   });
 
   afterEach(async () => {

@@ -1,0 +1,20 @@
+{
+  "type": "Nullable(Decimal256(40))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nullable",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Decimal256",
+        "arguments": [
+          {
+            "type": "Literal",
+            "value_type": "UInt64",
+            "value": "40"
+          }
+        ]
+      }
+    ]
+  }
+}

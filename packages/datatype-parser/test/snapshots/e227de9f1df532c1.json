@@ -1,0 +1,64 @@
+{
+  "type": "Array(Map(LowCardinality(String), Array(Tuple(a UInt8, b Nullable(Decimal(18, 6))))))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Map",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "LowCardinality",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "String"
+              }
+            ]
+          },
+          {
+            "type": "DataType",
+            "name": "Array",
+            "arguments": [
+              {
+                "type": "TupleDataType",
+                "name": "Tuple",
+                "arguments": [
+                  {
+                    "type": "DataType",
+                    "name": "UInt8"
+                  },
+                  {
+                    "type": "DataType",
+                    "name": "Nullable",
+                    "arguments": [
+                      {
+                        "type": "DataType",
+                        "name": "Decimal",
+                        "arguments": [
+                          {
+                            "type": "Literal",
+                            "value_type": "UInt64",
+                            "value": "18"
+                          },
+                          {
+                            "type": "Literal",
+                            "value_type": "UInt64",
+                            "value": "6"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "element_names": ["a", "b"]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

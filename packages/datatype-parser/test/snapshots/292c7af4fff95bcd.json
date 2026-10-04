@@ -1,0 +1,7 @@
+{
+  "type": "BOOL",
+  "data_type": {
+    "type": "DataType",
+    "name": "BOOL"
+  }
+}

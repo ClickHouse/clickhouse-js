@@ -1,0 +1,72 @@
+# Supported data types, one per line. Each is compared against the
+# data_type subtree the ClickHouse server emits for
+#   EXPLAIN AST json = 1 CREATE TABLE t (c <TYPE>) ENGINE = Null
+# Blank lines and #-comments are ignored.
+
+# scalars
+UInt8
+Int64
+Float64
+String
+Date
+DateTime
+UUID
+Bool
+IPv4
+IPv6
+
+# parametric with literal args
+FixedString(16)
+Decimal(10, 2)
+Decimal(38, 10)
+Decimal32(4)
+DateTime64(3)
+DateTime64(3, 'UTC')
+DateTime('UTC')
+
+# nested type args
+Nullable(UInt64)
+Array(String)
+Array(Array(Int32))
+Array(Nullable(UInt64))
+Map(String, UInt64)
+Map(String, Array(UInt8))
+LowCardinality(String)
+LowCardinality(Nullable(String))
+Array(Tuple(Float64, Float64))
+
+# tuples
+Tuple(UInt8, String)
+Tuple(a UInt8, b String)
+Tuple(a UInt8, String)
+Tuple(Decimal(10, 2), Nullable(String))
+
+# enums (explicit -> EnumDataType; auto-assigned -> generic DataType)
+Enum8('a' = 1, 'b' = 2)
+Enum16('x' = -1, 'y' = 100)
+Enum('a' = 1, 'b' = 2)
+Enum8('a', 'b')
+
+# nested table type
+Nested(a UInt8, b String)
+Nested(a Array(UInt8), b Tuple(x UInt8, y String))
+
+# SQL-standard multi-word aliases
+DOUBLE PRECISION
+CHAR VARYING
+INT SIGNED
+INT UNSIGNED
+
+# legacy object + dynamic
+Object('json')
+Dynamic
+Dynamic(max_types = 5)
+
+# misc families harvested from the fixture corpus
+Variant(UInt8, String)
+varchar
+varchar(255)
+BFloat16
+Time
+int
+Int

@@ -2,7 +2,7 @@ import { ClickHouseLogLevel, Logger } from "@clickhouse/client-common";
 import { describe, it } from "vitest";
 import { createTestClient } from "@test/utils/client";
 import net from "net";
-import type { NodeClickHouseClientConfigOptions } from "../../src/config";
+import type { ClickHouseClientConfigOptions } from "@clickhouse/client";
 import { AddressInfo } from "net";
 
 describe.concurrent("Handling keep-alive header", () => {
@@ -50,7 +50,7 @@ describe.concurrent("Handling keep-alive header", () => {
         LoggerClass,
         level: ClickHouseLogLevel.TRACE,
       },
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
 
     expect(await client.ping({ select: true })).toMatchObject({
       success: true,
@@ -142,7 +142,7 @@ describe.concurrent("Handling keep-alive header", () => {
         LoggerClass,
         level: ClickHouseLogLevel.TRACE,
       },
-    } as NodeClickHouseClientConfigOptions);
+    } as ClickHouseClientConfigOptions);
 
     expect(await client.ping({ select: true })).toMatchObject({
       success: true,

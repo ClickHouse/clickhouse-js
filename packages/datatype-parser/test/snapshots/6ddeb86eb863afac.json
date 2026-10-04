@@ -1,0 +1,57 @@
+{
+  "type": "Tuple(meta Map(String, String), data Array(Tuple(ts DateTime64(9, 'UTC'), val Float64)))",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Map",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "String"
+          },
+          {
+            "type": "DataType",
+            "name": "String"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "TupleDataType",
+            "name": "Tuple",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "DateTime64",
+                "arguments": [
+                  {
+                    "type": "Literal",
+                    "value_type": "UInt64",
+                    "value": "9"
+                  },
+                  {
+                    "type": "Literal",
+                    "value_type": "String",
+                    "value": "UTC"
+                  }
+                ]
+              },
+              {
+                "type": "DataType",
+                "name": "Float64"
+              }
+            ],
+            "element_names": ["ts", "val"]
+          }
+        ]
+      }
+    ],
+    "element_names": ["meta", "data"]
+  }
+}

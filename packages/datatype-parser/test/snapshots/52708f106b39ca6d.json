@@ -1,0 +1,13 @@
+{
+  "type": "Array(Date)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Date"
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "Enum('hello world' = 1, 'foo bar' = 2)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum",
+    "values": [
+      {
+        "name": "hello world",
+        "value": 1
+      },
+      {
+        "name": "foo bar",
+        "value": 2
+      }
+    ]
+  }
+}

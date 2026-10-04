@@ -1,0 +1,17 @@
+{
+  "type": "Variant(UInt64, String)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Variant",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt64"
+      },
+      {
+        "type": "DataType",
+        "name": "String"
+      }
+    ]
+  }
+}

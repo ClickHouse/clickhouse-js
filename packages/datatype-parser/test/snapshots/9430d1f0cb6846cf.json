@@ -1,0 +1,33 @@
+{
+  "type": "Nested(id UInt64, name String, score Float64)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nested",
+    "arguments": [
+      {
+        "type": "NameTypePair",
+        "name": "id",
+        "data_type": {
+          "type": "DataType",
+          "name": "UInt64"
+        }
+      },
+      {
+        "type": "NameTypePair",
+        "name": "name",
+        "data_type": {
+          "type": "DataType",
+          "name": "String"
+        }
+      },
+      {
+        "type": "NameTypePair",
+        "name": "score",
+        "data_type": {
+          "type": "DataType",
+          "name": "Float64"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "Enum16('min' = -32768, 'max' = 32767)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum16",
+    "values": [
+      {
+        "name": "min",
+        "value": -32768
+      },
+      {
+        "name": "max",
+        "value": 32767
+      }
+    ]
+  }
+}

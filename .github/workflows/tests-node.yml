@@ -16,10 +16,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/tests-node.yml"
   pull_request:
     paths:
@@ -31,10 +31,10 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
-      - "vitest.node.config.ts"
-      - "vitest.node.setup.ts"
-      - "vitest.web.config.ts"
-      - "vitest.web.setup.ts"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/tests-node.yml"
 
   schedule:
@@ -51,16 +51,22 @@ env:
   OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js,deployment.environment=ci"
   VITEST_OTEL_ENABLED: "true"
   VITEST_COVERAGE: "true"
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
 
 jobs:
   code-quality:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
 
@@ -94,60 +100,18 @@ jobs:
           fi
           cat prettier-output.txt
 
-  common-unit-tests:
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [20, 22, 24]
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: |
-          npm install
-
-      - name: Run unit tests
-        run: |
-          npm run test:common:unit:node
-
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
-      - name: Upload coverage to Codecov
-        # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
-        # Upload coverage from a single canonical combination (Node 24) so Codecov
-        # receives exactly one upload per flag (see codecov.yml).
-        if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
-        with:
-          name: node-common-unit
-          flags: node-common-unit
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          fail_ci_if_error: true
-
   unit-tests:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22, 24]
+        node: [20, 22, 24, 26]
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -189,27 +153,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22, 24]
+        node: [20, 22, 24, 26]
         clickhouse: [head, latest]
         log_level: [undefined, TRACE]
         include:
           - node: 24
-            clickhouse: 26.2
+            clickhouse: "25.8"
             log_level: undefined
           - node: 24
-            clickhouse: 26.1
+            clickhouse: "26.3"
             log_level: undefined
           - node: 24
-            clickhouse: 25.12
+            clickhouse: "26.5"
             log_level: undefined
           - node: 24
-            clickhouse: 25.11
+            clickhouse: "26.6"
             log_level: undefined
           - node: 24
-            clickhouse: 25.10
+            clickhouse: "26.7"
             log_level: undefined
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
         uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
@@ -220,7 +184,7 @@ jobs:
           down-flags: "--volumes"
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -263,11 +227,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22, 24]
+        node: [20, 22, 24, 26]
         clickhouse: [head, latest]
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
         uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
@@ -278,7 +242,7 @@ jobs:
           down-flags: "--volumes"
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -317,13 +281,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22, 24]
+        node: [20, 22, 24, 26]
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -357,24 +321,3 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: true
-
-  success:
-    needs:
-      [
-        "code-quality",
-        "common-unit-tests",
-        "unit-tests",
-        "integration-tests-local-single-node",
-        "integration-tests-local-cluster",
-        "integration-tests-cloud",
-      ]
-    # Run even if some needed jobs were skipped (e.g. cloud jobs on PRs from forks),
-    # but still fail if any of them failed or were cancelled.
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fail if any needed job failed or was cancelled
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        run: exit 1
-      - name: All tests passed
-        run: echo "All tests passed! 🎉"

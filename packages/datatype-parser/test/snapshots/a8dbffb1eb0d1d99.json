@@ -1,0 +1,17 @@
+{
+  "type": "Enum16('x' = -1, 'y' = 100)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum16",
+    "values": [
+      {
+        "name": "x",
+        "value": -1
+      },
+      {
+        "name": "y",
+        "value": 100
+      }
+    ]
+  }
+}

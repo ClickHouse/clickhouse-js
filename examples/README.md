@@ -159,7 +159,7 @@ deployment-shaped connection strings.
 
 Environment requirements for all examples:
 
-- Node.js 18+
+- Node.js 20+
 - NPM
 - Docker Compose
 

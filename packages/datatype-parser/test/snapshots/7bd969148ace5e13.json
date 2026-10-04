@@ -1,0 +1,29 @@
+{
+  "type": "Enum8('one', 'two', 'three', 'four')",
+  "data_type": {
+    "type": "DataType",
+    "name": "Enum8",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "one"
+      },
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "two"
+      },
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "three"
+      },
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "four"
+      }
+    ]
+  }
+}

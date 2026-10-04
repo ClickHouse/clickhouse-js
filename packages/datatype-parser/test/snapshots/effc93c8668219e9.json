@@ -1,0 +1,22 @@
+{
+  "type": "Tuple(p Point, r Ring, poly Polygon)",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Point"
+      },
+      {
+        "type": "DataType",
+        "name": "Ring"
+      },
+      {
+        "type": "DataType",
+        "name": "Polygon"
+      }
+    ],
+    "element_names": ["p", "r", "poly"]
+  }
+}

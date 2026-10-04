@@ -1,0 +1,36 @@
+{
+  "type": "Variant(String, FixedString(16), UUID, IPv4, IPv6)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Variant",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "FixedString",
+        "arguments": [
+          {
+            "type": "Literal",
+            "value_type": "UInt64",
+            "value": "16"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "UUID"
+      },
+      {
+        "type": "DataType",
+        "name": "IPv4"
+      },
+      {
+        "type": "DataType",
+        "name": "IPv6"
+      }
+    ]
+  }
+}

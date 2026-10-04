@@ -1,0 +1,21 @@
+{
+  "type": "Tuple(String, UInt64, Float64)",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "UInt64"
+      },
+      {
+        "type": "DataType",
+        "name": "Float64"
+      }
+    ]
+  }
+}

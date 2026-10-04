@@ -1,0 +1,7 @@
+{
+  "type": "IntervalMonth",
+  "data_type": {
+    "type": "DataType",
+    "name": "IntervalMonth"
+  }
+}

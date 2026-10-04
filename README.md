@@ -63,12 +63,12 @@ npm i @clickhouse/client-web
 
 Node.js must be available in the environment to run the Node.js client. The client is compatible with all the [maintained](https://github.com/nodejs/release#readme) Node.js releases.
 
-| Node.js version | Supported?  |
-| --------------- | ----------- |
-| 24.x            | ✔           |
-| 22.x            | ✔           |
-| 20.x            | ✔           |
-| 18.x            | Best effort |
+| Node.js version | Supported? |
+| --------------- | ---------- |
+| 26.x            | ✔          |
+| 24.x            | ✔          |
+| 22.x            | ✔          |
+| 20.x            | ✔          |
 
 ### TypeScript
 
@@ -109,6 +109,18 @@ See more examples in the [examples directory](./examples).
 ## Documentation
 
 See the [ClickHouse website](https://clickhouse.com/docs/integrations/javascript) for the full documentation.
+
+## Changelog
+
+Each package keeps its own changelog:
+
+- `@clickhouse/client` — [`packages/client-node/CHANGELOG.md`](./packages/client-node/CHANGELOG.md)
+- `@clickhouse/client-web` — [`packages/client-web/CHANGELOG.md`](./packages/client-web/CHANGELOG.md)
+- `@clickhouse/client-common` (deprecated) — [`packages/client-common/CHANGELOG.md`](./packages/client-common/CHANGELOG.md)
+- `@clickhouse/datatype-parser` — [`packages/datatype-parser/CHANGELOG.md`](./packages/datatype-parser/CHANGELOG.md)
+- `@clickhouse/rowbinary` — [`skills/clickhouse-js-node-rowbinary/CHANGELOG.md`](./skills/clickhouse-js-node-rowbinary/CHANGELOG.md)
+
+History through `@clickhouse/client` 1.23.0 lives in the now-frozen repository-wide [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## AI Agent Skills
 

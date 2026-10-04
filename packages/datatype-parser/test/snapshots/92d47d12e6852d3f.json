@@ -1,0 +1,17 @@
+{
+  "type": "Enum8('a.b.c' = 1, 'x.y.z' = 2)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum8",
+    "values": [
+      {
+        "name": "a.b.c",
+        "value": 1
+      },
+      {
+        "name": "x.y.z",
+        "value": 2
+      }
+    ]
+  }
+}

@@ -1644,6 +1644,26 @@ export type ClickHouseSettings = Partial<ClickHouseServerSettings> &
   Partial<ClickHouseHTTPSettings> &
   Record<string, number | string | boolean | SettingsMap | undefined>;
 
+/**
+ * A package-neutral, structural view of {@link ClickHouseSettings}.
+ *
+ * Identical to {@link ClickHouseSettings} except that the index signature does
+ * not include {@link SettingsMap}. `SettingsMap` is a class with a private
+ * member, so TypeScript compares it nominally; because `@clickhouse/client` and
+ * `@clickhouse/client-web` each bundle their own copy of this module, their
+ * `ClickHouseSettings` types are mutually unassignable. This interface omits the
+ * only nominal member, so it is structurally identical across all three packages
+ * and assignable into each package's `ClickHouseSettings`.
+ *
+ * Intended for consumers that share a single settings-producing helper across
+ * both the Node.js and Web clients and therefore cannot import a single concrete
+ * `ClickHouseSettings`. Note: values typed as {@link SettingsMap} cannot be
+ * carried through this type — use {@link ClickHouseSettings} if you need them.
+ */
+export type ClickHouseSettingsInterface = Partial<ClickHouseServerSettings> &
+  Partial<ClickHouseHTTPSettings> &
+  Record<string, number | string | boolean | undefined>;
+
 export interface MergeTreeSettings {
   /** Allow floating point as partition key */
   allow_floating_point_partition_key?: Bool;

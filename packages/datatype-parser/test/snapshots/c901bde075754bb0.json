@@ -1,0 +1,13 @@
+{
+  "type": "Array(Point)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Point"
+      }
+    ]
+  }
+}

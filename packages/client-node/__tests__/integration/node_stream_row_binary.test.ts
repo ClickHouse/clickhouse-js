@@ -1,28 +1,17 @@
-import {
-  ClickHouseLogLevel,
-  DefaultLogger,
-  LogWriter,
-  type ClickHouseClient,
-} from "@clickhouse/client-common";
+import type { ClickHouseClient } from "@clickhouse/client-common";
 import { describe, it, beforeEach, afterEach, expect } from "vitest";
 import { createSimpleTable } from "@test/fixtures/simple_table";
 import { createTestClient } from "@test/utils/client";
 import { guid } from "@test/utils/guid";
 import Stream from "stream";
-import { drainStreamInternal } from "../../src/connection/stream";
+import { drainStream } from "@clickhouse/client";
 
 describe("[Node.js] stream RowBinary insert", () => {
   let client: ClickHouseClient<Stream.Readable>;
   let tableName: string;
-  let log_writer: LogWriter;
 
   beforeEach(async () => {
     client = createTestClient();
-    log_writer = new LogWriter(
-      new DefaultLogger(),
-      "Connection",
-      ClickHouseLogLevel.OFF,
-    );
     tableName = `test_node_row_binary_stream_${guid()}`;
     await createSimpleTable(client, tableName);
   });
@@ -57,15 +46,7 @@ describe("[Node.js] stream RowBinary insert", () => {
     });
     // The result stream contains nothing useful for an insert and should be
     // immediately drained to release the socket.
-    await drainStreamInternal(
-      {
-        op: "Insert",
-        query_id: execResult.query_id,
-        log_writer,
-        log_level: ClickHouseLogLevel.OFF,
-      },
-      execResult.stream,
-    );
+    await drainStream(execResult.stream);
 
     const rs = await client.query({
       query: `SELECT * FROM ${tableName} ORDER BY id ASC`,

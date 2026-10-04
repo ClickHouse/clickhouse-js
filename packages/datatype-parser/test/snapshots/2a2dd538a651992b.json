@@ -1,0 +1,24 @@
+{
+  "type": "Enum8('a', 'b', 'c')",
+  "data_type": {
+    "type": "DataType",
+    "name": "Enum8",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "a"
+      },
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "b"
+      },
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "c"
+      }
+    ]
+  }
+}

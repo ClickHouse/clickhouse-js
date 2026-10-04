@@ -1,0 +1,7 @@
+{
+  "type": "MultiLineString",
+  "data_type": {
+    "type": "DataType",
+    "name": "MultiLineString"
+  }
+}

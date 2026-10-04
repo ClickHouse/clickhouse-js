@@ -1,0 +1,7 @@
+{
+  "type": "NVARCHAR",
+  "data_type": {
+    "type": "DataType",
+    "name": "NVARCHAR"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "type": "Enum8('red' = 0, 'green' = 1, 'blue' = 2)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum8",
+    "values": [
+      {
+        "name": "red",
+        "value": 0
+      },
+      {
+        "name": "green",
+        "value": 1
+      },
+      {
+        "name": "blue",
+        "value": 2
+      }
+    ]
+  }
+}

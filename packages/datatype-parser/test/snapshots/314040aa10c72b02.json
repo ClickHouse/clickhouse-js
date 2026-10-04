@@ -1,0 +1,17 @@
+{
+  "type": "Variant(Int32, Float64)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Variant",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Int32"
+      },
+      {
+        "type": "DataType",
+        "name": "Float64"
+      }
+    ]
+  }
+}

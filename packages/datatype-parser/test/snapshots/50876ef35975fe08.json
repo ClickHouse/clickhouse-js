@@ -1,0 +1,7 @@
+{
+  "type": "NCHAR",
+  "data_type": {
+    "type": "DataType",
+    "name": "NCHAR"
+  }
+}

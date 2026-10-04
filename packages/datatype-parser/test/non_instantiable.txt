@@ -1,0 +1,29 @@
+# Cases that the server's PARSER accepts (and whose AST this library matches —
+# see test/snapshots/) but that the server's TYPE FACTORY refuses to
+# instantiate. This library mirrors ParserDataType, not the type factory, so
+# these are valid, intentional parser test inputs. validate_types_live.ts
+# treats a failed instantiation as OK only if the type is listed here.
+#
+# Each line notes why instantiation fails on a stock server.
+
+# legacy experimental object type — removed in newer servers (UNKNOWN_TYPE on v26+)
+Object('json')
+
+# partial tuple naming: the parser accepts mixed named/unnamed elements, but the
+# factory requires names for all elements or none.
+Tuple(a UInt8, String)
+Tuple(a UInt8, String, c Float64)
+Tuple(UInt8, b String, Float64)
+Tuple(id UInt64, String, flag Bool)
+
+# Nullable is not allowed inside Variant
+Variant(Nullable(UInt64), String)
+
+# Nullable cannot wrap Tuple
+Array(Nullable(Tuple(UInt8, String)))
+
+# Dynamic max_types must be in 0..254
+Dynamic(max_types = 255)
+
+# BINARY is an alias for FixedString, which needs a size argument
+BINARY
