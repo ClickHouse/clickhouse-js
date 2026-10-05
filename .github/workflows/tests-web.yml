@@ -100,7 +100,8 @@ jobs:
           flags: web-all-single
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-local-cluster:
     timeout-minutes: 5
@@ -148,7 +149,8 @@ jobs:
           flags: web-integration-cluster
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-cloud:
     # Cloud secrets are not available for PRs from forks or Dependabot PRs; skip the job in those cases.
@@ -192,4 +194,5 @@ jobs:
           flags: web-integration-cloud
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
