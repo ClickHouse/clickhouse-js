@@ -21,9 +21,20 @@ updates:
       exclude:
         - "@clickhouse/*"
     groups:
+      # Vitest packages peer-depend on the exact same version, so they must move
+      # together; a partial major bump fails `npm install` with ERESOLVE.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
       dev-dependencies:
         dependency-type: "development"
     ignore:
+      # Vitest majors need a deliberate migration across all workspaces.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
         versions: ["25.3.0"]
       - dependency-name: "typescript-eslint"
