@@ -703,18 +703,69 @@ function formatQuery(query: string, format: DataFormat): string {
   return query + " \nFORMAT " + format;
 }
 
-function removeTrailingSemi(query: string) {
-  let lastNonSemiIdx = query.length;
-  for (let i = lastNonSemiIdx; i > 0; i--) {
-    if (query[i - 1] !== ";") {
-      lastNonSemiIdx = i;
-      break;
+/**
+ * Removes the semicolons that end the statement, so that a clause such as
+ * `FORMAT` can be appended. Comments and whitespace after them are kept, which
+ * means `SELECT 1; -- note` becomes `SELECT 1 -- note` rather than leaving a `;`
+ * in the middle of the query. Semicolons inside string literals, quoted
+ * identifiers and comments are not touched.
+ */
+export function removeTrailingSemi(query: string): string {
+  const semicolons: number[] = [];
+  // The last character that is part of the statement itself: not whitespace,
+  // not inside a comment, and not one of the trailing semicolons.
+  let lastStatementChar = -1;
+  let i = 0;
+  while (i < query.length) {
+    const c = query.charAt(i);
+    const next = query.charAt(i + 1);
+    if ((c === "-" && next === "-") || c === "#") {
+      const end = query.indexOf("\n", i);
+      i = end === -1 ? query.length : end;
+      continue;
+    }
+    if (c === "/" && next === "*") {
+      const end = query.indexOf("*/", i + 2);
+      i = end === -1 ? query.length : end + 2;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === "`") {
+      // A quoted string or identifier, with backslash escapes and doubled
+      // quotes. An unterminated one runs to the end of the query.
+      let j = i + 1;
+      while (j < query.length) {
+        if (query[j] === "\\") {
+          j += 2;
+        } else if (query[j] === c && query[j + 1] === c) {
+          j += 2;
+        } else if (query[j] === c) {
+          break;
+        } else {
+          j++;
+        }
+      }
+      lastStatementChar = Math.min(j, query.length - 1);
+      i = j + 1;
+      continue;
+    }
+    if (c === ";") {
+      semicolons.push(i);
+    } else if (c.trim() !== "") {
+      lastStatementChar = i;
+    }
+    i++;
+  }
+  const trailing = new Set(semicolons.filter((idx) => idx > lastStatementChar));
+  if (trailing.size === 0 || lastStatementChar === -1) {
+    return query;
+  }
+  let result = "";
+  for (let k = 0; k < query.length; k++) {
+    if (!trailing.has(k)) {
+      result += query[k];
     }
   }
-  if (lastNonSemiIdx !== query.length) {
-    return query.slice(0, lastNonSemiIdx);
-  }
-  return query;
+  return result.trimEnd();
 }
 
 function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
