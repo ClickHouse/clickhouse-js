@@ -123,12 +123,6 @@ jobs:
         run: |
           npm run test:node:unit
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24) so Codecov
@@ -197,12 +191,6 @@ jobs:
         run: |
           npm run test:node:integration:tls
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }}, ${{ matrix.log_level }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24, ClickHouse
@@ -249,12 +237,6 @@ jobs:
         run: |
           npm run test:node:integration:local_cluster
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24, ClickHouse
@@ -297,12 +279,6 @@ jobs:
           CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43_PROD }}
         run: |
           npm run test:node:integration:cloud
-
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
 
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.

@@ -89,12 +89,6 @@ jobs:
         run: |
           npm run test:web:all
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }}, ${{ matrix.clickhouse }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Chromium, ClickHouse
@@ -143,12 +137,6 @@ jobs:
         run: |
           npm run test:web:integration:local_cluster
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }}, ${{ matrix.clickhouse }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Chromium, ClickHouse
@@ -192,12 +180,6 @@ jobs:
           BROWSER: ${{ matrix.browser }}
         run: |
           npm run test:web:integration:cloud:jwt
-
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
 
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
