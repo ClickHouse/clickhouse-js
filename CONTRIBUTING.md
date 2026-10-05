@@ -51,7 +51,7 @@ everyone in the community can safely benefit from your contribution.
 
 ### Tooling
 
-We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports both Node.js, Web environments and edge runtimes.
+We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports Node.js, Web environments, and edge runtimes.
 
 The repository keeps two Vitest configuration files, embedded in the client packages:
 
