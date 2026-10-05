@@ -45,11 +45,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OTEL_SERVICE_NAME: vitest
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-  OTEL_EXPORTER_OTLP_HEADERS: "authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}"
-  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js,deployment.environment=ci"
-  VITEST_OTEL_ENABLED: "true"
   VITEST_COVERAGE: "true"
   # Network resilience: npm's default of 2 fetch retries is not enough for
   # the transient registry errors (ECONNRESET) we regularly hit in CI.
@@ -128,12 +123,6 @@ jobs:
         run: |
           npm run test:node:unit
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24) so Codecov
@@ -145,7 +134,8 @@ jobs:
           flags: node-unit
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-local-single-node:
     timeout-minutes: 5
@@ -202,12 +192,6 @@ jobs:
         run: |
           npm run test:node:integration:tls
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }}, ${{ matrix.log_level }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24, ClickHouse
@@ -219,7 +203,8 @@ jobs:
           flags: node-integration-single
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-local-cluster:
     timeout-minutes: 5
@@ -254,12 +239,6 @@ jobs:
         run: |
           npm run test:node:integration:local_cluster
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24, ClickHouse
@@ -271,7 +250,8 @@ jobs:
           flags: node-integration-cluster
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-cloud:
     # Cloud secrets are not available for PRs from forks or Dependabot PRs; skip the job in those cases.
@@ -303,12 +283,6 @@ jobs:
         run: |
           npm run test:node:integration:cloud
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24) so Codecov
@@ -320,4 +294,5 @@ jobs:
           flags: node-integration-cloud
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
