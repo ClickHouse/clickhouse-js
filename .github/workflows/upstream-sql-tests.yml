@@ -102,7 +102,7 @@ jobs:
           pip install jinja2
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
