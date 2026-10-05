@@ -1,4 +1,4 @@
-name: 'Sync docs to ClickHouse/ClickHouse'
+name: "Sync docs to ClickHouse/ClickHouse"
 
 # Opens (or refreshes) a pull request on the aggregator docs repo
 #
