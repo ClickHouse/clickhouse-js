@@ -145,7 +145,7 @@ The workflow `.github/workflows/upstream-sql-tests.yml` runs this harness in CI:
 
 - Triggered on **workflow_dispatch**, **nightly at 05:00 UTC**, and on **pushes/PRs** that touch `tests/clickhouse-test-runner/**` or the workflow file itself.
 - The `workflow_dispatch` input `upstream_ref` can be used to pin a specific upstream commit or branch (defaults to `master`).
-- The matrix runs every combination of `{clickhouse: head | latest} × {shard: 1..N}`. Sharding is round-robin across the allowlist (see `SHARD_INDEX` / `SHARD_TOTAL` above) so each shard takes roughly one minute. If the allowlist grows enough that per-shard runtime climbs back above ~1 minute, bump both the `shard` matrix values and the `SHARD_TOTAL` env value in the workflow together.
+- The matrix runs every combination of `{backend: passthrough | rowbinary} × {shard: 1..N}` against one pinned ClickHouse image whose release tag matches `UPSTREAM_REF`; bump both together. Sharding is round-robin across the allowlist (see `SHARD_INDEX` / `SHARD_TOTAL` above) so each shard takes roughly one minute. If the allowlist grows enough that per-shard runtime climbs back above ~1 minute, bump both the `shard` matrix values and the `SHARD_TOTAL` env value in the workflow together.
 
 ## Local development
 

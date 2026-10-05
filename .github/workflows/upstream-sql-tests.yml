@@ -29,13 +29,12 @@ concurrency:
 
 env:
   UPSTREAM_REPO: "ClickHouse/ClickHouse"
-  # Pinned ClickHouse commit for the upstream test suite. Floating `master`
-  # drifts ahead of the `head`/`latest` server images (e.g. new tests using
-  # settings the image doesn't know yet -> "Unknown setting ..."), which
-  # spuriously reds this workflow. This SHA is a known-good snapshot (last green
-  # run); bump it deliberately, or override per-run via the workflow_dispatch
-  # `upstream_ref` input.
-  UPSTREAM_REF: "edc2b4454dfed0453003168ee672a1249e7f46e9"
+  # Pinned ClickHouse commit for the upstream test suite: the release tag that
+  # matches the server image in the matrix below (v26.9.10.4-stable). Expected
+  # outputs drift between releases, so a test snapshot that is older or newer
+  # than the server spuriously reds this workflow. Bump both together, or
+  # override per-run via the workflow_dispatch `upstream_ref` input.
+  UPSTREAM_REF: "01c3dd9dfbbac373d245d52be545065e85de047f"
   # Network resilience: npm's default of 2 fetch retries is not enough for
   # the transient registry errors (ECONNRESET) we regularly hit in CI.
   NPM_CONFIG_FETCH_RETRIES: "5"
@@ -50,12 +49,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Only the released `latest` image. The nightly `head` image rebuilds
-        # ~twice a day and routinely ships EXPLAIN/plan/index output changes and
-        # new settings ahead of any released server, spuriously reding this
-        # workflow (and every PR that touches the test runner). `latest` is a
-        # stable target; bleeding-edge coverage is not worth the daily noise.
-        clickhouse: [latest]
+        # A pinned released image matching UPSTREAM_REF. Floating tags drift
+        # away from the pinned test snapshot (`head` rebuilds ~twice a day,
+        # `latest` moves with every release) and spuriously red this workflow
+        # (and every PR that touches the test runner).
+        clickhouse: ["26.9.10.4"]
         # passthrough: stream ClickHouse's own TabSeparated text (transport /
         # session / settings coverage). rowbinary: decode
         # RowBinaryWithNamesAndTypes through @clickhouse/rowbinary and re-render
