@@ -1,4 +1,4 @@
-name: 'Verify Docs'
+name: "Verify Docs"
 
 permissions: {}
 
@@ -7,14 +7,14 @@ on:
     branches:
       - main
     paths:
-      - 'docs/clickhouse-docs/**'
-      - '.github/workflows/docs_verify.yml'
+      - "docs/clickhouse-docs/**"
+      - ".github/workflows/docs_verify.yml"
   push:
     branches:
       - main
     paths:
-      - 'docs/clickhouse-docs/**'
-      - '.github/workflows/docs_verify.yml'
+      - "docs/clickhouse-docs/**"
+      - ".github/workflows/docs_verify.yml"
 
 env:
   CLICKHOUSE_DOCS_REF: 21ed77718a5f454680497924d68e9f60a41e026c

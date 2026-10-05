@@ -24,8 +24,6 @@ updates:
       dev-dependencies:
         dependency-type: "development"
     ignore:
-      - dependency-name: "@opentelemetry/auto-instrumentations-node"
-        versions: ["0.70.0"]
       - dependency-name: "@types/node"
         versions: ["25.3.0"]
       - dependency-name: "typescript-eslint"
