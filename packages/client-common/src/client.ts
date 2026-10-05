@@ -707,8 +707,8 @@ function formatQuery(query: string, format: DataFormat): string {
  * Removes the semicolons that end the statement, so that a clause such as
  * `FORMAT` can be appended. Comments and whitespace after them are kept, which
  * means `SELECT 1; -- note` becomes `SELECT 1 -- note` rather than leaving a `;`
- * in the middle of the query. Semicolons inside string literals, quoted
- * identifiers and comments are not touched.
+ * in the middle of the query. Semicolons inside string literals, heredocs,
+ * quoted identifiers and comments are not touched.
  */
 export function removeTrailingSemi(query: string): string {
   const semicolons: number[] = [];
@@ -719,6 +719,20 @@ export function removeTrailingSemi(query: string): string {
   while (i < query.length) {
     const c = query.charAt(i);
     const next = query.charAt(i + 1);
+    if (c === "$") {
+      // A heredoc string, $tag$...$tag$ or $$...$$. Lexed before comments so
+      // that a comment marker or semicolon inside one is not mistaken for SQL.
+      const tagEnd = query.indexOf("$", i + 1);
+      if (tagEnd !== -1 && /^[A-Za-z0-9_]*$/.test(query.slice(i + 1, tagEnd))) {
+        const tag = query.slice(i, tagEnd + 1);
+        const close = query.indexOf(tag, tagEnd + 1);
+        if (close !== -1) {
+          lastStatementChar = close + tag.length - 1;
+          i = close + tag.length;
+          continue;
+        }
+      }
+    }
     if ((c === "-" && next === "-") || c === "#") {
       const end = query.indexOf("\n", i);
       i = end === -1 ? query.length : end;

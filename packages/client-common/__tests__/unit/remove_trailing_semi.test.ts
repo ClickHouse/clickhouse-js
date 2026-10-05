@@ -39,6 +39,24 @@ describe("removeTrailingSemi", () => {
     },
   );
 
+  // Heredocs are strings too: a comment marker or semicolon inside one must not
+  // hide the real trailing semicolon.
+  it.each([
+    ["SELECT $tag$-- text$tag$;", "SELECT $tag$-- text$tag$"],
+    ["SELECT $$;$$;", "SELECT $$;$$"],
+    ["SELECT $$a # b /* c$$; -- note", "SELECT $$a # b /* c$$ -- note"],
+  ])("handles heredocs: %j", (input, expected) => {
+    expect(removeTrailingSemi(input)).toBe(expected);
+  });
+
+  it.each([
+    "SELECT $$;$$",
+    "SELECT $t$ -- ; $t$",
+    "SELECT 1 -- costs $5; really",
+  ])("leaves semicolons inside heredocs alone: %j", (input) => {
+    expect(removeTrailingSemi(input)).toBe(input);
+  });
+
   it("strips a semicolon after a string that contains comment markers", () => {
     expect(removeTrailingSemi("SELECT '--';")).toBe("SELECT '--'");
     expect(removeTrailingSemi("SELECT '/*';")).toBe("SELECT '/*'");
