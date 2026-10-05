@@ -13,3 +13,4 @@ export { sleep } from "./sleep";
 export { getRandomInt } from "./random";
 export * from "./permutations";
 export * from "./server_version";
+export * from "./server_behavior";
