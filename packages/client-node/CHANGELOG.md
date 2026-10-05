@@ -1,12 +1,27 @@
-# 1.23.2
+# 1.24.0
+
+## New features
+
+- OpenTelemetry: richer, more actionable spans (requested by Langfuse, [#948]). ([#950])
+  - The `X-ClickHouse-Summary` counters are now attached to the `clickhouse.query` span as well (previously only on `command` / `exec` / `insert`), so the request-level metrics are visible on the outer client span.
+  - Every key present in the summary header is now recorded as `clickhouse.summary.<key>` (the set is no longer a hardcoded subset). This surfaces `total_rows_to_read` (already typed but never recorded) and `memory_usage` (peak query memory, in bytes; sent by newer servers), and picks up future server-side additions (e.g. `real_time_microseconds`) automatically.
+  - `db.response.returned_rows` is now recorded for non-streaming result consumption too (`json()` on `JSON` / `JSONObjectEachRow` / the other single-document JSON formats), not just row-streaming paths.
+  - Added a `span_attributes` field to the per-request query params (`query` / `command` / `exec` / `insert` / `ping`). Use it to enrich the operation span with application-level context — e.g. mirroring the tags you also send via the `log_comment` setting (route, tenant, surface, etc.). Caller-provided attributes never override the client's own `db.*` / `server.*` / `clickhouse.*` attributes.
+  - Added a `dangerously_log_query_text` client option (default `false`). When enabled, the raw SQL statement is attached to spans as the OpenTelemetry `db.query.text` attribute and included in the `error`-level logs emitted for a failed request. The query text may contain sensitive literals, which is why it is off by default; bound `query_params` values and credentials are **never** logged or traced regardless of this setting.
+
+[#948]: https://github.com/ClickHouse/clickhouse-js/issues/948
+[#950]: https://github.com/ClickHouse/clickhouse-js/pull/950
 
 ## Bug fixes
 
 - Fixed `Array(Date)` / `Array(Date32)` query-parameter binding (and other temporal element types nested in arrays, tuples, and maps). A JS `Date` inside a container was serialized as a bare Unix timestamp (e.g. `[1683244800]`), which the server's `Array(Date)` element parser rejects (`CANNOT_PARSE_INPUT_ASSERTION_FAILED`). Container-nested `Date` values are now emitted as a quoted UTC date string (e.g. `['2023-05-05']`), the one encoding every temporal element type accepts. Note: a `Date` used inside `Array(DateTime)` / `Array(DateTime64)` is now bound at day precision (the time-of-day is dropped), since date-only is the only form `Array(Date)` accepts; scalar `Date` / `DateTime` binding is unchanged. ([#947])
 - `insert`: column names passed via the `columns` parameter (both the array form and the `columns.except` form) are now back-quoted, so names containing spaces or other special characters produce valid SQL instead of a server-side syntax error. Column names that are already quoted (with backticks or double quotes) are passed through unchanged, preserving backward compatibility for callers that pre-quoted them. ([#949])
+- Export the `QueryParamsWithFormat`, `ClickHouseSummary`, `WithClickHouseSummary`, `ResultJSONType`, `RowJSONType` and `PingParams` types from `@clickhouse/client`. They are used in the signatures of the public API (`query`, `ping`, the result types), but could not be imported from the package root ([#997]). ([#1024])
 
 [#947]: https://github.com/ClickHouse/clickhouse-js/pull/947
 [#949]: https://github.com/ClickHouse/clickhouse-js/pull/949
+[#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
+[#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 
 # 1.23.1
 

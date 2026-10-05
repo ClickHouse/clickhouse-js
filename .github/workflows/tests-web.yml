@@ -45,11 +45,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OTEL_SERVICE_NAME: vitest
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-  OTEL_EXPORTER_OTLP_HEADERS: "authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}"
-  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js,deployment.environment=ci"
-  VITEST_OTEL_ENABLED: "true"
   VITEST_COVERAGE: "true"
   # Network resilience: npm's default of 2 fetch retries is not enough for
   # the transient registry errors (ECONNRESET) we regularly hit in CI.
@@ -68,7 +63,7 @@ jobs:
         browser: [chromium, firefox] # We're not testing in WebKit atm
         clickhouse: [head, latest]
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
         uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
@@ -79,7 +74,7 @@ jobs:
           down-flags: "--volumes"
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
 
@@ -94,12 +89,6 @@ jobs:
         run: |
           npm run test:web:all
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }}, ${{ matrix.clickhouse }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Chromium, ClickHouse
@@ -111,7 +100,8 @@ jobs:
           flags: web-all-single
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-local-cluster:
     timeout-minutes: 5
@@ -122,7 +112,7 @@ jobs:
         browser: [chromium, firefox] # We're not testing in WebKit atm
         clickhouse: [head, latest]
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
         uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
@@ -133,7 +123,7 @@ jobs:
           down-flags: "--volumes"
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
 
@@ -148,12 +138,6 @@ jobs:
         run: |
           npm run test:web:integration:local_cluster
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }}, ${{ matrix.clickhouse }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Chromium, ClickHouse
@@ -165,7 +149,8 @@ jobs:
           flags: web-integration-cluster
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-cloud:
     # Cloud secrets are not available for PRs from forks or Dependabot PRs; skip the job in those cases.
@@ -177,10 +162,10 @@ jobs:
       matrix:
         browser: [chromium, firefox] # We're not testing in WebKit atm
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
 
@@ -198,12 +183,6 @@ jobs:
         run: |
           npm run test:web:integration:cloud:jwt
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.browser }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Chromium) so Codecov
@@ -215,4 +194,5 @@ jobs:
           flags: web-integration-cloud
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
