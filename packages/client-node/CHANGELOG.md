@@ -16,10 +16,13 @@
 
 - Fixed `Array(Date)` / `Array(Date32)` query-parameter binding (and other temporal element types nested in arrays, tuples, and maps). A JS `Date` inside a container was serialized as a bare Unix timestamp (e.g. `[1683244800]`), which the server's `Array(Date)` element parser rejects (`CANNOT_PARSE_INPUT_ASSERTION_FAILED`). Container-nested `Date` values are now emitted as a quoted UTC date string (e.g. `['2023-05-05']`), the one encoding every temporal element type accepts. Note: a `Date` used inside `Array(DateTime)` / `Array(DateTime64)` is now bound at day precision (the time-of-day is dropped), since date-only is the only form `Array(Date)` accepts; scalar `Date` / `DateTime` binding is unchanged. ([#947])
 - Export the `QueryParamsWithFormat`, `ClickHouseSummary`, `WithClickHouseSummary`, `ResultJSONType`, `RowJSONType` and `PingParams` types from `@clickhouse/client`. They are used in the signatures of the public API (`query`, `ping`, the result types), but could not be imported from the package root ([#997]). ([#1024])
+- Fixed `query()` failing with `SYNTAX_ERROR` (`Multi-statements are not allowed`) when the statement ended with a semicolon followed by a comment, e.g. `SELECT 1; -- note`. The semicolon was kept, so the appended `FORMAT` clause became a second statement. Trailing semicolons are now removed even when a comment follows them, while semicolons inside string literals, quoted identifiers and comments are left alone ([#973]). ([#1031])
 
 [#947]: https://github.com/ClickHouse/clickhouse-js/pull/947
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
+[#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
+[#1031]: https://github.com/ClickHouse/clickhouse-js/pull/1031
 
 # 1.23.1
 
