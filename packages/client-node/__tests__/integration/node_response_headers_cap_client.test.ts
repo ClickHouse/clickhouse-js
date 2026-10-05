@@ -68,8 +68,7 @@ describe("[Node.js] client max_response_headers_size behavior", () => {
   }
 
   type ClientResult =
-    | { ok: true }
-    | { ok: false; code?: string; message: string };
+    { ok: true } | { ok: false; code?: string; message: string };
 
   async function tryClient(
     port: number,
