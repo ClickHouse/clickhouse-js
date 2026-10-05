@@ -75,8 +75,7 @@ export class ResultSet<
     this.response_headers =
       _response_headers !== undefined ? Object.freeze(_response_headers) : {};
     this.exceptionTag = this.response_headers["x-clickhouse-exception-tag"] as
-      | string
-      | undefined;
+      string | undefined;
 
     this.jsonHandling = jsonHandling;
   }
