@@ -1886,7 +1886,6 @@
 03215_toStartOfWeek_with_dateTime64_fix
 03215_udf_with_union
 03217_fliter_pushdown_no_keys
-03217_primary_index_memory_leak
 03221_key_condition_bug
 03221_refreshable_matview_progress
 03222_ignore_nulls_query_tree_elimination
