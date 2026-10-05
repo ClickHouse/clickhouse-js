@@ -45,11 +45,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OTEL_SERVICE_NAME: vitest
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-  OTEL_EXPORTER_OTLP_HEADERS: "authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}"
-  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js,deployment.environment=ci"
-  VITEST_OTEL_ENABLED: "true"
   VITEST_COVERAGE: "true"
   # Network resilience: npm's default of 2 fetch retries is not enough for
   # the transient registry errors (ECONNRESET) we regularly hit in CI.
