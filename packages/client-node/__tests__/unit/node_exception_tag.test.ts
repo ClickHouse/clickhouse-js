@@ -111,4 +111,137 @@ describe("[Node.js] mid-stream exception tag detection", () => {
       collectRowText(makeResultSet([Buffer.from(body, "latin1")])),
     ).rejects.toThrow("Value passed to 'throwIf' function is non-zero");
   });
+
+  // The exception block can be split across chunks at any byte (socket reads,
+  // HTTP response decompression). It must be collected until it is complete:
+  // its bytes must never be emitted as rows, and the error must contain the
+  // real server message.
+  describe("exception block split across chunks", () => {
+    const errMsg =
+      "Code: 395. DB::Exception: Value passed to 'throwIf' function is non-zero: " +
+      "while executing 'FUNCTION throwIf(equals(number, 3))'. " +
+      "(FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.9.1.1629)";
+    const serverMessage = "Value passed to 'throwIf' function is non-zero";
+    const exceptionBlock = (msg: string) =>
+      `\r\n__exception__\r\n${tag}\r\n${msg}\n${msg.length + 1} ${tag}\r\n__exception__\r\n`;
+
+    // Rows are collected from "data" events, so that every row batch that the
+    // stream emits before it fails is seen.
+    function collect(
+      rs: ReturnType<typeof makeResultSet>,
+    ): Promise<{ rows: string[]; error: Error | undefined }> {
+      const rows: string[] = [];
+      return new Promise((resolve) => {
+        const stream = rs.stream();
+        stream.on("data", (chunk: { text: string }[]) => {
+          for (const row of chunk) {
+            rows.push(row.text);
+          }
+        });
+        stream.on("error", (error: Error) => resolve({ rows, error }));
+        stream.on("end", () => resolve({ rows, error: undefined }));
+      });
+    }
+
+    // A stream that fails can discard the rows that the consumer did not
+    // read yet. The rows that reach it must be the first data rows, in order.
+    function expectDataRows(rows: string[], dataRows: string[]) {
+      expect(rows).toEqual(dataRows.slice(0, rows.length));
+    }
+
+    function inChunksOf(bytes: Buffer, size: number): Buffer[] {
+      const chunks: Buffer[] = [];
+      for (let i = 0; i < bytes.length; i += size) {
+        chunks.push(bytes.subarray(i, i + size));
+      }
+      return chunks;
+    }
+
+    for (const { name, eol } of [
+      { name: "LF", eol: "\n" },
+      { name: "CRLF", eol: "\r\n" },
+    ]) {
+      // Row text is everything before the `\n`.
+      const dataRows = ["0", "1", "2"].map((n) => n + eol.slice(0, -1));
+      const body = Buffer.from(
+        dataRows.map((row) => row + "\n").join("") + exceptionBlock(errMsg),
+        "latin1",
+      );
+
+      it(`surfaces the server error for every split into two chunks (${name} rows)`, async () => {
+        for (let at = 1; at < body.length; at++) {
+          const { rows, error } = await collect(
+            makeResultSet([body.subarray(0, at), body.subarray(at)]),
+          );
+          expect(error?.message, `split at ${at}`).toContain(serverMessage);
+          expectDataRows(rows, dataRows);
+        }
+      });
+
+      it(`surfaces the server error when the response arrives one byte at a time (${name} rows)`, async () => {
+        const { rows, error } = await collect(
+          makeResultSet(inChunksOf(body, 1)),
+        );
+        expect(error?.message).toContain(serverMessage);
+        expectDataRows(rows, dataRows);
+      });
+    }
+
+    it("surfaces the full server error when a 16 KiB block spans several chunks", async () => {
+      const details = "x".repeat(16 * 1024 - 400);
+      const longMsg =
+        "Code: 395. DB::Exception: Value passed to 'throwIf' function is non-zero: " +
+        details +
+        ". (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.9.1.1629)";
+      const body = Buffer.from("0\n1\n2\n" + exceptionBlock(longMsg), "latin1");
+      const { rows, error } = await collect(
+        makeResultSet(inChunksOf(body, 4096), "JSONEachRow"),
+      );
+      expect(error?.message).toContain(serverMessage);
+      expect(error?.message).toContain(details);
+      expectDataRows(rows, ["0", "1", "2"]);
+    });
+
+    it("returns an error when the response ends inside the block", async () => {
+      const body = Buffer.from(
+        "0\n1\n2\n" + exceptionBlock(errMsg).slice(0, -10),
+        "latin1",
+      );
+      const { error } = await collect(makeResultSet([body]));
+      expect(error?.message).toContain("exception block is incomplete");
+    });
+
+    // When the bytes after a `\r\n` are not an exception block, they are
+    // rows, wherever the response is split.
+    for (const { name, body, expected } of [
+      {
+        name: "CRLF-terminated CSV rows",
+        body: "0\r\n1\r\n2\r\n",
+        expected: ["0\r", "1\r", "2\r"],
+      },
+      {
+        name: "CRLF-terminated TSV rows, the last one is __exception__",
+        body: "a\r\n__exception__\r\n",
+        expected: ["a\r", "__exception__\r"],
+      },
+      {
+        name: "binary data with a partial block marker after a \\r\\n",
+        body: "PAR1\r\n__exc\x00\r\nend\r\n",
+        expected: ["PAR1\r", "__exc\x00\r", "end\r"],
+      },
+    ]) {
+      it(`streams a successful response split at any point (${name})`, async () => {
+        const bytes = Buffer.from(body, "latin1");
+        const splits = [[bytes], inChunksOf(bytes, 1)];
+        for (let at = 1; at < bytes.length; at++) {
+          splits.push([bytes.subarray(0, at), bytes.subarray(at)]);
+        }
+        for (const chunks of splits) {
+          const { rows, error } = await collect(makeResultSet(chunks));
+          expect(error, `chunks ${chunks.length}`).toBeUndefined();
+          expect(rows, `chunks ${chunks.length}`).toEqual(expected);
+        }
+      });
+    }
+  });
 });

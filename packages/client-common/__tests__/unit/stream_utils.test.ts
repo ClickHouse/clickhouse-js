@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   endsWithExceptionMarker,
+  errorFromExceptionBlock,
   extractErrorAtTheEndOfChunk,
+  matchExceptionBlockStart,
 } from "../../src/index";
 
 describe("utils/stream", () => {
@@ -154,6 +156,138 @@ describe("utils/stream endsWithExceptionMarker", () => {
       expect(endsWithExceptionMarker(chunk, checkTag)).toBe(expected);
     });
   }
+});
+
+describe("utils/stream matchExceptionBlockStart", () => {
+  const tag = "abcdefghijklmnop";
+  const enc = (s: string) => new TextEncoder().encode(s);
+  // The `offset` argument points right after the `\n` of the `\r\n`.
+  const opening = `__exception__\r\n${tag}`;
+
+  const cases: Array<{
+    name: string;
+    afterCRLF: string;
+    checkTag: string;
+    expected: "match" | "partial" | "none";
+  }> = [
+    {
+      name: "the complete block opening, followed by the message",
+      afterCRLF: `${opening}\r\nCode: 395. boom\n`,
+      checkTag: tag,
+      expected: "match",
+    },
+    {
+      name: "the complete block opening, at the end of the chunk",
+      afterCRLF: opening,
+      checkTag: tag,
+      expected: "match",
+    },
+    {
+      name: "no bytes after the CRLF yet",
+      afterCRLF: "",
+      checkTag: tag,
+      expected: "partial",
+    },
+    {
+      name: "a prefix of the marker",
+      afterCRLF: "__exce",
+      checkTag: tag,
+      expected: "partial",
+    },
+    {
+      name: "the marker and a prefix of the tag",
+      afterCRLF: `__exception__\r\n${tag.slice(0, 5)}`,
+      checkTag: tag,
+      expected: "partial",
+    },
+    {
+      name: "the next CRLF-terminated CSV/TSV row",
+      afterCRLF: "1\r\n",
+      checkTag: tag,
+      expected: "none",
+    },
+    {
+      name: "a row that starts like the marker but differs",
+      afterCRLF: "__exceptional\r\n",
+      checkTag: tag,
+      expected: "none",
+    },
+    {
+      name: "the marker with a different tag",
+      afterCRLF: "__exception__\r\nponmlkjihgfedcba\r\n",
+      checkTag: tag,
+      expected: "none",
+    },
+    {
+      name: "the marker without the CRLF before the tag",
+      afterCRLF: `__exception__\n${tag}\r\n`,
+      checkTag: tag,
+      expected: "none",
+    },
+    {
+      name: "an empty tag",
+      afterCRLF: "__exception__\r\n\r\n",
+      checkTag: "",
+      expected: "none",
+    },
+  ];
+
+  for (const { name, afterCRLF, checkTag, expected } of cases) {
+    it(`returns "${expected}" for ${name}`, () => {
+      const prefix = "0\r\n";
+      const bytes = enc(prefix + afterCRLF);
+      expect(matchExceptionBlockStart(bytes, prefix.length, checkTag)).toBe(
+        expected,
+      );
+    });
+  }
+});
+
+describe("utils/stream errorFromExceptionBlock", () => {
+  const tag = "abcdefghijklmnop";
+  const enc = (s: string) => new TextEncoder().encode(s);
+  const errMsg =
+    "Code: 395. DB::Exception: boom. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO)";
+  // The block bytes after the opening `\r\n`, as ClickHouse writes them.
+  const block = (msg: string) =>
+    `__exception__\r\n${tag}\r\n${msg}\n${msg.length + 1} ${tag}\r\n__exception__\r\n`;
+
+  it("returns the server error when the block is complete", () => {
+    const err = errorFromExceptionBlock(enc(block(errMsg)), tag);
+    expect(err).toMatchObject({
+      message: expect.stringContaining("boom"),
+      code: "395",
+      type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+    });
+  });
+
+  it("returns the full server error for the largest block", () => {
+    // ClickHouse limits the whole block to 16 KiB.
+    const longMsg = "Code: 395. DB::Exception: " + "x".repeat(16 * 1024 - 120);
+    const bytes = enc(block(longMsg));
+    expect(bytes.length).toBeLessThanOrEqual(16 * 1024);
+    const err = errorFromExceptionBlock(bytes, tag);
+    expect(err!.message).toContain("x".repeat(16 * 1024 - 120));
+  });
+
+  it("returns undefined while the block is incomplete", () => {
+    const incomplete = block(errMsg).slice(0, -5);
+    expect(errorFromExceptionBlock(enc(incomplete), tag)).toBeUndefined();
+  });
+
+  it("returns an error when the stream ends before the block is complete", () => {
+    const incomplete = block(errMsg).slice(0, -5);
+    const err = errorFromExceptionBlock(enc(incomplete), tag, true);
+    expect(err).toBeInstanceOf(Error);
+    expect(err!.message).toContain("exception block is incomplete");
+  });
+
+  it("returns an error when the block exceeds 16 KiB without its closing marker", () => {
+    const tooLong = `__exception__\r\n${tag}\r\n${"x".repeat(16 * 1024)}`;
+    const err = errorFromExceptionBlock(enc(tooLong), tag);
+    expect(err).toBeInstanceOf(Error);
+    expect(err!.message).toContain("exception block is malformed");
+  });
 });
 
 /**

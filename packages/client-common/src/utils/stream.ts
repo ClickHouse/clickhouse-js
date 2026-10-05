@@ -126,3 +126,83 @@ export function endsWithExceptionMarker(
   }
   return chunk[pos++] === CARET_RETURN && chunk[pos] === NEWLINE;
 }
+
+/** ClickHouse caps the whole mid-stream exception block at 16 KiB. */
+const MAX_EXCEPTION_BLOCK_SIZE = 16 * 1024;
+
+/** See {@link matchExceptionBlockStart}. */
+export type ExceptionBlockStartMatch = "match" | "partial" | "none";
+
+/**
+ * A mid-stream exception block (ClickHouse 25.11+) opens with
+ * `\r\n__exception__\r\n<exceptionTag>`, where `exceptionTag` is the random
+ * per-response token echoed by the `x-clickhouse-exception-tag` header.
+ *
+ * Call this for a `\n` that is preceded by `\r`, with `offset` set to the index
+ * right after that `\n`. Returns:
+ * - `"match"` when the bytes from `offset` complete the block opening;
+ * - `"partial"` when the bytes from `offset` are an incomplete prefix of it,
+ *   so that the next chunk is necessary to decide;
+ * - `"none"` otherwise (e.g. a CRLF-terminated CSV/TSV row, or binary data).
+ */
+export function matchExceptionBlockStart(
+  bytes: Uint8Array,
+  offset: number,
+  exceptionTag: string,
+): ExceptionBlockStartMatch {
+  // Same reasoning as in endsWithExceptionMarker: the tag is the discriminator.
+  if (exceptionTag.length === 0) {
+    return "none";
+  }
+  // Layout after the opening `\r\n`: __exception__ \r \n <exceptionTag>
+  const expectedLength = EXCEPTION_MARKER.length + 2 + exceptionTag.length;
+  const available = Math.min(bytes.length - offset, expectedLength);
+  for (let i = 0; i < available; i++) {
+    let expected: number;
+    if (i < EXCEPTION_MARKER.length) {
+      expected = EXCEPTION_MARKER.charCodeAt(i);
+    } else if (i === EXCEPTION_MARKER.length) {
+      expected = CARET_RETURN;
+    } else if (i === EXCEPTION_MARKER.length + 1) {
+      expected = NEWLINE;
+    } else {
+      expected = exceptionTag.charCodeAt(i - EXCEPTION_MARKER.length - 2);
+    }
+    if (bytes[offset + i] !== expected) {
+      return "none";
+    }
+  }
+  return available === expectedLength ? "match" : "partial";
+}
+
+/**
+ * Parses a mid-stream exception block, which can arrive split across several
+ * chunks. `block` holds the bytes of the block received so far, from its
+ * opening (see {@link matchExceptionBlockStart}) onwards.
+ *
+ * Returns the server error once the block is complete, i.e. when it ends with
+ * `<exceptionTag>\r\n__exception__\r\n`. Returns `undefined` while more bytes
+ * are necessary, unless `isEndOfStream` is set (the response ended before the
+ * block was complete) or the block exceeds the 16 KiB that ClickHouse allows;
+ * then it returns an error that tells that the block is incomplete or malformed.
+ */
+export function errorFromExceptionBlock(
+  block: Uint8Array,
+  exceptionTag: string,
+  isEndOfStream = false,
+): Error | undefined {
+  if (endsWithExceptionMarker(block, exceptionTag)) {
+    return extractErrorAtTheEndOfChunk(block, exceptionTag);
+  }
+  if (isEndOfStream) {
+    return new Error(
+      "there was an error in the stream, but the exception block is incomplete",
+    );
+  }
+  if (block.length > MAX_EXCEPTION_BLOCK_SIZE) {
+    return new Error(
+      "there was an error in the stream, but the exception block is malformed",
+    );
+  }
+  return undefined;
+}

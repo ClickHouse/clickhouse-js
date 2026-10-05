@@ -173,6 +173,8 @@ export {
   isJWTAuth,
   extractErrorAtTheEndOfChunk,
   endsWithExceptionMarker,
+  matchExceptionBlockStart,
+  errorFromExceptionBlock,
   CARET_RETURN,
 } from "./utils";
 export { LogWriter, DefaultLogger, type LogWriterParams } from "./logger";
