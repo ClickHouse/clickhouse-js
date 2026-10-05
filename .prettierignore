@@ -1,0 +1,3 @@
+# Mirrored into ClickHouse/ClickHouse docs (see .github/workflows/docs_sync.yml)
+# and follows that repository's formatting conventions.
+docs/clickhouse-docs/

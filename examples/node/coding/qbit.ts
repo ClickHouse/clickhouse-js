@@ -87,12 +87,51 @@ const search = await client.query({
 const nearest = await search.json<{ id: number; dist: number }>();
 console.log("Nearest neighbours of the reference vector:");
 console.log(nearest);
-// The reference vector is exactly row #1, so it must be the closest match (dist 0).
+// The reference vector is exactly row #1, so it must rank first.
 assert.deepStrictEqual(
   nearest.map((r) => r.id),
   [1, 3, 2],
 );
-assert.strictEqual(nearest[0].dist, 0);
+// Its distance is *approximately*, not exactly, zero. Reading only the top
+// `bits` bit planes means the dropped bits have to be guessed: the server
+// reconstructs each value to the middle of the range the bits it did read
+// describe, so a vector identical to the reference still lands a fraction of
+// that range away from it. How large the residual is depends on the server
+// version (ClickHouse < 26.7 zero-filled the dropped bits, which returned
+// exactly 0 here) and on the SIMD kernel the CPU picks, so assert that the
+// exact match is decisively closer than the runner-up rather than comparing
+// the distance to a hard-coded value.
+assert.ok(
+  nearest[0].dist < nearest[1].dist / 10,
+  `expected the exact match to be much closer than the runner-up, ` +
+    `got ${nearest[0].dist} vs ${nearest[1].dist}`,
+);
+
+// Requesting every bit plane (32 for Float32) reads the whole column and
+// reconstructs nothing, so the search becomes exact -- and the vector that is
+// identical to the reference is then at distance exactly 0. That is the other
+// end of the trade-off the `bits` argument controls.
+const exactSearch = await client.query({
+  query: `
+    SELECT id,
+           L2DistanceTransposed(vec, {ref:Array(Float32)}, {bits:UInt8}) AS dist
+    FROM ${tableName}
+    ORDER BY dist ASC
+  `,
+  query_params: {
+    ref: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+    bits: 32,
+  },
+  format: "JSONEachRow",
+});
+const exact = await exactSearch.json<{ id: number; dist: number }>();
+console.log("Nearest neighbours at full precision:");
+console.log(exact);
+assert.deepStrictEqual(
+  exact.map((r) => r.id),
+  [1, 3, 2],
+);
+assert.strictEqual(exact[0].dist, 0);
 
 // Bit-plane subcolumns (`vec.N`) are exposed as FixedString and therefore are
 // NOT valid UTF-8. Selecting them directly with a JSON* format would force the

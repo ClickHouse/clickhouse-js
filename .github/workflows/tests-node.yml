@@ -45,11 +45,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OTEL_SERVICE_NAME: vitest
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-  OTEL_EXPORTER_OTLP_HEADERS: "authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}"
-  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=clickhouse-js,deployment.environment=ci"
-  VITEST_OTEL_ENABLED: "true"
   VITEST_COVERAGE: "true"
   # Network resilience: npm's default of 2 fetch retries is not enough for
   # the transient registry errors (ECONNRESET) we regularly hit in CI.
@@ -63,10 +58,10 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
 
@@ -108,10 +103,10 @@ jobs:
       matrix:
         node: [20, 22, 24, 26]
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -128,24 +123,19 @@ jobs:
         run: |
           npm run test:node:unit
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24) so Codecov
         # receives exactly one upload per flag (see codecov.yml).
         if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           name: node-unit
           flags: node-unit
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-local-single-node:
     timeout-minutes: 5
@@ -158,25 +148,25 @@ jobs:
         log_level: [undefined, TRACE]
         include:
           - node: 24
-            clickhouse: 26.2
+            clickhouse: "25.8"
             log_level: undefined
           - node: 24
-            clickhouse: 26.1
+            clickhouse: "26.3"
             log_level: undefined
           - node: 24
-            clickhouse: 25.12
+            clickhouse: "26.5"
             log_level: undefined
           - node: 24
-            clickhouse: 25.11
+            clickhouse: "26.6"
             log_level: undefined
           - node: 24
-            clickhouse: 25.10
+            clickhouse: "26.7"
             log_level: undefined
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -184,7 +174,7 @@ jobs:
           down-flags: "--volumes"
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -202,24 +192,19 @@ jobs:
         run: |
           npm run test:node:integration:tls
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }}, ${{ matrix.clickhouse }}, ${{ matrix.log_level }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24, ClickHouse
         # latest, default log level) so Codecov receives exactly one upload per flag.
         if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 && matrix.clickhouse == 'latest' && matrix.log_level == 'undefined' }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           name: node-integration-single
           flags: node-integration-single
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-local-cluster:
     timeout-minutes: 5
@@ -231,10 +216,10 @@ jobs:
         clickhouse: [head, latest]
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -242,7 +227,7 @@ jobs:
           down-flags: "--volumes"
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -254,24 +239,19 @@ jobs:
         run: |
           npm run test:node:integration:local_cluster
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24, ClickHouse
         # latest) so Codecov receives exactly one upload per flag.
         if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 && matrix.clickhouse == 'latest' }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           name: node-integration-cluster
           flags: node-integration-cluster
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
 
   integration-tests-cloud:
     # Cloud secrets are not available for PRs from forks or Dependabot PRs; skip the job in those cases.
@@ -284,10 +264,10 @@ jobs:
         node: [20, 22, 24, 26]
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup NodeJS ${{ matrix.node }}
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -303,21 +283,16 @@ jobs:
         run: |
           npm run test:node:integration:cloud
 
-      - name: Export coverage metrics
-        env:
-          COVERAGE_REPORT_NAME: ${{ github.job }} (${{ matrix.node }})
-        run: |
-          node .scripts/export-coverage-metrics.mjs
-
       - name: Upload coverage to Codecov
         # Codecov token is not available for Dependabot PRs or PRs from forks; skip the upload in those cases.
         # Upload coverage from a single canonical combination (Node 24) so Codecov
         # receives exactly one upload per flag (see codecov.yml).
         if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           name: node-integration-cloud
           flags: node-integration-cloud
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: true
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
