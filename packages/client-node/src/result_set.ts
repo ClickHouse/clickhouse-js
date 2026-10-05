@@ -117,8 +117,7 @@ export class ResultSet<
     if (_response_headers !== undefined) {
       this.response_headers = Object.freeze(_response_headers);
       this.exceptionTag = _response_headers[EXCEPTION_TAG_HEADER_NAME] as
-        | string
-        | undefined;
+        string | undefined;
     }
   }
 
