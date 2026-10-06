@@ -162,6 +162,8 @@ function dataTypeReader(node: Node): Reader<unknown> {
       return variantReader(node);
     case "Nested":
       return nestedReader(node);
+    case "Tuple":
+      return tupleReader(node);
 
     // --- parameterized scalars ---
     case "FixedString":
@@ -211,7 +213,9 @@ function tupleReader(node: Node): Reader<unknown> {
   const readers = node.arguments.map(astToReader);
   const names = node.element_names;
   const named =
-    names.length === readers.length && names.every((n) => n.length > 0);
+    names.length > 0 &&
+    names.length === readers.length &&
+    names.every((n) => n.length > 0);
   if (named) {
     const fields: Record<string, Reader<unknown>> = {};
     for (let i = 0; i < names.length; i++) fields[names[i]!] = readers[i]!;
