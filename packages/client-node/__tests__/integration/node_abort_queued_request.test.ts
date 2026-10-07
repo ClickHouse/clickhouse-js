@@ -41,7 +41,7 @@ describe("[Node.js] Aborting a request queued for a socket", () => {
     const command = (query: string, abort_signal?: AbortSignal) =>
       client!.command({ query, abort_signal });
 
-    // The first request holds the only socket, so the next two wait in the agent queue.
+    // The first request holds the only socket, so the next two wait for it.
     const first = command("SELECT 200");
     const controller = new AbortController();
     const aborted = command("SELECT 0", controller.signal).catch((e) => e);
