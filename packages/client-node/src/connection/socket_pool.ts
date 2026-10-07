@@ -447,6 +447,10 @@ export class SocketPool {
                     },
                   });
                 }
+                // Node.js emits "free" again when it hands this socket to a request that was
+                // aborted while queued; without this, the previous timer is orphaned and later
+                // destroys the socket under whichever request is using it by then.
+                clearTimeout(newSocketInfo.idle_timeout_handle);
                 const freed_at_timestamp_ms = Date.now();
                 newSocketInfo.freed_at_timestamp_ms = freed_at_timestamp_ms;
                 // Avoiding the built-in socket.timeout() method usage here,
