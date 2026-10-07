@@ -1,3 +1,12 @@
+# 1.24.1
+
+## Bug fixes
+
+- Fixed a `socket hang up` error on a request that took over a socket released by an earlier request, when another request queued for that socket was aborted in between. The orphaned idle-socket timer from the earlier release destroyed the socket `idle_socket_ttl` later, mid-request (Node.js only) ([#1040]). ([#1041])
+
+[#1040]: https://github.com/ClickHouse/clickhouse-js/issues/1040
+[#1041]: https://github.com/ClickHouse/clickhouse-js/pull/1041
+
 # 1.24.0
 
 ## New features
