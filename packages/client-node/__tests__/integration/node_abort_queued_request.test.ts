@@ -6,7 +6,7 @@ import type { ClickHouseClient } from "@clickhouse/client-common";
 import type { ClickHouseClientConfigOptions } from "@clickhouse/client";
 import type Stream from "stream";
 
-// The server answers "SELECT <ms>" after <ms> milliseconds.
+// The server answers "SELECT <ms>" after <ms> milliseconds, capped at 5 seconds.
 describe("[Node.js] Aborting a request queued for a socket", () => {
   let server: http.Server | undefined;
   let client: ClickHouseClient<Stream.Readable> | undefined;
@@ -25,7 +25,8 @@ describe("[Node.js] Aborting a request queued for a socket", () => {
       let body = "";
       req.on("data", (chunk) => (body += chunk));
       req.on("end", () => {
-        const delay = Number(/SELECT (\d+)/.exec(body)?.[1] ?? 0);
+        const requested = Number(/SELECT (\d+)/.exec(body)?.[1] ?? 0);
+        const delay = requested <= 5000 ? requested : 5000;
         setTimeout(() => {
           res.write("Ok.");
           res.end();
