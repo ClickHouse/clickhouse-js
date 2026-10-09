@@ -64,7 +64,7 @@ jobs:
           grep -m1 'model name' /proc/cpuinfo || true
           # The server may still be starting; poll briefly so the version is captured.
           for _ in $(seq 1 30); do
-            chv=$(curl -s 'http://localhost:8123/?query=SELECT%20version()')
+            chv=$(curl -s 'http://localhost:8123/?query=SELECT%20version()' || true)
             [ -n "$chv" ] && break
             sleep 1
           done
