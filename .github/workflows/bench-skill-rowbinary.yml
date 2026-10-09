@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse (latest) in Docker
-        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
         env:
           CLICKHOUSE_VERSION: latest
         with:
@@ -64,8 +64,8 @@ jobs:
           grep -m1 'model name' /proc/cpuinfo || true
           # The server may still be starting; poll briefly so the version is captured.
           for _ in $(seq 1 30); do
-            chv=$(curl -s 'http://localhost:8123/?query=SELECT%20version()')
-            [ -n "$chv" ] && break
+            if chv=$(curl -sf 'http://localhost:8123/?query=SELECT%20version()') && [ -n "$chv" ]; then break; fi
+            chv=
             sleep 1
           done
           echo "ClickHouse: ${chv:-<unavailable>}"

@@ -118,15 +118,6 @@ export default defineConfig({
       CLICKHOUSE_TEST_SKIP_INIT: process.env.CLICKHOUSE_TEST_SKIP_INIT,
       CLICKHOUSE_TEST_ENVIRONMENT: process.env.CLICKHOUSE_TEST_ENVIRONMENT,
     },
-    experimental: {
-      openTelemetry: {
-        enabled:
-          process.env.VITEST_OTEL_ENABLED === "true" &&
-          // not set in dependabot PRs
-          !!process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
-        sdkPath: "./packages/client-node/vitest.otel.js",
-      },
-    },
     retry: process.env.CI ? 2 : 0,
   },
   resolve: {

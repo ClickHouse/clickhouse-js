@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { ClickHouseClient } from "@clickhouse/client-common";
 import { createTableWithFields } from "../fixtures/table_with_fields";
-import { createTestClient } from "../utils";
+import { createTestClient, isDateTime64FromJSONNumberBroken } from "../utils";
 
 describe("DateTime", () => {
   let client: ClickHouseClient;
@@ -132,7 +132,10 @@ describe("DateTime", () => {
   });
 
   describe("DateTime64(3)", () => {
-    it("should insert DateTime64(3) and get it back", async () => {
+    it("should insert DateTime64(3) and get it back", async ({ skip }) => {
+      if (await isDateTime64FromJSONNumberBroken(client)) {
+        skip("server clamps epoch-ms JSON numbers in DateTime64(3)");
+      }
       const table = await createTableWithFields(client, "d DateTime64(3)");
       await client.insert({
         table,
@@ -170,7 +173,12 @@ describe("DateTime", () => {
       ]);
     });
 
-    it("should insert DateTime64(3) and get it back (different timezone)", async () => {
+    it("should insert DateTime64(3) and get it back (different timezone)", async ({
+      skip,
+    }) => {
+      if (await isDateTime64FromJSONNumberBroken(client)) {
+        skip("server clamps epoch-ms JSON numbers in DateTime64(3)");
+      }
       const table = await createTableWithFields(
         client,
         `d DateTime64(3, 'Asia/Istanbul')`,
