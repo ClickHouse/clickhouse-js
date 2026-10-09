@@ -166,7 +166,7 @@ jobs:
       # The single-node service sends CORS headers, so the browser can reach it
       # cross-origin from the vitest page (see its config.xml).
       - name: Start ClickHouse (stable) in Docker
-        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
         env:
           CLICKHOUSE_VERSION: latest
         with:

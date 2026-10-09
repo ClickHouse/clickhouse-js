@@ -128,7 +128,7 @@ jobs:
         # Upload coverage from a single canonical combination (Node 24) so Codecov
         # receives exactly one upload per flag (see codecov.yml).
         if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           name: node-unit
           flags: node-unit
@@ -148,25 +148,22 @@ jobs:
         log_level: [undefined, TRACE]
         include:
           - node: 24
-            clickhouse: "25.8"
-            log_level: undefined
-          - node: 24
             clickhouse: "26.3"
             log_level: undefined
           - node: 24
-            clickhouse: "26.5"
-            log_level: undefined
-          - node: 24
-            clickhouse: "26.6"
-            log_level: undefined
-          - node: 24
             clickhouse: "26.7"
+            log_level: undefined
+          - node: 24
+            clickhouse: "26.8"
+            log_level: undefined
+          - node: 24
+            clickhouse: "26.9"
             log_level: undefined
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -197,7 +194,7 @@ jobs:
         # Upload coverage from a single canonical combination (Node 24, ClickHouse
         # latest, default log level) so Codecov receives exactly one upload per flag.
         if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 && matrix.clickhouse == 'latest' && matrix.log_level == 'undefined' }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           name: node-integration-single
           flags: node-integration-single
@@ -219,7 +216,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse cluster (version - ${{ matrix.clickhouse }}) in Docker
-        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
@@ -244,7 +241,7 @@ jobs:
         # Upload coverage from a single canonical combination (Node 24, ClickHouse
         # latest) so Codecov receives exactly one upload per flag.
         if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 && matrix.clickhouse == 'latest' }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           name: node-integration-cluster
           flags: node-integration-cluster
@@ -288,7 +285,7 @@ jobs:
         # Upload coverage from a single canonical combination (Node 24) so Codecov
         # receives exactly one upload per flag (see codecov.yml).
         if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           name: node-integration-cloud
           flags: node-integration-cloud
