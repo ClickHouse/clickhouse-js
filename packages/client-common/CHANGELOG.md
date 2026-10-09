@@ -1,3 +1,11 @@
+# Unreleased
+
+## Bug fixes
+
+- Quote table identifiers in insert queries while preserving dots inside quoted names and qualified database/table names. ([#1018])
+
+[#1018]: https://github.com/ClickHouse/clickhouse-js/pull/1018
+
 # 1.23.0
 
 ## Migration Notes

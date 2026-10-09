@@ -2,7 +2,7 @@ import {
   ClickHouseLogLevel,
   type BaseClickHouseClientConfigOptions,
   type ClickHouseClient,
-} from "@clickhouse/client-common";
+} from "../../src";
 import { TestLogger } from "./test_logger";
 
 /**
