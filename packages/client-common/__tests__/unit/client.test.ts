@@ -65,6 +65,21 @@ describe("client", () => {
   );
 
   describe("getInsertQuery table identifier quoting", () => {
+    it.each([
+      ['"my.table"', '"my.table"'],
+      ["`my.table`", "`my.table`"],
+      ['"my.db"."my.table"', '"my.db"."my.table"'],
+      ['my_db."my.table"', '`my_db`."my.table"'],
+      ['"my.db".my_table', '"my.db".`my_table`'],
+      ['"my\\\".table"', '"my\\\".table"'],
+      ['"my"".table"', '"my"".table"'],
+      ["`my\\`.table`", "`my\\`.table`"],
+    ])("preserves quoted dots in %s", (table, expected) => {
+      expect(getInsertQuery({ table, values: [] }, "JSONEachRow")).toBe(
+        `INSERT INTO ${expected} FORMAT JSONEachRow`,
+      );
+    });
+
     it("quotes plain table name with backticks", () => {
       const query = getInsertQuery(
         {

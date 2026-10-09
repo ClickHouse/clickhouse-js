@@ -740,13 +740,30 @@ export function quoteIdentifier(identifier: string): string {
 
 export function formatTableName(table: string): string {
   const trimmed = table.trim();
-  if (trimmed.includes(".")) {
-    return trimmed
-      .split(".")
-      .map((part) => quoteIdentifier(part))
-      .join(".");
+  const parts: string[] = [];
+  let start = 0;
+  let quote: string | undefined;
+  for (let i = 0; i < trimmed.length; i++) {
+    const char = trimmed[i];
+    if (quote !== undefined) {
+      if (char === "\\") {
+        i++;
+      } else if (char === quote) {
+        if (trimmed[i + 1] === quote) {
+          i++;
+        } else {
+          quote = undefined;
+        }
+      }
+    } else if (char === "`" || char === '"') {
+      quote = char;
+    } else if (char === ".") {
+      parts.push(quoteIdentifier(trimmed.slice(start, i)));
+      start = i + 1;
+    }
   }
-  return quoteIdentifier(trimmed);
+  parts.push(quoteIdentifier(trimmed.slice(start)));
+  return parts.join(".");
 }
 
 export function getInsertQuery<T>(
