@@ -62,6 +62,28 @@ function isEnumTypeUpper(u: string): boolean {
   return u === "ENUM" || u === "ENUM8" || u === "ENUM16";
 }
 
+const integerTypeNames = new Set([
+  "INT8",
+  "INT16",
+  "INT32",
+  "INT64",
+  "INT128",
+  "INT256",
+  "UINT8",
+  "UINT16",
+  "UINT32",
+  "UINT64",
+  "UINT128",
+  "UINT256",
+  "TINYINT",
+  "SMALLINT",
+  "MEDIUMINT",
+  "INT",
+  "INTEGER",
+  "BIGINT",
+  "INT1",
+]);
+
 /// Does `text` parse in FULL as a numeric literal — the TS equivalent of the
 /// C++ `strtod` (float) / `strtoull` (integer) + end-pointer check? The lexer
 /// is deliberately lenient and can hand back a half-formed lexeme such as `1e`
@@ -253,7 +275,7 @@ class Parser {
       if (this.matchWords(["VARYING"])) return "VARYING";
     } else if (u === "DOUBLE") {
       if (this.matchWords(["PRECISION"])) return "PRECISION";
-    } else if (u.indexOf("INT") !== -1) {
+    } else if (integerTypeNames.has(u)) {
       /// MySQL-compatible SIGNED / UNSIGNED, optionally after `(width)`.
       if (this.matchWords(["SIGNED"])) return "SIGNED";
       if (this.matchWords(["UNSIGNED"])) return "UNSIGNED";

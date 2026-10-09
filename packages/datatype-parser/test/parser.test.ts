@@ -111,6 +111,28 @@ describe("parseDataType", () => {
     });
   });
 
+  it("uses exact integer names for MySQL modifiers", () => {
+    for (const typeStr of [
+      "INT(11)",
+      "INT(10) UNSIGNED",
+      "INTEGER SIGNED",
+      "TINYINT UNSIGNED",
+      "BIGINT SIGNED",
+    ]) {
+      expect(parseDataType(typeStr).ok(), `expected ${typeStr} to parse`).toBe(
+        true,
+      );
+    }
+
+    for (const typeName of ["pointInPolygon", "quantileInterpolatedWeighted"]) {
+      expect(json(`${typeName}(1)`)).toEqual({
+        type: "DataType",
+        name: typeName,
+        arguments: [{ type: "Literal", value_type: "UInt64", value: "1" }],
+      });
+    }
+  });
+
   it("compact output has no whitespace", () => {
     const r = parseDataType("Array(String)");
     expect(r.ok()).toBe(true);
