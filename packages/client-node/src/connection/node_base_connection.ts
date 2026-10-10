@@ -497,7 +497,11 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     function onAbort() {
       controller.abort();
     }
-    params.abort_signal?.addEventListener("abort", onAbort);
+    if (params.abort_signal?.aborted) {
+      onAbort();
+    } else {
+      params.abort_signal?.addEventListener("abort", onAbort);
+    }
     return {
       controller,
       controllerCleanup: () => {

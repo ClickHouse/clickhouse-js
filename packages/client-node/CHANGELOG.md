@@ -1,3 +1,9 @@
+# 1.24.2
+
+## Bug fixes
+
+- Fixed requests ignoring an abort signal that was already aborted before the client call. The Node.js client now rejects these requests with `AbortError` before sending them to the HTTP server (Node.js only).
+
 # 1.24.1
 
 ## Bug fixes
