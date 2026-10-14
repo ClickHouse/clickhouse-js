@@ -181,10 +181,13 @@ export interface InsertParams<
   /**
    * Allows specifying which columns the data will be inserted into.
    * Accepts either an array of strings (column names) or an object of {@link InsertColumnsExcept} type.
+   * Column names are automatically back-quoted, so names containing spaces or
+   * other special characters are handled correctly; a name that is already
+   * quoted (with backticks or double quotes) is used as-is.
    * Examples of generated queries:
    *
-   * - An array such as `['a', 'b']` will generate: `INSERT INTO table (a, b) FORMAT DataFormat`
-   * - An object such as `{ except: ['a', 'b'] }` will generate: `INSERT INTO table (* EXCEPT (a, b)) FORMAT DataFormat`
+   * - An array such as `['a', 'b']` generates: INSERT INTO table (`a`, `b`) FORMAT DataFormat
+   * - An object such as `{ except: ['a', 'b'] }` generates: INSERT INTO table (* EXCEPT (`a`, `b`)) FORMAT DataFormat
    *
    * By default, the data is inserted into all columns of the {@link InsertParams.table},
    * and the generated statement will be: `INSERT INTO table FORMAT DataFormat`.
@@ -727,6 +730,23 @@ function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
   );
 }
 
+/** Quotes a user-provided column identifier for an `INSERT` column list.
+ *  Backslashes and backticks are escaped the same way the ClickHouse server
+ *  does (see `backQuote`), so column names containing spaces or other special
+ *  characters produce valid SQL. Identifiers that are already quoted (with
+ *  backticks or double quotes) are passed through unchanged, preserving
+ *  backward compatibility for callers that pre-quoted their column names. */
+function escapeColumn(column: string): string {
+  if (
+    column.length >= 2 &&
+    ((column.startsWith("`") && column.endsWith("`")) ||
+      (column.startsWith('"') && column.endsWith('"')))
+  ) {
+    return column;
+  }
+  return `\`${column.replace(/\\/g, "\\\\").replace(/`/g, "\\`")}\``;
+}
+
 function getInsertQuery<T>(
   params: InsertParams<T>,
   format: DataFormat,
@@ -734,12 +754,14 @@ function getInsertQuery<T>(
   let columnsPart = "";
   if (params.columns !== undefined) {
     if (Array.isArray(params.columns) && params.columns.length > 0) {
-      columnsPart = ` (${params.columns.join(", ")})`;
+      columnsPart = ` (${params.columns.map(escapeColumn).join(", ")})`;
     } else if (
       isInsertColumnsExcept(params.columns) &&
       params.columns.except.length > 0
     ) {
-      columnsPart = ` (* EXCEPT (${params.columns.except.join(", ")}))`;
+      columnsPart = ` (* EXCEPT (${params.columns.except
+        .map(escapeColumn)
+        .join(", ")}))`;
     }
   }
   return `INSERT INTO ${params.table.trim()}${columnsPart} FORMAT ${format}`;

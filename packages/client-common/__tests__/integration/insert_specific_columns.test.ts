@@ -243,6 +243,58 @@ describe("Insert with specific columns", () => {
     });
   });
 
+  describe("columns with special characters (#945)", () => {
+    it("should insert into columns whose names contain spaces", async () => {
+      table = await createTableWithFields(
+        client,
+        "`test id` String, name String",
+      );
+
+      await client.insert({
+        table,
+        values: [{ "test id": "foo", name: "bar" }],
+        format: "JSONEachRow",
+        columns: ["test id", "name"],
+      });
+
+      const result = await client
+        .query({
+          query: `SELECT \`test id\`, name
+                  FROM ${table}`,
+          format: "JSONEachRow",
+        })
+        .then((r) => r.json());
+
+      expect(result).toEqual([{ "test id": "foo", name: "bar" }]);
+    });
+
+    it("should exclude a column whose name contains spaces via EXCEPT", async () => {
+      table = await createTableWithFields(
+        client,
+        "`test col` String, keep String",
+      );
+
+      await client.insert({
+        table,
+        values: [{ id: 1, keep: "kept" }],
+        format: "JSONEachRow",
+        columns: {
+          except: ["test col"],
+        },
+      });
+
+      const result = await client
+        .query({
+          query: `SELECT id, \`test col\`, keep
+                  FROM ${table}`,
+          format: "JSONEachRow",
+        })
+        .then((r) => r.json());
+
+      expect(result).toEqual([{ id: 1, "test col": "", keep: "kept" }]);
+    });
+  });
+
   async function select() {
     const rs = await client.query({
       query: `SELECT *
