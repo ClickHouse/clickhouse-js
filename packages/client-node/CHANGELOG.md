@@ -1,3 +1,12 @@
+# 1.24.2
+
+## Bug fixes
+
+- Fixed `createClient` throwing `Unknown URL parameters: application_id` when the documented `application_id` URL parameter was used. The URL configuration parser now accepts `application_id` as an alias of the `application` option (the name listed in the URL parameters documentation table, and the request parameter the client sends). ([#1052])
+
+[#1052]: https://github.com/ClickHouse/clickhouse-js/issues/1052
+[#1054]: https://github.com/ClickHouse/clickhouse-js/pull/1054
+
 # 1.24.1
 
 ## Bug fixes

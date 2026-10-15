@@ -533,7 +533,11 @@ export function loadConfigOptionsFromURL(
       } else {
         // static known parameters
         switch (key) {
+          // `application_id` is the name documented in the URL parameters
+          // table (and the request parameter the client sends), so accept it
+          // as an alias of the `application` option.
           case "application":
+          case "application_id":
             config.application = value;
             break;
           case "pathname":
