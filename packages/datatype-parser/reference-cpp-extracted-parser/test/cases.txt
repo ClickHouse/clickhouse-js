@@ -57,6 +57,10 @@ CHAR VARYING
 INT SIGNED
 INT UNSIGNED
 
+pointInPolygon(1)
+quantileInterpolatedWeighted(1)
+intDiv(1, 2)
+
 # legacy object + dynamic
 Object('json')
 Dynamic
