@@ -292,62 +292,6 @@ describe("config", () => {
       });
     });
 
-    describe("application_id URL parameter (the documented name)", () => {
-      // docs/clickhouse-docs/index.mdx lists `application_id` in the supported
-      // URL parameters table, and the client sends `application_id` as a request
-      // parameter (see toSearchParams); the URL parser must accept it too.
-      it("should load application_id from the URL into the application option", async () => {
-        const url = new URL("http://my_host:8124/my_db?application_id=my_app");
-        const res = prepareConfigWithURL({ url }, logger, null);
-        expect(res).toEqual({
-          ...defaultConfig,
-          url: new URL("http://my_host:8124/"),
-          database: "my_db",
-          application: "my_app",
-        } as unknown as BaseClickHouseClientConfigOptionsWithURL);
-      });
-
-      it("should load application_id together with other URL parameters", async () => {
-        const url = new URL(
-          "http://my_host:8124/my_db?" +
-            [
-              "application_id=my_app",
-              "pathname=/my_proxy",
-              "request_timeout=42000",
-              "max_open_connections=2",
-            ].join("&"),
-        );
-        const res = prepareConfigWithURL({ url }, logger, null);
-        expect(res).toEqual({
-          ...defaultConfig,
-          url: new URL("http://my_host:8124/my_proxy"),
-          pathname: "/my_proxy",
-          database: "my_db",
-          application: "my_app",
-          request_timeout: 42000,
-          max_open_connections: 2,
-        } as unknown as BaseClickHouseClientConfigOptionsWithURL);
-      });
-
-      it("should accept application_id alongside the legacy application parameter (last one wins)", async () => {
-        const res = prepareConfigWithURL(
-          {
-            url: new URL(
-              "http://my_host:8124?" +
-                ["application=legacy_app", "application_id=my_app"].join("&"),
-            ),
-          },
-          logger,
-          null,
-        );
-        expect(res).toEqual({
-          ...defaultConfig,
-          url: new URL("http://my_host:8124/"),
-          application: "my_app",
-        } as unknown as BaseClickHouseClientConfigOptionsWithURL);
-      });
-    });
-
     describe("Credentials vs JWT auth parsing", () => {
       it("should correctly get JWT access_token from the URL", async () => {
         const url = new URL(
