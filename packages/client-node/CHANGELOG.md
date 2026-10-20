@@ -24,6 +24,12 @@
 [#1069]: https://github.com/ClickHouse/clickhouse-js/pull/1069
 [#1070]: https://github.com/ClickHouse/clickhouse-js/pull/1070
 
+## Improvements
+
+- The bundled `clickhouse-js-node-troubleshooting` skill now covers the `Multi-statements are not allowed` error caused by a semicolon before a trailing comment, and the new `sql_lexer` option. ([#1071])
+
+[#1071]: https://github.com/ClickHouse/clickhouse-js/pull/1071
+
 # 1.24.1
 
 ## Bug fixes

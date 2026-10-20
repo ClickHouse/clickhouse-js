@@ -15,7 +15,7 @@ import ConnectionDetails from '/snippets/_gather_your_details_http.mdx';
 The official JS client for connecting to ClickHouse.
 The client is written in TypeScript and provides typings for the client public API.
 
-It has zero dependencies, is optimized for maximum performance, and is tested with various ClickHouse versions and configurations (on-premise single node, on-premise cluster, and ClickHouse Cloud).
+It has no runtime dependencies (the official [`@clickhouse/lexer`](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md) can optionally be passed in for exact SQL handling), is optimized for maximum performance, and is tested with various ClickHouse versions and configurations (on-premise single node, on-premise cluster, and ClickHouse Cloud).
 
 There are two different versions of the client available for different environments:
 - `@clickhouse/client` - Node.js only
@@ -133,6 +133,7 @@ When creating a client instance, the following connection settings can be adjust
 | **keep_alive**?: `{ **enabled**?: boolean }`                             | Enabled by default in both Node.js and Web versions.                                | -                       | -                                                                                          |
 | **http_headers**?: `Record<string, string>`                              | Additional HTTP headers for outgoing ClickHouse requests.                           | -                       | [Reverse proxy with authentication docs](/integrations/language-clients/js/index#reverse-proxy-with-authentication)        |
 | **role**?: string \|  string[]                                          | ClickHouse role names to attach to the outgoing requests.                         | -                       | [Using roles with the HTTP interface](/concepts/features/interfaces/http#setting-role-with-query-parameters) |
+| **sql_lexer**?: ClickHouseSqlLexer | The official `@clickhouse/lexer` module (`import * as lexer from '@clickhouse/lexer'`). Used to remove trailing semicolons in `query()`, `command()` and `exec()`, and to put `FORMAT` before a trailing `SETTINGS` clause in `query()`. Can't be set from the URL. | - | [SQL lexer guide](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md) |
 
 #### Node.js-specific configuration parameters {#nodejs-specific-configuration-parameters}
 

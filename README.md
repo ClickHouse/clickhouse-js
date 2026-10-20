@@ -31,7 +31,7 @@
 
 Official JS client for [ClickHouse](https://clickhouse.com/), written purely in TypeScript, thoroughly tested with actual ClickHouse versions.
 
-The client has zero external dependencies and is optimized for maximum performance.
+The client has no runtime dependencies and is optimized for maximum performance. You can optionally pass it the official [`@clickhouse/lexer`](docs/howto/sql_lexer.md) for exact SQL handling.
 
 The repository consists of four packages:
 

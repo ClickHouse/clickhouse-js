@@ -64,6 +64,7 @@ Reference: https://clickhouse.com/docs/integrations/javascript
    - `BigInt` values in `query_params`: client `>= 1.15.0`.
    - `TupleParam` and JS `Map` in `query_params`: client `>= 1.9.0`.
    - Configurable `json.parse` / `json.stringify`: client `>= 1.14.0`.
+   - `sql_lexer` option (official `@clickhouse/lexer`): client `>= 1.25.0`.
    - `Time` / `Time64` data types: ClickHouse server `>= 25.6`.
    - `QBit` data type: ClickHouse server `>= 25.10` (GA on `26.x`).
    - `Dynamic` / `Variant` / new `JSON` types: ClickHouse server `>= 24.1` /

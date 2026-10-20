@@ -1,8 +1,8 @@
-# `query()` FORMAT Clause Errors (incl. `SHOW [ROW] POLICIES`)
+# `query()` FORMAT Clause Errors (incl. trailing comments and `SHOW [ROW] POLICIES`)
 
 > **Applies to:** all versions.
 
-`client.query()` is for statements that return a result set (such as `SELECT`). It **always appends `FORMAT <format>`** to the end of the `query` string, where `<format>` comes from the `format` option (default `JSON`). You should therefore **not** include a `FORMAT` clause in the `query` yourself.
+`client.query()` is for statements that return a result set (such as `SELECT`). It **always adds `FORMAT <format>`** to the `query` string (at the end, or before a trailing `SETTINGS` clause when `sql_lexer` is set), where `<format>` comes from the `format` option (default `JSON`). You should therefore **not** include a `FORMAT` clause in the `query` yourself.
 
 ```js
 // What you write:
@@ -26,6 +26,27 @@ await client.query({ query: "SELECT 1", format: "CSV" });
 ```
 
 If you genuinely need to write the full SQL yourself (including the `FORMAT` clause), or you're running a statement where the appended `FORMAT` suffix is not supported, use `client.exec()` instead of `client.query()`. Use `client.insert()` for data insertion and `client.command()` for DDLs.
+
+## `Multi-statements are not allowed` with a trailing comment
+
+The client removes trailing semicolons before appending `FORMAT`. By default, it only removes a `;` that is the very last character. When the query ends with a semicolon followed by a comment, the `;` stays, the appended `FORMAT` becomes a second statement, and the server rejects the query with `Syntax error (Multi-statements are not allowed)`.
+
+```js
+// ❌ Fails by default — sent as `SELECT 1; -- note` + `FORMAT JSON`
+await client.query({ query: "SELECT 1; -- note" });
+```
+
+**Fix:** remove the semicolon from the query, or, from client version 1.25.0, pass the official ClickHouse SQL lexer, which removes it correctly:
+
+```js
+import * as lexer from "@clickhouse/lexer"; // npm install @clickhouse/lexer
+
+const client = createClient({ sql_lexer: lexer });
+// ✓ Works — sent as `SELECT 1 -- note` + `FORMAT JSON`
+await client.query({ query: "SELECT 1; -- note" });
+```
+
+With `sql_lexer` set, `query()` also puts `FORMAT` **before** a trailing `SETTINGS` clause (`SELECT 1 FORMAT JSON SETTINGS max_threads = 1`), which some older servers require. See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md
 
 ## `SHOW [ROW] POLICIES` fails even with a format
 
