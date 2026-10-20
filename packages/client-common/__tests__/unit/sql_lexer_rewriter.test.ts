@@ -82,6 +82,67 @@ describe("lexer SQL rewriter", () => {
       expect(rewriter.withFormat(query, "JSON")).toBe(expected);
     });
 
+    // https://github.com/ClickHouse/clickhouse-js/issues/970
+    describe("puts FORMAT before a trailing SETTINGS clause", () => {
+      it.each([
+        [
+          "SELECT 1 SETTINGS max_threads = 1",
+          "SELECT 1 FORMAT JSON SETTINGS max_threads = 1",
+        ],
+        [
+          "SELECT 1 settings max_threads=1;",
+          "SELECT 1 FORMAT JSON settings max_threads=1",
+        ],
+        [
+          "SELECT 1 SETTINGS a = 1, b = 'x', c = -1, d = true, e = [1, 2]",
+          "SELECT 1 FORMAT JSON SETTINGS a = 1, b = 'x', c = -1, d = true, e = [1, 2]",
+        ],
+        [
+          "DESC format(JSONEachRow, '{\"id\": 1}') SETTINGS schema_inference_hints = 'id UInt8', allow_suspicious_low_cardinality_types = 1",
+          "DESC format(JSONEachRow, '{\"id\": 1}') FORMAT JSON SETTINGS schema_inference_hints = 'id UInt8', allow_suspicious_low_cardinality_types = 1",
+        ],
+        [
+          "SELECT * FROM (SELECT 1 SETTINGS a = 1) SETTINGS b = 2",
+          "SELECT * FROM (SELECT 1 SETTINGS a = 1) FORMAT JSON SETTINGS b = 2",
+        ],
+        [
+          "SELECT 1 -- note\nSETTINGS a = 1",
+          "SELECT 1 -- note\nFORMAT JSON SETTINGS a = 1",
+        ],
+        [
+          "SELECT 1 /* note */SETTINGS a = 1",
+          "SELECT 1 /* note */ FORMAT JSON SETTINGS a = 1",
+        ],
+        [
+          "SELECT 1 SETTINGS a = 1 -- note",
+          "SELECT 1 FORMAT JSON SETTINGS a = 1 -- note",
+        ],
+      ])("%j", (query, expected) => {
+        expect(rewriter.withFormat(query, "JSON")).toBe(expected);
+      });
+    });
+
+    describe("appends FORMAT when SETTINGS does not end the query", () => {
+      it.each([
+        "SELECT * FROM (SELECT 1 SETTINGS a = 1)",
+        "SELECT 'SETTINGS a = 1'",
+        "SELECT 1 -- SETTINGS a = 1",
+        "SELECT $$SETTINGS a = 1$$",
+        "SELECT settings FROM t",
+        "SELECT 1 AS settings",
+        "SELECT `SETTINGS` = 1",
+        "SELECT 1 SETTINGS a = 1 UNION ALL SELECT 2",
+        "SELECT 1 SETTINGS a = 1 b = 2",
+        "SELECT 1 SETTINGS a =",
+        "SELECT 1 SETTINGS",
+        "SELECT 1 SETTINGS a = 1,",
+      ])("%j", (query) => {
+        expect(rewriter.withFormat(query, "JSON")).toBe(
+          query + " \nFORMAT JSON",
+        );
+      });
+    });
+
     it("falls back to the string-based handling", () => {
       expect(rewriter.withFormat("SELECT 'unclosed;", "JSON")).toBe(
         "SELECT 'unclosed \nFORMAT JSON",

@@ -31,6 +31,20 @@ describe("sql_lexer", () => {
     expect(await rs.json()).toEqual([{ a: ";" }]);
   });
 
+  // https://github.com/ClickHouse/clickhouse-js/issues/970
+  it("query() puts FORMAT before a trailing SETTINGS clause", async () => {
+    const rs = await client.query({
+      // Only settings that ClickHouse Cloud lets users change.
+      query: `DESC format(JSONEachRow, '{"id": 1, "age": 25}') SETTINGS schema_inference_hints = 'age UInt8', schema_inference_make_columns_nullable = 0`,
+      format: "JSONEachRow",
+    });
+    const columns = await rs.json<{ name: string; type: string }>();
+    expect(columns.map(({ name, type }) => ({ name, type }))).toEqual([
+      { name: "id", type: "Int64" },
+      { name: "age", type: "UInt8" },
+    ]);
+  });
+
   it("command() accepts a semicolon before a comment", async () => {
     await expect(
       client.command({ query: "SELECT 1; -- trailing comment" }),

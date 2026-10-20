@@ -16,6 +16,8 @@ export type SqlTokenKind =
   | "comment"
   | "semicolon"
   | "bare_word"
+  | "equals"
+  | "comma"
   | "open_bracket"
   | "close_bracket"
   | "other";
@@ -35,6 +37,8 @@ const KINDS_BY_NAME: Record<string, SqlTokenKind> = {
   Comment: "comment",
   Semicolon: "semicolon",
   BareWord: "bare_word",
+  Equals: "equals",
+  Comma: "comma",
   OpeningRoundBracket: "open_bracket",
   OpeningSquareBracket: "open_bracket",
   OpeningCurlyBrace: "open_bracket",
