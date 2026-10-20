@@ -13,6 +13,7 @@ import { defaultJSONHandling, type JSONHandling } from "./parse/json_handling";
 import type { BaseResultSet } from "./result";
 import type { ClickHouseSettings } from "./settings";
 import type { ClickHouseSpan, ClickHouseTracer } from "./tracing";
+import type { ClickHouseSqlLexer } from "./sql/tokens";
 
 /** Normalizes the public request compression option into the internal codec
  *  object, or `undefined` when disabled. `true` keeps gzip for backwards
@@ -185,6 +186,27 @@ export interface BaseClickHouseClientConfigOptions {
    * at the cost of a small fixed per-operation overhead)
    */
   tracer?: ClickHouseTracer;
+  /**
+   * The official ClickHouse SQL lexer, used to rewrite queries exactly as the
+   * server would split them. Install `@clickhouse/lexer` and pass the module:
+   *
+   * ```ts
+   * import * as lexer from '@clickhouse/lexer'
+   * const client = createClient({ sql_lexer: lexer })
+   * ```
+   *
+   * Currently used by `command()` and `exec()` to remove trailing semicolons,
+   * including ones followed by a comment.
+   *
+   * The client depends on no lexer package and never imports one itself.
+   * The lexer is loaded on first use. If it cannot be loaded, for example
+   * because a Content Security Policy blocks WebAssembly, the client logs a
+   * warning and uses its built-in handling. Cannot be set from the URL.
+   *
+   * @see https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md
+   * @default undefined (the built-in string-based handling is used)
+   */
+  sql_lexer?: ClickHouseSqlLexer;
   /** When true, query() sends query_params as multipart/form-data parts
    *  instead of URL query string entries. This avoids HTTP URL length limits
    *  when query parameters contain large arrays (25K+ values).

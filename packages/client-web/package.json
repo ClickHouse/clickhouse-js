@@ -39,5 +39,13 @@
     "test:all": "TEST_MODE=all vitest",
     "test:coverage": "VITEST_COVERAGE=true TEST_MODE=all vitest"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "peerDependencies": {
+    "@clickhouse/lexer": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@clickhouse/lexer": {
+      "optional": true
+    }
+  }
 }
