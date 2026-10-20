@@ -71,10 +71,22 @@ describe("lexer SQL rewriter", () => {
     });
   });
 
-  it("does not change withFormat yet", () => {
-    expect(rewriter.withFormat("SELECT 1; -- comment", "JSON")).toBe(
-      "SELECT 1; -- comment \nFORMAT JSON",
-    );
+  describe("withFormat", () => {
+    it.each([
+      ["SELECT 1", "SELECT 1 \nFORMAT JSON"],
+      ["SELECT 1;", "SELECT 1 \nFORMAT JSON"],
+      // https://github.com/ClickHouse/clickhouse-js/issues/973
+      ["SELECT 1; -- comment", "SELECT 1 -- comment \nFORMAT JSON"],
+      ["SELECT 1 -- comment;", "SELECT 1 -- comment; \nFORMAT JSON"],
+    ])("%j", (query, expected) => {
+      expect(rewriter.withFormat(query, "JSON")).toBe(expected);
+    });
+
+    it("falls back to the string-based handling", () => {
+      expect(rewriter.withFormat("SELECT 'unclosed;", "JSON")).toBe(
+        "SELECT 'unclosed \nFORMAT JSON",
+      );
+    });
   });
 });
 

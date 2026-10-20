@@ -282,7 +282,11 @@ export class ClickHouseClient<Stream = unknown> {
     params: QueryParamsWithFormat<Format>,
   ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? "JSON";
-    const query = LegacySqlRewriter.withFormat(params.query, format);
+    const sqlRewriter =
+      this.sqlLexer === undefined
+        ? LegacySqlRewriter
+        : await this.loadLexerSqlRewriter(this.sqlLexer);
+    const query = sqlRewriter.withFormat(params.query, format);
     const queryParams = this.withClientQueryParams(params);
     const { log_writer, log_level } = this.connectionParams;
     return this.tracer.startActiveSpan(

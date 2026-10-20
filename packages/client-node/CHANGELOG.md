@@ -10,9 +10,16 @@
   const client = createClient({ sql_lexer: lexer });
   ```
 
-  For now, `command()` and `exec()` use it to remove trailing semicolons, including one followed by a comment (`CREATE TABLE ...; -- note`). If the lexer cannot be loaded, for example under a Content Security Policy that blocks WebAssembly, the client logs a warning and keeps its built-in handling. See [the guide](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md).
+  `query()`, `command()` and `exec()` use it to remove trailing semicolons, including one followed by a comment (`CREATE TABLE ...; -- note`). If the lexer cannot be loaded, for example under a Content Security Policy that blocks WebAssembly, the client logs a warning and keeps its built-in handling. See [the guide](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md).
 
 [#1068]: https://github.com/ClickHouse/clickhouse-js/pull/1068
+
+## Bug fixes
+
+- With `sql_lexer` set, `query()` no longer fails with `Multi-statements are not allowed` when the query ends with a semicolon followed by a comment, such as `SELECT 1; -- note` ([#973]). The semicolon is now removed before `FORMAT` is appended. Without `sql_lexer`, the behavior is unchanged. ([#1069])
+
+[#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
+[#1069]: https://github.com/ClickHouse/clickhouse-js/pull/1069
 
 # 1.24.1
 

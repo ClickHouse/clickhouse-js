@@ -29,13 +29,15 @@ The client never imports `@clickhouse/lexer` itself, so it stays optional, and y
 
 ## What it changes
 
-With `sql_lexer` set, `command()` and `exec()` remove trailing semicolons using the lexer's tokens. A semicolon followed by a comment is removed, and the comment is kept:
+With `sql_lexer` set, `query()`, `command()` and `exec()` remove trailing semicolons using the lexer's tokens. A semicolon followed by a comment is removed, and the comment is kept:
 
 | Query you pass             | Sent without the lexer     | Sent with the lexer       |
 | -------------------------- | -------------------------- | ------------------------- |
 | `CREATE TABLE t ...;`      | `CREATE TABLE t ...`       | `CREATE TABLE t ...`      |
 | `CREATE TABLE t ...; -- x` | `CREATE TABLE t ...; -- x` | `CREATE TABLE t ... -- x` |
 | `SELECT 1 -- note;`        | `SELECT 1 -- note`         | `SELECT 1 -- note;`       |
+
+This matters most for `query()`, which appends `FORMAT <format>` after your query. Without the lexer, `SELECT 1; -- note` is sent as `SELECT 1; -- note` followed by `FORMAT JSON` on a new line. The server reads that as two statements and rejects it with `Multi-statements are not allowed`. With the lexer, the semicolon is removed first, so the query works.
 
 If the lexer can't tokenize a query, for example because a quote is never closed, the client uses its built-in handling for that query and leaves the error for the server to report.
 
