@@ -58,6 +58,18 @@ export function typescriptEslintConfig(root) {
       "@typescript-eslint/array-type": "off",
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
+      "no-restricted-imports": [
+        "warn",
+        {
+          paths: [
+            {
+              name: "@clickhouse/lexer",
+              message:
+                "The clients must not import the lexer: it is ESM-only, and an import compiles to a require() that breaks on older Node.js versions. Users pass it in through the sql_lexer option instead.",
+            },
+          ],
+        },
+      ],
     },
   }; // TypeScript-ESLint recommended rules with type checking
 }
