@@ -1,15 +1,19 @@
 name: "misc"
 
 permissions: {}
+# Hourly rather than on every push: dropping databases one by one takes a
+# while, and the script only drops ones older than TTL_MINUTES anyway. Run it
+# manually (workflow_dispatch) to clean up sooner, e.g. after a burst of runs.
 on:
   workflow_dispatch:
-  push:
   schedule:
-    - cron: "0 10 * * *"
+    - cron: "17 * * * *"
 
+# One cleanup at a time, and a running one is never cancelled: it would only
+# have to start over. Any extra run waits for it.
 concurrency:
-  group: "${{ github.workflow }}-${{ github.ref }}"
-  cancel-in-progress: true
+  group: "${{ github.workflow }}"
+  cancel-in-progress: false
 
 jobs:
   # Runs in parallel with the rest of the tests, there shoudl be no dependencies on it,
