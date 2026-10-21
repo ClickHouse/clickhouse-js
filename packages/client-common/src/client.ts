@@ -266,7 +266,8 @@ export class ClickHouseClient<Stream = unknown> {
    * Returns an implementation of {@link BaseResultSet}.
    *
    * The `FORMAT` clause should be specified separately via {@link QueryParams.format} (default is `JSON`);
-   * this method will always append `FORMAT <format>` to the end of {@link QueryParams.query}.
+   * this method will always add `FORMAT <format>` to {@link QueryParams.query}: at the end, or, when
+   * {@link BaseClickHouseClientConfigOptions.sql_lexer} is set, before a trailing top-level `SETTINGS` clause.
    * If the query already contains a `FORMAT` clause, ClickHouse will return a syntax error due to a duplicate `FORMAT`.
    * This is intended behavior.
    * Use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,

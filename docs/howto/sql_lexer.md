@@ -39,6 +39,14 @@ With `sql_lexer` set, `query()`, `command()` and `exec()` remove trailing semico
 
 This matters most for `query()`, which appends `FORMAT <format>` after your query. Without the lexer, `SELECT 1; -- note` is sent as `SELECT 1; -- note` followed by `FORMAT JSON` on a new line. The server reads that as two statements and rejects it with `Multi-statements are not allowed`. With the lexer, the semicolon is removed first, so the query works.
 
+When the query ends with a `SETTINGS` clause, `query()` also puts `FORMAT` before it instead of after it, because some server versions require `SETTINGS` to come last:
+
+| Query you pass                      | Sent without the lexer                              | Sent with the lexer                             |
+| ----------------------------------- | --------------------------------------------------- | ----------------------------------------------- |
+| `SELECT 1 SETTINGS max_threads = 1` | `SELECT 1 SETTINGS max_threads = 1` + `FORMAT JSON` | `SELECT 1 FORMAT JSON SETTINGS max_threads = 1` |
+
+This only happens for a `SETTINGS` clause outside any brackets that runs to the end of the query. A `SETTINGS` clause in a subquery, or the word `settings` used as a name, is left alone.
+
 If the lexer can't tokenize a query, for example because a quote is never closed, the client uses its built-in handling for that query and leaves the error for the server to report.
 
 ## "Failed to load the SQL lexer" warning

@@ -258,21 +258,25 @@ describe("SQL rewriting", () => {
     );
 
     // https://github.com/ClickHouse/clickhouse-js/issues/970
-    // FORMAT is appended after the SETTINGS clause, which older servers
-    // reject.
+    // Without the lexer, FORMAT is appended after the SETTINGS clause, which
+    // older servers reject. The lexer puts it before.
+    // [query, sent without sql_lexer, sent with sql_lexer]
     it.each([
       [
         "SELECT 1 SETTINGS max_threads = 1",
         "SELECT 1 SETTINGS max_threads = 1 \nFORMAT JSON",
+        "SELECT 1 FORMAT JSON SETTINGS max_threads = 1",
       ],
       [
         "SELECT 1 SETTINGS max_threads = 1;",
         "SELECT 1 SETTINGS max_threads = 1 \nFORMAT JSON",
+        "SELECT 1 FORMAT JSON SETTINGS max_threads = 1",
       ],
     ])(
       "query() with a trailing SETTINGS clause: %j",
-      async (query, expected) => {
-        expect(await sentByQuery(query)).toBe(expected);
+      async (query, withoutLexer, withLexer) => {
+        expect(await sentByQuery(query)).toBe(withoutLexer);
+        expect(await sentByQuery(query, { sql_lexer: lexer })).toBe(withLexer);
       },
     );
   });

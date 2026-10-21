@@ -17,9 +17,12 @@
 ## Bug fixes
 
 - With `sql_lexer` set, `query()` no longer fails with `Multi-statements are not allowed` when the query ends with a semicolon followed by a comment, such as `SELECT 1; -- note` ([#973]). The semicolon is now removed before `FORMAT` is appended. Without `sql_lexer`, the behavior is unchanged. ([#1069])
+- With `sql_lexer` set, `query()` puts `FORMAT` before a trailing `SETTINGS` clause instead of after it ([#970]). Some older servers reject `... SETTINGS ... FORMAT ...`, for example for `DESCRIBE format(...)`. Without `sql_lexer`, the behavior is unchanged. ([#1070])
 
+[#970]: https://github.com/ClickHouse/clickhouse-js/issues/970
 [#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
 [#1069]: https://github.com/ClickHouse/clickhouse-js/pull/1069
+[#1070]: https://github.com/ClickHouse/clickhouse-js/pull/1070
 
 # 1.24.0
 
