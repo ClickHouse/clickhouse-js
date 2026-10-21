@@ -719,9 +719,10 @@ export function removeTrailingSemi(query: string): string {
   while (i < query.length) {
     const c = query.charAt(i);
     const next = query.charAt(i + 1);
-    if (c === "$") {
+    if (c === "$" && (i === 0 || !/[A-Za-z0-9_$]/.test(query.charAt(i - 1)))) {
       // A heredoc string, $tag$...$tag$ or $$...$$. Lexed before comments so
       // that a comment marker or semicolon inside one is not mistaken for SQL.
+      // A heredoc only starts a token: `$` is also allowed inside identifiers.
       const tagEnd = query.indexOf("$", i + 1);
       if (tagEnd !== -1 && /^[A-Za-z0-9_]*$/.test(query.slice(i + 1, tagEnd))) {
         const tag = query.slice(i, tagEnd + 1);
@@ -733,7 +734,11 @@ export function removeTrailingSemi(query: string): string {
         }
       }
     }
-    if ((c === "-" && next === "-") || c === "#") {
+    if (
+      (c === "-" && next === "-") ||
+      (c === "/" && next === "/") ||
+      c === "#"
+    ) {
       const end = query.indexOf("\n", i);
       i = end === -1 ? query.length : end;
       continue;

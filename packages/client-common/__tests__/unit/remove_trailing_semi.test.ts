@@ -19,6 +19,7 @@ describe("removeTrailingSemi", () => {
     ["SELECT 1; /* note */", "SELECT 1 /* note */"],
     ["SELECT 1;\n-- note", "SELECT 1\n-- note"],
     ["SELECT 1; -- a\n-- b", "SELECT 1 -- a\n-- b"],
+    ["SELECT 1; // note", "SELECT 1 // note"],
   ])("removes a semicolon followed by a comment: %j", (input, expected) => {
     expect(removeTrailingSemi(input)).toBe(expected);
   });
@@ -45,6 +46,8 @@ describe("removeTrailingSemi", () => {
     ["SELECT $tag$-- text$tag$;", "SELECT $tag$-- text$tag$"],
     ["SELECT $$;$$;", "SELECT $$;$$"],
     ["SELECT $$a # b /* c$$; -- note", "SELECT $$a # b /* c$$ -- note"],
+    // `$` inside an identifier does not start a heredoc.
+    ["SELECT 1 AS a$t$; -- $t$", "SELECT 1 AS a$t$ -- $t$"],
   ])("handles heredocs: %j", (input, expected) => {
     expect(removeTrailingSemi(input)).toBe(expected);
   });
