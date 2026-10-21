@@ -63,6 +63,7 @@ export {
   type ClickHouseJWTAuth,
   type ClickHouseCredentialsAuth,
   type ClickHouseTracer,
+  type ClickHouseSqlLexer,
   type ClickHouseSpan,
   type ClickHouseSpanOptions,
   type ClickHouseSpanAttributes,

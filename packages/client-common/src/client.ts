@@ -35,6 +35,8 @@ import {
 } from "./tracing";
 import type { SqlRewriter } from "./sql/rewriter";
 import { LegacySqlRewriter } from "./sql/legacy";
+import { loadLexerSqlRewriter } from "./sql/lexer_rewriter";
+import type { ClickHouseSqlLexer } from "./sql/tokens";
 
 export interface BaseQueryParams {
   /** ClickHouse's settings that can be applied on query level. */
@@ -222,7 +224,8 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly role?: string | Array<string>;
   private readonly jsonHandling: JSONHandling;
   private readonly tracer: ClickHouseTracer;
-  private readonly sqlRewriter: SqlRewriter = LegacySqlRewriter;
+  private readonly sqlLexer?: ClickHouseSqlLexer;
+  private lexerSqlRewriter?: Promise<SqlRewriter>;
 
   constructor(
     config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,
@@ -255,6 +258,7 @@ export class ClickHouseClient<Stream = unknown> {
     // Assigned once at client creation: when no tracer is configured, the
     // shared no-op tracer keeps the hot path branch-free.
     this.tracer = config.tracer ?? NoopClickHouseTracer;
+    this.sqlLexer = config.sql_lexer;
   }
 
   /**
@@ -278,7 +282,7 @@ export class ClickHouseClient<Stream = unknown> {
     params: QueryParamsWithFormat<Format>,
   ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? "JSON";
-    const query = this.sqlRewriter.withFormat(params.query, format);
+    const query = LegacySqlRewriter.withFormat(params.query, format);
     const queryParams = this.withClientQueryParams(params);
     const { log_writer, log_level } = this.connectionParams;
     return this.tracer.startActiveSpan(
@@ -374,7 +378,11 @@ export class ClickHouseClient<Stream = unknown> {
    * and you are interested in the response data, consider using {@link ClickHouseClient.exec}.
    */
   async command(params: CommandParams): Promise<CommandResult> {
-    const query = this.sqlRewriter.stripTrailingSemi(params.query);
+    const sqlRewriter =
+      this.sqlLexer === undefined
+        ? LegacySqlRewriter
+        : await this.loadLexerSqlRewriter(this.sqlLexer);
+    const query = sqlRewriter.stripTrailingSemi(params.query);
     const ignore_error_response = params.ignore_error_response ?? false;
     const queryParams = this.withClientQueryParams(params);
     return this.tracer.startActiveSpan(
@@ -423,7 +431,11 @@ export class ClickHouseClient<Stream = unknown> {
   async exec(
     params: ExecParams | ExecParamsWithValues<Stream>,
   ): Promise<ExecResult<Stream>> {
-    const query = this.sqlRewriter.stripTrailingSemi(params.query);
+    const sqlRewriter =
+      this.sqlLexer === undefined
+        ? LegacySqlRewriter
+        : await this.loadLexerSqlRewriter(this.sqlLexer);
+    const query = sqlRewriter.stripTrailingSemi(params.query);
     const values = "values" in params ? params.values : undefined;
     const decompress_response_stream =
       params.decompress_response_stream ?? true;
@@ -591,6 +603,28 @@ export class ClickHouseClient<Stream = unknown> {
    */
   async [Symbol.asyncDispose]() {
     await this.close();
+  }
+
+  /**
+   * Loads the {@link BaseClickHouseClientConfigOptions.sql_lexer} once, on
+   * first use. If it fails to load, the built-in rewriting is used instead.
+   */
+  private loadLexerSqlRewriter(
+    lexer: ClickHouseSqlLexer,
+  ): Promise<SqlRewriter> {
+    this.lexerSqlRewriter ??= loadLexerSqlRewriter(lexer).catch((err) => {
+      const { log_writer, log_level } = this.connectionParams;
+      if (log_level <= ClickHouseLogLevel.WARN) {
+        log_writer.warn({
+          module: "Client",
+          message:
+            "Failed to load the SQL lexer passed as sql_lexer; using the built-in SQL handling instead. See https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md for more details.",
+          err: err instanceof Error ? err : new Error(String(err)),
+        });
+      }
+      return LegacySqlRewriter;
+    });
+    return this.lexerSqlRewriter;
   }
 
   /**

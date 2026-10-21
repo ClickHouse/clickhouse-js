@@ -59,6 +59,14 @@
     "test:coverage": "VITEST_COVERAGE=true TEST_MODE=all vitest"
   },
   "dependencies": {},
+  "peerDependencies": {
+    "@clickhouse/lexer": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@clickhouse/lexer": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "simdjson": "^0.9.2"
   }

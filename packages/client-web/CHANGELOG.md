@@ -1,3 +1,19 @@
+# 1.25.0
+
+## New features
+
+- Added an opt-in `sql_lexer` client option for the official ClickHouse SQL lexer, [`@clickhouse/lexer`](https://www.npmjs.com/package/@clickhouse/lexer). With it, the client reads your SQL the way the server does, instead of with string handling that can't tell a `;` inside a comment or a string from a real one. The client has no new dependency: install the package yourself and pass the module in. ([#1068])
+
+  ```ts
+  import * as lexer from "@clickhouse/lexer";
+
+  const client = createClient({ sql_lexer: lexer });
+  ```
+
+  For now, `command()` and `exec()` use it to remove trailing semicolons, including one followed by a comment (`CREATE TABLE ...; -- note`). If the lexer cannot be loaded, for example under a Content Security Policy that blocks WebAssembly, the client logs a warning and keeps its built-in handling. See [the guide](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md).
+
+[#1068]: https://github.com/ClickHouse/clickhouse-js/pull/1068
+
 # 1.24.0
 
 ## New features
