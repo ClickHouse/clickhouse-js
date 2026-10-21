@@ -195,8 +195,8 @@ export interface BaseClickHouseClientConfigOptions {
    * const client = createClient({ sql_lexer: lexer })
    * ```
    *
-   * Currently used by `command()` and `exec()` to remove trailing semicolons,
-   * including ones followed by a comment.
+   * Used by `query()`, `command()` and `exec()` to remove trailing semicolons,
+   * including ones followed by a comment, before `query()` appends `FORMAT`.
    *
    * The client depends on no lexer package and never imports one itself.
    * The lexer is loaded on first use. If it cannot be loaded, for example

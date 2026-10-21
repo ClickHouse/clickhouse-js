@@ -17,15 +17,19 @@ export async function loadLexerSqlRewriter(
  * the lexer cannot tokenize, leaving them for the server to report.
  */
 export function createLexerSqlRewriter(tokenize: SqlTokenizer): SqlRewriter {
+  const stripTrailingSemi = (query: string): string => {
+    const trimmed = query.trim();
+    const tokens = tokenize(trimmed);
+    if (tokens === null) {
+      return LegacySqlRewriter.stripTrailingSemi(query);
+    }
+    return removeTrailingSemicolons(trimmed, tokens);
+  };
   return {
-    withFormat: LegacySqlRewriter.withFormat,
-    stripTrailingSemi(query: string): string {
-      const trimmed = query.trim();
-      const tokens = tokenize(trimmed);
-      if (tokens === null) {
-        return LegacySqlRewriter.stripTrailingSemi(query);
-      }
-      return removeTrailingSemicolons(trimmed, tokens);
+    stripTrailingSemi,
+    // The newline ends a trailing line comment, so FORMAT is not commented out.
+    withFormat(query, format) {
+      return stripTrailingSemi(query) + " \nFORMAT " + format;
     },
   };
 }
