@@ -1,14 +1,17 @@
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import { type ClickHouseClient } from "@clickhouse/client-common";
 import { createTestClient, guid, validateUUID } from "../utils";
+import { sqlLexerModes } from "../utils/sql_corpus";
 
-describe("select", () => {
+// Every test here sends SQL through query(), so it runs once with the
+// built-in SQL handling and once with the official lexer.
+describe.each(sqlLexerModes)("select (%s)", (_, config) => {
   let client: ClickHouseClient;
   afterEach(async () => {
     await client.close();
   });
   beforeEach(async () => {
-    client = createTestClient();
+    client = createTestClient(config);
   });
 
   it("gets query_id back", async () => {
