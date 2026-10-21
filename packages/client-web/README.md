@@ -7,8 +7,10 @@ It is built on top of the
 [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) and
 [Web Streams](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) APIs
 and supports streaming for selects. It is compatible with Chrome/Firefox
-browsers and Cloudflare Workers. The client has zero external dependencies and is
-optimized for maximum performance.
+browsers and Cloudflare Workers. The client has no runtime dependencies and is
+optimized for maximum performance. You can optionally pass it the official
+[`@clickhouse/lexer`](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md)
+for exact SQL handling.
 
 > Running on Node.js? Use
 > [`@clickhouse/client`](https://www.npmjs.com/package/@clickhouse/client)

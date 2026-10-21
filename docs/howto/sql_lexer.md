@@ -2,7 +2,7 @@
 
 The client makes small changes to the SQL you pass it before sending it to the server. For example, it removes trailing semicolons, because the server rejects a statement followed by a `;` in some positions. By default, it does this with simple string handling, which can't tell whether a `;` is inside a comment, a string or a heredoc.
 
-To make these changes exactly as the server would read your query, you can give the client the official ClickHouse SQL lexer, [`@clickhouse/lexer`](https://www.npmjs.com/package/@clickhouse/lexer). It is ClickHouse's own lexer compiled to WebAssembly: about 9 KB, with no dependencies of its own.
+To make these changes exactly as the server would read your query, you can give the client the official ClickHouse SQL lexer, [`@clickhouse/lexer`](https://www.npmjs.com/package/@clickhouse/lexer). It is ClickHouse's own lexer compiled to a small WebAssembly module (about 9 KB, embedded in the package), with no dependencies of its own.
 
 ## Enabling it
 
@@ -56,4 +56,4 @@ The lexer runs as WebAssembly, compiled at runtime from bytes embedded in the pa
 - **Browsers with a Content Security Policy** that does not include `'wasm-unsafe-eval'` in `script-src`. Add `'wasm-unsafe-eval'` to allow it.
 - **Runtimes that forbid compiling WebAssembly at runtime**, such as Cloudflare Workers.
 
-When the lexer fails to load, the client logs this warning once and keeps working with its built-in handling. If you can't allow WebAssembly in your environment, remove the `sql_lexer` option to stop the warning.
+When the lexer fails to load, the client logs this warning once per client instance (at the default `WARN` log level or lower) and keeps working with its built-in handling. If you can't allow WebAssembly in your environment, remove the `sql_lexer` option to stop the warning.

@@ -5,8 +5,10 @@ purely in TypeScript and thoroughly tested against actual ClickHouse versions.
 
 It is built on top of the Node.js [HTTP](https://nodejs.org/api/http.html) and
 [Stream](https://nodejs.org/api/stream.html) APIs and supports streaming for
-both selects and inserts. The client has zero external dependencies and is
-optimized for maximum performance.
+both selects and inserts. The client has no runtime dependencies and is
+optimized for maximum performance. You can optionally pass it the official
+[`@clickhouse/lexer`](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/sql_lexer.md)
+for exact SQL handling.
 
 > Looking for a browser / edge runtime (Cloudflare Workers, etc.) instead? Use
 > [`@clickhouse/client-web`](https://www.npmjs.com/package/@clickhouse/client-web).
