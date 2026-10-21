@@ -33,6 +33,8 @@ import {
   NoopClickHouseTracer,
   recordSpanError,
 } from "./tracing";
+import type { SqlRewriter } from "./sql/rewriter";
+import { LegacySqlRewriter } from "./sql/legacy";
 
 export interface BaseQueryParams {
   /** ClickHouse's settings that can be applied on query level. */
@@ -220,6 +222,7 @@ export class ClickHouseClient<Stream = unknown> {
   private readonly role?: string | Array<string>;
   private readonly jsonHandling: JSONHandling;
   private readonly tracer: ClickHouseTracer;
+  private readonly sqlRewriter: SqlRewriter = LegacySqlRewriter;
 
   constructor(
     config: BaseClickHouseClientConfigOptions & ImplementationDetails<Stream>,
@@ -275,7 +278,7 @@ export class ClickHouseClient<Stream = unknown> {
     params: QueryParamsWithFormat<Format>,
   ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? "JSON";
-    const query = formatQuery(params.query, format);
+    const query = this.sqlRewriter.withFormat(params.query, format);
     const queryParams = this.withClientQueryParams(params);
     const { log_writer, log_level } = this.connectionParams;
     return this.tracer.startActiveSpan(
@@ -371,7 +374,7 @@ export class ClickHouseClient<Stream = unknown> {
    * and you are interested in the response data, consider using {@link ClickHouseClient.exec}.
    */
   async command(params: CommandParams): Promise<CommandResult> {
-    const query = removeTrailingSemi(params.query.trim());
+    const query = this.sqlRewriter.stripTrailingSemi(params.query);
     const ignore_error_response = params.ignore_error_response ?? false;
     const queryParams = this.withClientQueryParams(params);
     return this.tracer.startActiveSpan(
@@ -420,7 +423,7 @@ export class ClickHouseClient<Stream = unknown> {
   async exec(
     params: ExecParams | ExecParamsWithValues<Stream>,
   ): Promise<ExecResult<Stream>> {
-    const query = removeTrailingSemi(params.query.trim());
+    const query = this.sqlRewriter.stripTrailingSemi(params.query);
     const values = "values" in params ? params.values : undefined;
     const decompress_response_stream =
       params.decompress_response_stream ?? true;
@@ -695,26 +698,6 @@ function setResponseSpanAttributes(
     }
   }
   span.setAttributes(attributes);
-}
-
-function formatQuery(query: string, format: DataFormat): string {
-  query = query.trim();
-  query = removeTrailingSemi(query);
-  return query + " \nFORMAT " + format;
-}
-
-function removeTrailingSemi(query: string) {
-  let lastNonSemiIdx = query.length;
-  for (let i = lastNonSemiIdx; i > 0; i--) {
-    if (query[i - 1] !== ";") {
-      lastNonSemiIdx = i;
-      break;
-    }
-  }
-  if (lastNonSemiIdx !== query.length) {
-    return query.slice(0, lastNonSemiIdx);
-  }
-  return query;
 }
 
 function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
