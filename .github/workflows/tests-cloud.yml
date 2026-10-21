@@ -1,0 +1,169 @@
+name: "cloud"
+
+# Integration tests against ClickHouse Cloud, for both clients.
+#
+# The Cloud service is shared with other ClickHouse client repositories and has
+# limits (e.g. on the number of databases; every test file creates one). Running
+# these jobs on every push of every PR, especially stacked PRs, can exhaust it,
+# so they run:
+#   - after a PR is merged (push to main or release), on schedule, or manually;
+#   - on a PR only when a maintainer adds the `tests:run-cloud` label. The label
+#     is removed after the run, so adding it again runs the tests again.
+# Only one job runs at a time (see `concurrency` and `max-parallel` below).
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - release
+    paths:
+      - "packages/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
+      - ".github/workflows/tests-cloud.yml"
+  pull_request:
+    types: [labeled]
+  schedule:
+    - cron: "0 9 * * *"
+
+env:
+  VITEST_COVERAGE: "true"
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
+
+jobs:
+  node:
+    name: integration-tests-cloud (${{ matrix.node }})
+    # Cloud secrets are not available for PRs from forks or Dependabot PRs; skip the job in those cases.
+    # On PRs, run only when the `tests:run-cloud` label was just added.
+    if: >-
+      ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' ||
+      (github.event.label.name == 'tests:run-cloud' && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    # Job-level (not workflow-level) so that runs skipped by the `if` above,
+    # e.g. for other labels, never enter the queue. A queued job is replaced
+    # by a newer one in the same group.
+    concurrency:
+      group: tests-cloud-node
+      cancel-in-progress: false
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        node: [20, 22, 24, 26]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run integration tests
+        env:
+          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}
+          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
+          CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43_PROD }}
+        run: |
+          npm run test:node:integration:cloud
+
+      - name: Upload coverage to Codecov
+        # Upload coverage from a single canonical combination (Node 24) so Codecov
+        # receives exactly one upload per flag (see codecov.yml).
+        if: ${{ matrix.node == 24 }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          name: node-integration-cloud
+          flags: node-integration-cloud
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
+
+  web:
+    name: integration-tests-cloud (${{ matrix.browser }})
+    # Runs after the Node.js jobs have run, whether they passed or failed, so
+    # the two clients never use the Cloud service at the same time.
+    needs: node
+    if: >-
+      ${{ !cancelled() && (needs.node.result == 'success' || needs.node.result == 'failure') }}
+    concurrency:
+      group: tests-cloud-web
+      cancel-in-progress: false
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        browser: [chromium, firefox] # We're not testing in WebKit atm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          npm install
+          npx playwright install ${{ matrix.browser }}
+
+      - name: Run integration tests and JWT auth
+        env:
+          CLICKHOUSE_CLOUD_HOST: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}
+          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
+          CLICKHOUSE_CLOUD_JWT_ACCESS_TOKEN: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_JWT_DESERT_VM_43_PROD }}
+          BROWSER: ${{ matrix.browser }}
+        run: |
+          npm run test:web:integration:cloud:jwt
+
+      - name: Upload coverage to Codecov
+        # Upload coverage from a single canonical combination (Chromium) so Codecov
+        # receives exactly one upload per flag (see codecov.yml).
+        if: ${{ matrix.browser == 'chromium' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          name: web-integration-cloud
+          flags: web-integration-cloud
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
+
+  remove-label:
+    # Lets a maintainer run the Cloud tests again by re-adding the label.
+    needs: [node, web]
+    if: ${{ always() && github.event_name == 'pull_request' && github.event.label.name == 'tests:run-cloud' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Remove the tests:run-cloud label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          gh api "repos/$REPO/issues/$PR/labels/tests%3Arun-cloud" -X DELETE || true
