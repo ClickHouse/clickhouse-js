@@ -76,8 +76,9 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install dependencies
+        # `npm ci` installs exactly the lockfile's versions, verified by hash.
         run: |
-          npm install
+          npm ci
 
       - name: Run integration tests
         env:
@@ -126,8 +127,9 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
+        # `npm ci` installs exactly the lockfile's versions, verified by hash.
         run: |
-          npm install
+          npm ci
           npx playwright install ${{ matrix.browser }}
 
       - name: Run integration tests and JWT auth
