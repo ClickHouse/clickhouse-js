@@ -9,7 +9,7 @@ name: "cloud"
 #   - after a PR is merged (push to main or release), on schedule, or manually;
 #   - on a PR only when a maintainer adds the `tests:run-cloud` label. The label
 #     is removed after the run, so adding it again runs the tests again.
-# Only one job runs at a time (see `concurrency` and `max-parallel` below).
+# Only one Cloud job runs at a time (see `concurrency` and `max-parallel` below).
 
 permissions: {}
 on:
@@ -45,20 +45,29 @@ env:
   NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
   NPM_CONFIG_FETCH_TIMEOUT: "600000"
 
+# One Cloud run at a time across the whole repository: a run (all Node.js jobs,
+# then all Web jobs) holds the lock, and other runs wait for it. Of the waiting
+# runs, only the newest is kept.
+#
+# Runs whose jobs will be skipped (e.g. a PR got some other label) get a group
+# of their own, so they never replace a waiting Cloud run. The condition must
+# match the `if` of the `node` job.
+concurrency:
+  group: >-
+    ${{ (github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' ||
+    (github.event.label.name == 'tests:run-cloud' && github.event.pull_request.head.repo.full_name == github.repository)))
+    && 'tests-cloud' || format('tests-cloud-skipped-{0}', github.run_id) }}
+  cancel-in-progress: false
+
 jobs:
   node:
     name: integration-tests-cloud (${{ matrix.node }})
     # Cloud secrets are not available for PRs from forks or Dependabot PRs; skip the job in those cases.
     # On PRs, run only when the `tests:run-cloud` label was just added.
+    # Keep in sync with the workflow-level `concurrency` group.
     if: >-
       ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' ||
       (github.event.label.name == 'tests:run-cloud' && github.event.pull_request.head.repo.full_name == github.repository)) }}
-    # Job-level (not workflow-level) so that runs skipped by the `if` above,
-    # e.g. for other labels, never enter the queue. A queued job is replaced
-    # by a newer one in the same group.
-    concurrency:
-      group: tests-cloud-node
-      cancel-in-progress: false
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
@@ -103,14 +112,11 @@ jobs:
 
   web:
     name: integration-tests-cloud (${{ matrix.browser }})
-    # Runs after the Node.js jobs have run, whether they passed or failed, so
-    # the two clients never use the Cloud service at the same time.
+    # Runs after the Node.js jobs of the same run have run, whether they passed
+    # or failed. Other runs wait for the whole run (see `concurrency` above).
     needs: node
     if: >-
       ${{ !cancelled() && (needs.node.result == 'success' || needs.node.result == 'failure') }}
-    concurrency:
-      group: tests-cloud-web
-      cancel-in-progress: false
     timeout-minutes: 5
     runs-on: ubuntu-latest
     strategy:
