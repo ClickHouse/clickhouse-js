@@ -47,6 +47,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@clickhouse/lexer": "1.0.1",
     "@eslint/js": "^10.0.1",
     "@faker-js/faker": "^10.6.0",
     "@opentelemetry/api": "^1.9.1",
