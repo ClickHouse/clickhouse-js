@@ -2,6 +2,7 @@ import type { ClickHouseClient } from "@clickhouse/client-common";
 import { describe, it, beforeEach, afterEach, expect } from "vitest";
 import { createSimpleTable } from "@test/fixtures/simple_table";
 import { createTestClient } from "@test/utils/client";
+import { sqlLexerModes } from "@test/utils/sql_corpus";
 import { guid } from "@test/utils/guid";
 import Stream from "stream";
 import Zlib from "zlib";
@@ -28,7 +29,16 @@ describe("[Node.js] exec", () => {
     expect(await getAsText(result.stream)).toEqual("30\n");
   });
 
-  describe("trailing semi", () => {
+  // Runs with the built-in SQL handling and with the official lexer.
+  describe.each(sqlLexerModes)("trailing semi (%s)", (_, config) => {
+    let client: ClickHouseClient<Stream.Readable>;
+    beforeEach(() => {
+      client = createTestClient(config);
+    });
+    afterEach(async () => {
+      await client.close();
+    });
+
     it("should allow commands with semi in select clause", async () => {
       const result = await client.exec({
         query: `SELECT ';' FORMAT CSV`,
