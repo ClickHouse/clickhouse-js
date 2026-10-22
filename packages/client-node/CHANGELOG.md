@@ -1,3 +1,12 @@
+# 1.24.2
+
+## Bug fixes
+
+- Fixed `query()` failing with `SYNTAX_ERROR` (`Multi-statements are not allowed`) when the statement ended with a semicolon followed by a comment, e.g. `SELECT 1; -- note`. The semicolon was kept, so the appended `FORMAT` clause became a second statement. Trailing semicolons are now removed even when a comment follows them, while semicolons inside string literals, quoted identifiers and comments are left alone ([#973]). ([#1031])
+
+[#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
+[#1031]: https://github.com/ClickHouse/clickhouse-js/pull/1031
+
 # 1.24.1
 
 ## Bug fixes
