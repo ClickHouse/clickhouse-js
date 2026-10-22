@@ -1,3 +1,11 @@
+# 1.24.2
+
+## Bug fixes
+
+- Fixed the detection of mid-stream exceptions (ClickHouse 25.11+) in `ResultSet.stream()`. A bare `\r\n` in a _successful_ response body is no longer mistaken for an error: an exception is confirmed only by the `__exception__` marker together with the random per-response `x-clickhouse-exception-tag` token. This unbreaks streaming binary formats such as `Parquet` and CRLF-terminated `CSV` / `TSV` (`output_format_*_crlf_end_of_line`). The exception block is now also detected when it is split across several chunks of the response: it is buffered until it is complete, its bytes are not emitted as rows, and the error contains the full server message. If the exception block is malformed, or the response ends before the block is complete, the stream fails with an error instead of hanging the event loop. ([#975])
+
+[#975]: https://github.com/ClickHouse/clickhouse-js/pull/975
+
 # 1.24.1
 
 ## Bug fixes
