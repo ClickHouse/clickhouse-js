@@ -139,12 +139,12 @@ describe("[Node.js] createClient({ connection }) — pluggable backend injection
 
     const rs = await client.query({ query: "SELECT 1", format: "JSONEachRow" });
     expect(stub.query).toHaveBeenCalledTimes(1);
-    // ConnBaseQueryParams shape — `query` is the SQL string (the Client
-    // layer appends `\nFORMAT <Format>` when caller specifies `format`).
+    // ConnBaseQueryParams shape — `query` is the SQL string as written, and
+    // the format is passed as the `default_format` setting.
     expect(stub.calls[0]?.op).toBe("query");
-    const sql = (stub.calls[0]?.params as ConnBaseQueryParams).query;
-    expect(sql).toMatch(/^SELECT 1\b/);
-    expect(sql).toContain("FORMAT JSONEachRow");
+    const params = stub.calls[0]?.params as ConnBaseQueryParams;
+    expect(params.query).toBe("SELECT 1");
+    expect(params.clickhouse_settings?.default_format).toBe("JSONEachRow");
     // ResultSet drains the injected stream.
     const rows = await rs.json();
     expect(rows).toEqual([{ n: 1 }]);

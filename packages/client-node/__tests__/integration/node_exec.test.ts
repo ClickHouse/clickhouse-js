@@ -97,6 +97,26 @@ describe("[Node.js] exec", () => {
       ]);
     });
 
+    // The server reads the data right after the statement and rejects a `;`
+    // before it, so exec() removes trailing semicolons when values are sent.
+    it("should send an insert stream after a trailing semicolon", async () => {
+      const stream = Stream.Readable.from(['42,foobar,"[1,2]"'], {
+        objectMode: false,
+      });
+      const execResult = await client.exec({
+        query: `INSERT INTO ${tableName} FORMAT CSV;`,
+        values: stream,
+      });
+      await drainStream(execResult.stream);
+      await checkInsertedValues([
+        {
+          id: "42",
+          name: "foobar",
+          sku: [1, 2],
+        },
+      ]);
+    });
+
     it("should not fail with an empty stream", async () => {
       const stream = new Stream.Readable({
         read() {

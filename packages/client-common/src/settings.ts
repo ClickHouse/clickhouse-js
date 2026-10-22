@@ -1625,9 +1625,9 @@ interface ClickHouseHTTPSettings {
   quota_key: string;
   /** If enabled, include the stack trace in the response body when an exception occurs. */
   stacktrace: Bool;
-  /** Format to use if a SELECT query is executed without a FORMAT clause.
-   *  Only useful for the {@link ClickHouseClient.exec} method,
-   *  as {@link ClickHouseClient.query} method always attaches this clause. */
+  /** Format to use if a query is executed without a FORMAT clause.
+   *  {@link ClickHouseClient.query} always sets this to its `format` option, overriding any value given here,
+   *  so it is only useful for the {@link ClickHouseClient.exec} method. */
   default_format: DataFormat;
   /** By default, the session is terminated after 60 seconds of inactivity
    *  This is regulated by the `default_session_timeout` server setting. */
