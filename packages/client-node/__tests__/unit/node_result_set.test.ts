@@ -12,6 +12,10 @@ import { guid } from "../../../client-common/__tests__/utils/guid";
 import Stream, { Readable } from "stream";
 import { ResultSet } from "../../src";
 import { isUsingStatementSupported } from "../utils/feature_detection";
+import {
+  assertError,
+  inBandExceptionResponseBody,
+} from "../../../client-common/__tests__/fixtures/stream_errors";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -191,6 +195,105 @@ describe("[Node.js] ResultSet", () => {
           }),
         );
       });
+    });
+  });
+
+  // See https://github.com/ClickHouse/clickhouse-js/issues/1053
+  describe("in-band exception row (http_write_exception_in_output_format)", () => {
+    function inBandErrorStream() {
+      // split into several chunks, with the exception row in its own chunk
+      const body = inBandExceptionResponseBody(3);
+      const lastRowIdx = body.lastIndexOf("{");
+      return Readable.from([
+        Buffer.from(body.slice(0, 10)),
+        Buffer.from(body.slice(10, lastRowIdx)),
+        Buffer.from(body.slice(lastRowIdx)),
+      ]);
+    }
+
+    it("should fail the stream with a ClickHouseError", async () => {
+      const rs = makeResultSet(inBandErrorStream());
+      const received: unknown[] = [];
+      let caught: Error | null = null;
+      try {
+        for await (const rows of rs.stream()) {
+          for (const row of rows as Row[]) {
+            received.push(row.json());
+          }
+        }
+      } catch (err) {
+        caught = err as Error;
+      }
+      assertError(caught);
+      // the rows preceding the error may or may not be delivered before the
+      // stream is destroyed, but the exception row is never returned as data
+      expect(received).not.toContainEqual(
+        expect.objectContaining({ exception: expect.anything() }),
+      );
+    });
+
+    it("should fail the stream when the exception row shares a chunk with data rows", async () => {
+      const rs = makeResultSet(
+        Readable.from([Buffer.from(inBandExceptionResponseBody(3))]),
+      );
+      let caught: Error | null = null;
+      try {
+        for await (const rows of rs.stream()) {
+          for (const row of rows as Row[]) {
+            expect(row.json()).not.toHaveProperty("exception");
+          }
+        }
+      } catch (err) {
+        caught = err as Error;
+      }
+      assertError(caught);
+    });
+
+    it("should reject json()", async () => {
+      const rs = makeResultSet(inBandErrorStream());
+      let caught: Error | null = null;
+      try {
+        await rs.json();
+      } catch (err) {
+        caught = err as Error;
+      }
+      assertError(caught);
+    });
+
+    it("should also be detected with JSONStringsEachRow", async () => {
+      const rs = makeResultSet(inBandErrorStream(), "JSONStringsEachRow");
+      let caught: Error | null = null;
+      try {
+        await rs.json();
+      } catch (err) {
+        caught = err as Error;
+      }
+      assertError(caught);
+    });
+
+    it("should return a genuine column named exception as data", async () => {
+      // SELECT 'Code: 395. DB::Exception: ...' AS exception FORMAT JSONEachRow
+      const text = inBandExceptionResponseBody(0).replace(
+        '{"exception": ',
+        '{"exception":',
+      );
+      const rs = makeResultSet(Readable.from([Buffer.from(text)]));
+      expect(await rs.json()).toEqual([JSON.parse(text)]);
+    });
+
+    it("should not change JSONEachRowWithProgress", async () => {
+      const text =
+        '{"row":{"n":0}}\n{"exception":"Code: 395. DB::Exception: boom. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO)"}\n';
+      const rs = makeResultSet(
+        Readable.from([Buffer.from(text)]),
+        "JSONEachRowWithProgress",
+      );
+      expect(await rs.json()).toEqual(
+        text
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line)),
+      );
     });
   });
 
