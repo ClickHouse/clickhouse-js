@@ -1,3 +1,12 @@
+# 1.24.2
+
+## Bug fixes
+
+- Fixed a query error that happens after the response has started streaming being silently returned as an ordinary `{ exception: "..." }` row with `JSONEachRow` / `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled (the server default before 25.11, e.g. on 25.8 LTS). `ResultSet.stream()` and `ResultSet.json()` now fail with a `ClickHouseError` instead. The exception row is recognized by the exact bytes the server writes for it (`{"exception": "` with a space after the colon), so a result column named `exception` is still returned as data ([#1053]). ([#TBD])
+
+[#1053]: https://github.com/ClickHouse/clickhouse-js/issues/1053
+[#TBD]: https://github.com/ClickHouse/clickhouse-js/pull/TBD
+
 # 1.24.1
 
 ## Bug fixes

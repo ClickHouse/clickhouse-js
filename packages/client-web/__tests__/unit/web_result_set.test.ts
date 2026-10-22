@@ -4,6 +4,10 @@ import { guid } from "@test/utils";
 import { ResultSet } from "../../src";
 import { isAwaitUsingStatementSupported } from "../utils/feature_detection";
 import { sleep } from "../utils/sleep";
+import {
+  assertError,
+  inBandExceptionResponseBody,
+} from "@test/fixtures/stream_errors";
 
 describe("[Web] ResultSet", () => {
   const expectedText = `{"foo":"bar"}\n{"qaz":"qux"}\n`;
@@ -104,6 +108,79 @@ describe("[Web] ResultSet", () => {
     `)(rs);
 
     expect(isClosed).toBeTruthy();
+  });
+
+  // See https://github.com/ClickHouse/clickhouse-js/issues/1053
+  describe("in-band exception row (http_write_exception_in_output_format)", () => {
+    function makeStream(chunks: string[]) {
+      return new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          for (const chunk of chunks) {
+            controller.enqueue(encoder.encode(chunk));
+          }
+          controller.close();
+        },
+      });
+    }
+
+    function inBandErrorChunks() {
+      const body = inBandExceptionResponseBody(3);
+      const lastRowIdx = body.lastIndexOf("{");
+      return [
+        body.slice(0, 10),
+        body.slice(10, lastRowIdx),
+        body.slice(lastRowIdx),
+      ];
+    }
+
+    it("should fail the stream with a ClickHouseError", async () => {
+      const rs = new ResultSet(
+        makeStream(inBandErrorChunks()),
+        "JSONEachRow",
+        guid(),
+      );
+      const received: unknown[] = [];
+      let caught: Error | null = null;
+      try {
+        const reader = rs.stream().getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          value.forEach((row: Row) => received.push(row.json()));
+        }
+      } catch (err) {
+        caught = err as Error;
+      }
+      assertError(caught);
+      expect(received).not.toContainEqual(
+        expect.objectContaining({ exception: expect.anything() }),
+      );
+    });
+
+    it("should reject json()", async () => {
+      const rs = new ResultSet(
+        makeStream([inBandExceptionResponseBody(3)]),
+        "JSONEachRow",
+        guid(),
+      );
+      let caught: Error | null = null;
+      try {
+        await rs.json();
+      } catch (err) {
+        caught = err as Error;
+      }
+      assertError(caught);
+    });
+
+    it("should return a genuine column named exception as data", async () => {
+      const text = inBandExceptionResponseBody(0).replace(
+        '{"exception": ',
+        '{"exception":',
+      );
+      const rs = new ResultSet(makeStream([text]), "JSONEachRow", guid());
+      expect(await rs.json()).toEqual([JSON.parse(text)]);
+    });
   });
 
   function makeResultSet() {
