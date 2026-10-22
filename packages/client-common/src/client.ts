@@ -711,6 +711,10 @@ function formatQuery(query: string, format: DataFormat): string {
  * quoted identifiers and comments are not touched.
  */
 export function removeTrailingSemi(query: string): string {
+  // A query without a semicolon has nothing to remove, so large queries skip the scan.
+  if (!query.includes(";")) {
+    return query;
+  }
   const semicolons: number[] = [];
   // The last character that is part of the statement itself: not whitespace,
   // not inside a comment, and not one of the trailing semicolons.
