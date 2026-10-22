@@ -7,10 +7,13 @@ permissions: {}
 on:
   workflow_dispatch:
   schedule:
+    # Not at minute 0: scheduled runs at the start of an hour are the most
+    # likely to be delayed or dropped, as that is when GitHub's load peaks.
     - cron: "17 * * * *"
 
-# One cleanup at a time, and a running one is never cancelled: it would only
-# have to start over. Any extra run waits for it.
+# One cleanup at a time. A running one is not cancelled by a newer run, which
+# would cut a long cleanup short; any extra run waits instead. A stuck run is
+# ended by the job's timeout-minutes below, so it cannot block the queue.
 concurrency:
   group: "${{ github.workflow }}"
   cancel-in-progress: false
@@ -22,6 +25,11 @@ jobs:
   cloud-cleanup:
     # Cloud secrets are not available for Dependabot pushes; skip the cleanup in that case.
     if: ${{ always() && github.triggering_actor != 'dependabot[bot]' }}
+    # The longest cleanup so far, of a ~2,800-database backlog, took ~20
+    # minutes. Ending before the next hourly run keeps the queue moving;
+    # databases dropped before a timeout stay dropped, and the next run
+    # continues with the rest.
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
