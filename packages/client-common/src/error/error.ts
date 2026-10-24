@@ -36,9 +36,44 @@ export class ClickHouseError extends Error {
   }
 }
 
+/** When the output format is one of the JSON family, some servers (seen on 24.8) report an error
+ *  raised before the query is executed through that format, e.g.:
+ *  `{"exception": "<text>"}` (JSONEachRow), a whole document with an `exception` key (JSON, JSONCompact),
+ *  `["<text>"]` (JSONCompactEachRow) or `{"row":{"exception": "<text>"}}` (JSONEachRowWithProgress).
+ *  Extract the text, so that the message does not keep the JSON escaping (e.g., `\\"` instead of `"`). */
+function unwrapJSONException(text: string): string {
+  const trimmed = text.trimStart();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return text;
+  }
+  // The whole body is one JSON document, or one JSON value per line.
+  for (const candidate of [trimmed, ...trimmed.split("\n")]) {
+    try {
+      const exception = findException(JSON.parse(candidate));
+      if (exception !== undefined) {
+        return exception;
+      }
+    } catch {
+      // not a JSON document: try the next candidate
+    }
+  }
+  return text;
+}
+
+function findException(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    return typeof value[0] === "string" ? value[0] : undefined;
+  }
+  if (value !== null && typeof value === "object") {
+    const { exception, row } = value as { exception?: unknown; row?: unknown };
+    return typeof exception === "string" ? exception : findException(row);
+  }
+  return undefined;
+}
+
 export function parseError(input: string | Error): ClickHouseError | Error {
   const inputIsError = input instanceof Error;
-  const message = inputIsError ? input.message : input;
+  const message = unwrapJSONException(inputIsError ? input.message : input);
   const match = message.match(errorRe);
   const groups = match?.groups as ParsedClickHouseError | undefined;
   if (groups) {

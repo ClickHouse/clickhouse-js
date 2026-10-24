@@ -19,6 +19,41 @@ describe("parseError", () => {
     );
   });
 
+  // Some servers (seen on 24.8) report an error raised before the query is
+  // executed through the JSON-family output format. These are the response
+  // shapes seen for each format.
+  describe("unwraps an error returned through a JSON format", () => {
+    const text = `Code: 62. DB::Exception: Syntax error: failed at position 8 ('a"b'): a"b. (SYNTAX_ERROR) (version 24.8.14.39 (official build))`;
+    const quoted = JSON.stringify(text);
+    it.each([
+      ["JSONEachRow", `{"exception": ${quoted}}\n`],
+      ["compact JSONEachRow", `{"exception":${quoted}}`],
+      [
+        "JSON / JSONCompact / JSONStrings",
+        `{\n\t"meta":\n\t[\n\n\t],\n\n\t"data":\n\t[\n\n\t],\n\n\t"rows": 0,\n\n\t"exception": ${quoted}\n}\n`,
+      ],
+      ["JSONObjectEachRow", `{\n\t"exception": ${quoted}\n}\n`],
+      ["JSONCompactEachRow", `[${quoted}]\n`],
+      ["JSONCompactEachRowWithNames", `[]\n[${quoted}]\n`],
+      ["JSONEachRowWithProgress", `{"row":{"exception": ${quoted}}}\n`],
+    ])("%s", (_, body) => {
+      const error = parseError(body) as ClickHouseError;
+
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.code).toBe("62");
+      expect(error.type).toBe("SYNTAX_ERROR");
+      expect(error.message).toBe(
+        `Syntax error: failed at position 8 ('a"b'): a"b. `,
+      );
+    });
+  });
+
+  it("keeps a malformed JSON error as is", () => {
+    const error = parseError(`{"exception": "Code: 62. DB::Exception: oops`);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(ClickHouseError);
+  });
+
   it("parses a multiline error", () => {
     const message = `Code: 62.DB::Exception: Syntax error: failed at position 15 ('unknown_table') (line 1, col 15): unknown_table
     FORMAT JSON. Expected alias cannot be here. (SYNTAX_ERROR) (version 22.7.1.2484 (official build))`;

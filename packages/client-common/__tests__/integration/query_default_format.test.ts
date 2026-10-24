@@ -1,5 +1,9 @@
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
-import { type ClickHouseClient } from "@clickhouse/client-common";
+import {
+  ClickHouseError,
+  type ClickHouseClient,
+  type DataFormat,
+} from "@clickhouse/client-common";
 import { createTestClient } from "../utils";
 
 // query() sends the SQL as written and passes its format as the
@@ -89,6 +93,56 @@ describe("query() with default_format", () => {
       use_multipart_params: true,
     });
     expect(await rs.json()).toEqual([{ a: 7 }]);
+  });
+
+  // With a JSON-family format, some servers (seen on 24.8) report an error
+  // raised before the query is executed through that format, and the other
+  // formats respond with plain text. Either way, the error must be parsed.
+  describe("an error raised before the query is executed", () => {
+    // A Record, so that a new DataFormat cannot be forgotten here.
+    const formats: Record<DataFormat, true> = {
+      JSON: true,
+      JSONStrings: true,
+      JSONCompact: true,
+      JSONCompactStrings: true,
+      JSONColumnsWithMetadata: true,
+      JSONObjectEachRow: true,
+      JSONEachRow: true,
+      JSONStringsEachRow: true,
+      JSONCompactEachRow: true,
+      JSONCompactStringsEachRow: true,
+      JSONCompactEachRowWithNames: true,
+      JSONCompactEachRowWithNamesAndTypes: true,
+      JSONCompactStringsEachRowWithNames: true,
+      JSONCompactStringsEachRowWithNamesAndTypes: true,
+      JSONEachRowWithProgress: true,
+      CSV: true,
+      CSVWithNames: true,
+      CSVWithNamesAndTypes: true,
+      TabSeparated: true,
+      TabSeparatedRaw: true,
+      TabSeparatedWithNames: true,
+      TabSeparatedWithNamesAndTypes: true,
+      CustomSeparated: true,
+      CustomSeparatedWithNames: true,
+      CustomSeparatedWithNamesAndTypes: true,
+      Parquet: true,
+    };
+
+    it.each(Object.keys(formats) as DataFormat[])(
+      "is parsed for %s",
+      async (format) => {
+        const error = await client.query({ query: `selec 'a"b'`, format }).then(
+          () => undefined,
+          (err: unknown) => err,
+        );
+        expect(error).toBeInstanceOf(ClickHouseError);
+        expect(error).toMatchObject({ code: "62", type: "SYNTAX_ERROR" });
+        // no JSON escaping, whichever way the server wrote the error
+        expect((error as ClickHouseError).message).toContain(`'a"b'`);
+        expect((error as ClickHouseError).message).not.toContain('\\"');
+      },
+    );
   });
 
   describe("command() and exec() send the SQL as written", () => {
