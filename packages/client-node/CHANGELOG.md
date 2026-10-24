@@ -2,10 +2,10 @@
 
 ## Bug fixes
 
-- Fixed a query error that happens after rows were already streamed losing its `code` and `type` when the server's tagged exception block (sent with the `X-ClickHouse-Exception-Tag` header, ClickHouse 25.11+) is split across two or more response chunks. `ResultSet.stream()` and `ResultSet.json()` used to parse the block from the end of the chunk where it started, and failed with a plain `Error` (or a fragment of the server message); they now collect the block until its closing marker arrives and fail with a `ClickHouseError`. Also fixed a possible infinite loop when parsing a truncated exception block ([#1084]). ([#TBD])
+- Fixed a query error that happens after rows were already streamed losing its `code` and `type` when the server's tagged exception block (sent with the `X-ClickHouse-Exception-Tag` header, ClickHouse 25.11+) is split across two or more response chunks. `ResultSet.stream()` and `ResultSet.json()` used to parse the block from the end of the chunk where it started, and failed with a plain `Error` (or a fragment of the server message); they now collect the block until its closing marker arrives and fail with a `ClickHouseError`. Also fixed a possible infinite loop when parsing a truncated exception block ([#1084]). ([#1086])
 
 [#1084]: https://github.com/ClickHouse/clickhouse-js/issues/1084
-[#TBD]: https://github.com/ClickHouse/clickhouse-js/pull/TBD
+[#1086]: https://github.com/ClickHouse/clickhouse-js/pull/1086
 
 # 1.24.1
 
