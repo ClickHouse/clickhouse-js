@@ -65,6 +65,22 @@ describe("query() with default_format", () => {
     expect(await rs.json()).toEqual([{ a: 1 }]);
   });
 
+  describe("a FORMAT clause in the query", () => {
+    it("throws when it differs from the format option", async () => {
+      await expect(
+        client.query({ query: "SELECT 1 AS a FORMAT CSV", format: "JSON" }),
+      ).rejects.toThrow(/responded in the CSV format.*JSON format/s);
+    });
+
+    it("is accepted when it matches the format option", async () => {
+      const rs = await client.query({
+        query: "SELECT 1 AS a FORMAT JSONEachRow",
+        format: "JSONEachRow",
+      });
+      expect(await rs.json()).toEqual([{ a: 1 }]);
+    });
+  });
+
   it("works when the query is sent as a multipart body", async () => {
     const rs = await client.query({
       query: "SELECT {a: UInt8} AS a; -- note",

@@ -7,6 +7,7 @@ import type {
   IsSame,
   MakeResultSet,
   WithClickHouseSummary,
+  ResponseHeaders,
   WithResponseHeaders,
   DataFormat,
 } from "./index";
@@ -261,8 +262,9 @@ export class ClickHouseClient<Stream = unknown> {
    * The output format is specified separately via {@link QueryParams.format} (default is `JSON`):
    * {@link QueryParams.query} is sent as written, and the format is passed to the server as the
    * `default_format` setting, overriding any `default_format` in {@link BaseQueryParams.clickhouse_settings}.
-   * Do not add a `FORMAT` clause to the query: the server would use it instead of {@link QueryParams.format},
-   * and the result would then not be parsed as expected.
+   * Do not add a `FORMAT` clause to the query: the server would use it instead of {@link QueryParams.format}.
+   * If the format the server responded in (the `X-ClickHouse-Format` header) differs from {@link QueryParams.format},
+   * the method throws instead of returning a result that cannot be parsed.
    * Use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,
    * or {@link ClickHouseClient.exec} for queries where you need to provide the full SQL (including `FORMAT`) yourself.
    *
@@ -330,7 +332,7 @@ export class ClickHouseClient<Stream = unknown> {
           { kind: ClickHouseSpanKind.CLIENT },
           (streamSpan) => {
             try {
-              return this.makeResultSet(
+              const resultSet = this.makeResultSet(
                 stream,
                 format,
                 query_id,
@@ -352,6 +354,22 @@ export class ClickHouseClient<Stream = unknown> {
                 this.jsonHandling,
                 streamSpan,
               );
+              // The query may have its own FORMAT clause, which the server
+              // prefers over `default_format`; fail early instead of
+              // parsing the response with the wrong format.
+              const serverFormat = getServerFormat(response_headers);
+              if (
+                serverFormat !== undefined &&
+                serverFormat.toLowerCase() !== format.toLowerCase()
+              ) {
+                resultSet.close();
+                throw new Error(
+                  `The server responded in the ${serverFormat} format, but the ${format} format was requested. ` +
+                    `The query probably has its own FORMAT ${serverFormat} clause: remove it and use the \`format\` option instead, ` +
+                    `or use \`exec()\` if you need to write the full SQL yourself.`,
+                );
+              }
+              return resultSet;
             } catch (err) {
               recordSpanError(streamSpan, err);
               streamSpan.end();
@@ -705,6 +723,13 @@ function setResponseSpanAttributes(
     }
   }
   span.setAttributes(attributes);
+}
+
+/** The format the server used for the response, if it reported one
+ *  in the `X-ClickHouse-Format` header (absent for statements without output). */
+function getServerFormat(headers: ResponseHeaders): string | undefined {
+  const value = headers["x-clickhouse-format"];
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function removeTrailingSemi(query: string) {

@@ -14,15 +14,17 @@ await client.query({ query: "SELECT 1; -- note", format: "JSONEachRow" });
 
 ## Don't add a `FORMAT` clause to the query
 
-If the `query` string has its own `FORMAT` clause, the server uses it instead of `default_format`. The client still parses the response as the `format` option says, so the result is wrong or fails to parse:
+If the `query` string has its own `FORMAT` clause, the server uses it instead of `default_format`, so the response may not be in the format the `format` option says. The client compares the format the server responded in (the `X-ClickHouse-Format` header) with the `format` option and throws when they differ:
 
 ```js
-// ❌ Wrong — the server returns CSV, but the client parses it as JSON
+// ❌ Wrong — throws: "The server responded in the CSV format, but the JSON format was requested ..."
 await client.query({ query: "SELECT 1 FORMAT CSV" });
 
 // ✓ Correct — pass the format via the option
 await client.query({ query: "SELECT 1", format: "CSV" });
 ```
+
+A `FORMAT` clause that matches the `format` option is accepted, but it is redundant: prefer the option.
 
 If you genuinely need to write the full SQL yourself, including the `FORMAT` clause, use `client.exec()` instead of `client.query()`. Use `client.insert()` for data insertion and `client.command()` for DDLs.
 
