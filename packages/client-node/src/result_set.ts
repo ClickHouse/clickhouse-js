@@ -10,7 +10,7 @@ import type {
   Row,
 } from "./common/index";
 import {
-  extractErrorAtTheEndOfChunk,
+  ExceptionBlockBuffer,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
@@ -28,6 +28,17 @@ import Stream, { Transform } from "stream";
 import { getAsText } from "./utils";
 
 const NEWLINE = 0x0a as const;
+const CARET_RETURN_BYTES = new Uint8Array([CARET_RETURN]);
+
+function lastByteOf(chunks: Uint8Array[]): number | undefined {
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const chunk = chunks[i];
+    if (chunk !== undefined && chunk.length > 0) {
+      return chunk[chunk.length - 1];
+    }
+  }
+  return undefined;
+}
 
 /** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
  * Everything else is an exact copy from stream.d.ts */
@@ -220,6 +231,9 @@ export class ResultSet<
     const logError = this.log_error;
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
+    // set once the start of an exception block is seen; the block can be
+    // split across several chunks, so it is collected until it is complete
+    let exceptionBlock: ExceptionBlockBuffer | undefined;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
     const toRows = new Transform({
@@ -229,6 +243,9 @@ export class ResultSet<
         callback: TransformCallback,
       ) {
         resultSet.span_bytes += chunk.length;
+        if (exceptionBlock !== undefined) {
+          return callback(exceptionBlock.push(chunk));
+        }
         const rows: Row[] = [];
 
         let lastIdx = 0;
@@ -246,13 +263,32 @@ export class ResultSet<
             }
             break;
           } else {
-            // Check for exception in the chunk (only after 25.11)
-            if (
-              exceptionTag !== undefined &&
-              idx >= 1 &&
-              chunk[idx - 1] === CARET_RETURN
-            ) {
-              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag));
+            // Check for exception in the chunk (only after 25.11).
+            // The `\r` of the opening `\r\n` can be the last byte of the previous chunk.
+            if (exceptionTag !== undefined) {
+              let err: Error | undefined;
+              if (idx >= 1 && chunk[idx - 1] === CARET_RETURN) {
+                exceptionBlock = new ExceptionBlockBuffer(exceptionTag);
+                err = exceptionBlock.push(chunk.subarray(idx - 1));
+              } else if (
+                idx === 0 &&
+                lastByteOf(incompleteChunks) === CARET_RETURN
+              ) {
+                exceptionBlock = new ExceptionBlockBuffer(exceptionTag);
+                exceptionBlock.push(CARET_RETURN_BYTES);
+                err = exceptionBlock.push(chunk);
+              }
+              if (exceptionBlock !== undefined) {
+                if (err !== undefined) {
+                  return callback(err);
+                }
+                // wait for the rest of the exception block in the next chunks
+                if (rows.length > 0) {
+                  resultSet.addSpanRows(rows.length);
+                  this.push(rows);
+                }
+                return callback();
+              }
             }
 
             if (incompleteChunks.length > 0) {
@@ -276,6 +312,10 @@ export class ResultSet<
           }
         }
         callback();
+      },
+      flush(callback: TransformCallback) {
+        // the response ended before the exception block was complete
+        callback(exceptionBlock?.end());
       },
       autoDestroy: true,
       objectMode: true,
