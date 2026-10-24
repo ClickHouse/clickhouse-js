@@ -58,6 +58,28 @@ describe("[Node.js] ResultSet (extra coverage)", () => {
     });
   });
 
+  describe("close() without an error listener", () => {
+    it("should not throw the closure error as uncaught", async () => {
+      const uncaught: Error[] = [];
+      const onUncaught = (err: Error) => uncaught.push(err);
+      process.prependListener("uncaughtException", onUncaught);
+      try {
+        const stream = new Stream.Readable({
+          read() {
+            // never push data; the stream stays open
+          },
+        });
+        makeResultSet(stream, "JSONEachRow").close();
+        // 'error' is emitted on the next tick after destroy()
+        await new Promise((resolve) => setImmediate(resolve));
+        expect(stream.destroyed).toBe(true);
+        expect(uncaught).toEqual([]);
+      } finally {
+        process.removeListener("uncaughtException", onUncaught);
+      }
+    });
+  });
+
   describe("stream()", () => {
     it("should throw when streaming a non-streamable format", () => {
       const rs = makeResultSet(

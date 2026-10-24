@@ -307,6 +307,11 @@ export class ResultSet<
     // misleading "Stream has been already consumed" error on any subsequent
     // call. Downstream code will instead receive a "ResultSet has been closed"
     // error from the destroyed stream, which accurately describes what happened.
+    // The error only signals the closure: without a listener, destroying a
+    // stream that is still receiving data would throw it as uncaught.
+    this._stream.on("error", () => {
+      // expected: the error is the closure signal
+    });
     this._stream.destroy(new Error(resultSetClosedMessage));
     this.finishSpan();
   }
