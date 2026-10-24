@@ -11,7 +11,7 @@ import type {
 } from "./common/index";
 import {
   CARET_RETURN,
-  extractErrorAtTheEndOfChunk,
+  ExceptionBlockBuffer,
   recordSpanError,
 } from "./common/index";
 import {
@@ -23,6 +23,17 @@ import {
 import { getAsText } from "./utils";
 
 const NEWLINE = 0x0a as const;
+const CARET_RETURN_BYTES = new Uint8Array([CARET_RETURN]);
+
+function lastByteOf(chunks: Uint8Array[]): number | undefined {
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const chunk = chunks[i];
+    if (chunk !== undefined && chunk.length > 0) {
+      return chunk[chunk.length - 1];
+    }
+  }
+  return undefined;
+}
 
 /** The WHATWG Streams spec includes a `cancel` callback on `Transformer`, but
  *  TypeScript's DOM lib does not yet declare it.  This local extension adds it
@@ -157,6 +168,9 @@ export class ResultSet<
     let totalIncompleteLength = 0;
 
     const exceptionTag = this.exceptionTag;
+    // set once the start of an exception block is seen; the block can be
+    // split across several chunks, so it is collected until it is complete
+    let exceptionBlock: ExceptionBlockBuffer | undefined;
     const jsonHandling = this.jsonHandling;
     const decoder = new TextDecoder("utf-8");
     const transformerOptions: TransformerWithCancel<Uint8Array, Row[]> = {
@@ -169,6 +183,14 @@ export class ResultSet<
         }
 
         this.span_bytes += chunk.length;
+        if (exceptionBlock !== undefined) {
+          const err = exceptionBlock.push(chunk);
+          if (err !== undefined) {
+            this.finishSpan(err);
+            controller.error(err);
+          }
+          return;
+        }
         const rows: Row[] = [];
 
         let idx: number;
@@ -194,16 +216,34 @@ export class ResultSet<
           } else {
             let bytesToDecode: Uint8Array;
 
-            // Check for exception in the chunk (only after 25.11)
-            if (
-              exceptionTag !== undefined &&
-              idx >= 1 &&
-              chunk[idx - 1] === CARET_RETURN
-            ) {
-              const err = extractErrorAtTheEndOfChunk(chunk, exceptionTag);
-              this.finishSpan(err);
-              controller.error(err);
-              return; // stop further processing once the stream is errored
+            // Check for exception in the chunk (only after 25.11).
+            // The `\r` of the opening `\r\n` can be the last byte of the previous chunk.
+            if (exceptionTag !== undefined) {
+              let err: Error | undefined;
+              if (idx >= 1 && chunk[idx - 1] === CARET_RETURN) {
+                exceptionBlock = new ExceptionBlockBuffer(exceptionTag);
+                err = exceptionBlock.push(chunk.subarray(idx - 1));
+              } else if (
+                idx === 0 &&
+                lastByteOf(incompleteChunks) === CARET_RETURN
+              ) {
+                exceptionBlock = new ExceptionBlockBuffer(exceptionTag);
+                exceptionBlock.push(CARET_RETURN_BYTES);
+                err = exceptionBlock.push(chunk);
+              }
+              if (exceptionBlock !== undefined) {
+                if (err !== undefined) {
+                  this.finishSpan(err);
+                  controller.error(err);
+                  return; // stop further processing once the stream is errored
+                }
+                // wait for the rest of the exception block in the next chunks
+                if (rows.length > 0) {
+                  this.addSpanRows(rows.length);
+                  controller.enqueue(rows);
+                }
+                return;
+              }
             }
 
             // using the incomplete chunks from the previous iterations
@@ -245,7 +285,14 @@ export class ResultSet<
           }
         }
       },
-      flush: () => {
+      flush: (controller) => {
+        if (exceptionBlock !== undefined) {
+          // the response ended before the exception block was complete
+          const err = exceptionBlock.end();
+          this.finishSpan(err);
+          controller.error(err);
+          return;
+        }
         // The readable side of the transform completes when the source
         // stream is fully consumed - finalize the query span.
         this.finishSpan();

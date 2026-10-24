@@ -172,6 +172,7 @@ export {
   isCredentialsAuth,
   isJWTAuth,
   extractErrorAtTheEndOfChunk,
+  ExceptionBlockBuffer,
   CARET_RETURN,
 } from "./utils";
 export { LogWriter, DefaultLogger, type LogWriterParams } from "./logger";
