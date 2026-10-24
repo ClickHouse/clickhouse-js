@@ -190,7 +190,8 @@ describe("[Node.js] Client", () => {
       const searchParams = new URL(callURL).searchParams;
       expect(searchParams.get("enable_http_compression")).toEqual("1");
       expect(searchParams.get("query_id")).not.toBeNull();
-      expect(searchParams.size).toEqual(2);
+      expect(searchParams.get("default_format")).toEqual("JSON");
+      expect(searchParams.size).toEqual(3);
     }
   });
 
@@ -205,7 +206,9 @@ describe("[Node.js] Client", () => {
   function assertSearchParams(callURL: string | URL) {
     const searchParams = new URL(callURL).searchParams;
     expect(searchParams.get("query_id")).not.toBeNull();
-    expect(searchParams.size).toEqual(1); // only query_id by default
+    // query() sends its format as `default_format` (JSON by default)
+    expect(searchParams.get("default_format")).toEqual("JSON");
+    expect(searchParams.size).toEqual(2); // query_id and default_format by default
   }
 
   function getRequestHeaders(httpRequestStubCalledTimes = 1) {
