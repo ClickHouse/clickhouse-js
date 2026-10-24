@@ -7,14 +7,14 @@
   - `FORMAT` is no longer placed after a trailing `SETTINGS` clause, which some older servers rejected ([#970]);
   - the short `SHOW ROW POLICIES` syntax works ([#759]).
 
-  The query text recorded in `system.query_log`, in logs and in traces no longer ends with `FORMAT <format>`. A `FORMAT` clause written in the query itself now takes precedence over the `format` option instead of causing a syntax error, so don't include one: use `exec()` if you need full control over the SQL. The `format` option also overrides a `default_format` set in `clickhouse_settings`. ([#TBD])
+  The query text recorded in `system.query_log`, in logs and in traces no longer ends with `FORMAT <format>`. A `FORMAT` clause written in the query itself now takes precedence over the `format` option instead of causing a syntax error, so don't include one: use `exec()` if you need full control over the SQL. The `format` option also overrides a `default_format` set in `clickhouse_settings`. ([#1085])
 
-- `command()` and `exec()` now also send the query as written, without removing trailing semicolons, as the server accepts them. The one exception is `exec()` with `values`: the server reads the data right after the statement and rejects a `;` before it, so trailing semicolons are still removed there. ([#TBD])
+- `command()` and `exec()` now also send the query as written, without removing trailing semicolons, as the server accepts them. The one exception is `exec()` with `values`: the server reads the data right after the statement and rejects a `;` before it, so trailing semicolons are still removed there. ([#1085])
 
 [#759]: https://github.com/ClickHouse/clickhouse-js/issues/759
 [#970]: https://github.com/ClickHouse/clickhouse-js/issues/970
 [#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
-[#TBD]: https://github.com/ClickHouse/clickhouse-js/pull/TBD
+[#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
 
 # 1.24.1
 
