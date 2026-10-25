@@ -534,6 +534,7 @@ export function loadConfigOptionsFromURL(
         // static known parameters
         switch (key) {
           case "application":
+          case "application_id":
             config.application = value;
             break;
           case "pathname":

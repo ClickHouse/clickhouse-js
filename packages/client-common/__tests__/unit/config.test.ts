@@ -290,6 +290,16 @@ describe("config", () => {
           max_open_connections: 2,
         } as unknown as BaseClickHouseClientConfigOptionsWithURL);
       });
+
+      it("should correctly process application_id alias from the URL", async () => {
+        const url = new URL("http://my_host:8124?application_id=my_app");
+        const res = prepareConfigWithURL({ url }, logger, null);
+        expect(res).toEqual({
+          ...defaultConfig,
+          url: new URL("http://my_host:8124"),
+          application: "my_app",
+        } as unknown as BaseClickHouseClientConfigOptionsWithURL);
+      });
     });
 
     describe("Credentials vs JWT auth parsing", () => {

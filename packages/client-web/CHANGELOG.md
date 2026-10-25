@@ -1,3 +1,11 @@
+# 1.24.1
+
+## Bug fixes
+
+- Accepted the documented `application_id` URL parameter as an alias for `application` ([#1052]).
+
+[#1052]: https://github.com/ClickHouse/clickhouse-js/issues/1052
+
 # 1.24.0
 
 ## New features
