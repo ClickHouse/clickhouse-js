@@ -26,6 +26,8 @@ await client.query({ query: "SELECT 1", format: "CSV" });
 
 A `FORMAT` clause that matches the `format` option is accepted, but it is redundant: prefer the option.
 
+The same goes for an `X-ClickHouse-Format` request header: the server prefers it over `default_format`, so `client.query()` does not send one, even when it is set in `http_headers` (on the client or on the call). The other methods send it as given.
+
 If you genuinely need to write the full SQL yourself, including the `FORMAT` clause, use `client.exec()` instead of `client.query()`. Use `client.insert()` for data insertion and `client.command()` for DDLs.
 
 ## Older versions

@@ -1,13 +1,13 @@
 # 1.25.0
 
-## New features
+## Improvements
 
 - `query()` now sends the query as written and passes its `format` to the server as the `default_format` setting, instead of appending `FORMAT <format>` to the SQL. This matches the Go, Rust and Java clients, and fixes queries that failed because of the appended clause:
   - a trailing semicolon followed by a comment, such as `SELECT 1; -- note`, no longer fails with `Multi-statements are not allowed` ([#973]);
   - `FORMAT` is no longer placed after a trailing `SETTINGS` clause, which some older servers rejected ([#970]);
   - the short `SHOW ROW POLICIES` syntax works ([#759]).
 
-  The query text recorded in `system.query_log`, in logs and in traces no longer ends with `FORMAT <format>`. A `FORMAT` clause written in the query itself now takes precedence for the server instead of causing a syntax error, so don't include one: use `exec()` if you need full control over the SQL. If the format the server responded in (the `X-ClickHouse-Format` header) differs from the `format` option, `query()` throws an error that names both, instead of returning a result that can't be parsed. The `format` option also overrides a `default_format` set in `clickhouse_settings`. Because `default_format` is now sent on every `query()` request, a user whose profile locks it with a `<constraints>` entry (seen on ClickHouse 26.10) fails with `SETTING_CONSTRAINT_VIOLATION`; allow changing `default_format` for that user. ([#1085])
+  The query text recorded in `system.query_log`, in logs and in traces no longer ends with `FORMAT <format>`. A `FORMAT` clause written in the query itself now takes precedence for the server instead of causing a syntax error, so don't include one: use `exec()` if you need full control over the SQL. If the format the server responded in (the `X-ClickHouse-Format` header) differs from the `format` option, `query()` throws an error that names both, instead of returning a result that can't be parsed. The `format` option also overrides a `default_format` set in `clickhouse_settings`. An `X-ClickHouse-Format` request header set via `http_headers` (on the client or on the call) is not sent by `query()`, as the server would prefer it over `default_format`; the other methods still send it. Because `default_format` is now sent on every `query()` request, a user whose profile locks it with a `<constraints>` entry (seen on ClickHouse 26.10) fails with `SETTING_CONSTRAINT_VIOLATION`; allow changing `default_format` for that user. ([#1085])
 
 - `command()` and `exec()` now also send the query as written, without removing trailing semicolons, as the server accepts them. The one exception is `exec()` with `values`: the server reads the data right after the statement and rejects a `;` before it, so trailing semicolons are still removed there. ([#1085])
 
