@@ -78,6 +78,20 @@ describe("[Node.js] ResultSet (extra coverage)", () => {
         process.removeListener("uncaughtException", onUncaught);
       }
     });
+
+    it("should not add another listener on a repeated close()", () => {
+      const stream = new Stream.Readable({
+        read() {
+          // never push data; the stream stays open
+        },
+      });
+      const rs = makeResultSet(stream, "JSONEachRow");
+      rs.close();
+      const listeners = stream.listenerCount("error");
+      rs.close();
+      rs.close();
+      expect(stream.listenerCount("error")).toBe(listeners);
+    });
   });
 
   describe("stream()", () => {

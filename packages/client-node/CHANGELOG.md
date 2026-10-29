@@ -2,7 +2,7 @@
 
 ## Bug fixes
 
-- `ResultSet.close()` no longer throws an uncaught `ResultSet has been closed` error when it destroys a response stream that is still receiving data and has no `error` listener. ([#1087])
+- (Node.js only) `ResultSet.close()` no longer throws an uncaught `ResultSet has been closed` error when the `ResultSet` wraps a stream that has no `error` listener. ([#1087])
 
 [#1087]: https://github.com/ClickHouse/clickhouse-js/pull/1087
 
