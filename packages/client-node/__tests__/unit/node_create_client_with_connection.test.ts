@@ -151,16 +151,11 @@ describe("[Node.js] createClient({ connection }) — pluggable backend injection
   });
 
   describe("X-ClickHouse-Format response header", () => {
-    function stubWithFormatHeader(
-      header: string | string[] | undefined,
-      withStream: (stream: Readable) => void = () => undefined,
-    ) {
+    function stubWithFormatHeader(header: string | string[] | undefined) {
       const stub = makeStubConnection();
       stub.query.mockImplementationOnce(() => {
-        const stream = readableFromString('{"n":1}\n');
-        withStream(stream);
         return Promise.resolve({
-          stream,
+          stream: readableFromString('{"n":1}\n'),
           query_id: "stub-query-id",
           response_headers: { "x-clickhouse-format": header },
           http_status_code: 200,
@@ -182,13 +177,7 @@ describe("[Node.js] createClient({ connection }) — pluggable backend injection
     );
 
     it("throws when the query's own FORMAT clause differs from the format option", async () => {
-      const client = stubWithFormatHeader("CSV", (stream) => {
-        // ResultSet.close() destroys the stream with an error, which is thrown
-        // as uncaught without a listener until the Node.js ResultSet handles it.
-        stream.on("error", () => {
-          // expected: the error is the closure signal
-        });
-      });
+      const client = stubWithFormatHeader("CSV");
       await expect(
         client.query({ query: "SELECT 1 FORMAT CSV", format: "JSON" }),
       ).rejects.toThrow(/responded in the CSV format.*JSON format/s);
