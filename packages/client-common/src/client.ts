@@ -12,6 +12,7 @@ import type {
   DataFormat,
 } from "./index";
 import { defaultJSONHandling } from "./parse";
+import { FORMAT_HEADER_NAME } from "./utils";
 import { DefaultLogger, ClickHouseLogLevel } from "./logger";
 import type {
   InsertValues,
@@ -728,7 +729,7 @@ function setResponseSpanAttributes(
 /** The format the server used for the response, if it reported one
  *  in the `X-ClickHouse-Format` header (absent for statements without output). */
 function getServerFormat(headers: ResponseHeaders): string | undefined {
-  const value = headers["x-clickhouse-format"];
+  const value = headers[FORMAT_HEADER_NAME];
   return Array.isArray(value) ? value[0] : value;
 }
 

@@ -22,6 +22,8 @@ import {
   toSearchParams,
   transformUrl,
   withHttpSettings,
+  withoutHeader,
+  FORMAT_HEADER_NAME,
   ClickHouseLogLevel,
 } from "../common/index";
 import { type ConnPingParams } from "../common/index";
@@ -232,7 +234,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         : undefined;
 
     let body: string = params.query;
-    const headers = this.buildRequestHeaders(params);
+    // The format of a query() is its `default_format` setting; the server would
+    // prefer a custom `X-ClickHouse-Format` header over it, so that one is not sent.
+    const headers = withoutHeader(
+      this.buildRequestHeaders(params),
+      FORMAT_HEADER_NAME,
+    );
     if (useMultipart && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
       const parts: Record<string, string> = { query: params.query };

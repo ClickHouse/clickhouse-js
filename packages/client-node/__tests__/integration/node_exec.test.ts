@@ -28,6 +28,20 @@ describe("[Node.js] exec", () => {
     expect(await getAsText(result.stream)).toEqual("30\n");
   });
 
+  // Unlike query(), exec() sends an X-ClickHouse-Format header as given, and
+  // the server prefers it over the `default_format` setting.
+  it("should send the X-ClickHouse-Format header", async () => {
+    await client.close();
+    client = createTestClient({
+      http_headers: { "X-ClickHouse-Format": "CSV" },
+    });
+    const result = await client.exec({
+      query: "SELECT 1 AS a",
+      clickhouse_settings: { default_format: "JSONEachRow" },
+    });
+    expect(await getAsText(result.stream)).toEqual("1\n");
+  });
+
   describe("trailing semi", () => {
     it("should allow commands with semi in select clause", async () => {
       const result = await client.exec({

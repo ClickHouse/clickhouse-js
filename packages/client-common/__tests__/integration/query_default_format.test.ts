@@ -85,6 +85,24 @@ describe("query() with default_format", () => {
     });
   });
 
+  // The server prefers the header over `default_format` (and, on recent
+  // versions, even over a FORMAT clause in the query), so query() does not
+  // send it: the format option decides. The other methods send it as given;
+  // see the Node.js exec() tests (a browser cannot send it to the test server,
+  // whose CORS config does not allow this header).
+  it("does not send an X-ClickHouse-Format request header", async () => {
+    await client.close();
+    client = createTestClient({
+      http_headers: { "X-ClickHouse-Format": "CSV" },
+    });
+    const rs = await client.query({
+      query: "SELECT 1 AS a",
+      format: "JSONEachRow",
+      http_headers: { "x-clickhouse-format": "TabSeparated" },
+    });
+    expect(await rs.json()).toEqual([{ a: 1 }]);
+  });
+
   it("works when the query is sent as a multipart body", async () => {
     const rs = await client.query({
       query: "SELECT {a: UInt8} AS a; -- note",

@@ -22,6 +22,8 @@ import {
   transformUrl,
   withCompressionHeaders,
   withHttpSettings,
+  withoutHeader,
+  FORMAT_HEADER_NAME,
 } from "../common/index";
 import { getAsText } from "../utils";
 
@@ -94,7 +96,12 @@ export class WebConnection implements Connection<ReadableStream> {
     });
 
     let body: string = params.query;
-    const headers = this.defaultHeadersWithOverride(params);
+    // The format of a query() is its `default_format` setting; the server would
+    // prefer a custom `X-ClickHouse-Format` header over it, so that one is not sent.
+    const headers = withoutHeader(
+      this.defaultHeadersWithOverride(params),
+      FORMAT_HEADER_NAME,
+    );
     if (useMultipart && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
       const multipartParts: Record<string, string> = { query: params.query };
