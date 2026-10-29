@@ -260,14 +260,15 @@ export class ClickHouseClient<Stream = unknown> {
    * Used for most statements that can have a response, such as `SELECT`.
    * Returns an implementation of {@link BaseResultSet}.
    *
-   * The output format is specified separately via {@link QueryParams.format} (default is `JSON`):
-   * {@link QueryParams.query} is sent as written, and the format is passed to the server as the
-   * `default_format` setting, overriding any `default_format` in {@link BaseQueryParams.clickhouse_settings}.
-   * Do not add a `FORMAT` clause to the query: the server would use it instead of {@link QueryParams.format}.
-   * If the format the server responded in (the `X-ClickHouse-Format` header) differs from {@link QueryParams.format},
-   * the method throws instead of returning a result that cannot be parsed.
+   * The output format is a separate parameter, {@link QueryParams.format} (the default is `JSON`).
+   * The client sends {@link QueryParams.query} as written. It sends the format to the server as the
+   * `default_format` setting. This setting replaces a `default_format` in {@link BaseQueryParams.clickhouse_settings}.
+   * Do not add a `FORMAT` clause to the query. The server uses that clause instead of {@link QueryParams.format}.
+   * The server reports the format of the response in the `X-ClickHouse-Format` header. If this format is not
+   * the format in {@link QueryParams.format}, the method throws an error. It does not return a result that
+   * the client cannot parse.
    * Use {@link ClickHouseClient.insert} for data insertion, {@link ClickHouseClient.command} for DDLs,
-   * or {@link ClickHouseClient.exec} for queries where you need to provide the full SQL (including `FORMAT`) yourself.
+   * or {@link ClickHouseClient.exec} when you must write the full SQL, with the `FORMAT` clause, yourself.
    *
    * See {@link DataFormat} for the formats supported by the client.
    */
@@ -275,8 +276,8 @@ export class ClickHouseClient<Stream = unknown> {
     params: QueryParamsWithFormat<Format>,
   ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? "JSON";
-    // The query is sent as written; the server applies `default_format` to
-    // its output, so no FORMAT clause has to be appended to the SQL.
+    // The client sends the query as written. The server applies
+    // `default_format` to the output. A FORMAT clause is not necessary.
     const query = params.query;
     const queryParams = this.withClientQueryParams(params);
     queryParams.clickhouse_settings = {
@@ -355,9 +356,9 @@ export class ClickHouseClient<Stream = unknown> {
                 this.jsonHandling,
                 streamSpan,
               );
-              // The query may have its own FORMAT clause, which the server
-              // prefers over `default_format`; fail early instead of
-              // parsing the response with the wrong format.
+              // The query can have its own FORMAT clause. The server uses that
+              // clause instead of `default_format`. Throw an error now. The
+              // client cannot parse a response in a different format.
               const serverFormat = getServerFormat(response_headers);
               if (
                 serverFormat !== undefined &&
@@ -393,7 +394,8 @@ export class ClickHouseClient<Stream = unknown> {
    * and you are interested in the response data, consider using {@link ClickHouseClient.exec}.
    */
   async command(params: CommandParams): Promise<CommandResult> {
-    // Sent as written: the server accepts trailing semicolons and comments.
+    // The client sends the query as written. The server accepts trailing
+    // semicolons and comments.
     const query = params.query;
     const ignore_error_response = params.ignore_error_response ?? false;
     const queryParams = this.withClientQueryParams(params);
@@ -444,9 +446,10 @@ export class ClickHouseClient<Stream = unknown> {
     params: ExecParams | ExecParamsWithValues<Stream>,
   ): Promise<ExecResult<Stream>> {
     const values = "values" in params ? params.values : undefined;
-    // Sent as written, except when values follow it: the server reads the data
-    // right after the statement (`INSERT ... FORMAT CSV`) and rejects a `;`
-    // before it, so trailing semicolons are removed in that case.
+    // The client sends the query as written, unless values follow it. Then,
+    // the server reads the data directly after the statement
+    // (`INSERT ... FORMAT CSV`) and rejects a `;` before the data. For this
+    // reason, the client removes trailing semicolons in that case.
     const query =
       values === undefined
         ? params.query
@@ -726,8 +729,8 @@ function setResponseSpanAttributes(
   span.setAttributes(attributes);
 }
 
-/** The format the server used for the response, if it reported one
- *  in the `X-ClickHouse-Format` header (absent for statements without output). */
+/** The format of the response, from the `X-ClickHouse-Format` header. The server
+ *  does not send this header for a statement without output. */
 function getServerFormat(headers: ResponseHeaders): string | undefined {
   const value = headers[FORMAT_HEADER_NAME];
   return Array.isArray(value) ? value[0] : value;

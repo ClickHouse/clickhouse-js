@@ -36,18 +36,20 @@ export class ClickHouseError extends Error {
   }
 }
 
-/** With an output format of the JSON family, the server may report an error through that format
- *  instead of as plain text: on 24.8 for every error, on later versions for an error raised while the
- *  result is written (`http_write_exception_in_output_format`, enabled by default). The exception is
- *  then one JSON value in the body, possibly after other rows (column names, types, data):
+/** With an output format of the JSON family, the server can report an error in that format
+ *  instead of as plain text. Version 24.8 does this for every error. Later versions do this for an
+ *  error that occurs while the server writes the result (`http_write_exception_in_output_format`,
+ *  enabled by default). The exception is then one JSON value in the body. Other rows (column names,
+ *  types, data) can come before it. These are the known shapes:
  *  - `{"exception": "<text>"}` for JSONEachRow and the other object-per-row formats;
  *  - a document with a top-level `exception` key for JSON, JSONCompact, JSONObjectEachRow, ...;
  *  - `["<text>"]` for JSONCompactEachRow and its `...WithNames[AndTypes]` variants, after the header rows;
  *  - `{"row":{"exception": "<text>"}}` for JSONEachRowWithProgress on 24.8 (later versions write
  *    `{"exception": "<text>"}` at the top level, like the other formats).
- *  Returns every string in the body that has one of these shapes. The caller keeps the first one that
- *  parses as a ClickHouse error, so that the message does not keep the JSON escaping (e.g., `\\"` instead
- *  of `"`), while a column name or a data value in a column named `exception` is skipped. */
+ *  This function returns each string in the body that has one of these shapes. The caller keeps the
+ *  first string that it can parse as a ClickHouse error. In this way, the message does not keep the
+ *  JSON escaping (for example, `\\"` instead of `"`). The caller also skips a column name and a data
+ *  value in a column named `exception`. */
 function jsonExceptionCandidates(text: string): string[] {
   const trimmed = text.trimStart();
   if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
@@ -70,7 +72,7 @@ function jsonExceptionCandidates(text: string): string[] {
   return candidates;
 }
 
-/** The `exception` string of a parsed JSON value, if it has one of the shapes listed above. */
+/** Returns the `exception` string of a parsed JSON value. The value must have one of the shapes listed above. */
 function getException(value: unknown): string | undefined {
   if (Array.isArray(value)) {
     // `["<text>"]`: a compact format writes the exception as a one-element row
@@ -96,8 +98,8 @@ function getException(value: unknown): string | undefined {
 export function parseError(input: string | Error): ClickHouseError | Error {
   const inputIsError = input instanceof Error;
   const text = inputIsError ? input.message : input;
-  // The JSON candidates come first: the raw text of a JSON-wrapped error
-  // matches too, but with the JSON escaping kept in the message.
+  // Try the JSON candidates first. The raw text of a JSON-wrapped error also
+  // matches, but then the message keeps the JSON escaping.
   for (const candidate of [...jsonExceptionCandidates(text), text]) {
     const groups = candidate.match(errorRe)?.groups as
       ParsedClickHouseError | undefined;

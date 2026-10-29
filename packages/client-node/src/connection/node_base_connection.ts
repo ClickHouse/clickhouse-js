@@ -234,8 +234,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         : undefined;
 
     let body: string = params.query;
-    // The format of a query() is its `default_format` setting; the server would
-    // prefer a custom `X-ClickHouse-Format` header over it, so that one is not sent.
+    // The `default_format` setting gives the format of a query(). The server
+    // uses a custom `X-ClickHouse-Format` header instead of that setting.
+    // For this reason, the client does not send the header.
     const headers = withoutHeader(
       this.buildRequestHeaders(params),
       FORMAT_HEADER_NAME,
