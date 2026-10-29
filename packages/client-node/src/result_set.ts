@@ -307,7 +307,12 @@ export class ResultSet<
     // misleading "Stream has been already consumed" error on any subsequent
     // call. Downstream code will instead receive a "ResultSet has been closed"
     // error from the destroyed stream, which accurately describes what happened.
-    this._stream.destroy(new Error(resultSetClosedMessage));
+    // Skipped when the stream is already destroyed, so that repeated calls do
+    // not keep adding listeners.
+    if (!this._stream.destroyed) {
+      this._stream.on("error", ignoreClosureError);
+      this._stream.destroy(new Error(resultSetClosedMessage));
+    }
     this.finishSpan();
   }
 
@@ -345,6 +350,11 @@ export class ResultSet<
 
 const streamAlreadyConsumedMessage = "Stream has been already consumed";
 const resultSetClosedMessage = "ResultSet has been closed";
+/** The error emitted by `close()` only signals the closure: without a listener,
+ *  destroying a stream that has none would throw it as uncaught. */
+function ignoreClosureError(): void {
+  // expected: the error is the closure signal
+}
 
 /** Best-effort row count for a fully-parsed non-streaming JSON document, used
  *  to populate `db.response.returned_rows` for `json()` consumption. Returns

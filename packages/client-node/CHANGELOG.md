@@ -1,3 +1,11 @@
+# 1.24.2
+
+## Bug fixes
+
+- (Node.js only) `ResultSet.close()` no longer throws an uncaught `ResultSet has been closed` error when the `ResultSet` wraps a stream that has no `error` listener. ([#1087])
+
+[#1087]: https://github.com/ClickHouse/clickhouse-js/pull/1087
+
 # 1.24.1
 
 ## Bug fixes
