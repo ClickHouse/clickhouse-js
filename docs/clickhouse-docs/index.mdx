@@ -285,6 +285,14 @@ See also: [Base parameters for all client methods](/integrations/language-client
 Don't specify the FORMAT clause in `query`, use `format` parameter instead.
 </Tip>
 
+`query` sends the SQL as written and passes `format` to the server as the `default_format` setting (since 1.25.0; earlier versions append `FORMAT <format>` to the query). Because of this:
+
+- trailing semicolons, comments and a trailing `SETTINGS` clause work as expected;
+- `format` overrides a `default_format` set in `clickhouse_settings` (client-level or per request);
+- an `X-ClickHouse-Format` request header set via `http_headers` is not sent by `query` (the other methods send it);
+- if the query has its own `FORMAT` clause, the server responds in that format, and `query` throws an error that names the response format and the requested one. Use `exec` if you need full control over the SQL;
+- a user whose profile locks `default_format` with a `<constraints>` entry gets `SETTING_CONSTRAINT_VIOLATION` from every `query`. Allow changing `default_format` for that user.
+
 #### Result set and row abstractions {#result-set-and-row-abstractions}
 
 `ResultSet` provides several convenience methods for data processing in your application.
