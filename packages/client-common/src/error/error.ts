@@ -36,16 +36,78 @@ export class ClickHouseError extends Error {
   }
 }
 
+/** With an output format of the JSON family, the server can report an error in that format
+ *  instead of as plain text. Version 24.8 does this for every error. Later versions do this for an
+ *  error that occurs while the server writes the result (`http_write_exception_in_output_format`,
+ *  enabled by default). The exception is then one JSON value in the body. Other rows (column names,
+ *  types, data) can come before it. These are the known shapes:
+ *  - `{"exception": "<text>"}` for JSONEachRow and the other object-per-row formats;
+ *  - a document with a top-level `exception` key for JSON, JSONCompact, JSONObjectEachRow, ...;
+ *  - `["<text>"]` for JSONCompactEachRow and its `...WithNames[AndTypes]` variants, after the header rows;
+ *  - `{"row":{"exception": "<text>"}}` for JSONEachRowWithProgress on 24.8 (later versions write
+ *    `{"exception": "<text>"}` at the top level, like the other formats).
+ *  This function returns each string in the body that has one of these shapes. The caller keeps the
+ *  first string that it can parse as a ClickHouse error. In this way, the message does not keep the
+ *  JSON escaping (for example, `\\"` instead of `"`). The caller also skips a column name and a data
+ *  value in a column named `exception`. */
+function jsonExceptionCandidates(text: string): string[] {
+  const trimmed = text.trimStart();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return [];
+  }
+  const candidates: string[] = [];
+  // The whole body is one JSON document, or one JSON value per line.
+  for (const candidate of [trimmed, ...trimmed.split("\n")]) {
+    let value: unknown;
+    try {
+      value = JSON.parse(candidate);
+    } catch {
+      continue; // not a JSON document: try the next candidate
+    }
+    const exception = getException(value);
+    if (exception !== undefined) {
+      candidates.push(exception);
+    }
+  }
+  return candidates;
+}
+
+/** Returns the `exception` string of a parsed JSON value. The value must have one of the shapes listed above. */
+function getException(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    // `["<text>"]`: a compact format writes the exception as a one-element row
+    return value.length === 1 && typeof value[0] === "string"
+      ? value[0]
+      : undefined;
+  }
+  if (value === null || typeof value !== "object") {
+    return undefined;
+  }
+  const { exception, row } = value as { exception?: unknown; row?: unknown };
+  if (typeof exception === "string") {
+    return exception;
+  }
+  // `{"row":{"exception": "<text>"}}` (JSONEachRowWithProgress on 24.8)
+  if (row !== null && typeof row === "object" && !Array.isArray(row)) {
+    const nested = (row as { exception?: unknown }).exception;
+    return typeof nested === "string" ? nested : undefined;
+  }
+  return undefined;
+}
+
 export function parseError(input: string | Error): ClickHouseError | Error {
   const inputIsError = input instanceof Error;
-  const message = inputIsError ? input.message : input;
-  const match = message.match(errorRe);
-  const groups = match?.groups as ParsedClickHouseError | undefined;
-  if (groups) {
-    return new ClickHouseError(groups);
-  } else {
-    return inputIsError ? input : new Error(input);
+  const text = inputIsError ? input.message : input;
+  // Try the JSON candidates first. The raw text of a JSON-wrapped error also
+  // matches, but then the message keeps the JSON escaping.
+  for (const candidate of [...jsonExceptionCandidates(text), text]) {
+    const groups = candidate.match(errorRe)?.groups as
+      ParsedClickHouseError | undefined;
+    if (groups) {
+      return new ClickHouseError(groups);
+    }
   }
+  return inputIsError ? input : new Error(input);
 }
 
 /** Captures the current stack trace from the sync context before going async.

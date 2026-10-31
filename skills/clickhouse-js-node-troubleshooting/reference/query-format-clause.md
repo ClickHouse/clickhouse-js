@@ -1,49 +1,40 @@
-# `query()` FORMAT Clause Errors (incl. `SHOW [ROW] POLICIES`)
+# `query()` and the `FORMAT` Clause
 
-> **Applies to:** all versions.
+> **Applies to:** `@clickhouse/client` and `@clickhouse/client-web` 1.25.0+. For older versions, see [Older versions](#older-versions) below.
 
-`client.query()` is for statements that return a result set (such as `SELECT`). It **always appends `FORMAT <format>`** to the end of the `query` string, where `<format>` comes from the `format` option (default `JSON`). You should therefore **not** include a `FORMAT` clause in the `query` yourself.
+`client.query()` is for statements that return a result set (such as `SELECT`). It sends the `query` string **as written**, and passes the `format` option (default `JSON`) to the server as the `default_format` setting. The client does not change your SQL, so trailing semicolons, comments and `SETTINGS` clauses all work.
 
 ```js
 // What you write:
-await client.query({ query: "SELECT 1", format: "JSONEachRow" });
+await client.query({ query: "SELECT 1; -- note", format: "JSONEachRow" });
 
-// What the client actually sends:
-// SELECT 1
-// FORMAT JSONEachRow
+// What the client sends: the SQL as written, plus `default_format=JSONEachRow`
+// in the request URL.
 ```
 
-## Duplicate `FORMAT` — syntax error
+## Don't add a `FORMAT` clause to the query
 
-If the `query` string already contains a `FORMAT` clause, the client still appends another one, producing a duplicate `FORMAT` and a server-side syntax error. This is intended behavior.
+If the `query` string has its own `FORMAT` clause, the server uses it instead of `default_format`, so the response may not be in the format the `format` option says. The client compares the format the server responded in (the `X-ClickHouse-Format` header) with the `format` option and throws when they differ:
 
 ```js
-// ❌ Wrong — ends up as `... FORMAT CSV FORMAT JSON` → syntax error
+// ❌ Wrong — throws: "The server responded in the CSV format, but the JSON format was requested ..."
 await client.query({ query: "SELECT 1 FORMAT CSV" });
 
-// ✓ Correct — let the client append FORMAT via the option
+// ✓ Correct — pass the format via the option
 await client.query({ query: "SELECT 1", format: "CSV" });
 ```
 
-If you genuinely need to write the full SQL yourself (including the `FORMAT` clause), or you're running a statement where the appended `FORMAT` suffix is not supported, use `client.exec()` instead of `client.query()`. Use `client.insert()` for data insertion and `client.command()` for DDLs.
+A `FORMAT` clause that matches the `format` option is accepted, but it is redundant: prefer the option.
 
-## `SHOW [ROW] POLICIES` fails even with a format
+The same goes for an `X-ClickHouse-Format` request header: the server prefers it over `default_format`, so `client.query()` does not send one, even when it is set in `http_headers` (on the client or on the call). The other methods send it as given.
 
-Some statements are not parsed by the server with a trailing `FORMAT` clause, so the `FORMAT` suffix that `query()` always appends triggers a syntax error. The most common case is the **short** form of `SHOW POLICIES` / `SHOW ROW POLICIES` — at the server SQL parser level it does not accept the `FORMAT` suffix.
+If you genuinely need to write the full SQL yourself, including the `FORMAT` clause, use `client.exec()` instead of `client.query()`. Use `client.insert()` for data insertion and `client.command()` for DDLs.
 
-```js
-// ❌ Fails — query() appends `FORMAT JSON`, which the short SHOW POLICIES syntax rejects
-await client.query({ query: "SHOW POLICIES", format: "JSON" });
-await client.query({ query: "SHOW ROW POLICIES", format: "JSON" });
-```
+## Older versions
 
-**Fix:** use the full syntax `SHOW POLICIES ON *` (or `SHOW POLICIES ON db.table`), which the parser accepts together with the appended `FORMAT`:
+Before 1.25.0, `query()` appends `\nFORMAT <format>` to the end of the query instead. That causes these errors, all fixed by upgrading:
 
-```js
-// ✓ Works — full syntax accepts the appended FORMAT clause
-await client.query({ query: "SHOW POLICIES ON *", format: "JSON" });
-```
-
-Alternatively, run the short statement through `client.exec()`, where you control the full SQL and no `FORMAT` suffix is appended.
-
-This behavior is easy to misdiagnose because the error looks like a generic syntax error rather than a client/format problem. See the upstream issue: https://github.com/ClickHouse/ClickHouse/issues/105899
+- **A duplicate `FORMAT`** is a syntax error when the query has its own `FORMAT` clause.
+- **`Syntax error (Multi-statements are not allowed)`** when the query ends with a semicolon followed by a comment, such as `SELECT 1; -- note`. The `;` is kept, so the appended `FORMAT` becomes a second statement. Workaround: remove the semicolon.
+- **The short `SHOW POLICIES` / `SHOW ROW POLICIES`** fails, because the server parser does not accept a `FORMAT` suffix there ([ClickHouse#105899](https://github.com/ClickHouse/ClickHouse/issues/105899)). Workaround: use the full syntax `SHOW POLICIES ON *`, or `client.exec()`.
+- **A trailing `SETTINGS` clause** gets `FORMAT` appended after it, which some older ClickHouse server versions reject.

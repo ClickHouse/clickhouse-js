@@ -139,15 +139,49 @@ describe("[Node.js] createClient({ connection }) — pluggable backend injection
 
     const rs = await client.query({ query: "SELECT 1", format: "JSONEachRow" });
     expect(stub.query).toHaveBeenCalledTimes(1);
-    // ConnBaseQueryParams shape — `query` is the SQL string (the Client
-    // layer appends `\nFORMAT <Format>` when caller specifies `format`).
+    // ConnBaseQueryParams shape — `query` is the SQL string as written, and
+    // the format is passed as the `default_format` setting.
     expect(stub.calls[0]?.op).toBe("query");
-    const sql = (stub.calls[0]?.params as ConnBaseQueryParams).query;
-    expect(sql).toMatch(/^SELECT 1\b/);
-    expect(sql).toContain("FORMAT JSONEachRow");
+    const params = stub.calls[0]?.params as ConnBaseQueryParams;
+    expect(params.query).toBe("SELECT 1");
+    expect(params.clickhouse_settings?.default_format).toBe("JSONEachRow");
     // ResultSet drains the injected stream.
     const rows = await rs.json();
     expect(rows).toEqual([{ n: 1 }]);
+  });
+
+  describe("X-ClickHouse-Format response header", () => {
+    function stubWithFormatHeader(header: string | string[] | undefined) {
+      const stub = makeStubConnection();
+      stub.query.mockImplementationOnce(() => {
+        return Promise.resolve({
+          stream: readableFromString('{"n":1}\n'),
+          query_id: "stub-query-id",
+          response_headers: { "x-clickhouse-format": header },
+          http_status_code: 200,
+        });
+      });
+      return createClient({ connection: stub });
+    }
+
+    it.each([["JSONEachRow"], ["jsoneachrow"], [["JSONEachRow"]], [undefined]])(
+      "returns the result set when the header is %j",
+      async (header) => {
+        const client = stubWithFormatHeader(header);
+        const rs = await client.query({
+          query: "SELECT 1",
+          format: "JSONEachRow",
+        });
+        expect(await rs.json()).toEqual([{ n: 1 }]);
+      },
+    );
+
+    it("throws when the query's own FORMAT clause differs from the format option", async () => {
+      const client = stubWithFormatHeader("CSV");
+      await expect(
+        client.query({ query: "SELECT 1 FORMAT CSV", format: "JSON" }),
+      ).rejects.toThrow(/responded in the CSV format.*JSON format/s);
+    });
   });
 
   it("routes client.insert through the injected connection's insert()", async () => {

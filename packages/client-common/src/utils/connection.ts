@@ -60,3 +60,17 @@ export function isCredentialsAuth(
 }
 
 export const EXCEPTION_TAG_HEADER_NAME = "x-clickhouse-exception-tag";
+
+/** The format of the response. In a request, this header replaces the `default_format` setting. */
+export const FORMAT_HEADER_NAME = "x-clickhouse-format";
+
+/** Returns a copy of `headers` without the header `name`. The name match ignores the case. */
+export function withoutHeader<H extends HttpHeaders>(
+  headers: H,
+  name: string,
+): H {
+  const lowerName = name.toLowerCase();
+  return Object.fromEntries(
+    Object.entries(headers).filter(([key]) => key.toLowerCase() !== lowerName),
+  ) as H;
+}

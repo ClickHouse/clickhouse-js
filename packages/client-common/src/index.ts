@@ -169,6 +169,8 @@ export {
   transformUrl,
   withCompressionHeaders,
   withHttpSettings,
+  withoutHeader,
+  FORMAT_HEADER_NAME,
   isCredentialsAuth,
   isJWTAuth,
   extractErrorAtTheEndOfChunk,
