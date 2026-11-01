@@ -77,4 +77,68 @@ describe("splitQueries", () => {
       "SELECT 2",
     ]);
   });
+
+  it("does not split on quotes or semicolons inside a $$ heredoc", () => {
+    // Condensed 03032_save_bad_json_escape_sequences: the heredoc body holds
+    // double quotes and backslashes that must not toggle the quote state.
+    const sql = [
+      "select * from format(JSONEachRow, $$",
+      '{"key" : "\\u"}',
+      '{"key" : "\\ud800\\"}',
+      "$$);",
+      "SELECT 2;",
+    ].join("\n");
+    expect(splitQueries(sql)).toEqual([
+      [
+        "select * from format(JSONEachRow, $$",
+        '{"key" : "\\u"}',
+        '{"key" : "\\ud800\\"}',
+        "$$)",
+      ].join("\n"),
+      "SELECT 2",
+    ]);
+  });
+
+  it("does not split on quotes or semicolons inside a $tag$ heredoc", () => {
+    expect(
+      splitQueries("SELECT $doc$it's; a trap$doc$ AS s; SELECT 2"),
+    ).toEqual(["SELECT $doc$it's; a trap$doc$ AS s", "SELECT 2"]);
+  });
+
+  it("keeps the boundaries of statements that follow a heredoc", () => {
+    // 02685_bson2 and friends: the heredoc body itself contains an apostrophe.
+    expect(splitQueries("SELECT $$it's$$; SELECT 2; SELECT 3")).toEqual([
+      "SELECT $$it's$$",
+      "SELECT 2",
+      "SELECT 3",
+    ]);
+  });
+
+  it("treats an unterminated $$ as ordinary characters", () => {
+    expect(splitQueries("SELECT $$; SELECT 2")).toEqual([
+      "SELECT $$",
+      "SELECT 2",
+    ]);
+  });
+
+  it("does not treat other bare words starting with $ as heredocs", () => {
+    expect(splitQueries("SELECT $foo, '$bar'; SELECT 2")).toEqual([
+      "SELECT $foo, '$bar'",
+      "SELECT 2",
+    ]);
+  });
+
+  it("handles a backslash-escaped backtick in a quoted identifier", () => {
+    // 04097_tuple_inside_nullable_subcolumn_descendants: the escaped backtick
+    // used to close the identifier early, leaving the identifier open and
+    // merging the rest of the file into one statement.
+    const sql =
+      "CREATE TABLE t (tup Nullable(Tuple(`a\\`b` Nullable(String)))) ENGINE = Memory;" +
+      " SELECT 1; SELECT 2";
+    expect(splitQueries(sql)).toEqual([
+      "CREATE TABLE t (tup Nullable(Tuple(`a\\`b` Nullable(String)))) ENGINE = Memory",
+      "SELECT 1",
+      "SELECT 2",
+    ]);
+  });
 });
