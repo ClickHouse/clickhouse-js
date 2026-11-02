@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { ClickHouseLogLevel, LogWriter } from "@clickhouse/client-common";
+import {
+  ClickHouseLogLevel,
+  LogWriter,
+  MAX_FORM_FIELD_VALUE_LENGTH,
+} from "@clickhouse/client-common";
 import { TestLogger } from "../../../client-common/__tests__/utils/test_logger";
 import { WebConnection, type WebConnectionParams } from "../../src/connection";
 
@@ -253,6 +257,79 @@ describe("[Web] Multipart query params", () => {
       const { url, headers } = lastFetchCall(fetchStub);
       expect(url).toContain("param_big");
       expect(headers["Content-Type"]).toBeUndefined();
+    });
+  });
+
+  describe("when a multipart part exceeds http_max_field_value_size", () => {
+    const overLimit = "x".repeat(MAX_FORM_FIELD_VALUE_LENGTH + 1);
+
+    it("should send an oversized SQL statement as the raw body", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({
+        use_multipart_params: true,
+        fetch: fetchStub,
+      });
+
+      const query = `SELECT {v:Int32} AS v, '${overLimit}' AS padding`;
+      await adapter.query({ query, query_params: { v: 42 } });
+
+      const { url, init, headers } = lastFetchCall(fetchStub);
+      expect(headers["Content-Type"]).toBeUndefined();
+      expect(url).toContain("param_v=42");
+      expect(init.body).toBe(query);
+    });
+
+    it("should keep an oversized query_param in the URL in explicit multipart mode", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({
+        use_multipart_params: true,
+        fetch: fetchStub,
+      });
+
+      await adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: overLimit },
+      });
+
+      const { url, headers } = lastFetchCall(fetchStub);
+      expect(url).toContain("param_big=");
+      expect(headers["Content-Type"]).toBeUndefined();
+    });
+
+    it("should not auto-promote an oversized query_param to multipart", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({
+        use_multipart_params_auto: true,
+        fetch: fetchStub,
+      });
+
+      await adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: overLimit },
+      });
+
+      const { url, headers } = lastFetchCall(fetchStub);
+      expect(url).toContain("param_big=");
+      expect(headers["Content-Type"]).toBeUndefined();
+    });
+
+    it("should still use multipart for a query_param at the field limit", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({
+        use_multipart_params_auto: true,
+        fetch: fetchStub,
+      });
+
+      await adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: "x".repeat(MAX_FORM_FIELD_VALUE_LENGTH) },
+      });
+
+      const { url, headers } = lastFetchCall(fetchStub);
+      expect(url).not.toContain("param_big");
+      expect(headers["Content-Type"]).toMatch(
+        /^multipart\/form-data; boundary=/,
+      );
     });
   });
 });

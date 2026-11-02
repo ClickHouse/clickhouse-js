@@ -190,12 +190,19 @@ export interface BaseClickHouseClientConfigOptions {
    *  when query parameters contain large arrays (25K+ values).
    *  The SQL query is also moved into a multipart part named "query".
    *  All other URL search params (database, query_id, settings, etc.) remain in the URL.
+   *  ClickHouse caps each form field at `http_max_field_value_size` (128 KiB by
+   *  default) before the query's settings are applied. When the SQL query or a
+   *  single parameter is larger, the request falls back to the non-multipart
+   *  layout instead: the SQL query is sent as the raw body and the parameters
+   *  stay in the URL.
    *  @default false */
   use_multipart_params?: boolean;
   /** When true, query() automatically sends query_params as multipart/form-data
    *  parts (see {@link use_multipart_params}) once their URL-encoded length
    *  exceeds a threshold (4096 characters), avoiding HTTP 414/400 errors from
    *  over-long URLs. Smaller parameter payloads remain in the URL query string.
+   *  A parameter larger than `http_max_field_value_size` (128 KiB by default)
+   *  cannot be sent as a form field, so it stays in the URL too.
    *  Has no effect when {@link use_multipart_params} is enabled, as that always
    *  sends the parameters as multipart/form-data parts.
    *  @default false */

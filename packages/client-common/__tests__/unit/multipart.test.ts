@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   buildMultipartBody,
+  exceedsMultipartFieldLimit,
+  MAX_FORM_FIELD_VALUE_LENGTH,
   MAX_URL_BIND_PARAM_LENGTH,
   serializeQueryParamsForUrl,
 } from "../../src/utils/multipart";
@@ -95,6 +97,28 @@ describe("buildMultipartBody", () => {
     expect(result).toContain(
       `Content-Disposition: form-data; name="param_my-key.name"\r\n`,
     );
+  });
+});
+
+describe("exceedsMultipartFieldLimit", () => {
+  it("should accept a value exactly at the field limit", () => {
+    expect(
+      exceedsMultipartFieldLimit("x".repeat(MAX_FORM_FIELD_VALUE_LENGTH)),
+    ).toBe(false);
+  });
+
+  it("should reject a value one byte over the field limit", () => {
+    expect(
+      exceedsMultipartFieldLimit("x".repeat(MAX_FORM_FIELD_VALUE_LENGTH + 1)),
+    ).toBe(true);
+  });
+
+  it("should measure UTF-8 bytes rather than code points", () => {
+    // Each "€" is three bytes, so the string is under the limit by length
+    // but over it once encoded.
+    const value = "€".repeat(Math.ceil(MAX_FORM_FIELD_VALUE_LENGTH / 3) + 1);
+    expect(value.length).toBeLessThanOrEqual(MAX_FORM_FIELD_VALUE_LENGTH);
+    expect(exceedsMultipartFieldLimit(value)).toBe(true);
   });
 });
 

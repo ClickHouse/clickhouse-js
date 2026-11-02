@@ -13,6 +13,23 @@ const SAFE_PART_NAME = /^[A-Za-z0-9_.-]+$/;
 export const MAX_URL_BIND_PARAM_LENGTH = 4096;
 
 /**
+ * ClickHouse parses a multipart request body with Poco's HTMLForm, which
+ * rejects any field value larger than the server's `http_max_field_value_size`
+ * (128 KiB by default) before the query's own settings are applied. This is
+ * the byte budget a single part can use; anything larger has to travel outside
+ * the form body.
+ */
+export const MAX_FORM_FIELD_VALUE_LENGTH = 128 * 1024;
+
+/**
+ * Checks whether a value is too large to be sent as a multipart form field.
+ * The comparison uses the UTF-8 byte length, which is what the server caps.
+ */
+export function exceedsMultipartFieldLimit(value: string): boolean {
+  return new TextEncoder().encode(value).length > MAX_FORM_FIELD_VALUE_LENGTH;
+}
+
+/**
  * Early-return variant of the `param_*` serialization performed by
  * {@link toSearchParams}: serializes {@link query_params} into `param_*`
  * URL entries, returning them so the caller can reuse the result without

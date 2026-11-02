@@ -12,6 +12,7 @@ import type {
 } from "../common/index";
 import {
   buildMultipartBody,
+  exceedsMultipartFieldLimit,
   serializeQueryParamsForUrl,
   formatQueryParams,
   isCredentialsAuth,
@@ -85,6 +86,23 @@ export class WebConnection implements Connection<ReadableStream> {
       }
     }
 
+    // ClickHouse parses the multipart body into form fields before applying the
+    // query's settings, and rejects any field value larger than
+    // http_max_field_value_size (128 KiB by default). A statement or parameter
+    // that large cannot travel in the form, so fall back to the non-multipart
+    // layout: the statement goes into the raw body and the params into the URL.
+    let multipartParts: Record<string, string> | undefined;
+    if (useMultipart && params.query_params !== undefined) {
+      multipartParts = { query: params.query };
+      for (const [key, value] of Object.entries(params.query_params)) {
+        multipartParts[`param_${key}`] = formatQueryParams({ value });
+      }
+      if (Object.values(multipartParts).some(exceedsMultipartFieldLimit)) {
+        useMultipart = false;
+        multipartParts = undefined;
+      }
+    }
+
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings,
@@ -103,12 +121,8 @@ export class WebConnection implements Connection<ReadableStream> {
       this.defaultHeadersWithOverride(params),
       FORMAT_HEADER_NAME,
     );
-    if (useMultipart && params.query_params !== undefined) {
+    if (multipartParts !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
-      const multipartParts: Record<string, string> = { query: params.query };
-      for (const [key, value] of Object.entries(params.query_params)) {
-        multipartParts[`param_${key}`] = formatQueryParams({ value });
-      }
       body = buildMultipartBody(multipartParts, boundary);
       headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
     }

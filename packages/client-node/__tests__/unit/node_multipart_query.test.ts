@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import Http from "http";
+import { MAX_FORM_FIELD_VALUE_LENGTH } from "@clickhouse/client-common";
 import {
   buildHttpConnection,
   emitResponseBody,
@@ -296,6 +297,97 @@ describe("[Node.js] Multipart query params", () => {
       const [url, options] = httpRequestStub.mock.calls[0];
       expect(url.search).toContain("param_big");
       expect(options.headers["Content-Type"]).toBeUndefined();
+    });
+  });
+
+  describe("when a multipart part exceeds http_max_field_value_size", () => {
+    const overLimit = "x".repeat(MAX_FORM_FIELD_VALUE_LENGTH + 1);
+
+    it("should send an oversized SQL statement as the raw body", async () => {
+      const adapter = buildHttpConnection({ use_multipart_params: true });
+
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const query = `SELECT {v:Int32} AS v, '${overLimit}' AS padding`;
+      const selectPromise = adapter.query({
+        query,
+        query_params: { v: 42 },
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url, options] = httpRequestStub.mock.calls[0];
+      expect(options.headers["Content-Type"]).toBeUndefined();
+      expect(url.search).toContain("param_v=42");
+    });
+
+    it("should keep an oversized query_param in the URL in explicit multipart mode", async () => {
+      const adapter = buildHttpConnection({ use_multipart_params: true });
+
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const selectPromise = adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: overLimit },
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url, options] = httpRequestStub.mock.calls[0];
+      expect(url.search).toContain("param_big=");
+      expect(options.headers["Content-Type"]).toBeUndefined();
+    });
+
+    it("should not auto-promote an oversized query_param to multipart", async () => {
+      const adapter = buildHttpConnection({
+        use_multipart_params_auto: true,
+      });
+
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const selectPromise = adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: overLimit },
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url, options] = httpRequestStub.mock.calls[0];
+      expect(url.search).toContain("param_big=");
+      expect(options.headers["Content-Type"]).toBeUndefined();
+    });
+
+    it("should still use multipart for a query_param at the field limit", async () => {
+      const adapter = buildHttpConnection({
+        use_multipart_params_auto: true,
+      });
+
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const selectPromise = adapter.query({
+        query: "SELECT {big:String}",
+        query_params: { big: "x".repeat(MAX_FORM_FIELD_VALUE_LENGTH) },
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url, options] = httpRequestStub.mock.calls[0];
+      expect(url.search).not.toContain("param_big");
+      expect(options.headers["Content-Type"]).toMatch(
+        /^multipart\/form-data; boundary=/,
+      );
     });
   });
 });
