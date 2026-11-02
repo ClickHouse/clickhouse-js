@@ -4,10 +4,11 @@
 
 - `query()` now sends its `format` to the server as the `default_format` setting, instead of appending `FORMAT <format>` to the SQL (see Improvements below). No code change is required, but check the following:
   - The query text recorded in `system.query_log`, in logs and in traces no longer ends with `FORMAT <format>`. Adjust anything that matches on that suffix.
-  - A `FORMAT` clause in the query itself is no longer a syntax error: the server uses it, and if it differs from the `format` option, `query()` throws an error that names both formats. Remove the clause, or use `exec()` if you need full control over the SQL.
+  - A `FORMAT` clause in the query itself is no longer a syntax error: the server uses it, and if it differs from the `format` option, `query()` throws an error that names both formats. With a `tracer` configured, that error is recorded on the `clickhouse.query.stream` span ([#1103]). Remove the clause, or use `exec()` if you need full control over the SQL.
   - A user whose profile locks `default_format` with a `<constraints>` entry (possible on ClickHouse 26.x) fails every `query()` with `SETTING_CONSTRAINT_VIOLATION`. Allow changing `default_format` for that user. ([#1085])
 
 [#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
+[#1103]: https://github.com/ClickHouse/clickhouse-js/pull/1103
 
 ## Improvements
 
@@ -24,6 +25,12 @@
 [#970]: https://github.com/ClickHouse/clickhouse-js/issues/970
 [#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
 [#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
+
+## Bug fixes
+
+- (Web only) `ResultSet.close()` now ends the `clickhouse.query.stream` tracing span when cancelling the response stream rejects (for example after a connection reset), instead of leaving the span open. ([#1103])
+
+[#1103]: https://github.com/ClickHouse/clickhouse-js/pull/1103
 
 # 1.24.0
 
