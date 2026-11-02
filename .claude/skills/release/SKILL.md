@@ -97,6 +97,13 @@ client-node and client-web changelogs.)
   ```
 - Confirm that package's `CHANGELOG.md` has a top `# <new-version>` section that
   actually contains this release's notes.
+- Make sure no **unreleased** version heading sits between the top section and
+  the last released one (check `git tag`). If an earlier in-progress heading
+  exists for a version that is being skipped (e.g. `# 1.24.2` above released
+  `1.24.1` while you cut `1.25.0`), merge its entries into the new version's
+  section — reuse the same `## Bug fixes` / `## Improvements` headings, keep the
+  PR reference links — and delete the skipped heading. Every version heading in
+  the file should correspond to a version that was or is about to be released.
 - If it's wrong, **fix it in a small separate PR to `main` and merge it quickly**
   before bumping — do not bundle the changelog fix into the bump PR.
 
