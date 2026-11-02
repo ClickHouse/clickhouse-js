@@ -4,8 +4,9 @@ coverage:
   precision: 2
 
 # Coverage is uploaded incrementally from each test job in the Node.js
-# (.github/workflows/tests-node.yml) and Web (.github/workflows/tests-web.yml)
-# workflows, each with a distinct Codecov flag. To keep the number of uploads
+# (.github/workflows/tests-node.yml), Web (.github/workflows/tests-web.yml) and
+# Cloud (.github/workflows/tests-cloud.yml) workflows, each with a distinct
+# Codecov flag. To keep the number of uploads
 # stable as the test matrices grow, every upload step is gated (via its `if:`)
 # to a single canonical combination, so each flag uploads EXACTLY ONCE per
 # commit:
@@ -19,26 +20,33 @@ coverage:
 #   node-unit                  node / unit-tests
 #   node-integration-single    node / integration-tests-local-single-node
 #   node-integration-cluster   node / integration-tests-local-cluster
-#   node-integration-cloud     node / integration-tests-cloud
+#   node-integration-cloud     cloud / node
 #   web-all-single             web  / all-tests-local-single-node
 #   web-integration-cluster    web  / integration-tests-local-cluster
-#   web-integration-cloud      web  / integration-tests-cloud
+#   web-integration-cloud      cloud / web
 #                              => 7 uploads total (one per flag)
 #
-# `after_n_builds` therefore equals the number of flags (7). When a flag is
-# added or removed, update this value and the `individual_flags` list to match.
+# The two cloud flags only upload when the Cloud workflow runs: after a merge
+# to main or release, on schedule, or on a PR labelled `tests:run-cloud`. It
+# never runs on fork PRs. Otherwise their coverage is carried forward (see
+# `flag_management`).
+#
+# `after_n_builds` therefore counts only the 5 uploads that every PR gets.
+# With 7, Codecov never posted a status on fork PRs, which skip the cloud jobs,
+# and now it would not post on most PRs. When a flag is added or removed, update this value and the
+# `individual_flags` list to match.
 codecov:
   # Wait for the other CI checks to finish before notifying, in addition to the
   # upload count below, so statuses/comments are not posted off a partial report.
   notify:
     wait_for_ci: true
-    # Total number of expected uploads before Codecov posts the final commit
-    # status/notification: one upload per flag (see the table above).
-    after_n_builds: 7
+    # Number of uploads before Codecov posts the commit status/notification:
+    # the flags uploaded on every PR (see the table above).
+    after_n_builds: 5
 
 comment:
   # Wait for all uploads before posting/updating the PR comment.
-  after_n_builds: 7
+  after_n_builds: 5
 
 flag_management:
   default_rules:

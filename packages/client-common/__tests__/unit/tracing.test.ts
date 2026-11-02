@@ -430,10 +430,8 @@ describe("tracer", () => {
       { dangerously_log_query_text: true },
     );
     await client.query({ query: "SELECT 42" });
-    // The query span carries the actual SQL sent (with the FORMAT suffix).
-    expect(spans[0].initialAttributes["db.query.text"]).toBe(
-      "SELECT 42 \nFORMAT JSON",
-    );
+    // The query span carries the actual SQL sent, which is the query as written.
+    expect(spans[0].initialAttributes["db.query.text"]).toBe("SELECT 42");
   });
 
   it("attaches db.query.text for command/exec/insert when enabled", async () => {
@@ -500,9 +498,7 @@ describe("tracer", () => {
       span_attributes: { "db.query.text": "SELECT secret FROM secrets" },
     });
     // Only the client-controlled query text is recorded, not the caller's.
-    expect(spans[0].initialAttributes["db.query.text"]).toBe(
-      "SELECT 1 \nFORMAT JSON",
-    );
+    expect(spans[0].initialAttributes["db.query.text"]).toBe("SELECT 1");
   });
 
   it("does not let span_attributes override core attributes", async () => {
