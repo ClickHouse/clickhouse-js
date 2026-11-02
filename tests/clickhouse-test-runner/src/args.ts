@@ -92,6 +92,32 @@ export function printUsage(
   stream.write(USAGE_TEXT);
 }
 
+/**
+ * `--port` of the real `clickhouse-client` is the native TCP port, and the
+ * upstream runner passes it: `clickhouse-test` exports `CLICKHOUSE_PORT_TCP`
+ * (9000 by default) for `.sh` tests, and `shell_config.sh` then appends
+ * `--port=$CLICKHOUSE_PORT_TCP` to `$CLICKHOUSE_CLIENT`. This client only
+ * speaks HTTP, so map that port to the matching HTTP(S) port the runner also
+ * exports. Any other port is used as given, as an HTTP port.
+ */
+export function resolveHttpPort(
+  port: number,
+  secure: boolean,
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const nativePort = Number(
+    secure
+      ? (env["CLICKHOUSE_PORT_TCP_SECURE"] ?? 9440)
+      : (env["CLICKHOUSE_PORT_TCP"] ?? 9000),
+  );
+  if (port !== nativePort) return port;
+  return Number(
+    secure
+      ? (env["CLICKHOUSE_PORT_HTTPS"] ?? 8443)
+      : (env["CLICKHOUSE_PORT_HTTP"] ?? 8123),
+  );
+}
+
 export function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = {
     host: "localhost",

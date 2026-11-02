@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { parseArgs } from "../src/args.js";
+import { parseArgs, resolveHttpPort } from "../src/args.js";
 import { SERVER_SETTINGS } from "../src/settings.js";
+
+describe("resolveHttpPort", () => {
+  it("maps the native TCP port the upstream runner passes to the HTTP port", () => {
+    expect(resolveHttpPort(9000, false, {})).toBe(8123);
+    expect(resolveHttpPort(9440, true, {})).toBe(8443);
+  });
+
+  it("follows the ports the runner exports", () => {
+    const env = { CLICKHOUSE_PORT_TCP: "19000", CLICKHOUSE_PORT_HTTP: "18123" };
+    expect(resolveHttpPort(19000, false, env)).toBe(18123);
+    // 9000 is not the native port in this environment, so it is used as is.
+    expect(resolveHttpPort(9000, false, env)).toBe(9000);
+  });
+
+  it("keeps any other port as an HTTP port", () => {
+    expect(resolveHttpPort(8123, false, {})).toBe(8123);
+    expect(resolveHttpPort(18123, false, {})).toBe(18123);
+  });
+});
 
 describe("parseArgs", () => {
   it("returns defaults for an empty argv", () => {
