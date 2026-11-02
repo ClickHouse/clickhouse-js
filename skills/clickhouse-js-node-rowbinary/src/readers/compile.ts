@@ -55,11 +55,13 @@ import { readEnum8, readEnum16 } from "./enums.js";
 import {
   readArray,
   readMap,
+  readMapEntries,
   readNullable,
   readTuple,
   readTupleNamed,
   readVariant,
   readQBit,
+  type ReadOptions,
 } from "./composite.js";
 import { readLowCardinality } from "./lowCardinality.js";
 import { readNested } from "./nested.js";
@@ -112,8 +114,14 @@ export class RowBinaryTypeError extends Error {
  * The fold itself: turn a parsed type-AST node into a value {@link Reader},
  * recursing into element / key / field types for composites. The shape mirrors
  * the server's `EXPLAIN AST` data-type subtree (see the parser's `ast.ts`).
+ *
+ * `options` is threaded through the whole recursion, so it applies to a `Map` at
+ * any depth (top level, map-in-map, map-in-array, inside a `Tuple`/`Variant`…).
  */
-export function astToReader(node: Node): Reader<unknown> {
+export function astToReader(
+  node: Node,
+  options: ReadOptions = {},
+): Reader<unknown> {
   switch (node.kind) {
     case NodeKind.EnumDataType: {
       // Explicit-value enum: the wire value is the underlying int, which we
@@ -122,9 +130,9 @@ export function astToReader(node: Node): Reader<unknown> {
       return node.name === "Enum16" ? readEnum16(map) : readEnum8(map);
     }
     case NodeKind.TupleDataType:
-      return tupleReader(node);
+      return tupleReader(node, options);
     case NodeKind.DataType:
-      return dataTypeReader(node);
+      return dataTypeReader(node, options);
     default:
       // Literal / Function / Identifier / NameTypePair are argument nodes,
       // consumed by their parent — never a standalone column type.
@@ -139,29 +147,31 @@ export function astToReader(node: Node): Reader<unknown> {
  * the type system: scalars, the parameterized types, and the
  * wrappers/composites that recurse through {@link astToReader}.
  */
-function dataTypeReader(node: Node): Reader<unknown> {
+function dataTypeReader(node: Node, options: ReadOptions): Reader<unknown> {
   switch (node.name) {
     // --- wrappers & composites (recurse into argument types) ---
     case "Nullable":
-      return readNullable(astToReader(requireArg(node, 0)));
+      return readNullable(astToReader(requireArg(node, 0), options));
     case "LowCardinality":
       // Transparent in RowBinary: just the inner type's reader.
-      return readLowCardinality(astToReader(requireArg(node, 0)));
+      return readLowCardinality(astToReader(requireArg(node, 0), options));
     case "Array":
-      return readArray(astToReader(requireArg(node, 0)));
+      return readArray(astToReader(requireArg(node, 0), options));
     case "QBit":
       // QBit(element_type, dimension): wire-identical to Array(element_type);
       // the dimension (arg 1) is metadata, not in the value stream.
-      return readQBit(astToReader(requireArg(node, 0)));
-    case "Map":
-      return readMap(
-        astToReader(requireArg(node, 0)),
-        astToReader(requireArg(node, 1)),
-      );
+      return readQBit(astToReader(requireArg(node, 0), options));
+    case "Map": {
+      const readKey = astToReader(requireArg(node, 0), options);
+      const readValue = astToReader(requireArg(node, 1), options);
+      return options.mapAsEntries
+        ? readMapEntries(readKey, readValue)
+        : readMap(readKey, readValue);
+    }
     case "Variant":
-      return variantReader(node);
+      return variantReader(node, options);
     case "Nested":
-      return nestedReader(node);
+      return nestedReader(node, options);
 
     // --- parameterized scalars ---
     case "FixedString":
@@ -200,15 +210,22 @@ function dataTypeReader(node: Node): Reader<unknown> {
       // signed Int64 count; the unit lives in the type name, not the wire.
       if (node.name.startsWith("Interval")) return readInterval;
       const leaf = NULLARY[node.name];
-      if (leaf !== undefined) return leaf;
+      if (leaf !== undefined) {
+        // `Dynamic` is self-describing, so the value it carries may itself be a
+        // `Map`: rebind it to the options-aware reader rather than the default.
+        if (node.name === "Dynamic" && options.mapAsEntries) {
+          return (state) => readDynamic(state, options);
+        }
+        return leaf;
+      }
       throw new RowBinaryTypeError(`unsupported RowBinary type: ${node.name}`);
     }
   }
 }
 
 /** Folds a `Tuple(...)` — named (object) when every element is named, else positional (array). */
-function tupleReader(node: Node): Reader<unknown> {
-  const readers = node.arguments.map(astToReader);
+function tupleReader(node: Node, options: ReadOptions): Reader<unknown> {
+  const readers = node.arguments.map((arg) => astToReader(arg, options));
   const names = node.element_names;
   const named =
     names.length === readers.length && names.every((n) => n.length > 0);
@@ -228,8 +245,8 @@ function tupleReader(node: Node): Reader<unknown> {
  * pass them straight through. (A hand-written, non-normalized `Variant(...)`
  * string would need sorting first.)
  */
-function variantReader(node: Node): Reader<unknown> {
-  return readVariant(node.arguments.map(astToReader));
+function variantReader(node: Node, options: ReadOptions): Reader<unknown> {
+  return readVariant(node.arguments.map((arg) => astToReader(arg, options)));
 }
 
 /**
@@ -237,7 +254,7 @@ function variantReader(node: Node): Reader<unknown> {
  * the field names, so we compose {@link readNested} (= `readArray(readTupleNamed)`)
  * over the `NameTypePair` children.
  */
-function nestedReader(node: Node): Reader<unknown> {
+function nestedReader(node: Node, options: ReadOptions): Reader<unknown> {
   const fields: Record<string, Reader<unknown>> = {};
   for (const child of node.arguments) {
     if (child.kind !== NodeKind.NameTypePair || child.data_type === null) {
@@ -245,7 +262,7 @@ function nestedReader(node: Node): Reader<unknown> {
         "malformed Nested(...): expected name/type pairs",
       );
     }
-    fields[child.name] = astToReader(child.data_type);
+    fields[child.name] = astToReader(child.data_type, options);
   }
   return readNested(fields);
 }
