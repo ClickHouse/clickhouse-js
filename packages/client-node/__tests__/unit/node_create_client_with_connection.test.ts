@@ -175,10 +175,10 @@ describe("[Node.js] createClient({ connection }) — pluggable backend injection
     class CountingSpan implements ClickHouseSpan {
       endCount = 0;
       exception?: Error;
-      statusCode?: ClickHouseSpanStatusCode;
+      statusCode?: number;
       constructor(readonly name: string) {}
       setAttributes() {}
-      setStatus(status: { code: ClickHouseSpanStatusCode }) {
+      setStatus(status: { code: number }) {
         this.statusCode = status.code;
       }
       recordException(error: Error) {

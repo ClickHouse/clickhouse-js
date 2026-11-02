@@ -12,10 +12,10 @@ import { createSimpleWebTestClient } from "../utils/simple_web_client";
 class CountingSpan implements ClickHouseSpan {
   endCount = 0;
   exceptions: Error[] = [];
-  statusCode?: ClickHouseSpanStatusCode;
+  statusCode?: number;
   constructor(readonly name: string) {}
   setAttributes() {}
-  setStatus(status: { code: ClickHouseSpanStatusCode }) {
+  setStatus(status: { code: number }) {
     this.statusCode = status.code;
   }
   recordException(error: Error) {
