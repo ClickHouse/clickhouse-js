@@ -25,6 +25,12 @@
 [#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
 [#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
 
+## Bug fixes
+
+- `use_multipart_params` and `use_multipart_params_auto` no longer fail with `HTML Form Exception: Field value too long` when the SQL statement or a single query parameter is larger than `http_max_field_value_size` (128 KiB by default). ClickHouse caps every multipart form field at that size before the query's settings are applied, so an oversized statement (previously moved into the `query` part) or a parameter auto-promoted out of the URL was rejected by the form parser. Such a request now falls back to the non-multipart layout for that request: the statement is sent as the raw body and the parameters stay in the URL, which is the same shape the request has without multipart. Values at the limit still use the form body. ([#1099])
+
+[#1099]: https://github.com/ClickHouse/clickhouse-js/pull/1099
+
 # 1.24.0
 
 ## New features
