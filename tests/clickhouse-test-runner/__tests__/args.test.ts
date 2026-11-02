@@ -93,15 +93,18 @@ describe("parseArgs", () => {
     expect(args.secure).toBe(true);
   });
 
-  it("accepts both --multiquery and --multi-query", () => {
+  it("accepts --multiquery, --multi-query and -n", () => {
     expect(parseArgs(["--multiquery"]).multiquery).toBe(true);
     expect(parseArgs(["--multi-query"]).multiquery).toBe(true);
+    // As in clickhouse-client, `-n` is `--multiquery`, not `--multiline`.
+    expect(parseArgs(["-n"]).multiquery).toBe(true);
   });
 
-  it("silently accepts --multiline and -n", () => {
+  it("silently accepts --multiline and -m", () => {
     expect(() => parseArgs(["--multiline"])).not.toThrow();
-    expect(() => parseArgs(["-n"])).not.toThrow();
-    const a = parseArgs(["--multiline", "-n"]);
+    expect(() => parseArgs(["-m"])).not.toThrow();
+    const a = parseArgs(["--multiline", "-m"]);
+    expect(a.multiquery).toBe(false);
     expect(a.serverSettings).toEqual({});
     expect(a.query).toBeNull();
   });

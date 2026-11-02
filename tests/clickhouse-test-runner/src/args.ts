@@ -37,8 +37,9 @@ const BASE_OPTIONS: readonly OptionSpec[] = [
   { long: "max_insert_threads", hasArg: true },
   { long: "max-insert-threads", hasArg: true },
   { long: "secure", short: "s", hasArg: false },
-  { long: "multiline", short: "n", hasArg: false },
-  { long: "multiquery", hasArg: false },
+  // As in clickhouse-client: `-n` is `--multiquery`, `-m` is `--multiline`.
+  { long: "multiline", short: "m", hasArg: false },
+  { long: "multiquery", short: "n", hasArg: false },
   { long: "multi-query", hasArg: false },
   { long: "help", hasArg: false },
 ];
@@ -77,8 +78,8 @@ const USAGE_TEXT = [
   "      --max_insert_threads VALUE",
   "                               Max insert threads setting",
   "  -s, --secure                 Use HTTPS",
-  "  -n, --multiline              (ignored, accepted for compatibility)",
-  '      --multiquery             Execute multiple ";"-separated queries',
+  "  -m, --multiline              (ignored, accepted for compatibility)",
+  '  -n, --multiquery             (ignored: multiple ";"-separated queries always run)',
   "      --help                   Print this help",
   "",
   "Environment variables:",
