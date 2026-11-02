@@ -18,11 +18,15 @@ import { Readable } from "stream";
 
 import { createClient } from "../../src/client";
 import * as connectionModule from "../../src/connection";
-import type {
-  Connection,
-  ConnBaseQueryParams,
-  ConnExecParams,
-  ConnInsertParams,
+import {
+  ClickHouseSpanNames,
+  ClickHouseSpanStatusCode,
+  type ClickHouseSpan,
+  type ClickHouseTracer,
+  type Connection,
+  type ConnBaseQueryParams,
+  type ConnExecParams,
+  type ConnInsertParams,
 } from "../../src/common/index";
 
 beforeEach(() => {
@@ -151,7 +155,10 @@ describe("[Node.js] createClient({ connection }) — pluggable backend injection
   });
 
   describe("X-ClickHouse-Format response header", () => {
-    function stubWithFormatHeader(header: string | string[] | undefined) {
+    function stubWithFormatHeader(
+      header: string | string[] | undefined,
+      tracer?: ClickHouseTracer,
+    ) {
       const stub = makeStubConnection();
       stub.query.mockImplementationOnce(() => {
         return Promise.resolve({
@@ -161,7 +168,37 @@ describe("[Node.js] createClient({ connection }) — pluggable backend injection
           http_status_code: 200,
         });
       });
-      return createClient({ connection: stub });
+      return createClient({ connection: stub, tracer });
+    }
+
+    /** A span that counts `end()` calls, to check the exactly-once contract. */
+    class CountingSpan implements ClickHouseSpan {
+      endCount = 0;
+      exception?: Error;
+      statusCode?: ClickHouseSpanStatusCode;
+      constructor(readonly name: string) {}
+      setAttributes() {}
+      setStatus(status: { code: ClickHouseSpanStatusCode }) {
+        this.statusCode = status.code;
+      }
+      recordException(error: Error) {
+        this.exception = error;
+      }
+      end() {
+        this.endCount++;
+      }
+    }
+
+    function countingTracer() {
+      const spans: CountingSpan[] = [];
+      const tracer: ClickHouseTracer<CountingSpan> = {
+        startActiveSpan(name, _options, fn) {
+          const span = new CountingSpan(name);
+          spans.push(span);
+          return fn(span);
+        },
+      };
+      return { tracer, spans };
     }
 
     it.each([["JSONEachRow"], ["jsoneachrow"], [["JSONEachRow"]], [undefined]])(
@@ -181,6 +218,28 @@ describe("[Node.js] createClient({ connection }) — pluggable backend injection
       await expect(
         client.query({ query: "SELECT 1 FORMAT CSV", format: "JSON" }),
       ).rejects.toThrow(/responded in the CSV format.*JSON format/s);
+    });
+
+    it("records the format mismatch on the stream span and ends it exactly once", async () => {
+      const { tracer, spans } = countingTracer();
+      const client = stubWithFormatHeader("CSV", tracer);
+      await expect(
+        client.query({ query: "SELECT 1 FORMAT CSV", format: "JSON" }),
+      ).rejects.toThrow(/responded in the CSV format/);
+
+      const streamSpan = spans.find(
+        (s) => s.name === ClickHouseSpanNames.query_stream,
+      );
+      expect(streamSpan).toBeDefined();
+      expect(streamSpan!.endCount).toBe(1);
+      expect(streamSpan!.statusCode).toBe(ClickHouseSpanStatusCode.ERROR);
+      expect(streamSpan!.exception?.message).toMatch(
+        /responded in the CSV format/,
+      );
+      // The request span is unaffected: the HTTP request itself succeeded.
+      const querySpan = spans.find((s) => s.name === ClickHouseSpanNames.query);
+      expect(querySpan?.endCount).toBe(1);
+      expect(querySpan?.exception).toBeUndefined();
     });
   });
 
