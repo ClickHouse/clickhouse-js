@@ -25,6 +25,12 @@
 [#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
 [#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
 
+## Bug fixes
+
+- (Web only) `ResultSet.close()` now ends the `clickhouse.query.stream` tracing span when cancelling the response stream rejects (for example after a connection reset), instead of leaving the span open. ([#1103])
+
+[#1103]: https://github.com/ClickHouse/clickhouse-js/pull/1103
+
 # 1.24.0
 
 ## New features
