@@ -25,6 +25,8 @@ const reportingTimer = setInterval(() => {
   // Each report describes the interval since the previous reset.
   delay.reset();
 }, 1000);
+// Monitoring should not keep the application alive during shutdown.
+reportingTimer.unref();
 
 try {
   // Record a baseline before introducing a delay.
