@@ -119,6 +119,7 @@ precision pitfalls.
 | Ping that times out (Node.js only)                | [node/troubleshooting/ping_timeout.ts](node/troubleshooting/ping_timeout.ts)                                                   | —                                                                                                                            |
 | Cancelling an outgoing request                    | [node/troubleshooting/abort_request.ts](node/troubleshooting/abort_request.ts)                                                 | [web/troubleshooting/abort_request.ts](web/troubleshooting/abort_request.ts)                                                 |
 | Cancelling a query on the server                  | [node/troubleshooting/cancel_query.ts](node/troubleshooting/cancel_query.ts)                                                   | [web/troubleshooting/cancel_query.ts](web/troubleshooting/cancel_query.ts)                                                   |
+| Measuring event-loop delay (no server required)   | [node/troubleshooting/event_loop_delay.ts](node/troubleshooting/event_loop_delay.ts)                                           | —                                                                                                                            |
 | Long-running queries via progress headers         | [node/troubleshooting/long_running_queries_progress_headers.ts](node/troubleshooting/long_running_queries_progress_headers.ts) | [web/troubleshooting/long_running_queries_progress_headers.ts](web/troubleshooting/long_running_queries_progress_headers.ts) |
 | Long-running queries via request cancellation     | [node/troubleshooting/long_running_queries_cancel_request.ts](node/troubleshooting/long_running_queries_cancel_request.ts)     | —                                                                                                                            |
 | Read-only user limitations (server error surface) | [node/troubleshooting/read_only_user.ts](node/troubleshooting/read_only_user.ts)                                               | [web/troubleshooting/read_only_user.ts](web/troubleshooting/read_only_user.ts)                                               |
@@ -157,11 +158,13 @@ deployment-shaped connection strings.
 
 ### Prerequisites
 
-Environment requirements for all examples:
+Environment requirements for most examples:
 
 - Node.js 20+
 - NPM
 - Docker Compose
+
+The [event-loop delay example](node/troubleshooting/event_loop_delay.ts) only needs Node.js and NPM. It does not connect to ClickHouse.
 
 Run ClickHouse in Docker from the root folder of this repository:
 

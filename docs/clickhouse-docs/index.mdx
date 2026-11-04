@@ -1188,6 +1188,8 @@ In this case, `keep_alive_timeout` is 10 seconds, and you could try increasing `
 
 #### Troubleshooting {#troubleshooting}
 
+For `Error: Timeout error.`, first check connectivity with `curl` or native Node.js as shown below. Run these checks from the same machine or container as the application. The Node.js client's `request_timeout` limits socket inactivity, not total query execution time. If connectivity works, [look up the query in `system.query_log`](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/long_running_queries.md#how-to-diagnose) and check the guidance for long-running queries below.
+
 If you're experiencing `socket hang up` errors even when using the latest version of the client, there are the following options to resolve this issue:
 
 * Enable logs with at least `WARN` log level (default). This will allow for checking if there is an unconsumed or a dangling stream in the application code: the transport layer will log it on the WARN level, as that could potentially lead to the socket being closed by the server. You can enable logging in the client configuration as follows:
@@ -1217,9 +1219,9 @@ If you're experiencing `socket hang up` errors even when using the latest versio
     },
   })
   ```
-  Keep in mind, however, that the total size of the received headers has 16KB limit in recent Node.js versions; after certain amount of progress headers received, which was around 70-80 in our tests, an exception will be generated.
+  Node.js limits received headers to 16 KiB by default. Repeated progress headers count towards this limit and can cause `HPE_HEADER_OVERFLOW`. Since client version 1.18.5, set `max_response_headers_size` in bytes to raise the limit per client. See [long-running queries and timeouts](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/howto/long_running_queries.md) for configuration examples.
 
-  It is also possible to use an entirely different approach, avoiding wait time on the wire completely; it could be done by leveraging HTTP interface "feature" that mutations aren't cancelled when the connection is lost. See [this example (part 2)](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/long_running_queries_timeouts.ts) for more details.
+  For an alternative that cancels the HTTP request and polls for server-side completion, see [the request cancellation example](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/troubleshooting/long_running_queries_cancel_request.ts). This approach is intended for operations such as `INSERT FROM SELECT`, not arbitrary queries.
 
 * Keep-Alive feature can be disabled entirely. In this case, client will also add `Connection: close` header to every request, and the underlying HTTP agent won't reuse the connections. `keep_alive.idle_socket_ttl` setting will be ignored, as there will be no idling sockets. This will result in additional overhead, as a new connection will be established for every request.
 
@@ -1244,15 +1246,19 @@ If you're experiencing `socket hang up` errors even when using the latest versio
 ```ts
   const response = await fetch('<clickhouse_url>?query=SELECT+1', {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: {
       'Authorization': 'Basic ' + Buffer.from('<user>:<password>').toString('base64'),
     }
   })
+  console.info(response.status, await response.text())
 ```
 
 * In some cases the application code or the framework adapters can add a preemptive `ping()` before the actual query execution, which can lead to a situation where the `ping()` request is successful, but the subsequent query request fails with a "socket hang up" error due to the same underlying issue with idle connections. If you see that pattern in the logs, try to check if there is an option to disable preemptive pings in your framework or application code. This should also help with reducing the probability of getting rate limited by any of the intermediate network components.
 
-* Make sure that the application itself is getting enough CPU time and the network is not throttled by the hosting provider. Various means of monitoring like GC pause metrics, event loop lag metrics, and similar ones can also be helpful to rule out potential resource starvation issues.
+* Check whether CPU throttling, garbage collection, or synchronous work is delaying the application's event loop. Run the monitor from [the event-loop delay example](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/troubleshooting/event_loop_delay.ts) **inside the affected Node.js process**. From `examples/node`, run `npx tsx troubleshooting/event_loop_delay.ts` to see a baseline, an intentional 200 ms block, and recovery. No server is needed.
+
+  The example reports timestamped p99 and maximum delays in milliseconds every second. With its 20 ms sampling resolution, baseline readings are near 20 ms. With about 50 samples per report, p99 and max will often match. Compare spikes with the timestamps of client errors and CPU/GC metrics. Delays can postpone socket cleanup and request callbacks. A spike is evidence of a delayed event loop, not proof of a network failure's cause. Reports also pause during a block and resume afterward. If the process never resumes, use a CPU profile to investigate the stuck code.
 
 * Try checking your application code with [no-floating-promises](https://typescript-eslint.io/rules/no-floating-promises/) ESLint rule enabled, which will help to identify unhandled promises that could lead to dangling streams and sockets.
 
