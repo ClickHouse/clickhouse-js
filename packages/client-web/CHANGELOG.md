@@ -21,6 +21,8 @@
 
 - `command()` and `exec()` now also send the query as written, without removing trailing semicolons, as the server accepts them. The one exception is `exec()` with `values`: the server reads the data right after the statement and rejects a `;` before it, so trailing semicolons are still removed there. ([#1085])
 
+- When the server reports an error in a JSON output format (with `http_write_exception_in_output_format` enabled, the error that occurs while it writes the result comes back as `{"exception": "..."}`), `ClickHouseError.message` no longer keeps the JSON escaping, for example `\"` instead of `"`. ([#1085])
+
 [#759]: https://github.com/ClickHouse/clickhouse-js/issues/759
 [#970]: https://github.com/ClickHouse/clickhouse-js/issues/970
 [#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
