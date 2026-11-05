@@ -36,7 +36,7 @@ await client.command({
 });
 
 // Used to cancel the outgoing HTTP request (but not the query itself!).
-// See more on cancelling the HTTP requests in examples/abort_request.ts.
+// See more on cancelling the HTTP requests in ./abort_request.ts.
 const abortController = new AbortController();
 
 // IMPORTANT: you HAVE to generate the known query_id on the client side to be able to cancel the query later.
@@ -132,10 +132,11 @@ async function getQueryStatus(
     query: `
       SELECT type
       FROM system.query_log
-      WHERE query_id = '${queryId}'
+      WHERE query_id = {queryId:String}
       ORDER BY event_time DESC
       LIMIT 1
     `,
+    query_params: { queryId },
     format: "JSONEachRow",
   });
   const result = await resultSet.json<QueryLogInfo>();
