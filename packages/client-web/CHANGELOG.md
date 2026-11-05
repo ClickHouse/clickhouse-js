@@ -1,3 +1,39 @@
+# 1.25.0
+
+## Migration Notes
+
+- `query()` now sends its `format` to the server as the `default_format` setting, instead of appending `FORMAT <format>` to the SQL (see Improvements below). No code change is required, but check the following:
+  - The query text recorded in `system.query_log`, in logs and in traces no longer ends with `FORMAT <format>`. Adjust anything that matches on that suffix.
+  - A `FORMAT` clause in the query itself is no longer a syntax error: the server uses it, and if it differs from the `format` option, `query()` throws an error that names both formats. With a `tracer` configured, that error is recorded on the `clickhouse.query.stream` span ([#1103]). Remove the clause, or use `exec()` if you need full control over the SQL.
+  - A user whose profile locks `default_format` with a `<constraints>` entry (possible on ClickHouse 26.x) fails every `query()` with `SETTING_CONSTRAINT_VIOLATION`. Allow changing `default_format` for that user. ([#1085])
+
+[#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
+[#1103]: https://github.com/ClickHouse/clickhouse-js/pull/1103
+
+## Improvements
+
+- `query()` now sends the query as written and passes its `format` to the server as the `default_format` setting, instead of appending `FORMAT <format>` to the SQL. This matches the Go, Rust and Java clients, and fixes queries that failed because of the appended clause:
+  - a trailing semicolon followed by a comment, such as `SELECT 1; -- note`, no longer fails with `Multi-statements are not allowed` ([#973]);
+  - `FORMAT` is no longer placed after a trailing `SETTINGS` clause, which some older servers rejected ([#970]);
+  - the short `SHOW ROW POLICIES` syntax works ([#759]).
+
+  The `format` option overrides a `default_format` set in `clickhouse_settings`. An `X-ClickHouse-Format` request header set via `http_headers` (on the client or on the call) is not sent by `query()`, as the server would prefer it over `default_format`; the other methods still send it. ([#1085])
+
+- `command()` and `exec()` now also send the query as written, without removing trailing semicolons, as the server accepts them. The one exception is `exec()` with `values`: the server reads the data right after the statement and rejects a `;` before it, so trailing semicolons are still removed there. ([#1085])
+
+- When the server reports an error in a JSON output format (with `http_write_exception_in_output_format` enabled, the error that occurs while it writes the result comes back as `{"exception": "..."}`), `ClickHouseError.message` no longer keeps the JSON escaping, for example `\"` instead of `"`. ([#1085])
+
+[#759]: https://github.com/ClickHouse/clickhouse-js/issues/759
+[#970]: https://github.com/ClickHouse/clickhouse-js/issues/970
+[#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
+[#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
+
+## Bug fixes
+
+- (Web only) `ResultSet.close()` now ends the `clickhouse.query.stream` tracing span when cancelling the response stream rejects (for example after a connection reset), instead of leaving the span open. ([#1103])
+
+[#1103]: https://github.com/ClickHouse/clickhouse-js/pull/1103
+
 # 1.24.0
 
 ## New features

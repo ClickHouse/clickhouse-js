@@ -43,6 +43,8 @@ The repository consists of four packages:
 - `@clickhouse/client-common` - shared common types and the base framework for building a custom client implementation.
 - `@clickhouse/rowbinary` - a library for reading (and soon writing) ClickHouse RowBinary format.
 
+The client works with both ClickHouse Cloud and self-hosted ClickHouse. You can [start a free Cloud trial](https://console.clickhouse.cloud/signUp?utm_medium=referral&utm_source=github&utm_campaign=readme&utm_content=clickhouse-js) or [install ClickHouse](https://clickhouse.com/docs/get-started/setup/install) locally.
+
 ## Installation
 
 Node.js client:

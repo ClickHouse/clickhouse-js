@@ -26,9 +26,9 @@ describe("query_log", () => {
         query,
         format: "JSON",
       });
-      const formattedQuery =
-        "SELECT * FROM system.numbers LIMIT 144 \nFORMAT JSON";
-      await assertQueryLog({ formattedQuery, query_id });
+      // The query is logged as written: the format is sent as the
+      // `default_format` setting, not appended to the SQL.
+      await assertQueryLog({ formattedQuery: query, query_id });
     },
   );
 

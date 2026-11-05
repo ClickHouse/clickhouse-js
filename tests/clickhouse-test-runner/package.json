@@ -27,10 +27,10 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "25.9.3",
-    "eslint": "^10.11.0",
-    "prettier": "3.9.9",
+    "eslint": "^10.12.0",
+    "prettier": "3.9.10",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.0",
+    "typescript-eslint": "^8.71.1",
     "vitest": "^4.0.16"
   }
 }
