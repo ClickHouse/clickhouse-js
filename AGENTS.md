@@ -11,6 +11,10 @@ This root file holds repo-wide guidance. Folder-specific guidance lives in neste
 - [`docs/AGENTS.md`](docs/AGENTS.md) — embedded troubleshooting / how-to pages.
 - [`tests/clickhouse-test-runner/AGENTS.md`](tests/clickhouse-test-runner/AGENTS.md) — the upstream SQL test harness and allowlist strategy.
 
+## Communication style
+
+Write PR descriptions, review comments, issue comments, commit messages, code comments, and changelog entries in [ASD-STE100 Simplified Technical English](https://www.asd-ste100.org/). Put the most important information first.
+
 ## Code intelligence (TypeScript LSP)
 
 The repository ships `typescript-language-server` as a root devDependency, so after `npm install` you can start a TypeScript language server with `npx typescript-language-server --stdio` from the repo root for precise go-to-definition, find-references, hover (signatures and JSDoc, including `@deprecated`), workspace symbol search, completions, and type diagnostics. Prefer it over text search when resolving symbols or usages across the `packages/*` workspaces. See [`.claude/skills/typescript-lsp/SKILL.md`](.claude/skills/typescript-lsp/SKILL.md) for verified capabilities and protocol notes.
