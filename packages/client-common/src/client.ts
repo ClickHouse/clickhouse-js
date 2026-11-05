@@ -333,6 +333,10 @@ export class ClickHouseClient<Stream = unknown> {
           ClickHouseSpanNames.query_stream,
           { kind: ClickHouseSpanKind.CLIENT },
           (streamSpan) => {
+            // Set once the ResultSet exists: from then on it owns the
+            // streamSpan and ends it exactly once (on consumption, failure
+            // or close()), so the catch block below must not end it again.
+            let spanOwnedByResultSet = false;
             try {
               const resultSet = this.makeResultSet(
                 stream,
@@ -356,6 +360,7 @@ export class ClickHouseClient<Stream = unknown> {
                 this.jsonHandling,
                 streamSpan,
               );
+              spanOwnedByResultSet = true;
               // The query can have its own FORMAT clause. The server uses that
               // clause instead of `default_format`. Throw an error now. The
               // client cannot parse a response in a different format.
@@ -364,17 +369,30 @@ export class ClickHouseClient<Stream = unknown> {
                 serverFormat !== undefined &&
                 serverFormat.toLowerCase() !== format.toLowerCase()
               ) {
-                resultSet.close();
-                throw new Error(
+                const err = new Error(
                   `The server responded in the ${serverFormat} format, but the ${format} format was requested. ` +
                     `The query probably has its own FORMAT ${serverFormat} clause: remove it and use the \`format\` option instead, ` +
                     `or use \`exec()\` if you need to write the full SQL yourself.`,
                 );
+                // Record the error before close(): close() ends the span, and
+                // nothing recorded on an ended span is kept.
+                recordSpanError(streamSpan, err);
+                // close() is synchronous on Node.js and asynchronous on Web,
+                // where cancelling the response stream can reject (e.g. when
+                // the stream has already errored). That cleanup failure must
+                // not surface as an unhandled rejection: the error thrown
+                // here is the one the caller needs to see.
+                Promise.resolve(resultSet.close()).catch(() => {
+                  // ignored, see above
+                });
+                throw err;
               }
               return resultSet;
             } catch (err) {
-              recordSpanError(streamSpan, err);
-              streamSpan.end();
+              if (!spanOwnedByResultSet) {
+                recordSpanError(streamSpan, err);
+                streamSpan.end();
+              }
               throw err;
             }
             // streamSpan is NOT ended here - the ResultSet owns its lifetime.
