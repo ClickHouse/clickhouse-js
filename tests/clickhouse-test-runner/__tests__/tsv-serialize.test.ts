@@ -64,6 +64,21 @@ describe("renderValue — top level (escaped, unquoted)", () => {
     expect(render("Decimal64(3)", [-1005n, 3])).toBe("-1.005");
   });
 
+  // Matches the server default `output_format_decimal_trailing_zeros = 0`.
+  it("decimal drops trailing fractional zeros, and the point with them", () => {
+    expect(render("Decimal32(2)", [-120n, 2])).toBe("-1.2");
+    expect(render("Decimal128(8)", [120000000n, 8])).toBe("1.2");
+    expect(render("Decimal64(2)", [300n, 2])).toBe("3");
+    expect(render("Decimal64(2)", [0n, 2])).toBe("0");
+    expect(render("Decimal(10, 0)", [1200n, 0])).toBe("1200");
+    expect(
+      render("Array(Decimal32(2))", [
+        [120n, 2],
+        [-230n, 2],
+      ]),
+    ).toBe("[1.2,-2.3]");
+  });
+
   it("date and datetime from a UTC Date", () => {
     expect(render("Date", new Date(Date.UTC(2020, 0, 2)))).toBe("2020-01-02");
     expect(render("DateTime", new Date(Date.UTC(2020, 0, 2, 3, 4, 5)))).toBe(

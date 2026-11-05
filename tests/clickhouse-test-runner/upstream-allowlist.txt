@@ -1607,7 +1607,7 @@
 02515_analyzer_null_for_empty
 02515_and_or_if_multiif_not_return_lc
 02515_distinct_zero_size_key_bug_44831
-02515_generate_ulid
+# 02515_generate_ulid  # needs the parseError fix: the client takes `(NULL)` from the echoed query as the error type
 02515_projections_with_totals
 02516_projections_with_rollup
 02517_union_columns_order
@@ -2659,7 +2659,7 @@
 03705_count_if_asterisk
 03705_fix_compression_T64_unaligned
 03705_function_dict_get_keys_multiple_dict_and_no_caching
-03707_autopr_unsupported_cases
+# 03707_autopr_unsupported_cases  # needs the `parallel_replicas` cluster from the upstream test-server config
 03707_statistics_cache
 03708_exact_rows_before_limit_in
 03708_flush_async_insert_queue_for_table
@@ -3031,7 +3031,7 @@
 04101_crosstab_window_state_serialization_pool
 04103_cast_string_to_date_time_mode_nullable
 04103_full_sorting_merge_left_join_nullable_json
-04103_plain_rewritable_get_last_modified_bug
+# 04103_plain_rewritable_get_last_modified_bug  # needs `custom_local_disks_base_directory` in the server config
 04104_functions_context_lifetime_in_defaults
 04108_replicated_and_non_replicated_columns_merge
 04113_has_subsequence_empty_haystack
