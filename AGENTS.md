@@ -1,3 +1,7 @@
+# Communication style
+
+- Follow ASD-STE100
+
 # Recommendations for AI agents
 
 > **Audience:** This file contains guidance for AI agents contributing to the `ClickHouse/clickhouse-js` repository itself. It is **not** intended for downstream projects that depend on `@clickhouse/client` or `@clickhouse/client-web`
