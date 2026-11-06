@@ -1,3 +1,7 @@
+# Communication style
+
+- Follow ASD-STE100
+
 # Recommendations for AI agents
 
 > **Audience:** This file contains guidance for AI agents contributing to the `ClickHouse/clickhouse-js` repository itself. It is **not** intended for downstream projects that depend on `@clickhouse/client` or `@clickhouse/client-web`
@@ -10,10 +14,6 @@ This root file holds repo-wide guidance. Folder-specific guidance lives in neste
   - [`skills/clickhouse-js-node-rowbinary/AGENTS.md`](skills/clickhouse-js-node-rowbinary/AGENTS.md) — `@clickhouse/rowbinary` reader/writer conventions (tests, no defensive validation).
 - [`docs/AGENTS.md`](docs/AGENTS.md) — embedded troubleshooting / how-to pages.
 - [`tests/clickhouse-test-runner/AGENTS.md`](tests/clickhouse-test-runner/AGENTS.md) — the upstream SQL test harness and allowlist strategy.
-
-## Communication style
-
-Write PR descriptions, review comments, issue comments, commit messages, code comments, and changelog entries in [ASD-STE100 Simplified Technical English](https://www.asd-ste100.org/). Put the most important information first.
 
 ## Code intelligence (TypeScript LSP)
 

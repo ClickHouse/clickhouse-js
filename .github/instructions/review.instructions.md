@@ -7,8 +7,6 @@ excludeAgent: "cloud-agent"
 
 Skip the PR overview comment if possible.
 
-Write review comments in ASD-STE100 Simplified Technical English.
-
 ## Handling change
 
 When you're adding comments that require human attention because they need maintainer triage, a policy or product decision, or clarification before the PR author can act, add a "take-a-look" label to the PR.
