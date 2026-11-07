@@ -92,6 +92,7 @@ export function extractErrorAtTheEndOfChunk(
  * tag makes detection reliable, so a bare `\r\n` occurring inside a *successful*
  * response body — binary formats such as Parquet, or CRLF-terminated CSV/TSV
  * rows (`output_format_*_crlf_end_of_line`) — is not mistaken for an exception.
+ * @internal
  */
 export function endsWithExceptionMarker(
   chunk: Uint8Array,
@@ -144,11 +145,16 @@ export type ExceptionBlockStartMatch = "match" | "partial" | "none";
  * - `"partial"` when the bytes from `offset` are an incomplete prefix of it,
  *   so that the next chunk is necessary to decide;
  * - `"none"` otherwise (e.g. a CRLF-terminated CSV/TSV row, or binary data).
+ *
+ * To continue a `"partial"` result with the next chunk, set `matchedLength` to
+ * the number of bytes after the `\n` that matched before, and `offset` to `0`.
+ * @internal
  */
 export function matchExceptionBlockStart(
   bytes: Uint8Array,
   offset: number,
   exceptionTag: string,
+  matchedLength = 0,
 ): ExceptionBlockStartMatch {
   // Same reasoning as in endsWithExceptionMarker: the tag is the discriminator.
   if (exceptionTag.length === 0) {
@@ -156,8 +162,11 @@ export function matchExceptionBlockStart(
   }
   // Layout after the opening `\r\n`: __exception__ \r \n <exceptionTag>
   const expectedLength = EXCEPTION_MARKER.length + 2 + exceptionTag.length;
-  const available = Math.min(bytes.length - offset, expectedLength);
-  for (let i = 0; i < available; i++) {
+  const available = Math.min(
+    matchedLength + bytes.length - offset,
+    expectedLength,
+  );
+  for (let i = matchedLength; i < available; i++) {
     let expected: number;
     if (i < EXCEPTION_MARKER.length) {
       expected = EXCEPTION_MARKER.charCodeAt(i);
@@ -168,7 +177,7 @@ export function matchExceptionBlockStart(
     } else {
       expected = exceptionTag.charCodeAt(i - EXCEPTION_MARKER.length - 2);
     }
-    if (bytes[offset + i] !== expected) {
+    if (bytes[offset + i - matchedLength] !== expected) {
       return "none";
     }
   }
@@ -185,6 +194,7 @@ export function matchExceptionBlockStart(
  * are necessary, unless `isEndOfStream` is set (the response ended before the
  * block was complete) or the block exceeds the 16 KiB that ClickHouse allows;
  * then it returns an error that tells that the block is incomplete or malformed.
+ * @internal
  */
 export function errorFromExceptionBlock(
   block: Uint8Array,

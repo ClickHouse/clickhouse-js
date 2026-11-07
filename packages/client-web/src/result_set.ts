@@ -191,6 +191,15 @@ export class ResultSet<
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
     const decoder = new TextDecoder("utf-8");
+    const toRow = (bytes: Uint8Array): Row => {
+      const text = decoder.decode(bytes);
+      return {
+        text,
+        json<T>(): T {
+          return jsonHandling.parse(text);
+        },
+      };
+    };
     const transformerOptions: TransformerWithCancel<Uint8Array, Row[]> = {
       start() {
         //
@@ -211,12 +220,34 @@ export class ResultSet<
           }
           return;
         }
-        if (undecidedBytes !== undefined) {
-          chunk = concatBytes([undecidedBytes, chunk]);
+        const rows: Row[] = [];
+
+        if (undecidedBytes !== undefined && exceptionTag !== undefined) {
+          // The kept bytes are a row, its `\r\n`, and the start of a possible
+          // exception block opening. Decide with the first bytes of the chunk.
+          const rowEnd = undecidedBytes.indexOf(NEWLINE);
+          const afterRow = undecidedBytes.subarray(rowEnd + 1);
+          if (
+            afterRow.indexOf(NEWLINE) === -1 &&
+            matchExceptionBlockStart(
+              chunk,
+              0,
+              exceptionTag,
+              afterRow.length,
+            ) === "none"
+          ) {
+            // Not an exception block: the kept row is complete, and the bytes
+            // after it start the next row. Scan the chunk without a copy.
+            rows.push(toRow(undecidedBytes.subarray(0, rowEnd)));
+            if (afterRow.length > 0) {
+              incompleteChunks.push(afterRow);
+              totalIncompleteLength += afterRow.length;
+            }
+          } else {
+            chunk = concatBytes([undecidedBytes, chunk]);
+          }
           undecidedBytes = undefined;
         }
-
-        const rows: Row[] = [];
 
         let idx: number;
         let lastIdx = 0;
@@ -314,13 +345,7 @@ export class ResultSet<
               bytesToDecode = chunk.slice(lastIdx, idx);
             }
 
-            const text = decoder.decode(bytesToDecode);
-            rows.push({
-              text,
-              json<T>(): T {
-                return jsonHandling.parse(text);
-              },
-            });
+            rows.push(toRow(bytesToDecode));
 
             lastIdx = idx + 1; // skipping newline character
           }
@@ -346,15 +371,11 @@ export class ResultSet<
           while (true) {
             const idx = undecidedBytes.indexOf(NEWLINE, lastIdx);
             if (idx === -1) {
+              // The bytes after the last newline are not a complete row. They
+              // are dropped, the same as `incompleteChunks` at the end.
               break;
             }
-            const text = decoder.decode(undecidedBytes.subarray(lastIdx, idx));
-            rows.push({
-              text,
-              json<T>(): T {
-                return jsonHandling.parse(text);
-              },
-            });
+            rows.push(toRow(undecidedBytes.subarray(lastIdx, idx)));
             lastIdx = idx + 1;
           }
           this.addSpanRows(rows.length);

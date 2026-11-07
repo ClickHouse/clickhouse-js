@@ -229,6 +229,11 @@ describe("[Node.js] mid-stream exception tag detection", () => {
         body: "PAR1\r\n__exc\x00\r\nend\r\n",
         expected: ["PAR1\r", "__exc\x00\r", "end\r"],
       },
+      {
+        name: "CRLF-terminated TSV rows, __exception__ before a row that starts like the tag",
+        body: `a\r\n__exception__\r\n${tag.slice(0, 3)}X\r\n`,
+        expected: ["a\r", "__exception__\r", `${tag.slice(0, 3)}X\r`],
+      },
     ]) {
       it(`streams a successful response split at any point (${name})`, async () => {
         const bytes = Buffer.from(body, "latin1");

@@ -238,6 +238,15 @@ export class ResultSet<
     const logError = this.log_error;
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
+    const toRow = (bytes: Buffer): Row => {
+      const text = bytes.toString();
+      return {
+        text,
+        json<T>(): T {
+          return jsonHandling.parse(text);
+        },
+      };
+    };
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
     const toRows = new Transform({
@@ -254,12 +263,33 @@ export class ResultSet<
             errorFromExceptionBlock(exceptionBlock, exceptionTag),
           );
         }
-        if (undecidedBytes !== undefined) {
-          chunk = Buffer.concat([undecidedBytes, chunk]);
+        const rows: Row[] = [];
+
+        if (undecidedBytes !== undefined && exceptionTag !== undefined) {
+          // The kept bytes are a row, its `\r\n`, and the start of a possible
+          // exception block opening. Decide with the first bytes of the chunk.
+          const rowEnd = undecidedBytes.indexOf(NEWLINE);
+          const afterRow = undecidedBytes.subarray(rowEnd + 1);
+          if (
+            afterRow.indexOf(NEWLINE) === -1 &&
+            matchExceptionBlockStart(
+              chunk,
+              0,
+              exceptionTag,
+              afterRow.length,
+            ) === "none"
+          ) {
+            // Not an exception block: the kept row is complete, and the bytes
+            // after it start the next row. Scan the chunk without a copy.
+            rows.push(toRow(undecidedBytes.subarray(0, rowEnd)));
+            if (afterRow.length > 0) {
+              incompleteChunks.push(afterRow);
+            }
+          } else {
+            chunk = Buffer.concat([undecidedBytes, chunk]);
+          }
           undecidedBytes = undefined;
         }
-
-        const rows: Row[] = [];
 
         let lastIdx = 0;
         let currentChunkPart: Buffer;
@@ -324,13 +354,7 @@ export class ResultSet<
               currentChunkPart = chunk.subarray(lastIdx, idx);
             }
 
-            const text = currentChunkPart.toString();
-            rows.push({
-              text,
-              json<T>(): T {
-                return jsonHandling.parse(text);
-              },
-            });
+            rows.push(toRow(currentChunkPart));
             lastIdx = idx + 1; // skipping newline character
           }
         }
@@ -351,15 +375,11 @@ export class ResultSet<
           while (true) {
             const idx = undecidedBytes.indexOf(NEWLINE, lastIdx);
             if (idx === -1) {
+              // The bytes after the last newline are not a complete row. They
+              // are dropped, the same as `incompleteChunks` at the end.
               break;
             }
-            const text = undecidedBytes.subarray(lastIdx, idx).toString();
-            rows.push({
-              text,
-              json<T>(): T {
-                return jsonHandling.parse(text);
-              },
-            });
+            rows.push(toRow(undecidedBytes.subarray(lastIdx, idx)));
             lastIdx = idx + 1;
           }
           resultSet.addSpanRows(rows.length);

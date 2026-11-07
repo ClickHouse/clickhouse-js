@@ -241,6 +241,32 @@ describe("utils/stream matchExceptionBlockStart", () => {
       );
     });
   }
+
+  it("continues a partial match with the bytes of the next chunk", () => {
+    const complete = enc(`${opening}\r\nCode: 395. boom\n`);
+    const differentLastByte = enc(`${opening.slice(0, -1)}X`);
+    for (let matched = 0; matched < opening.length; matched++) {
+      expect(
+        matchExceptionBlockStart(complete.subarray(matched), 0, tag, matched),
+      ).toBe("match");
+      expect(
+        matchExceptionBlockStart(
+          complete.subarray(matched, opening.length - 1),
+          0,
+          tag,
+          matched,
+        ),
+      ).toBe("partial");
+      expect(
+        matchExceptionBlockStart(
+          differentLastByte.subarray(matched),
+          0,
+          tag,
+          matched,
+        ),
+      ).toBe("none");
+    }
+  });
 });
 
 describe("utils/stream errorFromExceptionBlock", () => {
