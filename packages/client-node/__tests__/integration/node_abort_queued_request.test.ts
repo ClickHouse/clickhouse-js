@@ -18,6 +18,24 @@ describe("[Node.js] Aborting a request queued for a socket", () => {
     );
   });
 
+  it("rejects a command whose signal was aborted before the call", async () => {
+    let requests = 0;
+    const [httpServer, port] = await createHTTPServer((req, res) => {
+      requests += 1;
+      req.resume();
+      req.on("end", () => res.end("Ok."));
+    });
+    server = httpServer;
+    client = createTestClient({ url: `http://127.0.0.1:${port}` });
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      client.command({ query: "SELECT 1", abort_signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(requests).toBe(0);
+  });
+
   it("should not destroy the socket under the next request after the idle TTL", async () => {
     const idleSocketTTL = 300;
     let port: number;
