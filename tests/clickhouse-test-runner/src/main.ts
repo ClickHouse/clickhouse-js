@@ -53,9 +53,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  const statements: Statement[] = args.multiquery
-    ? buildStatements(splitQueries(query))
-    : [{ sql: query.trim(), expectedError: null }];
+  // Like clickhouse-client, run every ";"-separated statement, with or without
+  // `--multiquery`: `.sh` tests pass multi-statement scripts to plain `-q`.
+  const statements: Statement[] = buildStatements(splitQueries(query));
   if (statements.length === 0) {
     // The input contained only comments/whitespace (e.g. a leftover error
     // hint after the final statement). Nothing to run; exit cleanly like the

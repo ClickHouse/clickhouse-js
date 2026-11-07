@@ -124,6 +124,53 @@ describe("[Node.js] Client", () => {
     });
   });
 
+  describe("X-ClickHouse-Format request header", () => {
+    // The server prefers the header over the `default_format` setting that
+    // carries the query() format, so query() does not send it.
+    it("is not sent by query(), whichever case it is written in", async () => {
+      const client = createClient({
+        http_headers: { "X-ClickHouse-Format": "CSV", FromInstance: "foo" },
+      });
+      await query(client);
+      expect(getRequestHeaders(1)).toEqual({
+        ...defaultHeaders,
+        FromInstance: "foo",
+      });
+
+      const promise = client.query({
+        query: "SELECT 42",
+        http_headers: { "x-clickhouse-format": "CSV" },
+      });
+      await emitResponseBody(clientRequest, "hi");
+      await promise;
+      expect(getRequestHeaders(2)).toEqual({
+        ...defaultHeaders,
+        FromInstance: "foo",
+      });
+    });
+
+    it("is sent by the other methods", async () => {
+      const client = createClient({
+        http_headers: { "X-ClickHouse-Format": "CSV" },
+      });
+      let requestCalls = 1;
+      for (const param of getHeadersTestParams(client)) {
+        if (param.methodName === "query") continue;
+        const promise = param.methodCall({ FromMethod: "bar" });
+        await emitResponseBody(clientRequest, "hi");
+        await promise;
+        expect(
+          getRequestHeaders(requestCalls++),
+          `${param.methodName}: sends the header from the instance`,
+        ).toEqual({
+          ...defaultHeaders,
+          "X-ClickHouse-Format": "CSV",
+          FromMethod: "bar",
+        });
+      }
+    });
+  });
+
   describe("Compression headers", () => {
     it("should disable response compression by default", async () => {
       const client = createClient();
@@ -190,7 +237,8 @@ describe("[Node.js] Client", () => {
       const searchParams = new URL(callURL).searchParams;
       expect(searchParams.get("enable_http_compression")).toEqual("1");
       expect(searchParams.get("query_id")).not.toBeNull();
-      expect(searchParams.size).toEqual(2);
+      expect(searchParams.get("default_format")).toEqual("JSON");
+      expect(searchParams.size).toEqual(3);
     }
   });
 
@@ -205,7 +253,9 @@ describe("[Node.js] Client", () => {
   function assertSearchParams(callURL: string | URL) {
     const searchParams = new URL(callURL).searchParams;
     expect(searchParams.get("query_id")).not.toBeNull();
-    expect(searchParams.size).toEqual(1); // only query_id by default
+    // query() sends its format as `default_format` (JSON by default)
+    expect(searchParams.get("default_format")).toEqual("JSON");
+    expect(searchParams.size).toEqual(2); // query_id and default_format by default
   }
 
   function getRequestHeaders(httpRequestStubCalledTimes = 1) {

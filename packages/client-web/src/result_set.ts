@@ -383,7 +383,14 @@ export class ResultSet<
 
   async close(): Promise<void> {
     this.markAsConsumed();
-    await this._stream.cancel();
+    try {
+      await this._stream.cancel();
+    } catch (err) {
+      // Cancelling rejects when the stream has already errored or is locked.
+      // The span still has to end exactly once, so finish it with that error.
+      this.finishSpan(err);
+      throw err;
+    }
     this.finishSpan();
   }
 

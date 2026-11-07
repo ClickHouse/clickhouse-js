@@ -1,15 +1,16 @@
-# Socket Hang-Up / ECONNRESET
+# Timeouts / Socket Hang-Up / ECONNRESET
 
-**Symptom:** `socket hang up` or `ECONNRESET` errors, often intermittent.
+**Symptom:** `Error: Timeout error.`, `socket hang up`, or `ECONNRESET` errors, often intermittent.
 
-**Root cause:** The server or load balancer closes the Keep-Alive connection before the client detects it and stops reusing the socket.
+**Possible causes:** Reusing a socket closed by the server or load balancer, unconsumed streams, delayed event-loop timers, or other network failures.
 
 **Quick triage:**
 
-- Errors on every request → likely dangling stream (Step 1–2)
+- Errors on every request → check stream handling and connectivity (Steps 1–2 and 6)
 - Errors only after idle periods → Keep-Alive timeout mismatch (Step 3)
 - Errors on long-running queries (INSERT FROM SELECT, etc.) → load balancer idle timeout (Step 4)
-- Can't diagnose → disable Keep-Alive as a last resort (Step 5)
+- Other failures → check connectivity and event-loop delays (Step 6)
+- Still failing after these checks → disable Keep-Alive as a last resort (Step 5)
 
 ## Step 1 — Enable WARN-level logging to find dangling streams
 
@@ -23,7 +24,9 @@ const client = createClient({
 });
 ```
 
-Look for log lines about unconsumed or dangling streams — these are a common hidden cause. A **dangling stream** is a query response stream that was never fully consumed or explicitly closed with `ResultSet.close()`. Because the Node.js client reuses sockets (Keep-Alive), leaving a stream open corrupts the socket and causes the _next_ request to fail with `ECONNRESET`. Errors on **every request** strongly suggest dangling streams rather than a Keep-Alive timeout mismatch.
+Look for log lines about unconsumed or dangling streams. A **dangling stream** is a query response stream that was never fully consumed or explicitly closed with `ResultSet.close()`. It holds a connection until it is consumed, closed, or times out. This can exhaust the connection pool and lead to connection errors.
+
+If the response stalls, socket inactivity can produce `Timeout error.` after `request_timeout`. At WARN level, look for `socket was closed or ended before the response was fully read`. This signals that the response stream was not fully consumed before the connection ended.
 
 **Common dangling stream patterns:**
 
@@ -91,7 +94,7 @@ const client = createClient({
 
 > ⚠️ If you still get errors after increasing, **lower** the value, not raise it.
 
-> **Tip (`>= 1.18.3`):** Enable `keep_alive.eagerly_destroy_stale_sockets: true` to proactively destroy sockets that have been idle longer than `idle_socket_ttl` before each request. This helps when event loop delays prevent the idle timeout callback from firing on time.
+> **Tip (`>= 1.18.3`):** Enable `keep_alive.eagerly_destroy_stale_sockets: true` to proactively destroy sockets that have been idle longer than `idle_socket_ttl` before each request. This helps when event loop delays prevent the idle timeout callback from firing on time. The cleanup only runs for Node.js `http.Agent` instances, including `https.Agent`.
 
 ## Step 4 — Long-running queries with no data in/out (INSERT FROM SELECT, etc.)
 
@@ -113,7 +116,7 @@ const client = createClient({
 
 **Node.js defaults to a total received HTTP header limit of approximately 16 KB (this can be increased via the `--max-http-header-size` CLI flag[^max-header-size]).** ClickHouse sends a new progress header with each interval (~200 bytes), and after ~75 progress headers accumulate, Node.js will throw an exception and terminate the request unless that limit is raised.
 
-[^max-header-size]: Since `>= 1.18.5`, the ClickHouse JS Node client forwards a per-client header limit via the `max_response_headers_size` (bytes) option on `createClient` (it maps to Node's `http(s).request({ maxHeaderSize })`). On older versions, the practical workarounds are the `--max-http-header-size` CLI flag / `NODE_OPTIONS` (process-wide) or supplying a custom `http.Agent` configured with `maxHeaderSize`.
+[^max-header-size]: Since `>= 1.18.5`, the ClickHouse JS Node client forwards a per-client header limit via the `max_response_headers_size` (bytes) option on `createClient` (it maps to Node's `http(s).request({ maxHeaderSize })`). On older versions, use the `--max-http-header-size` CLI flag / `NODE_OPTIONS` (process-wide).
 
 **Maximum safe query duration formula:**
 
@@ -189,16 +192,24 @@ Experimenting with the exact load balancer stack might be required.
 
 As a rule of thumb, set the interval slightly **below** your load balancer's idle timeout—typically by a few seconds (for example, often around 5–20 seconds), depending on your load balancer, proxies, and network behavior—while staying under the header limit for your expected query duration.
 
-**Alternatively — fire-and-forget (mutations only):** Mutations (`INSERT ... SELECT`, `OPTIMIZE`, `ALTER`) are not cancelled on the server when the client connection is lost. You can send the mutation and immediately close the connection, then poll `system.query_log` or `system.mutations` for status. This bypasses both the load balancer idle timeout and the Node.js header limit. See the [client repo examples](https://github.com/ClickHouse/clickhouse-js/tree/main/examples) for a concrete implementation.
+**Alternatively — cancel the HTTP request and poll:** For operations such as `INSERT ... SELECT` that continue after disconnection, first confirm the server received the query. Then abort the request and poll for completion. Do not assume that cancelling a request cancels the query, or that every query survives disconnection. See [the runnable example](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/troubleshooting/long_running_queries_cancel_request.ts).
 
 ## Step 5 — Disable Keep-Alive entirely (last resort)
 
 > **Requires:** `>= 0.1.1` (Keep-Alive disable option introduced in 0.1.1).
 
-Adds overhead (new TCP connection per request) but eliminates all Keep-Alive issues:
+Adds overhead (new TCP connection per request) and avoids reusing idle sockets. Other causes of connection resets remain possible:
 
 ```js
 const client = createClient({
   keep_alive: { enabled: false },
 });
 ```
+
+## Step 6 — Check connectivity and event-loop delays
+
+For `Error: Timeout error.`, first check the same server and network path with `curl` or native Node.js. See [the connectivity checks](https://github.com/ClickHouse/clickhouse-js/blob/main/docs/socket_hang_up_econnreset.md). The Node.js client's `request_timeout` limits socket inactivity, not total query execution time.
+
+Run the monitor from [the event-loop delay example](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/troubleshooting/event_loop_delay.ts) inside the affected Node.js process. It logs timestamped p99 and maximum delays in milliseconds. Compare spikes with client errors and CPU/GC metrics. The standalone demonstration needs no server and includes a deliberate 200 ms block. Copy only the monitoring code into an application.
+
+With the example's 20 ms sampling resolution, baseline readings are near 20 ms. With about 50 samples per report, p99 and max will often match. Reports pause during a block and resume afterward. Spikes show delayed timers and socket callbacks, but do not prove the cause of a connection reset.

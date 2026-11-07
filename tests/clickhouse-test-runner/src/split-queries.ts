@@ -1,3 +1,34 @@
+/** `[A-Za-z0-9_]`, matching the server lexer's `isWordCharASCII`. */
+function isWordChar(code: number): boolean {
+  return (
+    (code >= 0x61 && code <= 0x7a) || // a-z
+    (code >= 0x41 && code <= 0x5a) || // A-Z
+    (code >= 0x30 && code <= 0x39) || // 0-9
+    code === 0x5f // _
+  );
+}
+
+/**
+ * Returns the exclusive end offset of the dollar-quoted heredoc that starts at
+ * `start` (which points at a `$`), or `-1` when that `$` does not open one.
+ *
+ * Mirrors the server lexer: the opening delimiter is `$`, an optional tag of
+ * word characters, and `$` again (so `$$` and `$tag$`); the heredoc runs to the
+ * next occurrence of the same delimiter. An unterminated delimiter is not a
+ * heredoc, and its `$` is then an ordinary character.
+ */
+function findHeredocEnd(sql: string, start: number): number {
+  const tagEnd = sql.indexOf("$", start + 1);
+  if (tagEnd === -1) return -1;
+  for (let i = start + 1; i < tagEnd; i++) {
+    if (!isWordChar(sql.charCodeAt(i))) return -1;
+  }
+  const delimiter = sql.slice(start, tagEnd + 1);
+  const end = sql.indexOf(delimiter, tagEnd + 1);
+  if (end === -1) return -1;
+  return end + delimiter.length;
+}
+
 export function splitQueries(sql: string): string[] {
   const queries: string[] = [];
   let current = "";
@@ -16,7 +47,7 @@ export function splitQueries(sql: string): string[] {
       continue;
     }
 
-    if ((inSingleQuote || inDoubleQuote) && ch === "\\") {
+    if ((inSingleQuote || inDoubleQuote || inBacktick) && ch === "\\") {
       current += ch;
       escaping = true;
       continue;
@@ -40,6 +71,17 @@ export function splitQueries(sql: string): string[] {
         current += sql.slice(i, end);
         i = end - 1;
         continue;
+      }
+      // Dollar-quoted heredoc: $$ ... $$ or $tag$ ... $tag$. The server lexer
+      // reads the whole region as a single token, so quotes, comment markers
+      // and semicolons inside it must not affect the split.
+      if (ch === "$") {
+        const heredocEnd = findHeredocEnd(sql, i);
+        if (heredocEnd !== -1) {
+          current += sql.slice(i, heredocEnd);
+          i = heredocEnd - 1;
+          continue;
+        }
       }
     }
 
