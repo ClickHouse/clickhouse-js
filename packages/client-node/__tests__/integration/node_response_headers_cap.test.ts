@@ -76,8 +76,7 @@ describe("[Node.js] http client maxHeaderSize behavior", () => {
       }
       const req = http.request(opts, (res) => {
         const first = res.headers[firstName.toLowerCase()] as
-          | string
-          | undefined;
+          string | undefined;
         const last = res.headers[lastName.toLowerCase()] as string | undefined;
         res.on("data", () => {});
         res.on("end", () =>

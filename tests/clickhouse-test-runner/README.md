@@ -144,8 +144,8 @@ The file `upstream-allowlist.txt` contains the curated list of upstream tests kn
 The workflow `.github/workflows/upstream-sql-tests.yml` runs this harness in CI:
 
 - Triggered on **workflow_dispatch**, **nightly at 05:00 UTC**, and on **pushes/PRs** that touch `tests/clickhouse-test-runner/**` or the workflow file itself.
-- The `workflow_dispatch` input `upstream_ref` can be used to pin a specific upstream commit or branch (defaults to `master`).
-- The matrix runs every combination of `{clickhouse: head | latest} × {shard: 1..N}`. Sharding is round-robin across the allowlist (see `SHARD_INDEX` / `SHARD_TOTAL` above) so each shard takes roughly one minute. If the allowlist grows enough that per-shard runtime climbs back above ~1 minute, bump both the `shard` matrix values and the `SHARD_TOTAL` env value in the workflow together.
+- The upstream test suite is pinned by `UPSTREAM_REF` in the workflow to the release matching the `latest` server image (e.g. `v26.10.2.103-stable` for 26.10). When `latest` moves to a new release, the old reference outputs drift from the server's, so bump the pin to the new release's tag. The `workflow_dispatch` input `upstream_ref` overrides the pin for one run, which is the way to try a new pin before committing it.
+- The matrix runs every combination of `{clickhouse: latest} × {backend: passthrough | rowbinary} × {shard: 1..N}`. Sharding is round-robin across the allowlist (see `SHARD_INDEX` / `SHARD_TOTAL` above) so each shard takes roughly one minute. If the allowlist grows enough that per-shard runtime climbs back above ~1 minute, bump both the `shard` matrix values and the `SHARD_TOTAL` env value in the workflow together.
 
 ## Local development
 
@@ -163,7 +163,19 @@ local checkout. The following scripts can then be run from this directory:
 
 This is a developer-facing harness. It is **not** an exhaustive
 `clickhouse-client` replacement; only the flags and behaviors that
-`tests/clickhouse-test` actually exercises are implemented. The
+`tests/clickhouse-test` actually exercises are implemented. Two of them
+differ from what an HTTP client would expect, because the shim follows
+`clickhouse-client`:
+
+- `--port` is `clickhouse-client`'s native TCP port. `clickhouse-test`
+  exports `CLICKHOUSE_PORT_TCP` and passes `--port=$CLICKHOUSE_PORT_TCP` to
+  `.sh` tests, so that port is mapped to `CLICKHOUSE_PORT_HTTP` (default
+  `8123`; `9440` maps to `CLICKHOUSE_PORT_HTTPS`, default `8443`). Any other
+  port is used as an HTTP port.
+- Every `;`-separated statement runs, with or without `--multiquery` (`-n`),
+  as `clickhouse-client` does for `--query` and stdin.
+
+The
 `SERVER_SETTINGS` and `CLIENT_ONLY_SETTINGS` allowlists in
 [`src/settings.ts`](src/settings.ts) are copied from the Java port and may
 need to be periodically resynced as ClickHouse adds or reclassifies settings.

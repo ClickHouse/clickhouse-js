@@ -5,7 +5,13 @@ import type {
 } from "@clickhouse/client-common";
 import { randomUUID } from "@test/utils/guid";
 import { createTableWithFields } from "../fixtures/table_with_fields";
-import { createTestClient, getRandomInt, TestEnv, isOnEnv } from "../utils";
+import {
+  createTestClient,
+  getRandomInt,
+  TestEnv,
+  isOnEnv,
+  isDateTime64FromJSONNumberBroken,
+} from "../utils";
 
 describe("data types", () => {
   let client: ClickHouseClient;
@@ -217,7 +223,12 @@ describe("data types", () => {
     });
   });
 
-  it("should work with custom JSON handling (BigInt and Date)", async () => {
+  it("should work with custom JSON handling (BigInt and Date)", async ({
+    skip,
+  }) => {
+    if (await isDateTime64FromJSONNumberBroken(client)) {
+      skip("server clamps epoch-ms JSON numbers in DateTime64(3)");
+    }
     const TEST_BIGINT = BigInt(25000000000000000);
     const TEST_DATE = new Date("2023-12-06T10:54:48.123Z");
     const values = [

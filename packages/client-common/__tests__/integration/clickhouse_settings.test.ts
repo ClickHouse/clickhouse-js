@@ -24,13 +24,18 @@ describe("ClickHouse settings", () => {
   it.skipIf(!isOnEnv(TestEnv.LocalSingleNode, TestEnv.LocalCluster))(
     "should be able to send every setting reported by system.settings",
     async () => {
-      const settings = await client
+      let settings = await client
         .query({
           query: "SELECT name, value FROM system.settings",
           format: "JSONEachRow",
         })
         .then((r) => r.json<{ name: string; value: string }>());
       expect(settings.length).toBeGreaterThan(0);
+
+      // The HTTP interface treats a `filter` URL parameter as an extra WHERE
+      // clause (26.10+), so its empty default turns any query into `WHERE tuple()`.
+      const skipped = new Set(["filter"]);
+      settings = settings.filter(({ name }) => !skipped.has(name));
 
       const failures: { name: string; error: string }[] = [];
       const concurrency = Math.min(10, settings.length);

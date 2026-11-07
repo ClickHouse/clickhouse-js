@@ -1625,9 +1625,9 @@ interface ClickHouseHTTPSettings {
   quota_key: string;
   /** If enabled, include the stack trace in the response body when an exception occurs. */
   stacktrace: Bool;
-  /** Format to use if a SELECT query is executed without a FORMAT clause.
-   *  Only useful for the {@link ClickHouseClient.exec} method,
-   *  as {@link ClickHouseClient.query} method always attaches this clause. */
+  /** The format for a query that does not have a FORMAT clause.
+   *  {@link ClickHouseClient.query} always sets this to its `format` option and replaces a value given here.
+   *  For this reason, this setting is only useful for the {@link ClickHouseClient.exec} method. */
   default_format: DataFormat;
   /** By default, the session is terminated after 60 seconds of inactivity
    *  This is regulated by the `default_session_timeout` server setting. */
@@ -2080,10 +2080,7 @@ export type MySQLDataTypesSupport =
   | "decimal";
 
 export type DistributedDDLOutputMode =
-  | "never_throw"
-  | "null_status_on_timeout"
-  | "throw"
-  | "none";
+  "never_throw" | "null_status_on_timeout" | "throw" | "none";
 
 export type ShortCircuitFunctionEvaluation =
   // Use short-circuit function evaluation for all functions.
@@ -2096,13 +2093,7 @@ export type ShortCircuitFunctionEvaluation =
 export type TransactionsWaitCSNMode = "wait_unknown" | "wait" | "async";
 
 export type EscapingRule =
-  | "CSV"
-  | "JSON"
-  | "Quoted"
-  | "Raw"
-  | "XML"
-  | "Escaped"
-  | "None";
+  "CSV" | "JSON" | "Quoted" | "Raw" | "XML" | "Escaped" | "None";
 
 export type DateTimeOutputFormat = "simple" | "iso" | "unix_timestamp";
 
@@ -2161,17 +2152,10 @@ export type JoinAlgorithm =
 export type Dialect = "clickhouse" | "kusto" | "kusto_auto" | "prql";
 
 export type CapnProtoEnumComparingMode =
-  | "by_names"
-  | "by_values"
-  | "by_names_case_insensitive";
+  "by_names" | "by_values" | "by_names_case_insensitive";
 
 export type ParquetCompression =
-  | "none"
-  | "snappy"
-  | "zstd"
-  | "gzip"
-  | "lz4"
-  | "brotli";
+  "none" | "snappy" | "zstd" | "gzip" | "lz4" | "brotli";
 
 export type ArrowCompression = "none" | "lz4_frame" | "zstd";
 export type ORCCompression = "none" | "snappy" | "zstd" | "gzip" | "lz4";

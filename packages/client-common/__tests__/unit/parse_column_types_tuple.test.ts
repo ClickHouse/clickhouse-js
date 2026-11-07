@@ -7,7 +7,11 @@ import type {
   ParsedColumnSimple,
   ParsedColumnTuple,
 } from "../../src/parse";
-import { parseTupleType } from "../../src/parse";
+import {
+  ColumnTypeParseError,
+  parseColumnType,
+  parseTupleType,
+} from "../../src/parse";
 
 describe("Columns types parser - Tuple", () => {
   it("should parse Tuple with simple types", async () => {
@@ -177,7 +181,99 @@ describe("Columns types parser - Tuple", () => {
     expect(result).toEqual(expected);
   });
 
-  // TODO: Simple types permutations, Nullable, Arrays, Maps, Nested Tuples
+  it.each([
+    "`first, last`",
+    '"first, last"',
+    "`left(parenthesis`",
+    '"right)parenthesis"',
+    "`apostrophe's name`",
+    '"back`tick"',
+    "`escaped\\`quote, name`",
+    '"escaped\\"quote, name"',
+    "`doubled``quote, name`",
+    '"doubled""quote, name"',
+  ])("should parse a quoted Tuple element named %s", (name) => {
+    const sourceType = `Tuple(${name} String, count UInt8)`;
+    expect(parseColumnType(sourceType)).toEqual({
+      type: "Tuple",
+      elements: [
+        { type: "Simple", columnType: "String", sourceType: "String" },
+        { type: "Simple", columnType: "UInt8", sourceType: "UInt8" },
+      ],
+      sourceType,
+    });
+  });
+
+  it.each([
+    "`second, name`",
+    '"second, name"',
+    "`second(parenthesis`",
+    '"second)parenthesis"',
+  ])("should parse a quoted Tuple element named %s after a comma", (name) => {
+    const sourceType = `Tuple(first UInt8, ${name} String, third UInt16)`;
+    expect(parseColumnType(sourceType)).toEqual({
+      type: "Tuple",
+      elements: [
+        { type: "Simple", columnType: "UInt8", sourceType: "UInt8" },
+        { type: "Simple", columnType: "String", sourceType: "String" },
+        { type: "Simple", columnType: "UInt16", sourceType: "UInt16" },
+      ],
+      sourceType,
+    });
+  });
+
+  it("should parse nested named Tuple elements", () => {
+    const sourceType =
+      "Tuple(meta Tuple(name String, count UInt8), price Decimal(7, 2))";
+    expect(parseColumnType(sourceType)).toEqual({
+      type: "Tuple",
+      elements: [
+        {
+          type: "Tuple",
+          elements: [
+            { type: "Simple", columnType: "String", sourceType: "String" },
+            { type: "Simple", columnType: "UInt8", sourceType: "UInt8" },
+          ],
+          sourceType: "Tuple(name String, count UInt8)",
+        },
+        {
+          type: "Decimal",
+          sourceType: "Decimal(7, 2)",
+          params: { precision: 7, scale: 2, intSize: 32 },
+        },
+      ],
+      sourceType,
+    });
+  });
+
+  it("should preserve spaces inside unnamed Tuple element types", () => {
+    const sourceType =
+      "Tuple(DateTime64(3, 'Europe/Amsterdam'), Enum8('has space' = 1))";
+    expect(parseColumnType(sourceType)).toEqual({
+      type: "Tuple",
+      elements: [
+        {
+          type: "DateTime64",
+          timezone: "Europe/Amsterdam",
+          precision: 3,
+          sourceType: "DateTime64(3, 'Europe/Amsterdam')",
+        },
+        {
+          type: "Enum",
+          values: { 1: "has space" },
+          intSize: 8,
+          sourceType: "Enum8('has space' = 1)",
+        },
+      ],
+      sourceType,
+    });
+  });
+
+  it("should reject unsupported named Tuple element types", () => {
+    expect(() => parseColumnType("Tuple(value Unknown)")).toThrow(
+      ColumnTypeParseError,
+    );
+  });
 
   const stringElement: ParsedColumnSimple = {
     type: "Simple",

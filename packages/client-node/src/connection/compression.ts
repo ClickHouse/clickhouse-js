@@ -5,8 +5,7 @@ import Stream from "stream";
 import Zlib from "zlib";
 
 type DecompressResponseResult =
-  | { response: Stream.Readable }
-  | { error: Error };
+  { response: Stream.Readable } | { error: Error };
 
 export function decompressResponse(
   response: Http.IncomingMessage,

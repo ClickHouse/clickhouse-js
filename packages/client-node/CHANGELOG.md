@@ -1,3 +1,56 @@
+# 1.25.1
+
+## Bug fixes
+
+- Fixed the deprecated `parseColumnType` function to parse named Tuple elements, such as `Tuple(name String, count UInt64)`. Element names remain omitted from `ParsedColumnTuple`. ([#964])
+
+[#964]: https://github.com/ClickHouse/clickhouse-js/pull/964
+
+# 1.25.0
+
+## Migration Notes
+
+- `query()` now sends its `format` to the server as the `default_format` setting, instead of appending `FORMAT <format>` to the SQL (see Improvements below). No code change is required, but check the following:
+  - The query text recorded in `system.query_log`, in logs and in traces no longer ends with `FORMAT <format>`. Adjust anything that matches on that suffix.
+  - A `FORMAT` clause in the query itself is no longer a syntax error: the server uses it, and if it differs from the `format` option, `query()` throws an error that names both formats. With a `tracer` configured, that error is recorded on the `clickhouse.query.stream` span ([#1103]). Remove the clause, or use `exec()` if you need full control over the SQL.
+  - A user whose profile locks `default_format` with a `<constraints>` entry (possible on ClickHouse 26.x) fails every `query()` with `SETTING_CONSTRAINT_VIOLATION`. Allow changing `default_format` for that user. ([#1085])
+
+[#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
+[#1103]: https://github.com/ClickHouse/clickhouse-js/pull/1103
+
+## Improvements
+
+- `query()` now sends the query as written and passes its `format` to the server as the `default_format` setting, instead of appending `FORMAT <format>` to the SQL. This matches the Go, Rust and Java clients, and fixes queries that failed because of the appended clause:
+  - a trailing semicolon followed by a comment, such as `SELECT 1; -- note`, no longer fails with `Multi-statements are not allowed` ([#973]);
+  - `FORMAT` is no longer placed after a trailing `SETTINGS` clause, which some older servers rejected ([#970]);
+  - the short `SHOW ROW POLICIES` syntax works ([#759]).
+
+  The `format` option overrides a `default_format` set in `clickhouse_settings`. An `X-ClickHouse-Format` request header set via `http_headers` (on the client or on the call) is not sent by `query()`, as the server would prefer it over `default_format`; the other methods still send it. ([#1085])
+
+- `command()` and `exec()` now also send the query as written, without removing trailing semicolons, as the server accepts them. The one exception is `exec()` with `values`: the server reads the data right after the statement and rejects a `;` before it, so trailing semicolons are still removed there. ([#1085])
+
+- When the server reports an error in a JSON output format (with `http_write_exception_in_output_format` enabled, the error that occurs while it writes the result comes back as `{"exception": "..."}`), `ClickHouseError.message` no longer keeps the JSON escaping, for example `\"` instead of `"`. ([#1085])
+
+[#759]: https://github.com/ClickHouse/clickhouse-js/issues/759
+[#970]: https://github.com/ClickHouse/clickhouse-js/issues/970
+[#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
+[#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
+
+## Bug fixes
+
+- (Node.js only) `ResultSet.close()` no longer throws an uncaught `ResultSet has been closed` error when the `ResultSet` wraps a stream that has no `error` listener. ([#1087])
+
+[#1087]: https://github.com/ClickHouse/clickhouse-js/pull/1087
+
+# 1.24.1
+
+## Bug fixes
+
+- Fixed a `socket hang up` error on a request that took over a socket released by an earlier request, when another request queued for that socket was aborted in between. The orphaned idle-socket timer from the earlier release destroyed the socket `idle_socket_ttl` later, mid-request (Node.js only) ([#1040]). ([#1041])
+
+[#1040]: https://github.com/ClickHouse/clickhouse-js/issues/1040
+[#1041]: https://github.com/ClickHouse/clickhouse-js/pull/1041
+
 # 1.24.0
 
 ## New features
@@ -15,10 +68,11 @@
 ## Bug fixes
 
 - Fixed `Array(Date)` / `Array(Date32)` query-parameter binding (and other temporal element types nested in arrays, tuples, and maps). A JS `Date` inside a container was serialized as a bare Unix timestamp (e.g. `[1683244800]`), which the server's `Array(Date)` element parser rejects (`CANNOT_PARSE_INPUT_ASSERTION_FAILED`). Container-nested `Date` values are now emitted as a quoted UTC date string (e.g. `['2023-05-05']`), the one encoding every temporal element type accepts. Note: a `Date` used inside `Array(DateTime)` / `Array(DateTime64)` is now bound at day precision (the time-of-day is dropped), since date-only is the only form `Array(Date)` accepts; scalar `Date` / `DateTime` binding is unchanged. ([#947])
-- Fixed the deprecated `parseColumnType` function to parse named Tuple elements (for example, `Tuple(name String, count UInt64)`) instead of throwing `Unsupported column type`. Element names remain omitted from the legacy `ParsedColumnTuple` output; use `@clickhouse/datatype-parser` when names are needed. ([#964])
+- Export the `QueryParamsWithFormat`, `ClickHouseSummary`, `WithClickHouseSummary`, `ResultJSONType`, `RowJSONType` and `PingParams` types from `@clickhouse/client`. They are used in the signatures of the public API (`query`, `ping`, the result types), but could not be imported from the package root ([#997]). ([#1024])
 
 [#947]: https://github.com/ClickHouse/clickhouse-js/pull/947
-[#964]: https://github.com/ClickHouse/clickhouse-js/pull/964
+[#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
+[#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 
 # 1.23.1
 

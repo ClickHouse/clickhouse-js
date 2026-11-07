@@ -119,6 +119,7 @@ precision pitfalls.
 | Ping that times out (Node.js only)                | [node/troubleshooting/ping_timeout.ts](node/troubleshooting/ping_timeout.ts)                                                   | —                                                                                                                            |
 | Cancelling an outgoing request                    | [node/troubleshooting/abort_request.ts](node/troubleshooting/abort_request.ts)                                                 | [web/troubleshooting/abort_request.ts](web/troubleshooting/abort_request.ts)                                                 |
 | Cancelling a query on the server                  | [node/troubleshooting/cancel_query.ts](node/troubleshooting/cancel_query.ts)                                                   | [web/troubleshooting/cancel_query.ts](web/troubleshooting/cancel_query.ts)                                                   |
+| Measuring event-loop delay (no server required)   | [node/troubleshooting/event_loop_delay.ts](node/troubleshooting/event_loop_delay.ts)                                           | —                                                                                                                            |
 | Long-running queries via progress headers         | [node/troubleshooting/long_running_queries_progress_headers.ts](node/troubleshooting/long_running_queries_progress_headers.ts) | [web/troubleshooting/long_running_queries_progress_headers.ts](web/troubleshooting/long_running_queries_progress_headers.ts) |
 | Long-running queries via request cancellation     | [node/troubleshooting/long_running_queries_cancel_request.ts](node/troubleshooting/long_running_queries_cancel_request.ts)     | —                                                                                                                            |
 | Read-only user limitations (server error surface) | [node/troubleshooting/read_only_user.ts](node/troubleshooting/read_only_user.ts)                                               | [web/troubleshooting/read_only_user.ts](web/troubleshooting/read_only_user.ts)                                               |
@@ -157,11 +158,13 @@ deployment-shaped connection strings.
 
 ### Prerequisites
 
-Environment requirements for all examples:
+Environment requirements for most examples:
 
 - Node.js 20+
 - NPM
 - Docker Compose
+
+The [event-loop delay example](node/troubleshooting/event_loop_delay.ts) only needs Node.js and NPM. It does not connect to ClickHouse.
 
 Run ClickHouse in Docker from the root folder of this repository:
 
@@ -194,11 +197,11 @@ category-relative path, for example:
 
 ```sh
 # from examples/node
-npx tsx --transpile-only coding/array_json_each_row.ts
-npx tsx --transpile-only performance/insert_streaming_with_backpressure.ts
+npx tsx coding/array_json_each_row.ts
+npx tsx performance/insert_streaming_with_backpressure.ts
 
 # from examples/web
-npx tsx --transpile-only coding/array_json_each_row.ts
+npx tsx coding/array_json_each_row.ts
 ```
 
 ### TLS examples
@@ -215,9 +218,9 @@ sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 After that, you should be able to run the examples (from `examples/node`):
 
 ```bash
-npx tsx --transpile-only security/basic_tls.ts
-npx tsx --transpile-only security/mutual_tls.ts
-npx tsx --transpile-only schema-and-deployments/create_table_on_premise_cluster.ts
+npx tsx security/basic_tls.ts
+npx tsx security/mutual_tls.ts
+npx tsx schema-and-deployments/create_table_on_premise_cluster.ts
 ```
 
 ### ClickHouse Cloud examples
@@ -242,7 +245,7 @@ Cloud examples assume that you are using the `default` user and database.
 Run one of the Cloud examples (from `examples/node`):
 
 ```
-npx tsx --transpile-only schema-and-deployments/create_table_cloud.ts
+npx tsx schema-and-deployments/create_table_cloud.ts
 ```
 
 ### Environment variables for runnable examples

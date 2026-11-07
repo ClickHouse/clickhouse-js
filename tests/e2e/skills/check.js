@@ -132,17 +132,20 @@ check("skills-npm creates a skills/ directory", () => {
   );
 });
 
+// skills-npm < 4 prefixed links with `npm-<package>-`; 4.x names them after
+// the skill itself, so match any symlink and look skills up by substring.
 const npmLinks = () =>
   fs.existsSync(skillsLinkDir)
-    ? fs.readdirSync(skillsLinkDir).filter((e) => e.startsWith("npm-"))
+    ? fs
+        .readdirSync(skillsLinkDir)
+        .filter((e) =>
+          fs.lstatSync(path.join(skillsLinkDir, e)).isSymbolicLink(),
+        )
     : [];
 
-check("skills-npm creates at least one npm-* symlink", () => {
+check("skills-npm creates at least one symlink", () => {
   const links = npmLinks();
-  assert.ok(
-    links.length > 0,
-    "skills/ should contain at least one npm-* symlink",
-  );
+  assert.ok(links.length > 0, "skills/ should contain at least one symlink");
 });
 
 for (const skill of declaredSkills) {

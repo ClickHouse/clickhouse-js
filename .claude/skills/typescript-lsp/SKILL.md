@@ -19,6 +19,9 @@ description: >
 `npm install` (see the `setup` skill) it is available via `npx` and uses the
 workspace-local `typescript` (6.x) compiler, matching CI exactly.
 
+The server (6.x) requires Node.js >= 22.22.2, newer than the repository's
+Node 20 minimum; on Node 20 `npm install` only warns, but the server isn't supported there.
+
 ## Starting the server
 
 From the repo root:

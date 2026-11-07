@@ -50,9 +50,7 @@ export type RequestCompression =
 /** Normalized response (read) body compression. The compression options are
  *  chosen by the ClickHouse server, so none are carried here. */
 export type ResponseCompression =
-  | { codec: "gzip" }
-  | { codec: "zstd" }
-  | { codec: "br" };
+  { codec: "gzip" } | { codec: "zstd" } | { codec: "br" };
 
 export interface CompressionSettings {
   /** Response decompression codec, or `undefined` to disable. */

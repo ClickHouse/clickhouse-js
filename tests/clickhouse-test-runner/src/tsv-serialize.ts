@@ -285,7 +285,9 @@ export function renderValue(
     case "Decimal64":
     case "Decimal128":
     case "Decimal256":
-      return formatDecimal(value as readonly [bigint, number]);
+      return stripDecimalTrailingZeros(
+        formatDecimal(value as readonly [bigint, number]),
+      );
 
     default:
       // Integers (incl. 64/128/256-bit bigints) and Interval* are plain digits.
@@ -298,6 +300,17 @@ export function renderValue(
       }
       throw new TSVRenderError(`no TSV renderer for type ${node.name}`);
   }
+}
+
+/**
+ * ClickHouse text output drops a Decimal's trailing fractional zeros, and the
+ * decimal point with them (`1.20` -> `1.2`, `3.00` -> `3`), under the default
+ * `output_format_decimal_trailing_zeros = 0`. `formatDecimal` keeps the full
+ * scale, so trim it here. The upstream runner never randomizes that setting.
+ */
+export function stripDecimalTrailingZeros(text: string): string {
+  if (!text.includes(".")) return text;
+  return text.replace(/0+$/, "").replace(/\.$/, "");
 }
 
 /** `(a,b,c)` — named (object) or positional (array) tuples both print positionally. */

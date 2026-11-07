@@ -110,8 +110,7 @@ export function writeMap<K, V>(
  * encode-side analog of the `readGeometry` switch.
  */
 export type VariantValue =
-  | readonly [discriminant: number, value: unknown]
-  | null;
+  readonly [discriminant: number, value: unknown] | null;
 
 /**
  * Write a `Variant(T1, ..., Tn)`: a 1-byte discriminant then the chosen

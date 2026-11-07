@@ -58,9 +58,7 @@ export type RecordsJSONFormat = (typeof RecordsJSONFormats)[number];
 
 /** All allowed JSON formats, whether streamable or not. */
 export type JSONDataFormat =
-  | StreamableJSONDataFormat
-  | SingleDocumentJSONFormat
-  | RecordsJSONFormat;
+  StreamableJSONDataFormat | SingleDocumentJSONFormat | RecordsJSONFormat;
 
 /** Data formats that are currently supported by the client. <br/>
  *  This is a union of the following types:<br/>

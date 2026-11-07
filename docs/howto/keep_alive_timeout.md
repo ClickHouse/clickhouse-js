@@ -4,7 +4,7 @@
 
 When Keep-Alive is enabled (the default), the Node.js client reuses idle TCP sockets between requests. If the client holds a socket idle for longer than the server's Keep-Alive timeout, the server closes it. But the client doesn't get to know about the closed socket immediately and can attempt to use it. The next request on that socket gets an `ECONNRESET` error.
 
-This happens when `keep_alive.idle_socket_ttl` (client-side) is greater than the `timeout` value in the server's `Keep-Alive` response header.
+One cause is `keep_alive.idle_socket_ttl` (client-side) being greater than the `timeout` value in the server's `Keep-Alive` response header. Delayed event-loop timers can also leave expired sockets in the pool.
 
 ## How to debug
 
@@ -36,7 +36,7 @@ Look for two log entries:
    { server_keep_alive_timeout_ms: 3000, idle_socket_ttl: 3500, ... }
    ```
 
-   This confirms that the ECONNRESET error is due to the idle socket TTL being greater than the server's Keep-Alive timeout.
+   This identifies a timeout mismatch that can cause connection resets. It does not rule out other network problems.
 
 **Step 2 — check the server's Keep-Alive timeout** directly:
 
@@ -45,7 +45,7 @@ curl -v https://<host>:8443/ 2>&1 | grep -i keep-alive
 # < keep-alive: timeout=3
 ```
 
-The value is in seconds. ClickHouse Cloud default is 3s; self-hosted default is 10s.
+The value is in seconds. Check the actual response for your deployment. A proxy or load balancer may impose a shorter timeout.
 
 **Step 3 — fix it** by setting `idle_socket_ttl` strictly below the server timeout:
 
@@ -57,7 +57,7 @@ const client = createClient({
 });
 ```
 
-A margin of 500–1000 ms is recommended to account for clock skew and event-loop delays.
+A margin of 500–1000 ms leaves room for network latency and event-loop delays.
 
 **Optional — enable eager socket destruction** as an extra safeguard on CPU-starved machines where timers may fire late:
 
@@ -68,7 +68,7 @@ reusing socket with TTL expired based on timestamp
 { socket_age_ms: 5380, idle_socket_ttl_ms: 2500, ... }
 ```
 
-This is a sign that the application running the client is under heavy load and timers are firing late and the eager destruction might help in this case. Try enabling eager socket destruction to have the client proactively destroy idle sockets that have exceeded the server timeout instead of waiting for the next request to discover and destroy them:
+This can indicate delayed timers. Use [the event-loop delay example](../../examples/node/troubleshooting/event_loop_delay.ts) in the affected process to measure delays. Enable eager socket destruction to check idle sockets against the client's `idle_socket_ttl` before each request:
 
 ```ts
 const client = createClient({
@@ -78,7 +78,7 @@ const client = createClient({
 });
 ```
 
-When enabled and the client detects that an idle socket has exceeded the server timeout, it will be destroyed immediately. This can help prevent `ECONNRESET` errors on the next request that tries to reuse that socket. You can check the logs for messages about destroying idle sockets:
+When enabled, the client destroys expired idle sockets before assigning one to a request. This uses the client's `idle_socket_ttl`, not the server timeout, and is not a background cleanup task. The cleanup only runs for Node.js `http.Agent` instances, including `https.Agent`. It can reduce connection resets caused by delayed timers, but cannot prevent every reset. Look for these TRACE logs:
 
 ```
 socket TTL expired based on timestamp, destroying socket

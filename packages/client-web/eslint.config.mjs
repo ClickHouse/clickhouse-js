@@ -15,7 +15,6 @@ export default defineConfig(
       "eslint.config.mjs",
       "vitest.config.ts",
       "vitest.setup.ts",
-      "vitest.otel.js",
       "coverage",
       "out",
       "dist",
