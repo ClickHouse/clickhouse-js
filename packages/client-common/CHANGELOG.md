@@ -1,3 +1,11 @@
+# 1.23.1
+
+## Bug fixes
+
+- Fixed the deprecated `parseColumnType` function to parse named Tuple elements, such as `Tuple(name String, count UInt64)`. Element names remain omitted from `ParsedColumnTuple`. ([#964])
+
+[#964]: https://github.com/ClickHouse/clickhouse-js/pull/964
+
 # 1.23.0
 
 ## Migration Notes

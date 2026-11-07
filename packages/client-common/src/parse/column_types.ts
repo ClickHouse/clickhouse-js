@@ -542,13 +542,46 @@ export function parseTupleType({
   }
   columnType = columnType.slice(TuplePrefix.length, -1);
   const elements = getElementsTypes({ columnType, sourceType }, 1).map((type) =>
-    parseColumnType(type),
+    parseTupleElementType(type),
   );
   return {
     type: "Tuple",
     elements,
     sourceType,
   };
+}
+
+function parseTupleElementType(elementSourceType: string): ParsedColumnType {
+  let quote: string | undefined;
+  let charEscaped = false;
+  for (let i = 0; i < elementSourceType.length; i++) {
+    const char = elementSourceType[i];
+    if (charEscaped) {
+      charEscaped = false;
+    } else if (quote !== undefined) {
+      if (char === "\\") {
+        charEscaped = true;
+      } else if (char === quote) {
+        if (elementSourceType[i + 1] === quote) {
+          i++;
+        } else {
+          quote = undefined;
+        }
+      }
+    } else if (char === "`" || char === '"') {
+      quote = char;
+    } else if (char === "(") {
+      break;
+    } else if (
+      char === " " ||
+      char === "\t" ||
+      char === "\n" ||
+      char === "\r"
+    ) {
+      return parseColumnType(elementSourceType.slice(i).trimStart());
+    }
+  }
+  return parseColumnType(elementSourceType);
 }
 
 export function parseArrayType({
@@ -734,7 +767,7 @@ export function getElementsTypes(
    *  * `Tuple(Enum8('(' = 1))`      ->  `(`
    *  See also: {@link parseEnumType }, which works similarly (but has to deal with the indices following the names). */
   let openParens = 0;
-  let quoteOpen = false;
+  let quote: number | undefined;
   let charEscaped = false;
   let lastElementIndex = 0;
   for (let i = 0; i < columnType.length; i++) {
@@ -742,20 +775,26 @@ export function getElementsTypes(
       charEscaped = false;
     } else if (columnType.charCodeAt(i) === BackslashASCII) {
       charEscaped = true;
-    } else if (columnType.charCodeAt(i) === SingleQuoteASCII) {
-      quoteOpen = !quoteOpen; // unescaped quote
+    } else if (quote !== undefined) {
+      if (columnType.charCodeAt(i) === quote) {
+        quote = undefined;
+      }
+    } else if (
+      columnType.charCodeAt(i) === SingleQuoteASCII ||
+      columnType[i] === '"' ||
+      columnType[i] === "`"
+    ) {
+      quote = columnType.charCodeAt(i);
     } else {
-      if (!quoteOpen) {
-        if (columnType.charCodeAt(i) === LeftParenASCII) {
-          openParens++;
-        } else if (columnType.charCodeAt(i) === RightParenASCII) {
-          openParens--;
-        } else if (columnType.charCodeAt(i) === CommaASCII) {
-          if (openParens === 0) {
-            elements.push(columnType.slice(lastElementIndex, i));
-            i += 2; // skip ', '
-            lastElementIndex = i;
-          }
+      if (columnType.charCodeAt(i) === LeftParenASCII) {
+        openParens++;
+      } else if (columnType.charCodeAt(i) === RightParenASCII) {
+        openParens--;
+      } else if (columnType.charCodeAt(i) === CommaASCII) {
+        if (openParens === 0) {
+          elements.push(columnType.slice(lastElementIndex, i));
+          lastElementIndex = i + 2;
+          i++; // skip ', '
         }
       }
     }
