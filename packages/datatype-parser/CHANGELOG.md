@@ -10,6 +10,10 @@
 
 - Node.js 18.x is no longer supported. The `engines.node` floor was raised from `>=18.0.0` to `>=20`. Node.js 20.x, 22.x, 24.x, and 26.x are supported and exercised in CI. ([#906])
 
+## Bug fixes
+
+- Fixed MySQL integer modifier detection so names that merely contain `INT`, such as `pointInPolygon`, keep their argument lists instead of being treated as integer display widths. ([#1012])
+
 # 0.1.2
 
 ## New features
@@ -18,3 +22,4 @@
 
 [#893]: https://github.com/ClickHouse/clickhouse-js/pull/893
 [#906]: https://github.com/ClickHouse/clickhouse-js/pull/906
+[#1012]: https://github.com/ClickHouse/clickhouse-js/pull/1012

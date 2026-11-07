@@ -6,6 +6,8 @@
 #include <array>
 #include <cstdlib>
 #include <string>
+#include <string_view>
+#include <unordered_set>
 
 /// A faithful port of ClickHouse's `ParserDataType::parseImpl`
 /// (src/Parsers/ParserDataType.cpp) onto the self-contained AST in `ast.h`.
@@ -46,6 +48,17 @@ bool isWordCharOrDollar(char c)
 bool isEnumTypeUpper(const std::string & u)
 {
     return u == "ENUM" || u == "ENUM8" || u == "ENUM16";
+}
+
+bool isIntegerTypeName(const std::string & u)
+{
+    static const std::unordered_set<std::string_view> integer_type_names
+    {
+        "INT8", "INT16", "INT32", "INT64", "INT128", "INT256",
+        "UINT8", "UINT16", "UINT32", "UINT64", "UINT128", "UINT256",
+        "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "INTEGER", "BIGINT", "INT1",
+    };
+    return integer_type_names.contains(u);
 }
 
 class Parser
@@ -211,7 +224,7 @@ private:
         {
             if (matchWords({"PRECISION"})) return "PRECISION";
         }
-        else if (u.find("INT") != std::string::npos)
+        else if (isIntegerTypeName(u))
         {
             /// MySQL-compatible SIGNED / UNSIGNED, optionally after `(width)`.
             if (matchWords({"SIGNED"})) return "SIGNED";
