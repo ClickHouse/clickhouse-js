@@ -231,7 +231,7 @@ export class ResultSet<
     const incompleteChunks: Buffer[] = [];
     // The bytes from the start of a row up to a `\r\n` that can open a
     // mid-stream exception block, when the chunk ends before it is possible to
-    // decide. They are scanned again together with the next chunk.
+    // decide. The first bytes of the next chunk decide.
     let undecidedBytes: Buffer | undefined;
     // A mid-stream exception block, collected until it is complete.
     let exceptionBlock: Buffer | undefined;

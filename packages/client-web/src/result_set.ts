@@ -183,7 +183,7 @@ export class ResultSet<
     let totalIncompleteLength = 0;
     // The bytes from the start of a row up to a `\r\n` that can open a
     // mid-stream exception block, when the chunk ends before it is possible to
-    // decide. They are scanned again together with the next chunk.
+    // decide. The first bytes of the next chunk decide.
     let undecidedBytes: Uint8Array | undefined;
     // A mid-stream exception block, collected until it is complete.
     let exceptionBlock: Uint8Array | undefined;
@@ -295,7 +295,7 @@ export class ResultSet<
                   controller.enqueue(rows);
                 }
                 if (match === "partial") {
-                  incompleteChunks.push(chunk.slice(lastIdx));
+                  incompleteChunks.push(chunk.subarray(lastIdx));
                   undecidedBytes = concatBytes(incompleteChunks);
                   incompleteChunks.length = 0;
                   totalIncompleteLength = 0;
