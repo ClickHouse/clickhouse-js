@@ -2,7 +2,9 @@
 
 ## Bug fixes
 
-- (Web only) Reject requests with an already-aborted `abort_signal` before sending them.
+- (Web only) Reject requests with an already-aborted `abort_signal` before sending them. ([#1118])
+
+[#1118]: https://github.com/ClickHouse/clickhouse-js/pull/1118
 
 # 1.25.0
 
