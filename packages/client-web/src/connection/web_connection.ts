@@ -226,6 +226,10 @@ export class WebConnection implements Connection<ReadableStream> {
     method?: "GET" | "POST";
     headers?: Record<string, string>;
   }): Promise<Response> {
+    if (params?.abort_signal?.aborted) {
+      throw new Error("The user aborted a request.");
+    }
+
     const url = transformUrl({
       url: this.params.url,
       pathname,

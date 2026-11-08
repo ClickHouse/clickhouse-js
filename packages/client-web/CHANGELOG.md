@@ -1,3 +1,9 @@
+# 1.25.1
+
+## Bug fixes
+
+- (Web only) Reject requests with an already-aborted `abort_signal` before sending them.
+
 # 1.25.0
 
 ## Migration Notes

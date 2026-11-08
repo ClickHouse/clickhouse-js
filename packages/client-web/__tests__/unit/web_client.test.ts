@@ -91,3 +91,66 @@ describe("[Web] createClient", () => {
     expect(isClosed).toBeTruthy();
   });
 });
+
+describe("[Web] abort request", () => {
+  it.each(["query", "command", "exec", "insert"] as const)(
+    "does not send an already-aborted %s",
+    async (method) => {
+      const mockedFetch = vi.fn<typeof fetch>(async () => new Response(""));
+      const client = createSimpleWebTestClient({ fetch: mockedFetch });
+      const controller = new AbortController();
+      controller.abort();
+      const params = { abort_signal: controller.signal };
+      try {
+        const request =
+          method === "insert"
+            ? client.insert({
+                table: "test",
+                values: [{ x: 1 }],
+                format: "JSONEachRow",
+                ...params,
+              })
+            : client[method]({ query: "SELECT 1", ...params });
+        await expect(request).rejects.toThrow("The user aborted a request.");
+        expect(mockedFetch).not.toHaveBeenCalled();
+      } finally {
+        await client.close();
+      }
+    },
+  );
+
+  it.each([false, true])(
+    "sends a request with a live signal: %s",
+    async (withSignal) => {
+      const mockedFetch = vi.fn<typeof fetch>(async () => new Response(""));
+      const client = createSimpleWebTestClient({ fetch: mockedFetch });
+      try {
+        await client.command({
+          query: "SELECT 1",
+          abort_signal: withSignal ? new AbortController().signal : undefined,
+        });
+        expect(mockedFetch).toHaveBeenCalledOnce();
+      } finally {
+        await client.close();
+      }
+    },
+  );
+
+  it("still aborts a request after dispatch", async () => {
+    const controller = new AbortController();
+    const mockedFetch = vi.fn<typeof fetch>(async (_input, init) => {
+      controller.abort();
+      expect(init?.signal?.aborted).toBe(true);
+      throw init?.signal?.reason;
+    });
+    const client = createSimpleWebTestClient({ fetch: mockedFetch });
+    try {
+      await expect(
+        client.command({ query: "SELECT 1", abort_signal: controller.signal }),
+      ).rejects.toThrow("The user aborted a request.");
+      expect(mockedFetch).toHaveBeenCalledOnce();
+    } finally {
+      await client.close();
+    }
+  });
+});
