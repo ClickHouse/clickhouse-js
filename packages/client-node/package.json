@@ -57,9 +57,5 @@
     "test:oss-dependents": "TEST_MODE=oss-dependents vitest",
     "test:all": "TEST_MODE=all vitest",
     "test:coverage": "VITEST_COVERAGE=true TEST_MODE=all vitest"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "simdjson": "^0.9.2"
   }
 }
