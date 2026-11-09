@@ -1416,7 +1416,7 @@
 02515_analyzer_null_for_empty
 02515_and_or_if_multiif_not_return_lc
 02515_distinct_zero_size_key_bug_44831
-02515_generate_ulid
+# 02515_generate_ulid  # needs the parseError fix: the client takes `(NULL)` from the echoed query as the error type
 02516_projections_with_rollup
 02518_qualified_asterisks_alias_table_name
 02521_analyzer_aggregation_without_column

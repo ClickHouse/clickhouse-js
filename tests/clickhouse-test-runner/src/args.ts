@@ -37,8 +37,9 @@ const BASE_OPTIONS: readonly OptionSpec[] = [
   { long: "max_insert_threads", hasArg: true },
   { long: "max-insert-threads", hasArg: true },
   { long: "secure", short: "s", hasArg: false },
-  { long: "multiline", short: "n", hasArg: false },
-  { long: "multiquery", hasArg: false },
+  // As in clickhouse-client: `-n` is `--multiquery`, `-m` is `--multiline`.
+  { long: "multiline", short: "m", hasArg: false },
+  { long: "multiquery", short: "n", hasArg: false },
   { long: "multi-query", hasArg: false },
   { long: "help", hasArg: false },
 ];
@@ -77,8 +78,8 @@ const USAGE_TEXT = [
   "      --max_insert_threads VALUE",
   "                               Max insert threads setting",
   "  -s, --secure                 Use HTTPS",
-  "  -n, --multiline              (ignored, accepted for compatibility)",
-  '      --multiquery             Execute multiple ";"-separated queries',
+  "  -m, --multiline              (ignored, accepted for compatibility)",
+  '  -n, --multiquery             (ignored: multiple ";"-separated queries always run)',
   "      --help                   Print this help",
   "",
   "Environment variables:",
@@ -90,6 +91,32 @@ export function printUsage(
   stream: NodeJS.WritableStream = process.stdout,
 ): void {
   stream.write(USAGE_TEXT);
+}
+
+/**
+ * `--port` of the real `clickhouse-client` is the native TCP port, and the
+ * upstream runner passes it: `clickhouse-test` exports `CLICKHOUSE_PORT_TCP`
+ * (9000 by default) for `.sh` tests, and `shell_config.sh` then appends
+ * `--port=$CLICKHOUSE_PORT_TCP` to `$CLICKHOUSE_CLIENT`. This client only
+ * speaks HTTP, so map that port to the matching HTTP(S) port the runner also
+ * exports. Any other port is used as given, as an HTTP port.
+ */
+export function resolveHttpPort(
+  port: number,
+  secure: boolean,
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const nativePort = Number(
+    secure
+      ? (env["CLICKHOUSE_PORT_TCP_SECURE"] ?? 9440)
+      : (env["CLICKHOUSE_PORT_TCP"] ?? 9000),
+  );
+  if (port !== nativePort) return port;
+  return Number(
+    secure
+      ? (env["CLICKHOUSE_PORT_HTTPS"] ?? 8443)
+      : (env["CLICKHOUSE_PORT_HTTP"] ?? 8123),
+  );
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {

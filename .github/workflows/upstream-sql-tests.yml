@@ -35,7 +35,10 @@ env:
   # spuriously reds this workflow. This SHA is a known-good snapshot (last green
   # run); bump it deliberately, or override per-run via the workflow_dispatch
   # `upstream_ref` input.
-  UPSTREAM_REF: "edc2b4454dfed0453003168ee672a1249e7f46e9"
+  # v26.10.2.103-stable: the 26.10 tests, for the 26.10 `latest` server image.
+  # Bump it when `latest` moves to a new release; that move is what reddened
+  # this workflow from 2026-10-25.
+  UPSTREAM_REF: "c6428ebcc39fdff48bb0f50e128b2078701901d5"
   # Network resilience: npm's default of 2 fetch retries is not enough for
   # the transient registry errors (ECONNRESET) we regularly hit in CI.
   NPM_CONFIG_FETCH_RETRIES: "5"
@@ -136,7 +139,7 @@ jobs:
 
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: upstream-sql-tests-${{ matrix.backend }}-${{ matrix.clickhouse }}-shard-${{ matrix.shard }}
           retention-days: 14
