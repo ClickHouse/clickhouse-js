@@ -28,7 +28,6 @@ Node.js releases.
 | 26.x            | ✔          |
 | 24.x            | ✔          |
 | 22.x            | ✔          |
-| 20.x            | ✔          |
 
 If using TypeScript, version
 [4.5](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-5.html)

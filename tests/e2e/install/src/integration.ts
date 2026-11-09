@@ -8,10 +8,10 @@
 // version and starts a single-node ClickHouse), so it validates the actual npm
 // tarball a consumer would receive, not the local build.
 //
-// NOTE: this file is run via `node src/integration.ts` across Node 20/22/24.
-// Node 20 does not strip TypeScript types, so this must stay free of TS-only
-// syntax (no type annotations, `as` casts, etc.) — plain JS in a .ts file, like
-// src/index.ts.
+// NOTE: this file is run via `node src/integration.ts` across Node 22/24/26.
+// Node 22 releases before 22.18.0 do not strip TypeScript types by default, so
+// this must stay free of TS-only syntax (no type annotations, `as` casts,
+// etc.) — plain JS in a .ts file, like src/index.ts.
 const assert = require("assert");
 const { createClient, ClickHouseError } = require("@clickhouse/client");
 

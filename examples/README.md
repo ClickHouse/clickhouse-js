@@ -160,7 +160,7 @@ deployment-shaped connection strings.
 
 Environment requirements for most examples:
 
-- Node.js 20+
+- Node.js 22+
 - NPM
 - Docker Compose
 
