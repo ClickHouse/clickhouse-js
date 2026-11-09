@@ -14,6 +14,18 @@ describe("[Web] abort request", () => {
     await client.close();
   });
 
+  it("rejects a select query with an already-aborted signal", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      client.query({
+        query: "SELECT 1",
+        abort_signal: controller.signal,
+      }),
+    ).rejects.toThrow("The user aborted a request.");
+  });
+
   // a slightly different assertion vs the same Node.js test
   it("cancels a select query before it is sent", async () => {
     const controller = new AbortController();
