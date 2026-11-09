@@ -1,3 +1,14 @@
+# 1.25.1
+
+## Bug fixes
+
+- Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#NEWPR])
+
+[#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
+[#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
+[#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
+[#NEWPR]: https://github.com/ClickHouse/clickhouse-js/pull/NEWPR
+
 # 1.25.0
 
 ## Migration Notes
