@@ -3,8 +3,13 @@
 ## Bug fixes
 
 - Fixed the detection of mid-stream exceptions (ClickHouse 25.11+) in `ResultSet.stream()`. A bare `\r\n` in a _successful_ response body is no longer mistaken for an error: an exception is confirmed only by the `__exception__` marker together with the random per-response `x-clickhouse-exception-tag` token. This unbreaks streaming binary formats such as `Parquet` and CRLF-terminated `CSV` / `TSV` (`output_format_*_crlf_end_of_line`). The exception block is now also detected when it is split across several chunks of the response: it is buffered until it is complete, its bytes are not emitted as rows, and the error contains the full server message. If the exception block is malformed, the stream fails with an error instead of hanging the event loop. ([#975])
+- Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 
 [#975]: https://github.com/ClickHouse/clickhouse-js/pull/975
+[#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
+[#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
+[#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
+[#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
 
 # 1.25.0
 
