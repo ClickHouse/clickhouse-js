@@ -6,6 +6,22 @@
 
 [#1124]: https://github.com/ClickHouse/clickhouse-js/pull/1124
 
+## New features
+
+- (Experimental) Added an optional [undici](https://undici.nodejs.org) transport. Set the new `transport` option to send the requests with undici instead of the built-in `node:http` / `node:https` modules. The default does not change. `undici` is an optional peer dependency: the package does not install it, and only the new `@clickhouse/client/undici` entry point loads it. Install it with `npm install undici` (version 8, which needs Node.js 22.19.0 or later). The `tls`, `keep_alive.enabled`, `keep_alive.idle_socket_ttl`, `max_open_connections`, `request_timeout` and `max_response_headers_size` options apply to the undici transport too. You cannot use `transport` together with `http_agent`. The undici errors for a lost connection have other codes, for example `UND_ERR_SOCKET` instead of `ECONNRESET`. The timeout and abort errors have the same messages as before. ([#TBD])
+
+  ```ts
+  import { createClient } from "@clickhouse/client";
+  import { undiciTransport } from "@clickhouse/client/undici";
+
+  const client = createClient({
+    url: "http://localhost:8123",
+    transport: undiciTransport(),
+  });
+  ```
+
+[#TBD]: https://github.com/ClickHouse/clickhouse-js/pull/TBD
+
 ## Bug fixes
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])

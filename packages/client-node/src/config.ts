@@ -16,7 +16,11 @@ import type http from "http";
 import type https from "node:https";
 import type Stream from "stream";
 import Zlib from "zlib";
-import { NodeConnectionFactory, type TLSParams } from "./connection";
+import {
+  NodeConnectionFactory,
+  type NodeTransportFactory,
+  type TLSParams,
+} from "./connection";
 import { ResultSet } from "./result_set";
 import { NodeValuesEncoder } from "./utils";
 
@@ -80,6 +84,28 @@ export type NodeClickHouseClientConfigOptions =
      *  through to the request options.
      *  @default undefined */
     max_response_headers_size?: number;
+    /** The HTTP transport for the outgoing requests.
+     *  When `undefined`, the client uses the built-in `node:http` / `node:https` modules.
+     *
+     *  To use undici, install it (`npm install undici`) and use the factory from
+     *  the `@clickhouse/client/undici` entry point:
+     *
+     *  ```ts
+     *  import { createClient } from '@clickhouse/client'
+     *  import { undiciTransport } from '@clickhouse/client/undici'
+     *
+     *  const client = createClient({ transport: undiciTransport() })
+     *  ```
+     *
+     *  The {@link tls}, {@link keep_alive} (except `eagerly_destroy_stale_sockets`),
+     *  {@link BaseClickHouseClientConfigOptions.max_open_connections},
+     *  {@link BaseClickHouseClientConfigOptions.request_timeout} and
+     *  {@link max_response_headers_size} options apply to the undici transport too.
+     *  Cannot be used together with {@link http_agent}.
+     *  @experimental - unstable API; it might be a subject to change in the future;
+     *                  please provide your feedback in the repository.
+     *  @default undefined (the built-in `node:http` / `node:https` transport) */
+    transport?: NodeTransportFactory;
     /** Pre-built backend connection to use for this client instead of the
      *  default HTTP(S) connection factory. When provided, the client routes
      *  every method (`query` / `insert` / `command` / `exec` / `ping` /
@@ -239,6 +265,7 @@ export const NodeConfigImpl: Required<
       keep_alive,
       tls,
       max_response_headers_size: nodeConfig.max_response_headers_size,
+      transport: nodeConfig.transport,
     });
   },
   values_encoder: (jsonHandling: JSONHandling) =>

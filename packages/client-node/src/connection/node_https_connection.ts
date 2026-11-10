@@ -1,8 +1,4 @@
-import {
-  type ConnBaseQueryParams,
-  isCredentialsAuth,
-  withCompressionHeaders,
-} from "../common/index";
+import { withCompressionHeaders } from "../common/index";
 import type Http from "http";
 import Https from "https";
 import type { NodeConnectionParams } from "./node_base_connection";
@@ -19,45 +15,6 @@ export class NodeHttpsConnection extends NodeBaseConnection {
       cert: params.tls?.type === "Mutual" ? params.tls.cert : undefined,
     });
     super(params, agent);
-  }
-
-  protected override buildRequestHeaders(
-    params?: ConnBaseQueryParams,
-  ): Http.OutgoingHttpHeaders {
-    if (this.params.tls !== undefined) {
-      if (this.params.auth.type === "JWT") {
-        throw new Error(
-          "JWT auth is not supported with HTTPS connection using custom certificates",
-        );
-      }
-      let headers: Http.OutgoingHttpHeaders;
-      if (isCredentialsAuth(params?.auth)) {
-        headers = {
-          ...this.defaultHeadersWithOverride(params),
-          "X-ClickHouse-User": params.auth.username,
-          "X-ClickHouse-Key": params.auth.password,
-        };
-      } else {
-        headers = {
-          ...this.defaultHeadersWithOverride(params),
-          "X-ClickHouse-User": this.params.auth.username,
-          "X-ClickHouse-Key": this.params.auth.password,
-        };
-      }
-      const tlsType = this.params.tls.type;
-      switch (tlsType) {
-        case "Basic":
-          return headers;
-        case "Mutual":
-          return {
-            ...headers,
-            "X-ClickHouse-SSL-Certificate-Auth": "on",
-          };
-        default:
-          throw new Error(`Unknown TLS type: ${tlsType}`);
-      }
-    }
-    return super.buildRequestHeaders(params);
   }
 
   protected createClientRequest(params: RequestParams): Http.ClientRequest {

@@ -4,8 +4,6 @@ import type * as net from "net";
 import {
   enhanceStackTrace,
   getCurrentStackTrace,
-  isSuccessfulResponse,
-  parseError,
   sleep,
   ClickHouseLogLevel,
   type LogWriter,
@@ -16,13 +14,17 @@ import {
   type CompressionMethod,
   type RequestCompression,
 } from "../common/index";
-import { getAsText, isStream } from "../utils";
-import {
-  createRequestCompressor,
-  decompressResponse,
-  isDecompressionError,
-} from "./compression";
+import { isStream } from "../utils";
+import { createRequestCompressor } from "./compression";
 import { type NodeConnectionParams } from "./node_base_connection";
+import {
+  getRequestResult,
+  getResponseStream,
+  isFailedResponse,
+  type ResponseContext,
+  type TransportResponse,
+} from "./response";
+import type { NodeTransport } from "./transport";
 
 export interface RequestParams {
   method: "GET" | "POST";
@@ -61,7 +63,7 @@ interface SocketInfo {
 
 type CreateClientRequest = (params: RequestParams) => Http.ClientRequest;
 
-export class SocketPool {
+export class SocketPool implements NodeTransport {
   private readonly jsonHandling: JSONHandling;
   private readonly knownSockets = new WeakMap<net.Socket, SocketInfo>();
 
@@ -228,9 +230,7 @@ export class SocketPool {
       };
 
       let responseStream: Stream.Readable;
-      const onResponse = async (
-        _response: Http.IncomingMessage,
-      ): Promise<void> => {
+      const onResponse = (_response: Http.IncomingMessage): void => {
         if (this.params.log_level <= ClickHouseLogLevel.DEBUG) {
           const duration = Date.now() - start;
           this.params.log_writer.debug({
@@ -279,32 +279,21 @@ export class SocketPool {
           }
         }
 
-        const tryDecompressResponseStream =
-          params.try_decompress_response_stream ?? true;
-        const ignoreErrorResponse = params.ignore_error_response ?? false;
-        // even if the stream decompression is disabled, we have to decompress it in case of an error
-        const isFailedResponse =
-          !isSuccessfulResponse(_response.statusCode) ||
-          _response.headers["x-clickhouse-exception-code"] !== undefined;
-        if (
-          tryDecompressResponseStream ||
-          (isFailedResponse && !ignoreErrorResponse)
-        ) {
-          const decompressionResult = decompressResponse(
-            _response,
-            log_writer,
-            log_level,
-          );
-          if (isDecompressionError(decompressionResult)) {
-            const err = enhanceStackTrace(
-              decompressionResult.error,
-              currentStackTrace,
-            );
-            return reject(err);
-          }
-          responseStream = decompressionResult.response;
-        } else {
-          responseStream = _response;
+        const response: TransportResponse = {
+          status_code: _response.statusCode,
+          headers: _response.headers,
+          body: _response,
+        };
+        const responseContext = this.getResponseContext(
+          op,
+          params,
+          request_id,
+          currentStackTrace,
+        );
+        try {
+          responseStream = getResponseStream(responseContext, response);
+        } catch (err) {
+          return reject(err);
         }
 
         if (log_level <= ClickHouseLogLevel.TRACE) {
@@ -320,35 +309,16 @@ export class SocketPool {
                 readableEnded: responseStream.readableEnded,
                 readableLength: responseStream.readableLength,
               },
-              is_failed_response: isFailedResponse,
-              will_decompress: tryDecompressResponseStream,
+              is_failed_response: isFailedResponse(response),
+              will_decompress: params.try_decompress_response_stream ?? true,
             },
           });
         }
 
-        if (isFailedResponse && !ignoreErrorResponse) {
-          try {
-            const errorMessage = await getAsText(responseStream);
-            const err = enhanceStackTrace(
-              parseError(errorMessage),
-              currentStackTrace,
-            );
-            reject(err);
-          } catch (e) {
-            // If the ClickHouse response is malformed
-            const err = enhanceStackTrace(e as Error, currentStackTrace);
-            reject(err);
-          }
-        } else {
-          return resolve({
-            stream: responseStream,
-            summary: params.parse_summary
-              ? this.parseSummary(op, _response)
-              : undefined,
-            response_headers: { ..._response.headers },
-            http_status_code: _response.statusCode ?? undefined,
-          });
-        }
+        getRequestResult(responseContext, response, responseStream).then(
+          resolve,
+          reject,
+        );
       };
 
       function onAbort(): void {
@@ -724,27 +694,27 @@ export class SocketPool {
     });
   }
 
-  private parseSummary(
-    op: ConnOperation,
-    response: Http.IncomingMessage,
-  ): ClickHouseSummary | undefined {
-    const summaryHeader = response.headers["x-clickhouse-summary"];
-    if (typeof summaryHeader === "string") {
-      try {
-        return this.jsonHandling.parse(summaryHeader);
-      } catch (err) {
-        if (this.params.log_level <= ClickHouseLogLevel.ERROR) {
-          this.params.log_writer.error({
-            message: `${op}: failed to parse X-ClickHouse-Summary header.`,
-            args: {
-              operation: op,
-              connection_id: this.connectionId,
-              "X-ClickHouse-Summary": summaryHeader,
-            },
-            err: err as Error,
-          });
-        }
-      }
+  async close(): Promise<void> {
+    if (this.agent !== undefined && this.agent.destroy !== undefined) {
+      this.agent.destroy();
     }
+  }
+
+  private getResponseContext(
+    op: ConnOperation,
+    params: RequestParams,
+    request_id: string,
+    current_stack_trace: string | undefined,
+  ): ResponseContext {
+    return {
+      op,
+      params,
+      connection_id: this.connectionId,
+      request_id,
+      current_stack_trace,
+      json_handling: this.jsonHandling,
+      log_writer: params.log_writer,
+      log_level: params.log_level,
+    };
   }
 }

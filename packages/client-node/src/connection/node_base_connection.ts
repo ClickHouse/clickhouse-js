@@ -34,6 +34,7 @@ import type Stream from "stream";
 import { getUserAgent } from "../utils";
 import { drainStreamInternal } from "./stream";
 import { type RequestParams, SocketPool } from "./socket_pool";
+import type { NodeTransport, NodeTransportFactory } from "./transport";
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams;
@@ -58,6 +59,11 @@ export type NodeConnectionParams = ConnectionParams & {
    * When `undefined`, the Node.js default applies.
    */
   max_response_headers_size?: number;
+  /**
+   * Optional HTTP transport. When `undefined`, the connection uses the
+   * built-in `node:http` / `node:https` modules.
+   */
+  transport?: NodeTransportFactory;
 };
 
 export type TLSParams =
@@ -77,19 +83,33 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders;
 
   private readonly connectionId: string = crypto.randomUUID();
-  private readonly socketPool: SocketPool;
+  private readonly transport: NodeTransport;
   protected readonly params: NodeConnectionParams;
-  protected readonly agent: Http.Agent;
+  protected readonly agent: Http.Agent | undefined;
 
-  protected constructor(params: NodeConnectionParams, agent: Http.Agent) {
+  /** @param agent the agent for the built-in `node:http` / `node:https` transport.
+   *  Must be `undefined` when {@link NodeConnectionParams.transport} is set. */
+  protected constructor(
+    params: NodeConnectionParams,
+    agent: Http.Agent | undefined,
+  ) {
     this.params = params;
     this.agent = agent;
-    this.socketPool = new SocketPool(
-      this.connectionId,
-      this.params,
-      this.createClientRequest.bind(this),
-      this.agent,
-    );
+    if (params.transport !== undefined) {
+      this.transport = params.transport.create({
+        ...params,
+        connection_id: this.connectionId,
+      });
+    } else if (agent !== undefined) {
+      this.transport = new SocketPool(
+        this.connectionId,
+        this.params,
+        this.createClientRequest.bind(this),
+        agent,
+      );
+    } else {
+      throw new Error("An HTTP agent or a transport is required");
+    }
     if (params.auth.type === "Credentials") {
       this.defaultAuthHeader = `Basic ${Buffer.from(
         `${params.auth.username}:${params.auth.password}`,
@@ -440,9 +460,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   }
 
   async close(): Promise<void> {
-    if (this.agent !== undefined && this.agent.destroy !== undefined) {
-      this.agent.destroy();
-    }
+    await this.transport.close();
   }
 
   protected defaultHeadersWithOverride(
@@ -463,6 +481,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   protected buildRequestHeaders(
     params?: ConnBaseQueryParams,
   ): Http.OutgoingHttpHeaders {
+    if (this.params.tls !== undefined) {
+      return this.buildTLSRequestHeaders(this.params.tls, params);
+    }
     const headers = this.defaultHeadersWithOverride(params);
     if (isJWTAuth(params?.auth)) {
       return {
@@ -486,6 +507,45 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     return {
       ...headers,
     };
+  }
+
+  /** With custom TLS certificates, ClickHouse gets the credentials from the
+   *  `X-ClickHouse-User` / `X-ClickHouse-Key` headers instead of `Authorization`. */
+  private buildTLSRequestHeaders(
+    tls: TLSParams,
+    params?: ConnBaseQueryParams,
+  ): Http.OutgoingHttpHeaders {
+    if (this.params.auth.type === "JWT") {
+      throw new Error(
+        "JWT auth is not supported with HTTPS connection using custom certificates",
+      );
+    }
+    let headers: Http.OutgoingHttpHeaders;
+    if (isCredentialsAuth(params?.auth)) {
+      headers = {
+        ...this.defaultHeadersWithOverride(params),
+        "X-ClickHouse-User": params.auth.username,
+        "X-ClickHouse-Key": params.auth.password,
+      };
+    } else {
+      headers = {
+        ...this.defaultHeadersWithOverride(params),
+        "X-ClickHouse-User": this.params.auth.username,
+        "X-ClickHouse-Key": this.params.auth.password,
+      };
+    }
+    const tlsType = tls.type;
+    switch (tlsType) {
+      case "Basic":
+        return headers;
+      case "Mutual":
+        return {
+          ...headers,
+          "X-ClickHouse-SSL-Certificate-Auth": "on",
+        };
+      default:
+        throw new Error(`Unknown TLS type: ${tlsType}`);
+    }
   }
 
   protected abstract createClientRequest(
@@ -631,7 +691,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     params: RequestParams,
     op: ConnOperation,
   ): Promise<RequestResult> {
-    return this.socketPool.request(params, op);
+    return this.transport.request(params, op);
   }
 }
 

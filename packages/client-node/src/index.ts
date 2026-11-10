@@ -6,6 +6,7 @@ export { createClient } from "./client";
 export { type NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from "./config";
 export { ResultSet, type StreamReadable } from "./result_set";
 export { drainStream } from "./connection/stream";
+export { type NodeTransportFactory as TransportFactory } from "./connection/transport";
 
 /** Re-export common (formerly @clickhouse/client-common) types */
 export {
