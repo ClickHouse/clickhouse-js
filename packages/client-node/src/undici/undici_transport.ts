@@ -150,7 +150,7 @@ class UndiciTransport implements NodeTransport {
     const transportResponse: TransportResponse = {
       status_code: response.statusCode,
       headers: response.headers as Http.IncomingHttpHeaders,
-      body: response.body,
+      body: withSilentDestroy(response.body),
     };
     const ctx: ResponseContext = {
       op,
@@ -214,6 +214,31 @@ function getAgentOptions(params: NodeTransportParams): Agent.Options {
         : { ca: tls.ca_cert };
   }
   return agentOptions;
+}
+
+/** undici emits an `error` event (`RequestAbortedError`, `UND_ERR_ABORTED`)
+ *  when the body is destroyed without an error before it ends. Node.js
+ *  `http.IncomingMessage` does not. Without an `error` listener, that event is
+ *  an uncaught exception, so a user who calls `stream.destroy()` to stop reading
+ *  a response would crash the process. Keep the `node:http` behavior: the
+ *  request is still aborted and the connection is released, but this one error
+ *  is not emitted. A `destroy(err)` call with an error does not change. */
+function withSilentDestroy<T extends Stream.Readable>(body: T): T {
+  const destroy = body.destroy.bind(body);
+  body.destroy = (err?: Error) => {
+    if (err === undefined || err === null) {
+      body.once("error", (e: unknown) => {
+        const isAbortedError =
+          (e as { code?: unknown } | undefined)?.code === "UND_ERR_ABORTED";
+        // Do not hide other errors when nobody else listens for them.
+        if (!isAbortedError && body.listenerCount("error") === 0) {
+          throw e;
+        }
+      });
+    }
+    return destroy(err);
+  };
+  return body;
 }
 
 function getRequestBody(

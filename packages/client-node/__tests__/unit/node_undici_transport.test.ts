@@ -142,6 +142,45 @@ describe.skipIf(isBun)("[Node.js] undici transport", () => {
     await c.close();
   });
 
+  it("does not emit an error when the response stream is destroyed before it ends", async () => {
+    handler = (_req, res) => {
+      // A complete response that the client does not read. When the request
+      // is still running, undici adds its own error listener on abort; when it
+      // is already complete, it does not, so this is the case to test.
+      res.end("1\n");
+    };
+    const c = client();
+    const { stream } = await c.exec({ query: "SELECT 1" });
+    const uncaught: unknown[] = [];
+    const onUncaught = (err: unknown) => uncaught.push(err);
+    // vitest also reports an uncaught error; this makes the assertion explicit
+    process.on("uncaughtException", onUncaught);
+    try {
+      const closed = new Promise((resolve) => stream.once("close", resolve));
+      stream.destroy();
+      await closed;
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(uncaught).toEqual([]);
+      expect(stream.destroyed).toBe(true);
+    } finally {
+      process.off("uncaughtException", onUncaught);
+    }
+    await c.close();
+  }, 5_000);
+
+  it("still emits the error of destroy(err)", async () => {
+    handler = (_req, res) => {
+      res.write("1\n");
+    };
+    const c = client();
+    const { stream } = await c.exec({ query: "SELECT 1" });
+    const error = new Error("boom");
+    const emitted = new Promise((resolve) => stream.once("error", resolve));
+    stream.destroy(error);
+    expect(await emitted).toBe(error);
+    await c.close();
+  });
+
   it("rejects with the timeout error when the headers do not arrive", async () => {
     handler = () => {
       // never responds
