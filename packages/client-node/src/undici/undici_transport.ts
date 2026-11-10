@@ -181,7 +181,9 @@ class UndiciTransport implements NodeTransport {
   }
 }
 
-function getAgentOptions(params: NodeTransportParams): Agent.Options {
+/** Maps the client configuration to the undici `Agent` options.
+ *  @internal exported for the tests only. */
+export function getAgentOptions(params: NodeTransportParams): Agent.Options {
   const { keep_alive, tls } = params;
   const agentOptions: Agent.Options = {
     // `null` is "no limit" for undici; the client accepts `Infinity` for that.

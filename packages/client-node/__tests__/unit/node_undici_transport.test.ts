@@ -10,7 +10,12 @@ import {
   NodeConnectionFactory,
   NodeTransportConnection,
 } from "../../src/connection";
+import { Agent } from "undici";
+import type { Logger } from "@clickhouse/client-common";
 import { undiciTransport } from "../../src/undici";
+import { getAgentOptions } from "../../src/undici/undici_transport";
+import type { NodeTransportParams } from "../../src/connection";
+import { NodeBaseConnection } from "../../src/connection";
 
 /** A local HTTP server, so that these tests do not need ClickHouse. */
 let server: http.Server;
@@ -238,3 +243,182 @@ describe.skipIf(isBun)(
     });
   },
 );
+
+describe.skipIf(isBun)("[Node.js] undici transport: error paths", () => {
+  it("rejects a response with an unsupported encoding", async () => {
+    handler = (_req, res) => {
+      res.setHeader("Content-Encoding", "unknown-codec");
+      res.end("1\n");
+    };
+    const c = client();
+    await expect(c.query({ query: "SELECT 1" })).rejects.toThrow(
+      "Unexpected encoding: unknown-codec",
+    );
+    await c.close();
+  });
+
+  it("logs a summary header that is not valid JSON", async () => {
+    handler = (_req, res) => {
+      res.setHeader("X-ClickHouse-Summary", "{not json");
+      res.end();
+    };
+    const errors: string[] = [];
+    class CollectingLogger implements Logger {
+      trace() {}
+      debug() {}
+      info() {}
+      warn() {}
+      error({ message }: { message: string }) {
+        errors.push(message);
+      }
+    }
+    const c = client({
+      log: { LoggerClass: CollectingLogger, level: ClickHouseLogLevel.ERROR },
+    });
+    const result = await c.command({ query: "SELECT 1" });
+    expect(result.summary).toBeUndefined();
+    expect(errors).toContain(
+      "Command: failed to parse X-ClickHouse-Summary header.",
+    );
+    await c.close();
+  });
+
+  it("throws at client creation when the undici Agent has no request()", () => {
+    // This is the case on Bun, which replaces the undici module.
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Agent.prototype,
+      "request",
+    );
+    Object.defineProperty(Agent.prototype, "request", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      expect(() => client()).toThrow("does not have Agent.request()");
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(Agent.prototype, "request", descriptor);
+      } else {
+        delete (Agent.prototype as { request?: unknown }).request;
+      }
+    }
+  });
+});
+
+describe("[Node.js] undici transport: Agent options", () => {
+  const baseParams = {
+    max_open_connections: 10,
+    request_timeout: 30_000,
+    keep_alive: { enabled: true, idle_socket_ttl: 2500 },
+  } as NodeTransportParams;
+
+  it("maps the client configuration", () => {
+    expect(getAgentOptions(baseParams)).toEqual({
+      connections: 10,
+      headersTimeout: 30_000,
+      bodyTimeout: 30_000,
+      keepAliveTimeout: 2500,
+      keepAliveMaxTimeout: 2500,
+    });
+  });
+
+  it("maps an unlimited number of connections to null", () => {
+    expect(
+      getAgentOptions({ ...baseParams, max_open_connections: Infinity })
+        .connections,
+    ).toBeNull();
+  });
+
+  it("disables keep-alive with pipelining 0", () => {
+    const options = getAgentOptions({
+      ...baseParams,
+      keep_alive: { enabled: false, idle_socket_ttl: 2500 },
+    });
+    expect(options.pipelining).toBe(0);
+    expect(options.keepAliveTimeout).toBeUndefined();
+  });
+
+  it("keeps the undici keep-alive defaults when idle_socket_ttl is 0", () => {
+    const options = getAgentOptions({
+      ...baseParams,
+      keep_alive: { enabled: true, idle_socket_ttl: 0 },
+    });
+    expect(options.keepAliveTimeout).toBeUndefined();
+    expect(options.keepAliveMaxTimeout).toBeUndefined();
+  });
+
+  it("sets maxHeaderSize and the TLS options", () => {
+    const ca = Buffer.from("ca");
+    const cert = Buffer.from("cert");
+    const key = Buffer.from("key");
+    expect(
+      getAgentOptions({
+        ...baseParams,
+        max_response_headers_size: 65536,
+        tls: { type: "Mutual", ca_cert: ca, cert, key },
+      }),
+    ).toMatchObject({ maxHeaderSize: 65536, connect: { ca, cert, key } });
+    expect(
+      getAgentOptions({ ...baseParams, tls: { type: "Basic", ca_cert: ca } })
+        .connect,
+    ).toEqual({ ca });
+  });
+});
+
+describe("[Node.js] transport connection guards", () => {
+  const params = {
+    url: new URL("http://localhost"),
+    auth: { username: "default", password: "", type: "Credentials" },
+    keep_alive: { enabled: true, idle_socket_ttl: 2500 },
+  } as NodeTransportParams;
+
+  it("does not accept an unknown protocol with a transport", () => {
+    expect(() =>
+      NodeConnectionFactory.create({
+        connection_params: {
+          ...params,
+          url: new URL("ftp://localhost"),
+        } as ConnectionParams,
+        tls: undefined,
+        keep_alive: params.keep_alive,
+        http_agent: undefined,
+        set_basic_auth_header: true,
+        capture_enhanced_stack_trace: false,
+        transport: undiciTransport(),
+      }),
+    ).toThrow("Only HTTP and HTTPS protocols are supported");
+  });
+
+  it("NodeTransportConnection requires a transport", () => {
+    expect(() => new NodeTransportConnection(params)).toThrow(
+      "transport is required",
+    );
+  });
+
+  it("NodeTransportConnection does not create node:http requests", () => {
+    const connection = new NodeTransportConnection({
+      ...params,
+      transport: { name: "stub", create: () => ({}) as never },
+    });
+    expect(() =>
+      (
+        connection as unknown as { createClientRequest: () => void }
+      ).createClientRequest(),
+    ).toThrow("does not create node:http requests");
+  });
+
+  it("the base connection requires an agent or a transport", () => {
+    class NoAgentConnection extends NodeBaseConnection {
+      constructor() {
+        super(params, undefined);
+      }
+      protected createClientRequest(): never {
+        throw new Error("not used");
+      }
+    }
+    expect(() => new NoAgentConnection()).toThrow(
+      "An HTTP agent or a transport is required",
+    );
+  });
+});
