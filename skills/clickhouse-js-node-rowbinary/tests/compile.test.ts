@@ -102,6 +102,46 @@ describe("astToReader (AST -> Reader fold)", () => {
     ).toEqual(42);
   });
 
+  describe("bare Enum(...) width", () => {
+    // A bare `Enum` names no width: the server sizes it from the ordinals
+    // (Enum16 if any value is outside -128..127), so the fold must as well.
+    it("folds a bare Enum with a large ordinal as Enum16", async () => {
+      expect(
+        await fold("Enum('a' = 1000)", `CAST(1000, 'Enum(\\'a\\' = 1000)')`),
+      ).toEqual("a");
+    });
+
+    it("folds a bare Enum with ordinal 128 as Enum16", async () => {
+      expect(
+        await fold("Enum('a' = 128)", `CAST(128, 'Enum(\\'a\\' = 128)')`),
+      ).toEqual("a");
+    });
+
+    it("folds a bare Enum with a negative ordinal below Int8 as Enum16", async () => {
+      expect(
+        await fold("Enum('a' = -129)", `CAST(-129, 'Enum(\\'a\\' = -129)')`),
+      ).toEqual("a");
+    });
+
+    it("folds a bare Enum with small ordinals as Enum8", async () => {
+      expect(
+        await fold("Enum('a' = 1)", `CAST(1, 'Enum(\\'a\\' = 1)')`),
+      ).toEqual("a");
+    });
+
+    it("does not desync the following column", async () => {
+      const read = reader("Enum('a' = 1000)");
+      const readU8 = reader("UInt8");
+      const s = new Cursor(
+        await query(
+          `SELECT CAST(1000, 'Enum(\\'a\\' = 1000)'), toUInt8(7) FORMAT RowBinary`,
+        ),
+      );
+      expect([read(s), readU8(s)]).toEqual(["a", 7]);
+      expect(s.pos).toBe(s.buf.length);
+    });
+  });
+
   it("throws a typed RowBinaryTypeError for a non-type AST node (a Literal argument)", () => {
     // FixedString(16)'s argument is a Literal — not a standalone column type.
     const ast = parseDataType("FixedString(16)");
