@@ -46,7 +46,11 @@ function client(config: Parameters<typeof createClient>[0] = {}) {
   });
 }
 
-describe("[Node.js] undici transport", () => {
+// Bun replaces the undici module with a partial implementation without
+// `Agent.request()`, so the undici transport is not available there.
+const isBun = process.versions["bun"] !== undefined;
+
+describe.skipIf(isBun)("[Node.js] undici transport", () => {
   it("returns the response stream, the headers and the summary", async () => {
     handler = (_req, res) => {
       res.setHeader(
@@ -110,6 +114,19 @@ describe("[Node.js] undici transport", () => {
     await c.close();
   });
 
+  it("rejects with a plain AbortError when the signal aborts before the request is sent", async () => {
+    handler = (_req, res) => res.end();
+    const c = client();
+    const controller = new AbortController();
+    const query = c.query({
+      query: "SELECT 1",
+      abort_signal: controller.signal,
+    });
+    controller.abort();
+    await expect(query).rejects.toMatchObject({ name: "AbortError" });
+    await c.close();
+  });
+
   it("rejects with the abort error when the signal aborts", async () => {
     handler = () => {
       // never responds
@@ -137,41 +154,48 @@ describe("[Node.js] undici transport", () => {
   });
 });
 
-describe("[Node.js] NodeConnectionFactory with a transport", () => {
-  const connectionParams = {
-    url: new URL("http://localhost"),
-    auth: { username: "default", password: "", type: "Credentials" },
-    log_writer: new LogWriter(new TestLogger(), "test", ClickHouseLogLevel.OFF),
-    log_level: ClickHouseLogLevel.OFF,
-    max_open_connections: 10,
-    request_timeout: 1000,
-  } as ConnectionParams;
-  const common = {
-    tls: undefined,
-    keep_alive: { enabled: true, idle_socket_ttl: 2500 },
-    set_basic_auth_header: true,
-    capture_enhanced_stack_trace: false,
-  };
+describe.skipIf(isBun)(
+  "[Node.js] NodeConnectionFactory with a transport",
+  () => {
+    const connectionParams = {
+      url: new URL("http://localhost"),
+      auth: { username: "default", password: "", type: "Credentials" },
+      log_writer: new LogWriter(
+        new TestLogger(),
+        "test",
+        ClickHouseLogLevel.OFF,
+      ),
+      log_level: ClickHouseLogLevel.OFF,
+      max_open_connections: 10,
+      request_timeout: 1000,
+    } as ConnectionParams;
+    const common = {
+      tls: undefined,
+      keep_alive: { enabled: true, idle_socket_ttl: 2500 },
+      set_basic_auth_header: true,
+      capture_enhanced_stack_trace: false,
+    };
 
-  it("creates a transport connection", async () => {
-    const connection = NodeConnectionFactory.create({
-      ...common,
-      connection_params: connectionParams,
-      http_agent: undefined,
-      transport: undiciTransport(),
-    });
-    expect(connection).toBeInstanceOf(NodeTransportConnection);
-    await connection.close();
-  });
-
-  it("does not accept an http_agent together with a transport", () => {
-    expect(() =>
-      NodeConnectionFactory.create({
+    it("creates a transport connection", async () => {
+      const connection = NodeConnectionFactory.create({
         ...common,
         connection_params: connectionParams,
-        http_agent: new http.Agent(),
+        http_agent: undefined,
         transport: undiciTransport(),
-      }),
-    ).toThrow("The http_agent and transport options cannot be used together");
-  });
-});
+      });
+      expect(connection).toBeInstanceOf(NodeTransportConnection);
+      await connection.close();
+    });
+
+    it("does not accept an http_agent together with a transport", () => {
+      expect(() =>
+        NodeConnectionFactory.create({
+          ...common,
+          connection_params: connectionParams,
+          http_agent: new http.Agent(),
+          transport: undiciTransport(),
+        }),
+      ).toThrow("The http_agent and transport options cannot be used together");
+    });
+  },
+);

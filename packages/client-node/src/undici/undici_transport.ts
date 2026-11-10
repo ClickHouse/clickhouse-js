@@ -75,6 +75,16 @@ class UndiciTransport implements NodeTransport {
       ...getAgentOptions(params),
       ...options.agent_options,
     });
+    // Bun replaces the `undici` module with its own partial implementation,
+    // which does not have `Agent.request()`.
+    if (typeof this.agent.request !== "function") {
+      throw new Error(
+        "The undici transport needs the undici package (npm install undici), " +
+          "but this runtime replaces the undici module with an implementation " +
+          "that does not have Agent.request(). This happens on Bun. " +
+          "Use the default transport on this runtime.",
+      );
+    }
   }
 
   async request(
@@ -85,6 +95,14 @@ class UndiciTransport implements NodeTransport {
     const currentStackTrace = this.params.capture_enhanced_stack_trace
       ? getCurrentStackTrace()
       : undefined;
+    // Same as the built-in transport: when the signal aborts before the
+    // request is sent, the error is a plain `AbortError`. Wait for one
+    // microtask, so that an abort in the same tick as the client method call
+    // (for example, `client.query(...)` and then `controller.abort()`) is seen here.
+    await Promise.resolve();
+    if (params.abort_signal.aborted) {
+      throw enhanceStackTrace(createAbortError(), currentStackTrace);
+    }
     this.requestCounter += 1;
     const request_id = `${this.params.connection_id}:${this.requestCounter}`;
     const start = Date.now();
@@ -226,6 +244,14 @@ function toUndiciHeaders(
     result[key] = typeof value === "number" ? String(value) : value;
   }
   return result;
+}
+
+/** The same error as Node.js `http.request()` throws for an aborted signal. */
+function createAbortError(): Error {
+  const err = new Error("The operation was aborted");
+  err.name = "AbortError";
+  (err as NodeJS.ErrnoException).code = "ABORT_ERR";
+  return err;
 }
 
 function toClientError(err: unknown, signal: AbortSignal): Error {

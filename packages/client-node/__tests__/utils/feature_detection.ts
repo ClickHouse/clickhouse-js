@@ -23,3 +23,9 @@ export function isUsingStatementSupported(): boolean {
     return false;
   }
 }
+
+/** `true` when the test suite runs with the optional undici transport
+ *  (`CLICKHOUSE_TEST_TRANSPORT=undici`, see `vitest.setup.ts`). */
+export function isUndiciTestTransport(): boolean {
+  return process.env["CLICKHOUSE_TEST_TRANSPORT"] === "undici";
+}
