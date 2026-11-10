@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import http from "http";
 import type { AddressInfo } from "net";
+import Stream from "stream";
 import Zlib from "zlib";
 import type { ConnectionParams } from "@clickhouse/client-common";
 import { ClickHouseLogLevel, LogWriter } from "@clickhouse/client-common";
@@ -243,6 +244,65 @@ describe.skipIf(isBun)(
     });
   },
 );
+
+describe.skipIf(isBun)("[Node.js] undici transport: options", () => {
+  it("compresses a stream request body", async () => {
+    handler = (_req, res) => res.end();
+    const c = client({ compression: { request: true, response: false } });
+    await c.insert({
+      table: "t",
+      values: Stream.Readable.from([{ a: 1 }, { a: 2 }]),
+      format: "JSONEachRow",
+    });
+    expect(lastRequest?.headers["content-encoding"]).toBe("gzip");
+    expect(Zlib.gunzipSync(lastRequest!.body).toString()).toBe(
+      '{"a":1}\n{"a":2}\n',
+    );
+    await c.close();
+  });
+
+  it("uses the custom JSON handling for the summary", async () => {
+    handler = (_req, res) => {
+      res.setHeader("X-ClickHouse-Summary", '{"read_rows":"1"}');
+      res.end();
+    };
+    const c = client({
+      json: {
+        parse: (text: string) => ({ ...JSON.parse(text), custom: true }),
+        stringify: JSON.stringify,
+      },
+    });
+    const result = await c.command({ query: "SELECT 1" });
+    expect(result.summary).toMatchObject({ read_rows: "1", custom: true });
+    await c.close();
+  });
+
+  it("sends a per-request JWT", async () => {
+    handler = (_req, res) => res.end();
+    const c = client();
+    await c.command({
+      query: "SELECT 1",
+      auth: { access_token: "my-jwt" },
+    });
+    expect(lastRequest?.headers.authorization).toBe("Bearer my-jwt");
+    await c.close();
+  });
+
+  it("adds the caller stack with capture_enhanced_stack_trace", async () => {
+    handler = (_req, res) => {
+      res.statusCode = 500;
+      res.setHeader("X-ClickHouse-Exception-Code", "62");
+      res.end("Code: 62. DB::Exception: Syntax error. (SYNTAX_ERROR)");
+    };
+    const c = client({ capture_enhanced_stack_trace: true });
+    async function callerFunctionForStackTrace() {
+      return c.query({ query: "SELEC 1" });
+    }
+    const err = await callerFunctionForStackTrace().catch((e: Error) => e);
+    expect((err as Error).stack).toContain("callerFunctionForStackTrace");
+    await c.close();
+  });
+});
 
 describe.skipIf(isBun)("[Node.js] undici transport: error paths", () => {
   it("rejects a response with an unsupported encoding", async () => {
