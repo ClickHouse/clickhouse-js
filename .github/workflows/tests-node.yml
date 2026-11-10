@@ -222,6 +222,19 @@ jobs:
           # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
           fail_ci_if_error: false
 
+      - name: Upload undici transport coverage to Codecov
+        # Same conditions as above, for the optional undici transport
+        # (CLICKHOUSE_TEST_TRANSPORT=undici): one upload per commit.
+        if: ${{ github.triggering_actor != 'dependabot[bot]' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.node == 24 && matrix.clickhouse == 'latest' && matrix.log_level == 'undefined' && matrix.transport == 'undici' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          name: node-integration-undici
+          flags: node-integration-undici
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          # Codecov outages (e.g. codecov/codecov-action#1975) must not fail the build.
+          fail_ci_if_error: false
+
   integration-tests-local-cluster:
     timeout-minutes: 5
     runs-on: ubuntu-latest
