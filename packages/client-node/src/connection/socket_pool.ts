@@ -31,8 +31,10 @@ export interface RequestParams {
   url: URL;
   headers: Http.OutgoingHttpHeaders;
   body?: string | Stream.Readable;
-  // provided by the user and wrapped around internally
-  abort_signal: AbortSignal;
+  // The signal for the transport. See `NodeBaseConnection.getRequestAbort()`:
+  // the built-in transport gets a wrapper over the user's signal; a transport
+  // with native signal support gets the user's signal (or none).
+  abort_signal?: AbortSignal;
   response_compression_codec?: CompressionMethod;
   request_compression?: RequestCompression;
   // if there are compression headers, attempt to decompress it

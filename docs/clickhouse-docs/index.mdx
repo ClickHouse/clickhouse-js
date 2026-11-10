@@ -1423,7 +1423,8 @@ const client = createClient({
 Limitations:
 - You cannot use `transport` together with `http_agent`.
 - The undici transport does not work on Bun. Bun replaces the `undici` module with its own implementation, which does not have `Agent.request()`. The client throws an error when you create it. On Bun, use the default transport.
-- The timeout and abort errors have the same messages as with the default transport. Other network errors come from undici and have undici error codes, for example `UND_ERR_SOCKET` instead of `ECONNRESET`.
+- The errors are the same as with the default transport: the same messages and codes (for example `ECONNRESET` and `"socket hang up"`), with the original undici error in `cause`. One exception: an invalid HTTP response gives no `HPE_*` code, because undici 8 does not set it.
+- The `abort_signal` goes to undici unchanged. With the undici transport, a signal that is already aborted rejects without sending the request, and an abort while the response body streams stops the stream.
 
 ## Known limitations (Node.js/web) {#known-limitations-nodejsweb}
 

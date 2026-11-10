@@ -4,6 +4,7 @@ import Https from "https";
 import type { NodeConnectionParams } from "./node_base_connection";
 import type { RequestParams } from "./socket_pool";
 import { NodeBaseConnection } from "./node_base_connection";
+import { type RequestAbort, wrappedRequestAbort } from "./request_abort";
 
 export class NodeHttpsConnection extends NodeBaseConnection {
   constructor(params: NodeConnectionParams) {
@@ -15,6 +16,12 @@ export class NodeHttpsConnection extends NodeBaseConnection {
       cert: params.tls?.type === "Mutual" ? params.tls.cert : undefined,
     });
     super(params, agent);
+  }
+
+  protected override getRequestAbort(params: {
+    abort_signal?: AbortSignal;
+  }): RequestAbort {
+    return wrappedRequestAbort(params);
   }
 
   protected createClientRequest(params: RequestParams): Http.ClientRequest {

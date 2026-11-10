@@ -3,6 +3,7 @@ import Http from "http";
 import type { NodeConnectionParams } from "./node_base_connection";
 import type { RequestParams } from "./socket_pool";
 import { NodeBaseConnection } from "./node_base_connection";
+import { type RequestAbort, wrappedRequestAbort } from "./request_abort";
 
 export class NodeHttpConnection extends NodeBaseConnection {
   constructor(params: NodeConnectionParams) {
@@ -11,6 +12,12 @@ export class NodeHttpConnection extends NodeBaseConnection {
       maxSockets: params.max_open_connections,
     });
     super(params, agent);
+  }
+
+  protected override getRequestAbort(params: {
+    abort_signal?: AbortSignal;
+  }): RequestAbort {
+    return wrappedRequestAbort(params);
   }
 
   protected createClientRequest(params: RequestParams): Http.ClientRequest {

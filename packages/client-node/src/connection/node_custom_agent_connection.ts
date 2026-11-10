@@ -3,6 +3,7 @@ import Https from "https";
 import type { NodeConnectionParams } from "./node_base_connection";
 import type { RequestParams } from "./socket_pool";
 import { NodeBaseConnection } from "./node_base_connection";
+import { type RequestAbort, wrappedRequestAbort } from "./request_abort";
 import { withCompressionHeaders } from "../common/index";
 
 export class NodeCustomAgentConnection extends NodeBaseConnection {
@@ -21,6 +22,12 @@ export class NodeCustomAgentConnection extends NodeBaseConnection {
     } else {
       this.httpRequestFn = Http.request;
     }
+  }
+
+  protected override getRequestAbort(params: {
+    abort_signal?: AbortSignal;
+  }): RequestAbort {
+    return wrappedRequestAbort(params);
   }
 
   protected createClientRequest(params: RequestParams): Http.ClientRequest {

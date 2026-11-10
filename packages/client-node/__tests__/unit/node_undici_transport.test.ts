@@ -15,6 +15,7 @@ import { Agent } from "undici";
 import type { Logger } from "@clickhouse/client-common";
 import { undiciTransport } from "../../src/undici";
 import { getAgentOptions } from "../../src/undici/undici_transport";
+import { toBodyError, toRequestError } from "../../src/undici/errors";
 import type { NodeTransportParams } from "../../src/connection";
 import { NodeBaseConnection } from "../../src/connection";
 
@@ -24,9 +25,11 @@ let url: string;
 let lastRequest:
   { headers: http.IncomingHttpHeaders; body: Buffer } | undefined;
 let handler: (req: http.IncomingMessage, res: http.ServerResponse) => void;
+let requestCount = 0;
 
 beforeAll(async () => {
   server = http.createServer((req, res) => {
+    requestCount++;
     const chunks: Buffer[] = [];
     req.on("data", (c: Buffer) => chunks.push(c));
     req.on("end", () => {
@@ -147,6 +150,67 @@ describe.skipIf(isBun)("[Node.js] undici transport", () => {
     await expect(query).rejects.toThrow("The user aborted a request.");
     await c.close();
   });
+
+  it("does not send the request when the signal is already aborted", async () => {
+    // undici handles the user's signal natively (no wrapper), so this works
+    // with the undici transport; see #1047 for the node:http transport.
+    handler = (_req, res) => res.end();
+    const c = client();
+    const controller = new AbortController();
+    controller.abort();
+    const before = requestCount;
+    await expect(
+      c.command({ query: "SELECT 1", abort_signal: controller.signal }),
+    ).rejects.toMatchObject({
+      name: "AbortError",
+      message: "The user aborted a request.",
+    });
+    expect(requestCount).toBe(before);
+    await c.close();
+  });
+
+  it("gives the same abort error for a custom abort reason", async () => {
+    handler = () => {
+      // never responds
+    };
+    const c = client();
+    const controller = new AbortController();
+    const reason = new Error("my reason");
+    const query = c.query({
+      query: "SELECT 1",
+      abort_signal: controller.signal,
+    });
+    setTimeout(() => controller.abort(reason), 50);
+    const err = await query.catch((e: Error) => e);
+    expect(err).toMatchObject({
+      name: "AbortError",
+      message: "The user aborted a request.",
+    });
+    expect((err as Error).cause).toBe(reason);
+    await c.close();
+  });
+
+  it("stops the response stream when the signal aborts while the body streams", async () => {
+    handler = (_req, res) => {
+      // a body that does not end
+      res.write("1\n");
+    };
+    const c = client({ request_timeout: 10_000 });
+    const controller = new AbortController();
+    const { stream } = await c.exec({
+      query: "SELECT 1",
+      abort_signal: controller.signal,
+    });
+    const start = Date.now();
+    setTimeout(() => controller.abort(), 50);
+    const err = await (async () => {
+      for await (const chunk of stream) void chunk;
+    })().catch((e: Error) => e);
+    expect(err).toMatchObject({ message: "aborted", code: "ECONNRESET" });
+    // the abort, not the request timeout
+    expect(Date.now() - start).toBeLessThan(5_000);
+    await c.close();
+  }, 15_000);
 
   it("does not emit an error when the response stream is destroyed before it ends", async () => {
     handler = (_req, res) => {
@@ -480,5 +544,78 @@ describe("[Node.js] transport connection guards", () => {
     expect(() => new NoAgentConnection()).toThrow(
       "An HTTP agent or a transport is required",
     );
+  });
+});
+
+describe("[Node.js] undici transport: error mapping", () => {
+  const notAborted = new AbortController().signal;
+  const aborted = (() => {
+    const c = new AbortController();
+    c.abort();
+    return c.signal;
+  })();
+  const undiciError = (code: string, name = "Error", message = "x") =>
+    Object.assign(new Error(message), { code, name });
+
+  it("maps the request errors to the node:http errors", () => {
+    expect(
+      toRequestError(undiciError("UND_ERR_SOCKET"), notAborted),
+    ).toMatchObject({ message: "socket hang up", code: "ECONNRESET" });
+    expect(
+      toRequestError(undiciError("UND_ERR_HEADERS_OVERFLOW"), notAborted),
+    ).toMatchObject({
+      message: "Parse Error: Header overflow",
+      code: "HPE_HEADER_OVERFLOW",
+    });
+    expect(
+      toRequestError(undiciError("UND_ERR_HEADERS_TIMEOUT"), notAborted),
+    ).toMatchObject({ message: "Timeout error." });
+    expect(
+      toRequestError(undiciError("UND_ERR_CONNECT_TIMEOUT"), notAborted),
+    ).toMatchObject({ message: "Timeout error." });
+    expect(
+      toRequestError(
+        Object.assign(
+          new Error(
+            "Response does not match the HTTP/1.1 protocol (Invalid header token)",
+          ),
+          { name: "HTTPParserError" },
+        ),
+        notAborted,
+      ),
+    ).toMatchObject({ message: "Parse Error: Invalid header token" });
+    expect(toRequestError(new Error("anything"), aborted)).toMatchObject({
+      name: "AbortError",
+      code: "ABORT_ERR",
+      message: "The user aborted a request.",
+    });
+  });
+
+  it("maps the body errors to the node:http errors", () => {
+    for (const code of [
+      "UND_ERR_SOCKET",
+      "ECONNRESET",
+      "UND_ERR_BODY_TIMEOUT",
+      "UND_ERR_ABORTED",
+      "UND_ERR_RES_CONTENT_LENGTH_MISMATCH",
+    ]) {
+      expect(toBodyError(undiciError(code), notAborted)).toMatchObject({
+        message: "aborted",
+        code: "ECONNRESET",
+      });
+    }
+  });
+
+  it("keeps the original error in cause", () => {
+    const original = undiciError("UND_ERR_SOCKET");
+    expect(toRequestError(original, notAborted).cause).toBe(original);
+    expect(toBodyError(original, notAborted).cause).toBe(original);
+  });
+
+  it("does not change errors without a mapping", () => {
+    const refused = undiciError("ECONNREFUSED");
+    expect(toRequestError(refused, notAborted)).toBe(refused);
+    const own = new Error("my own destroy error");
+    expect(toBodyError(own, notAborted)).toBe(own);
   });
 });

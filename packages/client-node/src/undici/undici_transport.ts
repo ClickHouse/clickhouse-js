@@ -17,6 +17,7 @@ import {
   type TransportResponse,
 } from "../connection/response";
 import type { RequestParams, RequestResult } from "../connection/socket_pool";
+import { toBodyError, toRequestError } from "./errors";
 import type {
   NodeTransport,
   NodeTransportFactory,
@@ -54,16 +55,6 @@ export function undiciTransport(
   };
 }
 
-/** The error messages are the same as the messages of the built-in transport,
- *  so that error handling in user code works with both transports. */
-const AbortedErrorMessage = "The user aborted a request.";
-const TimeoutErrorMessage = "Timeout error.";
-const TimeoutErrorCodes = new Set([
-  "UND_ERR_HEADERS_TIMEOUT",
-  "UND_ERR_BODY_TIMEOUT",
-  "UND_ERR_CONNECT_TIMEOUT",
-]);
-
 class UndiciTransport implements NodeTransport {
   private readonly params: NodeTransportParams;
   private readonly agent: Agent;
@@ -95,14 +86,6 @@ class UndiciTransport implements NodeTransport {
     const currentStackTrace = this.params.capture_enhanced_stack_trace
       ? getCurrentStackTrace()
       : undefined;
-    // Same as the built-in transport: when the signal aborts before the
-    // request is sent, the error is a plain `AbortError`. Wait for one
-    // microtask, so that an abort in the same tick as the client method call
-    // (for example, `client.query(...)` and then `controller.abort()`) is seen here.
-    await Promise.resolve();
-    if (params.abort_signal.aborted) {
-      throw enhanceStackTrace(createAbortError(), currentStackTrace);
-    }
     this.requestCounter += 1;
     const request_id = `${this.params.connection_id}:${this.requestCounter}`;
     const start = Date.now();
@@ -121,11 +104,15 @@ class UndiciTransport implements NodeTransport {
           }),
         ),
         body: getRequestBody(params),
+        // The user's signal (see `passThroughRequestAbort()`): undici handles
+        // it natively (an already aborted signal, an abort before or while the
+        // request is sent, and an abort while the response body streams), and
+        // it removes its listener when the request ends.
         signal: params.abort_signal,
       });
     } catch (err) {
       throw enhanceStackTrace(
-        toClientError(err, params.abort_signal),
+        toRequestError(err, params.abort_signal),
         currentStackTrace,
       );
     }
@@ -150,7 +137,7 @@ class UndiciTransport implements NodeTransport {
     const transportResponse: TransportResponse = {
       status_code: response.statusCode,
       headers: response.headers as Http.IncomingHttpHeaders,
-      body: withSilentDestroy(response.body),
+      body: withNodeHttpErrors(response.body, params.abort_signal),
     };
     const ctx: ResponseContext = {
       op,
@@ -218,26 +205,36 @@ export function getAgentOptions(params: NodeTransportParams): Agent.Options {
   return agentOptions;
 }
 
-/** undici emits an `error` event (`RequestAbortedError`, `UND_ERR_ABORTED`)
- *  when the body is destroyed without an error before it ends. Node.js
- *  `http.IncomingMessage` does not. Without an `error` listener, that event is
- *  an uncaught exception, so a user who calls `stream.destroy()` to stop reading
- *  a response would crash the process. Keep the `node:http` behavior: the
- *  request is still aborted and the connection is released, but this one error
- *  is not emitted. A `destroy(err)` call with an error does not change. */
-function withSilentDestroy<T extends Stream.Readable>(body: T): T {
+/** Gives the body stream the same errors as `http.IncomingMessage`.
+ *
+ *  1. undici destroys the body with its own errors (a closed socket, a body
+ *     timeout, an abort); these are mapped with {@link toBodyError}.
+ *  2. undici emits an `error` event (`RequestAbortedError`, `UND_ERR_ABORTED`)
+ *     when the body is destroyed without an error before it ends. Node.js
+ *     `http.IncomingMessage` does not. Without an `error` listener, that event
+ *     is an uncaught exception, so a user who calls `stream.destroy()` to stop
+ *     reading a response would crash the process. Keep the `node:http`
+ *     behavior: the request is still aborted and the connection is released,
+ *     but this one error is not emitted.
+ *
+ *  Both go through `destroy()`: undici destroys the body with `destroy(err)`. */
+function withNodeHttpErrors<T extends Stream.Readable>(
+  body: T,
+  signal: AbortSignal | undefined,
+): T {
   const destroy = body.destroy.bind(body);
   body.destroy = (err?: Error) => {
-    if (err === undefined || err === null) {
-      body.once("error", (e: unknown) => {
-        const isAbortedError =
-          (e as { code?: unknown } | undefined)?.code === "UND_ERR_ABORTED";
-        // Do not hide other errors when nobody else listens for them.
-        if (!isAbortedError && body.listenerCount("error") === 0) {
-          throw e;
-        }
-      });
+    if (err !== undefined && err !== null) {
+      return destroy(toBodyError(err, signal));
     }
+    body.once("error", (e: unknown) => {
+      const isAbortedError =
+        (e as { code?: unknown } | undefined)?.code === "UND_ERR_ABORTED";
+      // Do not hide other errors when nobody else listens for them.
+      if (!isAbortedError && body.listenerCount("error") === 0) {
+        throw e;
+      }
+    });
     return destroy(err);
   };
   return body;
@@ -271,23 +268,4 @@ function toUndiciHeaders(
     result[key] = typeof value === "number" ? String(value) : value;
   }
   return result;
-}
-
-/** The same error as Node.js `http.request()` throws for an aborted signal. */
-function createAbortError(): Error {
-  const err = new Error("The operation was aborted");
-  err.name = "AbortError";
-  (err as NodeJS.ErrnoException).code = "ABORT_ERR";
-  return err;
-}
-
-function toClientError(err: unknown, signal: AbortSignal): Error {
-  if (signal.aborted) {
-    return new Error(AbortedErrorMessage, { cause: err });
-  }
-  const code = (err as { code?: unknown } | undefined)?.code;
-  if (typeof code === "string" && TimeoutErrorCodes.has(code)) {
-    return new Error(TimeoutErrorMessage, { cause: err });
-  }
-  return err instanceof Error ? err : new Error(String(err));
 }

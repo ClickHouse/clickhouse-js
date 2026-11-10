@@ -256,10 +256,7 @@ describe.concurrent("Server that drops connections", () => {
     if (result.success) {
       throw new Error("Ping should have failed");
     }
-    expect(String(result.error)).toMatch(
-      // undici reports a closed socket as `SocketError: other side closed`
-      isUndiciTestTransport() ? /other side closed/ : /socket hang up/,
-    );
+    expect(String(result.error)).toMatch(/socket hang up/);
 
     await client.close();
     await closeServer(server);
@@ -315,9 +312,7 @@ describe.concurrent("Server that drops connections", () => {
     if (result.success) {
       throw new Error("Ping should have failed");
     }
-    expect(String(result.error)).toMatch(
-      isUndiciTestTransport() ? /other side closed/ : /aborted/i,
-    );
+    expect(String(result.error)).toMatch(/aborted/i);
 
     await client.close();
     await closeServer(server);
@@ -377,11 +372,14 @@ describe.concurrent("Server that drops connections", () => {
     if (ping2.success) {
       throw new Error("Ping should have failed");
     }
-    expect(String(ping2.error)).toMatch(
-      // undici does not have the sleep(0) above, so the socket can be closed
-      // before the request uses it; undici then reports `other side closed`.
-      isUndiciTestTransport() ? /ECONNRESET|other side closed/i : /ECONNRESET/i,
-    );
+    expect((ping2.error as NodeJS.ErrnoException).code).toBe("ECONNRESET");
+    // The message depends on timing: the sleep(0) above waits for the
+    // sleep(0) in the node:http transport. undici sends the request at once,
+    // so the server closes the connection while the request is in progress,
+    // and the message is "socket hang up" (with the same code).
+    if (!isUndiciTestTransport()) {
+      expect(String(ping2.error)).toMatch(/ECONNRESET/i);
+    }
 
     await client.close();
     await closeServer(server);

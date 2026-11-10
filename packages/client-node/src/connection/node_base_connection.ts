@@ -35,6 +35,7 @@ import { getUserAgent } from "../utils";
 import { drainStreamInternal } from "./stream";
 import { type RequestParams, SocketPool } from "./socket_pool";
 import type { NodeTransport, NodeTransportFactory } from "./transport";
+import { passThroughRequestAbort, type RequestAbort } from "./request_abort";
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams;
@@ -129,7 +130,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
     const { log_writer, log_level } = this.params;
     const query_id = this.getQueryId(params.query_id);
-    const { controller, controllerCleanup } = this.getAbortController(params);
+    const requestAbort = this.getRequestAbort(params);
     try {
       let result: RequestResult;
       if (params.select) {
@@ -143,7 +144,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             query: PingQuery,
             method: "GET",
             url: transformUrl({ url: this.params.url, searchParams }),
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             headers: this.buildRequestHeaders(),
             query_id,
             log_writer,
@@ -157,7 +158,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             query: "ping",
             method: "GET",
             url: transformUrl({ url: this.params.url, pathname: "/ping" }),
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             headers: this.buildRequestHeaders(),
             query_id,
             log_writer,
@@ -179,7 +180,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     } catch (error) {
       // it is used to ensure that the outgoing request is terminated,
       // and we don't get unhandled error propagation later
-      controller.abort("Ping failed");
+      requestAbort.abort("Ping failed");
       // not an error, as this might be semi-expected
       if (log_level <= ClickHouseLogLevel.WARN) {
         log_writer.warn({
@@ -196,7 +197,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         error: error as Error, // should NOT be propagated to the user
       };
     } finally {
-      controllerCleanup();
+      requestAbort.cleanup();
     }
   }
 
@@ -244,7 +245,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       query_id,
       role: params.role,
     });
-    const { controller, controllerCleanup } = this.getAbortController(params);
+    const requestAbort = this.getRequestAbort(params);
     // Accept-Encoding is sent whenever the server is asked to compress
     // (enable_http_compression), independent of whether the client decompresses;
     // the codec is the explicitly configured one, defaulting to gzip.
@@ -278,7 +279,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             method: "POST",
             url: transformUrl({ url: this.params.url, searchParams }),
             body,
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             response_compression_codec: responseCompressionCodec,
             parse_summary: true,
             headers,
@@ -297,7 +298,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         http_status_code,
       };
     } catch (err) {
-      controller.abort("Query HTTP request failed");
+      requestAbort.abort("Query HTTP request failed");
       this.logRequestError({
         op: "Query",
         query_id: query_id,
@@ -312,7 +313,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       });
       throw err; // should be propagated to the user
     } finally {
-      controllerCleanup();
+      requestAbort.cleanup();
     }
   }
 
@@ -330,7 +331,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       role: params.role,
       query_id,
     });
-    const { controller, controllerCleanup } = this.getAbortController(params);
+    const requestAbort = this.getRequestAbort(params);
     try {
       const { stream, summary, response_headers, http_status_code } =
         await this.request(
@@ -338,7 +339,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             method: "POST",
             url: transformUrl({ url: this.params.url, searchParams }),
             body: params.values,
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             request_compression: this.params.compression.compress_request,
             parse_summary: true,
             headers: this.buildRequestHeaders(params),
@@ -360,7 +361,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       );
       return { query_id, summary, response_headers, http_status_code };
     } catch (err) {
-      controller.abort("Insert HTTP request failed");
+      requestAbort.abort("Insert HTTP request failed");
       this.logRequestError({
         op: "Insert",
         query_id: query_id,
@@ -374,7 +375,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       });
       throw err; // should be propagated to the user
     } finally {
-      controllerCleanup();
+      requestAbort.cleanup();
     }
   }
 
@@ -556,22 +557,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     return query_id || crypto.randomUUID();
   }
 
-  // a wrapper over the user's Signal to terminate the failed requests
-  private getAbortController(params: { abort_signal?: AbortSignal }): {
-    controller: AbortController;
-    controllerCleanup: () => void;
-  } {
-    const controller = new AbortController();
-    function onAbort() {
-      controller.abort();
-    }
-    params.abort_signal?.addEventListener("abort", onAbort);
-    return {
-      controller,
-      controllerCleanup: () => {
-        params.abort_signal?.removeEventListener("abort", onAbort);
-      },
-    };
+  /** How this connection gives the user's `abort_signal` to its transport.
+   *  The default passes it unchanged, for transports with native `AbortSignal`
+   *  support. The built-in `node:http` / `node:https` connections override it. */
+  protected getRequestAbort(params: {
+    abort_signal?: AbortSignal;
+  }): RequestAbort {
+    return passThroughRequestAbort(params);
   }
 
   private logRequestError({
@@ -629,7 +621,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       query_id,
     };
     const searchParams = toSearchParams(toSearchParamsOptions);
-    const { controller, controllerCleanup } = this.getAbortController(params);
+    const requestAbort = this.getRequestAbort(params);
     const tryDecompressResponseStream =
       params.op === "Exec"
         ? // allows disabling stream decompression for the `Exec` operation only
@@ -646,7 +638,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             method: "POST",
             url: transformUrl({ url: this.params.url, searchParams }),
             body: sendQueryInParams ? params.values : params.query,
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             parse_summary: true,
             request_compression: this.params.compression.compress_request,
             response_compression_codec:
@@ -669,7 +661,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         http_status_code,
       };
     } catch (err) {
-      controller.abort(`${params.op} HTTP request failed`);
+      requestAbort.abort(`${params.op} HTTP request failed`);
       this.logRequestError({
         op: params.op,
         query_id: query_id,
@@ -683,7 +675,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       });
       throw err; // should be propagated to the user
     } finally {
-      controllerCleanup();
+      requestAbort.cleanup();
     }
   }
 
