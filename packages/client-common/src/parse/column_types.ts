@@ -636,6 +636,7 @@ export function parseDateTime64Type({
 }: ParseColumnTypeParams): ParsedColumnDateTime64 {
   if (
     !columnType.startsWith(DateTime64Prefix) ||
+    !columnType.endsWith(")") ||
     columnType.length < DateTime64Prefix.length + 2 // should at least have a precision
   ) {
     throw new ColumnTypeParseError("Invalid DateTime64 type", {
@@ -643,18 +644,30 @@ export function parseDateTime64Type({
       sourceType,
     });
   }
-  const precision = parseInt(columnType[DateTime64Prefix.length] ?? "", 10);
-  if (Number.isNaN(precision) || precision < 0 || precision > 9) {
+  const body = columnType.slice(DateTime64Prefix.length, -1);
+  const commaIndex = body.indexOf(",");
+  const precisionToken = (
+    commaIndex === -1 ? body : body.slice(0, commaIndex)
+  ).trim();
+  if (!/^[0-9]$/.test(precisionToken)) {
     throw new ColumnTypeParseError("Invalid DateTime64 precision", {
       columnType,
       sourceType,
-      precision,
     });
   }
+  const precision = Number(precisionToken);
   let timezone = null;
-  if (columnType.length > DateTime64Prefix.length + 2) {
-    // e.g. DateTime64(3, 'UTC') -> UTC
-    timezone = columnType.slice(DateTime64Prefix.length + 4, -2);
+  if (commaIndex !== -1) {
+    // e.g. DateTime64(3, 'UTC') -> UTC; the timezone argument must be a quoted string
+    const timezoneToken = body.slice(commaIndex + 1).trim();
+    const timezoneMatch = /^'([^']*)'$/.exec(timezoneToken);
+    if (!timezoneMatch) {
+      throw new ColumnTypeParseError("Invalid DateTime64 timezone", {
+        columnType,
+        sourceType,
+      });
+    }
+    timezone = timezoneMatch[1] ?? null;
   }
   return {
     type: "DateTime64",
