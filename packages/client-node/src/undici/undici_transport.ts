@@ -44,6 +44,9 @@ export interface UndiciTransportOptions {
  *
  *  const client = createClient({ transport: undiciTransport() })
  *  ```
+ *
+ *  In native ESM, import `@clickhouse/client/undici/index.js`: the package has
+ *  no `exports` field, so native ESM does not resolve the shorter path.
  *  @experimental - unstable API; it might be a subject to change in the future;
  *                  please provide your feedback in the repository. */
 export function undiciTransport(

@@ -40,5 +40,17 @@ node check.mjs
 echo "--- CJS check ---"
 node check.cjs
 
+# The optional undici entry point of @clickhouse/client. The checks above ran
+# without undici installed (it is an optional peer dependency), which proves
+# that the main entry point works without it.
+if [ "$WORKSPACE" = "@clickhouse/client" ]; then
+  cp "$SMOKE_DIR/check-undici.mjs" "$SMOKE_DIR/check-undici.cjs" "$APP/"
+  npm install "undici@$(node -p "require('./node_modules/@clickhouse/client/package.json').peerDependencies.undici")"
+  echo "--- undici entry point: CJS check ---"
+  node check-undici.cjs
+  echo "--- undici entry point: ESM check ---"
+  node check-undici.mjs
+fi
+
 cd "$REPO"
 echo "Smoke test passed for $WORKSPACE."

@@ -97,6 +97,9 @@ export type NodeClickHouseClientConfigOptions =
      *  const client = createClient({ transport: undiciTransport() })
      *  ```
      *
+     *  In native ESM, import `@clickhouse/client/undici/index.js`: the package
+     *  has no `exports` field, so native ESM does not resolve the shorter path.
+     *
      *  The {@link tls}, {@link keep_alive} (except `eagerly_destroy_stale_sockets`),
      *  {@link BaseClickHouseClientConfigOptions.max_open_connections},
      *  {@link BaseClickHouseClientConfigOptions.request_timeout} and

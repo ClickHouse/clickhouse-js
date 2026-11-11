@@ -1403,6 +1403,8 @@ const client = createClient({
 })
 ```
 
+In native ESM (an `.mjs` file, or a package with `"type": "module"` that Node.js runs without a bundler), import the entry point by its full path: `@clickhouse/client/undici/index.js`. Native ESM does not resolve the shorter path, because the package has no `exports` field. CommonJS, TypeScript and bundlers accept both paths.
+
 The following options apply to the undici transport too:
 - `max_open_connections` sets the maximum number of connections.
 - `tls` sets the TLS certificates. The TLS auth headers are the same as with the default transport.

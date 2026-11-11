@@ -20,6 +20,8 @@
   });
   ```
 
+  In native ESM (for example an `.mjs` file without a bundler), import `@clickhouse/client/undici/index.js` instead: the package has no `exports` field, so native ESM does not resolve the shorter path.
+
 [#1128]: https://github.com/ClickHouse/clickhouse-js/pull/1128
 
 ## Bug fixes

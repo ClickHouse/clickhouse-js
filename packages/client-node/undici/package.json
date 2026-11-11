@@ -1,4 +1,4 @@
 {
-  "main": "../dist/undici/index.js",
-  "types": "../dist/undici/index.d.ts"
+  "main": "./index.js",
+  "types": "./index.d.ts"
 }
