@@ -1385,10 +1385,10 @@ With certificates _and_ a custom _HTTPS_ Agent, it is likely necessary to disabl
 This is an experimental feature that may change in backwards-incompatible ways in the future releases.
 </Warning>
 
-By default, the client sends the requests with the built-in `node:http` and `node:https` modules. You can use [undici](https://undici.nodejs.org) instead. `undici` is an optional peer dependency: the client does not install it. Install it yourself (version 8, which needs Node.js 22.19.0 or later):
+By default, the client sends the requests with the built-in `node:http` and `node:https` modules. You can use [undici](https://undici.nodejs.org) instead. `undici` is not a dependency of the client: the client does not install it. Install it yourself. The supported versions are 8.12.3 and later 8.x versions (they need Node.js 22.19.0 or later); `undiciTransport()` throws an error for other versions. An application that depends on another undici major version for other code can still install and use the client, but only with the default transport.
 
 ```sh
-npm install undici
+npm install undici@^8.12.3
 ```
 
 Then set the `transport` option with the factory from the `@clickhouse/client/undici` entry point. Only this entry point loads undici:
@@ -1409,7 +1409,8 @@ The following options apply to the undici transport too:
 - `max_open_connections` sets the maximum number of connections.
 - `tls` sets the TLS certificates. The TLS auth headers are the same as with the default transport.
 - `keep_alive.enabled` and `keep_alive.idle_socket_ttl` control the keep-alive sockets. undici also uses the server `Keep-Alive: timeout=N` hint, but it never keeps an idle socket for longer than `idle_socket_ttl`. The `keep_alive.eagerly_destroy_stale_sockets` option has no effect.
-- `request_timeout` is the maximum time to wait for the response headers, and then the maximum idle time between two parts of the response body.
+- `request_timeout` is the maximum time to connect, the maximum time to wait for the response headers, and then the maximum idle time between two parts of the response body. A result that the application does not read frees its connection after `request_timeout`, the same as with the default transport.
+- **Progress headers do not restart the timeout.** With the default transport, each `X-ClickHouse-Progress` header (`send_progress_in_http_headers`) restarts the `request_timeout` timer. With undici, `request_timeout` is the total time until all the response headers arrive. ClickHouse sends the headers only when the result starts. So for a long-running query that returns its first rows late, set a `request_timeout` that is longer than that query.
 - `max_response_headers_size` sets the maximum size of the response headers.
 
 To set other undici `Agent` options, use `agent_options`. These values override the values from the client configuration:

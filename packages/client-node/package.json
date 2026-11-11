@@ -25,14 +25,6 @@
     "skills",
     "CHANGELOG.md"
   ],
-  "peerDependencies": {
-    "undici": "^8.0.0"
-  },
-  "peerDependenciesMeta": {
-    "undici": {
-      "optional": true
-    }
-  },
   "agents": {
     "skills": [
       {

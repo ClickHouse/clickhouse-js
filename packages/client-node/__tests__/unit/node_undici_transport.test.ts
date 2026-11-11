@@ -16,6 +16,11 @@ import type { Logger } from "@clickhouse/client-common";
 import { undiciTransport } from "../../src/undici";
 import { getAgentOptions } from "../../src/undici/undici_transport";
 import { toBodyError, toRequestError } from "../../src/undici/errors";
+import {
+  checkUndiciVersion,
+  getInstalledUndiciVersion,
+  isSupportedUndiciVersion,
+} from "../../src/undici/version";
 import type { NodeTransportParams } from "../../src/connection";
 import { NodeBaseConnection } from "../../src/connection";
 
@@ -468,6 +473,8 @@ describe("[Node.js] undici transport: Agent options", () => {
       connections: 10,
       headersTimeout: 30_000,
       bodyTimeout: 30_000,
+      connectTimeout: 30_000,
+      allowH2: false,
       keepAliveTimeout: 2500,
       keepAliveMaxTimeout: 2500,
     });
@@ -644,4 +651,88 @@ describe("[Node.js] undici transport: error mapping", () => {
     const own = new Error("my own destroy error");
     expect(toBodyError(own, notAborted)).toBe(own);
   });
+});
+
+describe("[Node.js] undici transport: undici version", () => {
+  it("supports 8.12.3 and later 8.x versions only", () => {
+    for (const v of ["8.12.3", "8.12.10", "8.13.0", "8.20.1", "8.12.3-rc.1"]) {
+      expect(isSupportedUndiciVersion(v), v).toBe(true);
+    }
+    for (const v of [
+      "8.12.2",
+      "8.11.9",
+      "8.0.0",
+      "7.30.2",
+      "6.29.1",
+      "9.0.0",
+      "x",
+    ]) {
+      expect(isSupportedUndiciVersion(v), v).toBe(false);
+    }
+  });
+
+  it("throws a clear error for an unsupported version", () => {
+    expect(() => checkUndiciVersion("7.30.2")).toThrow(
+      "The undici transport needs undici 8.12.3 or a later 8.x version, but undici 7.30.2 is installed",
+    );
+    // The version cannot be read (for example on Bun): no error here.
+    expect(() => checkUndiciVersion(undefined)).not.toThrow();
+  });
+
+  it("reads the installed version", () => {
+    expect(getInstalledUndiciVersion()).toMatch(/^8\./);
+  });
+});
+
+describe.skipIf(isBun)("[Node.js] undici transport: a full pool", () => {
+  /** A large body that does not end; the server writes while it can. */
+  function endlessBody(_req: http.IncomingMessage, res: http.ServerResponse) {
+    const chunk = Buffer.alloc(64 * 1024, "1\n");
+    const write = () => {
+      while (!res.destroyed && res.write(chunk)) {
+        // until the buffers are full
+      }
+    };
+    res.on("drain", write);
+    res.on("error", () => {});
+    write();
+  }
+
+  it("frees the connection of an unread result after request_timeout", async () => {
+    handler = endlessBody;
+    const c = client({ max_open_connections: 1, request_timeout: 500 });
+    // The application does not read this result.
+    await c.query({ query: "SELECT 1", format: "TabSeparated" });
+    handler = (_req, res) => res.end("2\n");
+    const start = Date.now();
+    const rs = await c.query({ query: "SELECT 2", format: "TabSeparated" });
+    expect(await rs.text()).toBe("2\n");
+    // after the idle timeout of the first result, not after a long wait
+    expect(Date.now() - start).toBeLessThan(3_000);
+    await c.close();
+  }, 10_000);
+
+  it("rejects at once when the signal aborts a request that waits for a connection", async () => {
+    handler = endlessBody;
+    const c = client({ max_open_connections: 1, request_timeout: 10_000 });
+    const unread = await c.query({ query: "SELECT 1", format: "TabSeparated" });
+    const before = requestCount;
+    const controller = new AbortController();
+    const waiting = c.query({
+      query: "SELECT 2",
+      format: "TabSeparated",
+      abort_signal: controller.signal,
+    });
+    setTimeout(() => controller.abort(), 100);
+    const start = Date.now();
+    await expect(waiting).rejects.toMatchObject({
+      name: "AbortError",
+      message: "The user aborted a request.",
+    });
+    expect(Date.now() - start).toBeLessThan(2_000);
+    // the aborted request was not sent
+    expect(requestCount).toBe(before);
+    unread.close();
+    await c.close();
+  }, 15_000);
 });

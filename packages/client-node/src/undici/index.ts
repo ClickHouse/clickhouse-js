@@ -1,6 +1,6 @@
 /**
  * The `@clickhouse/client/undici` entry point. It is separate from the main
- * entry point, so that `undici` (an optional peer dependency) is loaded only
+ * entry point, so that `undici` (not a dependency of this package) is loaded only
  * when a user imports this module.
  */
 export {

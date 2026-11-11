@@ -18,6 +18,7 @@ import {
 } from "../connection/response";
 import type { RequestParams, RequestResult } from "../connection/socket_pool";
 import { toBodyError, toRequestError } from "./errors";
+import { checkUndiciVersion, getInstalledUndiciVersion } from "./version";
 import type {
   NodeTransport,
   NodeTransportFactory,
@@ -36,7 +37,9 @@ export interface UndiciTransportOptions {
 /** Sends the client requests with [undici](https://undici.nodejs.org)
  *  instead of the built-in `node:http` / `node:https` modules.
  *
- *  `undici` is an optional peer dependency: install it with `npm install undici`.
+ *  `undici` is not a dependency of this package: install it yourself
+ *  (`npm install undici@^8.12.3`). The supported versions are 8.12.3 and later
+ *  8.x versions; `undiciTransport()` throws an error for other versions.
  *
  *  ```ts
  *  import { createClient } from '@clickhouse/client'
@@ -52,6 +55,7 @@ export interface UndiciTransportOptions {
 export function undiciTransport(
   options: UndiciTransportOptions = {},
 ): NodeTransportFactory {
+  checkUndiciVersion(getInstalledUndiciVersion());
   return {
     name: "undici",
     create: (params) => new UndiciTransport(params, options),
@@ -95,7 +99,7 @@ class UndiciTransport implements NodeTransport {
 
     let response: Awaited<ReturnType<Agent["request"]>>;
     try {
-      response = await this.agent.request({
+      const request = this.agent.request({
         origin: params.url.origin,
         path: params.url.pathname + params.url.search,
         method: params.method,
@@ -113,6 +117,7 @@ class UndiciTransport implements NodeTransport {
         // it removes its listener when the request ends.
         signal: params.abort_signal,
       });
+      response = await rejectOnAbort(request, params.abort_signal);
     } catch (err) {
       throw enhanceStackTrace(
         toRequestError(err, params.abort_signal),
@@ -140,7 +145,10 @@ class UndiciTransport implements NodeTransport {
     const transportResponse: TransportResponse = {
       status_code: response.statusCode,
       headers: response.headers as Http.IncomingHttpHeaders,
-      body: withNodeHttpErrors(response.body, params.abort_signal),
+      body: withIdleTimeout(
+        withNodeHttpErrors(response.body, params.abort_signal),
+        this.params.request_timeout,
+      ),
     };
     const ctx: ResponseContext = {
       op,
@@ -171,6 +179,79 @@ class UndiciTransport implements NodeTransport {
   }
 }
 
+type UndiciResponse = Awaited<ReturnType<Agent["request"]>>;
+
+/** undici issue: an abort of a request that waits in the queue for a
+ *  connection (all `max_open_connections` are in use) only stores the abort
+ *  reason. The request rejects when it gets a connection, which can be never.
+ *  The `node:http` transport rejects at once, so reject here at once too.
+ *  undici then does not send the request when it gets a connection. */
+function rejectOnAbort(
+  request: Promise<UndiciResponse>,
+  signal: AbortSignal | undefined,
+): Promise<UndiciResponse> {
+  if (signal === undefined || signal.aborted) {
+    // undici rejects an already aborted signal itself.
+    return request;
+  }
+  return new Promise<UndiciResponse>((resolve, reject) => {
+    let settled = false;
+    const onAbort = () => {
+      settled = true;
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    request.then(
+      (response) => {
+        signal.removeEventListener("abort", onAbort);
+        if (settled) {
+          // The abort came first: nobody reads this body.
+          response.body.destroy();
+        } else {
+          resolve(response);
+        }
+      },
+      (err: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        if (!settled) {
+          reject(err);
+        }
+      },
+    );
+  });
+}
+
+/** undici issue: undici does not run `bodyTimeout` while the body stream is
+ *  paused (for example, when the application does not read a result). The
+ *  connection then stays in use forever, and with `max_open_connections`
+ *  in use, the client hangs. The `node:http` transport destroys the response
+ *  when no data arrives for `request_timeout` (an idle socket), so do the same:
+ *  each chunk that undici pushes into the body restarts the timer. */
+function withIdleTimeout<T extends Stream.Readable>(
+  body: T,
+  timeout_ms: number,
+): T {
+  if (!(timeout_ms > 0) || !Number.isFinite(timeout_ms)) {
+    return body;
+  }
+  const timer = setTimeout(() => {
+    body.destroy(
+      Object.assign(new Error("Body Timeout Error"), {
+        code: "UND_ERR_BODY_TIMEOUT",
+      }),
+    );
+  }, timeout_ms);
+  // Do not keep the process alive for this timer only.
+  timer.unref();
+  const push = body.push.bind(body);
+  body.push = (chunk: unknown, encoding?: BufferEncoding) => {
+    timer.refresh();
+    return push(chunk, encoding);
+  };
+  body.once("close", () => clearTimeout(timer));
+  return body;
+}
+
 /** Maps the client configuration to the undici `Agent` options.
  *  @internal exported for the tests only. */
 export function getAgentOptions(params: NodeTransportParams): Agent.Options {
@@ -185,6 +266,15 @@ export function getAgentOptions(params: NodeTransportParams): Agent.Options {
     // and then the maximum idle time between two body chunks.
     headersTimeout: params.request_timeout,
     bodyTimeout: params.request_timeout,
+    // The built-in transport sets the socket timeout before the socket
+    // connects, so `request_timeout` covers the connect too. Without this,
+    // undici uses its own default (10 s).
+    connectTimeout: params.request_timeout,
+    // undici 8 negotiates HTTP/2 (ALPN) by default. Behind an HTTP/2 proxy,
+    // `connections` then no longer limits the parallel requests (they share
+    // one HTTP/2 connection), and a response that is cut off can look like a
+    // complete one. ClickHouse uses HTTP/1.1; the built-in transport too.
+    allowH2: false,
   };
   if (!keep_alive.enabled) {
     // A pipelining value of 0 disables keep-alive in undici.

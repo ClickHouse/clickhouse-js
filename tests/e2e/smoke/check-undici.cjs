@@ -11,16 +11,25 @@ assert.strictEqual(
   "the main entry point loaded undici",
 );
 
-// The installed undici must match the peer dependency range (`^<major>`).
-const range = require("@clickhouse/client/package.json").peerDependencies
-  .undici;
+// undici must not be in the manifest, also not as an (optional) peer
+// dependency: that breaks `npm install` with ERESOLVE for every application
+// that depends on another undici major version. `undiciTransport()` checks
+// the version at runtime instead.
+const manifest = require("@clickhouse/client/package.json");
+for (const field of [
+  "dependencies",
+  "peerDependencies",
+  "peerDependenciesMeta",
+  "optionalDependencies",
+]) {
+  assert.strictEqual(
+    manifest[field]?.undici,
+    undefined,
+    `undici is in ${field} of @clickhouse/client`,
+  );
+}
 const version = require("undici/package.json").version;
-assert.ok(
-  range.startsWith("^") &&
-    version.split(".")[0] === range.slice(1).split(".")[0],
-  `undici ${version} does not match the peer dependency range ${range}`,
-);
-console.log(`undici ${version} matches the peer dependency range ${range}`);
+console.log(`undici ${version} is installed by the application`);
 
 for (const specifier of [
   "@clickhouse/client/undici",
