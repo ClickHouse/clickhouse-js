@@ -11,6 +11,17 @@ assert.strictEqual(
   "the main entry point loaded undici",
 );
 
+// The installed undici must match the peer dependency range (`^<major>`).
+const range = require("@clickhouse/client/package.json").peerDependencies
+  .undici;
+const version = require("undici/package.json").version;
+assert.ok(
+  range.startsWith("^") &&
+    version.split(".")[0] === range.slice(1).split(".")[0],
+  `undici ${version} does not match the peer dependency range ${range}`,
+);
+console.log(`undici ${version} matches the peer dependency range ${range}`);
+
 for (const specifier of [
   "@clickhouse/client/undici",
   "@clickhouse/client/undici/index.js",
