@@ -49,8 +49,9 @@ if [ "$WORKSPACE" = "@clickhouse/client" ]; then
   # integrity hash) from a tarball, the same way as the client above. A registry
   # install (`npm install undici@<range>`) would not be pinned. `tar` and not
   # `npm pack`, because `npm pack` runs the `prepare` script of undici.
-  tar -czf "$APP/undici.tgz" -C "$REPO/node_modules" undici
-  npm install ./undici.tgz
+  UNDICI_TARBALL="undici.tgz"
+  tar -czf "$APP/$UNDICI_TARBALL" -C "$REPO/node_modules" undici
+  npm install "./$UNDICI_TARBALL"
   echo "--- undici entry point: CJS check ---"
   node check-undici.cjs
   echo "--- undici entry point: ESM check ---"
