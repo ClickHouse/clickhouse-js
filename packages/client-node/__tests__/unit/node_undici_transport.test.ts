@@ -238,6 +238,32 @@ describe.skipIf(isBun)("[Node.js] undici transport", () => {
     await c.close();
   }, 5_000);
 
+  it("does not throw an error again that a once listener handled (destroy(err), then destroy())", async () => {
+    handler = (_req, res) => {
+      // a complete response that the client does not read
+      res.end("1\n");
+    };
+    const c = client();
+    const { stream } = await c.exec({ query: "SELECT 1" });
+    const uncaught: unknown[] = [];
+    const onUncaught = (err: unknown) => uncaught.push(err);
+    process.on("uncaughtException", onUncaught);
+    try {
+      const error = new Error("boom");
+      const handled = new Promise((resolve) => stream.once("error", resolve));
+      const closed = new Promise((resolve) => stream.once("close", resolve));
+      stream.destroy(error);
+      stream.destroy();
+      expect(await handled).toBe(error);
+      await closed;
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(uncaught).toEqual([]);
+    } finally {
+      process.off("uncaughtException", onUncaught);
+    }
+    await c.close();
+  }, 5_000);
+
   it("still emits the error of destroy(err)", async () => {
     handler = (_req, res) => {
       res.write("1\n");

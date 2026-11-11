@@ -227,14 +227,22 @@ function withNodeHttpErrors<T extends Stream.Readable>(
     if (err !== undefined && err !== null) {
       return destroy(toBodyError(err, signal));
     }
-    body.once("error", (e: unknown) => {
-      const isAbortedError =
-        (e as { code?: unknown } | undefined)?.code === "UND_ERR_ABORTED";
-      // Do not hide other errors when nobody else listens for them.
-      if (!isAbortedError && body.listenerCount("error") === 0) {
-        throw e;
-      }
-    });
+    // A second call does nothing (the stream is already destroyed), so it must
+    // not add a listener: an error of an earlier `destroy(err)` call can still
+    // be scheduled, and the user can already handle it.
+    if (!body.destroyed) {
+      // Prepend, so that this listener runs first, and the listener count
+      // includes the user's listeners: Node.js removes a `once` listener
+      // before it runs, so a count taken after it would be 0.
+      body.prependOnceListener("error", (e: unknown) => {
+        const isAbortedError =
+          (e as { code?: unknown } | undefined)?.code === "UND_ERR_ABORTED";
+        // Do not hide other errors when nobody else listens for them.
+        if (!isAbortedError && body.listenerCount("error") === 0) {
+          throw e;
+        }
+      });
+    }
     return destroy(err);
   };
   return body;
