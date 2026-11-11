@@ -45,13 +45,12 @@ node check.cjs
 # that the main entry point works without it.
 if [ "$WORKSPACE" = "@clickhouse/client" ]; then
   cp "$SMOKE_DIR/check-undici.mjs" "$SMOKE_DIR/check-undici.cjs" "$APP/"
-  # Install the undici version that the repository lockfile pins (with its
-  # integrity hash) from a tarball, the same way as the client above. A registry
-  # install (`npm install undici@<range>`) would not be pinned. `tar` and not
-  # `npm pack`, because `npm pack` runs the `prepare` script of undici.
-  UNDICI_TARBALL="undici.tgz"
-  tar -czf "$APP/$UNDICI_TARBALL" -C "$REPO/node_modules" undici
-  npm install "./$UNDICI_TARBALL"
+  # Use the undici version that the repository lockfile pins (with its
+  # integrity hash): copy it from the root node_modules. undici has no
+  # dependencies, so this is the same as an install. A registry install
+  # (`npm install undici@<range>`) would not be pinned.
+  mkdir -p node_modules
+  cp -R "$REPO/node_modules/undici" node_modules/undici
   echo "--- undici entry point: CJS check ---"
   node check-undici.cjs
   echo "--- undici entry point: ESM check ---"
