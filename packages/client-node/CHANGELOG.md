@@ -1,4 +1,10 @@
-# 1.25.1
+# 1.26.0
+
+## Migration Notes
+
+- Node.js 20.x reached [end of life](https://endoflife.date/nodejs) on 2026-04-30 and is no longer supported. The `engines.node` floor of `@clickhouse/client` was raised from `>=20` to `>=22`. Node.js 22.x, 24.x, and 26.x are supported and exercised in CI. An install on Node.js 20 now emits an `EBADENGINE` warning. ([#1124])
+
+[#1124]: https://github.com/ClickHouse/clickhouse-js/pull/1124
 
 ## Bug fixes
 

@@ -14,7 +14,7 @@
 import { NodeKind, type Node } from "./ast.ts";
 
 /// `TextEncoder` / `TextDecoder` are runtime globals in every environment this
-/// library supports (Node >= 18 and all modern browsers), but they are not part
+/// library supports (Node >= 22 and all modern browsers), but they are not part
 /// of the `ES2022` lib this package compiles against. Declare just the slice we
 /// use here, rather than pulling in the whole `DOM` lib (which would leak
 /// `window`/`name`/… globals into every file and could mask typos) or adding an

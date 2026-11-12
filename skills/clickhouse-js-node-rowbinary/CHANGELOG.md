@@ -5,6 +5,14 @@
 > `@clickhouse/client` 1.23.0) were previously recorded in the now-frozen
 > repository-wide [`CHANGELOG.md`](../../CHANGELOG.md).
 
+# 0.2.1
+
+## Migration Notes
+
+- Node.js 20.x reached [end of life](https://endoflife.date/nodejs) on 2026-04-30 and is no longer supported. The `engines.node` floor was raised from `>=20` to `>=22`. Node.js 22.x, 24.x, and 26.x are supported and exercised in CI. ([#1124])
+
+[#1124]: https://github.com/ClickHouse/clickhouse-js/pull/1124
+
 # 0.2.0
 
 ## New features
