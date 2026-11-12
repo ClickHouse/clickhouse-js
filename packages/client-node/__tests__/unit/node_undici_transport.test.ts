@@ -698,6 +698,31 @@ describe.skipIf(isBun)("[Node.js] undici transport: a full pool", () => {
     write();
   }
 
+  it("does not crash for a small result that the code never reads (query() and exec())", async () => {
+    // For example `query()` instead of `command()` for a `CREATE TABLE`.
+    handler = (_req, res) => res.end("");
+    const c = client({ max_open_connections: 1, request_timeout: 300 });
+    const uncaught: unknown[] = [];
+    const onUncaught = (err: unknown) => uncaught.push(err);
+    process.on("uncaughtException", onUncaught);
+    try {
+      await c.query({ query: "CREATE TABLE t (x UInt8) ENGINE Memory" });
+      await c.exec({ query: "CREATE TABLE t (x UInt8) ENGINE Memory" });
+      // The response is complete, so the connection is free at once.
+      handler = (_req, res) => res.end("2\n");
+      const start = Date.now();
+      const rs = await c.query({ query: "SELECT 2", format: "TabSeparated" });
+      expect(await rs.text()).toBe("2\n");
+      expect(Date.now() - start).toBeLessThan(300);
+      // Wait longer than request_timeout.
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      expect(uncaught).toEqual([]);
+    } finally {
+      process.off("uncaughtException", onUncaught);
+    }
+    await c.close();
+  }, 10_000);
+
   it("frees the connection of an unread result after request_timeout", async () => {
     handler = endlessBody;
     const c = client({ max_open_connections: 1, request_timeout: 500 });

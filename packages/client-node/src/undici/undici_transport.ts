@@ -235,17 +235,33 @@ function withIdleTimeout<T extends Stream.Readable>(
     return body;
   }
   const timer = setTimeout(() => {
-    body.destroy(
-      Object.assign(new Error("Body Timeout Error"), {
-        code: "UND_ERR_BODY_TIMEOUT",
-      }),
-    );
+    if (body.listenerCount("error") > 0) {
+      body.destroy(
+        Object.assign(new Error("Body Timeout Error"), {
+          code: "UND_ERR_BODY_TIMEOUT",
+        }),
+      );
+    } else {
+      // Nobody can handle the error, and an `error` event without a listener
+      // is an uncaught exception. The `node:http` transport does not crash
+      // here either. `destroy()` without an error still aborts the request
+      // and releases the connection (see withNodeHttpErrors()).
+      body.destroy();
+    }
   }, timeout_ms);
   // Do not keep the process alive for this timer only.
   timer.unref();
   const push = body.push.bind(body);
   body.push = (chunk: unknown, encoding?: BufferEncoding) => {
-    timer.refresh();
+    if (chunk === null) {
+      // The response is complete: undici no longer uses the connection for
+      // it, so there is nothing to free. A small result that the application
+      // never reads (for example `query()` for a `CREATE TABLE`) stays as it is,
+      // the same as with the `node:http` transport.
+      clearTimeout(timer);
+    } else {
+      timer.refresh();
+    }
     return push(chunk, encoding);
   };
   body.once("close", () => clearTimeout(timer));
