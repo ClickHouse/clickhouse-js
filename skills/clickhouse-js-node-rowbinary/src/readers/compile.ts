@@ -118,8 +118,14 @@ export function astToReader(node: Node): Reader<unknown> {
     case NodeKind.EnumDataType: {
       // Explicit-value enum: the wire value is the underlying int, which we
       // resolve to its NAME via the `'name' = value` pairs the type carries.
+      // A bare `Enum(...)` has no width in its name: the server sizes it from
+      // the ordinals (Enum16 if any value is outside Int8's -128..127), so the
+      // reader must too. Explicit `Enum8` / `Enum16` keep their declared width.
       const map = enumNameMap(node);
-      return node.name === "Enum16" ? readEnum16(map) : readEnum8(map);
+      const name = node.name.toUpperCase();
+      if (name === "ENUM16") return readEnum16(map);
+      if (name === "ENUM8") return readEnum8(map);
+      return enumFitsInt8(node) ? readEnum8(map) : readEnum16(map);
     }
     case NodeKind.TupleDataType:
       return tupleReader(node);
@@ -255,6 +261,11 @@ function enumNameMap(node: Node): ReadonlyMap<number, string> {
   const map = new Map<number, string>();
   for (const ev of node.values) map.set(Number(ev.value), ev.name);
   return map;
+}
+
+/** Whether every ordinal of an enum fits in Int8, the server's rule for sizing a bare `Enum(...)`. */
+function enumFitsInt8(node: Node): boolean {
+  return node.values.every((ev) => ev.value >= -128n && ev.value <= 127n);
 }
 
 /** Folds `Decimal(P, S)` to the right width by precision P; scale S drives decoding. */

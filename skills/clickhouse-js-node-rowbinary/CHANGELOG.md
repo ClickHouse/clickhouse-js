@@ -5,6 +5,14 @@
 > `@clickhouse/client` 1.23.0) were previously recorded in the now-frozen
 > repository-wide [`CHANGELOG.md`](../../CHANGELOG.md).
 
+# 0.2.1
+
+## Bug fixes
+
+- `astToReader` / `typeStringToReader` now read a bare `Enum(...)` (no `8`/`16` in the name) at the width the server uses: `Enum16` when any ordinal is outside `-128..127`, otherwise `Enum8`. Before, a bare `Enum` was always read as 8-bit, so a hand-written type string such as `Enum('a' = 1000)` consumed one byte instead of two, returned the wrong value and shifted every following column. Explicit `Enum8` / `Enum16` are unchanged. ([#1130])
+
+[#1130]: https://github.com/ClickHouse/clickhouse-js/issues/1130
+
 # 0.2.0
 
 ## New features
