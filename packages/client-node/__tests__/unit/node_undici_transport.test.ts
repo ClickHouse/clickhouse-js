@@ -15,7 +15,11 @@ import { Agent } from "undici";
 import type { Logger } from "@clickhouse/client-common";
 import { undiciTransport } from "../../src/undici";
 import { getAgentOptions } from "../../src/undici/undici_transport";
-import { toBodyError, toRequestError } from "../../src/undici/errors";
+import {
+  getParserErrorReason,
+  toBodyError,
+  toRequestError,
+} from "../../src/undici/errors";
 import {
   checkUndiciVersion,
   getInstalledUndiciVersion,
@@ -622,6 +626,24 @@ describe("[Node.js] undici transport: error mapping", () => {
       code: "ABORT_ERR",
       message: "The user aborted a request.",
     });
+  });
+
+  it("gets the reason of a parser error without a regular expression", () => {
+    expect(
+      getParserErrorReason(
+        "Response does not match the HTTP/1.1 protocol (Invalid header token)",
+      ),
+    ).toBe("Invalid header token");
+    expect(getParserErrorReason("no parentheses")).toBe("no parentheses");
+    expect(getParserErrorReason("()")).toBe("");
+    expect(getParserErrorReason("no open )")).toBe("no open )");
+    // The input that made the regular expression slow (CodeQL
+    // js/polynomial-redos): many "(" characters. Linear time now.
+    const many = "(".repeat(200_000);
+    const start = performance.now();
+    expect(getParserErrorReason(many + "x")).toBe(many + "x");
+    expect(getParserErrorReason(many + ")")).toBe("");
+    expect(performance.now() - start).toBeLessThan(100);
   });
 
   it("maps the body errors to the node:http errors", () => {

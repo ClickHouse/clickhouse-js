@@ -61,8 +61,12 @@ export function toRequestError(
     // The built-in transport: "Parse Error: <reason>", with an `HPE_*` code.
     // undici 8 does not set the `HPE_*` code (it reads its llhttp error table
     // by the wrong key), so the code is only copied when undici sets it.
-    const reason = /\(([^)]*)\)$/.exec(err.message)?.[1] ?? err.message;
-    return withCode(new Error(`Parse Error: ${reason}`, { cause: err }), code);
+    return withCode(
+      new Error(`Parse Error: ${getParserErrorReason(err.message)}`, {
+        cause: err,
+      }),
+      code,
+    );
   }
   return err instanceof Error ? err : new Error(String(err));
 }
@@ -84,6 +88,20 @@ export function toBodyError(
     return withCode(new Error("aborted", { cause: err }), "ECONNRESET");
   }
   return err;
+}
+
+/** The text in the last parentheses at the end of the message:
+ *  "Response does not match the HTTP/1.1 protocol (Invalid header token)"
+ *  gives "Invalid header token". Without them, the whole message.
+ *  No regular expression: the message is input from outside, and a pattern
+ *  without a start anchor takes quadratic time for many "(" characters.
+ *  @internal exported for the tests only. */
+export function getParserErrorReason(message: string): string {
+  if (!message.endsWith(")")) {
+    return message;
+  }
+  const open = message.lastIndexOf("(");
+  return open >= 0 ? message.slice(open + 1, -1) : message;
 }
 
 function isAbortError(err: unknown): boolean {
