@@ -5,6 +5,21 @@
 > `@clickhouse/client` 1.23.0) were previously recorded in the now-frozen
 > repository-wide [`CHANGELOG.md`](../../CHANGELOG.md).
 
+# 0.3.0
+
+## New features
+
+- Added `readMapEntries(readKey, readValue)`, a pair-preserving `Map(K, V)` reader. A ClickHouse map may contain two elements with the same key, and `readMap` folds the pairs into a JS `Map`, which silently keeps only the last value of a repeated key. `readMapEntries` returns the raw `Array<[K, V]>` pair list instead, in wire order, so no pair is lost. `readMap` is now a thin wrapper over it and still returns a `Map`. The schema-driven readers accept the same choice through the new `ReadOptions` (`{ mapAsEntries: true }`) on `astToReader`, `typeStringToReader`, `readDynamicType` and `readDynamic`, applied at any nesting depth. ([#1098])
+
+  ```ts
+  import { readMapEntries, readString } from "@clickhouse/rowbinary";
+
+  // Map(String, String) whose two pairs share a key: both are kept.
+  readMapEntries(readString, readString)(cursor); // [["key", "X"], ["key", "Y"]]
+  ```
+
+[#1098]: https://github.com/ClickHouse/clickhouse-js/pull/1098
+
 # 0.2.0
 
 ## New features

@@ -40,10 +40,12 @@ import {
 import {
   readArray,
   readMap,
+  readMapEntries,
   readNullable,
   readTuple,
   readTupleNamed,
   readVariant,
+  type ReadOptions,
 } from "./composite.js";
 import { readJSON } from "./json.js";
 
@@ -62,9 +64,12 @@ import { readJSON } from "./json.js";
  *
  * For a Dynamic-heavy hot path where the same few types recur, parse the type
  * once and reuse the returned reader across rows instead of re-parsing.
+ *
+ * `options` is threaded into {@link readDynamicType}, so a `Map` nested anywhere
+ * inside the value follows the same choice as the schema-driven path.
  */
-export function readDynamic(state: Cursor): unknown {
-  return readDynamicType(state)(state);
+export function readDynamic(state: Cursor, options: ReadOptions = {}): unknown {
+  return readDynamicType(state, options)(state);
 }
 
 /**
@@ -84,7 +89,10 @@ export function readDynamic(state: Cursor): unknown {
  * with the tag value so you can extend this switch for the types your data
  * actually contains.
  */
-export function readDynamicType(state: Cursor): Reader<unknown> {
+export function readDynamicType(
+  state: Cursor,
+  options: ReadOptions = {},
+): Reader<unknown> {
   const tag = readUInt8(state);
   switch (tag) {
     // Nothing — a stored NULL. Zero value bytes.
@@ -187,12 +195,12 @@ export function readDynamicType(state: Cursor): Reader<unknown> {
       return readUUID;
     // Array(T): parse the element type once, then read a length-prefixed run.
     case 0x1e:
-      return readArray(readDynamicType(state));
+      return readArray(readDynamicType(state, options));
     // Tuple(...): a field count, then that many element type encodings.
     case 0x1f: {
       const n = readUVarint(state);
       const fields: Array<Reader<unknown>> = [];
-      for (let i = 0; i < n; i++) fields.push(readDynamicType(state));
+      for (let i = 0; i < n; i++) fields.push(readDynamicType(state, options));
       return readTuple(fields);
     }
     // Named Tuple: a count, then (name String, type) pairs. Names shape the
@@ -202,7 +210,7 @@ export function readDynamicType(state: Cursor): Reader<unknown> {
       const fields: Record<string, Reader<unknown>> = {};
       for (let i = 0; i < n; i++) {
         const name = readString(state);
-        fields[name] = readDynamicType(state);
+        fields[name] = readDynamicType(state, options);
       }
       return readTupleNamed(fields);
     }
@@ -230,7 +238,7 @@ export function readDynamicType(state: Cursor): Reader<unknown> {
     // element type really is Nullable(T) — e.g. Array(Nullable(UInt8)) — so the
     // tag does appear here.
     case 0x23:
-      return readNullable(readDynamicType(state));
+      return readNullable(readDynamicType(state, options));
     // Function (0x24): a higher-order function type (lambda), header-only with no
     // stored value form.
     case 0x24:
@@ -246,12 +254,14 @@ export function readDynamicType(state: Cursor): Reader<unknown> {
       );
     // LowCardinality(T): transparent — keep the inner type's reader as-is.
     case 0x26:
-      return readDynamicType(state);
+      return readDynamicType(state, options);
     // Map(K, V): parse the key type then the value type.
     case 0x27: {
-      const key = readDynamicType(state);
-      const value = readDynamicType(state);
-      return readMap(key, value);
+      const key = readDynamicType(state, options);
+      const value = readDynamicType(state, options);
+      return options.mapAsEntries
+        ? readMapEntries(key, value)
+        : readMap(key, value);
     }
     case 0x28:
       return readIPv4;
@@ -265,7 +275,8 @@ export function readDynamicType(state: Cursor): Reader<unknown> {
     case 0x2a: {
       const n = readUVarint(state);
       const alternatives: Array<Reader<unknown>> = [];
-      for (let i = 0; i < n; i++) alternatives.push(readDynamicType(state));
+      for (let i = 0; i < n; i++)
+        alternatives.push(readDynamicType(state, options));
       return readVariant(alternatives);
     }
     // Dynamic (0x2b): a Dynamic nested inside a Dynamic. The header is a single
@@ -275,7 +286,7 @@ export function readDynamicType(state: Cursor): Reader<unknown> {
     // threshold; in RowBinary every value is normalized to a plain (tag, value).
     case 0x2b:
       readUInt8(state); // max_dynamic_types — storage threshold, not used to decode
-      return readDynamic;
+      return (s) => readDynamic(s, options);
     // Custom type (0x2c): the type name is written as a String and must be
     // re-parsed to learn the real type — we don't have a type-name parser.
     case 0x2c:
@@ -299,7 +310,7 @@ export function readDynamicType(state: Cursor): Reader<unknown> {
       const fields: Record<string, Reader<unknown>> = {};
       for (let i = 0; i < n; i++) {
         const name = readString(state);
-        fields[name] = readDynamicType(state);
+        fields[name] = readDynamicType(state, options);
       }
       return readArray(readTupleNamed(fields));
     }

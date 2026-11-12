@@ -120,30 +120,70 @@ export function readTupleNamed<T extends Record<string, unknown>>(readers: {
 }
 
 /**
- * Read a `Map(K, V)`: a LEB128 pair count, then that many key/value pairs with
- * key and value interleaved (k, v, k, v, ...) — a flattened `Array(Tuple(K, V))`.
- * An empty map is just the count byte `0x00`. Curried: pass the key and value
- * readers, get a `Reader<Map<K, V>>`.
+ * Read a `Map(K, V)` as its RAW pair list: a LEB128 pair count, then that many
+ * key/value pairs with key and value interleaved (k, v, k, v, ...), a flattened
+ * `Array(Tuple(K, V))`. An empty map is just the count byte `0x00`. Curried:
+ * pass the key and value readers, get a `Reader<Array<[K, V]>>`.
  *
- * The key is read BEFORE the value in each pair. Returns a JS `Map`, which keeps
- * insertion order and accepts any key type.
+ * ClickHouse maps are NOT unique by key (the docs state a map can contain two
+ * elements with the same key), so this returns one entry per pair, in wire
+ * order, DUPLICATES INCLUDED. Prefer it over {@link readMap} whenever a repeated
+ * key (or the exact pair order) must be preserved: `readMap` folds the same
+ * pairs into a JS `Map`, which keeps only the last value of a repeated key.
  *
- * Reference shape; when generating code, MONOMORPHIZE — inline both reads in the
+ * The key is read BEFORE the value in each pair.
+ *
+ * Reference shape; when generating code, MONOMORPHIZE: inline both reads in the
+ * loop.
+ */
+export function readMapEntries<K, V>(
+  readKey: Reader<K>,
+  readValue: Reader<V>,
+): Reader<Array<[K, V]>> {
+  return (state) => {
+    const n = readUVarint(state);
+    const out: Array<[K, V]> = [];
+    for (let i = 0; i < n; i++) {
+      const key = readKey(state);
+      out.push([key, readValue(state)]);
+    }
+    return out;
+  };
+}
+
+/**
+ * Read a `Map(K, V)` into a JS `Map` (which keeps insertion order and accepts
+ * any key type). Wire-identical to {@link readMapEntries}, which it wraps.
+ *
+ * LOSSY for repeated keys: `Map` holds one value per key, so pairs sharing a key
+ * collapse to the last value read (ClickHouse itself allows duplicate keys). Use
+ * {@link readMapEntries} when that matters.
+ *
+ * Reference shape; when generating code, MONOMORPHIZE: inline both reads in the
  * loop.
  */
 export function readMap<K, V>(
   readKey: Reader<K>,
   readValue: Reader<V>,
 ): Reader<Map<K, V>> {
-  return (state) => {
-    const n = readUVarint(state);
-    const out = new Map<K, V>();
-    for (let i = 0; i < n; i++) {
-      const key = readKey(state);
-      out.set(key, readValue(state));
-    }
-    return out;
-  };
+  const readEntries = readMapEntries(readKey, readValue);
+  return (state) => new Map<K, V>(readEntries(state));
+}
+
+/**
+ * Per-value knobs for the schema-driven readers ({@link astToReader} in
+ * `compile.ts` and {@link readDynamicType} in `dynamic.ts`). The hand-written
+ * combinators take the choice directly (see {@link readMap} vs
+ * {@link readMapEntries}).
+ */
+export interface ReadOptions {
+  /**
+   * Decode every `Map(K, V)` in the value as its raw pair list
+   * ({@link readMapEntries}) instead of a JS `Map` ({@link readMap}), so pairs
+   * that share a key are all preserved. Applies at any nesting depth. Defaults
+   * to `false` (a `Map`), the long-standing shape.
+   */
+  mapAsEntries?: boolean;
 }
 
 /**

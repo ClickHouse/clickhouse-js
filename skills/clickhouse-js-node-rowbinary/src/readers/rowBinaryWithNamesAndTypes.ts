@@ -15,6 +15,7 @@ import type { Reader, Cursor } from "./core.js";
 import { readHeader } from "./header.js";
 import { readRows } from "./rows.js";
 import { astToReader, RowBinaryTypeError } from "./compile.js";
+import type { ReadOptions } from "./composite.js";
 
 /** One decoded row, keyed by column name. */
 export type Row = Record<string, unknown>;
@@ -46,8 +47,14 @@ export interface CompiledStream {
  * {@link RowBinaryTypeError} if the parser rejects the string (e.g. the
  * deliberately unsupported `AggregateFunction` / `SimpleAggregateFunction`) —
  * carrying the `typeString` and the parse `position`.
+ *
+ * `options` is passed straight to {@link astToReader} (e.g. `mapAsEntries` to
+ * keep Map pairs that share a key).
  */
-export function typeStringToReader(typeStr: string): Reader<unknown> {
+export function typeStringToReader(
+  typeStr: string,
+  options: ReadOptions = {},
+): Reader<unknown> {
   const result = parseDataType(typeStr);
   if (!result.ok()) {
     const err = result.error!;
@@ -56,7 +63,7 @@ export function typeStringToReader(typeStr: string): Reader<unknown> {
       { typeString: typeStr, position: err.position },
     );
   }
-  return astToReader(result.ast!);
+  return astToReader(result.ast!, options);
 }
 
 /** Resolves a ClickHouse type string to a reader — `typeStringToReader` or a cache wrapping it. */
