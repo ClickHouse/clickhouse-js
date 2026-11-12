@@ -3,7 +3,9 @@
 ## Bug fixes
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
+- (Node.js only) An insert from an object-mode stream no longer sends each row as a separate HTTP chunk when the request compression is off. Before, each row added about 5 bytes of chunk framing and caused one socket write. For example, an insert of 1000 `JSONEachRow` rows of the form `{ x: i }` sent 1000 chunks and 14,895 bytes. It now sends 1 chunk and 9,903 bytes. The client collects the rows in batches of up to 64 KiB. It sends a smaller batch at the end of the current turn of the event loop. This way, a slow source does not keep its rows in the buffer. ([#988])
 
+[#988]: https://github.com/ClickHouse/clickhouse-js/issues/988
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
