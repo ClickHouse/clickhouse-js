@@ -111,6 +111,29 @@ describe("[Node.js] mapStream", () => {
     expect(chunks).toEqual([]);
   });
 
+  it("should fail when a row cannot be encoded, with rows in the batch", async () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const source = new Stream.Readable({ objectMode: true, read() {} });
+    const stream = mapStream(toRow);
+    const chunks: string[] = [];
+    const sink = new Stream.Writable({
+      write(chunk: Buffer, _encoding, callback) {
+        chunks.push(chunk.toString());
+        callback();
+      },
+    });
+    const result = Stream.promises.pipeline(source, stream, sink);
+    source.push({ x: 1 });
+    source.push(circular);
+    source.push({ x: 2 });
+    await expect(result).rejects.toThrow(TypeError);
+    await nextEventLoopTurn();
+    expect(stream.destroyed).toBe(true);
+    // The rows in the batch are dropped, not sent after the failure.
+    expect(chunks).toEqual([]);
+  });
+
   it("should not send the batch after the stream is destroyed", async () => {
     const stream = mapStream(toRow);
     const chunks: string[] = [];

@@ -70,7 +70,14 @@ export function mapStream(
   return new Stream.Transform({
     objectMode: true,
     transform(chunk, encoding, callback) {
-      batch += mapper(chunk);
+      try {
+        batch += mapper(chunk);
+      } catch (err) {
+        // For example, JSON.stringify of an object with a circular reference.
+        // Fail the stream instead of throwing from the callback.
+        batch = "";
+        return callback(err as Error);
+      }
       // The stream stops its source when the consumer is slow. It does this
       // only for data that it sends from this callback. For this reason, send
       // the batch from here when the batch is full or the output buffer is full.
