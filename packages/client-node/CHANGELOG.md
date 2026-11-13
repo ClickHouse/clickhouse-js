@@ -6,6 +6,24 @@
 
 [#1124]: https://github.com/ClickHouse/clickhouse-js/pull/1124
 
+## New features
+
+- (Experimental) Added an optional [undici](https://undici.nodejs.org) transport. Set the new `transport` option to send the requests with undici instead of the built-in `node:http` / `node:https` modules. The default does not change. `undici` is not a dependency of the package (also not an optional peer dependency, so an application that depends on another undici major version can still install the client), and only the new `@clickhouse/client/undici` entry point loads it. Install it with `npm install undici@^8.12.3`: the supported versions are 8.12.3 and later 8.x versions (they need Node.js 22.19.0 or later), and `undiciTransport()` throws an error for other versions. The `tls`, `keep_alive.enabled`, `keep_alive.idle_socket_ttl`, `max_open_connections`, `request_timeout` and `max_response_headers_size` options apply to the undici transport too. You cannot use `transport` together with `http_agent`. With undici, `X-ClickHouse-Progress` headers do not restart the `request_timeout` timer, so a long-running query that returns its first rows late needs a longer `request_timeout`. The undici transport does not work on Bun. The errors do not depend on the transport: the undici transport gives the same messages and codes as the default transport (for example `ECONNRESET` and `"socket hang up"`), with the original undici error in `cause`. One exception: an invalid HTTP response gives no `HPE_*` code, because undici 8 does not set it. The undici transport passes `abort_signal` to undici unchanged, so with this transport an `abort_signal` that is already aborted rejects without sending the request, and an abort while the response body streams stops the stream. ([#1128])
+
+  ```ts
+  import { createClient } from "@clickhouse/client";
+  import { undiciTransport } from "@clickhouse/client/undici";
+
+  const client = createClient({
+    url: "http://localhost:8123",
+    transport: undiciTransport(),
+  });
+  ```
+
+  In native ESM (for example an `.mjs` file without a bundler), import `@clickhouse/client/undici/index.js` instead: the package has no `exports` field, so native ESM does not resolve the shorter path.
+
+[#1128]: https://github.com/ClickHouse/clickhouse-js/pull/1128
+
 ## Bug fixes
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])

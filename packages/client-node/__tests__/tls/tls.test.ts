@@ -5,7 +5,12 @@ import * as fs from "fs";
 import Http from "http";
 import https from "node:https";
 import type Stream from "stream";
-import { createClient } from "../../src";
+import { createClient as createNodeClient } from "../../src";
+
+// Goes through the test setup, so that CLICKHOUSE_TEST_TRANSPORT applies
+// (see packages/client-node/vitest.setup.ts).
+const createClient: typeof createNodeClient = (config) =>
+  (globalThis as any).environmentSpecificCreateClient(config);
 import Https from "https";
 import http from "http";
 import { vi } from "vitest";

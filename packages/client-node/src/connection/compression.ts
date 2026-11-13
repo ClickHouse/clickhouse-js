@@ -8,11 +8,12 @@ type DecompressResponseResult =
   { response: Stream.Readable } | { error: Error };
 
 export function decompressResponse(
-  response: Http.IncomingMessage,
+  response: Stream.Readable,
+  headers: Http.IncomingHttpHeaders,
   log_writer: LogWriter,
   log_level: ClickHouseLogLevel,
 ): DecompressResponseResult {
-  const encoding = response.headers["content-encoding"];
+  const encoding = headers["content-encoding"];
 
   // No `Content-Encoding`: nothing to decompress.
   if (encoding === undefined) {

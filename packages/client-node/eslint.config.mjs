@@ -26,6 +26,9 @@ export default defineConfig(
       "dist",
       "node_modules",
       "webpack",
+      // Hand-written CommonJS shims of the `@clickhouse/client/undici` entry
+      // point (see undici/index.js), not TypeScript sources.
+      "undici",
     ],
   },
 );

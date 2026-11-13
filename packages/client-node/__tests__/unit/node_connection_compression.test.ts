@@ -169,6 +169,7 @@ describe("Node.js Connection compression", () => {
         );
         const result = decompressResponse(
           response,
+          response.headers,
           logWriter,
           ClickHouseLogLevel.OFF,
         );

@@ -10,6 +10,7 @@ import net from "net";
 import type Stream from "stream";
 import type { ClickHouseClientConfigOptions } from "@clickhouse/client";
 import { AddressInfo } from "net";
+import { isUndiciTestTransport } from "../utils/feature_detection";
 
 const ClientTimeout = 10; // ms
 const Iterations = 5;
@@ -371,7 +372,14 @@ describe.concurrent("Server that drops connections", () => {
     if (ping2.success) {
       throw new Error("Ping should have failed");
     }
-    expect(String(ping2.error)).toMatch(/ECONNRESET/i);
+    expect((ping2.error as NodeJS.ErrnoException).code).toBe("ECONNRESET");
+    // The message depends on timing: the sleep(0) above waits for the
+    // sleep(0) in the node:http transport. undici sends the request at once,
+    // so the server closes the connection while the request is in progress,
+    // and the message is "socket hang up" (with the same code).
+    if (!isUndiciTestTransport()) {
+      expect(String(ping2.error)).toMatch(/ECONNRESET/i);
+    }
 
     await client.close();
     await closeServer(server);

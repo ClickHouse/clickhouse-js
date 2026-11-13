@@ -142,6 +142,7 @@ When creating a client instance, the following connection settings can be adjust
 | **keep_alive**?: `{ **enabled**?: boolean, **idle_socket_ttl**?: number }` | -                                                           | -             | [Keep Alive docs](/integrations/language-clients/js/index#keep-alive-configuration-nodejs-only)                                      |
 | **http_agent**?: http.Agent \| https.Agent <br/><Badge color="green" icon="flask">Experimental</Badge>       | Custom HTTP agent for the client.                           | -             | [HTTP agent docs](/integrations/language-clients/js/index#custom-httphttps-agent-experimental-nodejs-only)                           |
 | **set_basic_auth_header**?: boolean <br/><Badge color="green" icon="flask">Experimental</Badge>              | Set the `Authorization` header with basic auth credentials. | `true`        | [this setting usage in the HTTP agent docs](/integrations/language-clients/js/index#custom-httphttps-agent-experimental-nodejs-only) |
+| **transport**?: TransportFactory <br/><Badge color="green" icon="flask">Experimental</Badge>                  | The HTTP transport. Use `undiciTransport()` from `@clickhouse/client/undici` to send the requests with undici. | `node:http` / `node:https` | [undici transport docs](/integrations/language-clients/js/index#undici-transport-experimental-nodejs-only) |
 
 ### URL configuration {#url-configuration}
 
@@ -1377,6 +1378,56 @@ const client = createClient({
 ```
 
 With certificates _and_ a custom _HTTPS_ Agent, it is likely necessary to disable the default authorization header via the `set_basic_auth_header` setting (introduced in 1.2.0), as it conflicts with the TLS headers. All the TLS headers should be provided manually.
+
+### undici transport (experimental, Node.js only) {#undici-transport-experimental-nodejs-only}
+
+<Warning>
+This is an experimental feature that may change in backwards-incompatible ways in the future releases.
+</Warning>
+
+By default, the client sends the requests with the built-in `node:http` and `node:https` modules. You can use [undici](https://undici.nodejs.org) instead. `undici` is not a dependency of the client: the client does not install it. Install it yourself. The supported versions are 8.12.3 and later 8.x versions (they need Node.js 22.19.0 or later); `undiciTransport()` throws an error for other versions. An application that depends on another undici major version for other code can still install and use the client, but only with the default transport.
+
+```sh
+npm install undici@^8.12.3
+```
+
+Then set the `transport` option with the factory from the `@clickhouse/client/undici` entry point. Only this entry point loads undici:
+
+```ts
+import { createClient } from '@clickhouse/client'
+import { undiciTransport } from '@clickhouse/client/undici'
+
+const client = createClient({
+  url: 'http://localhost:8123',
+  transport: undiciTransport(),
+})
+```
+
+In native ESM (an `.mjs` file, or a package with `"type": "module"` that Node.js runs without a bundler), import the entry point by its full path: `@clickhouse/client/undici/index.js`. Native ESM does not resolve the shorter path, because the package has no `exports` field. CommonJS, TypeScript and bundlers accept both paths.
+
+The following options apply to the undici transport too:
+- `max_open_connections` sets the maximum number of connections.
+- `tls` sets the TLS certificates. The TLS auth headers are the same as with the default transport.
+- `keep_alive.enabled` and `keep_alive.idle_socket_ttl` control the keep-alive sockets. undici also uses the server `Keep-Alive: timeout=N` hint, but it never keeps an idle socket for longer than `idle_socket_ttl`. The `keep_alive.eagerly_destroy_stale_sockets` option has no effect.
+- `request_timeout` is the maximum time to connect, the maximum time to wait for the response headers, and then the maximum idle time between two parts of the response body. A result that the application does not read frees its connection after `request_timeout`, the same as with the default transport.
+- **Progress headers do not restart the timeout.** With the default transport, each `X-ClickHouse-Progress` header (`send_progress_in_http_headers`) restarts the `request_timeout` timer. With undici, `request_timeout` is the total time until all the response headers arrive. ClickHouse sends the headers only when the result starts. So for a long-running query that returns its first rows late, set a `request_timeout` that is longer than that query.
+- `max_response_headers_size` sets the maximum size of the response headers.
+
+To set other undici `Agent` options, use `agent_options`. These values override the values from the client configuration:
+
+```ts
+const client = createClient({
+  transport: undiciTransport({
+    agent_options: { connect: { timeout: 5_000 } },
+  }),
+})
+```
+
+Limitations:
+- You cannot use `transport` together with `http_agent`.
+- The undici transport does not work on Bun. Bun replaces the `undici` module with its own implementation, which does not have `Agent.request()`. The client throws an error when you create it. On Bun, use the default transport.
+- The errors are the same as with the default transport: the same messages and codes (for example `ECONNRESET` and `"socket hang up"`), with the original undici error in `cause`. One exception: an invalid HTTP response gives no `HPE_*` code, because undici 8 does not set it.
+- The `abort_signal` goes to undici unchanged. With the undici transport, a signal that is already aborted rejects without sending the request, and an abort while the response body streams stops the stream.
 
 ## Known limitations (Node.js/web) {#known-limitations-nodejsweb}
 
