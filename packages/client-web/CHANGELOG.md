@@ -4,10 +4,13 @@
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 
+- (Web only) An `abort_signal` shared by several in-flight requests now cancels all of them, and a handler that the caller set on `signal.onabort` still runs. Before, each request replaced that handler, so `abort()` cancelled only the last request and the caller's handler did not run. An abort while the response body is being read still cancels that read. ([#1135])
+
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
+[#1135]: https://github.com/ClickHouse/clickhouse-js/issues/1135
 
 # 1.25.0
 
