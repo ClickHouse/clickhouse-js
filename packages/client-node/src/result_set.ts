@@ -10,7 +10,8 @@ import type {
   Row,
 } from "./common/index";
 import {
-  extractErrorAtTheEndOfChunk,
+  errorFromExceptionBlock,
+  matchExceptionBlockStart,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
@@ -28,6 +29,17 @@ import Stream, { Transform } from "stream";
 import { getAsText } from "./utils";
 
 const NEWLINE = 0x0a as const;
+
+/** The last byte of the incomplete row, or `undefined` if it is empty. */
+function lastByte(chunks: Buffer[]): number | undefined {
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const chunk = chunks[i]!;
+    if (chunk.length > 0) {
+      return chunk[chunk.length - 1];
+    }
+  }
+  return undefined;
+}
 
 /** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
  * Everything else is an exact copy from stream.d.ts */
@@ -217,9 +229,24 @@ export class ResultSet<
     validateStreamFormat(this.format);
 
     const incompleteChunks: Buffer[] = [];
+    // The bytes from the start of a row up to a `\r\n` that can open a
+    // mid-stream exception block, when the chunk ends before it is possible to
+    // decide. The first bytes of the next chunk decide.
+    let undecidedBytes: Buffer | undefined;
+    // A mid-stream exception block, collected until it is complete.
+    let exceptionBlock: Buffer | undefined;
     const logError = this.log_error;
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
+    const toRow = (bytes: Buffer): Row => {
+      const text = bytes.toString();
+      return {
+        text,
+        json<T>(): T {
+          return jsonHandling.parse(text);
+        },
+      };
+    };
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
     const toRows = new Transform({
@@ -229,7 +256,40 @@ export class ResultSet<
         callback: TransformCallback,
       ) {
         resultSet.span_bytes += chunk.length;
+
+        if (exceptionBlock !== undefined && exceptionTag !== undefined) {
+          exceptionBlock = Buffer.concat([exceptionBlock, chunk]);
+          return callback(
+            errorFromExceptionBlock(exceptionBlock, exceptionTag),
+          );
+        }
         const rows: Row[] = [];
+
+        if (undecidedBytes !== undefined && exceptionTag !== undefined) {
+          // The kept bytes are a row, its `\r\n`, and the start of a possible
+          // exception block opening. Decide with the first bytes of the chunk.
+          const rowEnd = undecidedBytes.indexOf(NEWLINE);
+          const afterRow = undecidedBytes.subarray(rowEnd + 1);
+          if (
+            afterRow.indexOf(NEWLINE) === -1 &&
+            matchExceptionBlockStart(
+              chunk,
+              0,
+              exceptionTag,
+              afterRow.length,
+            ) === "none"
+          ) {
+            // Not an exception block: the kept row is complete, and the bytes
+            // after it start the next row. Scan the chunk without a copy.
+            rows.push(toRow(undecidedBytes.subarray(0, rowEnd)));
+            if (afterRow.length > 0) {
+              incompleteChunks.push(afterRow);
+            }
+          } else {
+            chunk = Buffer.concat([undecidedBytes, chunk]);
+          }
+          undecidedBytes = undefined;
+        }
 
         let lastIdx = 0;
         let currentChunkPart: Buffer;
@@ -246,13 +306,42 @@ export class ResultSet<
             }
             break;
           } else {
-            // Check for exception in the chunk (only after 25.11)
+            // Check for a mid-stream exception block (only after 25.11). The
+            // `\r`-before-`\n` test is a cheap pre-filter; the block is only
+            // confirmed by its opening marker and the random tag, so a stray
+            // `\r\n` in a successful response body (binary Parquet, CRLF
+            // CSV/TSV rows) is not a false positive. The block can be split
+            // across chunks: it is collected until it is complete, and its
+            // bytes are never emitted as rows.
             if (
               exceptionTag !== undefined &&
-              idx >= 1 &&
-              chunk[idx - 1] === CARET_RETURN
+              (idx > 0 ? chunk[idx - 1] : lastByte(incompleteChunks)) ===
+                CARET_RETURN
             ) {
-              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag));
+              const match = matchExceptionBlockStart(
+                chunk,
+                idx + 1,
+                exceptionTag,
+              );
+              if (match !== "none") {
+                if (rows.length > 0) {
+                  resultSet.addSpanRows(rows.length);
+                  this.push(rows);
+                }
+                if (match === "partial") {
+                  incompleteChunks.push(chunk.subarray(lastIdx));
+                  undecidedBytes = Buffer.concat(incompleteChunks);
+                  incompleteChunks.length = 0;
+                  return callback();
+                }
+                // The rest of the response is the exception block. A row that
+                // is cut by it, if any, is incomplete and is dropped.
+                incompleteChunks.length = 0;
+                exceptionBlock = chunk.subarray(idx + 1);
+                return callback(
+                  errorFromExceptionBlock(exceptionBlock, exceptionTag),
+                );
+              }
             }
 
             if (incompleteChunks.length > 0) {
@@ -265,15 +354,36 @@ export class ResultSet<
               currentChunkPart = chunk.subarray(lastIdx, idx);
             }
 
-            const text = currentChunkPart.toString();
-            rows.push({
-              text,
-              json<T>(): T {
-                return jsonHandling.parse(text);
-              },
-            });
+            rows.push(toRow(currentChunkPart));
             lastIdx = idx + 1; // skipping newline character
           }
+        }
+        callback();
+      },
+      flush(callback: TransformCallback) {
+        if (exceptionBlock !== undefined && exceptionTag !== undefined) {
+          return callback(
+            errorFromExceptionBlock(exceptionBlock, exceptionTag, true),
+          );
+        }
+        if (undecidedBytes !== undefined) {
+          // The response ended before these bytes could complete an exception
+          // block opening. Without the tag, they cannot be told from data, so
+          // they are rows (e.g. the end of a CRLF-terminated CSV/TSV response).
+          const rows: Row[] = [];
+          let lastIdx = 0;
+          while (true) {
+            const idx = undecidedBytes.indexOf(NEWLINE, lastIdx);
+            if (idx === -1) {
+              // The bytes after the last newline are not a complete row. They
+              // are dropped, the same as `incompleteChunks` at the end.
+              break;
+            }
+            rows.push(toRow(undecidedBytes.subarray(lastIdx, idx)));
+            lastIdx = idx + 1;
+          }
+          resultSet.addSpanRows(rows.length);
+          this.push(rows);
         }
         callback();
       },
