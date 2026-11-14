@@ -94,11 +94,11 @@ Apply them in this order:
 A missing reproduction lowers the confidence, not the level. Record the
 confidence with the value when the tool that sets it supports it:
 
-| Confidence | Use when                                                                                 |
-| ---------- | ---------------------------------------------------------------------------------------- |
-| `HIGH`     | a run shows the problem (or, for a feature, code inspection confirms its absence on `main`) |
+| Confidence | Use when                                                                                             |
+| ---------- | ---------------------------------------------------------------------------------------------------- |
+| `HIGH`     | a run shows the problem (or, for a feature, code inspection confirms its absence on `main`)          |
 | `MEDIUM`   | code inspection shows a defect, but no reproduction was run (for example, it needs ClickHouse Cloud) |
-| `LOW`      | the report lacks what a reproduction needs, or a run did not show the problem            |
+| `LOW`      | the report lacks what a reproduction needs, or a run did not show the problem                        |
 
 ## 6. Reason
 
