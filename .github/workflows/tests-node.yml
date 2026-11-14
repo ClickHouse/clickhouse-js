@@ -81,9 +81,6 @@ jobs:
         run: |
           npm run lint
 
-      # The Prettier check is in format.yml. It runs for every PR, also for a PR
-      # that does not change the packages.
-
   unit-tests:
     timeout-minutes: 5
     runs-on: ubuntu-latest
