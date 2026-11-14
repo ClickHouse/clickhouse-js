@@ -103,13 +103,51 @@ describe("Columns types parser - DateTime and DateTime64", () => {
     });
 
     it("should throw on invalid DateTime64 precision", async () => {
-      const args = [[`DateTime64(')`], [`DateTime64(foo)`]];
+      const args = [[`DateTime64(')`], [`DateTime64(foo)`], ["DateTime64(10)"]];
       args.forEach(([columnType]) => {
         expect(
           () => parseDateTime64Type({ columnType, sourceType: columnType }),
           `Expected ${columnType} to throw`,
         ).toThrowError("Invalid DateTime64 precision");
       });
+    });
+
+    it("should throw on malformed parameter lists", async () => {
+      const args: [string, string][] = [
+        ["DateTime64(12, 'UTC')", "Invalid DateTime64 precision"],
+        ["DateTime64(10)", "Invalid DateTime64 precision"],
+        ["DateTime64(3, UTC)", "Invalid DateTime64 timezone"],
+        ["DateTime64(3, 'UTC", "Invalid DateTime64 type"],
+        ["DateTime64(3, 'UTC' 'extra')", "Invalid DateTime64 timezone"],
+        ["DateTime64(3, )", "Invalid DateTime64 timezone"],
+        ["DateTime64(3", "Invalid DateTime64 type"],
+        ["DateTime64()", "Invalid DateTime64 type"],
+      ];
+      args.forEach(([columnType, message]) => {
+        expect(
+          () => parseDateTime64Type({ columnType, sourceType: columnType }),
+          `Expected ${columnType} to throw ${message}`,
+        ).toThrowError(message);
+      });
+    });
+
+    it("should parse multi-digit precision rejection and timezone with comma", async () => {
+      const result = parseDateTime64Type({
+        columnType: "DateTime64(3, 'Europe/Kiev')",
+        sourceType: "DateTime64(3, 'Europe/Kiev')",
+      });
+      expect(result).toEqual({
+        type: "DateTime64",
+        timezone: "Europe/Kiev",
+        sourceType: "DateTime64(3, 'Europe/Kiev')",
+        precision: 3,
+      });
+
+      const withComma = parseDateTime64Type({
+        columnType: "DateTime64(9, ',')",
+        sourceType: "DateTime64(9, ',')",
+      });
+      expect(withComma.timezone).toBe(",");
     });
   });
 });
