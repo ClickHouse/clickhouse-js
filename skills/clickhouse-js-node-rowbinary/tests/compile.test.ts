@@ -102,6 +102,70 @@ describe("astToReader (AST -> Reader fold)", () => {
     ).toEqual(42);
   });
 
+  it("resolves the names of an Enum8 without numbers", async () => {
+    expect(await fold("Enum8('a', 'b')", "CAST('b' AS Enum8('a', 'b'))")).toBe(
+      "b",
+    );
+  });
+
+  it("resolves the names of an Enum16 without numbers", async () => {
+    expect(
+      await fold("Enum16('a', 'b')", "CAST('b' AS Enum16('a', 'b'))"),
+    ).toBe("b");
+  });
+
+  it("continues the numbers from an explicit first element", async () => {
+    expect(
+      await fold("Enum8('a' = 5, 'b')", "CAST('b' AS Enum8('a' = 5, 'b'))"),
+    ).toBe("b");
+  });
+
+  it("continues the numbers from a negative first element", async () => {
+    expect(
+      await fold(
+        "Enum8('a' = -3, 'b', 'c')",
+        "CAST('c' AS Enum8('a' = -3, 'b', 'c'))",
+      ),
+    ).toBe("c");
+  });
+
+  it("keeps an equals sign that is part of an enum name", async () => {
+    expect(
+      await fold("Enum8('x=y', 'b')", "CAST('x=y' AS Enum8('x=y', 'b'))"),
+    ).toBe("x=y");
+  });
+
+  it("reads an Enum without numbers as Enum8", async () => {
+    expect(await fold("Enum('a', 'b')", "CAST('b' AS Enum('a', 'b'))")).toBe(
+      "b",
+    );
+  });
+
+  it("reads an Enum without numbers as Enum16 when a number does not fit in Int8", async () => {
+    expect(
+      await fold("Enum('a' = 127, 'b')", "CAST('b' AS Enum('a' = 127, 'b'))"),
+    ).toBe("b");
+  });
+
+  it("resolves the names of an Enum without numbers inside an Array", async () => {
+    expect(
+      await fold(
+        "Array(Enum8('a', 'b'))",
+        "CAST(['b', 'a'] AS Array(Enum8('a', 'b')))",
+      ),
+    ).toEqual(["b", "a"]);
+  });
+
+  it("returns the stringified number for an Enum8 without elements", async () => {
+    expect(await fold("Enum8", "CAST('b' AS Enum8('a' = 1, 'b' = 2))")).toBe(
+      "2",
+    );
+  });
+
+  it("throws a typed RowBinaryTypeError for an Enum without elements", () => {
+    expect(() => reader("Enum")).toThrow(RowBinaryTypeError);
+  });
+
   it("throws a typed RowBinaryTypeError for a non-type AST node (a Literal argument)", () => {
     // FixedString(16)'s argument is a Literal — not a standalone column type.
     const ast = parseDataType("FixedString(16)");
