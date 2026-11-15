@@ -27,6 +27,8 @@ const rs = await client.query({
 
 ## Bug fixes
 
+- A custom `content-type` header in `http_headers` no longer makes a `multipart/form-data` request invalid. Fetch joined the custom value and the generated `Content-Type` into one value, so the server could not find the multipart boundary. The client now removes the custom header, in any case, from requests that use `use_multipart_params` or `external_data`. ([#1146])
+
 - A request with a body larger than 64 KiB no longer fails with `TypeError: Failed to fetch` when `keep_alive` is enabled (the default). Browsers reject a `fetch()` request that has `keepalive: true` and a body larger than 64 KiB, so the client now sends such a request without the `keepalive` flag. This applies to `query()`, `command()`, `exec()` and `insert()`. ([#1146])
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])

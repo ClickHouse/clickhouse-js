@@ -106,7 +106,7 @@ export class WebConnection implements Connection<ReadableStream> {
     // The `default_format` setting gives the format of a query(). The server
     // uses a custom `X-ClickHouse-Format` header instead of that setting.
     // For this reason, the client does not send the header.
-    const headers = withoutHeader(
+    let headers = withoutHeader(
       this.defaultHeadersWithOverride(params),
       FORMAT_HEADER_NAME,
     );
@@ -119,7 +119,7 @@ export class WebConnection implements Connection<ReadableStream> {
         }
       }
       body = buildWebExternalMultipartBody(fields, externalData, boundary);
-      headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
+      headers = withMultipartContentType(headers, boundary);
     } else if (useMultipartParams && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
       const multipartParts: Record<string, string> = { query: params.query };
@@ -127,7 +127,7 @@ export class WebConnection implements Connection<ReadableStream> {
         multipartParts[`param_${key}`] = formatQueryParams({ value });
       }
       body = buildMultipartBody(multipartParts, boundary);
-      headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
+      headers = withMultipartContentType(headers, boundary);
     }
 
     const response = await this.request({
@@ -366,10 +366,10 @@ export class WebConnection implements Connection<ReadableStream> {
         }
       }
       body = buildWebExternalMultipartBody(fields, externalData, boundary);
-      headers = {
-        ...this.defaultHeadersWithOverride(params),
-        "Content-Type": `multipart/form-data; boundary=${boundary}`,
-      };
+      headers = withMultipartContentType(
+        this.defaultHeadersWithOverride(params),
+        boundary,
+      );
     }
 
     const response = await this.request({
@@ -431,6 +431,19 @@ export class WebConnection implements Connection<ReadableStream> {
       Authorization: authHeader,
     };
   }
+}
+
+// Fetch joins header names that differ only in case into one value. Thus, a
+// custom `content-type` header in another case would make the multipart
+// `Content-Type` invalid; remove every case variant first.
+function withMultipartContentType(
+  headers: Record<string, string>,
+  boundary: string,
+): Record<string, string> {
+  return {
+    ...withoutHeader(headers, "Content-Type"),
+    "Content-Type": `multipart/form-data; boundary=${boundary}`,
+  };
 }
 
 function buildWebExternalMultipartBody(

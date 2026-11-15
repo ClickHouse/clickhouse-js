@@ -105,4 +105,34 @@ describe("[Web] external_data unit tests", () => {
 
     await client.close();
   });
+
+  it("replaces a custom content-type header in any case with the multipart Content-Type", async () => {
+    const fetchStub = stubFetch();
+    const client = createClient({
+      url: "https://localhost:8443",
+      fetch: fetchStub,
+      http_headers: { "content-type": "text/plain" },
+    });
+    const external_data = [
+      { name: "ext", structure: "id String", data: "a\n" },
+    ];
+
+    await client.query({ query: "SELECT * FROM ext", external_data });
+    await client.command({ query: "SELECT * FROM ext", external_data });
+    await client.exec({ query: "SELECT * FROM ext", external_data });
+    await client.query({
+      query: "SELECT {id:String}",
+      query_params: { id: "a" },
+      use_multipart_params: true,
+    });
+
+    expect(fetchStub).toHaveBeenCalledTimes(4);
+    for (const [, init] of fetchStub.mock.calls as [string, RequestInit][]) {
+      const contentType = new Headers(init.headers).get("Content-Type");
+      expect(contentType).toMatch(
+        /^multipart\/form-data; boundary=----clickhouse-js-[0-9a-f-]+$/,
+      );
+    }
+    await client.close();
+  });
 });
