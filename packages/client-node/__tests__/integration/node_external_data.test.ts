@@ -172,4 +172,53 @@ describe("[Node.js] external_data integration", () => {
       expect(uncaught).toEqual([]);
     });
   });
+
+  describe("cancellation", () => {
+    // `stalled` sends one chunk and then waits; `waiting` is not read yet.
+    function stalledSources() {
+      const stalled = new Stream.Readable({ read() {} });
+      stalled.push("a\n");
+      const waiting = new Stream.Readable({ read() {} });
+      return { stalled, waiting };
+    }
+
+    it("closes all source streams when the request is aborted during the upload", async () => {
+      client = createTestClient();
+      const { stalled, waiting } = stalledSources();
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 200);
+
+      await expect(
+        client.query({
+          query: "SELECT count() FROM t, u",
+          abort_signal: controller.signal,
+          external_data: [
+            { name: "t", structure: "id String", data: stalled },
+            { name: "u", structure: "id String", data: waiting },
+          ],
+        }),
+      ).rejects.toThrow(/aborted/i);
+      await sleep(50);
+      expect(stalled.destroyed).toBe(true);
+      expect(waiting.destroyed).toBe(true);
+    });
+
+    it("closes all source streams when the request times out during the upload", async () => {
+      client = createTestClient({ request_timeout: 300 });
+      const { stalled, waiting } = stalledSources();
+
+      await expect(
+        client.query({
+          query: "SELECT count() FROM t, u",
+          external_data: [
+            { name: "t", structure: "id String", data: stalled },
+            { name: "u", structure: "id String", data: waiting },
+          ],
+        }),
+      ).rejects.toThrow(/timeout/i);
+      await sleep(50);
+      expect(stalled.destroyed).toBe(true);
+      expect(waiting.destroyed).toBe(true);
+    });
+  });
 });

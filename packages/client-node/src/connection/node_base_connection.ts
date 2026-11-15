@@ -754,14 +754,26 @@ function buildNodeExternalMultipartBody(
     streamMultipartParts(fields, externalData, boundary),
     { objectMode: false },
   );
+  const sources = externalData
+    .map((ext) => ext.data)
+    .filter((data): data is Stream.Readable => isStream(data));
   // The generator reads the source streams one at a time. Without a listener,
   // an error in a source stream that the generator does not read at that time
   // is an uncaught exception. Each source error must fail the request instead.
-  for (const ext of externalData) {
-    if (isStream(ext.data)) {
-      ext.data.once("error", (err) => body.destroy(err));
-    }
+  for (const source of sources) {
+    source.once("error", (err) => body.destroy(err));
   }
+  // An abort, a timeout or a failed request destroys the body. The generator
+  // can be waiting for a chunk of a source at that time, and it does not stop
+  // until that chunk arrives. Thus, close all sources directly: this stops
+  // the generator, and releases file handles and producers of waiting sources.
+  const destroyBody = body._destroy.bind(body);
+  body._destroy = (err, callback) => {
+    for (const source of sources) {
+      source.destroy();
+    }
+    destroyBody(err, callback);
+  };
   body.on("error", ignoreBodyErrorBeforeUpload);
   return body;
 }
