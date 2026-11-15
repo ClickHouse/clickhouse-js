@@ -103,63 +103,81 @@ describe("astToReader (AST -> Reader fold)", () => {
   });
 
   it("resolves the names of an Enum8 without numbers", async () => {
-    expect(await fold("Enum8('a', 'b')", "CAST('b' AS Enum8('a', 'b'))")).toBe(
-      "b",
+    const s = new Cursor(
+      await query("SELECT CAST('b' AS Enum8('a', 'b')) FORMAT RowBinary"),
     );
+    expect(reader("Enum8('a', 'b')")(s)).toBe("b");
+    expect(s.pos).toBe(s.buf.length);
   });
 
   it("resolves the names of an Enum16 without numbers", async () => {
-    expect(
-      await fold("Enum16('a', 'b')", "CAST('b' AS Enum16('a', 'b'))"),
-    ).toBe("b");
+    const s = new Cursor(
+      await query("SELECT CAST('b' AS Enum16('a', 'b')) FORMAT RowBinary"),
+    );
+    expect(reader("Enum16('a', 'b')")(s)).toBe("b");
+    expect(s.pos).toBe(s.buf.length);
   });
 
   it("continues the numbers from an explicit first element", async () => {
-    expect(
-      await fold("Enum8('a' = 5, 'b')", "CAST('b' AS Enum8('a' = 5, 'b'))"),
-    ).toBe("b");
+    const s = new Cursor(
+      await query("SELECT CAST('b' AS Enum8('a' = 5, 'b')) FORMAT RowBinary"),
+    );
+    expect(reader("Enum8('a' = 5, 'b')")(s)).toBe("b");
+    expect(s.pos).toBe(s.buf.length);
   });
 
   it("continues the numbers from a negative first element", async () => {
-    expect(
-      await fold(
-        "Enum8('a' = -3, 'b', 'c')",
-        "CAST('c' AS Enum8('a' = -3, 'b', 'c'))",
+    const s = new Cursor(
+      await query(
+        "SELECT CAST('c' AS Enum8('a' = -3, 'b', 'c')) FORMAT RowBinary",
       ),
-    ).toBe("c");
+    );
+    expect(reader("Enum8('a' = -3, 'b', 'c')")(s)).toBe("c");
+    expect(s.pos).toBe(s.buf.length);
   });
 
   it("keeps an equals sign that is part of an enum name", async () => {
-    expect(
-      await fold("Enum8('x=y', 'b')", "CAST('x=y' AS Enum8('x=y', 'b'))"),
-    ).toBe("x=y");
+    const s = new Cursor(
+      await query("SELECT CAST('x=y' AS Enum8('x=y', 'b')) FORMAT RowBinary"),
+    );
+    expect(reader("Enum8('x=y', 'b')")(s)).toBe("x=y");
+    expect(s.pos).toBe(s.buf.length);
   });
 
   it("reads an Enum without numbers as Enum8", async () => {
-    expect(await fold("Enum('a', 'b')", "CAST('b' AS Enum('a', 'b'))")).toBe(
-      "b",
+    const s = new Cursor(
+      await query("SELECT CAST('b' AS Enum('a', 'b')) FORMAT RowBinary"),
     );
+    expect(reader("Enum('a', 'b')")(s)).toBe("b");
+    expect(s.pos).toBe(s.buf.length);
   });
 
   it("reads an Enum without numbers as Enum16 when a number does not fit in Int8", async () => {
-    expect(
-      await fold("Enum('a' = 127, 'b')", "CAST('b' AS Enum('a' = 127, 'b'))"),
-    ).toBe("b");
+    const s = new Cursor(
+      await query("SELECT CAST('b' AS Enum('a' = 127, 'b')) FORMAT RowBinary"),
+    );
+    expect(reader("Enum('a' = 127, 'b')")(s)).toBe("b");
+    expect(s.pos).toBe(s.buf.length);
   });
 
   it("resolves the names of an Enum without numbers inside an Array", async () => {
-    expect(
-      await fold(
-        "Array(Enum8('a', 'b'))",
-        "CAST(['b', 'a'] AS Array(Enum8('a', 'b')))",
+    const s = new Cursor(
+      await query(
+        "SELECT CAST(['b', 'a'] AS Array(Enum8('a', 'b'))) FORMAT RowBinary",
       ),
-    ).toEqual(["b", "a"]);
+    );
+    expect(reader("Array(Enum8('a', 'b'))")(s)).toEqual(["b", "a"]);
+    expect(s.pos).toBe(s.buf.length);
   });
 
   it("returns the stringified number for an Enum8 without elements", async () => {
-    expect(await fold("Enum8", "CAST('b' AS Enum8('a' = 1, 'b' = 2))")).toBe(
-      "2",
+    const s = new Cursor(
+      await query(
+        "SELECT CAST('b' AS Enum8('a' = 1, 'b' = 2)) FORMAT RowBinary",
+      ),
     );
+    expect(reader("Enum8")(s)).toBe("2");
+    expect(s.pos).toBe(s.buf.length);
   });
 
   it("throws a typed RowBinaryTypeError for an Enum without elements", () => {
