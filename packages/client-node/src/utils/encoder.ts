@@ -4,7 +4,11 @@ import type {
   JSONHandling,
   ValuesEncoder,
 } from "../common/index";
-import { encodeJSON, isSupportedRawFormat } from "../common/index";
+import {
+  encodeJSON,
+  isSupportedRawFormat,
+  SupportedJSONFormats,
+} from "../common/index";
 import Stream from "stream";
 import { isStream, mapStream } from "./stream";
 
@@ -74,6 +78,33 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
         );
       }
     }
+  }
+
+  encodeExternalDataStream(
+    stream: Stream.Readable,
+    format: string,
+    name: string,
+  ): Stream.Readable {
+    if (!isStream(stream)) {
+      throw new Error(
+        `external_data "${name}": expected data to be a string, Buffer/Uint8Array, array, or Readable stream, got: ${typeof stream}`,
+      );
+    }
+    if (!stream.readableObjectMode) {
+      return stream;
+    }
+    if ((SupportedJSONFormats as readonly string[]).includes(format)) {
+      return Stream.pipeline(
+        stream,
+        mapStream((value) =>
+          encodeJSON(value, format as DataFormat, this.json.stringify),
+        ),
+        pipelineCb,
+      );
+    }
+    throw new Error(
+      `external_data "${name}": object-mode streams are only supported for JSON* formats, got format "${format}".`,
+    );
   }
 }
 

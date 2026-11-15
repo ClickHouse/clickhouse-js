@@ -176,3 +176,32 @@ Mitigations (in order of preference):
   a short-lived sub-client with its own `session_id` for the unit of work.
 - **Skipping `wait_end_of_query: 1` on `SET`** — race conditions between
   `SET` and the next query can show up under load.
+
+## Per-query temporary tables without a session (`external_data`)
+
+When a temporary table is only needed inside **one** `query()` or `command()`
+(for example, joining a list of thousands of IDs without hitting the 128 KiB
+`http_max_field_value_size` limit on `query_params`), prefer `external_data`
+over `CREATE TEMPORARY TABLE`. It requires no `session_id` and works safely
+behind stateless load balancers:
+
+```ts
+const ids = ["id_1", "id_2", "id_3"];
+
+const rs = await client.query({
+  query: `
+    SELECT e.id, e.value
+    FROM events AS e
+    INNER JOIN selected_ids AS s ON e.id = s.id
+  `,
+  format: "JSONEachRow",
+  external_data: [
+    {
+      name: "selected_ids",
+      structure: "id String", // or `types: ['String']` (columns `_1`, `_2`, ...)
+      format: "TSV", // default 'TabSeparated'; also 'CSV', 'JSONEachRow', 'Parquet', ...
+      data: ids.join("\n"), // string, Buffer/Uint8Array, Stream.Readable, or JSON* row array
+    },
+  ],
+});
+```

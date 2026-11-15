@@ -24,6 +24,9 @@ export default defineConfig({
       "schema-and-deployments/url_configuration.ts",
       // Duplicate of `security/read_only_user.ts`
       "troubleshooting/read_only_user.ts",
+      // TODO: stop excluding once a @clickhouse/client-web release with
+      //  `external_data` support is published to npm.
+      "coding/external_data.ts",
     ],
     setupFiles: ["vitest.setup.ts"],
     pool: "forks",

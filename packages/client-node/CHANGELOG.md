@@ -6,6 +6,31 @@
 
 [#1124]: https://github.com/ClickHouse/clickhouse-js/pull/1124
 
+## New features
+
+- Added `external_data` support to `query()`, `command()`, and `exec()` for attaching one or more per-query temporary tables over HTTP `multipart/form-data` ([External data for query processing](https://clickhouse.com/docs/en/engines/table-engines/special/external-data)). Each `ExternalDataEntry` specifies `name`, either named `structure` or positional `types` (string or `string[]`), an optional `format` (default: `'TabSeparated'`), and `data` as a pre-serialized `string` or `Uint8Array` / `Buffer`, an array of rows for `JSON*` formats (matching `insert()`), or (Node.js only) a `Stream.Readable` (raw byte/text streams or object-mode `JSON*` streams). Because external tables travel as `multipart/form-data` file parts rather than form fields, large lookup lists (100K+ IDs) run in a single stateless request without hitting ClickHouse's 128 KiB `http_max_field_value_size` limit or requiring a `session_id`. Supported on both `@clickhouse/client` and `@clickhouse/client-web` (`ReadableStream` inputs are excluded on `@clickhouse/client-web`, matching `insert()`). ([#356])
+
+```ts
+const rs = await client.query({
+  query: `
+    SELECT e.id, e.value
+    FROM events AS e
+    INNER JOIN selected_ids AS s ON e.id = s.id
+  `,
+  format: "JSONEachRow",
+  external_data: [
+    {
+      name: "selected_ids",
+      structure: "id String",
+      format: "TSV",
+      data: largeListOfIds.join("\n"),
+    },
+  ],
+});
+```
+
+[#356]: https://github.com/ClickHouse/clickhouse-js/issues/356
+
 ## Bug fixes
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])

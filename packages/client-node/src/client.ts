@@ -1,9 +1,28 @@
-import type { DataFormat, IsSame, QueryParamsWithFormat } from "./common/index";
+import type {
+  CommandParams as BaseCommandParams,
+  DataFormat,
+  ExecParams as BaseExecParams,
+  ExecParamsWithValues as BaseExecParamsWithValues,
+  ExternalDataEntry as BaseExternalDataEntry,
+  ExternalDataInput as BaseExternalDataInput,
+  IsSame,
+  QueryParams as BaseQueryParamsWithExternal,
+  QueryParamsWithFormat as BaseQueryParamsWithFormat,
+} from "./common/index";
 import { ClickHouseClient } from "./common/index";
 import type Stream from "stream";
 import type { NodeClickHouseClientConfigOptions } from "./config";
 import { NodeConfigImpl } from "./config";
 import type { ResultSet } from "./result_set";
+
+export type ExternalDataInput = BaseExternalDataInput<Stream.Readable>;
+export type ExternalDataEntry = BaseExternalDataEntry<Stream.Readable>;
+export type QueryParams = BaseQueryParamsWithExternal<Stream.Readable>;
+export type QueryParamsWithFormat<Format extends DataFormat> =
+  BaseQueryParamsWithFormat<Format, Stream.Readable>;
+export type ExecParams = BaseExecParams<Stream.Readable>;
+export type ExecParamsWithValues = BaseExecParamsWithValues<Stream.Readable>;
+export type CommandParams = BaseCommandParams<Stream.Readable>;
 
 /** If the Format is not a literal type, fall back to the default behavior of the ResultSet,
  *  allowing to call all methods with all data shapes variants,

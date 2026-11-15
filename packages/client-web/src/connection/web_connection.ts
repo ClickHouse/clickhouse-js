@@ -1,6 +1,7 @@
 import type {
   ClickHouseSummary,
   ConnBaseQueryParams,
+  ConnCommandParams,
   ConnCommandResult,
   Connection,
   ConnectionParams,
@@ -8,10 +9,12 @@ import type {
   ConnInsertResult,
   ConnPingResult,
   ConnQueryResult,
+  PreparedExternalData,
   ResponseHeaders,
 } from "../common/index";
 import {
   buildMultipartBody,
+  buildMultipartBytes,
   serializeQueryParamsForUrl,
   formatQueryParams,
   isCredentialsAuth,
@@ -53,7 +56,7 @@ export class WebConnection implements Connection<ReadableStream> {
   }
 
   async query(
-    params: ConnBaseQueryParams,
+    params: ConnBaseQueryParams<ReadableStream>,
   ): Promise<ConnQueryResult<ReadableStream<Uint8Array>>> {
     const query_id = getQueryId(params.query_id);
     const clickhouse_settings = withHttpSettings(
@@ -61,10 +64,13 @@ export class WebConnection implements Connection<ReadableStream> {
       this.params.compression.decompress_response,
     );
 
+    const externalData = params.external_data;
+    const hasExternalData =
+      externalData !== undefined && externalData.length > 0;
     const queryParams = params.query_params;
     const hasQueryParams =
       queryParams !== undefined && Object.keys(queryParams).length > 0;
-    let useMultipart =
+    let useMultipartParams =
       hasQueryParams &&
       (params.use_multipart_params ?? this.params.use_multipart_params);
     // In auto mode, serialize the params for the URL once with an early
@@ -73,13 +79,13 @@ export class WebConnection implements Connection<ReadableStream> {
     let urlParamEntries: [string, string][] | undefined;
     if (
       hasQueryParams &&
-      !useMultipart &&
+      !useMultipartParams &&
       (params.use_multipart_params_auto ??
         this.params.use_multipart_params_auto)
     ) {
       const entries = serializeQueryParamsForUrl(queryParams);
       if (entries === null) {
-        useMultipart = true;
+        useMultipartParams = true;
       } else {
         urlParamEntries = entries;
       }
@@ -88,14 +94,15 @@ export class WebConnection implements Connection<ReadableStream> {
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings,
-      query_params: useMultipart ? undefined : params.query_params,
+      query_params: useMultipartParams ? undefined : params.query_params,
       param_entries: urlParamEntries,
+      external_data: hasExternalData ? externalData : undefined,
       session_id: params.session_id,
       role: params.role,
       query_id,
     });
 
-    let body: string = params.query;
+    let body: string | Uint8Array<ArrayBuffer> = params.query;
     // The `default_format` setting gives the format of a query(). The server
     // uses a custom `X-ClickHouse-Format` header instead of that setting.
     // For this reason, the client does not send the header.
@@ -103,7 +110,17 @@ export class WebConnection implements Connection<ReadableStream> {
       this.defaultHeadersWithOverride(params),
       FORMAT_HEADER_NAME,
     );
-    if (useMultipart && params.query_params !== undefined) {
+    if (hasExternalData) {
+      const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
+      const fields: Record<string, string> = { query: params.query };
+      if (useMultipartParams && params.query_params !== undefined) {
+        for (const [key, value] of Object.entries(params.query_params)) {
+          fields[`param_${key}`] = formatQueryParams({ value });
+        }
+      }
+      body = buildWebExternalMultipartBody(fields, externalData, boundary);
+      headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
+    } else if (useMultipartParams && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
       const multipartParts: Record<string, string> = { query: params.query };
       for (const [key, value] of Object.entries(params.query_params)) {
@@ -129,7 +146,7 @@ export class WebConnection implements Connection<ReadableStream> {
   }
 
   async exec(
-    params: ConnBaseQueryParams,
+    params: ConnBaseQueryParams<ReadableStream>,
   ): Promise<ConnQueryResult<ReadableStream<Uint8Array>>> {
     const result = await this.runExec(params);
     return {
@@ -141,7 +158,9 @@ export class WebConnection implements Connection<ReadableStream> {
     };
   }
 
-  async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
+  async command(
+    params: ConnCommandParams<ReadableStream>,
+  ): Promise<ConnCommandResult> {
     const { stream, query_id, summary, response_headers, http_status_code } =
       await this.runExec(params);
     if (stream !== null) {
@@ -219,8 +238,8 @@ export class WebConnection implements Connection<ReadableStream> {
     method,
     headers: prebuiltHeaders,
   }: {
-    body: string | null;
-    params?: ConnBaseQueryParams;
+    body: BodyInit | null;
+    params?: ConnBaseQueryParams<ReadableStream>;
     searchParams?: URLSearchParams;
     pathname?: string;
     method?: "GET" | "POST";
@@ -262,7 +281,7 @@ export class WebConnection implements Connection<ReadableStream> {
       const response = await fetchFn(url, {
         body,
         headers,
-        keepalive: this.params.keep_alive.enabled,
+        keepalive: this.params.keep_alive.enabled && bodyFitsKeepAlive(body),
         method: method ?? "POST",
         signal: abortController.signal,
       });
@@ -296,20 +315,68 @@ export class WebConnection implements Connection<ReadableStream> {
     }
   }
 
-  private async runExec(params: ConnBaseQueryParams): Promise<RunExecResult> {
+  private async runExec(
+    params: ConnBaseQueryParams<ReadableStream>,
+  ): Promise<RunExecResult> {
     const query_id = getQueryId(params.query_id);
+    const externalData = params.external_data;
+    const hasExternalData =
+      externalData !== undefined && externalData.length > 0;
+    const queryParams = params.query_params;
+    const hasQueryParams =
+      queryParams !== undefined && Object.keys(queryParams).length > 0;
+    let useMultipartParams =
+      hasExternalData &&
+      hasQueryParams &&
+      (params.use_multipart_params ?? this.params.use_multipart_params);
+    let urlParamEntries: [string, string][] | undefined;
+    if (
+      hasExternalData &&
+      hasQueryParams &&
+      !useMultipartParams &&
+      (params.use_multipart_params_auto ??
+        this.params.use_multipart_params_auto)
+    ) {
+      const entries = serializeQueryParamsForUrl(queryParams);
+      if (entries === null) {
+        useMultipartParams = true;
+      } else {
+        urlParamEntries = entries;
+      }
+    }
+
     const searchParams = toSearchParams({
       database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
-      query_params: params.query_params,
+      query_params: useMultipartParams ? undefined : params.query_params,
+      param_entries: urlParamEntries,
+      external_data: hasExternalData ? externalData : undefined,
       session_id: params.session_id,
       role: params.role,
       query_id,
     });
+    let body: string | Uint8Array<ArrayBuffer> = params.query;
+    let headers: Record<string, string> | undefined;
+    if (hasExternalData) {
+      const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
+      const fields: Record<string, string> = { query: params.query };
+      if (useMultipartParams && params.query_params !== undefined) {
+        for (const [key, value] of Object.entries(params.query_params)) {
+          fields[`param_${key}`] = formatQueryParams({ value });
+        }
+      }
+      body = buildWebExternalMultipartBody(fields, externalData, boundary);
+      headers = {
+        ...this.defaultHeadersWithOverride(params),
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
+      };
+    }
+
     const response = await this.request({
-      body: params.query,
+      body,
       params,
       searchParams,
+      headers,
     });
     return {
       stream: response.body,
@@ -346,7 +413,7 @@ export class WebConnection implements Connection<ReadableStream> {
   }
 
   private defaultHeadersWithOverride(
-    params?: ConnBaseQueryParams,
+    params?: ConnBaseQueryParams<ReadableStream>,
   ): Record<string, string> {
     let authHeader: string;
     if (isJWTAuth(params?.auth)) {
@@ -364,6 +431,50 @@ export class WebConnection implements Connection<ReadableStream> {
       Authorization: authHeader,
     };
   }
+}
+
+function buildWebExternalMultipartBody(
+  fields: Record<string, string>,
+  externalData: ReadonlyArray<PreparedExternalData<ReadableStream>>,
+  boundary: string,
+): Uint8Array<ArrayBuffer> {
+  return buildMultipartBytes(
+    fields,
+    externalData.map((ext) => ({
+      name: ext.name,
+      filename: ext.name,
+      contentType: "application/octet-stream",
+      value: ext.data as string | Uint8Array,
+    })),
+    boundary,
+  ) as Uint8Array<ArrayBuffer>;
+}
+
+// Browsers reject a fetch() request that has `keepalive: true` and a body
+// larger than 64 KiB ("TypeError: Failed to fetch").
+const MAX_KEEPALIVE_BODY_BYTES = 64 * 1024;
+
+function bodyFitsKeepAlive(body: BodyInit | null): boolean {
+  if (body === null) {
+    return true;
+  }
+  if (typeof body === "string") {
+    // UTF-8 uses 1 to 3 bytes for each UTF-16 code unit; the client encodes
+    // the string only when its length does not give the answer.
+    if (body.length > MAX_KEEPALIVE_BODY_BYTES) {
+      return false;
+    }
+    if (body.length * 3 <= MAX_KEEPALIVE_BODY_BYTES) {
+      return true;
+    }
+    return (
+      new TextEncoder().encode(body).byteLength <= MAX_KEEPALIVE_BODY_BYTES
+    );
+  }
+  if (body instanceof Uint8Array) {
+    return body.byteLength <= MAX_KEEPALIVE_BODY_BYTES;
+  }
+  return false;
 }
 
 function getQueryId(query_id: string | undefined): string {

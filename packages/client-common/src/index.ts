@@ -13,6 +13,7 @@ export {
   type QueryParams,
   type QueryResult,
   type ExecParams,
+  type ExecParamsWithValues,
   type InsertParams,
   /** @deprecated Import `ClickHouseClient` from `@clickhouse/client` instead. In Web projects, use `import type { ClickHouseClient } from '@clickhouse/client-web'`. Importing it from `@clickhouse/client-common` is deprecated. */
   ClickHouseClient,
@@ -25,6 +26,12 @@ export {
   type PingParamsWithSelectQuery,
   type PingParamsWithEndpoint,
 } from "./client";
+export type {
+  ExternalDataEntry,
+  ExternalDataFormat,
+  ExternalDataInput,
+  ExternalDataSchema,
+} from "./external_data";
 export { type BaseClickHouseClientConfigOptions } from "./config";
 export type {
   Row,
@@ -163,6 +170,11 @@ export {
   isSuccessfulResponse,
   sleep,
   buildMultipartBody,
+  buildMultipartBytes,
+  formatMultipartPartHeader,
+  validateMultipartPartName,
+  SAFE_PART_NAME,
+  type MultipartFilePart,
   MAX_URL_BIND_PARAM_LENGTH,
   serializeQueryParamsForUrl,
   toSearchParams,
@@ -176,6 +188,10 @@ export {
   extractErrorAtTheEndOfChunk,
   CARET_RETURN,
 } from "./utils";
+export {
+  type PreparedExternalData,
+  prepareExternalData,
+} from "./external_data";
 export { LogWriter, DefaultLogger, type LogWriterParams } from "./logger";
 export { getCurrentStackTrace, enhanceStackTrace } from "./error";
 export type {
@@ -193,6 +209,7 @@ export type {
   ConnBaseResult,
   ConnInsertParams,
   ConnPingResult,
+  ConnCommandParams,
   ConnCommandResult,
   ConnOperation,
   ConnPingParams,

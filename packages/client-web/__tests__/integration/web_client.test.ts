@@ -89,6 +89,21 @@ describe("[Web] Client", () => {
       const fetchParams = getFetchRequestInit();
       expect(fetchParams.keepalive).toBeTruthy();
     });
+
+    it("should be disabled for a request body larger than 64 KiB", async () => {
+      const client = createClient();
+      await client.query({ query: `SELECT '${"x".repeat(30_000)}'` });
+      expect(getFetchRequestInit(1).keepalive).toBeTruthy();
+      await client.query({ query: `SELECT '${"x".repeat(70_000)}'` });
+      expect(getFetchRequestInit(2).keepalive).toBeFalsy();
+      await client.query({
+        query: "SELECT count() FROM t",
+        external_data: [
+          { name: "t", structure: "id String", data: "x\n".repeat(40_000) },
+        ],
+      });
+      expect(getFetchRequestInit(3).keepalive).toBeFalsy();
+    });
   });
 
   describe("Custom fetch", () => {

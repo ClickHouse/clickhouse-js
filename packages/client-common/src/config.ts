@@ -248,6 +248,16 @@ export interface ValuesEncoder<Stream> {
     values: InsertValues<Stream, T>,
     format: DataFormat,
   ): string | Stream;
+
+  /**
+   * Validates and (when needed, e.g. Node.js object-mode JSON streams) encodes
+   * a stream passed in `external_data`.
+   */
+  encodeExternalDataStream?(
+    stream: Stream,
+    format: string,
+    name: string,
+  ): string | Uint8Array | Stream;
 }
 
 /**

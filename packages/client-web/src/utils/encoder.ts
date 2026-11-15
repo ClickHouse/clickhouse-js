@@ -43,6 +43,21 @@ export class WebValuesEncoder implements ValuesEncoder<ReadableStream> {
       );
     }
   }
+
+  encodeExternalDataStream(
+    stream: ReadableStream,
+    _format: string,
+    name: string,
+  ): never {
+    if (isStream(stream)) {
+      throw new Error(
+        `Streaming is not supported for external_data ("${name}") in the web version of the client`,
+      );
+    }
+    throw new Error(
+      `external_data "${name}": expected data to be a string, Uint8Array, or array, got: ${typeof stream}`,
+    );
+  }
 }
 
 function throwIfStream(values: unknown) {

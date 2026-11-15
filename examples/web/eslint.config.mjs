@@ -68,6 +68,9 @@ export default defineConfig(
       "out",
       "dist",
       "node_modules",
+      // TODO: stop ignoring once a @clickhouse/client-web release with
+      //  `external_data` support is published to npm.
+      "coding/external_data.ts",
     ],
   },
 );

@@ -20,5 +20,12 @@
     "types": []
   },
   "include": ["./**/*.ts"],
-  "exclude": ["node_modules", "vitest.config.ts", "vitest.setup.ts"]
+  // TODO: stop excluding coding/external_data.ts once a @clickhouse/client-web
+  //  release with `external_data` support is published to npm.
+  "exclude": [
+    "node_modules",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "coding/external_data.ts"
+  ]
 }

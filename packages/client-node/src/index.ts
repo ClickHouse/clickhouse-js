@@ -1,6 +1,13 @@
 export {
   NodeClickHouseClient as ClickHouseClient,
   type QueryResult,
+  type QueryParams,
+  type QueryParamsWithFormat,
+  type ExecParams,
+  type ExecParamsWithValues,
+  type CommandParams,
+  type ExternalDataEntry,
+  type ExternalDataInput,
 } from "./client";
 export { createClient } from "./client";
 export { type NodeClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from "./config";
@@ -11,12 +18,10 @@ export { drainStream } from "./connection/stream";
 export {
   type BaseClickHouseClientConfigOptions,
   type BaseQueryParams,
-  type QueryParams,
-  type QueryParamsWithFormat,
-  type ExecParams,
+  type ExternalDataFormat,
+  type ExternalDataSchema,
   type InsertParams,
   type InsertValues,
-  type CommandParams,
   type CommandResult,
   type ExecResult,
   type InsertResult,
