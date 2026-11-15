@@ -8,7 +8,7 @@
 
 ## New features
 
-- Added `external_data` support to `query()`, `command()`, and `exec()` for attaching one or more per-query temporary tables over HTTP `multipart/form-data` ([External data for query processing](https://clickhouse.com/docs/en/engines/table-engines/special/external-data)). Each `ExternalDataEntry` specifies `name`, either named `structure` or positional `types` (string or `string[]`), an optional `format` (default: `'TabSeparated'`), and `data` as a pre-serialized `string` or `Uint8Array` / `Buffer`, an array of rows for `JSON*` formats (matching `insert()`), or (Node.js only) a `Stream.Readable` (raw byte/text streams or object-mode `JSON*` streams). Because external tables travel as `multipart/form-data` file parts rather than form fields, large lookup lists (100K+ IDs) run in a single stateless request without hitting ClickHouse's 128 KiB `http_max_field_value_size` limit or requiring a `session_id`. Supported on both `@clickhouse/client` and `@clickhouse/client-web` (`ReadableStream` inputs are excluded on `@clickhouse/client-web`, matching `insert()`). ([#356])
+- Added `external_data` support to `query()`, `command()`, and `exec()` for attaching one or more per-query temporary tables over HTTP `multipart/form-data` ([External data for query processing](https://clickhouse.com/docs/en/engines/table-engines/special/external-data)). Each `ExternalDataEntry` specifies `name`, either named `structure` or positional `types` (string or `string[]`), an optional `format` (default: `'TabSeparated'`), and `data` as a pre-serialized `string` or `Uint8Array` / `Buffer`, an array of rows for `JSON*` formats (matching `insert()`), or (Node.js only) a `Stream.Readable` (raw byte/text streams or object-mode `JSON*` streams). Because external tables travel as `multipart/form-data` file parts rather than form fields, large lookup lists (100K+ IDs) run in a single stateless request without hitting ClickHouse's 128 KiB `http_max_field_value_size` limit or requiring a `session_id`. Supported on both `@clickhouse/client` and `@clickhouse/client-web` (`ReadableStream` inputs are excluded on `@clickhouse/client-web`, matching `insert()`). ([#1146])
 
 ```ts
 const rs = await client.query({
@@ -29,7 +29,7 @@ const rs = await client.query({
 });
 ```
 
-[#356]: https://github.com/ClickHouse/clickhouse-js/issues/356
+[#1146]: https://github.com/ClickHouse/clickhouse-js/pull/1146
 
 ## Bug fixes
 

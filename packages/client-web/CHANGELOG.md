@@ -2,7 +2,7 @@
 
 ## New features
 
-- Added `external_data` support to `query()`, `command()`, and `exec()` for attaching one or more per-query temporary tables over HTTP `multipart/form-data` ([External data for query processing](https://clickhouse.com/docs/en/engines/table-engines/special/external-data)). Each `ExternalDataEntry` specifies `name`, either named `structure` or positional `types` (string or `string[]`), an optional `format` (default: `'TabSeparated'`), and `data` as a pre-serialized `string` or `Uint8Array`, or an array of rows for `JSON*` formats (matching `insert()`). `ReadableStream` inputs are excluded on `@clickhouse/client-web` (matching `insert()`). Because external tables travel as `multipart/form-data` file parts rather than form fields, large lookup lists (100K+ IDs) run in a single stateless request without hitting ClickHouse's 128 KiB `http_max_field_value_size` limit or requiring a `session_id`. ([#356])
+- Added `external_data` support to `query()`, `command()`, and `exec()` for attaching one or more per-query temporary tables over HTTP `multipart/form-data` ([External data for query processing](https://clickhouse.com/docs/en/engines/table-engines/special/external-data)). Each `ExternalDataEntry` specifies `name`, either named `structure` or positional `types` (string or `string[]`), an optional `format` (default: `'TabSeparated'`), and `data` as a pre-serialized `string` or `Uint8Array`, or an array of rows for `JSON*` formats (matching `insert()`). `ReadableStream` inputs are excluded on `@clickhouse/client-web` (matching `insert()`). Because external tables travel as `multipart/form-data` file parts rather than form fields, large lookup lists (100K+ IDs) run in a single stateless request without hitting ClickHouse's 128 KiB `http_max_field_value_size` limit or requiring a `session_id`. ([#1146])
 
 ```ts
 const rs = await client.query({
@@ -23,11 +23,11 @@ const rs = await client.query({
 });
 ```
 
-[#356]: https://github.com/ClickHouse/clickhouse-js/issues/356
+[#1146]: https://github.com/ClickHouse/clickhouse-js/pull/1146
 
 ## Bug fixes
 
-- A request with a body larger than 64 KiB no longer fails with `TypeError: Failed to fetch` when `keep_alive` is enabled (the default). Browsers reject a `fetch()` request that has `keepalive: true` and a body larger than 64 KiB, so the client now sends such a request without the `keepalive` flag. This applies to `query()`, `command()`, `exec()` and `insert()`. ([#356])
+- A request with a body larger than 64 KiB no longer fails with `TypeError: Failed to fetch` when `keep_alive` is enabled (the default). Browsers reject a `fetch()` request that has `keepalive: true` and a body larger than 64 KiB, so the client now sends such a request without the `keepalive` flag. This applies to `query()`, `command()`, `exec()` and `insert()`. ([#1146])
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 
