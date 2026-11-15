@@ -6,8 +6,8 @@ import type {
 } from "../common/index";
 import {
   encodeJSON,
+  isStreamableJSONFamily,
   isSupportedRawFormat,
-  SupportedJSONFormats,
 } from "../common/index";
 import Stream from "stream";
 import { isStream, mapStream } from "./stream";
@@ -93,7 +93,7 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
     if (!stream.readableObjectMode) {
       return stream;
     }
-    if ((SupportedJSONFormats as readonly string[]).includes(format)) {
+    if (isStreamableJSONFamily(format as DataFormat)) {
       return Stream.pipeline(
         stream,
         mapStream((value) =>
@@ -103,7 +103,7 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
       );
     }
     throw new Error(
-      `external_data "${name}": object-mode streams are only supported for JSON* formats, got format "${format}".`,
+      `external_data "${name}": object-mode streams are only supported for row-per-line JSON formats such as JSONEachRow or JSONCompactEachRow, got format "${format}".`,
     );
   }
 }

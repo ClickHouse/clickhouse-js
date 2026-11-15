@@ -156,7 +156,9 @@ describe("prepareExternalData", () => {
           data: [{ x: 1 }],
         },
       ]),
-    ).toThrow(/array data is only supported for JSON\* formats \(got "TSV"\)/);
+    ).toThrow(
+      /array data is only supported for row-per-line JSON formats .*\(got "TSV"\)/,
+    );
 
     expect(() =>
       prepare([
@@ -167,7 +169,9 @@ describe("prepareExternalData", () => {
           data: [[1]],
         },
       ]),
-    ).toThrow(/array data is only supported for JSON\* formats \(got "CSV"\)/);
+    ).toThrow(
+      /array data is only supported for row-per-line JSON formats .*\(got "CSV"\)/,
+    );
 
     expect(() =>
       prepare([
@@ -179,8 +183,18 @@ describe("prepareExternalData", () => {
         },
       ]),
     ).toThrow(
-      /array data is only supported for JSON\* formats \(got "Parquet"\)/,
+      /array data is only supported for row-per-line JSON formats .*\(got "Parquet"\)/,
     );
+
+    for (const format of ["JSON", "JSONObjectEachRow", "JSONCompact"]) {
+      expect(() =>
+        prepare([
+          { name: "t", structure: "x UInt8", format, data: [{ x: 1 }] },
+        ]),
+      ).toThrow(
+        `array data is only supported for row-per-line JSON formats such as JSONEachRow or JSONCompactEachRow (got "${format}")`,
+      );
+    }
   });
 });
 

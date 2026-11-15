@@ -200,7 +200,7 @@ const rs = await client.query({
       name: "selected_ids",
       structure: "id String", // or `types: ['String']` (columns `_1`, `_2`, ...)
       format: "TSV", // default 'TabSeparated'; also 'CSV', 'JSONEachRow', 'Parquet', ...
-      data: ids.join("\n"), // string, Buffer/Uint8Array, Stream.Readable, or JSON* row array
+      data: ids.join("\n"), // string, Buffer/Uint8Array, Stream.Readable, or JSON*EachRow row array
     },
   ],
 });

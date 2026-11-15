@@ -4,7 +4,7 @@ import { createClient } from "@clickhouse/client-web";
 // Unlike `CREATE TEMPORARY TABLE`, external data needs no `session_id` and works
 // behind stateless load balancers, while avoiding the 128 KiB `http_max_field_value_size`
 // limit that applies to large `IN (...)` query parameters.
-// Web variant: supports string, Uint8Array, and JSON* row arrays (ReadableStream inputs are Node-only).
+// Web variant: supports string, Uint8Array, and row arrays for JSON*EachRow formats (ReadableStream inputs are Node-only).
 const client = createClient();
 
 const rs = await client.query({

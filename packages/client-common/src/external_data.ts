@@ -1,6 +1,6 @@
 import {
   encodeJSON,
-  SupportedJSONFormats,
+  isStreamableJSONFamily,
   type DataFormat,
 } from "./data_formatter";
 import type { JSONHandling } from "./parse";
@@ -37,9 +37,9 @@ export type ExternalDataSchema =
  * - `string` or `Uint8Array` (including Node.js `Buffer`): pre-serialized payload
  *   in the entry's `format` (e.g. `TSV`, `CSV`, `Parquet`, `JSONEachRow`).
  * - `Stream`: (Node.js only) readable stream yielding encoded bytes/text or, in
- *   object mode for `JSON*` formats, row objects.
- * - `ReadonlyArray<unknown>`: row values encoded by the client for `JSON*` formats
- *   (matching `insert()`).
+ *   object mode for row-per-line JSON formats, row objects.
+ * - `ReadonlyArray<unknown>`: row values encoded by the client for row-per-line
+ *   JSON formats, such as `JSONEachRow` and `JSONCompactEachRow`.
  */
 export type ExternalDataInput<Stream = unknown> =
   string | Uint8Array | Stream | ReadonlyArray<unknown>;
@@ -183,10 +183,10 @@ function encodeExternalDataJsonArray(
   jsonHandling: JSONHandling,
   tableName: string,
 ): string {
-  if (!(SupportedJSONFormats as readonly string[]).includes(format)) {
+  if (!isStreamableJSONFamily(format as DataFormat)) {
     throw new Error(
-      `external_data "${tableName}": array data is only supported for JSON* formats (got "${format}"). ` +
-        `For raw formats such as TSV, CSV, or Parquet, pass pre-serialized data as a string, Uint8Array/Buffer, or stream.`,
+      `external_data "${tableName}": array data is only supported for row-per-line JSON formats such as JSONEachRow or JSONCompactEachRow (got "${format}"). ` +
+        `For other formats, pass pre-serialized data as a string, Uint8Array/Buffer, or stream.`,
     );
   }
   if (rows.length === 0) {

@@ -1057,7 +1057,7 @@ Each `ExternalDataEntry` specifies:
 - `name`: temporary table name referenced in the SQL query.
 - `structure` (e.g. `'id String, n UInt32'` or `['id String', 'n UInt32']`) **or** positional `types` (e.g. `'String, UInt32'` or `['String', 'UInt32']`, exposed as `_1`, `_2`, ...).
 - `format` (optional, default `'TabSeparated'`): input format such as `'TSV'`, `'CSV'`, `'JSONEachRow'`, `'JSONCompactEachRow'`, or `'Parquet'`.
-- `data`: pre-serialized `string` or `Uint8Array` (or Node.js `Buffer`) in the entry's `format`, an array of rows for `JSON*` formats (matching `insert`), or (Node.js only) a `Stream.Readable` (raw byte/text streams, or object-mode streams for `JSON*` formats).
+- `data`: pre-serialized `string` or `Uint8Array` (or Node.js `Buffer`) in the entry's `format`, an array of rows for row-per-line JSON formats such as `JSONEachRow` and `JSONCompactEachRow`, or (Node.js only) a `Stream.Readable` (raw byte/text streams, or object-mode streams for the same row-per-line JSON formats).
 
 **Example:** (Node.js/Web) Join an external table in a single query.
 [Source code](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/external_data.ts).

@@ -200,7 +200,23 @@ describe("[Node.js] external_data unit tests", () => {
         ],
       }),
     ).rejects.toThrow(
-      /object-mode streams are only supported for JSON\* formats/,
+      /object-mode streams are only supported for row-per-line JSON formats/,
+    );
+
+    await expect(
+      client.query({
+        query: "SELECT * FROM ext",
+        external_data: [
+          {
+            name: "ext",
+            structure: "id String",
+            format: "JSONObjectEachRow",
+            data: Stream.Readable.from([{ id: "a" }], { objectMode: true }),
+          },
+        ],
+      }),
+    ).rejects.toThrow(
+      'object-mode streams are only supported for row-per-line JSON formats such as JSONEachRow or JSONCompactEachRow, got format "JSONObjectEachRow"',
     );
 
     await expect(
