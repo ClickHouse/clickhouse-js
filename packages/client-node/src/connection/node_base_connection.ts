@@ -750,10 +750,27 @@ function buildNodeExternalMultipartBody(
     );
   }
 
-  return Stream.Readable.from(
+  const body = Stream.Readable.from(
     streamMultipartParts(fields, externalData, boundary),
     { objectMode: false },
   );
+  // The generator reads the source streams one at a time. Without a listener,
+  // an error in a source stream that the generator does not read at that time
+  // is an uncaught exception. Each source error must fail the request instead.
+  for (const ext of externalData) {
+    if (isStream(ext.data)) {
+      ext.data.once("error", (err) => body.destroy(err));
+    }
+  }
+  body.on("error", ignoreBodyErrorBeforeUpload);
+  return body;
+}
+
+// The request pipeline attaches its own error listener when a socket is
+// ready, and it rejects the request with the error. Until then, this listener
+// keeps a source error from being an uncaught exception.
+function ignoreBodyErrorBeforeUpload(): void {
+  // The request pipeline reports the error.
 }
 
 async function* streamMultipartParts(

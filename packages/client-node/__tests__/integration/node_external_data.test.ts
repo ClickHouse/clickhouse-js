@@ -1,9 +1,10 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import Fs from "node:fs";
 import Stream from "node:stream";
 import type { ClickHouseClient } from "../../src";
 import { createTestClient } from "@test/utils";
 import { getAsText } from "../../src/utils";
+import { sleep } from "@test/utils/sleep";
 
 describe("[Node.js] external_data integration", () => {
   let client: ClickHouseClient;
@@ -115,5 +116,60 @@ describe("[Node.js] external_data integration", () => {
     expect((await getAsText(execRes.stream)).trim()).toBe(
       `${rowCount}\t${expectedSum}`,
     );
+  });
+
+  describe("source stream errors", () => {
+    let uncaught: unknown[];
+    const onUncaught = (err: unknown) => uncaught.push(err);
+
+    beforeEach(() => {
+      uncaught = [];
+      process.on("uncaughtException", onUncaught);
+    });
+    afterEach(() => {
+      process.off("uncaughtException", onUncaught);
+    });
+
+    it("rejects the request when a later source stream fails during the upload of an earlier one", async () => {
+      client = createTestClient();
+
+      const earlier = Stream.Readable.from(
+        (async function* () {
+          yield "a\n";
+          await sleep(500);
+          yield "b\n";
+        })(),
+        { objectMode: false },
+      );
+      const later = new Stream.Readable({ read() {} });
+      setTimeout(() => later.destroy(new Error("later source failed")), 100);
+
+      await expect(
+        client.query({
+          query: "SELECT count() FROM t, u",
+          external_data: [
+            { name: "t", structure: "id String", data: earlier },
+            { name: "u", structure: "id String", data: later },
+          ],
+        }),
+      ).rejects.toThrow("later source failed");
+      await sleep(50);
+      expect(uncaught).toEqual([]);
+    });
+
+    it("rejects the request when a source stream fails before the upload starts", async () => {
+      client = createTestClient();
+
+      const source = new Stream.Readable({ read() {} });
+      const promise = client.query({
+        query: "SELECT count() FROM t",
+        external_data: [{ name: "t", structure: "id String", data: source }],
+      });
+      source.destroy(new Error("source failed early"));
+
+      await expect(promise).rejects.toThrow("source failed early");
+      await sleep(50);
+      expect(uncaught).toEqual([]);
+    });
   });
 });
