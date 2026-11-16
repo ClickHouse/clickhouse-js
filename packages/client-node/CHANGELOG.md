@@ -9,11 +9,13 @@
 ## Bug fixes
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
+- (Node.js only) With Node.js 24 and newer, an insert from an object-mode stream (for example `JSONEachRow`) with non-ASCII text, such as `é` or `日本語`, could stop after about 64 KiB of the request body and fail with a timeout. The cause is a change in `http.ClientRequest` of Node.js 24: it waited for a `'drain'` event that did not come when the client wrote strings. The client now writes the encoded rows as Buffers. Node.js 22 was not affected. ([#1148])
 
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
+[#1148]: https://github.com/ClickHouse/clickhouse-js/pull/1148
 
 # 1.25.0
 
