@@ -45,13 +45,23 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
   }
 }
 
+/**
+ * Maps each object of an object-mode stream to a string, and sends the
+ * string as a Buffer.
+ *
+ * The stream sends Buffers, not strings, because of Node.js 24 and newer.
+ * There, `http.ClientRequest` counts the size of the strings that it collects
+ * in bytes, and the socket counts them in characters. With non-ASCII text, the
+ * request waits for a 'drain' event that the socket does not send, and the
+ * request body stops after about 64 KiB.
+ */
 export function mapStream(
   mapper: (input: unknown) => string,
 ): Stream.Transform {
   return new Stream.Transform({
     objectMode: true,
     transform(chunk, encoding, callback) {
-      callback(null, mapper(chunk));
+      callback(null, Buffer.from(mapper(chunk)));
     },
   });
 }
