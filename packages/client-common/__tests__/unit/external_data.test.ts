@@ -241,4 +241,50 @@ describe("buildMultipartBytes and toSearchParams with external_data", () => {
     expect(search.get("t2_types")).toBe("String, UInt64");
     expect(search.has("t2_format")).toBe(false);
   });
+
+  it("rejects an external table URL key that is the same as a setting or a request parameter", () => {
+    const withFormat = prepare([
+      { name: "default", structure: "s String", format: "CSV", data: "" },
+    ]);
+    expect(() =>
+      toSearchParams({
+        database: "default",
+        query_id: "qid",
+        external_data: withFormat,
+        clickhouse_settings: { default_format: "JSONEachRow" },
+      }),
+    ).toThrow(
+      'Invalid external_data name: the URL parameter "default_format" of an external table',
+    );
+
+    const dateTime = prepare([
+      {
+        name: "date_time_input",
+        structure: "s String",
+        format: "CSV",
+        data: "",
+      },
+    ]);
+    expect(() =>
+      toSearchParams({
+        database: "default",
+        query_id: "qid",
+        external_data: dateTime,
+        clickhouse_settings: { date_time_input_format: "best_effort" },
+      }),
+    ).toThrow('"date_time_input_format"');
+
+    // Without a format, a table named `default` sends only `default_structure`.
+    const withoutFormat = prepare([
+      { name: "default", structure: "s String", data: "" },
+    ]);
+    const search = toSearchParams({
+      database: "default",
+      query_id: "qid",
+      external_data: withoutFormat,
+      clickhouse_settings: { default_format: "JSONEachRow" },
+    });
+    expect(search.get("default_structure")).toBe("s String");
+    expect(search.getAll("default_format")).toEqual(["JSONEachRow"]);
+  });
 });

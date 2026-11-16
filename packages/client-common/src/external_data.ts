@@ -51,7 +51,11 @@ export type ExternalDataInput<Stream = unknown> =
  * @see https://clickhouse.com/docs/en/engines/table-engines/special/external-data
  */
 export type ExternalDataEntry<Stream = unknown> = ExternalDataSchema & {
-  /** Temporary table name referenced in the SQL query. */
+  /** Temporary table name referenced in the SQL query.
+   *  The client sends `<name>_structure` or `<name>_types`, and `<name>_format`,
+   *  as URL parameters, and the server reads settings from the same parameters.
+   *  Do not use a name that makes one of these keys a setting name, for example
+   *  `default` (`default_format`) or `date_time_input` (`date_time_input_format`). */
   name: string;
   /** Input format of {@link data}.
    *  @default 'TabSeparated' */

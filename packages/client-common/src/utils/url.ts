@@ -70,15 +70,16 @@ export function toSearchParams({
     }
   }
 
+  const externalDataEntries: [string, string][] = [];
   if (external_data !== undefined) {
     for (const ext of external_data) {
       if (ext.structure !== undefined) {
-        entries.push([`${ext.name}_structure`, ext.structure]);
+        externalDataEntries.push([`${ext.name}_structure`, ext.structure]);
       } else if (ext.types !== undefined) {
-        entries.push([`${ext.name}_types`, ext.types]);
+        externalDataEntries.push([`${ext.name}_types`, ext.types]);
       }
       if (ext.format !== undefined) {
-        entries.push([`${ext.name}_format`, ext.format]);
+        externalDataEntries.push([`${ext.name}_format`, ext.format]);
       }
     }
   }
@@ -113,5 +114,29 @@ export function toSearchParams({
     }
   }
 
+  rejectExternalDataKeyCollisions(externalDataEntries, entries);
+  entries.push(...externalDataEntries);
   return new URLSearchParams(entries);
+}
+
+// The server reads `<name>_format` and the other external table keys from the
+// same URL query string as the settings. A table named `default` with a format
+// gives a second `default_format` key, and the server then parses the table
+// with the result format of the query.
+function rejectExternalDataKeyCollisions(
+  externalDataEntries: [string, string][],
+  otherEntries: [string, string][],
+): void {
+  if (externalDataEntries.length === 0) {
+    return;
+  }
+  const otherKeys = new Set(otherEntries.map(([key]) => key));
+  for (const [key] of externalDataEntries) {
+    if (otherKeys.has(key)) {
+      throw new Error(
+        `Invalid external_data name: the URL parameter "${key}" of an external table ` +
+          `is the same as a setting or a parameter of the request. Use a different table name.`,
+      );
+    }
+  }
 }

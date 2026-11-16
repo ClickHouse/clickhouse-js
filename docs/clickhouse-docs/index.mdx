@@ -1054,7 +1054,7 @@ ClickHouse can attach one or more temporary tables directly to a single HTTP `qu
 
 Each `ExternalDataEntry` specifies:
 
-- `name`: temporary table name referenced in the SQL query.
+- `name`: temporary table name referenced in the SQL query. The client sends `<name>_structure` or `<name>_types`, and `<name>_format`, as URL parameters. The server reads settings from the same URL parameters, so do not use a name that makes one of these keys a setting name. For example, a table named `default` with a `format` gives `default_format`, and a table named `date_time_input` gives `date_time_input_format`. The client rejects a name whose key is the same as a setting or a parameter of the request.
 - `structure` (e.g. `'id String, n UInt32'` or `['id String', 'n UInt32']`) **or** positional `types` (e.g. `'String, UInt32'` or `['String', 'UInt32']`, exposed as `_1`, `_2`, ...).
 - `format` (optional, default `'TabSeparated'`): input format such as `'TSV'`, `'CSV'`, `'JSONEachRow'`, `'JSONCompactEachRow'`, or `'Parquet'`.
 - `data`: pre-serialized `string` or `Uint8Array` (or Node.js `Buffer`) in the entry's `format`, an array of rows for row-per-line JSON formats such as `JSONEachRow` and `JSONCompactEachRow`, or (Node.js only) a `Stream.Readable` (raw byte/text streams, or object-mode streams for the same row-per-line JSON formats).
