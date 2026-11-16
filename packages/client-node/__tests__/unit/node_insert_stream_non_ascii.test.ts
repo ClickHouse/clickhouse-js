@@ -74,9 +74,10 @@ async function startSink(): Promise<Sink> {
 const LAST_CHUNK = Buffer.from("\r\n0\r\n\r\n");
 
 describe("[Node.js] insert from an object-mode stream with non-ASCII text", () => {
-  // With Node.js 24 and 26, an http.ClientRequest that gets many small
-  // non-ASCII strings stops after about 64 KiB: it waits for a 'drain' event
-  // that does not come. The client must write Buffers to the request.
+  // With Node.js 24.22.0+ and 26.9.0+ (nodejs/node#66781), an
+  // http.ClientRequest that gets many small non-ASCII strings stops after
+  // about 64 KiB: it waits for a 'drain' event that does not come. The client
+  // must write Buffers to the request.
   it.each([
     ["two-byte characters", "ééééé"],
     ["CJK characters and an emoji", "日本語テキスト😀"],

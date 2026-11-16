@@ -9,13 +9,15 @@
 ## Bug fixes
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
-- (Node.js only) With Node.js 24 and newer, an insert from an object-mode stream (for example `JSONEachRow`) with non-ASCII text, such as `é` or `日本語`, could stop after about 64 KiB of the request body and fail with a timeout. The cause is a change in `http.ClientRequest` of Node.js 24: it waited for a `'drain'` event that did not come when the client wrote strings. The client now writes the encoded rows as Buffers. Node.js 22 was not affected. ([#1148])
+- (Node.js only) With Node.js 24.22.0 and later 24.x releases, and with Node.js 26.9.0 and later 26.x releases, an insert from an object-mode stream (for example `JSONEachRow`) with non-ASCII text, such as `é` or `日本語`, could stop after about 64 KiB of the request body and fail with a timeout. The cause is a bug in `http.ClientRequest` of these Node.js releases ([nodejs/node#66781]): it waited for a `'drain'` event that did not come when the client wrote strings. The client now writes the encoded rows as Buffers. Earlier Node.js releases, for example 22.x, were not affected. Node.js fixed the bug in [nodejs/node#66782], but Node.js 24.22.3 and 26.13.1 do not have that fix. ([#1148])
 
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
 [#1148]: https://github.com/ClickHouse/clickhouse-js/pull/1148
+[nodejs/node#66781]: https://github.com/nodejs/node/issues/66781
+[nodejs/node#66782]: https://github.com/nodejs/node/pull/66782
 
 # 1.25.0
 
