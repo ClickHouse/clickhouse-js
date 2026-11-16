@@ -6,7 +6,7 @@ import { mapStream } from "../../src/utils/stream";
 function collect(stream: Stream.Readable): Promise<string[]> {
   return new Promise((resolve, reject) => {
     const chunks: string[] = [];
-    stream.on("data", (chunk: string) => chunks.push(chunk));
+    stream.on("data", (chunk: Buffer) => chunks.push(chunk.toString()));
     stream.once("end", () => resolve(chunks));
     stream.once("error", reject);
   });
@@ -55,7 +55,7 @@ describe("[Node.js] mapStream", () => {
   it("should not keep the rows of a slow source until the stream ends", async () => {
     const stream = mapStream(toRow);
     const chunks: string[] = [];
-    stream.on("data", (chunk: string) => chunks.push(chunk));
+    stream.on("data", (chunk: Buffer) => chunks.push(chunk.toString()));
 
     stream.write({ x: 1 });
     await nextEventLoopTurn();
@@ -137,7 +137,7 @@ describe("[Node.js] mapStream", () => {
   it("should not send the batch after the stream is destroyed", async () => {
     const stream = mapStream(toRow);
     const chunks: string[] = [];
-    stream.on("data", (chunk: string) => chunks.push(chunk));
+    stream.on("data", (chunk: Buffer) => chunks.push(chunk.toString()));
     stream.write({ x: 1 });
     stream.write({ x: 2 });
     // An aborted insert destroys the stream while the rows wait in the batch.
