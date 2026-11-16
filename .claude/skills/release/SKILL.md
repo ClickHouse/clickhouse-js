@@ -150,7 +150,7 @@ Merging into `release` pushes to `release`, which triggers the **path-scoped**
 `publish-client-web.yml`, `publish-client-common.yml`). It publishes a `head`
 pre-release build (an **internal beta — not tracked** as a GitHub Release); the
 client workflows then run an automatic `e2e` job against the published version
-and a live ClickHouse — the Node.js client installs it across Node 20/22/24/26
+and a live ClickHouse — the Node.js client installs it across Node 22/24/26
 and runs integration tests, and the Web client runs a real-browser smoke
 (chromium + firefox) via Playwright.
 
@@ -271,7 +271,7 @@ gh workflow run publish-skill-rowbinary.yml --ref release
 Each workflow builds, packs + smoke-tests the tarball, publishes it to `latest`
 (OIDC + provenance), pushes a git tag (`datatype-parser-v<ver>` /
 `rowbinary-v<ver>` — note the **`v`** prefix here), then runs the `e2e` job
-across Node 20/22/24/26.
+across Node 22/24/26.
 
 Same `npm-publish` **approval gate** applies — hand over the approval URL and
 watch:

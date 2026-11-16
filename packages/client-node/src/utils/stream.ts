@@ -61,6 +61,16 @@ const MAP_STREAM_BATCH_SIZE = 64 * 1024;
  * characters. It sends a smaller batch at the end of the current turn of the
  * event loop, so a slow source does not keep its rows in the buffer. It sends
  * the last batch when the stream ends. A slow consumer still stops the source.
+ *
+ * The stream sends each batch as a Buffer, not as a string, because of a bug in
+ * Node.js 24.22.0 and later 24.x releases, and in Node.js 26.9.0 and later 26.x
+ * releases (https://github.com/nodejs/node/issues/66781). There,
+ * `http.ClientRequest` counts the size of the strings that it collects in
+ * bytes, and the socket counts them in characters. With non-ASCII text, the
+ * request waits for a 'drain' event that the socket does not send, and the
+ * request body stops after about 64 KiB. Node.js fixed the bug in
+ * https://github.com/nodejs/node/pull/66782, but Node.js 24.22.3 and 26.13.1
+ * do not have the fix.
  */
 export function mapStream(
   mapper: (input: unknown) => string,
@@ -87,7 +97,10 @@ export function mapStream(
       ) {
         const readyBatch = batch;
         batch = "";
-        return callback(null, readyBatch || undefined);
+        return callback(
+          null,
+          readyBatch.length > 0 ? Buffer.from(readyBatch) : undefined,
+        );
       }
       if (!sendScheduled) {
         // The server can time out while it waits for the request body.
@@ -99,7 +112,7 @@ export function mapStream(
           if (batch.length > 0 && !this.destroyed) {
             const partialBatch = batch;
             batch = "";
-            this.push(partialBatch);
+            this.push(Buffer.from(partialBatch));
           }
         });
       }
@@ -108,7 +121,7 @@ export function mapStream(
     flush(callback) {
       const lastBatch = batch;
       batch = "";
-      callback(null, lastBatch.length > 0 ? lastBatch : undefined);
+      callback(null, lastBatch.length > 0 ? Buffer.from(lastBatch) : undefined);
     },
   });
 }
