@@ -82,6 +82,9 @@ export function mapStream(
   let sendScheduled = false;
   return new Stream.Transform({
     objectMode: true,
+    // Each object on the readable side is a batch, not a row. Keep at most one
+    // batch in the buffer, so that an insert that waits does not hold 16 batches.
+    readableHighWaterMark: 1,
     transform(chunk, encoding, callback) {
       try {
         batch += mapper(chunk);
