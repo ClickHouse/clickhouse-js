@@ -80,6 +80,10 @@ async function startSink(): Promise<Sink> {
             16,
           );
           if (size === 0) {
+            // The last chunk is "0\r\n", then an empty line (no trailers).
+            if (received.length < sizeEnd + 4) {
+              return;
+            }
             break;
           }
           const frameEnd = sizeEnd + 2 + size + 2;
