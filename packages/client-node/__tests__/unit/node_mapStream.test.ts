@@ -134,6 +134,35 @@ describe("[Node.js] mapStream", () => {
     expect(chunks).toEqual([]);
   });
 
+  it.each([undefined, null, "not an Error"])(
+    "should fail when the mapper throws %s",
+    async (thrown) => {
+      let rowCount = 0;
+      const stream = mapStream((value) => {
+        if (++rowCount === 3) {
+          throw thrown;
+        }
+        return toRow(value);
+      });
+      const chunks: string[] = [];
+      const sink = new Stream.Writable({
+        write(chunk: Buffer, _encoding, callback) {
+          chunks.push(chunk.toString());
+          callback();
+        },
+      });
+      const source = Stream.Readable.from(
+        Array.from({ length: 10 }, (_, i) => ({ x: i })),
+        { objectMode: true },
+      );
+      await expect(
+        Stream.promises.pipeline(source, stream, sink),
+      ).rejects.toThrow(Error);
+      // The rows in the batch are dropped, not sent after the failure.
+      expect(chunks).toEqual([]);
+    },
+  );
+
   it("should not send the batch after the stream is destroyed", async () => {
     const stream = mapStream(toRow);
     const chunks: string[] = [];

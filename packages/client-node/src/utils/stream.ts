@@ -86,7 +86,14 @@ export function mapStream(
         // For example, JSON.stringify of an object with a circular reference.
         // Fail the stream instead of throwing from the callback.
         batch = "";
-        return callback(err as Error);
+        // A custom `json.stringify` can throw a value that is not an Error.
+        // A falsy value (undefined, null) would make the callback succeed,
+        // and the rows of the batch would be lost. Always give an Error.
+        return callback(
+          err instanceof Error
+            ? err
+            : new Error(`Cannot encode a row: ${String(err)}`, { cause: err }),
+        );
       }
       // The stream stops its source when the consumer is slow. It does this
       // only for data that it sends from this callback. For this reason, send
