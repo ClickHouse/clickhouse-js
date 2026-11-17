@@ -6,7 +6,7 @@
 > - `@clickhouse/client-web` → [`packages/client-web/CHANGELOG.md`](packages/client-web/CHANGELOG.md)
 > - `@clickhouse/client-common` (deprecated) → [`packages/client-common/CHANGELOG.md`](packages/client-common/CHANGELOG.md)
 > - `@clickhouse/datatype-parser` → [`packages/datatype-parser/CHANGELOG.md`](packages/datatype-parser/CHANGELOG.md)
-> - `@clickhouse/rowbinary` → [`skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md`](skills/clickhouse-js-node-rowbinary-parser/CHANGELOG.md)
+> - `@clickhouse/rowbinary` → [`skills/clickhouse-js-node-rowbinary/CHANGELOG.md`](skills/clickhouse-js-node-rowbinary/CHANGELOG.md)
 >
 > The history below (through `@clickhouse/client` 1.23.0) is retained for
 > reference and was copied as-is into each client package's changelog as the
