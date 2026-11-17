@@ -46,7 +46,7 @@ export async function getAsText(stream: Stream.Readable): Promise<string> {
 }
 
 /** The stream that `mapStream` returns sends a batch when the batch reaches
- *  this number of characters. */
+ *  this number of UTF-16 characters (not bytes). */
 const MAP_STREAM_BATCH_SIZE = 64 * 1024;
 
 /**
@@ -54,13 +54,16 @@ const MAP_STREAM_BATCH_SIZE = 64 * 1024;
  *
  * The returned stream sends the strings in batches, not one by one. This is
  * important for an HTTP request body. The request sends each write as a
- * separate chunk, and each chunk adds about 5 bytes and one socket write.
- * When each small row is a chunk, the request body is about 50% larger.
+ * separate chunk, and each chunk adds about 5 bytes of chunk framing. The
+ * stream code and the HTTP code also process each chunk separately. When each
+ * small row is a chunk, the request body is about 50% larger.
  *
  * The stream sends a batch when the batch reaches {@link MAP_STREAM_BATCH_SIZE}
- * characters. It sends a smaller batch at the end of the current turn of the
- * event loop, so a slow source does not keep its rows in the buffer. It sends
- * the last batch when the stream ends. A slow consumer still stops the source.
+ * characters. It checks the size after it adds a row, so one large row makes a
+ * larger batch. It sends the rows that arrive in the same turn of the event
+ * loop as one batch at the end of that turn, so a slow source does not keep its
+ * rows in the buffer. It sends the last batch when the stream ends. A slow
+ * consumer still stops the source.
  *
  * The stream sends each batch as a Buffer, not as a string, because of a bug in
  * Node.js 24.22.0 and later 24.x releases, and in Node.js 26.9.0 and later 26.x
