@@ -55,7 +55,8 @@ export type ExternalDataEntry<Stream = unknown> = ExternalDataSchema & {
    *  The client sends `<name>_structure` or `<name>_types`, and `<name>_format`,
    *  as URL parameters, and the server reads settings from the same parameters.
    *  Do not use a name that makes one of these keys a setting name, for example
-   *  `default` (`default_format`) or `date_time_input` (`date_time_input_format`). */
+   *  `default` (`default_format`) or `date_time_input` (`date_time_input_format`).
+   *  `query()` always sends `default_format`, so it rejects a table named `default`. */
   name: string;
   /** Input format of {@link data}.
    *  @default 'TabSeparated' */

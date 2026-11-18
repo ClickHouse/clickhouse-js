@@ -114,29 +114,34 @@ export function toSearchParams({
     }
   }
 
-  rejectExternalDataKeyCollisions(externalDataEntries, entries);
+  rejectExternalDataKeyCollisions(external_data, entries);
   entries.push(...externalDataEntries);
   return new URLSearchParams(entries);
 }
 
-// The server reads `<name>_format` and the other external table keys from the
-// same URL query string as the settings. A table named `default` with a format
-// gives a second `default_format` key, and the server then parses the table
-// with the result format of the query.
+// The server reads `<name>_structure`, `<name>_types` and `<name>_format` from
+// the same URL query string as the settings, also when the client does not send
+// them for that table. A table named `default` gets the `default_format` of
+// query() as its input format, even if it has no `format` of its own.
+const EXTERNAL_DATA_KEY_SUFFIXES = ["_structure", "_types", "_format"];
+
 function rejectExternalDataKeyCollisions(
-  externalDataEntries: [string, string][],
+  external_data: ReadonlyArray<PreparedExternalData<unknown>> | undefined,
   otherEntries: [string, string][],
 ): void {
-  if (externalDataEntries.length === 0) {
+  if (external_data === undefined || external_data.length === 0) {
     return;
   }
   const otherKeys = new Set(otherEntries.map(([key]) => key));
-  for (const [key] of externalDataEntries) {
-    if (otherKeys.has(key)) {
-      throw new Error(
-        `Invalid external_data name: the URL parameter "${key}" of an external table ` +
-          `is the same as a setting or a parameter of the request. Use a different table name.`,
-      );
+  for (const { name } of external_data) {
+    for (const suffix of EXTERNAL_DATA_KEY_SUFFIXES) {
+      const key = `${name}${suffix}`;
+      if (otherKeys.has(key)) {
+        throw new Error(
+          `Invalid external_data name: "${name}". The server reads the URL parameter "${key}" ` +
+            `of the request as a key of this external table. Use a different table name.`,
+        );
+      }
     }
   }
 }

@@ -253,9 +253,7 @@ describe("buildMultipartBytes and toSearchParams with external_data", () => {
         external_data: withFormat,
         clickhouse_settings: { default_format: "JSONEachRow" },
       }),
-    ).toThrow(
-      'Invalid external_data name: the URL parameter "default_format" of an external table',
-    );
+    ).toThrow('the URL parameter "default_format"');
 
     const dateTime = prepare([
       {
@@ -274,17 +272,26 @@ describe("buildMultipartBytes and toSearchParams with external_data", () => {
       }),
     ).toThrow('"date_time_input_format"');
 
-    // Without a format, a table named `default` sends only `default_structure`.
+    // Without a format of its own, a table named `default` still gets
+    // `default_format` from the server as its input format.
     const withoutFormat = prepare([
       { name: "default", structure: "s String", data: "" },
     ]);
-    const search = toSearchParams({
+    expect(() =>
+      toSearchParams({
+        database: "default",
+        query_id: "qid",
+        external_data: withoutFormat,
+        clickhouse_settings: { default_format: "JSONEachRow" },
+      }),
+    ).toThrow('Invalid external_data name: "default"');
+
+    const noCollision = toSearchParams({
       database: "default",
       query_id: "qid",
       external_data: withoutFormat,
-      clickhouse_settings: { default_format: "JSONEachRow" },
     });
-    expect(search.get("default_structure")).toBe("s String");
-    expect(search.getAll("default_format")).toEqual(["JSONEachRow"]);
+    expect(noCollision.get("default_structure")).toBe("s String");
+    expect(noCollision.has("default_format")).toBe(false);
   });
 });
