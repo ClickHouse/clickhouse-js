@@ -2,10 +2,10 @@
 name: issue-priority
 description: >
   Decide the priority of a `ClickHouse/clickhouse-js` issue: `Urgent`, `High`,
-  `Medium`, or `Low`, for the org issue field **Priority**. Use this skill when
-  the task is to "prioritize", "set the priority of", "rate", or "triage" an
-  issue, or to explain why an issue has a given priority. It defines the reach
-  tiers of the packages, the impact classes, the severity rows, the base-level matrix, the
+  `Medium`, or `Low`, for the org issue field **Priority**. Use this skill
+  when the task is to "prioritize", "set the priority of", "rate", or "triage"
+  an issue, or to explain why an issue has a given priority. It defines the
+  reach tiers of the packages, the severity rows, the base-level matrix, the
   modifiers, and the confidence.
 ---
 
@@ -33,6 +33,31 @@ Set no priority when one of these is true:
 - The issue is a question, or it is about CI, the release process, or a
   discussion.
 
+## Vulnerabilities that are not public yet
+
+A security issue must not stay public with a description of how to reproduce
+it. This section applies when a reproduction or code inspection confirms a
+vulnerability that is not public yet. The classification skill of this
+repository defines it
+([`../issue-classification/SKILL.md`](../issue-classification/SKILL.md), "A
+vulnerability that is not public yet"): memory corruption is one also when only
+a hostile server or network causes it, and a hang, or a crash with no memory
+corruption, that only such a server or network causes is not one.
+
+- Report it in a private GitHub vulnerability report for this repository
+  (**Security** → **Report a vulnerability**), never in a public issue,
+  comment, or pull request. If a public issue reports it, copy the title, the
+  text, and the comments of the issue into the report first.
+- Set no Priority on the public issue. Close it with a comment that gives no
+  details, and ask a repository administrator to delete it: closing does not
+  hide the text of the issue.
+- Rate the vulnerability with the rules below, and put the level and its reason
+  into the private report as the proposed severity.
+
+A vulnerability that is already public (a published CVE or GHSA, for example in
+a dependency), and an authentication method that does not work or is missing,
+get a Priority on the issue as usual.
+
 ## 1. Reach
 
 The reach is the tier of the most-used public path that reaches the defect,
@@ -51,18 +76,11 @@ streamable JSON format goes through `stream()`, so a `stream()` defect that
 
 ## 2. Severity
 
-First name the **impacts** of the issue. The impact classes are the same in
-every ClickHouse client repository. An issue has none, one, or more of them:
-
-| Impact         | Use when                                                                                                                                                                                                                                                                                                    |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Security       | a **vulnerability**: a defect makes the protection weaker: it exposes credentials or data, lets a value change the meaning of a query, skips or weakens a TLS or identity check, or lets a remote party stop the client. Also **authentication**: an authentication method that does not work or is missing |
-| Data integrity | data that the caller wrote, or a result that the caller reads, is missing, incomplete, or different from the value given or stored, and the client reports no error; this includes a failed operation that the client reports as a success                                                                  |
-| Stability      | the process stops in a way that the caller cannot handle as a normal error, a call does not return, or a resource leaks until none is left                                                                                                                                                                  |
-| Performance    | the result is correct, but the operation is too slow, or uses too much memory or CPU                                                                                                                                                                                                                        |
-
-Give an impact only when the issue or a reproduction shows it. Most issues have
-none.
+First name the **impacts** of the issue with the classification skill of this
+repository
+([`../issue-classification/SKILL.md`](../issue-classification/SKILL.md)): none,
+one, or more of Security (part vulnerability or part authentication), Data
+integrity, Stability, and Performance. Most issues have none.
 
 Then use the first severity row that fits. With more than one impact, the
 highest row applies:
@@ -98,8 +116,9 @@ Apply them in this order:
    reaches the defect: `Urgent` at any reach. Skip the other modifiers. A
    defect that puts a caller-supplied value into SQL without quoting or
    escaping is a candidate: look for such a path. If none is shown, rate the
-   defect by the failure that it shows. A report that discloses a
-   vulnerability goes to a private channel, not to a public issue.
+   defect by the failure that it shows. A vulnerability that is not public yet
+   goes to a private vulnerability report, not to a public issue (see
+   "Vulnerabilities that are not public yet").
 2. **Regression in the latest published release** of the package that has the
    problem: up one level. This can give `Urgent`. It is a regression only when
    the latest release shows the problem and the release before it does not.
