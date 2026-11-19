@@ -4,6 +4,8 @@
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 
+- **Security: `insert()` now quotes table and column identifiers** with backticks (and escapes embedded backticks) before concatenating them into the generated `INSERT INTO ... FORMAT ...` SQL. Previously, both `InsertParams.table` and every name in `InsertParams.columns` / `InsertParams.columns.except` were interpolated verbatim, which allowed callers to smuggle additional SQL clauses (e.g. a `table` value of `t FORMAT JSONEachRow; DROP TABLE users --`) that ClickHouse would happily execute. A qualified `db.table` name is still preserved as `` `db`.`table` ``. Users who previously relied on passing ClickHouse keywords or names with special characters that happened to work unquoted may now need to verify their existing calls — quoted identifiers are semantically equivalent for all valid ClickHouse identifiers. ([#<PR>])
+
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024

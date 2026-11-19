@@ -778,6 +778,27 @@ function isInsertColumnsExcept(obj: unknown): obj is InsertColumnsExcept {
   );
 }
 
+/**
+ * Quote a ClickHouse SQL identifier (table or column name) with backticks,
+ * escaping any embedded backticks by doubling them (ClickHouse's escaping rule).
+ *
+ * Dotted names like `db.table` are split and each part is quoted separately,
+ * producing `` `db`.`table` ``, so that a fully qualified table reference keeps
+ * its cross-database meaning. A literal dot inside a single identifier is
+ * extremely unusual (requires backticks in `CREATE TABLE`) and callers who
+ * truly need one can use `command()` / `exec()` with a hand-written query.
+ */
+function quoteIdentifier(raw: string): string {
+  return raw
+    .trim()
+    .split(".")
+    .map((part) => {
+      const escaped = part.replace(/`/g, "``");
+      return `\`${escaped}\``;
+    })
+    .join(".");
+}
+
 function getInsertQuery<T>(
   params: InsertParams<T>,
   format: DataFormat,
@@ -785,13 +806,13 @@ function getInsertQuery<T>(
   let columnsPart = "";
   if (params.columns !== undefined) {
     if (Array.isArray(params.columns) && params.columns.length > 0) {
-      columnsPart = ` (${params.columns.join(", ")})`;
+      columnsPart = ` (${params.columns.map(quoteIdentifier).join(", ")})`;
     } else if (
       isInsertColumnsExcept(params.columns) &&
       params.columns.except.length > 0
     ) {
-      columnsPart = ` (* EXCEPT (${params.columns.except.join(", ")}))`;
+      columnsPart = ` (* EXCEPT (${params.columns.except.map(quoteIdentifier).join(", ")}))`;
     }
   }
-  return `INSERT INTO ${params.table.trim()}${columnsPart} FORMAT ${format}`;
+  return `INSERT INTO ${quoteIdentifier(params.table)}${columnsPart} FORMAT ${format}`;
 }
