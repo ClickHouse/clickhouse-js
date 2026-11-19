@@ -317,7 +317,9 @@ export function parseDecimalType({
  * Unescape backslash escape sequences in enum names.
  * Recognized escapes are decoded using ClickHouse-style string escaping:
  * `\\n` -> newline, `\\t` -> tab, `\\r` -> carriage return, `\\\\` -> `\\`,
- * and `\\'` -> `'`.
+ * `\\'` -> `'`, `\\0` -> NUL, `\\b` -> backspace, `\\f` -> form feed, `\\a` -> bell,
+ * and `\\v` -> vertical tab, matching ClickHouse server's writeAnyEscapedString
+ * and @clickhouse/datatype-parser.
  * For any other escaped character, the backslash is removed and the following
  * character is kept verbatim to preserve the previous permissive behavior.
  */
@@ -328,14 +330,29 @@ function unescapeEnumName(escaped: string): string {
     if (escaped.charCodeAt(i) === BackslashASCII && i + 1 < escaped.length) {
       i++;
       switch (escaped[i]) {
+        case "b":
+          unescaped += "\b";
+          break;
+        case "f":
+          unescaped += "\f";
+          break;
         case "n":
           unescaped += "\n";
+          break;
+        case "r":
+          unescaped += "\r";
           break;
         case "t":
           unescaped += "\t";
           break;
-        case "r":
-          unescaped += "\r";
+        case "0":
+          unescaped += "\0";
+          break;
+        case "a":
+          unescaped += "\x07";
+          break;
+        case "v":
+          unescaped += "\v";
           break;
         case "\\":
           unescaped += "\\";

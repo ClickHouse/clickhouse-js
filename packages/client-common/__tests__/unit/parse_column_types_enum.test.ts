@@ -111,6 +111,12 @@ describe("Columns types parser - Enum", () => {
       ["Enum8('\\\\' = 1)", "\\"], // backslash
       ["Enum8('a\\nb' = 1)", "a\nb"], // newline in middle
       ["Enum8('\\t\\n\\r' = 1)", "\t\n\r"], // multiple escapes
+      ["Enum8('a\\0b' = 1)", "a\0b"], // NUL
+      ["Enum8('a\\bb' = 1)", "a\bb"], // backspace
+      ["Enum8('a\\fb' = 1)", "a\fb"], // form feed
+      ["Enum8('a\\ab' = 1)", "a\x07b"], // bell
+      ["Enum8('a\\vb' = 1)", "a\vb"], // vertical tab
+      ["Enum8('a\\012b' = 1)", "a\x0012b"], // NUL followed by digits (issue #1139)
     ];
 
     testCases.forEach(([sourceType, expectedName]) => {
