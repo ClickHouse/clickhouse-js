@@ -137,7 +137,7 @@ UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
 
 The file `upstream-allowlist.txt` contains the curated list of upstream tests known to pass through this harness. The file format is one test name per line; lines starting with `#` and blank lines are ignored.
 
-**Rule of thumb:** Only add tests that pass reliably. Remove or comment out tests that begin to flake.
+**Rule of thumb:** Only add tests that pass reliably. Remove or comment out tests that begin to flake. The helper script passes `--dont_retry_failures` to `tests/clickhouse-test`, so the runner does not run a failed test again: a test that fails only sometimes shows as a failure, not as `OK`.
 
 ### CI
 
