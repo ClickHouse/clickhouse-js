@@ -1,3 +1,60 @@
+# 1.26.0
+
+## Migration Notes
+
+- Node.js 20.x reached [end of life](https://endoflife.date/nodejs) on 2026-04-30 and is no longer supported. The `engines.node` floor of `@clickhouse/client` was raised from `>=20` to `>=22`. Node.js 22.x, 24.x, and 26.x are supported and exercised in CI. An install on Node.js 20 now emits an `EBADENGINE` warning. ([#1124])
+
+[#1124]: https://github.com/ClickHouse/clickhouse-js/pull/1124
+
+## Bug fixes
+
+- Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
+- (Node.js only) With Node.js 24.22.0 and later 24.x releases, and with Node.js 26.9.0 and later 26.x releases, an insert from an object-mode stream (for example `JSONEachRow`) with non-ASCII text, such as `é` or `日本語`, could stop after about 64 KiB of the request body and fail with a timeout. The cause is a bug in `http.ClientRequest` of these Node.js releases ([nodejs/node#66781]): it waited for a `'drain'` event that did not come when the client wrote strings. The client now writes the encoded rows as Buffers. Earlier Node.js releases, for example 22.x, were not affected. Node.js fixed the bug in [nodejs/node#66782], but Node.js 24.22.3 and 26.13.1 do not have that fix. ([#1148])
+
+[#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
+[#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
+[#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
+[#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
+[#1148]: https://github.com/ClickHouse/clickhouse-js/pull/1148
+[nodejs/node#66781]: https://github.com/nodejs/node/issues/66781
+[nodejs/node#66782]: https://github.com/nodejs/node/pull/66782
+
+# 1.25.0
+
+## Migration Notes
+
+- `query()` now sends its `format` to the server as the `default_format` setting, instead of appending `FORMAT <format>` to the SQL (see Improvements below). No code change is required, but check the following:
+  - The query text recorded in `system.query_log`, in logs and in traces no longer ends with `FORMAT <format>`. Adjust anything that matches on that suffix.
+  - A `FORMAT` clause in the query itself is no longer a syntax error: the server uses it, and if it differs from the `format` option, `query()` throws an error that names both formats. With a `tracer` configured, that error is recorded on the `clickhouse.query.stream` span ([#1103]). Remove the clause, or use `exec()` if you need full control over the SQL.
+  - A user whose profile locks `default_format` with a `<constraints>` entry (possible on ClickHouse 26.x) fails every `query()` with `SETTING_CONSTRAINT_VIOLATION`. Allow changing `default_format` for that user. ([#1085])
+
+[#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
+[#1103]: https://github.com/ClickHouse/clickhouse-js/pull/1103
+
+## Improvements
+
+- `query()` now sends the query as written and passes its `format` to the server as the `default_format` setting, instead of appending `FORMAT <format>` to the SQL. This matches the Go, Rust and Java clients, and fixes queries that failed because of the appended clause:
+  - a trailing semicolon followed by a comment, such as `SELECT 1; -- note`, no longer fails with `Multi-statements are not allowed` ([#973]);
+  - `FORMAT` is no longer placed after a trailing `SETTINGS` clause, which some older servers rejected ([#970]);
+  - the short `SHOW ROW POLICIES` syntax works ([#759]).
+
+  The `format` option overrides a `default_format` set in `clickhouse_settings`. An `X-ClickHouse-Format` request header set via `http_headers` (on the client or on the call) is not sent by `query()`, as the server would prefer it over `default_format`; the other methods still send it. ([#1085])
+
+- `command()` and `exec()` now also send the query as written, without removing trailing semicolons, as the server accepts them. The one exception is `exec()` with `values`: the server reads the data right after the statement and rejects a `;` before it, so trailing semicolons are still removed there. ([#1085])
+
+- When the server reports an error in a JSON output format (with `http_write_exception_in_output_format` enabled, the error that occurs while it writes the result comes back as `{"exception": "..."}`), `ClickHouseError.message` no longer keeps the JSON escaping, for example `\"` instead of `"`. ([#1085])
+
+[#759]: https://github.com/ClickHouse/clickhouse-js/issues/759
+[#970]: https://github.com/ClickHouse/clickhouse-js/issues/970
+[#973]: https://github.com/ClickHouse/clickhouse-js/issues/973
+[#1085]: https://github.com/ClickHouse/clickhouse-js/pull/1085
+
+## Bug fixes
+
+- (Node.js only) `ResultSet.close()` no longer throws an uncaught `ResultSet has been closed` error when the `ResultSet` wraps a stream that has no `error` listener. ([#1087])
+
+[#1087]: https://github.com/ClickHouse/clickhouse-js/pull/1087
+
 # 1.24.1
 
 ## Bug fixes

@@ -9,7 +9,7 @@ and help us maintain up-to-date documentation.
 
 You have installed:
 
-- a compatible version of Node.js: `v20.x`, `v22.x`, `v24.x` or `v26.x`
+- a compatible version of Node.js: `v22.x`, `v24.x` or `v26.x`
 - NPM >= `9.x`
 
 ### Create a fork of the repository and clone it
@@ -75,6 +75,8 @@ Formatting can be checked or applied repo-wide with:
 npm run prettier:check
 npm run prettify
 ```
+
+CI runs `npm run prettier:check` for every PR (the `format` workflow), also for a PR that changes only docs, skills, or workflows.
 
 The Husky Git hook formats staged files with `prettier` on commit, but does not run `eslint`; make sure to run
 `npm run lint` before pushing, as CI enforces it with zero warnings.

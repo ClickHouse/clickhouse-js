@@ -7,7 +7,6 @@ import type {
 } from "@clickhouse/client-common";
 import Stream from "stream";
 import { NodeValuesEncoder } from "../../src/utils";
-import * as simdjson from "simdjson";
 
 describe("[Node.js] ValuesEncoder", () => {
   const rawFormats = [
@@ -132,8 +131,8 @@ describe("[Node.js] ValuesEncoder", () => {
       const encoders = [
         encoder,
         new NodeValuesEncoder({
-          parse: simdjson.parse,
-          stringify: JSON.stringify, // simdjson doesn't have a stringify handler
+          parse: (text: string) => JSON.parse(text),
+          stringify: (value: unknown) => JSON.stringify(value),
         }),
       ];
 

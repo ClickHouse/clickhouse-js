@@ -18,11 +18,15 @@ import { Readable } from "stream";
 
 import { createClient } from "../../src/client";
 import * as connectionModule from "../../src/connection";
-import type {
-  Connection,
-  ConnBaseQueryParams,
-  ConnExecParams,
-  ConnInsertParams,
+import {
+  ClickHouseSpanNames,
+  ClickHouseSpanStatusCode,
+  type ClickHouseSpan,
+  type ClickHouseTracer,
+  type Connection,
+  type ConnBaseQueryParams,
+  type ConnExecParams,
+  type ConnInsertParams,
 } from "../../src/common/index";
 
 beforeEach(() => {
@@ -139,15 +143,104 @@ describe("[Node.js] createClient({ connection }) — pluggable backend injection
 
     const rs = await client.query({ query: "SELECT 1", format: "JSONEachRow" });
     expect(stub.query).toHaveBeenCalledTimes(1);
-    // ConnBaseQueryParams shape — `query` is the SQL string (the Client
-    // layer appends `\nFORMAT <Format>` when caller specifies `format`).
+    // ConnBaseQueryParams shape — `query` is the SQL string as written, and
+    // the format is passed as the `default_format` setting.
     expect(stub.calls[0]?.op).toBe("query");
-    const sql = (stub.calls[0]?.params as ConnBaseQueryParams).query;
-    expect(sql).toMatch(/^SELECT 1\b/);
-    expect(sql).toContain("FORMAT JSONEachRow");
+    const params = stub.calls[0]?.params as ConnBaseQueryParams;
+    expect(params.query).toBe("SELECT 1");
+    expect(params.clickhouse_settings?.default_format).toBe("JSONEachRow");
     // ResultSet drains the injected stream.
     const rows = await rs.json();
     expect(rows).toEqual([{ n: 1 }]);
+  });
+
+  describe("X-ClickHouse-Format response header", () => {
+    function stubWithFormatHeader(
+      header: string | string[] | undefined,
+      tracer?: ClickHouseTracer,
+    ) {
+      const stub = makeStubConnection();
+      stub.query.mockImplementationOnce(() => {
+        return Promise.resolve({
+          stream: readableFromString('{"n":1}\n'),
+          query_id: "stub-query-id",
+          response_headers: { "x-clickhouse-format": header },
+          http_status_code: 200,
+        });
+      });
+      return createClient({ connection: stub, tracer });
+    }
+
+    /** A span that counts `end()` calls, to check the exactly-once contract. */
+    class CountingSpan implements ClickHouseSpan {
+      endCount = 0;
+      exception?: Error;
+      statusCode?: number;
+      constructor(readonly name: string) {}
+      setAttributes() {}
+      setStatus(status: { code: number }) {
+        this.statusCode = status.code;
+      }
+      recordException(error: Error) {
+        this.exception = error;
+      }
+      end() {
+        this.endCount++;
+      }
+    }
+
+    function countingTracer() {
+      const spans: CountingSpan[] = [];
+      const tracer: ClickHouseTracer<CountingSpan> = {
+        startActiveSpan(name, _options, fn) {
+          const span = new CountingSpan(name);
+          spans.push(span);
+          return fn(span);
+        },
+      };
+      return { tracer, spans };
+    }
+
+    it.each([["JSONEachRow"], ["jsoneachrow"], [["JSONEachRow"]], [undefined]])(
+      "returns the result set when the header is %j",
+      async (header) => {
+        const client = stubWithFormatHeader(header);
+        const rs = await client.query({
+          query: "SELECT 1",
+          format: "JSONEachRow",
+        });
+        expect(await rs.json()).toEqual([{ n: 1 }]);
+      },
+    );
+
+    it("throws when the query's own FORMAT clause differs from the format option", async () => {
+      const client = stubWithFormatHeader("CSV");
+      await expect(
+        client.query({ query: "SELECT 1 FORMAT CSV", format: "JSON" }),
+      ).rejects.toThrow(/responded in the CSV format.*JSON format/s);
+    });
+
+    it("records the format mismatch on the stream span and ends it exactly once", async () => {
+      const { tracer, spans } = countingTracer();
+      const client = stubWithFormatHeader("CSV", tracer);
+      await expect(
+        client.query({ query: "SELECT 1 FORMAT CSV", format: "JSON" }),
+      ).rejects.toThrow(/responded in the CSV format/);
+
+      const streamSpan = spans.find(
+        (s) => s.name === ClickHouseSpanNames.query_stream,
+      );
+      expect(streamSpan).toBeDefined();
+      expect(streamSpan!.endCount).toBe(1);
+      expect(streamSpan!.statusCode).toBe(ClickHouseSpanStatusCode.ERROR);
+      expect(streamSpan!.exception?.message).toMatch(
+        /responded in the CSV format/,
+      );
+      // The request span is unaffected: the HTTP request itself succeeded.
+      const querySpan = spans.find((s) => s.name === ClickHouseSpanNames.query);
+      expect(querySpan?.endCount).toBe(1);
+      expect(querySpan?.exception).toBeUndefined();
+    });
   });
 
   it("routes client.insert through the injected connection's insert()", async () => {

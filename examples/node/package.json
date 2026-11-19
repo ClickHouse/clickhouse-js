@@ -9,7 +9,7 @@
   "private": false,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -31,6 +31,6 @@
     "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }

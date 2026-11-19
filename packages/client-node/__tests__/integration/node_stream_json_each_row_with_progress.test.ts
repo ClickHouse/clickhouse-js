@@ -4,7 +4,6 @@ import { createSimpleTable } from "@test/fixtures/simple_table";
 import { createTestClient } from "@test/utils/client";
 import { isClickHouseVersionAtLeast } from "@test/utils/server_version";
 import { guid } from "@test/utils/guid";
-import * as simdjson from "simdjson";
 import { makeObjectStream } from "../utils/stream";
 
 let client: ClickHouseClient;
@@ -225,40 +224,12 @@ describe("JSONEachRowWithProgress", () => {
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
         format: "JSONEachRow",
       });
-      await result.json();
-
-      expect(parseCalls).toBeGreaterThan(0);
-
-      await customClient.close();
-    });
-
-    it("should work with simdjson parser", async () => {
-      const customClient = createTestClient({
-        json: {
-          parse: simdjson.parse,
-          stringify: JSON.stringify,
-        },
-      });
-
-      const stream = makeObjectStream();
-      stream.push({ id: "42", name: "foo", sku: [0, 1] });
-      stream.push({ id: "43", name: "bar", sku: [2, 3] });
-      setTimeout(() => stream.push(null), 100);
-
-      await customClient.insert({
-        table: tableName,
-        values: stream,
-        format: "JSONEachRow",
-      });
-
-      const result = await customClient.query({
-        query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
-        format: "JSONEachRow",
-      });
       expect(await result.json()).toEqual([
         { id: "42", name: "foo", sku: [0, 1] },
         { id: "43", name: "bar", sku: [2, 3] },
       ]);
+
+      expect(parseCalls).toBeGreaterThan(0);
 
       await customClient.close();
     });

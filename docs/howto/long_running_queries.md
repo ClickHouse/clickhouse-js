@@ -19,7 +19,7 @@ ORDER BY event_time DESC
 LIMIT 5
 ```
 
-3. If you see a `QueryFinish` row with `query_duration_ms` less than your `request_timeout`, the query completed successfully — the LB dropped the connection before the full response (with empty body) arrived.
+3. A `QueryFinish` row means the query completed successfully on that server. If the client still reports an error, the response may have been lost on the way back. Compare the failure time with the load balancer's timeout and logs. This observation alone does not prove the load balancer caused the failure.
 
 ---
 
@@ -38,7 +38,7 @@ curl -v "http://localhost:8123/?wait_end_of_query=1&send_progress_in_http_header
 - `send_progress_in_http_headers` — enables progress headers (boolean, pass as `1`)
 - `http_headers_progress_interval_ms` — how often to send them (UInt64, pass as a string)
 
-The default value for `http_headers_progress_interval_ms` is defined by how often ClickHouse sends progress updates for the query type. For some queries, this may be too frequent (causing unnecessary overhead and/or HTTP client headers buffer overflow) or too infrequent (failing to keep the LB connection alive). Therefore, it's recommended to set it explicitly when using `send_progress_in_http_headers`.
+Set `http_headers_progress_interval_ms` explicitly to match your load balancer's idle timeout and the expected query duration. Sending headers too frequently can exhaust the HTTP header limit. Sending them too infrequently can allow the load balancer to close the connection.
 
 > **Note (Node.js):** Node.js caps the total size of received HTTP headers at ~16 KB by default. Each `X-ClickHouse-Progress` header is roughly 200 bytes, so after ~75 progress headers accumulate the request fails with `HPE_HEADER_OVERFLOW`. Since `>= 1.18.5`, you can raise this limit per client (without resorting to the global `--max-http-header-size` CLI flag or `NODE_OPTIONS`) by passing `max_response_headers_size` (in bytes) to `createClient`:
 >
@@ -100,7 +100,7 @@ This reduces the window of exposure to network errors from "the entire query dur
 **Step 1.** Generate a `query_id` on the client side so you can track the query later:
 
 ```ts
-import * as crypto from "crypto";
+import * as crypto from "node:crypto";
 const queryId = crypto.randomUUID();
 ```
 
@@ -130,14 +130,16 @@ const commandPromise = client
 async function checkQueryExists(client, queryId) {
   const rs = await client.query({
     query: `
-      SELECT COUNT(*) > 0 AS exists
+      SELECT type
       FROM system.query_log
-      WHERE query_id = '${queryId}'
+      WHERE query_id = {queryId:String}
+      LIMIT 1
     `,
+    query_params: { queryId },
     format: "JSONEachRow",
   });
   const [row] = await rs.json();
-  return row?.exists !== 0;
+  return row !== undefined;
 }
 ```
 
@@ -158,9 +160,10 @@ async function checkCompletedQuery(client, queryId) {
     query: `
       SELECT type
       FROM system.query_log
-      WHERE query_id = '${queryId}' AND type != 'QueryStart'
+      WHERE query_id = {queryId:String} AND type != 'QueryStart'
       LIMIT 1
     `,
+    query_params: { queryId },
     format: "JSONEachRow",
   });
   const [row] = await rs.json();
@@ -168,7 +171,7 @@ async function checkCompletedQuery(client, queryId) {
 }
 ```
 
-A `type` of `QueryFinish` means success. `ExceptionWhileProcessing` or `ExceptionBeforeStart` mean the query failed — handle those cases as needed. If you exhaust your polling budget without seeing a terminal state, you can wait longer or cancel the query via `system.kills` — see `examples/cancel_query.ts`.
+A `type` of `QueryFinish` means success. `ExceptionWhileProcessing` or `ExceptionBeforeStart` mean the query failed — handle those cases as needed. If you exhaust your polling budget without seeing a terminal state, you can wait longer or send `KILL QUERY` — see [the cancellation example](../../examples/node/troubleshooting/cancel_query.ts).
 
 **Trade-off:** Slightly more complex to implement and requires read access to `system.query_log`. The polling interval introduces a small lag before you learn the query is done.
 
@@ -190,4 +193,4 @@ Use **Approach 2** when you need stronger guarantees against transient network f
 
 ## Full example
 
-See [`examples/long_running_queries_progress_headers.ts`](../../examples/long_running_queries_progress_headers.ts) and [`examples/long_running_queries_cancel_request.ts`](../../examples/long_running_queries_cancel_request.ts) for runnable code covering both approaches.
+See [the progress headers example](../../examples/node/troubleshooting/long_running_queries_progress_headers.ts) and [the request cancellation example](../../examples/node/troubleshooting/long_running_queries_cancel_request.ts) for runnable code covering both approaches.

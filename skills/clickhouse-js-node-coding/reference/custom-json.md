@@ -130,8 +130,9 @@ JSON-format responses.
 If adding a dependency is awkward (locked lockfile, restricted environment,
 or you just don't want to pull in `json-bigint`), you can plug in a
 hand-rolled reviver. This uses the `context.source` argument that
-`JSON.parse` revivers gained in Node `>= 20.16` / `>= 21.7`, so the raw
-numeric literal is available before it's coerced to a JS `number`:
+`JSON.parse` revivers have in every Node.js version that the client supports
+(Node.js `>= 22`), so the raw numeric literal is available before it's coerced
+to a JS `number`:
 
 ```ts
 import { createClient } from "@clickhouse/client";
@@ -165,8 +166,8 @@ Trade-offs versus `json-bigint`:
 
 - ✓ No new dependency to install.
 - ✓ Only promotes known to be 64-bit integers to `BigInt`.
-- ✗ Requires Node `>= 20.16` / `>= 21.7` for the reviver `context.source`.
-  On older Node, prefer `json-bigint` or upgrade Node.
+- ✗ Requires a JavaScript runtime with the reviver `context.source`
+  (Node.js `>= 22` has it). On a runtime without it, use `json-bigint`.
 - ✗ Outgoing `stringify` still uses default `JSON.stringify`, which throws
   on `BigInt`. Pair with the `valueSerializer` pattern above if your
   inserts contain `BigInt` values.

@@ -19,6 +19,77 @@ describe("parseError", () => {
     );
   });
 
+  // With a JSON-family output format, the server may report an error through
+  // that format: on 24.8 for every error, on later versions for an error raised
+  // while the result is written. These are the response shapes seen for each
+  // format, possibly after other rows (column names, types, data).
+  describe("unwraps an error returned through a JSON format", () => {
+    const text = `Code: 62. DB::Exception: Syntax error: failed at position 8 ('a"b'): a"b. (SYNTAX_ERROR) (version 24.8.14.39 (official build))`;
+    const quoted = JSON.stringify(text);
+    it.each([
+      ["JSONEachRow", `{"exception": ${quoted}}\n`],
+      ["compact JSONEachRow", `{"exception":${quoted}}`],
+      [
+        "JSONEachRow, after data rows",
+        `{"n":0,"exception":"not an error"}\n{"n":1,"exception":"not an error"}\n{"exception": ${quoted}}\n`,
+      ],
+      [
+        "JSON / JSONCompact / JSONStrings",
+        `{\n\t"meta":\n\t[\n\n\t],\n\n\t"data":\n\t[\n\n\t],\n\n\t"rows": 0,\n\n\t"exception": ${quoted}\n}\n`,
+      ],
+      [
+        "JSONCompact, after data rows",
+        `{"meta":[{"name":"exception","type":"String"}],"data":[["not an error"]],"rows":1,"exception":${quoted}}`,
+      ],
+      ["JSONObjectEachRow", `{\n\t"exception": ${quoted}\n}\n`],
+      ["JSONCompactEachRow", `[${quoted}]\n`],
+      [
+        "JSONCompactEachRow, after data rows",
+        `[0, "not an error"]\n["not an error"]\n[${quoted}]\n`,
+      ],
+      // the column names come before the exception (24.8 and later)
+      ["JSONCompactEachRowWithNames", `["n", "exception"]\n[${quoted}]\n`],
+      [
+        "JSONCompactEachRowWithNamesAndTypes",
+        `["n", "exception"]\n["UInt64", "UInt8"]\n[${quoted}]\n`,
+      ],
+      ["JSONCompactEachRowWithNames (24.8, empty names)", `[]\n[${quoted}]\n`],
+      // 24.8 wraps the exception in a row; later versions write it at the top level
+      ["JSONEachRowWithProgress (24.8)", `{"row":{"exception": ${quoted}}}\n`],
+      [
+        "JSONEachRowWithProgress",
+        `{"meta":[{"name":"n","type":"UInt64"}]}\n{"row":{"n":0}}\n{"exception":${quoted}}\n`,
+      ],
+    ])("%s", (_, body) => {
+      const error = parseError(body) as ClickHouseError;
+
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.code).toBe("62");
+      expect(error.type).toBe("SYNTAX_ERROR");
+      expect(error.message).toBe(
+        `Syntax error: failed at position 8 ('a"b'): a"b. `,
+      );
+    });
+  });
+
+  it.each([
+    ["a malformed JSON error", `{"exception": "Code: 62. DB::Exception: oops`],
+    [
+      "a data value in a column named exception",
+      `{"exception":"not an error"}\n`,
+    ],
+    ["a one-column data row", `["not an error"]\n`],
+    [
+      "a data row wrapped in a row key",
+      `{"row":{"exception":"not an error"}}\n`,
+    ],
+  ])("keeps %s as is", (_, body) => {
+    const error = parseError(body);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(ClickHouseError);
+    expect(error.message).toBe(body);
+  });
+
   it("parses a multiline error", () => {
     const message = `Code: 62.DB::Exception: Syntax error: failed at position 15 ('unknown_table') (line 1, col 15): unknown_table
     FORMAT JSON. Expected alias cannot be here. (SYNTAX_ERROR) (version 22.7.1.2484 (official build))`;

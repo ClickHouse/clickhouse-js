@@ -28,6 +28,20 @@ describe("[Node.js] exec", () => {
     expect(await getAsText(result.stream)).toEqual("30\n");
   });
 
+  // Unlike query(), exec() sends an X-ClickHouse-Format header as given, and
+  // the server prefers it over the `default_format` setting.
+  it("should send the X-ClickHouse-Format header", async () => {
+    await client.close();
+    client = createTestClient({
+      http_headers: { "X-ClickHouse-Format": "CSV" },
+    });
+    const result = await client.exec({
+      query: "SELECT 1 AS a",
+      clickhouse_settings: { default_format: "JSONEachRow" },
+    });
+    expect(await getAsText(result.stream)).toEqual("1\n");
+  });
+
   describe("trailing semi", () => {
     it("should allow commands with semi in select clause", async () => {
       const result = await client.exec({
@@ -87,6 +101,26 @@ describe("[Node.js] exec", () => {
         values: stream,
       });
       // the result stream contains nothing useful for an insert and should be immediately drained to release the socket
+      await drainStream(execResult.stream);
+      await checkInsertedValues([
+        {
+          id: "42",
+          name: "foobar",
+          sku: [1, 2],
+        },
+      ]);
+    });
+
+    // The server reads the data right after the statement and rejects a `;`
+    // before it, so exec() removes trailing semicolons when values are sent.
+    it("should send an insert stream after a trailing semicolon", async () => {
+      const stream = Stream.Readable.from(['42,foobar,"[1,2]"'], {
+        objectMode: false,
+      });
+      const execResult = await client.exec({
+        query: `INSERT INTO ${tableName} FORMAT CSV;`,
+        values: stream,
+      });
       await drainStream(execResult.stream);
       await checkInsertedValues([
         {

@@ -97,6 +97,13 @@ client-node and client-web changelogs.)
   ```
 - Confirm that package's `CHANGELOG.md` has a top `# <new-version>` section that
   actually contains this release's notes.
+- Make sure no **unreleased** version heading sits between the top section and
+  the last released one (check `git tag`). If an earlier in-progress heading
+  exists for a version that is being skipped (e.g. `# 1.24.2` above released
+  `1.24.1` while you cut `1.25.0`), merge its entries into the new version's
+  section — reuse the same `## Bug fixes` / `## Improvements` headings, keep the
+  PR reference links — and delete the skipped heading. Every version heading in
+  the file should correspond to a version that was or is about to be released.
 - If it's wrong, **fix it in a small separate PR to `main` and merge it quickly**
   before bumping — do not bundle the changelog fix into the bump PR.
 
@@ -143,7 +150,7 @@ Merging into `release` pushes to `release`, which triggers the **path-scoped**
 `publish-client-web.yml`, `publish-client-common.yml`). It publishes a `head`
 pre-release build (an **internal beta — not tracked** as a GitHub Release); the
 client workflows then run an automatic `e2e` job against the published version
-and a live ClickHouse — the Node.js client installs it across Node 20/22/24/26
+and a live ClickHouse — the Node.js client installs it across Node 22/24/26
 and runs integration tests, and the Web client runs a real-browser smoke
 (chromium + firefox) via Playwright.
 
@@ -264,7 +271,7 @@ gh workflow run publish-skill-rowbinary.yml --ref release
 Each workflow builds, packs + smoke-tests the tarball, publishes it to `latest`
 (OIDC + provenance), pushes a git tag (`datatype-parser-v<ver>` /
 `rowbinary-v<ver>` — note the **`v`** prefix here), then runs the `e2e` job
-across Node 20/22/24/26.
+across Node 22/24/26.
 
 Same `npm-publish` **approval gate** applies — hand over the approval URL and
 watch:

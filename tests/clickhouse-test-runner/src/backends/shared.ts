@@ -4,7 +4,7 @@ import {
   createClient,
   type ClickHouseClient,
 } from "@clickhouse/client";
-import type { ParsedArgs } from "../args.js";
+import { resolveHttpPort, type ParsedArgs } from "../args.js";
 import { appendLog } from "../log.js";
 import { errorMatchesExpectation, type Statement } from "../test-hint.js";
 
@@ -49,7 +49,7 @@ export function createSessionClient(
   logPath: string,
 ): ClickHouseClient {
   const proto = args.secure ? "https" : "http";
-  const url = `${proto}://${args.host}:${args.port}`;
+  const url = `${proto}://${args.host}:${resolveHttpPort(args.port, args.secure)}`;
   const sessionId = `clickhouse-js-test-runner-${randomUUID()}`;
   appendLog(logPath, "session_id=" + sessionId);
   return createClient({

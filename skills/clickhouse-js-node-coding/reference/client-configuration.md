@@ -69,6 +69,8 @@ const client = createClient({ url: process.env.CLICKHOUSE_URL });
 
 > **Always mention this when discussing `clickhouse_settings`:** settings set
 > on `createClient` are defaults; any individual call can override them.
+> (The one exception is `default_format` on `query()`: it always sends its
+> `format` option, so use `format` instead.)
 
 Settings on `createClient` apply to every request. Settings on a single
 operation (`query`, `insert`, `command`, `exec`) override the client defaults
@@ -82,7 +84,8 @@ const client = createClient({
 });
 
 const rows = await client.query({
-  query: "SELECT number FROM system.numbers LIMIT 2 FORMAT JSONEachRow",
+  query: "SELECT number FROM system.numbers LIMIT 2",
+  format: "JSONEachRow",
   clickhouse_settings: {
     output_format_json_quote_64bit_integers: 1, // overrides client default for this call
   },
@@ -110,7 +113,8 @@ await client.close();
 ```
 
 For ordinary `SELECT`s prefer `client.query({ format })` — `default_format` is
-only needed for raw `exec()`.
+only needed for raw `exec()`. `query()` overrides any `default_format` in
+`clickhouse_settings` with its `format` option.
 
 ## Common pitfalls
 

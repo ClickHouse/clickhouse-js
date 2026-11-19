@@ -1,3 +1,7 @@
+# Communication style
+
+- Follow ASD-STE100
+
 # Recommendations for AI agents
 
 > **Audience:** This file contains guidance for AI agents contributing to the `ClickHouse/clickhouse-js` repository itself. It is **not** intended for downstream projects that depend on `@clickhouse/client` or `@clickhouse/client-web`
@@ -14,6 +18,14 @@ This root file holds repo-wide guidance. Folder-specific guidance lives in neste
 ## Code intelligence (TypeScript LSP)
 
 The repository ships `typescript-language-server` as a root devDependency, so after `npm install` you can start a TypeScript language server with `npx typescript-language-server --stdio` from the repo root for precise go-to-definition, find-references, hover (signatures and JSDoc, including `@deprecated`), workspace symbol search, completions, and type diagnostics. Prefer it over text search when resolving symbols or usages across the `packages/*` workspaces. See [`.claude/skills/typescript-lsp/SKILL.md`](.claude/skills/typescript-lsp/SKILL.md) for verified capabilities and protocol notes.
+
+## When triaging issues
+
+To set, check, or explain the Priority of an issue, follow [`.claude/skills/issue-priority/SKILL.md`](.claude/skills/issue-priority/SKILL.md). It is the single source of truth for the priority rules.
+
+To classify an issue (its impacts and its area), follow [`.claude/skills/issue-classification/SKILL.md`](.claude/skills/issue-classification/SKILL.md).
+
+A vulnerability that is not public yet goes into a private security report (**Security** → **Report a vulnerability**), never into an issue or a pull request. The classification skill defines such a vulnerability, and the priority skill says how to handle the public issue.
 
 ## When reviewing code changes
 
@@ -37,7 +49,7 @@ For every pull request review, make sure to provide an evaluation of the followi
    - `@clickhouse/rowbinary` → [`skills/clickhouse-js-node-rowbinary/CHANGELOG.md`](skills/clickhouse-js-node-rowbinary/CHANGELOG.md)
 
    A change to shared code that is bundled into both clients (the common module) affects **both** `@clickhouse/client` and `@clickhouse/client-web`, so update both of their changelogs. Follow the existing format exactly:
-   - Entries go under the **top-most version heading** of that package's changelog. If the most recent `# x.y.z` heading corresponds to an **already-released** version (check `git tag`), open a **new** top-level `# x.y.z` heading that matches the unreleased version in that package's `package.json`; otherwise append to the existing top heading.
+   - Entries go under the **top-most version heading** of that package's changelog. If the most recent `# x.y.z` heading corresponds to an **already-released** version (check `git tag`), open a **new** top-level `# x.y.z` heading for the version the change will ship in: the version in that package's `package.json` plus a patch bump for fixes or a minor bump for features (the `bump-version` workflow updates `package.json` at release time, so the manifest still holds the last released version); otherwise append to the existing top heading.
    - Group entries under lowercase section headings, reusing the ones already in the file: `## New features`, `## Improvements`, `## Bug fixes` (and `## Migration Notes` / `## Breaking changes` when relevant).
    - Write a concise, human-readable entry, add an example usage when it helps, and end it with a PR reference link, e.g. `([#825])` plus a matching `[#825]: https://github.com/ClickHouse/clickhouse-js/pull/<n>` reference at the bottom of the section.
    - When a change is Node.js- or Web-only, say so explicitly in the entry (e.g. "(Node.js only)").
