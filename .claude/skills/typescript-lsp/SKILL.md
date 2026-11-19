@@ -20,7 +20,8 @@ description: >
 workspace-local `typescript` (6.x) compiler, matching CI exactly.
 
 The server (6.x) requires Node.js >= 22.22.2, newer than the repository's
-Node 20 minimum; on Node 20 `npm install` only warns, but the server isn't supported there.
+Node 22.13.0 minimum; on older Node 22 releases `npm install` only warns, but
+the server isn't supported there.
 
 ## Starting the server
 
