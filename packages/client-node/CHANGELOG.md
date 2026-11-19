@@ -8,6 +8,7 @@
 
 ## Bug fixes
 
+- Fixed `parseColumnType` / `parseEnumType` unescaping of Enum labels containing `\0` (NUL), `\b` (backspace), `\f` (form feed), `\a` (bell), and `\v` (vertical tab) to decode as control characters rather than literal characters (`0`, `b`, `f`, `a`, `v`), matching the ClickHouse server's escaping. ([#1159])
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 - (Node.js only) With Node.js 24.22.0 and later 24.x releases, and with Node.js 26.9.0 and later 26.x releases, an insert from an object-mode stream (for example `JSONEachRow`) with non-ASCII text, such as `é` or `日本語`, could stop after about 64 KiB of the request body and fail with a timeout. The cause is a bug in `http.ClientRequest` of these Node.js releases ([nodejs/node#66781]): it waited for a `'drain'` event that did not come when the client wrote strings. The client now writes the encoded rows as Buffers. Earlier Node.js releases, for example 22.x, were not affected. Node.js fixed the bug in [nodejs/node#66782], but Node.js 24.22.3 and 26.13.1 do not have that fix. ([#1148])
 
@@ -16,6 +17,7 @@
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
 [#1148]: https://github.com/ClickHouse/clickhouse-js/pull/1148
+[#1159]: https://github.com/ClickHouse/clickhouse-js/pull/1159
 [nodejs/node#66781]: https://github.com/nodejs/node/issues/66781
 [nodejs/node#66782]: https://github.com/nodejs/node/pull/66782
 
