@@ -81,6 +81,11 @@ mkdir -p "$(dirname "${CLICKHOUSE_CLIENT_CLI_LOG}")"
 export PATH="${RUNNER_DIR}/bin:${PATH}"
 export CLICKHOUSE_CLIENT_CLI_LOG
 
-# Run the upstream test runner
+# Run the upstream test runner.
+# --dont_retry_failures: by default, tests/clickhouse-test runs a failed test
+# again when its output contains one of its MESSAGES_TO_RETRY (for example
+# "No such file or directory" or "Connection reset by peer"), and reports the
+# test as OK when it passes then. A flaky test would then look stable and could
+# get into the allowlist. With this flag, each failure fails the run.
 cd "${UPSTREAM_CLICKHOUSE_DIR}"
-exec python3 tests/clickhouse-test "${tests[@]}" "$@"
+exec python3 tests/clickhouse-test --dont_retry_failures "${tests[@]}" "$@"
