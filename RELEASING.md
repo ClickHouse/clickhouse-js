@@ -6,7 +6,7 @@ single source of truth and is kept in step with the GitHub Actions workflows:
 - [.claude/skills/release/SKILL.md](.claude/skills/release/SKILL.md)
 
 It covers all the packages — `@clickhouse/client`, `@clickhouse/client-web`,
-the deprecated `@clickhouse/client-common`, and the standalone
+the experimental `@clickhouse/client-native`, the deprecated `@clickhouse/client-common`, and the standalone
 `@clickhouse/datatype-parser` and `@clickhouse/rowbinary` — including version
 bumping, syncing the protected `release` branch from `main`, the `npm-publish`
 approval gate, and creating the GitHub Release from `CHANGELOG.md`.

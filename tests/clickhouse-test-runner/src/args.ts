@@ -68,7 +68,7 @@ const USAGE_TEXT = [
   "",
   "Options:",
   "  -h, --host HOST              Server host (default: localhost)",
-  "      --port PORT              HTTP port (default: 8123)",
+  "      --port PORT              Server port (native defaults: 9000 or 9440 with TLS; HTTP default: 8123)",
   "  -u, --user USER              Username (default: default)",
   "      --password PASSWORD      Password (default: empty)",
   "  -d, --database DB            Database (default: default)",
@@ -77,13 +77,14 @@ const USAGE_TEXT = [
   "      --send_logs_level VALUE  Server log level to send with result",
   "      --max_insert_threads VALUE",
   "                               Max insert threads setting",
-  "  -s, --secure                 Use HTTPS",
+  "  -s, --secure                 Use TLS",
   "  -m, --multiline              (ignored, accepted for compatibility)",
   '  -n, --multiquery             (ignored: multiple ";"-separated queries always run)',
   "      --help                   Print this help",
   "",
   "Environment variables:",
   "  CLICKHOUSE_CLIENT_CLI_LOG    Path to log file for troubleshooting",
+  "  TEST_RUNNER_BACKEND          passthrough (default), rowbinary, or native",
   "",
 ].join("\n");
 
@@ -97,8 +98,8 @@ export function printUsage(
  * `--port` of the real `clickhouse-client` is the native TCP port, and the
  * upstream runner passes it: `clickhouse-test` exports `CLICKHOUSE_PORT_TCP`
  * (9000 by default) for `.sh` tests, and `shell_config.sh` then appends
- * `--port=$CLICKHOUSE_PORT_TCP` to `$CLICKHOUSE_CLIENT`. This client only
- * speaks HTTP, so map that port to the matching HTTP(S) port the runner also
+ * `--port=$CLICKHOUSE_PORT_TCP` to `$CLICKHOUSE_CLIENT`. For the HTTP
+ * backends, map that port to the matching HTTP(S) port the runner also
  * exports. Any other port is used as given, as an HTTP port.
  */
 export function resolveHttpPort(
@@ -119,7 +120,10 @@ export function resolveHttpPort(
   );
 }
 
-export function parseArgs(argv: string[]): ParsedArgs {
+export function parseArgs(
+  argv: string[],
+  transport: "http" | "tcp" = "http",
+): ParsedArgs {
   const parsed: ParsedArgs = {
     host: "localhost",
     port: 8123,
@@ -256,6 +260,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
   const hostVal = firstNonNull("host");
   if (hostVal !== null) parsed.host = hostVal;
+  parsed.secure = seen.get("secure") === true;
+  if (transport === "tcp") parsed.port = parsed.secure ? 9440 : 9000;
   const portVal = firstNonNull("port");
   if (portVal !== null) {
     const n = Number.parseInt(portVal, 10);
@@ -274,7 +280,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
     "max_insert_threads",
     "max-insert-threads",
   );
-  parsed.secure = seen.get("secure") === true;
   parsed.multiquery =
     seen.get("multiquery") === true || seen.get("multi-query") === true;
   parsed.help = seen.get("help") === true;

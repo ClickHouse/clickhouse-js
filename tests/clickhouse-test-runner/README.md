@@ -5,20 +5,17 @@
 This package is a Node.js port of the Java
 [`tests/clickhouse-client`](https://github.com/ClickHouse/clickhouse-java/tree/main/tests/clickhouse-client)
 harness from [`ClickHouse/clickhouse-java`](https://github.com/ClickHouse/clickhouse-java).
-It wraps [`@clickhouse/client`](../../packages/client-node) in a tiny CLI that
+It wraps [`@clickhouse/client`](../../packages/client-node) and
+[`@clickhouse/client-native`](../../packages/client-native) in a CLI that
 mimics the upstream `clickhouse-client` binary (same flags, same
 `extract-from-config` shortcut, same stdin/`--query` behavior) so that the
 official ClickHouse Python test runner
 ([`tests/clickhouse-test`](https://github.com/ClickHouse/ClickHouse/tree/master/tests))
-can drive a subset of the real ClickHouse SQL test suite against this Node.js
-client. It lets us see exactly which upstream SQL tests pass or fail when run
-through `@clickhouse/client`, without having to reimplement the test runner
-itself.
+can run a subset of the upstream ClickHouse SQL tests through either client.
 
 ## Backends
 
-The runner can execute queries two ways, selected by the `TEST_RUNNER_BACKEND`
-environment variable:
+Set `TEST_RUNNER_BACKEND` to select a backend:
 
 - **`passthrough`** (default) — set `default_format = TabSeparated` and stream
   ClickHouse's own output bytes straight to stdout. ClickHouse does all the
@@ -35,6 +32,11 @@ environment variable:
   statements fall through to passthrough. A decode or render error fails the
   statement (it is never silently swallowed), so a test only "passes" if the
   parser actually reproduced the server's output.
+
+- **`native`** — connect over TCP with `@clickhouse/client-native` and use one
+  connection for each SQL script. The client decodes the native blocks and
+  formats the output. The runner compares that output with the upstream
+  `.reference` files.
 
 Because the `rowbinary` backend can only validate tests whose decoded types it
 can render back to `TabSeparated`, it runs a dedicated, smaller allowlist
@@ -56,9 +58,8 @@ suite (`.github/workflows/tests-skill-rowbinary.yml`).
 ## Build
 
 This package is a workspace of the root `clickhouse-js` repository, so it
-installs alongside (and is linked against) the local `@clickhouse/client` and
-`@clickhouse/client-common` packages. Install + build everything from the
-repo root:
+links to the local `@clickhouse/client` and `@clickhouse/client-native`
+packages. Install and build from the repository root:
 
 ```bash
 cd /path/to/clickhouse-js
@@ -67,9 +68,8 @@ npm run build
 ```
 
 The build emits `tests/clickhouse-test-runner/dist/main.js`, which is the
-entry point used by the `bin/clickhouse` shim. Building from the root also
-compiles `@clickhouse/client` and `@clickhouse/client-common` so the harness
-exercises the local checkout instead of the last published version on npm.
+entry point used by the `bin/clickhouse` shim. The build compiles both clients
+from the local checkout.
 
 ## Wrapper executable
 
@@ -97,23 +97,24 @@ export PATH="/path/to/clickhouse-js/tests/clickhouse-test-runner/bin:$PATH"
 
 ## Environment variables
 
-| Variable                    | Default                                                            | Description                                                                                                                                                                                                       |
-| --------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TEST_RUNNER_BACKEND`       | `passthrough`                                                      | Which backend executes queries: `passthrough` (stream ClickHouse's own `TabSeparated`) or `rowbinary` (decode `RowBinaryWithNamesAndTypes` via `@clickhouse/rowbinary` and re-render). See [Backends](#backends). |
-| `CLICKHOUSE_CLIENT_CLI_LOG` | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log` | Path to a log file used to record every shim invocation. Useful for troubleshooting.                                                                                                                              |
-| `UPSTREAM_CLICKHOUSE_DIR`   | `tests/clickhouse-test-runner/.upstream/ClickHouse`                | Path to a checkout of `ClickHouse/ClickHouse` containing the upstream test suite.                                                                                                                                 |
-| `UPSTREAM_TEST_LIST`        | `tests/clickhouse-test-runner/upstream-allowlist.txt`              | Path to a file listing the upstream tests to run (one test name per line, `#` for comments).                                                                                                                      |
-| `SHARD_INDEX`               | `1`                                                                | 1-based index of the shard to run when sharding the allowlist (must be `<= SHARD_TOTAL`).                                                                                                                         |
-| `SHARD_TOTAL`               | `1`                                                                | Total number of shards. When `> 1`, only tests at positions where `i % SHARD_TOTAL == SHARD_INDEX - 1` are run (round-robin selection).                                                                           |
+| Variable                    | Default                                                            | Description                                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `TEST_RUNNER_BACKEND`       | `passthrough`                                                      | Backend to use. See [Backends](#backends) for `passthrough`, `rowbinary`, and `native`.                                                 |
+| `CLICKHOUSE_CLIENT_CLI_LOG` | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log` | Path to a log file used to record every shim invocation. Useful for troubleshooting.                                                    |
+| `UPSTREAM_CLICKHOUSE_DIR`   | `tests/clickhouse-test-runner/.upstream/ClickHouse`                | Path to a checkout of `ClickHouse/ClickHouse` containing the upstream test suite.                                                       |
+| `UPSTREAM_TEST_LIST`        | `tests/clickhouse-test-runner/upstream-allowlist.txt`              | Path to a file listing the upstream tests to run (one test name per line, `#` for comments).                                            |
+| `SHARD_INDEX`               | `1`                                                                | 1-based index of the shard to run when sharding the allowlist (must be `<= SHARD_TOTAL`).                                               |
+| `SHARD_TOTAL`               | `1`                                                                | Total number of shards. When `> 1`, only tests at positions where `i % SHARD_TOTAL == SHARD_INDEX - 1` are run (round-robin selection). |
 
 ## Running against the upstream test suite
 
-To avoid a full multi-GB clone of `ClickHouse/ClickHouse`, use a sparse + shallow clone:
+To avoid a full multi-GB clone of `ClickHouse/ClickHouse`, use a sparse, shallow
+clone. Check out the release tag that matches your server version.
 
 ```bash
-git clone --depth 1 --filter=blob:none --sparse https://github.com/ClickHouse/ClickHouse.git
+git clone --branch v26.10.2.103-stable --depth 1 --filter=blob:none --sparse https://github.com/ClickHouse/ClickHouse.git
 cd ClickHouse
-git sparse-checkout set tests/clickhouse-test tests/queries tests/config tests/ci
+git sparse-checkout set --no-cone /tests/clickhouse-test /tests/queries/ /tests/config/ /tests/ci/ /tests/performance/ /docker/test/util/
 ```
 
 Then run the helper script from the `clickhouse-js` repository:
@@ -133,6 +134,19 @@ UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
   tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
 ```
 
+To test the native client, select the `native` backend. Set
+`CLICKHOUSE_PORT_TCP` and `CLICKHOUSE_PORT_HTTP` if the server uses ports other
+than `9000` and `8123`. Use the [native allowlist](native-allowlist.txt) and the
+following options to reproduce the CI test selection and settings.
+
+```bash
+UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
+  TEST_RUNNER_BACKEND=native \
+  UPSTREAM_TEST_LIST=tests/clickhouse-test-runner/native-allowlist.txt \
+  tests/clickhouse-test-runner/scripts/run-upstream-tests.sh \
+    --no-stateful --no-long --no-random-settings --no-random-merge-tree-settings
+```
+
 ### Extending the allowlist
 
 The file `upstream-allowlist.txt` contains the curated list of upstream tests known to pass through this harness. The file format is one test name per line; lines starting with `#` and blank lines are ignored.
@@ -146,6 +160,8 @@ The workflow `.github/workflows/upstream-sql-tests.yml` runs this harness in CI:
 - Triggered on **workflow_dispatch**, **nightly at 05:00 UTC**, and on **pushes/PRs** that touch `tests/clickhouse-test-runner/**` or the workflow file itself.
 - The upstream test suite is pinned by `UPSTREAM_REF` in the workflow to the release matching the `latest` server image (e.g. `v26.10.2.103-stable` for 26.10). When `latest` moves to a new release, the old reference outputs drift from the server's, so bump the pin to the new release's tag. The `workflow_dispatch` input `upstream_ref` overrides the pin for one run, which is the way to try a new pin before committing it.
 - The matrix runs every combination of `{clickhouse: latest} × {backend: passthrough | rowbinary} × {shard: 1..N}`. Sharding is round-robin across the allowlist (see `SHARD_INDEX` / `SHARD_TOTAL` above) so each shard takes roughly one minute. If the allowlist grows enough that per-shard runtime climbs back above ~1 minute, bump both the `shard` matrix values and the `SHARD_TOTAL` env value in the workflow together.
+- The `native` job runs its allowlist in one shard. Changes to the native client
+  or shared client code also trigger the workflow.
 
 ## Local development
 
@@ -167,11 +183,10 @@ This is a developer-facing harness. It is **not** an exhaustive
 differ from what an HTTP client would expect, because the shim follows
 `clickhouse-client`:
 
-- `--port` is `clickhouse-client`'s native TCP port. `clickhouse-test`
-  exports `CLICKHOUSE_PORT_TCP` and passes `--port=$CLICKHOUSE_PORT_TCP` to
-  `.sh` tests, so that port is mapped to `CLICKHOUSE_PORT_HTTP` (default
-  `8123`; `9440` maps to `CLICKHOUSE_PORT_HTTPS`, default `8443`). Any other
-  port is used as an HTTP port.
+- The native backend uses `--port` as a TCP port. The default is `9000`, or
+  `9440` with `--secure`. The HTTP backends map `CLICKHOUSE_PORT_TCP` to
+  `CLICKHOUSE_PORT_HTTP` (default `8123`) and `CLICKHOUSE_PORT_TCP_SECURE` to
+  `CLICKHOUSE_PORT_HTTPS` (default `8443`). They use other ports as given.
 - Every `;`-separated statement runs, with or without `--multiquery` (`-n`),
   as `clickhouse-client` does for `--query` and stdin.
 

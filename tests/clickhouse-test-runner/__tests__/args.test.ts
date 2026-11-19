@@ -39,6 +39,12 @@ describe("parseArgs", () => {
     expect(args.serverSettings).toEqual({});
   });
 
+  it("uses the native TCP ports by default and honors an explicit port", () => {
+    expect(parseArgs([], "tcp").port).toBe(9000);
+    expect(parseArgs(["--secure"], "tcp").port).toBe(9440);
+    expect(parseArgs(["--port=19000"], "tcp").port).toBe(19000);
+  });
+
   it("parses long-form options with separate values", () => {
     const args = parseArgs([
       "--host",

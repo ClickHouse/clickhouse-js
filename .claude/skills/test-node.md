@@ -1,19 +1,21 @@
-Run the Node.js unit and integration tests to verify changes to the `packages/client-node` package.
+Run the Node.js unit and integration tests to verify changes to `packages/client-node` (and `packages/client-native` when changes touch shared `client-common` code or Node.js client APIs/ResultSet).
 
-After making changes to the node package, run both test suites:
+After making changes to the Node.js client package(s), run the relevant test suites:
 
-- Unit tests (fast, no server needed):
+- HTTP Node.js client (`packages/client-node`):
 
 ```
 npm run test:node:unit
-```
-
-- Integration tests (requires a running ClickHouse server):
-
-```
 npm run test:node:integration
 ```
 
-Run unit tests first. If they pass, also always run integration tests.
+- Native TCP Node.js client (`packages/client-native`), when modifying `packages/client-native`, `packages/client-common`, or shared Node.js client behavior (`src/index.ts`, `src/result_set.ts`, `src/utils/`):
+
+```
+npm run test:native:unit
+npm run test:native:integration
+```
+
+Run unit tests (fast, no server needed) first. If they pass, also always run integration tests (requires a running ClickHouse server).
 
 Proceed with addressing any failures before continuing.

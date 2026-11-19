@@ -33,13 +33,15 @@ Official JS client for [ClickHouse](https://clickhouse.com/), written purely in 
 
 The client has zero external dependencies and is optimized for maximum performance.
 
-The repository consists of four packages:
+The repository consists of five packages:
 
 - `@clickhouse/client` - a version of the client designed for Node.js platform only. It is built on top of [HTTP](https://nodejs.org/api/http.html)
   and [Stream](https://nodejs.org/api/stream.html) APIs; supports streaming for both selects and inserts.
 - `@clickhouse/client-web` - a version of the client built on top of [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
   and [Web Streams](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) APIs; supports streaming for selects.
   Compatible with Chrome/Firefox browsers and Cloudflare workers.
+- `@clickhouse/client-native` - an experimental version of the client for Node.js that uses the native TCP protocol of ClickHouse
+  (port 9000, or 9440 with TLS) instead of HTTP. It has the API of `@clickhouse/client`. See its [README](./packages/client-native/README.md).
 - `@clickhouse/client-common` - shared common types and the base framework for building a custom client implementation.
 - `@clickhouse/rowbinary` - a library for reading (and soon writing) ClickHouse RowBinary format.
 
@@ -117,6 +119,7 @@ Each package keeps its own changelog:
 
 - `@clickhouse/client` — [`packages/client-node/CHANGELOG.md`](./packages/client-node/CHANGELOG.md)
 - `@clickhouse/client-web` — [`packages/client-web/CHANGELOG.md`](./packages/client-web/CHANGELOG.md)
+- `@clickhouse/client-native` — [`packages/client-native/CHANGELOG.md`](./packages/client-native/CHANGELOG.md)
 - `@clickhouse/client-common` (deprecated) — [`packages/client-common/CHANGELOG.md`](./packages/client-common/CHANGELOG.md)
 - `@clickhouse/datatype-parser` — [`packages/datatype-parser/CHANGELOG.md`](./packages/datatype-parser/CHANGELOG.md)
 - `@clickhouse/rowbinary` — [`skills/clickhouse-js-node-rowbinary/CHANGELOG.md`](./skills/clickhouse-js-node-rowbinary/CHANGELOG.md)

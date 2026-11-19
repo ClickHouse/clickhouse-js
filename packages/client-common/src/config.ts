@@ -270,6 +270,20 @@ export type HandleImplSpecificURLParams = (
   unknown_params: Set<string>;
 };
 
+/** The URL schemes that an implementation accepts, and its default URL.
+ *  The HTTP implementations use the default {@link HttpURLOptions}. */
+export interface URLOptions {
+  /** Used when the configuration has no URL. */
+  default_url: string;
+  /** Accepted URL protocols, with the colon, for example `http:`. */
+  protocols: readonly string[];
+}
+
+export const HttpURLOptions: URLOptions = {
+  default_url: "http://localhost:8123",
+  protocols: ["http:", "https:"],
+};
+
 /** Things that may vary between Web/Node.js/etc client implementations. */
 export interface ImplementationDetails<Stream> {
   impl: {
@@ -277,6 +291,8 @@ export interface ImplementationDetails<Stream> {
     make_result_set: MakeResultSet<Stream>;
     values_encoder: MakeValuesEncoder<Stream>;
     handle_specific_url_params?: HandleImplSpecificURLParams;
+    /** @default {@link HttpURLOptions} */
+    url_options?: URLOptions;
   };
 }
 
@@ -298,6 +314,7 @@ export function prepareConfigWithURL(
   baseConfigOptions: BaseClickHouseClientConfigOptions,
   logger: Logger,
   handleImplURLParams: HandleImplSpecificURLParams | null,
+  urlOptions: URLOptions = HttpURLOptions,
 ): BaseClickHouseClientConfigOptionsWithURL {
   const baseConfig = { ...baseConfigOptions };
   if (baseConfig.additional_headers !== undefined) {
@@ -315,10 +332,10 @@ export function prepareConfigWithURL(
       module: "Config",
       message: '"host" is deprecated. Use "url" instead.',
     });
-    configURL = createUrl(baseConfig.host);
+    configURL = createUrl(baseConfig.host, urlOptions);
     delete baseConfig.host;
   } else {
-    configURL = createUrl(baseConfig.url);
+    configURL = createUrl(baseConfig.url, urlOptions);
   }
   const [url, configFromURL] = loadConfigOptionsFromURL(
     configURL,
@@ -356,7 +373,10 @@ export function getConnectionParams(
   const request_timeout = config.request_timeout ?? 30_000;
   const clickhouse_settings = config.clickhouse_settings ?? {};
 
-  if (log_level <= ClickHouseLogLevel.WARN) {
+  // The progress headers are a feature of the HTTP interface only.
+  const isHTTP =
+    config.url.protocol === "http:" || config.url.protocol === "https:";
+  if (isHTTP && log_level <= ClickHouseLogLevel.WARN) {
     // Warn if request_timeout is high but progress headers are not configured
     // This can lead to socket hang-up errors when long-running queries exceed load balancer idle timeouts
     const THRESHOLD_MS = 60_000; // 60 seconds
@@ -458,26 +478,39 @@ export function mergeConfigs(
   return config as BaseClickHouseClientConfigOptions;
 }
 
-export function createUrl(configURL: string | URL | undefined): URL {
+export function createUrl(
+  configURL: string | URL | undefined,
+  urlOptions: URLOptions = HttpURLOptions,
+): URL {
+  const protocols = urlOptions.protocols.map((p) => p.replace(/:$/, ""));
   let url: URL;
   try {
     if (typeof configURL === "string" || configURL instanceof URL) {
       url = new URL(configURL);
     } else {
-      return new URL("http://localhost:8123");
+      return new URL(urlOptions.default_url);
     }
   } catch (err) {
     throw new Error(
-      "ClickHouse URL is malformed. Expected format: http[s]://[username:password@]hostname:port[/database][?param1=value1&param2=value2]",
+      `ClickHouse URL is malformed. Expected format: ${formatProtocols(protocols)}://[username:password@]hostname:port[/database][?param1=value1&param2=value2]`,
       { cause: err },
     );
   }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
+  if (!urlOptions.protocols.includes(url.protocol)) {
     throw new Error(
-      `ClickHouse URL protocol must be either http or https. Got: ${url.protocol}`,
+      `ClickHouse URL protocol must be either ${protocols.join(" or ")}. Got: ${url.protocol}`,
     );
   }
   return url;
+}
+
+/** `http[s]` for `http` and `https`; otherwise the protocols joined with `|`. */
+function formatProtocols(protocols: string[]): string {
+  const [first, second] = protocols;
+  if (protocols.length === 2 && second === `${first}s`) {
+    return `${first}[s]`;
+  }
+  return protocols.join("|");
 }
 
 /**

@@ -1,3 +1,7 @@
+import {
+  ClickHouseLogLevel,
+  createClient as createNativeClient,
+} from "@clickhouse/client-native";
 import { appendLog } from "../log.js";
 import {
   type BackendOptions,
@@ -7,14 +11,26 @@ import {
 } from "./shared.js";
 
 /**
- * Passthrough backend (the default): stream ClickHouse's own `TabSeparated`
- * output straight to stdout. The client only transports bytes; ClickHouse does
- * all the formatting. This is what `default_format = TabSeparated` (in
- * {@link buildClickHouseSettings}) selects.
+ * Stream query output to stdout. The HTTP backend receives formatted text
+ * from ClickHouse. The native client formats the result from native blocks.
  */
-export async function executeWithClient(opts: BackendOptions): Promise<void> {
+export async function executeWithClient(
+  opts: BackendOptions,
+  backend: "passthrough" | "native",
+): Promise<void> {
   const { args, statements, logPath } = opts;
-  const client = createSessionClient(args, logPath);
+  const client =
+    backend === "native"
+      ? createNativeClient({
+          url: `${args.secure ? "tcps" : "tcp"}://${args.host}:${args.port}`,
+          username: args.user,
+          password: args.password,
+          database: args.database,
+          // Each TCP connection is a session. Reuse it for the full SQL script.
+          max_open_connections: 1,
+          log: { level: ClickHouseLogLevel.OFF },
+        })
+      : createSessionClient(args, logPath);
   const clickhouse_settings = buildClickHouseSettings(args);
 
   try {

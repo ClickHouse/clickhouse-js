@@ -16,6 +16,7 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
+      - ".scripts/test-native-package.sh"
       - "packages/client-node/vitest.config.ts"
       - "packages/client-node/vitest.setup.ts"
       - "packages/client-web/vitest.config.ts"
@@ -31,6 +32,7 @@ on:
       - "tsconfig.dev.json"
       - "eslint.config.base.mjs"
       - "docker-compose.yml"
+      - ".scripts/test-native-package.sh"
       - "packages/client-node/vitest.config.ts"
       - "packages/client-node/vitest.setup.ts"
       - "packages/client-web/vitest.config.ts"
@@ -52,6 +54,7 @@ concurrency:
 # `src` loop cannot. Behavioural coverage across Node/ClickHouse versions already
 # runs in the `node`/`web` workflows, so this targets only the stable ClickHouse
 # release on a local single-node instance with the canonical Node.js version.
+# The native job installs the npm tarball before running a TCP query.
 jobs:
   node-dist-integration:
     timeout-minutes: 10
@@ -110,3 +113,29 @@ jobs:
         env:
           BROWSER: chromium
         run: npm run test:web:integration:dist
+
+  native-dist-integration:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Start ClickHouse (stable) in Docker
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          compose-file: "docker-compose.yml"
+          services: clickhouse
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test the installed native package
+        run: npm run test:native:dist

@@ -10,6 +10,7 @@ import {
   type CompressionMethod,
   type Connection,
   type ConnectionParams,
+  HttpURLOptions,
   numberConfigURLValue,
 } from "./common/index";
 import type http from "http";
@@ -167,6 +168,7 @@ function ensureResponseCodecSupported(value: CompressionMethod): void {
 export const NodeConfigImpl: Required<
   ImplementationDetails<Stream.Readable>["impl"]
 > = {
+  url_options: HttpURLOptions,
   handle_specific_url_params: (config, url) => {
     const nodeConfig: NodeClickHouseClientConfigOptions = { ...config };
     const unknownParams = new Set<string>();

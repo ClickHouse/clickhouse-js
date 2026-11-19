@@ -17,10 +17,14 @@ on:
       - main
     paths:
       - "tests/clickhouse-test-runner/**"
+      - "packages/client-native/**"
+      - "packages/client-common/**"
       - ".github/workflows/upstream-sql-tests.yml"
   pull_request:
     paths:
       - "tests/clickhouse-test-runner/**"
+      - "packages/client-native/**"
+      - "packages/client-common/**"
       - ".github/workflows/upstream-sql-tests.yml"
 
 concurrency:
@@ -70,6 +74,11 @@ jobs:
         # `shard` and `SHARD_TOTAL` together if the allowlist grows enough
         # that per-shard runtime climbs back above ~1 minute.
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        include:
+          - clickhouse: latest
+            backend: native
+            shard: 1
+            shard_total: 1
     steps:
       - name: Checkout clickhouse-js
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -126,12 +135,14 @@ jobs:
         env:
           CLICKHOUSE_CLIENT_CLI_LOG: ${{ github.workspace }}/upstream-run.log
           SHARD_INDEX: ${{ matrix.shard }}
-          SHARD_TOTAL: 10
+          SHARD_TOTAL: ${{ matrix.shard_total || 10 }}
           TEST_RUNNER_BACKEND: ${{ matrix.backend }}
         run: |
-          # The rowbinary backend can only validate tests whose decoded types it
-          # can render back to TabSeparated, so it runs a dedicated (smaller)
-          # allowlist; passthrough runs the full one.
+          if [ "${TEST_RUNNER_BACKEND}" = "native" ]; then
+            export UPSTREAM_TEST_LIST="${{ github.workspace }}/tests/clickhouse-test-runner/native-allowlist.txt"
+            exec bash tests/clickhouse-test-runner/scripts/run-upstream-tests.sh \
+              --no-stateful --no-long --no-random-settings --no-random-merge-tree-settings
+          fi
           if [ "${TEST_RUNNER_BACKEND}" = "rowbinary" ]; then
             export UPSTREAM_TEST_LIST="${{ github.workspace }}/tests/clickhouse-test-runner/rowbinary-allowlist.txt"
           fi

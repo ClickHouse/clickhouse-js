@@ -1,5 +1,9 @@
 # 1.25.1
 
+## Improvements
+
+- (Web only) The bundled URL parser supports transport-specific defaults (`url_options`), keeping `http` / `https` and `http://localhost:8123` for `@clickhouse/client-web`, and suppresses the HTTP-only `send_progress_in_http_headers` warning on non-HTTP URLs.
+
 ## Bug fixes
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
