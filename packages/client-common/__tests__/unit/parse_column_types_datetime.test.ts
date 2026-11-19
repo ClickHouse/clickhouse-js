@@ -102,6 +102,7 @@ describe("Columns types parser - DateTime and DateTime64", () => {
         ["DateTime64(3, '')"],
         ["DateTime64(3, 'A')"],
         ["DateTime64(3, 'UTC', 'extra')"],
+        ["DateTime64(3, 'UTC\\')"],
       ];
       args.forEach(([columnType]) => {
         expect(

@@ -630,6 +630,29 @@ export function parseDateTimeType({
   }
 }
 
+function isTrailingQuoteEscaped(str: string): boolean {
+  let backslashCount = 0;
+  for (let i = str.length - 2; i >= 0 && str[i] === "\\"; i--) {
+    backslashCount++;
+  }
+  return backslashCount % 2 !== 0;
+}
+
+function hasUnescapedQuote(innerStr: string): boolean {
+  for (let i = 0; i < innerStr.length; i++) {
+    if (innerStr[i] === "'") {
+      let backslashCount = 0;
+      for (let j = i - 1; j >= 0 && innerStr[j] === "\\"; j--) {
+        backslashCount++;
+      }
+      if (backslashCount % 2 === 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function parseDateTime64Type({
   columnType,
   sourceType,
@@ -692,7 +715,8 @@ export function parseDateTime64Type({
     !timezoneStr.startsWith("'") ||
     !timezoneStr.endsWith("'") ||
     timezoneStr.length < 4 ||
-    timezoneStr.slice(1, -1).includes("'")
+    isTrailingQuoteEscaped(timezoneStr) ||
+    hasUnescapedQuote(timezoneStr.slice(1, -1))
   ) {
     throw new ColumnTypeParseError("Invalid DateTime64 type", {
       columnType,
