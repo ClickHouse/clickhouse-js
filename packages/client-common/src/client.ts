@@ -22,6 +22,11 @@ import type {
 import type { ImplementationDetails, ValuesEncoder } from "./config";
 import { getConnectionParams, prepareConfigWithURL } from "./config";
 import type { ConnPingResult } from "./connection";
+import {
+  type ExternalDataEntry,
+  type PreparedExternalData,
+  prepareExternalData,
+} from "./external_data";
 import type { JSONHandling } from "./parse/json_handling";
 import type { BaseResultSet } from "./result";
 import type {
@@ -87,18 +92,21 @@ export interface BaseQueryParams {
   use_multipart_params_auto?: boolean;
 }
 
-export interface QueryParams extends BaseQueryParams {
+export interface QueryParams<Stream = unknown> extends BaseQueryParams {
   /** Statement to execute. */
   query: string;
   /** Format of the resulting dataset. */
   format?: DataFormat;
+  /** Temporary tables sent alongside the query over `multipart/form-data`.
+   *  @see https://clickhouse.com/docs/en/engines/table-engines/special/external-data */
+  external_data?: ReadonlyArray<ExternalDataEntry<Stream>>;
 }
 
 /** Same parameters as {@link QueryParams}, but with `format` field as a type */
-export type QueryParamsWithFormat<Format extends DataFormat> = Omit<
-  QueryParams,
-  "format"
-> & { format?: Format };
+export type QueryParamsWithFormat<
+  Format extends DataFormat,
+  Stream = unknown,
+> = Omit<QueryParams<Stream>, "format"> & { format?: Format };
 
 /** If the Format is not a literal type, fall back to the default behavior of the ResultSet,
  *  allowing to call all methods with all data shapes variants,
@@ -108,7 +116,7 @@ export type QueryResult<Stream, Format extends DataFormat> =
     ? BaseResultSet<Stream, unknown>
     : BaseResultSet<Stream, Format>;
 
-export type ExecParams = BaseQueryParams & {
+export type ExecParams<Stream = unknown> = BaseQueryParams & {
   /** Statement to execute (including the FORMAT clause). By default, the query will be sent in the request body;
    *  If {@link ExecParamsWithValues.values} are defined, the query is sent as a request parameter,
    *  and the values are sent in the request body instead. */
@@ -130,8 +138,14 @@ export type ExecParams = BaseQueryParams & {
    * @default false
    */
   ignore_error_response?: boolean;
+  /** Temporary tables sent alongside the query over `multipart/form-data`.
+   *  @see https://clickhouse.com/docs/en/engines/table-engines/special/external-data */
+  external_data?: ReadonlyArray<ExternalDataEntry<Stream>>;
 };
-export type ExecParamsWithValues<Stream> = ExecParams & {
+export type ExecParamsWithValues<Stream> = Omit<
+  ExecParams<Stream>,
+  "external_data"
+> & {
   /** If you have a custom INSERT statement to run with `exec`, the data from this stream will be inserted.
    *
    *  NB: the data in the stream is expected to be serialized accordingly to the FORMAT clause
@@ -139,9 +153,10 @@ export type ExecParamsWithValues<Stream> = ExecParams & {
    *
    *  @see https://clickhouse.com/docs/en/interfaces/formats */
   values: Stream;
+  external_data?: never;
 };
 
-export type CommandParams = ExecParams;
+export type CommandParams<Stream = unknown> = ExecParams<Stream>;
 export type CommandResult = { query_id: string } & WithClickHouseSummary &
   WithResponseHeaders &
   WithHttpStatusCode;
@@ -273,12 +288,15 @@ export class ClickHouseClient<Stream = unknown> {
    * See {@link DataFormat} for the formats supported by the client.
    */
   async query<Format extends DataFormat = "JSON">(
-    params: QueryParamsWithFormat<Format>,
+    params: QueryParamsWithFormat<Format, Stream>,
   ): Promise<QueryResult<Stream, Format>> {
     const format = params.format ?? "JSON";
     // The client sends the query as written. The server applies
     // `default_format` to the output. A FORMAT clause is not necessary.
     const query = params.query;
+    const external_data = this.prepareExternalDataIfPresent(
+      params.external_data,
+    );
     const queryParams = this.withClientQueryParams(params);
     queryParams.clickhouse_settings = {
       ...queryParams.clickhouse_settings,
@@ -304,6 +322,7 @@ export class ClickHouseClient<Stream = unknown> {
         try {
           queryResult = await this.connection.query({
             query,
+            external_data,
             ...queryParams,
           });
         } catch (err) {
@@ -411,10 +430,13 @@ export class ClickHouseClient<Stream = unknown> {
    * @note if you have a custom query that does not work with {@link ClickHouseClient.query},
    * and you are interested in the response data, consider using {@link ClickHouseClient.exec}.
    */
-  async command(params: CommandParams): Promise<CommandResult> {
+  async command(params: CommandParams<Stream>): Promise<CommandResult> {
     // The client sends the query as written. The server accepts trailing
     // semicolons and comments.
     const query = params.query;
+    const external_data = this.prepareExternalDataIfPresent(
+      params.external_data,
+    );
     const ignore_error_response = params.ignore_error_response ?? false;
     const queryParams = this.withClientQueryParams(params);
     return this.tracer.startActiveSpan(
@@ -434,6 +456,7 @@ export class ClickHouseClient<Stream = unknown> {
         try {
           const result = await this.connection.command({
             query,
+            external_data,
             ignore_error_response,
             ...queryParams,
           });
@@ -461,9 +484,23 @@ export class ClickHouseClient<Stream = unknown> {
    * use {@link ClickHouseClient.command} instead.
    */
   async exec(
-    params: ExecParams | ExecParamsWithValues<Stream>,
+    params: ExecParams<Stream> | ExecParamsWithValues<Stream>,
   ): Promise<ExecResult<Stream>> {
     const values = "values" in params ? params.values : undefined;
+    if (
+      values !== undefined &&
+      "external_data" in params &&
+      params.external_data !== undefined &&
+      params.external_data.length > 0
+    ) {
+      throw new Error(
+        'Cannot use both "values" and "external_data" in exec() at the same time.',
+      );
+    }
+    const external_data =
+      "external_data" in params
+        ? this.prepareExternalDataIfPresent(params.external_data)
+        : undefined;
     // The client sends the query as written, unless values follow it. Then,
     // the server reads the data directly after the statement
     // (`INSERT ... FORMAT CSV`) and rejects a `;` before the data. For this
@@ -494,6 +531,7 @@ export class ClickHouseClient<Stream = unknown> {
           const result = await this.connection.exec({
             query,
             values,
+            external_data,
             decompress_response_stream,
             ignore_error_response,
             ...queryParams,
@@ -704,6 +742,28 @@ export class ClickHouseClient<Stream = unknown> {
       use_multipart_params: params.use_multipart_params,
       use_multipart_params_auto: params.use_multipart_params_auto,
     };
+  }
+
+  private prepareExternalDataIfPresent(
+    entries: ReadonlyArray<ExternalDataEntry<Stream>> | undefined,
+  ): PreparedExternalData<Stream>[] | undefined {
+    if (entries === undefined || entries.length === 0) {
+      return undefined;
+    }
+    return prepareExternalData(
+      entries,
+      this.jsonHandling,
+      (stream, format, name) => {
+        if (this.valuesEncoder.encodeExternalDataStream !== undefined) {
+          return this.valuesEncoder.encodeExternalDataStream(
+            stream,
+            format,
+            name,
+          );
+        }
+        return stream;
+      },
+    );
   }
 }
 

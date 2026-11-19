@@ -28,7 +28,7 @@ export interface RequestParams {
   method: "GET" | "POST";
   url: URL;
   headers: Http.OutgoingHttpHeaders;
-  body?: string | Stream.Readable;
+  body?: string | Uint8Array | Stream.Readable;
   // provided by the user and wrapped around internally
   abort_signal: AbortSignal;
   response_compression_codec?: CompressionMethod;
@@ -703,7 +703,10 @@ export class SocketPool {
         });
       }
 
-      if (!params.body) {
+      if (
+        params.body === undefined ||
+        (typeof params.body === "string" && params.body.length === 0)
+      ) {
         try {
           return request.end();
         } catch (e) {

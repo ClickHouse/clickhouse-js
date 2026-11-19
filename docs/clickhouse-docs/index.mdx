@@ -271,6 +271,8 @@ interface QueryParams extends BaseQueryParams {
   query: string
   // Format of the resulting dataset. Default: JSON.
   format?: DataFormat
+  // Temporary tables sent alongside the query over multipart/form-data.
+  external_data?: ReadonlyArray<ExternalDataEntry>
 }
 
 interface ClickHouseClient {
@@ -606,6 +608,8 @@ The response stream is destroyed immediately, which means that the underlying so
 interface CommandParams extends BaseQueryParams {
   // Statement to execute.
   query: string
+  // Temporary tables sent alongside the command over multipart/form-data.
+  external_data?: ReadonlyArray<ExternalDataEntry>
 }
 
 interface CommandResult {
@@ -675,6 +679,8 @@ and you're interested in the result, you can use `exec` as an alternative to `co
 interface ExecParams extends BaseQueryParams {
   // Statement to execute.
   query: string
+  // Temporary tables sent alongside the statement over multipart/form-data.
+  external_data?: ReadonlyArray<ExternalDataEntry>
 }
 
 interface ClickHouseClient {
@@ -1042,6 +1048,46 @@ await client.query({
 
 Check https://clickhouse.com/docs/interfaces/cli#cli-queries-with-parameters-syntax for additional details.
 
+### External data (per-query temporary tables) {#external-data}
+
+ClickHouse can attach one or more temporary tables directly to a single HTTP `query`, `command`, or `exec` request via `external_data`. Each table exists only for that request, needs no `session_id`, works behind stateless load balancers, and avoids the server's `http_max_field_value_size` (128 KiB default) cap on individual `query_params` values when joining large ID lists.
+
+Each `ExternalDataEntry` specifies:
+
+- `name`: temporary table name referenced in the SQL query. The client sends `<name>_structure` or `<name>_types`, and `<name>_format`, as URL parameters. The server reads settings from the same URL parameters, so do not use a name that makes one of these keys a setting name. For example, a table named `default` with a `format` gives `default_format`, and a table named `date_time_input` gives `date_time_input_format`. The client rejects a name if one of these three keys is the same as a setting or a parameter of the request, also when the table does not send that key. For this reason, `query()` rejects a table named `default`, because it always sends `default_format`.
+- `structure` (e.g. `'id String, n UInt32'` or `['id String', 'n UInt32']`) **or** positional `types` (e.g. `'String, UInt32'` or `['String', 'UInt32']`, exposed as `_1`, `_2`, ...).
+- `format` (optional, default `'TabSeparated'`): input format such as `'TSV'`, `'CSV'`, `'JSONEachRow'`, `'JSONCompactEachRow'`, or `'Parquet'`.
+- `data`: pre-serialized `string` or `Uint8Array` (or Node.js `Buffer`) in the entry's `format`, an array of rows for row-per-line JSON formats such as `JSONEachRow` and `JSONCompactEachRow`, or (Node.js only) a `Stream.Readable` (raw byte/text streams, or object-mode streams for the same row-per-line JSON formats).
+
+**Example:** (Node.js/Web) Join an external table in a single query.
+[Source code](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/coding/external_data.ts).
+
+```ts
+const userIds = [101, 202, 303]
+
+const rs = await client.query({
+  query: `
+    SELECT e.user_id, count() AS hits
+    FROM events AS e
+    INNER JOIN target_users AS t ON e.user_id = t.id
+    GROUP BY e.user_id
+  `,
+  format: 'JSONEachRow',
+  external_data: [
+    {
+      name: 'target_users',
+      structure: 'id UInt64',
+      format: 'TSV',
+      data: userIds.join('\n'),
+    },
+  ],
+})
+```
+
+On `@clickhouse/client-web`, `ReadableStream` inputs in `external_data` are not supported (matching `insert`); pass a `string`, `Uint8Array`, or array of rows instead. Request-body compression (`compression.request`) is bypassed on requests carrying `external_data`, as ClickHouse's `multipart/form-data` parser reads uncompressed form parts.
+
+A request with `external_data` sends the SQL text as a `multipart/form-data` field. For this reason, the server setting `http_max_field_value_size` (128 KiB by default) limits the length of the SQL text of such a request. The setting does not limit the size of the external tables.
+
 ### Compression {#compression}
 
 NB: request compression is currently not available in the Web version. Response compression works as normal. Node.js version supports both.
@@ -1386,7 +1432,7 @@ With certificates _and_ a custom _HTTPS_ Agent, it is likely necessary to disabl
 
 ## Known limitations (web) {#known-limitations-web}
 
-- Streaming for select queries works, but it is disabled for inserts (on the type level as well).
+- Streaming for select queries works, but it is disabled for inserts and `external_data` (on the type level as well).
 - Request compression is disabled and configuration is ignored. Response compression works.
 - No logging support yet.
 

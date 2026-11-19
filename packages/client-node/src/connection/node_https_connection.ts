@@ -5,6 +5,7 @@ import {
 } from "../common/index";
 import type Http from "http";
 import Https from "https";
+import type Stream from "stream";
 import type { NodeConnectionParams } from "./node_base_connection";
 import type { RequestParams } from "./socket_pool";
 import { NodeBaseConnection } from "./node_base_connection";
@@ -22,7 +23,7 @@ export class NodeHttpsConnection extends NodeBaseConnection {
   }
 
   protected override buildRequestHeaders(
-    params?: ConnBaseQueryParams,
+    params?: ConnBaseQueryParams<Stream.Readable>,
   ): Http.OutgoingHttpHeaders {
     if (this.params.tls !== undefined) {
       if (this.params.auth.type === "JWT") {

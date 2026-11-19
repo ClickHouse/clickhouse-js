@@ -4,6 +4,7 @@ import type {
   WithHttpStatusCode,
   WithResponseHeaders,
 } from "./clickhouse_types";
+import type { PreparedExternalData } from "./external_data";
 import type { ClickHouseLogLevel, LogWriter } from "./logger";
 import type { ClickHouseSettings } from "./settings";
 
@@ -60,7 +61,7 @@ export interface CompressionSettings {
   compress_request: RequestCompression | undefined;
 }
 
-export interface ConnBaseQueryParams {
+export interface ConnBaseQueryParams<Stream = unknown> {
   query: string;
   clickhouse_settings?: ClickHouseSettings;
   query_params?: Record<string, unknown>;
@@ -72,22 +73,28 @@ export interface ConnBaseQueryParams {
   http_headers?: Record<string, string>;
   use_multipart_params?: boolean;
   use_multipart_params_auto?: boolean;
+  external_data?: ReadonlyArray<PreparedExternalData<Stream>>;
 }
 
 export type ConnPingParams = { select: boolean } & Omit<
   ConnBaseQueryParams,
-  "query" | "query_params"
+  "query" | "query_params" | "external_data"
 >;
 
-export interface ConnCommandParams extends ConnBaseQueryParams {
+export interface ConnCommandParams<
+  Stream = unknown,
+> extends ConnBaseQueryParams<Stream> {
   ignore_error_response?: boolean;
 }
 
-export interface ConnInsertParams<Stream> extends ConnBaseQueryParams {
+export interface ConnInsertParams<Stream> extends Omit<
+  ConnBaseQueryParams<Stream>,
+  "external_data"
+> {
   values: string | Stream;
 }
 
-export interface ConnExecParams<Stream> extends ConnBaseQueryParams {
+export interface ConnExecParams<Stream> extends ConnBaseQueryParams<Stream> {
   values?: Stream;
   decompress_response_stream?: boolean;
   ignore_error_response?: boolean;
@@ -119,9 +126,9 @@ export type ConnOperation = "Ping" | "Query" | "Insert" | "Exec" | "Command";
 
 export interface Connection<Stream> {
   ping(params: ConnPingParams): Promise<ConnPingResult>;
-  query(params: ConnBaseQueryParams): Promise<ConnQueryResult<Stream>>;
+  query(params: ConnBaseQueryParams<Stream>): Promise<ConnQueryResult<Stream>>;
   insert(params: ConnInsertParams<Stream>): Promise<ConnInsertResult>;
-  command(params: ConnCommandParams): Promise<ConnCommandResult>;
+  command(params: ConnCommandParams<Stream>): Promise<ConnCommandResult>;
   exec(params: ConnExecParams<Stream>): Promise<ConnExecResult<Stream>>;
   close(): Promise<void>;
 }

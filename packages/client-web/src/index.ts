@@ -1,6 +1,12 @@
 export {
   type WebClickHouseClient as ClickHouseClient,
   type QueryResult,
+  type QueryParams,
+  type QueryParamsWithFormat,
+  type ExecParams,
+  type CommandParams,
+  type ExternalDataEntry,
+  type ExternalDataInput,
 } from "./client";
 export { createClient } from "./client";
 export { type WebClickHouseClientConfigOptions as ClickHouseClientConfigOptions } from "./config";
@@ -10,12 +16,10 @@ export { ResultSet } from "./result_set";
 export {
   type BaseClickHouseClientConfigOptions,
   type BaseQueryParams,
-  type QueryParams,
-  type QueryParamsWithFormat,
-  type ExecParams,
+  type ExternalDataFormat,
+  type ExternalDataSchema,
   type InsertParams,
   type InsertValues,
-  type CommandParams,
   type CommandResult,
   type ExecResult,
   type InsertResult,

@@ -27,6 +27,9 @@ export default defineConfig({
       // TODO: stop excluding once @clickhouse/client@1.20.0 (which adds the
       //  `tracer` config option) is published to npm.
       "coding/otel_tracing.ts",
+      // TODO: stop excluding once a @clickhouse/client release with
+      //  `external_data` support is published to npm.
+      "coding/external_data.ts",
     ],
     setupFiles: ["vitest.setup.ts"],
     pool: "forks",

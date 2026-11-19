@@ -1,6 +1,6 @@
 import { formatQueryParams } from "../data_formatter";
 
-const SAFE_PART_NAME = /^[A-Za-z0-9_.-]+$/;
+export const SAFE_PART_NAME = /^[A-Za-z0-9_.-]+$/;
 
 /**
  * Query parameters are URL-encoded into the request URL as `param_*` entries.
@@ -46,6 +46,49 @@ export function serializeQueryParamsForUrl(
 }
 
 /**
+ * A binary or file-backed multipart part (used for ClickHouse external data).
+ * When `filename` is set, ClickHouse's `HTMLForm` routes the part through its
+ * streaming `PartHandler` instead of treating it as an in-memory form field
+ * capped by `http_max_field_value_size`.
+ */
+export interface MultipartFilePart<Value = string | Uint8Array> {
+  name: string;
+  filename?: string;
+  contentType?: string;
+  value: Value;
+}
+
+export function validateMultipartPartName(name: string): void {
+  if (!SAFE_PART_NAME.test(name)) {
+    throw new Error(
+      `Invalid multipart part name: "${name}". ` +
+        `Part names must match ${SAFE_PART_NAME}.`,
+    );
+  }
+}
+
+export function formatMultipartPartHeader(
+  part: {
+    name: string;
+    filename?: string;
+    contentType?: string;
+  },
+  boundary: string,
+): string {
+  validateMultipartPartName(part.name);
+  let disposition = `Content-Disposition: form-data; name="${part.name}"`;
+  if (part.filename !== undefined) {
+    validateMultipartPartName(part.filename);
+    disposition += `; filename="${part.filename}"`;
+  }
+  const contentTypeLine =
+    part.contentType !== undefined
+      ? `Content-Type: ${part.contentType}\r\n`
+      : "";
+  return `--${boundary}\r\n${disposition}\r\n${contentTypeLine}\r\n`;
+}
+
+/**
  * Builds a multipart/form-data body from a record of named string parts.
  *
  * Example output:
@@ -73,21 +116,69 @@ export function buildMultipartBody(
   // boundary is a random UUID generated per request by the caller, so it cannot
   // be predicted or collided with by user-supplied input.
   for (const [name, value] of Object.entries(parts)) {
-    if (!SAFE_PART_NAME.test(name)) {
-      throw new Error(
-        `Invalid multipart part name: "${name}". ` +
-          `Part names must match ${SAFE_PART_NAME}.`,
-      );
-    }
-    chunks.push(
-      `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="${name}"\r\n` +
-        `\r\n` +
-        `${value}\r\n`,
-    );
+    chunks.push(formatMultipartPartHeader({ name }, boundary) + `${value}\r\n`);
   }
 
   chunks.push(`--${boundary}--\r\n`);
 
   return chunks.join("");
+}
+
+/**
+ * Builds a binary `Uint8Array` multipart/form-data body from string form fields
+ * and file parts (`string` or `Uint8Array`). Used when external tables are
+ * sent in-memory without streaming.
+ */
+export function buildMultipartBytes(
+  fields: Record<string, string>,
+  files: ReadonlyArray<MultipartFilePart<string | Uint8Array>>,
+  boundary: string,
+): Uint8Array {
+  const encoder = new TextEncoder();
+  const segments: Uint8Array[] = [];
+  let totalLength = 0;
+
+  const pushBytes = (bytes: Uint8Array) => {
+    segments.push(bytes);
+    totalLength += bytes.byteLength;
+  };
+  const pushText = (text: string) => {
+    pushBytes(encoder.encode(text));
+  };
+  const crlf = encoder.encode("\r\n");
+
+  for (const [name, value] of Object.entries(fields)) {
+    pushText(formatMultipartPartHeader({ name }, boundary));
+    pushText(value);
+    pushBytes(crlf);
+  }
+
+  for (const file of files) {
+    pushText(
+      formatMultipartPartHeader(
+        {
+          name: file.name,
+          filename: file.filename ?? file.name,
+          contentType: file.contentType ?? "application/octet-stream",
+        },
+        boundary,
+      ),
+    );
+    if (typeof file.value === "string") {
+      pushText(file.value);
+    } else {
+      pushBytes(file.value);
+    }
+    pushBytes(crlf);
+  }
+
+  pushText(`--${boundary}--\r\n`);
+
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const seg of segments) {
+    result.set(seg, offset);
+    offset += seg.byteLength;
+  }
+  return result;
 }
