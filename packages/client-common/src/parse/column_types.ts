@@ -636,26 +636,71 @@ export function parseDateTime64Type({
 }: ParseColumnTypeParams): ParsedColumnDateTime64 {
   if (
     !columnType.startsWith(DateTime64Prefix) ||
-    columnType.length < DateTime64Prefix.length + 2 // should at least have a precision
+    !columnType.endsWith(")") ||
+    columnType.length < DateTime64Prefix.length + 2 // should at least have a precision: DateTime64(0)
   ) {
     throw new ColumnTypeParseError("Invalid DateTime64 type", {
       columnType,
       sourceType,
     });
   }
-  const precision = parseInt(columnType[DateTime64Prefix.length] ?? "", 10);
-  if (Number.isNaN(precision) || precision < 0 || precision > 9) {
+
+  const params = columnType.slice(DateTime64Prefix.length, -1);
+  const commaIndex = params.indexOf(",");
+
+  if (commaIndex === -1) {
+    const precisionStr = params.trim();
+    const precision = parseInt(precisionStr, 10);
+    if (
+      Number.isNaN(precision) ||
+      precision < 0 ||
+      precision > 9 ||
+      precisionStr !== precision.toString()
+    ) {
+      throw new ColumnTypeParseError("Invalid DateTime64 precision", {
+        columnType,
+        sourceType,
+        precision,
+      });
+    }
+    return {
+      type: "DateTime64",
+      timezone: null,
+      precision,
+      sourceType,
+    };
+  }
+
+  const precisionStr = params.slice(0, commaIndex).trim();
+  const timezoneStr = params.slice(commaIndex + 1).trim();
+
+  const precision = parseInt(precisionStr, 10);
+  if (
+    Number.isNaN(precision) ||
+    precision < 0 ||
+    precision > 9 ||
+    precisionStr !== precision.toString()
+  ) {
     throw new ColumnTypeParseError("Invalid DateTime64 precision", {
       columnType,
       sourceType,
       precision,
     });
   }
-  let timezone = null;
-  if (columnType.length > DateTime64Prefix.length + 2) {
-    // e.g. DateTime64(3, 'UTC') -> UTC
-    timezone = columnType.slice(DateTime64Prefix.length + 4, -2);
+
+  if (
+    !timezoneStr.startsWith("'") ||
+    !timezoneStr.endsWith("'") ||
+    timezoneStr.length < 4 ||
+    timezoneStr.slice(1, -1).includes("'")
+  ) {
+    throw new ColumnTypeParseError("Invalid DateTime64 type", {
+      columnType,
+      sourceType,
+    });
   }
+
+  const timezone = timezoneStr.slice(1, -1);
   return {
     type: "DateTime64",
     timezone,
