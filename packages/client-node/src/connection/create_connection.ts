@@ -8,6 +8,8 @@ import type {
 import { NodeCustomAgentConnection } from "./node_custom_agent_connection";
 import { NodeHttpConnection } from "./node_http_connection";
 import { NodeHttpsConnection } from "./node_https_connection";
+import { NodeTransportConnection } from "./node_transport_connection";
+import type { NodeTransportFactory } from "./transport";
 
 export interface CreateConnectionParams {
   connection_params: ConnectionParams;
@@ -18,6 +20,7 @@ export interface CreateConnectionParams {
   capture_enhanced_stack_trace: boolean;
   eagerly_destroy_stale_sockets?: boolean;
   max_response_headers_size?: number;
+  transport?: NodeTransportFactory;
 }
 
 /** A factory for easier mocking after Node.js 22.18 */
@@ -32,7 +35,31 @@ export class NodeConnectionFactory {
     capture_enhanced_stack_trace,
     eagerly_destroy_stale_sockets = false,
     max_response_headers_size,
+    transport,
   }: CreateConnectionParams): NodeBaseConnection {
+    if (transport !== undefined) {
+      if (http_agent !== undefined) {
+        throw new Error(
+          `The http_agent and transport options cannot be used together: ` +
+            `the ${transport.name} transport does not use a node:http agent.`,
+        );
+      }
+      const protocol = connection_params.url.protocol;
+      if (protocol !== "http:" && protocol !== "https:") {
+        throw new Error("Only HTTP and HTTPS protocols are supported");
+      }
+      return new NodeTransportConnection({
+        ...connection_params,
+        set_basic_auth_header,
+        capture_enhanced_stack_trace,
+        keep_alive,
+        // Same as the built-in transport: the TLS settings apply to HTTPS only.
+        tls: protocol === "https:" ? tls : undefined,
+        eagerly_destroy_stale_sockets,
+        max_response_headers_size,
+        transport,
+      });
+    }
     if (http_agent !== undefined) {
       return new NodeCustomAgentConnection({
         ...connection_params,

@@ -3,9 +3,13 @@ import { describe, it } from "vitest";
 import { createTestClient } from "@test/utils/client";
 import net from "net";
 import type { ClickHouseClientConfigOptions } from "@clickhouse/client";
+import { isUndiciTestTransport } from "../utils/feature_detection";
+
+// The idle socket TTL suggestion is logged by the node:http transport only.
+const describeHttpTransport = describe.skipIf(isUndiciTestTransport());
 import { AddressInfo } from "net";
 
-describe.concurrent("Handling keep-alive header", () => {
+describeHttpTransport.concurrent("Handling keep-alive header", () => {
   it("should log the suggestion", async ({ expect }) => {
     let sleepServerPromiseResolve: () => void;
     let sleepServerPromise = new Promise<void>((resolve) => {

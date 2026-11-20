@@ -12,27 +12,30 @@ coverage:
 # commit:
 #
 #   - Node.js flags upload only from Node 24 (local integration flags also require
-#     ClickHouse `latest`, and node-integration-single the default log level).
+#     ClickHouse `latest`, and node-integration-single / node-integration-undici
+#     the default log level).
 #   - Web flags upload only from Chromium (local integration flags also require
 #     ClickHouse `latest`).
 #
 #   flag                       workflow / job
 #   node-unit                  node / unit-tests
 #   node-integration-single    node / integration-tests-local-single-node
+#   node-integration-undici    node / integration-tests-local-single-node
+#                              (with CLICKHOUSE_TEST_TRANSPORT=undici)
 #   node-integration-cluster   node / integration-tests-local-cluster
 #   node-integration-cloud     cloud / node
 #   web-all-single             web  / all-tests-local-single-node
 #   web-integration-cluster    web  / integration-tests-local-cluster
 #   web-integration-cloud      cloud / web
-#                              => 7 uploads total (one per flag)
+#                              => 8 uploads total (one per flag)
 #
 # The two cloud flags only upload when the Cloud workflow runs: after a merge
 # to main or release, on schedule, or on a PR labelled `tests:run-cloud`. It
 # never runs on fork PRs. Otherwise their coverage is carried forward (see
 # `flag_management`).
 #
-# `after_n_builds` therefore counts only the 5 uploads that every PR gets.
-# With 7, Codecov never posted a status on fork PRs, which skip the cloud jobs,
+# `after_n_builds` therefore counts only the 6 uploads that every PR gets.
+# With all 8, Codecov never posted a status on fork PRs, which skip the cloud jobs,
 # and now it would not post on most PRs. When a flag is added or removed, update this value and the
 # `individual_flags` list to match.
 codecov:
@@ -42,11 +45,11 @@ codecov:
     wait_for_ci: true
     # Number of uploads before Codecov posts the commit status/notification:
     # the flags uploaded on every PR (see the table above).
-    after_n_builds: 5
+    after_n_builds: 6
 
 comment:
   # Wait for all uploads before posting/updating the PR comment.
-  after_n_builds: 5
+  after_n_builds: 6
 
 flag_management:
   default_rules:
@@ -57,6 +60,7 @@ flag_management:
   individual_flags:
     - name: node-unit
     - name: node-integration-single
+    - name: node-integration-undici
     - name: node-integration-cluster
     - name: node-integration-cloud
     - name: web-all-single
