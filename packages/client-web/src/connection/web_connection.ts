@@ -240,12 +240,28 @@ export class WebConnection implements Connection<ReadableStream> {
       abortController.abort();
     }, this.params.request_timeout);
 
+    // `onabort` holds one handler. A second request, or the caller, would
+    // replace it, so abort() would cancel only the last request. A signal
+    // can have many listeners: subscribe, and remove that listener when
+    // this request is finished.
     let isAborted = false;
-    if (params?.abort_signal !== undefined) {
-      params.abort_signal.onabort = () => {
+    const abortSignal = params?.abort_signal;
+    let removeAbortListener: (() => void) | undefined;
+    if (abortSignal !== undefined) {
+      let removed = false;
+      const onAbort = () => {
         isAborted = true;
         abortController.abort();
+        removeAbortListener?.();
       };
+      removeAbortListener = () => {
+        if (removed) {
+          return;
+        }
+        removed = true;
+        abortSignal.removeEventListener("abort", onAbort);
+      };
+      abortSignal.addEventListener("abort", onAbort);
     }
 
     try {
@@ -271,16 +287,32 @@ export class WebConnection implements Connection<ReadableStream> {
         isSuccessfulResponse(response.status) &&
         !response.headers.has("x-clickhouse-exception-code")
       ) {
-        return response;
-      } else {
-        return Promise.reject(
-          parseError(
-            await getAsText(response.body || new ReadableStream<Uint8Array>()),
-          ),
+        // query() and exec() return the body. An abort while the caller
+        // reads it must still cancel that read, so keep the listener until
+        // the body ends.
+        if (
+          abortSignal === undefined ||
+          response.body === null ||
+          removeAbortListener === undefined
+        ) {
+          removeAbortListener?.();
+          return response;
+        }
+        return responseWithBodyThatReleases(
+          response,
+          response.body,
+          removeAbortListener,
         );
+      } else {
+        const errorBody = await getAsText(
+          response.body || new ReadableStream<Uint8Array>(),
+        );
+        removeAbortListener?.();
+        return Promise.reject(parseError(errorBody));
       }
     } catch (err) {
       clearTimeout(timeout);
+      removeAbortListener?.();
       if (isAborted) {
         return Promise.reject(new Error("The user aborted a request."));
       }
@@ -368,6 +400,55 @@ export class WebConnection implements Connection<ReadableStream> {
 
 function getQueryId(query_id: string | undefined): string {
   return query_id || crypto.randomUUID();
+}
+
+/** Forward `body` and call `release` when it ends, fails, or is cancelled.
+ *  The listener stays in place while the caller reads the body. */
+function bodyThatReleasesOnSettle(
+  body: ReadableStream<Uint8Array>,
+  release: () => void,
+): ReadableStream<Uint8Array> {
+  let released = false;
+  const finish = () => {
+    if (released) {
+      return;
+    }
+    released = true;
+    release();
+  };
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          finish();
+          controller.close();
+          return;
+        }
+        controller.enqueue(value);
+      } catch (err) {
+        finish();
+        controller.error(err);
+      }
+    },
+    cancel(reason) {
+      finish();
+      return reader.cancel(reason);
+    },
+  });
+}
+
+function responseWithBodyThatReleases(
+  response: Response,
+  body: ReadableStream<Uint8Array>,
+  release: () => void,
+): Response {
+  return new Response(bodyThatReleasesOnSettle(body, release), {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
 }
 
 function getResponseHeaders(response: Response): ResponseHeaders {
