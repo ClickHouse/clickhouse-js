@@ -2,7 +2,7 @@ import Stream from "node:stream";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClient as createHttpClient } from "../../../client-node/src";
 import type { ClickHouseClient as HttpClient } from "../../../client-node/src";
-import { ClickHouseError, createClient } from "../../src";
+import { ClickHouseError, createClient, drainStream } from "../../src";
 import type { ClickHouseClient } from "../../src";
 import { isZstdAvailable } from "../../src/compression/frames";
 import { httpURL, nativeURL, uniqueName } from "./utils";
@@ -378,6 +378,54 @@ describe("[Native] regressions", () => {
         expect(pool.open).toBe(1);
         expect(pool.idle).toHaveLength(1);
         expect(await rows(c, "SELECT 2 AS x")).toEqual([{ x: 2 }]);
+      } finally {
+        await c.close();
+      }
+    });
+
+    // The server ends a failed query with the Exception packet alone: it sends
+    // EndOfStream instead only for a query that the client cancelled
+    // (TCPHandler::runImpl). The socket is then free, and the next request
+    // can start on it at once.
+    it("reuses the socket right after a server error", async () => {
+      const c = createClient({ url: nativeURL(), max_open_connections: 1 });
+      const pool = (c as unknown as { connection: Record<string, unknown> })
+        .connection as { sockets: Set<unknown>; open: number };
+      const failures: Array<() => Promise<unknown>> = [
+        () => c.query({ query: "SELECT throwIf(1, 'boom')" }),
+        () =>
+          c
+            .query({
+              query:
+                "SELECT throwIf(number = 70000, 'boom') AS x FROM numbers(100000) SETTINGS max_block_size = 65000",
+              format: "JSONEachRow",
+            })
+            .then((rs) => rs.text()),
+        () => c.command({ query: "SELECT throwIf(1, 'boom')" }),
+        () =>
+          c
+            .exec({ query: "SELECT throwIf(1, 'boom')" })
+            .then((r) => drainStream(r.stream)),
+      ];
+      try {
+        expect(await rows(c, "SELECT 0 AS x")).toEqual([{ x: 0 }]);
+        const [socket] = pool.sockets;
+        for (const [i, fail] of failures.entries()) {
+          // Start the next request in the same microtask as the rejection.
+          const next = await fail().then(
+            () => {
+              throw new Error(`request ${i} did not fail`);
+            },
+            (err: unknown) => {
+              expect((err as Error).message).toContain("boom");
+              return rows(c, `SELECT ${i + 1} AS x FROM numbers(3)`);
+            },
+          );
+          expect(next).toEqual([{ x: i + 1 }, { x: i + 1 }, { x: i + 1 }]);
+          expect(pool.open).toBe(1);
+          expect(pool.sockets.size).toBe(1);
+          expect(pool.sockets.has(socket)).toBe(true);
+        }
       } finally {
         await c.close();
       }
