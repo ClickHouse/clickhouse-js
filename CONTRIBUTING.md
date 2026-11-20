@@ -76,6 +76,8 @@ npm run prettier:check
 npm run prettify
 ```
 
+CI runs `npm run prettier:check` for every PR (the `format` workflow), also for a PR that changes only docs, skills, or workflows.
+
 The Husky Git hook formats staged files with `prettier` on commit, but does not run `eslint`; make sure to run
 `npm run lint` before pushing, as CI enforces it with zero warnings.
 

@@ -21,6 +21,7 @@ import {
   validateStreamFormat,
 } from "./common/index";
 import { getAsText } from "./utils";
+import { createJSONEachRowErrorDetector } from "./common/utils/stream";
 
 const NEWLINE = 0x0a as const;
 
@@ -158,6 +159,7 @@ export class ResultSet<
 
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
+    const detectJSONError = createJSONEachRowErrorDetector(this.format);
     const decoder = new TextDecoder("utf-8");
     const transformerOptions: TransformerWithCancel<Uint8Array, Row[]> = {
       start() {
@@ -234,6 +236,16 @@ export class ResultSet<
             }
 
             const text = decoder.decode(bytesToDecode);
+            const error = detectJSONError?.(text);
+            if (error) {
+              if (rows.length > 0) {
+                this.addSpanRows(rows.length);
+                controller.enqueue(rows);
+              }
+              this.finishSpan(error);
+              controller.error(error);
+              return;
+            }
             rows.push({
               text,
               json<T>(): T {
