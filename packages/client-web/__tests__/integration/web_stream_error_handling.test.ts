@@ -56,11 +56,8 @@ describe("[Web] Stream error handling", () => {
         ...params,
         clickhouse_settings: {
           ...params.clickhouse_settings,
-          // A browser always sends `Accept-Encoding`, and recent servers enable
-          // `enable_http_compression` by default. The server then buffers the
-          // compressed body and answers HTTP 500, so `query()` rejects before
-          // the stream is read. Without compression, the response is
-          // streamed with HTTP 200 and the error arrives as the last row.
+          // With compression, the server buffers the body and answers
+          // HTTP 500, so the test does not reach the stream.
           enable_http_compression: 0,
         },
       });

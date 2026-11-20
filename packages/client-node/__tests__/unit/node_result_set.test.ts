@@ -225,8 +225,8 @@ describe("[Node.js] ResultSet", () => {
         caught = err as Error;
       }
       assertError(caught);
-      // the rows preceding the error may or may not be delivered before the
-      // stream is destroyed, but the exception row is never returned as data
+      // unread rows can be dropped when the stream fails (#1167),
+      // but the error row is never returned as data
       expect(received).not.toContainEqual(
         expect.objectContaining({ exception: expect.anything() }),
       );
