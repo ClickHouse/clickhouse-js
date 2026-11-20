@@ -22,7 +22,14 @@ export function createJSONEachRowErrorDetector(
     const isFirstRow = firstRow;
     firstRow = false;
     // Keep ordinary rows lazy: only parse a possible exception row here.
-    if (!/^\s*\{\s*"exception"\s*:/.test(text)) return undefined;
+    const prefix = EXCEPTION_ROW_PREFIX.exec(text);
+    if (prefix === null) return undefined;
+    // After the first row, an error row has only one string value. Without
+    // this scan, every row of a result with `exception` as the first of
+    // several columns would be parsed here.
+    if (!isFirstRow && !isOnlyStringValue(text, prefix[0].length)) {
+      return undefined;
+    }
 
     let row: { exception?: unknown };
     try {
@@ -40,6 +47,31 @@ export function createJSONEachRowErrorDetector(
     const error = parseError(row.exception);
     return error instanceof ClickHouseError ? error : undefined;
   };
+}
+
+const EXCEPTION_ROW_PREFIX = /^\s*\{\s*"exception"\s*:\s*/;
+const OBJECT_END = /\s*\}\s*$/y;
+const QUOTE = 0x22;
+const BACKSLASH = 0x5c;
+
+/** Returns true if `text` has a JSON string at `start` and then only the end of the object.
+ *  The scan does not allocate. JSON.parse validates the string after this check. */
+function isOnlyStringValue(text: string, start: number): boolean {
+  if (text.charCodeAt(start) !== QUOTE) return false;
+  let i = start + 1;
+  for (;;) {
+    const quote = text.indexOf('"', i);
+    if (quote === -1) return false;
+    // A quote after an odd number of backslashes is escaped.
+    let backslashes = 0;
+    while (text.charCodeAt(quote - 1 - backslashes) === BACKSLASH) {
+      backslashes++;
+    }
+    i = quote + 1;
+    if (backslashes % 2 === 0) break;
+  }
+  OBJECT_END.lastIndex = i;
+  return OBJECT_END.test(text);
 }
 
 /**

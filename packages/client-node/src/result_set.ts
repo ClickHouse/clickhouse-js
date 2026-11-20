@@ -274,8 +274,10 @@ export class ResultSet<
                 resultSet.addSpanRows(rows.length);
                 this.push(rows);
               }
-              // Let an async iterator receive the preceding rows before the
-              // error destroys the stream and discards its buffered data.
+              // Give a consumer that keeps up a chance to read these rows
+              // before the error destroys the stream. The stream discards
+              // rows that are still in its buffer, for example with a slow
+              // consumer.
               setImmediate(() => callback(error));
               return;
             }

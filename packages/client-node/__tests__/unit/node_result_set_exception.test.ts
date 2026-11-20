@@ -83,6 +83,8 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
       [{ n: "1" }, { exception: "ordinary data" }],
       [{ n: "1" }, { exception: { nested: message } }],
       [{ n: "1" }, { exception: message, n: "2" }],
+      [{ n: "1" }, { exception: 'a"} b', n: "2" }],
+      [{ n: "1" }, { exception: "a\\", n: "2" }],
     ])("keeps data rows %j and %j", async (first, second) => {
       const rs = makeResultSet([
         Buffer.from(
@@ -90,6 +92,72 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
         ),
       ]);
       expect(await rs.json()).toEqual([first, second]);
+    });
+
+    describe("with exception as the first of several columns", () => {
+      const dataRows = Array.from(
+        { length: 100 },
+        (_, n) => JSON.stringify({ exception: message, n: String(n) }) + "\n",
+      ).join("");
+      // The message has escaped quotes, `"}` and a trailing backslash.
+      const escapedMessage =
+        'Code: 395. DB::Exception: a"} b. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) \\';
+      const escapedExceptionRow =
+        JSON.stringify({ exception: escapedMessage }) + "\n";
+
+      function chunksOf(text: string, chunkSize: number): Buffer[] {
+        const bytes = Buffer.from(text);
+        const chunks: Buffer[] = [];
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          chunks.push(bytes.subarray(i, i + chunkSize));
+        }
+        return chunks;
+      }
+
+      function lazyJSONHandling() {
+        const nativeParse = JSON.parse;
+        const parse = vi.fn((text: string) => nativeParse(text));
+        return { parse, stringify: JSON.stringify };
+      }
+
+      it("does not parse each row eagerly", async () => {
+        const jsonHandling = lazyJSONHandling();
+        const nativeParse = vi.spyOn(JSON, "parse");
+        try {
+          const rs = makeResultSet(chunksOf(dataRows, 7), jsonHandling);
+          const received: Row[] = [];
+          for await (const rows of rs.stream()) received.push(...rows);
+          expect(received).toHaveLength(100);
+          // Only the first row, to find a result with only an `exception` column.
+          expect(nativeParse).toHaveBeenCalledTimes(1);
+          expect(jsonHandling.parse).not.toHaveBeenCalled();
+          expect(received[99]!.json()).toEqual({ exception: message, n: "99" });
+        } finally {
+          nativeParse.mockRestore();
+        }
+      });
+
+      it("rejects an error row with escaped characters", async () => {
+        const jsonHandling = lazyJSONHandling();
+        const nativeParse = vi.spyOn(JSON, "parse");
+        try {
+          const rs = makeResultSet(
+            chunksOf(dataRows + escapedExceptionRow, 7),
+            jsonHandling,
+          );
+          const result = rs.json();
+          await expect(result).rejects.toBeInstanceOf(ClickHouseError);
+          await expect(result).rejects.toMatchObject({
+            code: "395",
+            type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+            message: 'a"} b. ',
+          });
+          // The first row and the error row.
+          expect(nativeParse).toHaveBeenCalledTimes(2);
+        } finally {
+          nativeParse.mockRestore();
+        }
+      });
     });
 
     it("keeps the custom JSON parser lazy", async () => {
