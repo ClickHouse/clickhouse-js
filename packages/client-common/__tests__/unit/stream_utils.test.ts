@@ -79,6 +79,8 @@ describe("utils/stream - in-band exception row", () => {
     for (const row of [
       `{"n":1}`,
       `{"exception": "boom", "n": 1}`,
+      // matches the prefix and the suffix, and parses, but has two keys
+      `{"exception": "boom", "n": "1"}`,
       `{"exception": "unterminated"`,
       `{"exception": "not a valid" JSON"}`,
       ``,
