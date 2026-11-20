@@ -1,6 +1,7 @@
-import { describe, it, beforeEach, afterEach } from "vitest";
+import { describe, it, beforeEach, afterEach, expect } from "vitest";
 import {
   assertError,
+  inBandStreamErrorQueryParams,
   streamErrorQueryParams,
 } from "@test/fixtures/stream_errors";
 import { isClickHouseVersionAtLeast } from "@test/utils/server_version";
@@ -109,5 +110,58 @@ describe("[Node.js] Stream error handling", () => {
     }
 
     assertError(caughtError);
+  });
+
+  // See https://github.com/ClickHouse/clickhouse-js/issues/1053
+  describe("with http_write_exception_in_output_format = 1", () => {
+    it("with async iterators", async () => {
+      let caughtError: ClickHouseError | null = null;
+      const received: unknown[] = [];
+
+      try {
+        const rs = await client.query(inBandStreamErrorQueryParams());
+        for await (const rows of rs.stream()) {
+          for (const row of rows) {
+            received.push(row.json());
+          }
+        }
+      } catch (err) {
+        caughtError = err as ClickHouseError;
+      }
+
+      assertError(caughtError);
+      expect(received).not.toContainEqual(
+        expect.objectContaining({ exception: expect.anything() }),
+      );
+    });
+
+    it("with .json()", async () => {
+      let caughtError: ClickHouseError | null = null;
+
+      try {
+        const rs = await client.query(inBandStreamErrorQueryParams());
+        await rs.json();
+      } catch (err) {
+        caughtError = err as ClickHouseError;
+      }
+
+      assertError(caughtError);
+    });
+
+    it("should return a genuine column named exception as data", async () => {
+      const rs = await client.query({
+        query: `SELECT 'Code: 395. DB::Exception: boom. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO)' AS exception`,
+        format: "JSONEachRow",
+        clickhouse_settings: {
+          http_write_exception_in_output_format: true,
+        },
+      });
+      expect(await rs.json()).toEqual([
+        {
+          exception:
+            "Code: 395. DB::Exception: boom. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO)",
+        },
+      ]);
+    });
   });
 });

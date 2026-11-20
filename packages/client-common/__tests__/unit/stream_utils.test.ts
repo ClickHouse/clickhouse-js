@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { extractErrorAtTheEndOfChunk } from "../../src/index";
+import {
+  ClickHouseError,
+  canHaveInBandExceptionRow,
+  extractErrorAtTheEndOfChunk,
+  extractInBandExceptionFromRow,
+} from "../../src/index";
+import { assertError, inBandExceptionMessage } from "../fixtures/stream_errors";
 
 describe("utils/stream", () => {
   const errMsg = "boom";
@@ -32,6 +38,61 @@ describe("utils/stream", () => {
     expect(err).toBeDefined();
     expect(err).toBeInstanceOf(Error);
     expect(err?.message).toContain("error in the stream");
+  });
+});
+
+describe("utils/stream - in-band exception row", () => {
+  const exceptionRow = `{"exception": ${JSON.stringify(inBandExceptionMessage)}}`;
+
+  it("should parse the exception row written by the server", async () => {
+    const err = extractInBandExceptionFromRow(exceptionRow);
+    expect(err).toBeInstanceOf(ClickHouseError);
+    assertError(err!);
+    expect((err as ClickHouseError).type).toBe(
+      "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+    );
+  });
+
+  it("should handle escaped characters in the message", async () => {
+    const err = extractInBandExceptionFromRow(
+      `{"exception": ${JSON.stringify('Code: 62. DB::Exception: Syntax error: "foo"\n\\bar. (SYNTAX_ERROR) (version 25.8.1.1)')}}`,
+    );
+    expect(err).toBeInstanceOf(ClickHouseError);
+    expect((err as ClickHouseError).code).toBe("62");
+    expect(err!.message).toContain('"foo"\n\\bar');
+  });
+
+  it("should not treat a genuine column named exception as an error", async () => {
+    // `SELECT '<message>' AS exception FORMAT JSONEachRow` is written without
+    // a space after the colon, even if the value looks like a server error
+    for (const row of [
+      `{"exception":"boom"}`,
+      `{"exception":${JSON.stringify(inBandExceptionMessage)}}`,
+      `{"exception":"boom","n":1}`,
+      `{"n":1,"exception":"boom"}`,
+    ]) {
+      expect(extractInBandExceptionFromRow(row)).toBeUndefined();
+    }
+  });
+
+  it("should not treat other rows as an error", async () => {
+    for (const row of [
+      `{"n":1}`,
+      `{"exception": "boom", "n": 1}`,
+      `{"exception": "unterminated"`,
+      `{"exception": "not a valid" JSON"}`,
+      ``,
+    ]) {
+      expect(extractInBandExceptionFromRow(row)).toBeUndefined();
+    }
+  });
+
+  it("should only be enabled for the object-per-row formats", async () => {
+    expect(canHaveInBandExceptionRow("JSONEachRow")).toBe(true);
+    expect(canHaveInBandExceptionRow("JSONStringsEachRow")).toBe(true);
+    expect(canHaveInBandExceptionRow("JSONEachRowWithProgress")).toBe(false);
+    expect(canHaveInBandExceptionRow("JSONCompactEachRow")).toBe(false);
+    expect(canHaveInBandExceptionRow("CSV")).toBe(false);
   });
 });
 

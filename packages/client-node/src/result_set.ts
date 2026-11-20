@@ -11,6 +11,8 @@ import type {
 } from "./common/index";
 import {
   extractErrorAtTheEndOfChunk,
+  canHaveInBandExceptionRow,
+  extractInBandExceptionFromRow,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
@@ -219,6 +221,7 @@ export class ResultSet<
     const incompleteChunks: Buffer[] = [];
     const logError = this.log_error;
     const exceptionTag = this.exceptionTag;
+    const checkInBandException = canHaveInBandExceptionRow(this.format);
     const jsonHandling = this.jsonHandling;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
@@ -266,6 +269,19 @@ export class ResultSet<
             }
 
             const text = currentChunkPart.toString();
+
+            // Check for an in-band exception row (`http_write_exception_in_output_format`)
+            if (checkInBandException) {
+              const err = extractInBandExceptionFromRow(text);
+              if (err !== undefined) {
+                if (rows.length > 0) {
+                  resultSet.addSpanRows(rows.length);
+                  this.push(rows);
+                }
+                return callback(err);
+              }
+            }
+
             rows.push({
               text,
               json<T>(): T {

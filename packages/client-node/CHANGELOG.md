@@ -12,6 +12,7 @@
 - (Node.js only) An insert from an object-mode stream no longer sends each row as a separate HTTP chunk. Before, each row added about 5 bytes of chunk framing, and the stream code and the HTTP code processed the rows one at a time. For example, an insert of 1000 `JSONEachRow` rows of the form `{ x: i }` sent 1000 chunks and 14,895 bytes. It now sends 1 chunk and 9,903 bytes. This also makes stream inserts with request compression much faster: in our test, a gzip insert of 1M small rows took 0.5 s instead of 6.9 s. The client sends the collected rows when they reach about 64 Ki characters, at the end of the current turn of the event loop, and at the end of the stream. This way, a slow source does not keep its rows in the buffer. ([#988], [#1141])
 - (Node.js only) A stream insert with a row that the client cannot encode, for example a row with a `BigInt` value or an object with a circular reference, now fails with the encoding error. Before, with Node.js 22, the error was an uncaught exception that stopped the process. ([#1141])
 - (Node.js only) With Node.js 24.22.0 and later 24.x releases, and with Node.js 26.9.0 and later 26.x releases, an insert from an object-mode stream (for example `JSONEachRow`) with non-ASCII text, such as `é` or `日本語`, could stop after about 64 KiB of the request body and fail with a timeout. The cause is a bug in `http.ClientRequest` of these Node.js releases ([nodejs/node#66781]): it waited for a `'drain'` event that did not come when the client wrote strings. The client now writes the encoded rows as Buffers. Earlier Node.js releases, for example 22.x, were not affected. Node.js fixed the bug in [nodejs/node#66782], but Node.js 24.22.3 and 26.13.1 do not have that fix. ([#1148])
+- With the `JSONEachRow` and `JSONStringsEachRow` formats, `ResultSet.stream()` and `ResultSet.json()` now fail with a `ClickHouseError` when the query fails after the server has started to stream the response and `http_write_exception_in_output_format` is enabled. This setting is enabled by default on ClickHouse versions before 25.11, for example 25.8 LTS. Before, the client returned the server's error row `{"exception": "..."}` as an ordinary row, and the incomplete result looked successful. A result column named `exception` is still returned as data. Thanks to [@AmineBenzaazaa](https://github.com/AmineBenzaazaa), who wrote the fix in [#1083]. ([#1053], [#PR_NUMBER])
 
 [#988]: https://github.com/ClickHouse/clickhouse-js/issues/988
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
@@ -22,6 +23,9 @@
 [#1148]: https://github.com/ClickHouse/clickhouse-js/pull/1148
 [nodejs/node#66781]: https://github.com/nodejs/node/issues/66781
 [nodejs/node#66782]: https://github.com/nodejs/node/pull/66782
+[#1053]: https://github.com/ClickHouse/clickhouse-js/issues/1053
+[#1083]: https://github.com/ClickHouse/clickhouse-js/pull/1083
+[#PR_NUMBER]: https://github.com/ClickHouse/clickhouse-js/pull/PR_NUMBER
 
 # 1.25.0
 

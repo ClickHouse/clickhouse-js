@@ -3,11 +3,15 @@
 ## Bug fixes
 
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
+- With the `JSONEachRow` and `JSONStringsEachRow` formats, `ResultSet.stream()` and `ResultSet.json()` now fail with a `ClickHouseError` when the query fails after the server has started to stream the response and `http_write_exception_in_output_format` is enabled. This setting is enabled by default on ClickHouse versions before 25.11, for example 25.8 LTS. Before, the client returned the server's error row `{"exception": "..."}` as an ordinary row, and the incomplete result looked successful. A result column named `exception` is still returned as data. Thanks to [@AmineBenzaazaa](https://github.com/AmineBenzaazaa), who wrote the fix in [#1083]. ([#1053], [#PR_NUMBER])
 
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
+[#1053]: https://github.com/ClickHouse/clickhouse-js/issues/1053
+[#1083]: https://github.com/ClickHouse/clickhouse-js/pull/1083
+[#PR_NUMBER]: https://github.com/ClickHouse/clickhouse-js/pull/PR_NUMBER
 
 # 1.25.0
 

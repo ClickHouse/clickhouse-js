@@ -12,6 +12,8 @@ import type {
 import {
   CARET_RETURN,
   extractErrorAtTheEndOfChunk,
+  canHaveInBandExceptionRow,
+  extractInBandExceptionFromRow,
   recordSpanError,
 } from "./common/index";
 import {
@@ -157,6 +159,7 @@ export class ResultSet<
     let totalIncompleteLength = 0;
 
     const exceptionTag = this.exceptionTag;
+    const checkInBandException = canHaveInBandExceptionRow(this.format);
     const jsonHandling = this.jsonHandling;
     const decoder = new TextDecoder("utf-8");
     const transformerOptions: TransformerWithCancel<Uint8Array, Row[]> = {
@@ -234,6 +237,21 @@ export class ResultSet<
             }
 
             const text = decoder.decode(bytesToDecode);
+
+            // Check for an in-band exception row (`http_write_exception_in_output_format`)
+            if (checkInBandException) {
+              const err = extractInBandExceptionFromRow(text);
+              if (err !== undefined) {
+                if (rows.length > 0) {
+                  this.addSpanRows(rows.length);
+                  controller.enqueue(rows);
+                }
+                this.finishSpan(err);
+                controller.error(err);
+                return; // stop further processing once the stream is errored
+              }
+            }
+
             rows.push({
               text,
               json<T>(): T {
