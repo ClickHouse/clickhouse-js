@@ -129,6 +129,17 @@ describe("formatQueryParams", () => {
     ).toBe("1659081134.005");
   });
 
+  it("formats a date before the Unix epoch as a negative timestamp", () => {
+    expect(formatQueryParams({ value: new Date(-1000) })).toBe("-1");
+    expect(formatQueryParams({ value: new Date(-1) })).toBe("-0.001");
+    expect(formatQueryParams({ value: new Date(-999) })).toBe("-0.999");
+    expect(formatQueryParams({ value: new Date(-500) })).toBe("-0.500");
+    expect(formatQueryParams({ value: new Date(-1500) })).toBe("-1.500");
+    expect(formatQueryParams({ value: new Date(Date.UTC(1969, 11, 31)) })).toBe(
+      "-86400",
+    );
+  });
+
   it("does not wrap a string in quotes", () => {
     expect(
       formatQueryParams({
