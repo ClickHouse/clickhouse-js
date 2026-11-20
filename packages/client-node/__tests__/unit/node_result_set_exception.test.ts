@@ -5,7 +5,8 @@ import type { JSONHandling, Row } from "../../src";
 
 const message =
   'Code: 395. DB::Exception: boom: "日本語"\nnext line. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO)';
-const exceptionRow = JSON.stringify({ exception: message }) + "\n";
+// The server separates the exception value with a space. Data rows are compact.
+const exceptionRow = '{"exception": ' + JSON.stringify(message) + "}\n";
 
 describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
   "[Node.js] %s exception rows",
@@ -21,8 +22,11 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
       });
     }
 
-    function errorChunks(chunkSize: number): Buffer[] {
-      const bytes = Buffer.from('{"n":"1"}\n' + exceptionRow);
+    function errorChunks(
+      chunkSize: number,
+      firstRow: object = { n: "1" },
+    ): Buffer[] {
+      const bytes = Buffer.from(JSON.stringify(firstRow) + "\n" + exceptionRow);
       const chunks: Buffer[] = [];
       for (let i = 0; i < bytes.length; i += chunkSize) {
         chunks.push(bytes.subarray(i, i + chunkSize));
@@ -31,28 +35,34 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
     }
 
     for (const chunkSize of [1, 13, Infinity]) {
-      it(`rejects json() with an error split into chunks of ${chunkSize} bytes`, async () => {
-        const rs = makeResultSet(errorChunks(chunkSize));
-        const result = rs.json();
-        await expect(result).rejects.toBeInstanceOf(ClickHouseError);
-        await expect(result).rejects.toMatchObject({
-          code: "395",
-          type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
-          message: 'boom: "日本語"\nnext line. ',
-        });
-      });
+      it.each([{ n: "1" }, { exception: message }])(
+        `rejects json() after %j with chunks of ${chunkSize} bytes`,
+        async (firstRow) => {
+          const rs = makeResultSet(errorChunks(chunkSize, firstRow));
+          const result = rs.json();
+          await expect(result).rejects.toBeInstanceOf(ClickHouseError);
+          await expect(result).rejects.toMatchObject({
+            code: "395",
+            type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+            message: 'boom: "日本語"\nnext line. ',
+          });
+        },
+      );
 
-      it(`rejects an async iterator after data in chunks of ${chunkSize} bytes`, async () => {
-        const rs = makeResultSet(errorChunks(chunkSize));
-        const received: unknown[] = [];
-        const consume = async () => {
-          for await (const rows of rs.stream()) {
-            received.push(...rows.map((row) => row.json()));
-          }
-        };
-        await expect(consume()).rejects.toBeInstanceOf(ClickHouseError);
-        expect(received).toEqual([{ n: "1" }]);
-      });
+      it.each([{ n: "1" }, { exception: message }])(
+        `rejects an async iterator after %j with chunks of ${chunkSize} bytes`,
+        async (firstRow) => {
+          const rs = makeResultSet(errorChunks(chunkSize, firstRow));
+          const received: unknown[] = [];
+          const consume = async () => {
+            for await (const rows of rs.stream()) {
+              received.push(...rows.map((row) => row.json()));
+            }
+          };
+          await expect(consume()).rejects.toBeInstanceOf(ClickHouseError);
+          expect(received).toEqual([firstRow]);
+        },
+      );
     }
 
     it("emits the preceding rows before the error without calling Row.json()", async () => {
@@ -103,7 +113,7 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
       const escapedMessage =
         'Code: 395. DB::Exception: a"} b. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) \\';
       const escapedExceptionRow =
-        JSON.stringify({ exception: escapedMessage }) + "\n";
+        '{"exception": ' + JSON.stringify(escapedMessage) + "}\n";
 
       function chunksOf(text: string, chunkSize: number): Buffer[] {
         const bytes = Buffer.from(text);
@@ -128,8 +138,7 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
           const received: Row[] = [];
           for await (const rows of rs.stream()) received.push(...rows);
           expect(received).toHaveLength(100);
-          // Only the first row, to find a result with only an `exception` column.
-          expect(nativeParse).toHaveBeenCalledTimes(1);
+          expect(nativeParse).not.toHaveBeenCalled();
           expect(jsonHandling.parse).not.toHaveBeenCalled();
           expect(received[99]!.json()).toEqual({ exception: message, n: "99" });
         } finally {
@@ -152,8 +161,8 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
             type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
             message: 'a"} b. ',
           });
-          // The first row and the error row.
-          expect(nativeParse).toHaveBeenCalledTimes(2);
+          // Only the error message is decoded eagerly.
+          expect(nativeParse).toHaveBeenCalledTimes(1);
         } finally {
           nativeParse.mockRestore();
         }

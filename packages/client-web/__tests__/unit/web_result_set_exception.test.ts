@@ -4,7 +4,8 @@ import type { JSONHandling, Row } from "../../src";
 
 const message =
   'Code: 395. DB::Exception: boom: "日本語"\nnext line. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO)';
-const exceptionRow = JSON.stringify({ exception: message }) + "\n";
+// The server separates the exception value with a space. Data rows are compact.
+const exceptionRow = '{"exception": ' + JSON.stringify(message) + "}\n";
 
 describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
   "[Web] %s exception rows",
@@ -25,21 +26,26 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
     }
 
     for (const chunkSize of [1, 13, Infinity]) {
-      it(`rejects json() with an error split into chunks of ${chunkSize} bytes`, async () => {
-        const bytes = new TextEncoder().encode('{"n":"1"}\n' + exceptionRow);
-        const chunks: Uint8Array[] = [];
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-          chunks.push(bytes.subarray(i, i + chunkSize));
-        }
-        const rs = makeResultSet(chunks);
-        const result = rs.json();
-        await expect(result).rejects.toBeInstanceOf(ClickHouseError);
-        await expect(result).rejects.toMatchObject({
-          code: "395",
-          type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
-          message: 'boom: "日本語"\nnext line. ',
-        });
-      });
+      it.each([{ n: "1" }, { exception: message }])(
+        `rejects json() after %j with chunks of ${chunkSize} bytes`,
+        async (firstRow) => {
+          const bytes = new TextEncoder().encode(
+            JSON.stringify(firstRow) + "\n" + exceptionRow,
+          );
+          const chunks: Uint8Array[] = [];
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            chunks.push(bytes.subarray(i, i + chunkSize));
+          }
+          const rs = makeResultSet(chunks);
+          const result = rs.json();
+          await expect(result).rejects.toBeInstanceOf(ClickHouseError);
+          await expect(result).rejects.toMatchObject({
+            code: "395",
+            type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+            message: 'boom: "日本語"\nnext line. ',
+          });
+        },
+      );
     }
 
     it("returns the preceding rows before the error without calling Row.json()", async () => {
@@ -84,7 +90,7 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
       const escapedMessage =
         'Code: 395. DB::Exception: a"} b. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) \\';
       const escapedExceptionRow =
-        JSON.stringify({ exception: escapedMessage }) + "\n";
+        '{"exception": ' + JSON.stringify(escapedMessage) + "}\n";
 
       function chunksOf(text: string, chunkSize: number): Uint8Array[] {
         const bytes = new TextEncoder().encode(text);
@@ -114,8 +120,7 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
             received.push(...value);
           }
           expect(received).toHaveLength(100);
-          // Only the first row, to find a result with only an `exception` column.
-          expect(nativeParse).toHaveBeenCalledTimes(1);
+          expect(nativeParse).not.toHaveBeenCalled();
           expect(jsonHandling.parse).not.toHaveBeenCalled();
           expect(received[99]!.json()).toEqual({ exception: message, n: "99" });
         } finally {
@@ -138,8 +143,8 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
             type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
             message: 'a"} b. ',
           });
-          // The first row and the error row.
-          expect(nativeParse).toHaveBeenCalledTimes(2);
+          // Only the error message is decoded eagerly.
+          expect(nativeParse).toHaveBeenCalledTimes(1);
         } finally {
           nativeParse.mockRestore();
         }
