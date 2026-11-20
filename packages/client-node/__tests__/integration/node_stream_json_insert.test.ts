@@ -247,6 +247,30 @@ describe("large object-mode streams", () => {
     expect(await countRows()).toBe(0);
   });
 
+  it("fails and inserts no rows when a row in the middle of the stream cannot be encoded", async () => {
+    const stream = makeObjectStream();
+    const insertPromise = client.insert({
+      table: tableName,
+      values: stream,
+      format: "JSONEachRow",
+    });
+    for (const row of makeRows(10_000)) {
+      stream.push(row);
+    }
+    // Let the client send these rows before the row that cannot be encoded.
+    await sleep(100);
+    // JSON.stringify throws a TypeError for a BigInt value.
+    stream.push({ ...makeRows(1, 10_000)[0], id: BigInt(10_000) });
+    for (const row of makeRows(10_000, 10_001)) {
+      stream.push(row);
+    }
+    stream.push(null);
+
+    await expect(insertPromise).rejects.toThrow(TypeError);
+    // The next query on the same client works, and the table has no rows.
+    expect(await countRows()).toBe(0);
+  });
+
   it("fails and inserts no rows when the insert is aborted in the middle of the stream", async () => {
     const controller = new AbortController();
     // The stream does not end, so the request body is not complete.

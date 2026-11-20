@@ -151,13 +151,14 @@ UPSTREAM_CLICKHOUSE_DIR=/path/to/ClickHouse \
 
 The file `upstream-allowlist.txt` contains the curated list of upstream tests known to pass through this harness. The file format is one test name per line; lines starting with `#` and blank lines are ignored.
 
-**Rule of thumb:** Only add tests that pass reliably. Remove or comment out tests that begin to flake.
+**Rule of thumb:** Only add tests that pass reliably. Remove or comment out tests that begin to flake. The helper script passes `--dont_retry_failures` to `tests/clickhouse-test`, so the runner does not run a failed test again: a test that fails only sometimes shows as a failure, not as `OK`.
 
 ### CI
 
 The workflow `.github/workflows/upstream-sql-tests.yml` runs this harness in CI:
 
 - Triggered on **workflow_dispatch**, **nightly at 05:00 UTC**, and on **pushes/PRs** that touch `tests/clickhouse-test-runner/**` or the workflow file itself.
+- To run it on any other PR (for example a change in a client), add the `tests:run-core-sql` label ([`upstream-sql-tests-label.yml`](../../.github/workflows/upstream-sql-tests-label.yml)). The run tests the PR as it is when the label is added, and removes the label when it ends: to test a later push, add the label again. The token of a PR from a fork cannot remove the label, so remove it by hand before you add it again.
 - The upstream test suite is pinned by `UPSTREAM_REF` in the workflow to the release matching the `latest` server image (e.g. `v26.10.2.103-stable` for 26.10). When `latest` moves to a new release, the old reference outputs drift from the server's, so bump the pin to the new release's tag. The `workflow_dispatch` input `upstream_ref` overrides the pin for one run, which is the way to try a new pin before committing it.
 - The matrix runs every combination of `{clickhouse: latest} × {backend: passthrough | rowbinary} × {shard: 1..N}`. Sharding is round-robin across the allowlist (see `SHARD_INDEX` / `SHARD_TOTAL` above) so each shard takes roughly one minute. If the allowlist grows enough that per-shard runtime climbs back above ~1 minute, bump both the `shard` matrix values and the `SHARD_TOTAL` env value in the workflow together.
 - The `native` job runs its allowlist in one shard. Changes to the native client

@@ -1,8 +1,12 @@
 name: "upstream-sql-tests"
 
+# upstream-sql-tests-label.yml also calls this workflow, for the
+# `tests:run-core-sql` label on a PR.
+
 permissions: {}
 
 on:
+  workflow_call:
   workflow_dispatch:
     inputs:
       upstream_ref:
