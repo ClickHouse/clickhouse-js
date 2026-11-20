@@ -9,8 +9,9 @@ updates:
     cooldown:
       default-days: 7
     groups:
-      workflows:
-        dependency-type: "development"
+      # One weekly PR for all action updates.
+      github-actions:
+        patterns: ["*"]
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -21,14 +22,10 @@ updates:
       exclude:
         - "@clickhouse/*"
     groups:
-      # Vitest packages peer-depend on the exact same version, so they must move
-      # together; a partial major bump fails `npm install` with ERESOLVE.
-      vitest:
-        patterns:
-          - "vitest"
-          - "@vitest/*"
-      dev-dependencies:
-        dependency-type: "development"
+      # One weekly PR for all npm updates. Separate PRs each touch
+      # package-lock.json, so merging one makes the others conflict.
+      npm:
+        patterns: ["*"]
     ignore:
       # Vitest majors need a deliberate migration across all workspaces.
       - dependency-name: "vitest"
