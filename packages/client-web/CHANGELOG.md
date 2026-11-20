@@ -2,12 +2,14 @@
 
 ## Bug fixes
 
+- A `Date` query parameter before 1970-01-01 is now sent as a valid negative Unix timestamp. Before, the client put padding zeros in front of the minus sign and shifted the value by up to 2 seconds: `new Date(-1500)` was sent as `00000000-2.500` instead of `-1.500`. ([#1165])
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
+[#1165]: https://github.com/ClickHouse/clickhouse-js/pull/1165
 
 # 1.25.0
 
