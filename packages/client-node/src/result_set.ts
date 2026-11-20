@@ -27,6 +27,7 @@ import { Buffer } from "buffer";
 import type { Readable, TransformCallback } from "stream";
 import Stream, { Transform } from "stream";
 import { getAsText } from "./utils";
+import { createJSONEachRowErrorDetector } from "./common/utils/stream";
 
 const NEWLINE = 0x0a as const;
 
@@ -247,6 +248,7 @@ export class ResultSet<
         },
       };
     };
+    const detectJSONError = createJSONEachRowErrorDetector(this.format);
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
     const toRows = new Transform({
@@ -354,7 +356,21 @@ export class ResultSet<
               currentChunkPart = chunk.subarray(lastIdx, idx);
             }
 
-            rows.push(toRow(currentChunkPart));
+            const row = toRow(currentChunkPart);
+            const error = detectJSONError?.(row.text);
+            if (error) {
+              if (rows.length > 0) {
+                resultSet.addSpanRows(rows.length);
+                this.push(rows);
+              }
+              // Give a consumer that keeps up a chance to read these rows
+              // before the error destroys the stream. The stream discards
+              // rows that are still in its buffer, for example with a slow
+              // consumer.
+              setImmediate(() => callback(error));
+              return;
+            }
+            rows.push(row);
             lastIdx = idx + 1; // skipping newline character
           }
         }

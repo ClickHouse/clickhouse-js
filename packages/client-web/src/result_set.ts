@@ -22,6 +22,7 @@ import {
   validateStreamFormat,
 } from "./common/index";
 import { getAsText } from "./utils";
+import { createJSONEachRowErrorDetector } from "./common/utils/stream";
 
 const NEWLINE = 0x0a as const;
 
@@ -190,6 +191,7 @@ export class ResultSet<
 
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
+    const detectJSONError = createJSONEachRowErrorDetector(this.format);
     const decoder = new TextDecoder("utf-8");
     const toRow = (bytes: Uint8Array): Row => {
       const text = decoder.decode(bytes);
@@ -345,7 +347,18 @@ export class ResultSet<
               bytesToDecode = chunk.slice(lastIdx, idx);
             }
 
-            rows.push(toRow(bytesToDecode));
+            const row = toRow(bytesToDecode);
+            const error = detectJSONError?.(row.text);
+            if (error) {
+              if (rows.length > 0) {
+                this.addSpanRows(rows.length);
+                controller.enqueue(rows);
+              }
+              this.finishSpan(error);
+              controller.error(error);
+              return;
+            }
+            rows.push(row);
 
             lastIdx = idx + 1; // skipping newline character
           }
