@@ -95,7 +95,10 @@ The client reads output settings from `system.settings` once and applies
 overrides from `clickhouse_settings` and from a top-level SQL `SETTINGS` clause.
 For example, set `output_format_write_statistics = 0` on the query that returns
 JSON. A separate `SET` statement or a subquery can leave the client using its
-initial output settings.
+initial output settings. If the user cannot read `system.settings` (for
+example, a settings profile with `max_result_rows` below the number of
+settings), the client logs a warning and uses the defaults of a recent server
+instead of the user's settings profile.
 
 A `String` can have bytes that are not UTF-8 (for example a hash). The client
 keeps them: the stream of `exec()` and of the result set has the same bytes

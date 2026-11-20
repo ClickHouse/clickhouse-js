@@ -204,6 +204,32 @@ function queryTimezone(
 }
 
 const USER_ABORTED = "The user aborted a request.";
+
+/** Server errors that come from the load of the server at the moment, not
+ *  from the user: a later request can read the settings. */
+const TRANSIENT_ERROR_CODES = new Set(
+  [159, 201, 202, 209, 210, 236, 241, 394, 439, 745].map(String),
+);
+
+/** Waits for a promise that other requests share, until `signal` aborts.
+ *  The abort does not stop the work behind the promise. */
+function abortable<T>(
+  promise: Promise<T>,
+  signal: AbortSignal | undefined,
+): Promise<T> {
+  if (signal === undefined) return promise;
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new Error(USER_ABORTED));
+    if (signal.aborted) {
+      abort();
+      return;
+    }
+    signal.addEventListener("abort", abort, { once: true });
+    promise
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener("abort", abort));
+  });
+}
 const CLIENT_CLOSED = "The client is closed";
 
 /** The parameters of one request. The query is a Buffer when data in any
@@ -424,7 +450,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
     const socket = await this.acquire(params.abort_signal);
     let serverSettings: ServerSettings;
     try {
-      serverSettings = await this.getServerSettings(socket);
+      serverSettings = await this.getServerSettings(
+        socket,
+        params.abort_signal,
+      );
     } catch (err) {
       this.discard(socket);
       throw err;
@@ -655,7 +684,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
     const socket = await this.acquire(params.abort_signal);
     let serverSettings: ServerSettings;
     try {
-      serverSettings = await this.getServerSettings(socket);
+      serverSettings = await this.getServerSettings(
+        socket,
+        params.abort_signal,
+      );
     } catch (err) {
       this.discard(socket);
       throw err;
@@ -869,7 +901,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
     const socket = await this.acquire(params.abort_signal);
     let serverSettings: ServerSettings;
     try {
-      serverSettings = await this.getServerSettings(socket);
+      serverSettings = await this.getServerSettings(
+        socket,
+        params.abort_signal,
+      );
     } catch (err) {
       this.discard(socket);
       throw err;
@@ -1350,7 +1385,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
     const socket = await this.acquire(params.abort_signal);
     let serverSettings: ServerSettings;
     try {
-      serverSettings = await this.getServerSettings(socket);
+      serverSettings = await this.getServerSettings(
+        socket,
+        params.abort_signal,
+      );
     } catch (err) {
       this.discard(socket);
       throw err;
@@ -1497,21 +1535,40 @@ export class NativeConnection implements Connection<Stream.Readable> {
   }
 
   /** Reads the output settings of the server once (their defaults depend on
-   *  the server version and on the settings profile of the user). */
-  private getServerSettings(socket: NativeSocket): Promise<ServerSettings> {
-    if (this.serverSettings === undefined) {
-      const promise = this.loadServerSettings(socket);
-      this.serverSettings = promise;
-      promise.catch(() => {
-        // Try again with the next request.
-        if (this.serverSettings === promise) this.serverSettings = undefined;
-      });
+   *  the server version and on the settings profile of the user). The
+   *  request that reads them stops with its own `abort_signal`. A request
+   *  that waits for the load of another request stops waiting when its own
+   *  signal aborts, and reads the settings itself if that load fails. */
+  private async getServerSettings(
+    socket: NativeSocket,
+    signal: AbortSignal | undefined,
+  ): Promise<ServerSettings> {
+    for (;;) {
+      if (signal?.aborted) throw new Error(USER_ABORTED);
+      const shared = this.serverSettings;
+      if (shared === undefined) {
+        const promise = this.loadServerSettings(socket, signal);
+        this.serverSettings = promise;
+        promise.catch(() => {
+          // Try again with the next request.
+          if (this.serverSettings === promise) this.serverSettings = undefined;
+        });
+        return promise;
+      }
+      try {
+        return await abortable(shared, signal);
+      } catch {
+        if (signal?.aborted) throw new Error(USER_ABORTED);
+        // The load of another request failed: that request was aborted or
+        // lost its connection. Read the settings on this socket.
+        if (this.serverSettings === shared) this.serverSettings = undefined;
+      }
     }
-    return this.serverSettings;
   }
 
   private async loadServerSettings(
     socket: NativeSocket,
+    signal: AbortSignal | undefined,
   ): Promise<ServerSettings> {
     const names = [
       ...OutputSettingNames,
@@ -1520,37 +1577,63 @@ export class NativeConnection implements Connection<Stream.Readable> {
       "readonly",
     ];
     const values: Record<string, string> = {};
-    await this.execute(
-      socket,
-      {
-        query:
-          "SELECT name, value FROM system.settings WHERE name IN (" +
-          names.map((n) => `'${n}'`).join(", ") +
-          ")",
-      },
-      {
-        output: DefaultOutputSettings,
-        insert: DefaultInsertSettings,
-        native_form_settings: [],
-        can_change_settings: false,
-      },
-      crypto.randomUUID(),
-      {
-        ignore_error: false,
-        release: false,
-        // This query cannot set network_compression_method yet (a user with
-        // readonly = 1 may not change it), so with compression the server
-        // would answer in its own default method, which can be one that this
-        // runtime cannot read (ZSTD before Node.js 22.15). Its answer is small.
-        uncompressed: true,
-        on_block: (block) => {
-          const [name, value] = block.columns;
-          for (let i = 0; i < block.rows; i++) {
-            values[String(name?.values[i])] = String(value?.values[i]);
-          }
+    const defaults: ServerSettings = {
+      output: DefaultOutputSettings,
+      insert: DefaultInsertSettings,
+      native_form_settings: [],
+      can_change_settings: false,
+    };
+    try {
+      await this.execute(
+        socket,
+        {
+          query:
+            "SELECT name, value FROM system.settings WHERE name IN (" +
+            names.map((n) => `'${n}'`).join(", ") +
+            ")",
+          abort_signal: signal,
         },
-      },
-    );
+        defaults,
+        crypto.randomUUID(),
+        {
+          ignore_error: false,
+          release: false,
+          // This query cannot set network_compression_method yet (a user
+          // with readonly = 1 may not change it), so with compression the
+          // server would answer in its own default method, which can be one
+          // that this runtime cannot read (ZSTD before Node.js 22.15). Its
+          // answer is small.
+          uncompressed: true,
+          on_block: (block) => {
+            const [name, value] = block.columns;
+            for (let i = 0; i < block.rows; i++) {
+              values[String(name?.values[i])] = String(value?.values[i]);
+            }
+          },
+        },
+      );
+    } catch (err) {
+      // An abort, a lost connection, or a server error that the next
+      // request may not get: the request fails and the next one tries again.
+      if (
+        !(err instanceof ClickHouseError) ||
+        TRANSIENT_ERROR_CODES.has(err.code)
+      ) {
+        throw err;
+      }
+      // The user cannot read the settings (no grant, or a limit of the
+      // settings profile): the socket is still usable, and the client
+      // uses the defaults of a recent server for the life of the client.
+      this.params.log_writer.warn({
+        message:
+          "Cannot read the settings of the user from system.settings. The client formats results and " +
+          "encodes inserts with the defaults of a recent server, not with the user's settings profile, " +
+          "unless a request sets them in clickhouse_settings.",
+        err,
+        args: { connection: socket.server.display_name },
+      });
+      return defaults;
+    }
     // A user with readonly = 1 cannot change any setting.
     const canChangeSettings = values["readonly"] !== "1";
     return {

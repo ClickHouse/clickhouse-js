@@ -1,9 +1,16 @@
+import Net from "node:net";
+import type { AddressInfo } from "node:net";
 import Stream from "node:stream";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClient as createHttpClient } from "../../../client-node/src";
 import type { ClickHouseClient as HttpClient } from "../../../client-node/src";
-import { ClickHouseError, createClient, drainStream } from "../../src";
-import type { ClickHouseClient } from "../../src";
+import {
+  ClickHouseError,
+  ClickHouseLogLevel,
+  createClient,
+  drainStream,
+} from "../../src";
+import type { ClickHouseClient, Logger, WarnLogParams } from "../../src";
 import { isZstdAvailable } from "../../src/compression/frames";
 import { httpURL, nativeURL, uniqueName } from "./utils";
 
@@ -438,6 +445,161 @@ describe("[Native] regressions", () => {
       await expect(
         client.command({ query: "SELECT 1", role: "r" }),
       ).rejects.toThrow("role is not supported");
+    });
+  });
+
+  describe("server settings", () => {
+    /** A TCP proxy to the native port that stops forwarding the answers of
+     *  the server on the first connection that reads system.settings. */
+    async function stallingProxy(): Promise<{
+      url: string;
+      stalled: Promise<void>;
+      close(): Promise<void>;
+    }> {
+      const target = new URL(nativeURL());
+      let onStall!: () => void;
+      const stalled = new Promise<void>((resolve) => (onStall = resolve));
+      let stalledOnce = false;
+      const pairs = new Set<[Net.Socket, Net.Socket]>();
+      const server = Net.createServer((downstream) => {
+        const upstream = Net.connect(
+          Number(target.port || 9000),
+          target.hostname,
+        );
+        const pair: [Net.Socket, Net.Socket] = [downstream, upstream];
+        pairs.add(pair);
+        let hold = false;
+        downstream.on("data", (chunk: Buffer) => {
+          if (!stalledOnce && chunk.includes("system.settings")) {
+            stalledOnce = true;
+            hold = true;
+            onStall();
+          }
+          upstream.write(chunk);
+        });
+        upstream.on("data", (chunk: Buffer) => {
+          if (!hold) downstream.write(chunk);
+        });
+        const end = () => {
+          pairs.delete(pair);
+          downstream.destroy();
+          upstream.destroy();
+        };
+        for (const s of pair) {
+          s.on("error", end);
+          s.on("close", end);
+        }
+      });
+      await new Promise<void>((resolve) =>
+        server.listen(0, "127.0.0.1", resolve),
+      );
+      const url = new URL(target);
+      url.hostname = "127.0.0.1";
+      url.port = String((server.address() as AddressInfo).port);
+      return {
+        url: url.toString(),
+        stalled,
+        close: async () => {
+          for (const pair of pairs) for (const s of pair) s.destroy();
+          await new Promise((resolve) => server.close(resolve));
+        },
+      };
+    }
+
+    it("stops a request that aborts while the client reads the server settings", async () => {
+      const proxy = await stallingProxy();
+      const c = createClient({
+        url: proxy.url,
+        request_timeout: 30_000,
+        max_open_connections: 3,
+      });
+      const started = Date.now();
+      try {
+        // The first request reads the settings on its socket; the server
+        // does not answer.
+        const owner = new AbortController();
+        const first = c
+          .query({
+            query: "SELECT 1 AS x",
+            format: "JSONEachRow",
+            abort_signal: owner.signal,
+          })
+          .then(
+            () => undefined,
+            (err: unknown) => err,
+          );
+        await proxy.stalled;
+        // Two more requests wait for the same settings.
+        const waiter = new AbortController();
+        const second = c
+          .query({
+            query: "SELECT 2 AS x",
+            format: "JSONEachRow",
+            abort_signal: waiter.signal,
+          })
+          .then(
+            () => undefined,
+            (err: unknown) => err,
+          );
+        const third = c
+          .query({ query: "SELECT 3 AS x", format: "JSONEachRow" })
+          .then((rs) => rs.json());
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        // A waiting request stops at once...
+        waiter.abort();
+        expect(await second).toBeInstanceOf(Error);
+        expect(((await second) as Error).message).toMatch(/aborted/);
+        // ...and so does the request that reads the settings.
+        owner.abort();
+        expect(await first).toBeInstanceOf(Error);
+        expect(((await first) as Error).message).toMatch(/aborted/);
+        // A request that still waits reads the settings itself.
+        expect(await third).toEqual([{ x: 3 }]);
+        expect(Date.now() - started).toBeLessThan(10_000);
+      } finally {
+        await c.close();
+        await proxy.close();
+      }
+    });
+
+    it("uses the default settings when the user cannot read system.settings", async () => {
+      const user = uniqueName("cannot_read_settings");
+      // The answer of system.settings has more rows than the profile of
+      // this user allows.
+      await http.command({
+        query: `CREATE USER ${user} IDENTIFIED WITH no_password SETTINGS max_result_rows = 5, result_overflow_mode = 'throw'`,
+      });
+      const warnings: string[] = [];
+      class CapturingLogger implements Logger {
+        trace() {}
+        debug() {}
+        info() {}
+        warn({ message }: WarnLogParams) {
+          warnings.push(message);
+        }
+        error() {}
+      }
+      const c = createClient({
+        url: nativeURL(),
+        username: user,
+        password: "",
+        log: { LoggerClass: CapturingLogger, level: ClickHouseLogLevel.WARN },
+      });
+      try {
+        expect(await rows(c, "SELECT number AS x FROM numbers(2)")).toEqual([
+          { x: 0 },
+          { x: 1 },
+        ]);
+        expect(await rows(c, "SELECT 'a' AS s")).toEqual([{ s: "a" }]);
+        // The client reads the settings once.
+        expect(
+          warnings.filter((w) => w.includes("system.settings")),
+        ).toHaveLength(1);
+      } finally {
+        await c.close();
+        await http.command({ query: `DROP USER IF EXISTS ${user}` });
+      }
     });
   });
 
