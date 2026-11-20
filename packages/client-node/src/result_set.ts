@@ -26,6 +26,7 @@ import { Buffer } from "buffer";
 import type { Readable, TransformCallback } from "stream";
 import Stream, { Transform } from "stream";
 import { getAsText } from "./utils";
+import { createJSONEachRowErrorDetector } from "./common/utils/stream";
 
 const NEWLINE = 0x0a as const;
 
@@ -220,6 +221,7 @@ export class ResultSet<
     const logError = this.log_error;
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
+    const detectJSONError = createJSONEachRowErrorDetector(this.format);
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
     const toRows = new Transform({
@@ -266,6 +268,17 @@ export class ResultSet<
             }
 
             const text = currentChunkPart.toString();
+            const error = detectJSONError?.(text);
+            if (error) {
+              if (rows.length > 0) {
+                resultSet.addSpanRows(rows.length);
+                this.push(rows);
+              }
+              // Let an async iterator receive the preceding rows before the
+              // error destroys the stream and discards its buffered data.
+              setImmediate(() => callback(error));
+              return;
+            }
             rows.push({
               text,
               json<T>(): T {

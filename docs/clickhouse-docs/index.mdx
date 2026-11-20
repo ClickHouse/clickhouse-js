@@ -304,6 +304,8 @@ You should start consuming the `ResultSet` as soon as possible, as it holds the 
 
 Alternatively, if it's too large to fit into memory at once, you can call the `stream` method, and process the data in the streaming mode. Each of the response chunks will be transformed into a relatively small arrays of rows instead (the size of this array depends on the size of a particular chunk the client receives from the server, as it may vary, and the size of an individual row), one chunk at a time.
 
+For `JSONEachRow` and `JSONStringsEachRow`, `stream()` and `json()` detect an in-band `{"exception": "..."}` error row after data rows. They raise a `ClickHouseError` with the server code and message. This can occur when `http_write_exception_in_output_format` is enabled. This check cannot distinguish an error row from a result with only a column named `exception`. Such results stay as data. The check does not apply to compact JSON row formats. To avoid this ambiguity, set `http_write_exception_in_output_format: false`. ClickHouse 25.11 and later then use tagged error blocks.
+
 Please refer to the list of the [supported data formats](/integrations/language-clients/js/index#supported-data-formats) to determine what the best format is for streaming in your case. For example, if you want to stream JSON objects, you could choose [JSONEachRow](/reference/formats/JSON/JSONEachRow), and each row will be parsed as a JS object, or, perhaps, a more compact [JSONCompactColumns](/reference/formats/JSON/JSONCompactColumns) format that will result in each row being a compact array of values. See also: [streaming files](/integrations/language-clients/js/index#streaming-files-nodejs-only).
 
 <Warning>

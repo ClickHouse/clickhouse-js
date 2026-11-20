@@ -1,9 +1,46 @@
-import { parseError } from "../error";
+import { ClickHouseError, parseError } from "../error";
 
 const EXCEPTION_MARKER = "__exception__";
 
 const NEWLINE = 0x0a as const;
 export const CARET_RETURN = 0x0d as const;
+
+/** Detects an in-band error after data rows in the object-per-row JSON formats.
+ *  A result with only an `exception` column is ambiguous, so keep it as data.
+ *  Compact formats have the same ambiguity with any single String column. */
+export function createJSONEachRowErrorDetector(
+  format: unknown,
+): ((text: string) => ClickHouseError | undefined) | undefined {
+  if (format !== "JSONEachRow" && format !== "JSONStringsEachRow") {
+    return undefined;
+  }
+
+  let firstRow = true;
+  let exceptionColumn = false;
+  return (text) => {
+    if (exceptionColumn) return undefined;
+    const isFirstRow = firstRow;
+    firstRow = false;
+    // Keep ordinary rows lazy: only parse a possible exception row here.
+    if (!/^\s*\{\s*"exception"\s*:/.test(text)) return undefined;
+
+    let row: { exception?: unknown };
+    try {
+      row = JSON.parse(text);
+    } catch {
+      // Leave JSON parse errors to Row.json(), as for ordinary rows.
+      return undefined;
+    }
+    if (Object.keys(row).length !== 1) return undefined;
+    if (isFirstRow) {
+      exceptionColumn = true;
+      return undefined;
+    }
+    if (typeof row.exception !== "string") return undefined;
+    const error = parseError(row.exception);
+    return error instanceof ClickHouseError ? error : undefined;
+  };
+}
 
 /**
  * After 25.11, a newline error character is preceded by a caret return
