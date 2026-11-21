@@ -427,6 +427,7 @@ export class ValueWriter {
         for (let i = 0; i < items.length; i++) {
           const v = items[i] as number;
           if (!Number.isFinite(v)) {
+            // ClickHouse emits raw nan/inf for QBit in JSON; match its JSON.parse failure.
             return this.parsed(type, value);
           }
           out[i] = direct ? v : Number(numberText(type.element, v));
@@ -824,6 +825,8 @@ export class ValueWriter {
         if (value instanceof RawJSONValue) return this.rawJSON(value);
         return this.pathTree(this.pathsToTree(value as JSONObjectValue));
       case "QBit":
+        // ClickHouse's SerializationQBit inherits SimpleTextSerialization, so
+        // JSON uses serializeText and ignores JSON quote settings.
         return this.qbitText(type.element, value);
       case "Nothing":
         return "null";
