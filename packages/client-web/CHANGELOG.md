@@ -1,5 +1,9 @@
 # 1.25.1
 
+## Improvements
+
+- `TupleParam` now accepts plain JavaScript objects (e.g. from named `Tuple` query results) in addition to arrays. Values are formatted in property order as a ClickHouse Tuple literal. ([#1162])
+
 ## Bug fixes
 
 - `ResultSet.stream()` and `ResultSet.json()` now detect in-band error rows in `JSONEachRow` and `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled. They report the server error instead of returning it as data, including when `exception` is the only result column. Real data in a column named `exception` stays as data, even if its value looks like a server error. ([#1168])
@@ -9,6 +13,7 @@
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
+[#1162]: https://github.com/ClickHouse/clickhouse-js/pull/1162
 [#1168]: https://github.com/ClickHouse/clickhouse-js/pull/1168
 
 # 1.25.0

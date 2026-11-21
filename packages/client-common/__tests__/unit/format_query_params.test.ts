@@ -219,6 +219,41 @@ describe("formatQueryParams", () => {
     ).toBe("(1,TRUE,'test',FALSE)");
   });
 
+  it("supports object input in TupleParam for named tuples", () => {
+    expect(
+      formatQueryParams({
+        value: new TupleParam({ protocol: 6, port: 80 }),
+      }),
+    ).toBe("(6,80)");
+    expect(
+      formatQueryParams({
+        value: new TupleParam({ name: "test", active: true }),
+      }),
+    ).toBe("('test',TRUE)");
+    expect(
+      formatQueryParams({
+        value: new TupleParam({ a: 1, b: "foo", c: null }),
+      }),
+    ).toBe("(1,'foo',NULL)");
+    expect(
+      formatQueryParams({
+        value: new TupleParam({}),
+      }),
+    ).toBe("()");
+  });
+
+  it("throws when TupleParam receives invalid input", () => {
+    expect(() => new TupleParam(null as any)).toThrow(
+      "TupleParam requires an array or an object of values",
+    );
+    expect(() => new TupleParam(undefined as any)).toThrow(
+      "TupleParam requires an array or an object of values",
+    );
+    expect(() => new TupleParam(42 as any)).toThrow(
+      "TupleParam requires an array or an object of values",
+    );
+  });
+
   it("formats booleans in nested tuples as TRUE/FALSE", () => {
     expect(
       formatQueryParams({

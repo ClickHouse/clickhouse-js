@@ -1,7 +1,18 @@
+/**
+ * Wraps values to be formatted as a ClickHouse Tuple literal: `(v1, v2, ...)`.
+ * Accepts an array of elements or a plain object (e.g. from a named Tuple query result),
+ * preserving property order via `Object.values(obj)`.
+ */
 export class TupleParam {
   readonly values: readonly unknown[];
-  constructor(values: readonly unknown[]) {
-    this.values = values;
+  constructor(values: readonly unknown[] | Record<string, unknown>) {
+    if (Array.isArray(values)) {
+      this.values = values;
+    } else if (values !== null && typeof values === "object") {
+      this.values = Object.values(values);
+    } else {
+      throw new Error("TupleParam requires an array or an object of values");
+    }
   }
 }
 
