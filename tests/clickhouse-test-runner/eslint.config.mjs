@@ -11,6 +11,6 @@ export default defineConfig(
   typescriptEslintConfig(import.meta.dirname),
   testFilesOverrides(),
   {
-    ignores: ["dist", "node_modules", "bin", "eslint.config.mjs"],
+    ignores: ["dist", "node_modules", "bin", ".upstream", "eslint.config.mjs"],
   },
 );
