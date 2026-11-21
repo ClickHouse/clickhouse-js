@@ -111,4 +111,25 @@ describe("astToReader (AST -> Reader fold)", () => {
       /cannot build a column reader/,
     );
   });
+
+  it("folds an empty Tuple to an empty array reader", () => {
+    const read = reader("Tuple()");
+    const s = new Cursor(Buffer.alloc(0));
+    expect(read(s)).toEqual([]);
+    expect(s.pos).toBe(0);
+  });
+
+  it("folds a nested empty Tuple", () => {
+    const read = reader("Tuple(Tuple())");
+    const s = new Cursor(Buffer.alloc(0));
+    expect(read(s)).toEqual([[]]);
+    expect(s.pos).toBe(0);
+  });
+
+  it("folds an empty Tuple alongside other columns", () => {
+    const read = reader("Tuple(Tuple(), UInt8)");
+    const s = new Cursor(Buffer.from([0x05]));
+    expect(read(s)).toEqual([[], 5]);
+    expect(s.pos).toBe(1);
+  });
 });
