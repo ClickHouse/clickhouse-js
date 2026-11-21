@@ -267,41 +267,41 @@ Relative performance between `@clickhouse/client-native` (TCP) and
 `@clickhouse/client` (HTTP) depends on the workload:
 
 - **Point queries and concurrent small lookups:** Persistent native TCP framing
-  avoids per-request HTTP header overhead, cutting latency and Node.js CPU by
-  more than half.
+  avoids per-request HTTP header overhead, cutting point-query latency and
+  Node.js CPU by more than half.
 - **Large `.json()` analytics reads (plain or compressed):** Building JS objects
   directly from decoded `Native` blocks with native LZ4 compression reaches
-  4M–6M rows/s (~2.7–3.2x HTTP), cutting client CPU by 40–49% and JS
-  allocations by 34–66%.
+  3.9M–6.6M rows/s (~2.6–3.6x HTTP), cutting client CPU by 28–62% and JS
+  allocations by 33–62%.
 - **Streaming `.stream()` reads and early cancellation:** Lazy sub-block slicing
-  in `BinaryJSONRows` and prototype-backed `Row` objects reach >9M rows/s
-  (~1.77x HTTP) with 66% fewer JS allocations, and make early
-  `ResultSet.close()` ~2.5x faster than HTTP.
+  in `BinaryJSONRows` and prototype-backed `Row` objects reach >10M rows/s
+  (~2.17x HTTP) with 31% less CPU and 65% fewer JS allocations, and make early
+  `ResultSet.close()` ~2.75x faster than HTTP.
 - **Structured `insert()`:** Encoding JS rows into columnar `Native` blocks with
-  LZ4 reaches 1.2M rows/s (~1.81x HTTP) with 41% less CPU and 71% fewer JS
+  LZ4 reaches 1.2M rows/s (~1.61x HTTP) with 19% less CPU and 67% fewer JS
   allocations than HTTP JSON + gzip, while raw `CSV` stream inserts run at
   parity with zero extra payload copies.
 - **Binary-path `JSON` decoding:** Columnar `JSON` block decoding and direct JS
-  object construction beat HTTP by ~35% even when
+  object construction beat HTTP by ~37% even when
   `output_format_native_write_json_as_string = 0`.
 
 Indicative results from [`benchmarks/native/`](../../benchmarks/native/README.md)
-(macOS, Node.js `v24.16.0`, ClickHouse `26.10.1.1562`, loopback `127.0.0.1`,
+(macOS, Node.js `v26.13.1`, ClickHouse `26.10.1.1562`, loopback `127.0.0.1`,
 `iterations=7`, `warmup=2`; reproduce on your own hardware before drawing
 conclusions):
 
 | Scenario                                                 | `@clickhouse/client` (HTTP) | `@clickhouse/client-native` (TCP) | Native vs HTTP | CPU/op (HTTP → Native) | JS Alloc/op (HTTP → Native) |
 | -------------------------------------------------------- | --------------------------: | --------------------------------: | -------------: | ---------------------: | --------------------------: |
-| Sequential `SELECT 1` (200 reqs)                         |       523.1 req/s (1.90 ms) |          **2.3k req/s (0.44 ms)** |      **4.32x** |   0.596 → **0.284 ms** |         94.7 → **56.7 KiB** |
-| Concurrent pool (16×25 reqs)                             |                  5.6k req/s |                    **8.7k req/s** |      **1.54x** |   0.274 → **0.180 ms** |         76.6 → **46.7 KiB** |
-| `JSONEachRow` `.json()` (100k rows)                      |                1.50M rows/s |                  **4.04M rows/s** |      **2.69x** |     68.9 → **41.1 ms** |         53.2 → **35.3 MiB** |
-| `JSONEachRow` `.stream()` (200k rows, binary fast path)  |                5.28M rows/s |                  **9.34M rows/s** |      **1.77x** |     **31.4** → 36.3 ms |         63.7 → **21.7 MiB** |
-| Compressed `.json()` (200k rows, LZ4 vs gzip)            |                1.90M rows/s |                  **6.01M rows/s** |      **3.16x** |    113.3 → **57.7 ms** |        100.0 → **33.8 MiB** |
-| Structured `JSONEachRow` insert (100k rows, LZ4 vs gzip) |               663.6k rows/s |                  **1.20M rows/s** |      **1.81x** |     71.1 → **41.8 ms** |         23.2 → **6.65 MiB** |
-| Raw CSV stream insert (1M rows, 24.3 MiB)                |                 161.5 MiB/s |                       158.6 MiB/s |          0.98x |     10.3 → **6.82 ms** |           498 → **396 KiB** |
-| Complex types: `Tuple`/`Array`/`JSON`/TZ (50k rows)      |               287.7k rows/s |                 **353.3k rows/s** |      **1.23x** |     66.0 → **57.3 ms** |         **38.3** → 42.3 MiB |
-| Binary `JSON` paths (50k rows, 8 keys/row)               |               192.8k rows/s |                 **260.0k rows/s** |      **1.35x** |     43.5 → **42.9 ms** |         **26.0** → 34.3 MiB |
-| Early `ResultSet.close()` on 50M-row query + recovery    |        83.2 req/s (12.0 ms) |         **205.1 req/s (4.87 ms)** |      **2.47x** |     **3.91** → 9.82 ms |         **0.99** → 1.22 MiB |
+| Sequential `SELECT 1` (200 reqs)                         |       497.0 req/s (2.00 ms) |          **2.3k req/s (0.43 ms)** |      **4.59x** |   0.638 → **0.263 ms** |         93.1 → **57.6 KiB** |
+| Concurrent pool (16×25 reqs)                             |                  5.7k req/s |                    **9.7k req/s** |      **1.69x** |   0.219 → **0.157 ms** |         75.9 → **46.7 KiB** |
+| `JSONEachRow` `.json()` (100k rows)                      |                1.50M rows/s |                  **3.86M rows/s** |      **2.58x** |     68.7 → **49.2 ms** |         50.0 → **33.5 MiB** |
+| `JSONEachRow` `.stream()` (200k rows, binary fast path)  |                4.85M rows/s |                 **10.54M rows/s** |      **2.17x** |     34.5 → **23.7 ms** |         63.1 → **22.2 MiB** |
+| Compressed `.json()` (200k rows, LZ4 vs gzip)            |                1.83M rows/s |                  **6.58M rows/s** |      **3.60x** |    119.5 → **45.1 ms** |         91.1 → **35.0 MiB** |
+| Structured `JSONEachRow` insert (100k rows, LZ4 vs gzip) |               745.1k rows/s |                  **1.20M rows/s** |      **1.61x** |     50.7 → **40.9 ms** |         21.5 → **7.12 MiB** |
+| Raw CSV stream insert (1M rows, 24.3 MiB)                |                 159.3 MiB/s |                       157.6 MiB/s |          0.99x |     8.42 → **5.95 ms** |           698 → **243 KiB** |
+| Complex types: `Tuple`/`Array`/`JSON`/TZ (50k rows)      |               279.6k rows/s |                 **355.6k rows/s** |      **1.27x** |     68.9 → **67.0 ms** |         **36.6** → 41.0 MiB |
+| Binary `JSON` paths (50k rows, 8 keys/row)               |               194.2k rows/s |                 **266.4k rows/s** |      **1.37x** |     **37.6** → 45.8 ms |         **23.8** → 30.2 MiB |
+| Early `ResultSet.close()` on 50M-row query + recovery    |        77.9 req/s (12.8 ms) |         **213.9 req/s (4.67 ms)** |      **2.75x** |     **4.37** → 10.3 ms |          **928** → 1016 KiB |
 
 Run the suite locally against your own ClickHouse instance:
 

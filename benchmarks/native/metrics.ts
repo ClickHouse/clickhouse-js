@@ -33,7 +33,14 @@ export interface MeasuredRun {
 }
 
 export function maybeGC(): void {
-  const g = globalThis as { gc?: () => void };
+  const g = globalThis as {
+    gc?: () => void;
+    Bun?: { gc?: (force?: boolean) => void };
+  };
+  if (typeof g.Bun?.gc === "function") {
+    g.Bun.gc(true);
+    return;
+  }
   g.gc?.();
 }
 
@@ -44,18 +51,30 @@ export function maybeGC(): void {
 export class AllocationSampler {
   private readonly session = new Session();
   private enabled = false;
+  private supported = true;
 
   async init(): Promise<void> {
-    if (this.enabled) return;
-    this.session.connect();
-    await this.session.post("HeapProfiler.enable");
-    this.enabled = true;
+    if (this.enabled || !this.supported) return;
+    try {
+      this.session.connect();
+      await this.session.post("HeapProfiler.enable");
+      this.enabled = true;
+    } catch {
+      this.supported = false;
+      try {
+        this.session.disconnect();
+      } catch {
+        // Ignore disconnect errors when HeapProfiler is unsupported (e.g. Bun).
+      }
+    }
   }
 
   /** Measures total V8 JS heap bytes allocated while running `fn` (including
-   *  short-lived objects collected by minor and major GC). */
+   *  short-lived objects collected by minor and major GC). Returns `NaN` on
+   *  runtimes without V8 HeapProfiler. */
   async sampleBytes(fn: () => Promise<void>): Promise<number> {
     await this.init();
+    if (!this.supported) return Number.NaN;
     maybeGC();
     await this.session.post("HeapProfiler.startSampling", {
       samplingInterval: 16_384,
@@ -170,6 +189,7 @@ export async function measureIterations(options: {
 }
 
 export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes)) return "n/a";
   if (bytes >= MIB) return `${(bytes / MIB).toFixed(2)} MiB`;
   if (bytes >= KIB) return `${(bytes / KIB).toFixed(1)} KiB`;
   return `${bytes.toFixed(0)} B`;
@@ -187,7 +207,9 @@ export function formatCpuMs(value: number): string {
 
 /** Ratio formatting where LOWER is better (CPU time, allocations, memory). */
 export function formatReduction(after: number, base: number): string {
-  if (base <= 0) return "n/a";
+  if (!Number.isFinite(after) || !Number.isFinite(base) || base <= 0) {
+    return "n/a";
+  }
   const ratio = after / base;
   const pct = (ratio - 1) * 100;
   const sign = pct >= 0 ? "+" : "";
