@@ -7,7 +7,8 @@ description: >
   and create the GitHub Release from the CHANGELOG. Use this skill whenever the
   task is to "release", "cut a release", "publish a new version", or "ship" one
   of the packages: `@clickhouse/client` (Node.js), `@clickhouse/client-web`
-  (Web), `@clickhouse/client-common` (deprecated, rarely released), the
+  (Web), `@clickhouse/client-native` (experimental Node.js native TCP),
+  `@clickhouse/client-common` (deprecated, rarely released), the
   standalone `@clickhouse/datatype-parser` (the type parser, under
   `packages/datatype-parser`), or `@clickhouse/rowbinary` (the RowBinary codec
   skill/package, under `skills/clickhouse-js-node-rowbinary`). The agent
@@ -29,6 +30,8 @@ This skill is the source of truth for the release process. It supersedes the old
    versioned independently and ship on independent cadences:
    - `@clickhouse/client` — Node.js client (`packages/client-node`)
    - `@clickhouse/client-web` — Web client (`packages/client-web`)
+   - `@clickhouse/client-native` — experimental Node.js client over the native
+     TCP protocol (`packages/client-native`)
    - `@clickhouse/client-common` — **deprecated**, effectively frozen; only cut a
      final standalone release if explicitly asked.
    - `@clickhouse/datatype-parser` — standalone type parser (`packages/datatype-parser`)
@@ -36,7 +39,7 @@ This skill is the source of truth for the release process. It supersedes the old
      (`skills/clickhouse-js-node-rowbinary`)
 
    The flow forks into two families — **workspace client packages** (client /
-   client-web / client-common) and **standalone packages** (datatype-parser /
+   client-web / client-native / client-common) and **standalone packages** (datatype-parser /
    rowbinary) — which differ in version bumping and publish workflow. Pick the
    right section below.
 
@@ -54,6 +57,7 @@ This skill is the source of truth for the release process. It supersedes the old
 >
 > - `@clickhouse/client` → `publish-client.yml`
 > - `@clickhouse/client-web` → `publish-client-web.yml`
+> - `@clickhouse/client-native` → `publish-client-native.yml`
 > - `@clickhouse/client-common` → `publish-client-common.yml`
 > - `@clickhouse/datatype-parser` → `publish-datatype-parser.yml`
 > - `@clickhouse/rowbinary` → `publish-skill-rowbinary.yml`
@@ -63,16 +67,16 @@ This skill is the source of truth for the release process. It supersedes the old
 > packages have the manual trigger only.
 >
 > The client `head` triggers are path-scoped: a change touching only one client's
-> own sources no longer republishes the others. Both `@clickhouse/client` and
-> `@clickhouse/client-web` bundle the shared common sources via the `src/common`
-> symlink (`packages/*/src/common` → `packages/client-common/src`), so
-> `packages/client-common/**` is also an input to both client workflows — a
-> change to the common sources publishes a new `head` for every client that
-> bundles them.
+> own sources no longer republishes the others. `@clickhouse/client`,
+> `@clickhouse/client-web`, and `@clickhouse/client-native` all bundle the shared
+> common sources via the `src/common` symlink (`packages/*/src/common` →
+> `packages/client-common/src`), so `packages/client-common/**` is also an input
+> to all three client workflows — a change to the common sources publishes a new
+> `head` for every client that bundles them.
 
 ---
 
-## Part A — Workspace client packages (`@clickhouse/client`, `-web`, `-common`)
+## Part A — Workspace client packages (`@clickhouse/client`, `-web`, `-native`, `-common`)
 
 ### Step 1 — Verify the package CHANGELOG on `main`
 
@@ -81,6 +85,7 @@ Each package now keeps its **own** `CHANGELOG.md` (the repo-wide root
 
 - `@clickhouse/client` → `packages/client-node/CHANGELOG.md`
 - `@clickhouse/client-web` → `packages/client-web/CHANGELOG.md`
+- `@clickhouse/client-native` → `packages/client-native/CHANGELOG.md`
 - `@clickhouse/client-common` → `packages/client-common/CHANGELOG.md`
 
 These are normally updated **inside feature PRs** as they merge to `main`, under
@@ -93,7 +98,7 @@ client-node and client-web changelogs.)
 - Compute the version this release will produce: current version + the
   `bump_type` you'll pick. Current version:
   ```bash
-  node -p "require('./packages/client-node/package.json').version"   # or client-web / client-common
+  node -p "require('./packages/client-node/package.json').version"   # or client-web / client-native / client-common
   ```
 - Confirm that package's `CHANGELOG.md` has a top `# <new-version>` section that
   actually contains this release's notes.
@@ -147,12 +152,12 @@ gh pr create --base release --head main \
 
 Merging into `release` pushes to `release`, which triggers the **path-scoped**
 `head` publish for each package whose sources changed (`publish-client.yml`,
-`publish-client-web.yml`, `publish-client-common.yml`). It publishes a `head`
-pre-release build (an **internal beta — not tracked** as a GitHub Release); the
-client workflows then run an automatic `e2e` job against the published version
-and a live ClickHouse — the Node.js client installs it across Node 22/24/26
-and runs integration tests, and the Web client runs a real-browser smoke
-(chromium + firefox) via Playwright.
+`publish-client-web.yml`, `publish-client-native.yml`, `publish-client-common.yml`).
+It publishes a `head` pre-release build (an **internal beta — not tracked** as a
+GitHub Release); the HTTP client workflows then run an automatic `e2e` job against
+the published version and a live ClickHouse — the Node.js client installs it
+across Node 22/24/26 and runs integration tests, and the Web client runs a
+real-browser smoke (chromium + firefox) via Playwright.
 
 - These publishes run under the `npm-publish` environment → **they pause for
   manual approval**. Find the run(s) — one per package that changed — give the
@@ -162,8 +167,8 @@ and runs integration tests, and the Web client runs a real-browser smoke
   gh run view <run-id> --json url -q .url      # hand this URL to the human to approve
   gh run watch <run-id>                        # waits for completion
   ```
-  (Use `publish-client-web.yml` / `publish-client-common.yml` for the other
-  packages.)
+  (Use `publish-client-web.yml` / `publish-client-native.yml` /
+  `publish-client-common.yml` for the other packages.)
 - The `e2e` job in `publish-client.yml` / `publish-client-web.yml` is sufficient
   verification — **no manual `@head` testing is needed**. Just watch it.
 - **If e2e fails:** the broken build is already on npm under the `head` tag.
@@ -175,14 +180,16 @@ and runs integration tests, and the Web client runs a real-browser smoke
 
 ### Step 5 — Publish to `latest` (manual dispatch, per package)
 
-Once the `head` e2e is green, dispatch the package's publish workflow **manually**
-from the `release` branch (no inputs). This builds, publishes to the `latest` tag
-(npm OIDC + provenance), and pushes a git tag (`client-<ver>`, `client-web-<ver>`,
-or `client-common-<ver>`):
+Once the `head` publish (and `e2e`, where applicable) is green, dispatch the
+package's publish workflow **manually** from the `release` branch (no inputs).
+This builds, publishes to the `latest` tag (npm OIDC + provenance), and pushes a
+git tag (`client-<ver>`, `client-web-<ver>`, `client-native-<ver>`, or
+`client-common-<ver>`):
 
 ```bash
 gh workflow run publish-client.yml --ref release          # @clickhouse/client
 # gh workflow run publish-client-web.yml --ref release     # @clickhouse/client-web
+# gh workflow run publish-client-native.yml --ref release  # @clickhouse/client-native
 # gh workflow run publish-client-common.yml --ref release  # @clickhouse/client-common (deprecated)
 ```
 
@@ -208,7 +215,8 @@ package's** `CHANGELOG.md` (e.g. `packages/client-node/CHANGELOG.md` for
 `@clickhouse/client`).
 
 - The tag was pushed by the publish workflow: `client-<ver>` / `client-web-<ver>`
-  / `client-common-<ver>` (note: client tags have **no** `v` prefix).
+  / `client-native-<ver>` / `client-common-<ver>` (note: client tags have **no**
+  `v` prefix).
 - Use the CHANGELOG section that documents this release as the body. Extract it
   (the lines under `# <version>` up to the next `# ` header):
   ```bash
@@ -225,7 +233,7 @@ package's** `CHANGELOG.md` (e.g. `packages/client-node/CHANGELOG.md` for
   pulling each one's notes from the matching CHANGELOG section:
   ```bash
   gh release list --limit 50
-  git ls-remote --tags origin | grep -oE 'client(-web|-common)?-[0-9.]+'
+  git ls-remote --tags origin | grep -oE 'client(-web|-native|-common)?-[0-9.]+'
   ```
 
 ---
@@ -300,7 +308,7 @@ Same as Part A, Step 6, using the standalone tag (`datatype-parser-v<ver>` /
 2. `gh workflow run bump-version.yml --ref main -f package=… -f bump_type=…` → review & merge the bump PR to `main`.
 3. `gh pr create --base release --head main` → review the whole release PR → merge.
 4. Auto `head` publish (per-package `publish-client*.yml`, path-scoped) + e2e on push to `release` → **approve** at `npm-publish`, watch e2e. (If e2e fails: retag the bad build to `debugging`, fix forward.)
-5. `gh workflow run publish-client.yml --ref release` (or `-web` / `-common`) per package → **approve**, watch.
+5. `gh workflow run publish-client.yml --ref release` (or `-web` / `-native` / `-common`) per package → **approve**, watch.
 6. `gh release create <client-…-tag> --notes-file <changelog-section>` (no `--title`, not prerelease); backfill missing releases.
 
 **Standalone packages (datatype-parser / rowbinary):**

@@ -15,6 +15,9 @@
     "github@claude-plugins-official": true
   },
   "permissions": {
-    "allow": ["Bash(npm run test:node:integration:*)"]
+    "allow": [
+      "Bash(npm run test:node:integration:*)",
+      "Bash(npm run test:native:integration*)"
+    ]
   }
 }

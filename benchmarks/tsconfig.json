@@ -4,6 +4,7 @@
     "dev/**/*.ts",
     "formats/**/*.ts",
     "leaks/**/*.ts",
+    "native/**/*.ts",
     "transport/**/*.ts"
   ],
   "compilerOptions": {
@@ -13,7 +14,9 @@
     "paths": {
       "@clickhouse/client-common": ["../packages/client-common/src/index.ts"],
       "@clickhouse/client": ["../packages/client-node/src/index.ts"],
-      "@clickhouse/client/*": ["../packages/client-node/src/*"]
+      "@clickhouse/client/*": ["../packages/client-node/src/*"],
+      "@clickhouse/client-native": ["../packages/client-native/src/index.ts"],
+      "@clickhouse/client-native/*": ["../packages/client-native/src/*"]
     }
   }
 }

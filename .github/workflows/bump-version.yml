@@ -23,6 +23,7 @@ on:
         options:
           - "@clickhouse/client"
           - "@clickhouse/client-web"
+          - "@clickhouse/client-native"
           # The common package is deprecated, but can still be bumped on its own.
           - "@clickhouse/client-common"
 
@@ -130,6 +131,56 @@ jobs:
           gh pr create \
             --title "chore: bump @clickhouse/client-web version to ${NEW}" \
             --body "Bumps \`@clickhouse/client-web\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
+            --base main \
+            --head "$BRANCH"
+
+  bump_client_native:
+    name: "Bump @clickhouse/client-native"
+    if: inputs.package == '@clickhouse/client-native'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Bump version
+        id: version
+        env:
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          CURRENT=$(node -p "require('./packages/client-native/package.json').version")
+          npm --workspace @clickhouse/client-native version --no-git-tag-version "$BUMP_TYPE"
+          NEW=$(node -p "require('./packages/client-native/package.json').version")
+          echo "export default \"$NEW\";" > packages/client-native/src/version.ts
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, push branch, and open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW: ${{ steps.version.outputs.new }}
+          CURRENT: ${{ steps.version.outputs.current }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          BRANCH="release-client-native-${NEW}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "chore: bump @clickhouse/client-native version to ${NEW}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: bump @clickhouse/client-native version to ${NEW}" \
+            --body "Bumps \`@clickhouse/client-native\` from \`${CURRENT}\` to \`${NEW}\` (${BUMP_TYPE} bump)." \
             --base main \
             --head "$BRANCH"
 

@@ -1,3 +1,6 @@
 # Mirrored into ClickHouse/ClickHouse docs (see .github/workflows/docs_sync.yml)
 # and follows that repository's formatting conventions.
 docs/clickhouse-docs/
+
+# Local upstream ClickHouse sparse clone and test runner artifacts.
+tests/clickhouse-test-runner/.upstream/

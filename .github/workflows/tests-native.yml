@@ -1,0 +1,112 @@
+name: "native"
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - release
+    paths:
+      - "packages/client-native/**"
+      - "packages/client-common/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "docker-compose.yml"
+      - ".github/workflows/tests-native.yml"
+  pull_request:
+    paths:
+      - "packages/client-native/**"
+      - "packages/client-common/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "docker-compose.yml"
+      - ".github/workflows/tests-native.yml"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
+
+jobs:
+  unit-tests:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run unit tests
+        run: |
+          npm run test:native:unit
+
+  integration-tests:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+        clickhouse: [head, latest]
+        include:
+          - node: 24
+            clickhouse: "26.8.41.14"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
+        env:
+          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
+        with:
+          compose-file: "docker-compose.yml"
+          services: |
+            clickhouse
+            clickhouse_tls
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
+      - name: Run integration tests
+        if: matrix.node != 24 || matrix.clickhouse != 'latest'
+        run: |
+          npm run test:native:integration
+
+      - name: Run TLS tests
+        if: matrix.node != 24 || matrix.clickhouse != 'latest'
+        run: |
+          npm run test:native:integration:tls
+
+      - name: Run native tests with coverage
+        if: matrix.node == 24 && matrix.clickhouse == 'latest'
+        run: npm run test:native:coverage

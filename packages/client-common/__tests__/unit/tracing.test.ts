@@ -99,6 +99,7 @@ function buildClient(
   tracer: ClickHouseTracer<any> | undefined,
   overrides: Partial<MockConnection> = {},
   configOverrides: Record<string, unknown> = {},
+  implOverrides: Record<string, unknown> = {},
 ): ClickHouseClient {
   const connection: MockConnection = {
     query: makeQuery(overrides.query),
@@ -128,11 +129,35 @@ function buildClient(
           encodeValues: (v: any) =>
             typeof v === "string" ? v : JSON.stringify(v),
         }) as any,
+      ...implOverrides,
     },
   });
 }
 
 describe("tracer", () => {
+  it("uses the default port of the URL protocol for server.port", async () => {
+    const nativeURLs = {
+      url_options: {
+        default_url: "tcp://localhost:9000",
+        protocols: ["tcp:", "tcps:"],
+      },
+    };
+    const cases: Array<[string, number, Record<string, unknown>]> = [
+      ["http://my.host", 80, {}],
+      ["https://my.host", 443, {}],
+      ["https://my.host:8443", 8443, {}],
+      ["tcp://my.host", 9000, nativeURLs],
+      ["tcps://my.host", 9440, nativeURLs],
+      ["tcps://my.host:19440", 19440, nativeURLs],
+    ];
+    for (const [url, port, impl] of cases) {
+      const { tracer, spans } = createRecordingTracer();
+      const client = buildClient(tracer, {}, { url }, impl);
+      await client.command({ query: "SELECT 1" });
+      expect(spans[0]?.initialAttributes["server.port"], url).toBe(port);
+    }
+  });
+
   it("emits a CLIENT span for query() with unset status and query_id attribute", async () => {
     const { tracer, spans } = createRecordingTracer();
     const client = buildClient(tracer);

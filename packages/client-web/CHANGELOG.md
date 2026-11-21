@@ -1,5 +1,9 @@
 # 1.25.1
 
+## Improvements
+
+- (Web only) The bundled URL parser supports transport-specific defaults (`url_options`), keeping `http` / `https` and `http://localhost:8123` for `@clickhouse/client-web`, and suppresses the HTTP-only `send_progress_in_http_headers` warning on non-HTTP URLs.
+
 ## Bug fixes
 
 - `ResultSet.stream()` and `ResultSet.json()` now detect in-band error rows in `JSONEachRow` and `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled. They report the server error instead of returning it as data, including when `exception` is the only result column. Real data in a column named `exception` stays as data, even if its value looks like a server error. ([#1168])

@@ -39,7 +39,7 @@ The root `postinstall` script patches `node_modules/parquet-wasm/package.json`; 
 
 ## 2. Build the workspace packages
 
-The workspace packages (`@clickhouse/client-common`, `@clickhouse/client`, `@clickhouse/client-web`) must be built before some tests, examples, and typechecks can resolve their inter-package imports:
+The workspace packages (`@clickhouse/client-common`, `@clickhouse/client`, `@clickhouse/client-web`, `@clickhouse/client-native`) must be built before some tests, examples, and typechecks can resolve their inter-package imports:
 
 ```bash
 npm run build
@@ -67,8 +67,8 @@ After the steps above you can run, for example:
 
 - `npm run lint` — lint every workspace package
 - `npm run typecheck` — typecheck every workspace package
-- `npm run test:node:unit` / `npm run test:web:unit` — unit tests, no server required
-- `npm run test:node:integration` / `npm run test:web:integration` — integration tests, server required
+- `npm run test:node:unit` / `npm run test:web:unit` / `npm run test:native:unit` — unit tests, no server required
+- `npm run test:node:integration` / `npm run test:web:integration` / `npm run test:native:integration` — integration tests, server required
 - From `examples/node` or `examples/web`: `npm run lint`, `npm run typecheck`, `npm run run-examples`
 
 See `npm run` from the repo root for the full list of test scripts.

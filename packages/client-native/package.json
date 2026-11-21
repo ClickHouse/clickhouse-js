@@ -1,0 +1,42 @@
+{
+  "name": "@clickhouse/client-native",
+  "description": "JS client for ClickHouse DB - Node.js implementation over the native TCP protocol",
+  "homepage": "https://clickhouse.com",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "keywords": [
+    "clickhouse",
+    "sql",
+    "client",
+    "native",
+    "tcp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClickHouse/clickhouse-js.git",
+    "directory": "packages/client-native"
+  },
+  "private": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "pack": "npm pack",
+    "prepack": "cp ../../LICENSE .",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --max-warnings=0 .",
+    "lint:fix": "eslint . --fix",
+    "build": "rm -rf dist; tsc",
+    "test:unit": "TEST_MODE=unit vitest",
+    "test:integration": "TEST_MODE=integration vitest",
+    "test:integration:tls": "TEST_MODE=tls vitest",
+    "test:coverage": "TEST_MODE=all vitest run --coverage",
+    "test:all": "TEST_MODE=all vitest"
+  }
+}
