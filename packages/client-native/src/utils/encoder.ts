@@ -13,6 +13,7 @@ import Stream from "stream";
 import { isStream, mapStream } from "./stream";
 
 const JSON_OBJECT_ENTRY = Symbol("JSONObjectEachRowEntry");
+const ARRAY_SOURCE = Symbol("ArraySource");
 
 /** One entry of a `JSONObjectEachRow` object, keeping its outer key for
  *  `format_json_object_each_row_column_for_object_name`. */
@@ -28,6 +29,21 @@ export function isJSONObjectEachRowEntry(
   return (
     typeof value === "object" && value !== null && JSON_OBJECT_ENTRY in value
   );
+}
+
+/** Returns the backing array when a stream was created from an in-memory array
+ *  by {@link NodeValuesEncoder}, letting `insertRows` slice batches without
+ *  per-row stream/Promise allocations. */
+export function getArraySource(
+  stream: Stream.Readable,
+): readonly unknown[] | undefined {
+  return (stream as { [ARRAY_SOURCE]?: readonly unknown[] })[ARRAY_SOURCE];
+}
+
+function readableFromArray(items: readonly unknown[]): Stream.Readable {
+  const stream = Stream.Readable.from(items, { objectMode: true });
+  (stream as { [ARRAY_SOURCE]?: readonly unknown[] })[ARRAY_SOURCE] = items;
+  return stream;
 }
 
 /**
@@ -71,25 +87,23 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
       return values;
     }
     if (Array.isArray(values)) {
-      return Stream.Readable.from(values, { objectMode: true });
+      return readableFromArray(values);
     }
     if (typeof values === "object" && values !== null) {
       if (format === "JSONObjectEachRow") {
-        return Stream.Readable.from(
-          Object.entries(values).map(
-            ([key, value]): JSONObjectEachRowEntry => ({
-              [JSON_OBJECT_ENTRY]: true,
-              key,
-              value,
-            }),
-          ),
-          { objectMode: true },
+        const entries = Object.entries(values).map(
+          ([key, value]): JSONObjectEachRowEntry => ({
+            [JSON_OBJECT_ENTRY]: true,
+            key,
+            value,
+          }),
         );
+        return readableFromArray(entries);
       }
       const data = (values as { data?: unknown }).data;
       if (Array.isArray(data)) {
         // The JSON format: { meta, data }
-        return Stream.Readable.from(data, { objectMode: true });
+        return readableFromArray(data);
       }
     }
     throw new Error(

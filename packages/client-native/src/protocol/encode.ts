@@ -373,6 +373,42 @@ function toDays(
   return clamp(secondsToDays(seconds, timezone), min, max);
 }
 
+/** Zero-allocation fast path for exact `YYYY-MM-DD hh:mm:ss` strings.
+ *  Returns wall-clock seconds (as if UTC), or `NaN` for any other shape. */
+function fastWallClockSeconds(text: string): number {
+  if (
+    text.length !== 19 ||
+    text.charCodeAt(4) !== 45 || // '-'
+    text.charCodeAt(7) !== 45 ||
+    text.charCodeAt(10) !== 32 || // ' '
+    text.charCodeAt(13) !== 58 || // ':'
+    text.charCodeAt(16) !== 58
+  ) {
+    return Number.NaN;
+  }
+  const year = digitsAt(text, 0, 4);
+  const month = digitsAt(text, 5, 2);
+  const day = digitsAt(text, 8, 2);
+  const hour = digitsAt(text, 11, 2);
+  const minute = digitsAt(text, 14, 2);
+  const second = digitsAt(text, 17, 2);
+  if (
+    year < 0 ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59 ||
+    !isCalendarDate(year, month, day)
+  ) {
+    return Number.NaN;
+  }
+  return (
+    daysFromCivil(year, month, day) * 86400 + hour * 3600 + minute * 60 + second
+  );
+}
+
 /** Parses `YYYY-MM-DD hh:mm:ss[.fff]` without a regular expression. Returns
  *  the wall-clock seconds (as if UTC), or undefined for other shapes. */
 function fastWallClock(
@@ -550,7 +586,10 @@ function toDateTimeSeconds(
 ): number {
   let seconds: number;
   if (typeof value === "string") {
-    seconds = parseDateTimeText(type, value, timezone, false).seconds;
+    const fast = fastWallClockSeconds(value);
+    seconds = !Number.isNaN(fast)
+      ? wallClockToUTC(fast, timezone)
+      : parseDateTimeText(type, value, timezone, false).seconds;
   } else if (typeof value === "number") {
     seconds = Math.trunc(value);
   } else if (value instanceof Date) {
@@ -732,6 +771,23 @@ function toTimeTicks(
   return ticks;
 }
 
+function toStringOrBytes(type: ColumnType, value: unknown): string | Buffer {
+  if (typeof value === "string") return value;
+  if (Buffer.isBuffer(value)) return value;
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  if (
+    typeof value === "number" ||
+    typeof value === "bigint" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+  if (typeof value === "object" && value !== null) {
+    return stringifyJSON(value);
+  }
+  return fail(type, value, "not a string");
+}
+
 function toBytes(type: ColumnType, value: unknown): Buffer {
   if (typeof value === "string") return Buffer.from(value, "utf8");
   if (Buffer.isBuffer(value)) return value;
@@ -854,7 +910,7 @@ export function defaultValue(type: ColumnType): unknown {
     case "Bool":
       return false;
     case "String":
-      return Buffer.alloc(0);
+      return "";
     case "FixedString":
       return Buffer.alloc(type.size);
     case "Decimal":
@@ -935,6 +991,12 @@ export function normalize(
         }
         return n;
       }
+      if (type.bits === 64 && typeof value === "number") {
+        if (Number.isSafeInteger(value)) {
+          if (!type.signed && value < 0) fail(type, value, "out of range");
+          return value;
+        }
+      }
       const v = toBigInt(type, value);
       const limits = INT_LIMITS[type.bits] as [bigint, bigint, bigint];
       if (
@@ -957,7 +1019,7 @@ export function normalize(
       }
       return fail(type, value, "not a boolean");
     case "String":
-      return toBytes(type, value);
+      return toStringOrBytes(type, value);
     case "FixedString": {
       const bytes = toBytes(type, value);
       if (bytes.length > type.size) fail(type, value, "too long");
@@ -1454,8 +1516,13 @@ export class ColumnWriter {
 
   string(v: string): this {
     const length = Buffer.byteLength(v, "utf8");
-    this.varuint(length);
-    this.reserve(length);
+    if (length < 0x80) {
+      this.reserve(1 + length);
+      this.current[this.offset++] = length;
+    } else {
+      this.varuint(length);
+      this.reserve(length);
+    }
     this.current.write(v, this.offset, length, "utf8");
     this.offset += length;
     return this;
@@ -1538,7 +1605,11 @@ function writeColumn(out: Encoded, type: ColumnType, values: unknown[]): void {
       });
       return;
     case "String":
-      for (let i = 0; i < n; i++) w.bytes(values[i] as Buffer);
+      for (let i = 0; i < n; i++) {
+        const v = values[i];
+        if (typeof v === "string") w.string(v);
+        else w.bytes(v as Buffer);
+      }
       return;
     case "FixedString":
     case "UUID":
@@ -1709,11 +1780,25 @@ function writeInts(
       break;
     case 64:
       if (signed) {
-        for (let i = 0; i < n; i++)
-          buf.writeBigInt64LE(values[i] as bigint, i * 8);
+        for (let i = 0; i < n; i++) {
+          const v = values[i] as number | bigint;
+          if (typeof v === "number") {
+            buf.writeUInt32LE(v >>> 0, i * 8);
+            buf.writeInt32LE(Math.floor(v / 0x100000000), i * 8 + 4);
+          } else {
+            buf.writeBigInt64LE(v, i * 8);
+          }
+        }
       } else {
-        for (let i = 0; i < n; i++)
-          buf.writeBigUInt64LE(values[i] as bigint, i * 8);
+        for (let i = 0; i < n; i++) {
+          const v = values[i] as number | bigint;
+          if (typeof v === "number") {
+            buf.writeUInt32LE(v >>> 0, i * 8);
+            buf.writeUInt32LE(Math.floor(v / 0x100000000), i * 8 + 4);
+          } else {
+            buf.writeBigUInt64LE(v, i * 8);
+          }
+        }
       }
       break;
     default: {
@@ -1775,6 +1860,8 @@ function writeLowCardinality(
 }
 
 function dictionaryKey(v: unknown): string {
+  if (typeof v === "string") return "s" + v;
+  if (typeof v === "number" || typeof v === "bigint") return "n" + v;
   if (Buffer.isBuffer(v)) return "b" + v.toString("latin1");
   return typeof v + ":" + String(v);
 }

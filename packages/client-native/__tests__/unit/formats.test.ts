@@ -13,6 +13,7 @@ import {
   RawJSONValue,
   TypedValue,
 } from "../../src/protocol/columns";
+import type { JSONColumnarBlock } from "../../src/protocol/columns";
 import type { Block } from "../../src/protocol/packets";
 import { parseColumnType } from "../../src/protocol/types";
 
@@ -940,5 +941,65 @@ describe("[Native] JSON paths with prototype keys", () => {
     expect(pretty).toContain('"polluted": 1');
     expect(pretty).toContain('"toString": {\n');
     expect(pretty).toContain('"constructor": {\n');
+  });
+
+  it("builds direct JS objects from columnar JSONObjectValue and Map(String, T) matching JSON.parse", () => {
+    const int64 = parseColumnType("Int64");
+    const str = parseColumnType("String");
+    const colBlock: JSONColumnarBlock = {
+      paths: ["__proto__.polluted", "a", "m.b", "toString.x"],
+      segments: [
+        ["__proto__", "polluted"],
+        undefined,
+        ["m", "b"],
+        ["toString", "x"],
+      ],
+      types: [int64, str, int64, str],
+      values: [
+        [1n, null],
+        ["hello", "world"],
+        [10n, 20n],
+        ["ok", null],
+      ],
+      skipNull: new Uint8Array([1, 1, 1, 1]),
+      shared: [undefined, [["extra.k", int64, 99n]]],
+    };
+
+    const b = block([
+      [
+        "j",
+        "JSON",
+        [new JSONObjectValue(colBlock, 0), new JSONObjectValue(colBlock, 1)],
+      ],
+      [
+        "m",
+        "Map(String, Int32)",
+        [
+          [
+            ["__proto__", 1],
+            ["k", 2],
+          ],
+          [["x", 3]],
+        ],
+      ],
+    ]);
+
+    const enc1 = new OutputEncoder("JSONEachRow", DefaultOutputSettings);
+    const direct = enc1.dataRows(b, false).rows;
+    const enc2 = new OutputEncoder("JSONEachRow", DefaultOutputSettings);
+    const parsed = enc2
+      .data(b)
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+    expect(({} as { polluted?: unknown }).polluted).toBeUndefined();
+    expect(direct).toEqual(parsed);
+    expect(
+      Object.keys((direct[0] as { j: Record<string, unknown> }).j),
+    ).toEqual(Object.keys((parsed[0] as { j: Record<string, unknown> }).j));
+    expect(
+      Object.keys((direct[1] as { j: Record<string, unknown> }).j),
+    ).toEqual(Object.keys((parsed[1] as { j: Record<string, unknown> }).j));
   });
 });

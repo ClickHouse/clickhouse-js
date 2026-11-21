@@ -715,7 +715,7 @@ describe("[Native] value encoding", () => {
         { b: "x" },
         strict,
       ),
-    ).toEqual([0, Buffer.from("x")]);
+    ).toEqual([0, "x"]);
   });
 
   it("encodes UUID and IP values", () => {
@@ -1049,11 +1049,7 @@ describe("[Native] encode edge cases", () => {
     const namedTuple = parseColumnType(
       "Tuple(toString String, constructor Int32, x Int32)",
     );
-    expect(normalize(namedTuple, { x: 7 }, ctx)).toEqual([
-      Buffer.alloc(0),
-      0,
-      7,
-    ]);
+    expect(normalize(namedTuple, { x: 7 }, ctx)).toEqual(["", 0, 7]);
     expect(
       roundTrip("Tuple(toString String, constructor Int32, x Int32)", [
         { x: 7 },
@@ -1090,5 +1086,49 @@ describe("[Native] encode edge cases", () => {
     expect(() => normalize(variantMapArr, [1, 2], ctx)).toThrow(
       InsertValueError,
     );
+  });
+
+  it("encodes 64-bit safe integers without BigInt boxing and matches BigInt wire layout", () => {
+    const int64Values = [
+      0,
+      1,
+      -1,
+      0xffffffff,
+      -0x100000000,
+      -0x100000001,
+      Number.MAX_SAFE_INTEGER,
+      Number.MIN_SAFE_INTEGER,
+      2 ** 53,
+      -(2 ** 53),
+      9223372036854775807n,
+      -9223372036854775808n,
+    ];
+    expect(roundTrip("Int64", int64Values)).toEqual(
+      int64Values.map((v) => BigInt(v)),
+    );
+
+    const uint64Values = [
+      0,
+      1,
+      0xffffffff,
+      0x100000000,
+      Number.MAX_SAFE_INTEGER,
+      2 ** 53,
+      18446744073709551615n,
+    ];
+    expect(roundTrip("UInt64", uint64Values)).toEqual(
+      uint64Values.map((v) => BigInt(v)),
+    );
+    expect(() => normalize(parseColumnType("UInt64"), -1, ctx)).toThrow(
+      InsertValueError,
+    );
+
+    // LowCardinality(Int64) merges equal number and bigint keys cleanly.
+    expect(roundTrip("LowCardinality(Int64)", [42, 42n, -1, -1n])).toEqual([
+      42n,
+      42n,
+      -1n,
+      -1n,
+    ]);
   });
 });

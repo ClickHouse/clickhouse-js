@@ -67,7 +67,7 @@ import type { NativeCompressionMethod } from "../compression/frames";
 import { exceptionText, toClickHouseError } from "./errors";
 import type { NativeTLSOptions, PacketHandler } from "./native_socket";
 import { NativeSocket } from "./native_socket";
-import { isJSONObjectEachRowEntry } from "../utils/encoder";
+import { getArraySource, isJSONObjectEachRowEntry } from "../utils/encoder";
 
 export interface NativeConnectionParams extends ConnectionParams {
   tls: NativeTLSOptions | undefined;
@@ -966,7 +966,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
       return index === 0 ? query_id : `${query_id}_${index + 1}`;
     };
     const progress = new ProgressTracker();
-    const iterator = rows[Symbol.asyncIterator]();
+    const arraySource = getArraySource(rows);
+    let arrayOffset = 0;
+    const iterator =
+      arraySource === undefined ? rows[Symbol.asyncIterator]() : undefined;
     /** The rows before the data in a ...WithNames format. */
     const headerRows: unknown[] = [];
     let headerNames: string[] | undefined;
@@ -984,9 +987,32 @@ export class NativeConnection implements Connection<Stream.Readable> {
     let dataStatements = 0;
 
     const readBatch = async (): Promise<unknown[]> => {
+      if (arraySource !== undefined) {
+        while (
+          headerRows.length < headerRowCount &&
+          arrayOffset < arraySource.length &&
+          !inputSignal.aborted
+        ) {
+          const value = arraySource[arrayOffset++];
+          if (headerRows.length === 0 && Array.isArray(value)) {
+            headerNames = value.map(String);
+          }
+          headerRows.push(value);
+        }
+        if (inputSignal.aborted || arrayOffset >= arraySource.length) {
+          return [];
+        }
+        const end = Math.min(
+          arrayOffset + INSERT_BLOCK_ROWS,
+          arraySource.length,
+        );
+        const batch = arraySource.slice(arrayOffset, end);
+        arrayOffset = end;
+        return batch;
+      }
       const batch: unknown[] = [];
       while (batch.length < INSERT_BLOCK_ROWS && !inputSignal.aborted) {
-        const next = await iterator.next();
+        const next = await iterator!.next();
         if (next.done) break;
         if (headerRows.length < headerRowCount) {
           if (headerRows.length === 0 && Array.isArray(next.value)) {
@@ -1401,52 +1427,72 @@ export class NativeConnection implements Connection<Stream.Readable> {
     columns: Array<{ name: string; type: ColumnType; values: unknown[] }>;
     rows: number;
   } {
-    const raw = columns.map(() => new Array<unknown>(rows.length));
-    rows.forEach((row, r) => {
-      if (compact) {
+    const rowCount = rows.length;
+    const colCount = columns.length;
+    const outCols = new Array<{
+      name: string;
+      type: ColumnType;
+      values: unknown[];
+    }>(colCount);
+    const colValues = new Array<unknown[]>(colCount);
+    const colTypes = new Array<ColumnType>(colCount);
+    const colNames = new Array<string>(colCount);
+    const colDefaults = new Array<unknown>(colCount);
+    for (let c = 0; c < colCount; c++) {
+      const col = columns[c]!;
+      const values = new Array<unknown>(rowCount);
+      colValues[c] = values;
+      colTypes[c] = col.type;
+      colNames[c] = col.name;
+      colDefaults[c] = defaultValue(col.type);
+      outCols[c] = { name: col.name, type: col.type, values };
+    }
+    if (compact) {
+      for (let r = 0; r < rowCount; r++) {
+        const row = rows[r];
         if (!Array.isArray(row)) {
           throw new InsertValueError(
             `A row of a JSONCompact format must be an array, got: ${typeof row}`,
           );
         }
-        columns.forEach((_, c) => {
+        for (let c = 0; c < colCount; c++) {
           const p = positions?.[c] ?? -1;
           const v =
             p >= 0 && p < row.length && row[p] !== undefined ? row[p] : MISSING;
-          raw[c]![r] = v;
-        });
-      } else {
+          colValues[c]![r] =
+            v === MISSING ? colDefaults[c] : normalize(colTypes[c]!, v, ctx);
+        }
+      }
+    } else {
+      const knownFields = ctx.known_fields;
+      for (let r = 0; r < rowCount; r++) {
+        const row = rows[r];
         if (typeof row !== "object" || row === null || Array.isArray(row)) {
           throw new InsertValueError(
             `A row must be an object, got: ${typeof row}`,
           );
         }
         const obj = row as Record<string, unknown>;
-        if (ctx.known_fields !== undefined) {
-          for (const key of Object.keys(obj)) {
-            if (!ctx.known_fields.has(key)) {
+        if (knownFields !== undefined) {
+          for (const key in obj) {
+            if (Object.hasOwn(obj, key) && !knownFields.has(key)) {
               throw new InsertValueError(
                 `Unknown field ${JSON.stringify(key)} in a row (input_format_skip_unknown_fields is 0)`,
               );
             }
           }
         }
-        columns.forEach((column, c) => {
-          const v = fieldValue(obj, column.name);
-          raw[c]![r] = v;
-        });
+        for (let c = 0; c < colCount; c++) {
+          const name = colNames[c]!;
+          const v = Object.hasOwn(obj, name) ? obj[name] : undefined;
+          colValues[c]![r] =
+            v === undefined ? colDefaults[c] : normalize(colTypes[c]!, v, ctx);
+        }
       }
-    });
+    }
     return {
-      columns: columns.map((column, c) => ({
-        ...column,
-        values: raw[c]!.map((v) =>
-          v === MISSING
-            ? defaultValue(column.type)
-            : normalize(column.type, v, ctx),
-        ),
-      })),
-      rows: rows.length,
+      columns: outCols,
+      rows: rowCount,
     };
   }
 
@@ -2150,7 +2196,9 @@ function rowKeys(rows: unknown[]): string[] {
   const keys = new Set<string>();
   for (const row of rows) {
     if (typeof row === "object" && row !== null && !Array.isArray(row)) {
-      for (const key of Object.keys(row)) keys.add(key);
+      for (const key in row as Record<string, unknown>) {
+        if (Object.hasOwn(row, key)) keys.add(key);
+      }
     }
   }
   return [...keys];

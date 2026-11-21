@@ -58,12 +58,73 @@ export class RawJSONValue {
   }
 }
 
+/** Columnar storage shared by all rows of one decoded `JSON` block, avoiding
+ *  per-cell `[path, type, value]` tuple and `TypedValue` allocations. */
+export interface JSONColumnarBlock {
+  /** Pre-sorted paths (UTF-8 byte order). */
+  readonly paths: string[];
+  /** Pre-split path segments (`undefined` when the path has no `.`). */
+  readonly segments: Array<string[] | undefined>;
+  /** Column type for each path (concrete type when uniform, or `Dynamic`). */
+  readonly types: ColumnType[];
+  /** Decoded column values (length = rows) for each path. */
+  readonly values: unknown[][];
+  /** `1` if `null` values in that column are omitted (dynamic paths), `0` for typed paths. */
+  readonly skipNull: Uint8Array;
+  /** Per-row shared data (only allocated when shared data total > 0). */
+  readonly shared:
+    Array<Array<[string, ColumnType, unknown]> | undefined> | undefined;
+}
+
+function materializeJSONRow(
+  block: JSONColumnarBlock,
+  row: number,
+): Array<[path: string, type: ColumnType, value: unknown]> {
+  const out: Array<[string, ColumnType, unknown]> = [];
+  const colCount = block.paths.length;
+  for (let c = 0; c < colCount; c++) {
+    const value = block.values[c]![row];
+    if (block.skipNull[c] === 1 && value === null) continue;
+    out.push([block.paths[c]!, block.types[c]!, value]);
+  }
+  const extra = block.shared?.[row];
+  if (extra !== undefined) {
+    for (const entry of extra) {
+      out.push(entry);
+    }
+    out.sort(([a], [b]) => compareBytes(a, b));
+  }
+  return out;
+}
+
 /** A `JSON` value that the server sent as paths. Only the paths with values
  *  are in `paths`; `null` values of dynamic paths are left out. */
 export class JSONObjectValue {
-  readonly paths: Array<[path: string, type: ColumnType, value: unknown]>;
-  constructor(paths: Array<[string, ColumnType, unknown]>) {
-    this.paths = paths;
+  private _paths:
+    Array<[path: string, type: ColumnType, value: unknown]> | undefined;
+  readonly block: JSONColumnarBlock | undefined;
+  readonly row: number;
+
+  constructor(
+    pathsOrBlock: Array<[string, ColumnType, unknown]> | JSONColumnarBlock,
+    row = 0,
+  ) {
+    if (Array.isArray(pathsOrBlock)) {
+      this._paths = pathsOrBlock;
+      this.block = undefined;
+      this.row = 0;
+    } else {
+      this._paths = undefined;
+      this.block = pathsOrBlock;
+      this.row = row;
+    }
+  }
+
+  get paths(): Array<[path: string, type: ColumnType, value: unknown]> {
+    if (this._paths === undefined) {
+      this._paths = materializeJSONRow(this.block!, this.row);
+    }
+    return this._paths;
   }
 }
 
@@ -1100,6 +1161,174 @@ function readDynamic(
 
 const DYNAMIC_TYPE: ColumnType = { kind: "Dynamic", name: "Dynamic" };
 
+/** Decodes a `Variant` column into either a single concrete type (skipping
+ *  per-row `TypedValue` wrappers when only one variant is active) or a
+ *  per-row `TypedValue` array. */
+function readVariantColumnar(
+  r: BinaryReader,
+  type: Extract<ColumnType, { kind: "Variant" }>,
+  rows: number,
+  state: State,
+  ctx: DecodeContext,
+): { type: ColumnType; values: unknown[] } {
+  if (state === undefined || state.s !== "variant") {
+    throw new ProtocolError("Missing state prefix of a Variant column");
+  }
+  const discriminators = new Uint8Array(rows);
+  if (!state.compact) {
+    discriminators.set(r.fixed(rows));
+  } else {
+    let filled = 0;
+    while (filled < rows) {
+      const granule = r.varuint();
+      const format = r.u8();
+      if (granule === 0) {
+        throw new ProtocolError(
+          `Variant compact discriminators ended early (${filled} of ${rows} rows)`,
+        );
+      }
+      if (granule > rows - filled) {
+        throw new ProtocolError(
+          `Variant compact discriminator granule size ${granule} exceeds remaining rows ${rows - filled}`,
+        );
+      }
+      if (format === 1) {
+        discriminators.fill(r.u8(), filled, filled + granule);
+      } else if (format === 0) {
+        discriminators.set(r.fixed(granule), filled);
+      } else {
+        throw new ProtocolError(
+          `Unknown Variant compact discriminator format ${format}`,
+        );
+      }
+      filled += granule;
+    }
+  }
+  const counts = new Array<number>(type.variants.length).fill(0);
+  for (const d of discriminators) {
+    if (d !== NULL_DISCRIMINATOR) {
+      if (d >= counts.length) {
+        throw new ProtocolError(`Unknown Variant discriminator ${d}`);
+      }
+      counts[d]!++;
+    }
+  }
+  const columns = type.variants.map((variant, i) =>
+    readColumn(r, variant, counts[i] as number, state.variants[i], ctx),
+  );
+  let activeCount = 0;
+  let singleD = -1;
+  for (let d = 0; d < counts.length; d++) {
+    if (counts[d]! > 0) {
+      activeCount++;
+      singleD = d;
+    }
+  }
+  if (activeCount === 0) {
+    return { type: DYNAMIC_TYPE, values: new Array<null>(rows).fill(null) };
+  }
+  if (activeCount === 1) {
+    const variant = type.variants[singleD]!;
+    if (variant.kind !== "SharedVariant") {
+      if (counts[singleD] === rows) {
+        return { type: variant, values: columns[singleD]! };
+      }
+      const col = columns[singleD]!;
+      const out = new Array<unknown>(rows);
+      let pos = 0;
+      for (let i = 0; i < rows; i++) {
+        out[i] = discriminators[i] === NULL_DISCRIMINATOR ? null : col[pos++];
+      }
+      return { type: variant, values: out };
+    }
+  }
+  const positions = new Array<number>(type.variants.length).fill(0);
+  const out = new Array<unknown>(rows);
+  for (let i = 0; i < rows; i++) {
+    const d = discriminators[i] as number;
+    if (d === NULL_DISCRIMINATOR) {
+      out[i] = null;
+    } else {
+      const value = (columns[d] as unknown[])[positions[d]!++];
+      const variant = type.variants[d] as ColumnType;
+      out[i] =
+        variant.kind === "SharedVariant"
+          ? value
+          : new TypedValue(variant, value);
+    }
+  }
+  return { type: DYNAMIC_TYPE, values: out };
+}
+
+/** Decodes a `Dynamic` column inside `JSON`, returning a concrete column type
+ *  without `TypedValue` wrappers when all non-null rows share one type. */
+function readDynamicColumnar(
+  r: BinaryReader,
+  rows: number,
+  state: State,
+  ctx: DecodeContext,
+): { type: ColumnType; values: unknown[] } {
+  if (state === undefined || state.s !== "dynamic") {
+    throw new ProtocolError("Missing state prefix of a Dynamic column");
+  }
+  if (!state.flattened) {
+    return readVariantColumnar(r, state.variant, rows, state.state, ctx);
+  }
+  const count = state.types.length;
+  const bits = count <= 0xff ? 8 : count <= 0xffff ? 16 : 32;
+  const indexes = readInts(r, bits, false, rows) as number[];
+  const counts = new Array<number>(count).fill(0);
+  for (const index of indexes) {
+    if (index < count) {
+      counts[index]!++;
+    } else if (index > count) {
+      throw new ProtocolError(
+        `Unknown Dynamic type index ${index} (expected at most ${count})`,
+      );
+    }
+  }
+  const columns = state.types.map((type, i) =>
+    readColumn(r, type, counts[i] as number, state.states[i], ctx),
+  );
+  let activeCount = 0;
+  let singleIdx = -1;
+  for (let i = 0; i < count; i++) {
+    if (counts[i]! > 0) {
+      activeCount++;
+      singleIdx = i;
+    }
+  }
+  if (activeCount === 0) {
+    return { type: DYNAMIC_TYPE, values: new Array<null>(rows).fill(null) };
+  }
+  if (activeCount === 1) {
+    const singleType = state.types[singleIdx]!;
+    if (counts[singleIdx] === rows) {
+      return { type: singleType, values: columns[singleIdx]! };
+    }
+    const col = columns[singleIdx]!;
+    const out = new Array<unknown>(rows);
+    let pos = 0;
+    for (let i = 0; i < rows; i++) {
+      out[i] = indexes[i] === count ? null : col[pos++];
+    }
+    return { type: singleType, values: out };
+  }
+  const positions = new Array<number>(count).fill(0);
+  const out = new Array<unknown>(rows);
+  for (let i = 0; i < rows; i++) {
+    const index = indexes[i] as number;
+    out[i] =
+      index === count
+        ? null
+        : new TypedValue(
+            state.types[index] as ColumnType,
+            (columns[index] as unknown[])[positions[index]!++],
+          );
+  }
+  return { type: DYNAMIC_TYPE, values: out };
+}
+
 function readJSON(
   r: BinaryReader,
   type: Extract<ColumnType, { kind: "JSON" }>,
@@ -1138,41 +1367,43 @@ function readJSON(
   const dynamicPaths =
     state.s === "json_flattened" ? state.paths : state.dynamic_paths;
   dynamicPaths.forEach((path, p) => {
+    const decoded = readDynamicColumnar(r, rows, state.dynamic[p], ctx);
     cols.push({
       path,
-      type: DYNAMIC_TYPE,
-      values: readDynamic(r, rows, state.dynamic[p], ctx),
+      type: decoded.type,
+      values: decoded.values,
       skipNull: true,
     });
   });
-  // Pre-sort fixed typed + dynamic columns once per block so rows without
-  // shared data do not need per-row sorting.
+  // Pre-sort fixed typed + dynamic columns once per block.
   cols.sort((a, b) => compareBytes(a.path, b.path));
 
-  const objects = new Array<Array<[string, ColumnType, unknown]>>(rows);
-  for (let i = 0; i < rows; i++) objects[i] = [];
-  for (const col of cols) {
-    const { path, type: colType, values, skipNull } = col;
-    if (skipNull) {
-      for (let i = 0; i < rows; i++) {
-        const value = values[i];
-        if (value !== null) objects[i]!.push([path, colType, value]);
-      }
-    } else {
-      for (let i = 0; i < rows; i++) {
-        objects[i]!.push([path, colType, values[i]]);
-      }
-    }
+  const colCount = cols.length;
+  const colPaths = new Array<string>(colCount);
+  const colSegments = new Array<string[] | undefined>(colCount);
+  const colTypes = new Array<ColumnType>(colCount);
+  const colValues = new Array<unknown[]>(colCount);
+  const colSkipNull = new Uint8Array(colCount);
+  for (let c = 0; c < colCount; c++) {
+    const col = cols[c]!;
+    colPaths[c] = col.path;
+    colSegments[c] = col.path.includes(".") ? col.path.split(".") : undefined;
+    colTypes[c] = col.type;
+    colValues[c] = col.values;
+    colSkipNull[c] = col.skipNull ? 1 : 0;
   }
 
-  let hasSharedData: Uint8Array | undefined;
+  let shared:
+    Array<Array<[string, ColumnType, unknown]> | undefined> | undefined;
   if (state.s === "json_paths") {
     // Shared data: Array(Tuple(path String, value String)), where each value
     // is a binary type and a value.
     const offsets = readOffsets(r, rows);
     const total = offsets[rows - 1] ?? 0;
     if (total > 0) {
-      hasSharedData = new Uint8Array(rows);
+      shared = new Array<Array<[string, ColumnType, unknown]> | undefined>(
+        rows,
+      );
       const paths = readColumn(
         r,
         { kind: "String", name: "String" },
@@ -1188,27 +1419,31 @@ function readJSON(
       for (let i = 0; i < rows; i++) {
         const end = offsets[i] as number;
         if (end > start) {
-          let added = false;
+          let rowShared: Array<[string, ColumnType, unknown]> | undefined;
           for (let j = start; j < end; j++) {
             if (values[j] !== null) {
-              objects[i]!.push([paths[j] as string, DYNAMIC_TYPE, values[j]]);
-              added = true;
+              rowShared ??= [];
+              rowShared.push([paths[j] as string, DYNAMIC_TYPE, values[j]]);
             }
           }
-          if (added) hasSharedData[i] = 1;
+          if (rowShared !== undefined) shared[i] = rowShared;
         }
         start = end;
       }
     }
   }
 
+  const block: JSONColumnarBlock = {
+    paths: colPaths,
+    segments: colSegments,
+    types: colTypes,
+    values: colValues,
+    skipNull: colSkipNull,
+    shared,
+  };
   const out = new Array<JSONObjectValue>(rows);
   for (let i = 0; i < rows; i++) {
-    const rowPaths = objects[i]!;
-    if (hasSharedData !== undefined && hasSharedData[i] === 1) {
-      rowPaths.sort(([a], [b]) => compareBytes(a, b));
-    }
-    out[i] = new JSONObjectValue(rowPaths);
+    out[i] = new JSONObjectValue(block, i);
   }
   return out;
 }

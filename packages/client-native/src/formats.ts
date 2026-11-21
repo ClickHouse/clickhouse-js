@@ -2,7 +2,11 @@ import type { DataFormat } from "./common/index";
 import { BinaryJSONRows } from "./json_rows";
 import type { Block, Column, Progress } from "./protocol/packets";
 import type { ColumnType } from "./protocol/types";
-import type { DecimalValue, JSONObjectValue } from "./protocol/columns";
+import type {
+  DecimalValue,
+  JSONColumnarBlock,
+  JSONObjectValue,
+} from "./protocol/columns";
 import { RawJSONValue, TypedValue, encodeText } from "./protocol/columns";
 import type { DateTimeOutputFormat } from "./protocol/text";
 import { formatDecimal } from "./protocol/text";
@@ -970,14 +974,119 @@ export class ValueWriter {
         return this.value(typed.type, typed.value);
       }
       case "Map":
-      case "JSON":
+        if (
+          !this.s.output_format_json_map_as_array_of_tuples &&
+          type.key.kind === "String"
+        ) {
+          const pairs = value as Array<[string, unknown]>;
+          const out: Record<string, unknown> = {};
+          for (const [k, v] of pairs) {
+            setField(
+              out,
+              this.raw ? this.string(k) : k,
+              this.value(type.value, v),
+            );
+          }
+          return out;
+        }
         return this.parsed(type, value);
+      case "JSON":
+        if (value instanceof RawJSONValue) {
+          return this.parsed(type, value);
+        }
+        return this.jsonObjectValue(value as JSONObjectValue);
       case "Nothing":
         return null;
       default:
         // String, FixedString, Enum, UUID, IP, date and time types
         return this.string(String(value));
     }
+  }
+
+  /** Builds a JS object directly from a {@link JSONObjectValue} without
+   *  round-tripping through JSON serialization and `JSON.parse`. */
+  private jsonObjectValue(
+    value: JSONObjectValue,
+    cachedBlock?: JSONColumnarBlock,
+    cachedConverters?: Array<(v: unknown) => unknown>,
+  ): Record<string, unknown> {
+    const root: Record<string, unknown> = {};
+    const raw = this.raw;
+    const block = value.block;
+    if (block !== undefined && block.shared?.[value.row] === undefined) {
+      const row = value.row;
+      const colCount = block.paths.length;
+      const converters = block === cachedBlock ? cachedConverters : undefined;
+      for (let c = 0; c < colCount; c++) {
+        const v = block.values[c]![row];
+        if (block.skipNull[c] === 1 && v === null) continue;
+        const converted =
+          converters !== undefined
+            ? converters[c]!(v)
+            : this.value(block.types[c]!, v);
+        const segs = block.segments[c];
+        if (segs === undefined) {
+          const key = block.paths[c]!;
+          setField(root, raw ? this.string(key) : key, converted);
+        } else {
+          let node = root;
+          const last = segs.length - 1;
+          for (let i = 0; i < last; i++) {
+            const part = raw ? this.string(segs[i]!) : segs[i]!;
+            const child = Object.hasOwn(node, part) ? node[part] : undefined;
+            if (
+              typeof child !== "object" ||
+              child === null ||
+              Array.isArray(child)
+            ) {
+              const next: Record<string, unknown> = {};
+              setField(node, part, next);
+              node = next;
+            } else {
+              node = child as Record<string, unknown>;
+            }
+          }
+          const leaf = raw ? this.string(segs[last]!) : segs[last]!;
+          setField(node, leaf, converted);
+        }
+      }
+      return root;
+    }
+    for (const [path, colType, v] of value.paths) {
+      const converted = this.value(colType, v);
+      const dot = path.indexOf(".");
+      if (dot === -1) {
+        setField(root, raw ? this.string(path) : path, converted);
+        continue;
+      }
+      let node = root;
+      let start = 0;
+      let sep = dot;
+      for (;;) {
+        const rawPart = path.slice(start, sep);
+        const part = raw ? this.string(rawPart) : rawPart;
+        const child = Object.hasOwn(node, part) ? node[part] : undefined;
+        if (
+          typeof child !== "object" ||
+          child === null ||
+          Array.isArray(child)
+        ) {
+          const next: Record<string, unknown> = {};
+          setField(node, part, next);
+          node = next;
+        } else {
+          node = child as Record<string, unknown>;
+        }
+        start = sep + 1;
+        sep = path.indexOf(".", start);
+        if (sep === -1) {
+          const rawLeaf = path.slice(start);
+          setField(node, raw ? this.string(rawLeaf) : rawLeaf, converted);
+          break;
+        }
+      }
+    }
+    return root;
   }
 
   /** A function that does the same as {@link value} for one type. */
@@ -1001,6 +1110,24 @@ export class ValueWriter {
           const out = new Array<unknown>(items.length);
           for (let i = 0; i < items.length; i++) out[i] = inner(items[i]);
           return out;
+        };
+      }
+      case "JSON": {
+        // Cache per-column converters across all rows of a columnar JSON block.
+        let cachedBlock: JSONColumnarBlock | undefined;
+        let cachedConverters: Array<(v: unknown) => unknown> | undefined;
+        return (value) => {
+          if (value === null || value === undefined) return null;
+          if (value instanceof RawJSONValue) {
+            return this.parsed(type, value);
+          }
+          const jsonVal = value as JSONObjectValue;
+          const block = jsonVal.block;
+          if (block !== undefined && block !== cachedBlock) {
+            cachedBlock = block;
+            cachedConverters = block.types.map((t) => this.converter(t));
+          }
+          return this.jsonObjectValue(jsonVal, cachedBlock, cachedConverters);
         };
       }
       case "String":
@@ -1447,10 +1574,16 @@ export class ValueWriter {
   private pathsToTree(value: JSONObjectValue): PathTree {
     const root = Object.create(null) as PathTree;
     for (const [path, type, v] of value.paths) {
-      const parts = path.split(".");
+      const dot = path.indexOf(".");
+      if (dot === -1) {
+        root[path] = [type, v];
+        continue;
+      }
       let node = root;
-      for (let i = 0; i < parts.length - 1; i++) {
-        const part = parts[i] as string;
+      let start = 0;
+      let sep = dot;
+      for (;;) {
+        const part = path.slice(start, sep);
         const child = node[part];
         if (child === undefined || Array.isArray(child)) {
           const next = Object.create(null) as PathTree;
@@ -1459,8 +1592,13 @@ export class ValueWriter {
         } else {
           node = child;
         }
+        start = sep + 1;
+        sep = path.indexOf(".", start);
+        if (sep === -1) {
+          node[path.slice(start)] = [type, v];
+          break;
+        }
       }
-      node[parts[parts.length - 1] as string] = [type, v];
     }
     return root;
   }
