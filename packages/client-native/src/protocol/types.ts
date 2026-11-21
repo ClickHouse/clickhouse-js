@@ -587,15 +587,14 @@ const IDENTIFIER_ESCAPES: Record<string, string> = {
   "\0": "\\0",
 };
 
+// eslint-disable-next-line no-control-regex -- escapes control characters as ClickHouse does
+const IDENTIFIER_ESCAPE_RE = /[\\`\x08\f\n\r\t\0]/g;
+
 /** Always quotes an identifier in backticks with ClickHouse backslash escapes. */
 export function quoteIdentifier(name: string): string {
   return (
     "`" +
-    // eslint-disable-next-line no-control-regex -- escapes control characters as ClickHouse does
-    name.replace(
-      /[\\`\x08\f\n\r\t\0]/g,
-      (c) => IDENTIFIER_ESCAPES[c] as string,
-    ) +
+    name.replace(IDENTIFIER_ESCAPE_RE, (c) => IDENTIFIER_ESCAPES[c] as string) +
     "`"
   );
 }
