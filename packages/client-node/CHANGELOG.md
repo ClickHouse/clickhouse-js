@@ -8,6 +8,7 @@
 
 ## Bug fixes
 
+- A `Date` query parameter before 1970-01-01 is now sent as a valid negative Unix timestamp. Before, the client put padding zeros in front of the minus sign and shifted the value by up to 2 seconds: `new Date(-1500)` was sent as `00000000-2.500` instead of `-1.500`. ([#1165])
 - `ResultSet.stream()` and `ResultSet.json()` now detect in-band error rows in `JSONEachRow` and `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled. They report the server error instead of returning it as data, including when `exception` is the only result column. Real data in a column named `exception` stays as data, even if its value looks like a server error. ([#1168])
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 - (Node.js only) An insert from an object-mode stream no longer sends each row as a separate HTTP chunk. Before, each row added about 5 bytes of chunk framing, and the stream code and the HTTP code processed the rows one at a time. For example, an insert of 1000 `JSONEachRow` rows of the form `{ x: i }` sent 1000 chunks and 14,895 bytes. It now sends 1 chunk and 9,903 bytes. This also makes stream inserts with request compression much faster: in our test, a gzip insert of 1M small rows took 0.5 s instead of 6.9 s. The client sends the collected rows when they reach about 64 Ki characters, at the end of the current turn of the event loop, and at the end of the stream. This way, a slow source does not keep its rows in the buffer. ([#988], [#1141])
@@ -24,6 +25,7 @@
 [#1168]: https://github.com/ClickHouse/clickhouse-js/pull/1168
 [nodejs/node#66781]: https://github.com/nodejs/node/issues/66781
 [nodejs/node#66782]: https://github.com/nodejs/node/pull/66782
+[#1165]: https://github.com/ClickHouse/clickhouse-js/pull/1165
 
 # 1.25.0
 
