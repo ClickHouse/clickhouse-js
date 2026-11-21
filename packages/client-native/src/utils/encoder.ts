@@ -12,6 +12,24 @@ import {
 import Stream from "stream";
 import { isStream, mapStream } from "./stream";
 
+const JSON_OBJECT_ENTRY = Symbol("JSONObjectEachRowEntry");
+
+/** One entry of a `JSONObjectEachRow` object, keeping its outer key for
+ *  `format_json_object_each_row_column_for_object_name`. */
+export interface JSONObjectEachRowEntry {
+  readonly [JSON_OBJECT_ENTRY]: true;
+  readonly key: string;
+  readonly value: unknown;
+}
+
+export function isJSONObjectEachRowEntry(
+  value: unknown,
+): value is JSONObjectEachRowEntry {
+  return (
+    typeof value === "object" && value !== null && JSON_OBJECT_ENTRY in value
+  );
+}
+
 /**
  * Prepares the values of `insert()` for the native protocol.
  *
@@ -57,9 +75,16 @@ export class NodeValuesEncoder implements ValuesEncoder<Stream.Readable> {
     }
     if (typeof values === "object" && values !== null) {
       if (format === "JSONObjectEachRow") {
-        return Stream.Readable.from(Object.values(values), {
-          objectMode: true,
-        });
+        return Stream.Readable.from(
+          Object.entries(values).map(
+            ([key, value]): JSONObjectEachRowEntry => ({
+              [JSON_OBJECT_ENTRY]: true,
+              key,
+              value,
+            }),
+          ),
+          { objectMode: true },
+        );
       }
       const data = (values as { data?: unknown }).data;
       if (Array.isArray(data)) {

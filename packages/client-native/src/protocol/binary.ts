@@ -1,3 +1,10 @@
+import { constants } from "node:buffer";
+
+/** Upper bound for a single wire byte sequence (1 GiB, matching ClickHouse's
+ *  `DBMS_MAX_COMPRESSED_SIZE`) so corrupted lengths fail fast with
+ *  {@link ProtocolError} instead of waiting until `request_timeout`. */
+export const MAX_BYTES_LENGTH = 0x40000000;
+
 /**
  * Thrown by {@link BinaryReader} when the buffer does not contain enough
  * bytes. The packet reader catches it, waits for more data from the socket
@@ -11,6 +18,9 @@ export class NeedMoreData extends Error {
    *  a large unit of work (a compressed block). The socket then parses again
    *  as soon as it has `needed` bytes. */
   firm = false;
+  /** Offset in the current buffer up to which bytes were already consumed
+   *  (for example, completed compressed frames of a multi-frame packet). */
+  consumed = 0;
   constructor() {
     super("Need more data");
     Object.setPrototypeOf(this, NeedMoreData.prototype);
@@ -42,6 +52,7 @@ export class BinaryReader {
     if (this.pos + n > this.buf.length) {
       NEED_MORE_DATA.needed = this.pos + n;
       NEED_MORE_DATA.firm = false;
+      NEED_MORE_DATA.consumed = 0;
       throw NEED_MORE_DATA;
     }
   }
@@ -81,7 +92,7 @@ export class BinaryReader {
     return hi * 0x100000000 + lo;
   }
 
-  /** Reads an unsigned LEB128 value. */
+  /** Reads an unsigned LEB128 value that fits in a safe JS integer. */
   varuint(): number {
     let result = 0;
     let multiplier = 1;
@@ -100,14 +111,43 @@ export class BinaryReader {
     throw new ProtocolError("A VarUInt value is longer than 10 bytes");
   }
 
+  /** Reads an unsigned 64-bit LEB128 value as a bigint. */
+  varuint64(): bigint {
+    let result = 0n;
+    let shift = 0n;
+    for (let i = 0; i < 10; i++) {
+      this.ensure(1);
+      const byte = this.buf[this.pos++] as number;
+      if (i === 9 && byte > 1) {
+        throw new ProtocolError("A VarUInt value overflows UInt64");
+      }
+      result |= BigInt(byte & 0x7f) << shift;
+      if ((byte & 0x80) === 0) {
+        return result;
+      }
+      shift += 7n;
+    }
+    throw new ProtocolError("A VarUInt value is longer than 10 bytes");
+  }
+
   /** Reads a VarUInt length and that many bytes. */
   bytes(): Buffer {
     const len = this.varuint();
+    if (len > MAX_BYTES_LENGTH) {
+      throw new ProtocolError(
+        `Byte sequence length ${len} exceeds maximum allowed size`,
+      );
+    }
     return this.fixed(len);
   }
 
   string(): string {
     const len = this.varuint();
+    if (len > constants.MAX_STRING_LENGTH) {
+      throw new ProtocolError(
+        `String length ${len} exceeds maximum allowed size`,
+      );
+    }
     this.ensure(len);
     const s = this.buf.toString("utf8", this.pos, this.pos + len);
     this.pos += len;

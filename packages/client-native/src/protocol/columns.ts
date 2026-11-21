@@ -85,6 +85,10 @@ export interface DecodeContext {
   raw_bytes?: boolean;
   /** Preserve simple Data columns until the consumer chooses text or rows. */
   binary_columns?: { enabled: boolean };
+  /** True when the caller (NativeSocket) consumes already-decompressed
+   *  compressed frames from its receive buffer incrementally via
+   *  `NeedMoreData.consumed`. */
+  consume_frames?: boolean;
   /** The packet that is not complete yet. The packet reader keeps the
    *  columns that it decoded, and continues after them when more data
    *  comes. */
@@ -95,14 +99,21 @@ export interface DecodeContext {
 export interface PendingBlock {
   /** The decoded columns, or `undefined` before the block header is read. */
   columns?: Column[];
+  /** Number of columns already skipped (used when discarding Log blocks). */
+  skipped?: number;
   column_count: number;
   rows: number;
   /** The offset after the last decoded column, from the start of the block. */
   offset: number;
+  /** Bytes already consumed from the decompressed buffer for earlier columns. */
+  bytes?: number;
 }
 
 /** The state of a packet that the reader decoded only in part. */
 export interface PendingPacket {
+  /** Set when a compressed Data/Totals/Extremes packet's header and earlier
+   *  frames were already consumed from the receive buffer. */
+  packet_type?: number;
   block?: PendingBlock;
   /** Compressed packets: the offset after the last compressed block that was
    *  read, from the start of the first one. */
@@ -290,37 +301,67 @@ function readStrings(
   rows: number,
   ctx: DecodeContext,
 ): string[] {
+  if (rows === 0) return [];
+  if (rows === 1) return [readString(r, ctx)];
+  const scanned = scanStringColumn(r, rows);
+  return decodeScannedStrings(r, rows, scanned, ctx, true);
+}
+
+/** Decodes a String column whose bounds were already found by
+ *  {@link scanStringColumn}, avoiding repeated VarUInt or ASCII scans. */
+function decodeScannedStrings(
+  r: BinaryReader,
+  rows: number,
+  scanned: { end: number; short: boolean },
+  ctx: DecodeContext,
+  checkAscii: boolean,
+): string[] {
   const buf = r.buf;
-  const { end: pos, short } = scanStringColumn(r, rows);
+  const start = r.pos;
+  const end = scanned.end;
   const out = new Array<string>(rows);
-  if (
-    rows > 1 &&
-    short &&
-    pos - r.pos <= constants.MAX_STRING_LENGTH &&
-    isAscii(buf.subarray(r.pos, pos))
-  ) {
-    // Each length prefix fits in one byte, so its byte offset is also its
-    // offset in the decoded string. Decode the entire column once.
-    const ascii = buf.toString("latin1", r.pos, pos);
-    let offset = 0;
-    for (let i = 0; i < rows; i++) {
-      const len = ascii.charCodeAt(offset++);
-      out[i] = ascii.slice(offset, offset + len);
-      offset += len;
+  if (scanned.short) {
+    if (
+      checkAscii &&
+      rows > 1 &&
+      end - start <= constants.MAX_STRING_LENGTH &&
+      isAscii(buf.subarray(start, end))
+    ) {
+      // Each length prefix fits in one byte, so its byte offset is also its
+      // offset in the decoded string. Decode the entire column once.
+      const ascii = buf.toString("latin1", start, end);
+      let offset = 0;
+      for (let i = 0; i < rows; i++) {
+        const len = ascii.charCodeAt(offset++);
+        out[i] = ascii.slice(offset, offset + len);
+        offset += len;
+      }
+      r.pos = end;
+      return out;
     }
-    r.pos = pos;
+    // Every length prefix is guaranteed to fit in 1 byte: skip VarUInt loop.
+    let pos = start;
+    for (let i = 0; i < rows; i++) {
+      const len = buf[pos++] as number;
+      out[i] = decodeString(buf, pos, pos + len, ctx);
+      pos += len;
+    }
+    r.pos = end;
     return out;
   }
   for (let i = 0; i < rows; i++) out[i] = readString(r, ctx);
   return out;
 }
 
-/** Keeps a column whose bytes can be used directly by the JSON row writer. */
+/** Keeps a column whose bytes can be used directly by the JSON row writer, or
+ *  returns decoded values directly when a String column was already scanned
+ *  and cannot stay in binary form. */
 export function readBinaryColumn(
   r: BinaryReader,
   type: ColumnType,
   rows: number,
-): Buffer | undefined {
+  ctx: DecodeContext,
+): { binary: Buffer } | { values: unknown[] } | undefined {
   const start = r.pos;
   let end: number;
   if (type.kind === "String") {
@@ -328,7 +369,13 @@ export function readBinaryColumn(
     end = strings.end;
     // Each one-byte length is ASCII. It prevents an incomplete UTF-8
     // sequence at the end of one value from continuing into the next.
-    if (!strings.short || !isUtf8(r.buf.subarray(start, end))) return;
+    if (!strings.short) {
+      return { values: decodeScannedStrings(r, rows, strings, ctx, false) };
+    }
+    if (!isUtf8(r.buf.subarray(start, end))) {
+      // Invalid UTF-8 cannot be ASCII either: skip the isAscii check.
+      return { values: decodeScannedStrings(r, rows, strings, ctx, false) };
+    }
   } else if (
     type.kind === "Int" &&
     type.bits <= 64 &&
@@ -345,7 +392,7 @@ export function readBinaryColumn(
   }
   r.pos = end;
   // The packet reader can reuse its receive buffer as soon as it advances.
-  return Buffer.from(r.buf.subarray(start, end));
+  return { binary: Buffer.from(r.buf.subarray(start, end)) };
 }
 
 function readEnums(
@@ -353,13 +400,15 @@ function readEnums(
   type: Extract<ColumnType, { kind: "Enum" }>,
   rows: number,
   nulls: Buffer | undefined,
+  firstIsNull = false,
 ): Array<string | null> {
   const out = new Array<string | null>(rows);
   const size = type.bits / 8;
   r.ensure(rows * size);
   for (let i = 0; i < rows; i++, r.pos += size) {
-    if (nulls !== undefined && nulls[i] !== 0) {
-      // A NULL row can hold a number that is not a value of the Enum.
+    if ((firstIsNull && i === 0) || (nulls !== undefined && nulls[i] !== 0)) {
+      // A NULL row (or slot 0 of LowCardinality(Nullable(Enum))) can hold a
+      // number that is not a value of the Enum.
       out[i] = null;
       continue;
     }
@@ -735,9 +784,14 @@ export function readColumn(
       const columns = type.elements.map((element, i) =>
         readColumn(r, element, rows, states[i], ctx),
       );
+      const width = columns.length;
       const out = new Array<unknown[]>(rows);
       for (let i = 0; i < rows; i++) {
-        out[i] = columns.map((column) => column[i]);
+        const tuple = new Array<unknown>(width);
+        for (let j = 0; j < width; j++) {
+          tuple[j] = (columns[j] as unknown[])[i];
+        }
+        out[i] = tuple;
       }
       return out;
     }
@@ -773,7 +827,17 @@ function elementStates(state: State, count: number): State[] {
 
 function readOffsets(r: BinaryReader, rows: number): number[] {
   const offsets = new Array<number>(rows);
-  for (let i = 0; i < rows; i++) offsets[i] = r.u64n();
+  let prev = 0;
+  for (let i = 0; i < rows; i++) {
+    const offset = r.u64n();
+    if (offset < prev) {
+      throw new ProtocolError(
+        `Non-monotonic offset ${offset} after ${prev} at row ${i}`,
+      );
+    }
+    offsets[i] = offset;
+    prev = offset;
+  }
   return offsets;
 }
 
@@ -790,18 +854,36 @@ function readInts(
   r.ensure(rows * size);
   const buf = r.buf;
   switch (bits) {
-    case 8:
-      for (let i = 0; i < rows; i++, r.pos++)
-        out[i] = signed ? buf.readInt8(r.pos) : (buf[r.pos] as number);
+    case 8: {
+      let pos = r.pos;
+      if (signed) {
+        for (let i = 0; i < rows; i++, pos++) out[i] = buf.readInt8(pos);
+      } else {
+        for (let i = 0; i < rows; i++, pos++) out[i] = buf[pos] as number;
+      }
+      r.pos = pos;
       break;
-    case 16:
-      for (let i = 0; i < rows; i++, r.pos += 2)
-        out[i] = signed ? buf.readInt16LE(r.pos) : buf.readUInt16LE(r.pos);
+    }
+    case 16: {
+      let pos = r.pos;
+      if (signed) {
+        for (let i = 0; i < rows; i++, pos += 2) out[i] = buf.readInt16LE(pos);
+      } else {
+        for (let i = 0; i < rows; i++, pos += 2) out[i] = buf.readUInt16LE(pos);
+      }
+      r.pos = pos;
       break;
-    case 32:
-      for (let i = 0; i < rows; i++, r.pos += 4)
-        out[i] = signed ? buf.readInt32LE(r.pos) : buf.readUInt32LE(r.pos);
+    }
+    case 32: {
+      let pos = r.pos;
+      if (signed) {
+        for (let i = 0; i < rows; i++, pos += 4) out[i] = buf.readInt32LE(pos);
+      } else {
+        for (let i = 0; i < rows; i++, pos += 4) out[i] = buf.readUInt32LE(pos);
+      }
+      r.pos = pos;
       break;
+    }
     case 64: {
       const view = new DataView(buf.buffer, buf.byteOffset + r.pos, rows * 8);
       if (signed) {
@@ -853,22 +935,47 @@ function readLowCardinality(
         "LowCardinality with a global dictionary is not supported",
       );
     }
+    const keyType = flags & LC_KEY_TYPE_MASK;
+    if (keyType > 3) {
+      throw new ProtocolError(`Unknown LowCardinality index type ${keyType}`);
+    }
     if ((flags & LC_HAS_ADDITIONAL_KEYS) !== 0) {
-      const count = r.u64n();
-      keys = readColumn(r, dictionaryType, count, undefined, ctx);
+      const dictCount = r.u64n();
+      keys =
+        nullable && dictionaryType.kind === "Enum"
+          ? readEnums(r, dictionaryType, dictCount, undefined, true)
+          : readColumn(r, dictionaryType, dictCount, undefined, ctx);
     }
     const count = r.u64n();
+    if (count === 0) {
+      throw new ProtocolError(
+        `LowCardinality column ended early (${out.length} of ${rows} rows)`,
+      );
+    }
+    if (out.length + count > rows) {
+      throw new ProtocolError(
+        `LowCardinality column has too many rows (${out.length + count} > ${rows})`,
+      );
+    }
     const indexes = readInts(
       r,
-      (8 << (flags & LC_KEY_TYPE_MASK)) as 8 | 16 | 32 | 64,
+      (8 << keyType) as 8 | 16 | 32 | 64,
       false,
       count,
     );
     for (const index of indexes) {
       const i = Number(index);
-      out.push(nullable && i === 0 ? null : keys[i]);
+      if (nullable && i === 0) {
+        out.push(null);
+      } else {
+        if (i >= keys.length) {
+          throw new ProtocolError(
+            `LowCardinality index ${i} out of bounds for dictionary of size ${keys.length}`,
+          );
+        }
+        out.push(keys[i]);
+      }
     }
-    if (count === 0) break;
   }
   return out;
 }
@@ -893,14 +1000,26 @@ function readVariant(
     while (filled < rows) {
       const granule = r.varuint();
       const format = r.u8();
-      const n = Math.min(granule, rows - filled);
-      if (format === 1) {
-        discriminators.fill(r.u8(), filled, filled + n);
-      } else {
-        discriminators.set(r.fixed(n), filled);
+      if (granule === 0) {
+        throw new ProtocolError(
+          `Variant compact discriminators ended early (${filled} of ${rows} rows)`,
+        );
       }
-      filled += n;
-      if (granule === 0) break;
+      if (granule > rows - filled) {
+        throw new ProtocolError(
+          `Variant compact discriminator granule size ${granule} exceeds remaining rows ${rows - filled}`,
+        );
+      }
+      if (format === 1) {
+        discriminators.fill(r.u8(), filled, filled + granule);
+      } else if (format === 0) {
+        discriminators.set(r.fixed(granule), filled);
+      } else {
+        throw new ProtocolError(
+          `Unknown Variant compact discriminator format ${format}`,
+        );
+      }
+      filled += granule;
     }
   }
   const counts = new Array<number>(type.variants.length).fill(0);
@@ -953,7 +1072,13 @@ function readDynamic(
   const indexes = readInts(r, bits, false, rows) as number[];
   const counts = new Array<number>(count).fill(0);
   for (const index of indexes) {
-    if (index < count) counts[index]!++;
+    if (index < count) {
+      counts[index]!++;
+    } else if (index > count) {
+      throw new ProtocolError(
+        `Unknown Dynamic type index ${index} (expected at most ${count})`,
+      );
+    }
   }
   const columns = state.types.map((type, i) =>
     readColumn(r, type, counts[i] as number, state.states[i], ctx),
@@ -963,7 +1088,7 @@ function readDynamic(
   for (let i = 0; i < rows; i++) {
     const index = indexes[i] as number;
     out[i] =
-      index >= count
+      index === count
         ? null
         : new TypedValue(
             state.types[index] as ColumnType,
@@ -995,54 +1120,159 @@ function readJSON(
   if (state.s !== "json_flattened" && state.s !== "json_paths") {
     throw new ProtocolError("Unexpected state prefix of a JSON column");
   }
-  const objects: Array<Array<[string, ColumnType, unknown]>> = [];
-  for (let i = 0; i < rows; i++) objects.push([]);
+  const cols: Array<{
+    path: string;
+    type: ColumnType;
+    values: unknown[];
+    skipNull: boolean;
+  }> = [];
 
   type.typed_paths.forEach(([path, pathType], p) => {
-    const values = readColumn(r, pathType, rows, state.typed[p], ctx);
-    for (let i = 0; i < rows; i++) {
-      objects[i]!.push([path, pathType, values[i]]);
-    }
+    cols.push({
+      path,
+      type: pathType,
+      values: readColumn(r, pathType, rows, state.typed[p], ctx),
+      skipNull: false,
+    });
   });
   const dynamicPaths =
     state.s === "json_flattened" ? state.paths : state.dynamic_paths;
   dynamicPaths.forEach((path, p) => {
-    const values = readDynamic(r, rows, state.dynamic[p], ctx);
-    for (let i = 0; i < rows; i++) {
-      const value = values[i];
-      if (value !== null) objects[i]!.push([path, DYNAMIC_TYPE, value]);
-    }
+    cols.push({
+      path,
+      type: DYNAMIC_TYPE,
+      values: readDynamic(r, rows, state.dynamic[p], ctx),
+      skipNull: true,
+    });
   });
+  // Pre-sort fixed typed + dynamic columns once per block so rows without
+  // shared data do not need per-row sorting.
+  cols.sort((a, b) => compareBytes(a.path, b.path));
+
+  const objects = new Array<Array<[string, ColumnType, unknown]>>(rows);
+  for (let i = 0; i < rows; i++) objects[i] = [];
+  for (const col of cols) {
+    const { path, type: colType, values, skipNull } = col;
+    if (skipNull) {
+      for (let i = 0; i < rows; i++) {
+        const value = values[i];
+        if (value !== null) objects[i]!.push([path, colType, value]);
+      }
+    } else {
+      for (let i = 0; i < rows; i++) {
+        objects[i]!.push([path, colType, values[i]]);
+      }
+    }
+  }
+
+  let hasSharedData: Uint8Array | undefined;
   if (state.s === "json_paths") {
     // Shared data: Array(Tuple(path String, value String)), where each value
     // is a binary type and a value.
     const offsets = readOffsets(r, rows);
     const total = offsets[rows - 1] ?? 0;
-    const paths = readColumn(
-      r,
-      { kind: "String", name: "String" },
-      total,
-      undefined,
-      ctx,
-    ) as string[];
-    const values: unknown[] = [];
-    for (let i = 0; i < total; i++)
-      values.push(readBinaryTypedValue(r.bytes(), ctx));
-    let start = 0;
-    for (let i = 0; i < rows; i++) {
-      const end = offsets[i] as number;
-      for (let j = start; j < end; j++) {
-        if (values[j] !== null) {
-          objects[i]!.push([paths[j] as string, DYNAMIC_TYPE, values[j]]);
-        }
+    if (total > 0) {
+      hasSharedData = new Uint8Array(rows);
+      const paths = readColumn(
+        r,
+        { kind: "String", name: "String" },
+        total,
+        undefined,
+        ctx,
+      ) as string[];
+      const values = new Array<unknown>(total);
+      for (let i = 0; i < total; i++) {
+        values[i] = readBinaryTypedValue(r.bytes(), ctx);
       }
-      start = end;
+      let start = 0;
+      for (let i = 0; i < rows; i++) {
+        const end = offsets[i] as number;
+        if (end > start) {
+          let added = false;
+          for (let j = start; j < end; j++) {
+            if (values[j] !== null) {
+              objects[i]!.push([paths[j] as string, DYNAMIC_TYPE, values[j]]);
+              added = true;
+            }
+          }
+          if (added) hasSharedData[i] = 1;
+        }
+        start = end;
+      }
     }
   }
-  return objects.map((paths) => {
-    paths.sort(([a], [b]) => compareBytes(a, b));
-    return new JSONObjectValue(paths);
-  });
+
+  const out = new Array<JSONObjectValue>(rows);
+  for (let i = 0; i < rows; i++) {
+    const rowPaths = objects[i]!;
+    if (hasSharedData !== undefined && hasSharedData[i] === 1) {
+      rowPaths.sort(([a], [b]) => compareBytes(a, b));
+    }
+    out[i] = new JSONObjectValue(rowPaths);
+  }
+  return out;
+}
+
+/** Advances `r` past a column without decoding its values (used to discard
+ *  `ServerPacketType.Log` blocks cheaply). Falls back to {@link readColumn}
+ *  for complex types. */
+export function skipColumn(
+  r: BinaryReader,
+  type: ColumnType,
+  rows: number,
+  state: State,
+  ctx: DecodeContext,
+): void {
+  if (rows === 0) return;
+  switch (type.kind) {
+    case "Int":
+    case "Float":
+    case "Enum":
+      r.skip(rows * (type.bits / 8));
+      return;
+    case "BFloat16":
+    case "Date":
+      r.skip(rows * 2);
+      return;
+    case "Bool":
+    case "Nothing":
+      r.skip(rows);
+      return;
+    case "Decimal":
+      r.skip(rows * type.bytes);
+      return;
+    case "FixedString":
+      r.skip(rows * type.size);
+      return;
+    case "Date32":
+    case "DateTime":
+    case "Time":
+    case "IPv4":
+      r.skip(rows * 4);
+      return;
+    case "DateTime64":
+    case "Time64":
+      r.skip(rows * 8);
+      return;
+    case "UUID":
+    case "IPv6":
+      r.skip(rows * 16);
+      return;
+    case "String":
+      r.pos = scanStringColumn(r, rows).end;
+      return;
+    case "Nullable":
+      r.skip(rows);
+      skipColumn(r, type.inner, rows, innerState(state), ctx);
+      return;
+    case "Array": {
+      const offsets = readOffsets(r, rows);
+      skipColumn(r, type.inner, offsets[rows - 1] ?? 0, innerState(state), ctx);
+      return;
+    }
+    default:
+      readColumn(r, type, rows, state, ctx);
+  }
 }
 
 /** Decodes a value that has its type in the binary type encoding before it

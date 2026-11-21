@@ -20,6 +20,9 @@ export interface ResultChunk {
    * the decoded block: the client does not write and parse their text.
    */
   rows?: () => { rows: unknown[]; text: string | Buffer };
+  /** Decoded (uncompressed) byte length of the underlying Native block,
+   *  used for tracing when `rows()` skips text formatting. */
+  bytes?: number;
 }
 
 export function isResultChunk(value: unknown): value is ResultChunk {

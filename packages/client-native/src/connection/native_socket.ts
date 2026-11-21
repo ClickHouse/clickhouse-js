@@ -13,6 +13,7 @@ import {
   CLIENT_REVISION,
   MIN_SERVER_REVISION,
   encodeAddendum,
+  encodeCancel,
   encodeHello,
   readServerPacket,
 } from "../protocol/packets";
@@ -49,7 +50,7 @@ export interface PacketHandler {
 export class NativeSocket {
   readonly server: ServerInfo;
   private readonly socket: net.Socket;
-  private readonly ctx: DecodeContext;
+  private ctx: DecodeContext;
   private handler: PacketHandler | undefined;
   /** The data that is not parsed yet: one chunk from the socket (the usual
    *  case, no copy), or the collected chunks in {@link collected}. */
@@ -83,8 +84,11 @@ export class NativeSocket {
    *  no more data in this turn of the event loop. Each such try that fails
    *  makes the wait longer. */
   private idleDelay = 0;
+  private paused = false;
+  private cancelling = false;
   private failure: Error | undefined;
   private timeoutHandler: (() => void) | undefined;
+  private closeListener: (() => void) | undefined;
 
   private constructor(socket: net.Socket, server: ServerInfo) {
     this.socket = socket;
@@ -141,14 +145,29 @@ export class NativeSocket {
       throw this.failure;
     }
     this.handler = handler;
-    this.ctx.timezone = timezone;
-    this.ctx.compressed = compressed;
-    this.ctx.date_time_output_format = decode?.date_time_output_format;
-    this.ctx.date_time64_cut_zeros = decode?.date_time64_cut_zeros;
-    this.ctx.binary_columns = decode?.binary_columns;
-    this.ctx.raw_bytes = false;
-    this.ctx.pending = undefined;
-    for (const buf of data) this.socket.write(buf);
+    this.paused = false;
+    // Use a fresh context per request so nothing returned to a previous
+    // caller can observe mutations from a later request on the same socket.
+    this.ctx = {
+      timezone,
+      compressed,
+      consume_frames: true,
+      date_time_output_format: decode?.date_time_output_format,
+      date_time64_cut_zeros: decode?.date_time64_cut_zeros,
+      binary_columns: decode?.binary_columns,
+      raw_bytes: false,
+      pending: undefined,
+    };
+    if (data.length > 1) {
+      this.socket.cork();
+      try {
+        for (const buf of data) this.socket.write(buf);
+      } finally {
+        this.socket.uncork();
+      }
+    } else if (data.length === 1) {
+      this.socket.write(data[0]!);
+    }
   }
 
   /** True when a string of the current request had bytes that are not
@@ -180,9 +199,19 @@ export class NativeSocket {
     this.socket.write(data);
   }
 
+  /** Registers a one-time callback invoked when the socket fails or closes. */
+  onClose(listener: () => void): void {
+    if (this.failure !== undefined || this.socket.destroyed) {
+      listener();
+      return;
+    }
+    this.closeListener = listener;
+  }
+
   /** Ends the current request. The socket can run the next request. */
   finish(): void {
     this.handler = undefined;
+    this.paused = false;
   }
 
   /** Calls `onTimeout` if the socket gets no data for `ms` milliseconds. */
@@ -201,28 +230,85 @@ export class NativeSocket {
   }
 
   pause(): void {
+    this.paused = true;
+    this.cancelIdleTimer();
     this.socket.pause();
   }
 
   resume(): void {
-    this.socket.resume();
+    if (!this.paused) {
+      this.socket.resume();
+      return;
+    }
+    this.paused = false;
+    if (
+      this.buffered > 0 &&
+      this.handler !== undefined &&
+      this.failure === undefined
+    ) {
+      // Drain buffered packets asynchronously so stream.read() -> resume() ->
+      // push() -> pause() cannot recurse deeply on the stack.
+      queueMicrotask(() => {
+        if (
+          !this.paused &&
+          this.buffered > 0 &&
+          this.handler !== undefined &&
+          this.failure === undefined
+        ) {
+          this.schedule();
+        }
+        if (!this.paused && this.failure === undefined) {
+          this.socket.resume();
+        }
+      });
+    } else {
+      this.socket.resume();
+    }
+  }
+
+  /** Sends `ClientPacket.Cancel` so the server stops a running query promptly,
+   *  then closes the socket once the 1-byte packet is flushed. */
+  cancel(err?: Error): void {
+    const canSend =
+      this.failure === undefined && !this.cancelling && this.socket.writable;
+    if (canSend) {
+      this.cancelling = true;
+      try {
+        this.socket.write(encodeCancel(), () => this.socket.destroy());
+        this.socket.end();
+      } catch {
+        this.cancelling = false;
+        this.socket.destroy();
+      }
+    }
+    this.fail(err ?? new Error("The connection was closed by the client"));
+    if (!canSend) {
+      this.socket.destroy();
+    }
   }
 
   destroy(err?: Error): void {
     this.fail(err ?? new Error("The connection was closed by the client"));
-    this.socket.destroy();
+    if (!this.cancelling) {
+      this.socket.destroy();
+    }
   }
 
   private fail(err: Error): void {
     if (this.failure !== undefined) return;
     this.failure = err;
+    this.paused = false;
     this.cancelIdleTimer();
     const handler = this.handler;
     this.handler = undefined;
+    const onClose = this.closeListener;
+    this.closeListener = undefined;
     handler?.error(err);
+    onClose?.();
   }
 
   private onData(chunk: Buffer): void {
+    if (this.failure !== undefined) return;
     if (this.buffered === 0) {
       this.chunk = chunk;
     } else {
@@ -237,6 +323,7 @@ export class NativeSocket {
   }
 
   private schedule(): void {
+    if (this.paused || this.failure !== undefined) return;
     if (this.buffered < this.needed) return;
     if (this.eager || this.buffered >= this.retryAt) {
       this.parse();
@@ -244,6 +331,7 @@ export class NativeSocket {
       const buffered = this.buffered;
       const onIdle = () => {
         this.idleTimer = undefined;
+        if (this.paused || this.failure !== undefined) return;
         if (this.buffered === buffered || this.buffered >= this.retryAt) {
           // No new data for a while (or enough data): try now.
           this.idleDelay =
@@ -270,10 +358,11 @@ export class NativeSocket {
   }
 
   private parse(): void {
+    if (this.paused || this.failure !== undefined) return;
     this.cancelIdleTimer();
     const buf = this.chunk ?? this.collected.view();
     let pos = 0;
-    while (pos < buf.length) {
+    while (pos < buf.length && !this.paused) {
       const handler = this.handler;
       if (handler === undefined) {
         // The server sent a packet without a request (for example, after a
@@ -287,6 +376,9 @@ export class NativeSocket {
         packet = readServerPacket(reader, this.protocolRevision, this.ctx);
       } catch (err) {
         if (err instanceof NeedMoreData) {
+          if (err.consumed > pos) {
+            pos = err.consumed;
+          }
           const remaining = buf.length - pos;
           this.retryAt = remaining * 2;
           this.needed = err.needed - pos;

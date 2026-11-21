@@ -2,9 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   BinaryReader,
   BinaryWriter,
+  MAX_BYTES_LENGTH,
   NeedMoreData,
+  ProtocolError,
 } from "../../src/protocol/binary";
 import { readColumn, readPrefix } from "../../src/protocol/columns";
+import {
+  REVISION,
+  ServerPacketType,
+  readServerPacket,
+} from "../../src/protocol/packets";
 import {
   formatDate,
   formatDateTime,
@@ -14,7 +21,7 @@ import {
   formatTime,
   formatUUID,
 } from "../../src/protocol/text";
-import { parseColumnType } from "../../src/protocol/types";
+import { compareBytes, parseColumnType } from "../../src/protocol/types";
 
 describe("[Native] type parser", () => {
   it("parses simple and parametric types", () => {
@@ -253,5 +260,242 @@ describe("[Native] value text", () => {
     expect(formatIPv6(ip("00010000000000010000000000000001"), 0)).toBe(
       "1:0:0:1::1",
     );
+  });
+});
+
+describe("[Native] compareBytes", () => {
+  it("matches Buffer.compare(Buffer.from(a), Buffer.from(b)) across ASCII, BMP, surrogates and prefixes", () => {
+    const samples = [
+      "",
+      "a",
+      "ab",
+      "b",
+      "a.b",
+      "a_b",
+      "€",
+      "\uD7FF",
+      "\uE000",
+      "\uFFFD",
+      "\u{10000}",
+      "\u{1F600}",
+      "\u{1F601}",
+      "\uD800",
+      "\uD801",
+      "\uD800a",
+      "\uD800b",
+      "abc\uD800",
+      "abc\uFFFD",
+    ];
+    for (const a of samples) {
+      for (const b of samples) {
+        const expected = Math.sign(
+          Buffer.compare(Buffer.from(a), Buffer.from(b)),
+        );
+        expect(Math.sign(compareBytes(a, b))).toBe(expected);
+      }
+    }
+  });
+});
+
+describe("[Native] wire validation", () => {
+  const decode = (typeName: string, buf: Buffer, rows: number) => {
+    const type = parseColumnType(typeName);
+    const r = new BinaryReader(buf);
+    const prefix = readPrefix(r, type);
+    return readColumn(r, type, rows, prefix, { timezone: "UTC" });
+  };
+
+  it("decodes LowCardinality(Nullable(Enum8)) when slot 0 holds a non-member sentinel", () => {
+    const w = new BinaryWriter()
+      .u64(1) // keys version
+      .u64((1 << 9) | 0) // has additional keys, UInt8 indexes
+      .u64(3) // 3 dictionary entries: NULL sentinel (0), 'a' (1), 'b' (2)
+      .u8(0) // not in Enum8('a' = 1, 'b' = 2)
+      .u8(1)
+      .u8(2)
+      .u64(3) // 3 rows
+      .u8(0)
+      .u8(1)
+      .u8(2);
+    expect(
+      decode(
+        "LowCardinality(Nullable(Enum8('a' = 1, 'b' = 2)))",
+        w.toBuffer(),
+        3,
+      ),
+    ).toEqual([null, "a", "b"]);
+  });
+
+  it("rejects invalid LowCardinality keyType, out-of-bounds index, and empty/oversized granule", () => {
+    // keyType = 4 (> 3)
+    const badKeyType = new BinaryWriter()
+      .u64(1)
+      .u64((1 << 9) | 4)
+      .u64(1)
+      .string("a")
+      .u64(1)
+      .u8(0);
+    expect(() =>
+      decode("LowCardinality(String)", badKeyType.toBuffer(), 1),
+    ).toThrow(ProtocolError);
+
+    // index 5 out of bounds for 1-entry dictionary
+    const oob = new BinaryWriter()
+      .u64(1)
+      .u64((1 << 9) | 0)
+      .u64(1)
+      .string("a")
+      .u64(1)
+      .u8(5);
+    expect(() => decode("LowCardinality(String)", oob.toBuffer(), 1)).toThrow(
+      ProtocolError,
+    );
+
+    // count === 0 with rows = 1
+    const zeroCount = new BinaryWriter()
+      .u64(1)
+      .u64((1 << 9) | 0)
+      .u64(1)
+      .string("a")
+      .u64(0);
+    expect(() =>
+      decode("LowCardinality(String)", zeroCount.toBuffer(), 1),
+    ).toThrow(ProtocolError);
+
+    // count === 2 with rows = 1
+    const tooMany = new BinaryWriter()
+      .u64(1)
+      .u64((1 << 9) | 0)
+      .u64(1)
+      .string("a")
+      .u64(2)
+      .u8(0)
+      .u8(0);
+    expect(() =>
+      decode("LowCardinality(String)", tooMany.toBuffer(), 1),
+    ).toThrow(ProtocolError);
+  });
+
+  it("rejects non-monotonic offsets in Array columns", () => {
+    const w = new BinaryWriter()
+      .u64(2) // row 0 ends at 2
+      .u64(1); // row 1 decreases to 1
+    expect(() => decode("Array(UInt8)", w.toBuffer(), 2)).toThrow(
+      ProtocolError,
+    );
+  });
+
+  it("rejects invalid compact Variant discriminators", () => {
+    // granule === 0
+    const zeroGranule = new BinaryWriter()
+      .u64(1) // COMPACT discriminators
+      .varuint(0)
+      .u8(0);
+    expect(() =>
+      decode("Variant(UInt8, String)", zeroGranule.toBuffer(), 2),
+    ).toThrow(ProtocolError);
+
+    // granule > remaining rows
+    const oversized = new BinaryWriter()
+      .u64(1)
+      .varuint(3)
+      .u8(0)
+      .u8(0)
+      .u8(0)
+      .u8(0);
+    expect(() =>
+      decode("Variant(UInt8, String)", oversized.toBuffer(), 2),
+    ).toThrow(ProtocolError);
+
+    // unknown format byte 2
+    const badFormat = new BinaryWriter().u64(1).varuint(1).u8(2);
+    expect(() =>
+      decode("Variant(UInt8, String)", badFormat.toBuffer(), 1),
+    ).toThrow(ProtocolError);
+  });
+
+  it("rejects out-of-range type index in flattened Dynamic columns", () => {
+    const w = new BinaryWriter()
+      .u64(3) // DYNAMIC_FLATTENED
+      .varuint(1) // 1 type: UInt8 (valid indexes: 0 = UInt8, 1 = NULL)
+      .string("UInt8")
+      .u8(2); // invalid index > count
+    expect(() => decode("Dynamic", w.toBuffer(), 1)).toThrow(ProtocolError);
+  });
+
+  it("treats Object.prototype property names as Unsupported types in parseColumnType", () => {
+    for (const name of ["toString", "constructor", "valueOf", "__proto__"]) {
+      expect(parseColumnType(name)).toEqual({ kind: "Unsupported", name });
+    }
+  });
+
+  it("decodes 64-bit VarUInt values above Number.MAX_SAFE_INTEGER in varuint64 and Progress/ProfileInfo", () => {
+    const encodeVarUInt64 = (v: bigint): Buffer => {
+      const bytes: number[] = [];
+      let n = v;
+      while (n >= 0x80n) {
+        bytes.push(Number(n & 0x7fn) | 0x80);
+        n >>= 7n;
+      }
+      bytes.push(Number(n));
+      return Buffer.from(bytes);
+    };
+
+    const big = (1n << 60n) + 12345n;
+    const maxU64 = (1n << 64n) - 1n;
+    expect(new BinaryReader(encodeVarUInt64(big)).varuint64()).toBe(big);
+    expect(new BinaryReader(encodeVarUInt64(maxU64)).varuint64()).toBe(maxU64);
+
+    // 10th byte > 1 overflows UInt64
+    const overflow = Buffer.from([
+      0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x02,
+    ]);
+    expect(() => new BinaryReader(overflow).varuint64()).toThrow(ProtocolError);
+
+    // Progress packet with 64-bit read_bytes > Number.MAX_SAFE_INTEGER
+    const progressBuf = Buffer.concat([
+      new BinaryWriter().varuint(ServerPacketType.Progress).toBuffer(),
+      encodeVarUInt64(100n), // read_rows
+      encodeVarUInt64(big), // read_bytes
+      encodeVarUInt64(200n), // total_rows_to_read
+      encodeVarUInt64(0n), // written_rows
+      encodeVarUInt64(0n), // written_bytes
+      encodeVarUInt64(5_000_000n), // elapsed_ns
+    ]);
+    const progress = readServerPacket(
+      new BinaryReader(progressBuf),
+      REVISION.SERVER_QUERY_TIME_IN_PROGRESS,
+      { timezone: "UTC" },
+    );
+    expect(progress).toEqual({
+      type: "progress",
+      progress: {
+        read_rows: 100n,
+        read_bytes: big,
+        total_rows_to_read: 200n,
+        total_bytes_to_read: 0n,
+        written_rows: 0n,
+        written_bytes: 0n,
+        elapsed_ns: 5_000_000n,
+      },
+    });
+  });
+
+  it("fails fast with ProtocolError on oversized string, bytes and PartUUIDs lengths", () => {
+    const hugeLen = new BinaryWriter().varuint(MAX_BYTES_LENGTH + 1).toBuffer();
+    expect(() => new BinaryReader(hugeLen).string()).toThrow(ProtocolError);
+    expect(() => new BinaryReader(hugeLen).bytes()).toThrow(ProtocolError);
+
+    const hugePartUUIDs = new BinaryWriter()
+      .varuint(ServerPacketType.PartUUIDs)
+      .varuint(Math.floor(MAX_BYTES_LENGTH / 16) + 1)
+      .toBuffer();
+    expect(() =>
+      readServerPacket(
+        new BinaryReader(hugePartUUIDs),
+        REVISION.SERVER_QUERY_TIME_IN_PROGRESS,
+        { timezone: "UTC" },
+      ),
+    ).toThrow(ProtocolError);
   });
 });

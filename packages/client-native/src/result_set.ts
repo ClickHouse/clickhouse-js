@@ -136,6 +136,17 @@ export class ResultSet<
     this.span_rows += count;
   }
 
+  private hasActiveSpan(): boolean {
+    return this.span !== undefined && this.span !== NoopClickHouseSpan;
+  }
+
+  /** Add the UTF-8 byte length of a chunk when tracing is active. */
+  private addSpanBytes(part: string | Buffer): void {
+    if (!this.hasActiveSpan()) return;
+    this.span_bytes +=
+      typeof part === "string" ? Buffer.byteLength(part) : part.length;
+  }
+
   /** Record the final response metrics (`clickhouse.response.decoded_bytes`
    *  and, when rows were counted, `db.response.returned_rows`) and the error
    *  (if any) on the span, and end it. Safe to call multiple times - only
@@ -163,9 +174,7 @@ export class ResultSet<
     const stream = this.consume();
     try {
       const text = await getAsText(stream);
-      if (this.span !== undefined && this.span !== NoopClickHouseSpan) {
-        this.span_bytes += Buffer.byteLength(text);
-      }
+      this.addSpanBytes(text);
       this.finishSpan();
       return text;
     } catch (err) {
@@ -189,7 +198,7 @@ export class ResultSet<
       const parseLines = (part: string | Buffer): void => {
         if (part.length === 0) return;
         const text = rest + (typeof part === "string" ? part : part.toString());
-        this.span_bytes += part.length;
+        this.addSpanBytes(part);
         let start = 0;
         for (;;) {
           const end = text.indexOf("\n", start);
@@ -206,6 +215,9 @@ export class ResultSet<
           } else if (direct && chunk.rows !== undefined) {
             const part = chunk.rows();
             parseLines(part.text);
+            if (this.hasActiveSpan() && chunk.bytes !== undefined) {
+              this.span_bytes += chunk.bytes;
+            }
             for (const row of part.rows) result.push(row as T);
           } else {
             parseLines(chunk.text());
@@ -238,13 +250,16 @@ export class ResultSet<
           } else if (direct && chunk.rows !== undefined) {
             const part = chunk.rows();
             add(part.text);
+            if (this.hasActiveSpan() && chunk.bytes !== undefined) {
+              this.span_bytes += chunk.bytes;
+            }
             data ??= [];
             for (const row of part.rows) data.push(row);
           } else {
             add(chunk.text());
           }
         }
-        this.span_bytes += Buffer.byteLength(text);
+        this.addSpanBytes(text);
         const parsed = this.jsonHandling.parse<ResultJSONType<T, Format>>(text);
         if (data !== undefined) {
           // The text is the document without the rows.
@@ -295,7 +310,7 @@ export class ResultSet<
         } catch (err) {
           return callback(err as Error);
         }
-        resultSet.span_bytes += chunk.length;
+        resultSet.addSpanBytes(chunk);
         const rows: Row[] = [];
 
         if (typeof chunk === "string") {

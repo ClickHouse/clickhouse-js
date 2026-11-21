@@ -1,6 +1,7 @@
 import {
   BinaryReader,
   BinaryWriter,
+  MAX_BYTES_LENGTH,
   NeedMoreData,
   ProtocolError,
 } from "./binary";
@@ -12,6 +13,7 @@ import {
   readBinaryColumn,
   readColumn,
   readPrefix,
+  skipColumn,
 } from "./columns";
 import type { ColumnType } from "./types";
 import { parseColumnType } from "./types";
@@ -168,8 +170,9 @@ export interface QuerySetting {
 
 export interface QueryPacketParams {
   query_id: string;
-  /** The SQL; a Buffer when data in any format (also binary) follows the SQL. */
-  query: string | Buffer;
+  /** The SQL; a Buffer or Buffer[] when data in any format (also binary)
+   *  follows the SQL without copying the payload. */
+  query: string | Buffer | Buffer[];
   settings: QuerySetting[];
   /** Parameters in the text form of the HTTP interface (`param_<name>`). */
   parameters: Array<[string, string]>;
@@ -179,9 +182,9 @@ export interface QueryPacketParams {
   compression: boolean;
 }
 
-export function encodeQuery(params: QueryPacketParams): Buffer {
+export function encodeQuery(params: QueryPacketParams): Buffer[] {
   const rev = params.protocol_revision;
-  const w = new BinaryWriter()
+  let w = new BinaryWriter()
     .varuint(ClientPacket.Query)
     .string(params.query_id);
 
@@ -228,8 +231,21 @@ export function encodeQuery(params: QueryPacketParams): Buffer {
     w.string(""); // no inter-server secret
   }
   w.varuint(QUERY_STAGE_COMPLETE).varuint(params.compression ? 1 : 0);
-  if (typeof params.query === "string") w.string(params.query);
-  else w.bytes(params.query);
+
+  const chunks: Buffer[] = [];
+  if (typeof params.query === "string") {
+    w.string(params.query);
+  } else if (Buffer.isBuffer(params.query)) {
+    w.varuint(params.query.length);
+    chunks.push(w.toBuffer(), params.query);
+    w = new BinaryWriter();
+  } else {
+    let totalLength = 0;
+    for (const part of params.query) totalLength += part.length;
+    w.varuint(totalLength);
+    chunks.push(w.toBuffer(), ...params.query);
+    w = new BinaryWriter();
+  }
 
   if (rev >= REVISION.PARAMETERS) {
     for (const [name, value] of params.parameters) {
@@ -242,7 +258,8 @@ export function encodeQuery(params: QueryPacketParams): Buffer {
       `The server (protocol revision ${rev}) does not support query parameters over the native protocol`,
     );
   }
-  return w.toBuffer();
+  if (w.length > 0) chunks.push(w.toBuffer());
+  return chunks;
 }
 
 function quoteField(value: string): string {
@@ -260,6 +277,7 @@ export const BLOCK_INFO = Buffer.from([1, 0, 2, 0xff, 0xff, 0xff, 0xff, 0]);
 export function encodeDataPacket(
   block: Buffer,
   compression: NativeCompressionMethod | undefined,
+  zstdLevel?: number,
 ): Buffer {
   const head = new BinaryWriter()
     .varuint(ClientPacket.Data)
@@ -268,17 +286,19 @@ export function encodeDataPacket(
   return Buffer.concat(
     compression === undefined
       ? [head, block]
-      : [head, ...compressFrames(block, compression)],
+      : [head, ...compressFrames(block, compression, zstdLevel)],
   );
 }
 
 /** An empty Data packet: the end of the (external or INSERT) data. */
 export function encodeEmptyBlock(
   compression?: NativeCompressionMethod,
+  zstdLevel?: number,
 ): Buffer {
   return encodeDataPacket(
     Buffer.concat([BLOCK_INFO, Buffer.from([0, 0])]),
     compression,
+    zstdLevel,
   );
 }
 
@@ -304,24 +324,26 @@ export interface Column {
 export interface Block {
   columns: Column[];
   rows: number;
+  /** Uncompressed byte length of the decoded Native block. */
+  bytes?: number;
 }
 
 export interface Progress {
-  read_rows: number;
-  read_bytes: number;
-  total_rows_to_read: number;
-  total_bytes_to_read: number;
-  written_rows: number;
-  written_bytes: number;
-  elapsed_ns: number;
+  read_rows: bigint;
+  read_bytes: bigint;
+  total_rows_to_read: bigint;
+  total_bytes_to_read: bigint;
+  written_rows: bigint;
+  written_bytes: bigint;
+  elapsed_ns: bigint;
 }
 
 export interface ProfileInfo {
-  rows: number;
-  blocks: number;
-  bytes: number;
+  rows: bigint;
+  blocks: bigint;
+  bytes: bigint;
   applied_limit: boolean;
-  rows_before_limit: number;
+  rows_before_limit: bigint;
 }
 
 export interface ServerException {
@@ -372,6 +394,34 @@ function readPacket(
   protocolRevision: number,
   ctx: DecodeContext,
 ): ServerPacket {
+  const resumedType = ctx.pending?.packet_type;
+  if (resumedType !== undefined) {
+    switch (resumedType) {
+      case ServerPacketType.Data:
+        return {
+          type: "data",
+          block: readDataBlock(
+            r,
+            protocolRevision,
+            ctx,
+            resumedType,
+            ctx.binary_columns?.enabled,
+          ),
+        };
+      case ServerPacketType.Totals:
+        return {
+          type: "totals",
+          block: readDataBlock(r, protocolRevision, ctx, resumedType),
+        };
+      case ServerPacketType.Extremes:
+        return {
+          type: "extremes",
+          block: readDataBlock(r, protocolRevision, ctx, resumedType),
+        };
+      default:
+        throw new ProtocolError(`Unexpected resumed packet ${resumedType}`);
+    }
+  }
   const type = r.varuint();
   switch (type) {
     case ServerPacketType.Hello:
@@ -384,17 +434,21 @@ function readPacket(
           r,
           protocolRevision,
           ctx,
+          type,
           ctx.binary_columns?.enabled,
         ),
       };
     case ServerPacketType.Totals:
       r.string();
-      return { type: "totals", block: readDataBlock(r, protocolRevision, ctx) };
+      return {
+        type: "totals",
+        block: readDataBlock(r, protocolRevision, ctx, type),
+      };
     case ServerPacketType.Extremes:
       r.string();
       return {
         type: "extremes",
-        block: readDataBlock(r, protocolRevision, ctx),
+        block: readDataBlock(r, protocolRevision, ctx, type),
       };
     case ServerPacketType.Exception:
       return { type: "exception", exception: readException(r) };
@@ -411,16 +465,29 @@ function readPacket(
       return { type: "table_columns", description: r.string() };
     case ServerPacketType.Log:
       r.string();
-      readBlock(r, protocolRevision, ctx, pendingBlock(ctx));
+      skipBlock(
+        r,
+        protocolRevision,
+        { timezone: ctx.timezone },
+        pendingBlock(ctx),
+      );
       return { type: "log" };
     case ServerPacketType.ProfileEvents:
       r.string();
       return {
         type: "profile_events",
-        block: readBlock(r, protocolRevision, ctx, pendingBlock(ctx)),
+        block: readBlock(
+          r,
+          protocolRevision,
+          { timezone: ctx.timezone },
+          pendingBlock(ctx),
+        ),
       };
     case ServerPacketType.PartUUIDs: {
       const count = r.varuint();
+      if (count > MAX_BYTES_LENGTH / 16) {
+        throw new ProtocolError(`Too many PartUUIDs: ${count}`);
+      }
       r.skip(count * 16);
       return { type: "ignored" };
     }
@@ -443,6 +510,7 @@ function readDataBlock(
   r: BinaryReader,
   protocolRevision: number,
   ctx: DecodeContext,
+  packetType: number,
   binaryColumns = false,
 ): Block {
   const state = pendingBlock(ctx);
@@ -454,18 +522,29 @@ function readDataBlock(
   // that each try continues the try before it.
   const pending = ctx.pending as NonNullable<DecodeContext["pending"]>;
   const data = (pending.data ??= new GrowableBuffer());
+  const consumeFrames = ctx.consume_frames === true;
+  if (consumeFrames) {
+    pending.packet_type = packetType;
+  }
   const start = r.pos;
-  r.pos = start + (pending.frames_offset ?? 0);
+  if (!consumeFrames) {
+    r.pos = start + (pending.frames_offset ?? 0);
+  }
   for (;;) {
     let frame: Buffer;
     try {
       frame = readCompressedFrame(r);
     } catch (err) {
       // With the bytes of this compressed block, the next try has more data.
-      if (err instanceof NeedMoreData) err.firm = true;
+      if (err instanceof NeedMoreData) {
+        err.firm = true;
+        if (consumeFrames) err.consumed = r.pos;
+      }
       throw err;
     }
-    pending.frames_offset = r.pos - start;
+    if (!consumeFrames) {
+      pending.frames_offset = r.pos - start;
+    }
     data.append(frame);
     const view = data.view();
     const inner = new BinaryReader(view);
@@ -487,9 +566,62 @@ function readDataBlock(
       if (state.columns !== undefined && state.offset > 0) {
         // The decoded columns do not need their bytes.
         data.consume(state.offset);
+        state.bytes = (state.bytes ?? 0) + state.offset;
         state.offset = 0;
       }
     }
+  }
+}
+
+/** Skips a block (used for `ServerPacketType.Log`) without allocating decoded
+ *  column values, while preserving resumable state across `NeedMoreData`. */
+function skipBlock(
+  r: BinaryReader,
+  protocolRevision: number,
+  ctx: DecodeContext,
+  state: PendingBlock,
+): void {
+  const start = r.pos;
+  let columnCount: number;
+  let rows: number;
+  let skipped: number;
+  if (state.skipped !== undefined) {
+    columnCount = state.column_count;
+    rows = state.rows;
+    skipped = state.skipped;
+    r.pos = start + state.offset;
+  } else {
+    for (;;) {
+      const field = r.varuint();
+      if (field === 0) break;
+      if (field === 1) r.u8();
+      else if (field === 2) r.i32();
+      else throw new ProtocolError(`Unknown block info field ${field}`);
+    }
+    columnCount = r.varuint();
+    rows = r.varuint();
+    skipped = 0;
+    state.column_count = columnCount;
+    state.rows = rows;
+    state.skipped = 0;
+    state.offset = r.pos - start;
+  }
+  for (let i = skipped; i < columnCount; i++) {
+    const name = r.string();
+    const type = parseColumnType(r.string());
+    if (protocolRevision >= REVISION.CUSTOM_SERIALIZATION) {
+      if (r.u8() !== 0) {
+        throw new ProtocolError(
+          `Custom serialization of column ${name} is not supported`,
+        );
+      }
+    }
+    if (rows > 0) {
+      const prefix = readPrefix(r, type);
+      skipColumn(r, type, rows, prefix, ctx);
+    }
+    state.skipped = i + 1;
+    state.offset = r.pos - start;
   }
 }
 
@@ -545,10 +677,20 @@ export function readBlock(
         );
       }
     }
-    const binary =
-      rows > 0 && binaryColumns ? readBinaryColumn(r, type, rows) : undefined;
-    if (binary !== undefined) {
+    const binaryResult =
+      rows > 0 && binaryColumns
+        ? readBinaryColumn(r, type, rows, ctx)
+        : undefined;
+    if (binaryResult !== undefined && "binary" in binaryResult) {
+      const binary = binaryResult.binary;
       let values: unknown[] | undefined;
+      // Snapshot the decoding context so lazy evaluation cannot race with a
+      // later request on the same socket or a subsequent TimezoneUpdate.
+      const columnCtx: DecodeContext = {
+        timezone: ctx.timezone,
+        date_time_output_format: ctx.date_time_output_format,
+        date_time64_cut_zeros: ctx.date_time64_cut_zeros,
+      };
       columns.push({
         name,
         type,
@@ -559,10 +701,12 @@ export function readBlock(
             type,
             rows,
             undefined,
-            ctx,
+            columnCtx,
           ));
         },
       });
+    } else if (binaryResult !== undefined) {
+      columns.push({ name, type, values: binaryResult.values });
     } else if (rows > 0) {
       const prefix = readPrefix(r, type);
       columns.push({
@@ -575,7 +719,7 @@ export function readBlock(
     }
     if (state !== undefined) state.offset = r.pos - start;
   }
-  return { columns, rows };
+  return { columns, rows, bytes: (state?.bytes ?? 0) + (r.pos - start) };
 }
 
 function readException(r: BinaryReader): ServerException {
@@ -594,19 +738,19 @@ function readException(r: BinaryReader): ServerException {
 }
 
 function readProgress(r: BinaryReader, rev: number): Progress {
-  const read_rows = r.varuint();
-  const read_bytes = r.varuint();
-  const total_rows_to_read = r.varuint();
+  const read_rows = r.varuint64();
+  const read_bytes = r.varuint64();
+  const total_rows_to_read = r.varuint64();
   const total_bytes_to_read =
-    rev >= REVISION.TOTAL_BYTES_IN_PROGRESS ? r.varuint() : 0;
-  let written_rows = 0;
-  let written_bytes = 0;
+    rev >= REVISION.TOTAL_BYTES_IN_PROGRESS ? r.varuint64() : 0n;
+  let written_rows = 0n;
+  let written_bytes = 0n;
   if (rev >= REVISION.CLIENT_WRITE_INFO) {
-    written_rows = r.varuint();
-    written_bytes = r.varuint();
+    written_rows = r.varuint64();
+    written_bytes = r.varuint64();
   }
   const elapsed_ns =
-    rev >= REVISION.SERVER_QUERY_TIME_IN_PROGRESS ? r.varuint() : 0;
+    rev >= REVISION.SERVER_QUERY_TIME_IN_PROGRESS ? r.varuint64() : 0n;
   return {
     read_rows,
     read_bytes,
@@ -619,11 +763,11 @@ function readProgress(r: BinaryReader, rev: number): Progress {
 }
 
 function readProfileInfo(r: BinaryReader): ProfileInfo {
-  const rows = r.varuint();
-  const blocks = r.varuint();
-  const bytes = r.varuint();
+  const rows = r.varuint64();
+  const blocks = r.varuint64();
+  const bytes = r.varuint64();
   const applied_limit = r.bool();
-  const rows_before_limit = r.varuint();
+  const rows_before_limit = r.varuint64();
   r.bool(); // obsolete field
   return { rows, blocks, bytes, applied_limit, rows_before_limit };
 }

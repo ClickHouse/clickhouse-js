@@ -42,6 +42,7 @@ import type {
   ProfileInfo,
   Progress,
   QuerySetting,
+  ServerException,
   ServerPacket,
 } from "../protocol/packets";
 import {
@@ -52,7 +53,6 @@ import {
   encodeQuery,
 } from "../protocol/packets";
 import packageVersion from "../version";
-import { errorCodeName } from "../protocol/error_codes";
 import {
   InsertValueError,
   ServerParseNeeded,
@@ -64,14 +64,17 @@ import {
 import type { ColumnType } from "../protocol/types";
 import { unwrapType } from "../protocol/types";
 import type { NativeCompressionMethod } from "../compression/frames";
-import { toClickHouseError } from "./errors";
+import { exceptionText, toClickHouseError } from "./errors";
 import type { NativeTLSOptions, PacketHandler } from "./native_socket";
 import { NativeSocket } from "./native_socket";
+import { isJSONObjectEachRowEntry } from "../utils/encoder";
 
 export interface NativeConnectionParams extends ConnectionParams {
   tls: NativeTLSOptions | undefined;
   /** The compression of the data blocks, or `undefined` for none. */
   compression_method: NativeCompressionMethod | undefined;
+  /** Optional outgoing compression level (for `zstd`). */
+  compression_level?: number;
   /** How long to wait for a new connection and its handshake, in ms. */
   connect_timeout: number;
 }
@@ -232,14 +235,22 @@ function abortable<T>(
 }
 const CLIENT_CLOSED = "The client is closed";
 
-/** The parameters of one request. The query is a Buffer when data in any
- *  format follows the SQL (the server parses the data). */
+/** The parameters of one request. The query is a Buffer or Buffer[] when data
+ *  in any format follows the SQL (the server parses the data). */
 type RequestParams = Omit<ConnBaseQueryParams, "query"> & {
-  query: string | Buffer;
+  query: string | Buffer | Buffer[];
 };
 
 /** The number of rows in each Native block of an INSERT. */
 const INSERT_BLOCK_ROWS = 16_384;
+/** Refresh cached `system.settings` per server identity after 5 minutes. */
+const SERVER_SETTINGS_TTL_MS = 5 * 60_000;
+const MAX_SERVER_SETTINGS_ENTRIES = 64;
+
+interface CachedServerSettings {
+  promise: Promise<ServerSettings>;
+  expiresAt: number;
+}
 
 export class NativeConnection implements Connection<Stream.Readable> {
   private readonly params: NativeConnectionParams;
@@ -253,7 +264,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
   private open = 0;
   private readonly shutdown = new AbortController();
   private readonly sockets = new Set<NativeSocket>();
-  private serverSettings: Promise<ServerSettings> | undefined;
+  private readonly serverSettings = new Map<string, CachedServerSettings>();
 
   private get closed(): boolean {
     return this.shutdown.signal.aborted;
@@ -372,6 +383,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
       if (connectSignal.aborted) socket.destroy();
       connectSignal.throwIfAborted();
       this.sockets.add(socket);
+      socket.onClose(() => this.evict(socket));
       return socket;
     } catch (err) {
       if (this.closed) throw new Error(CLIENT_CLOSED, { cause: err });
@@ -401,6 +413,24 @@ export class NativeConnection implements Connection<Stream.Readable> {
     if (released) this.open--;
     socket.destroy(err);
     if (released) this.wakeWaiter();
+  }
+
+  /** Sends `ClientPacket.Cancel` and removes the socket from the pool. */
+  private cancel(socket: NativeSocket, err?: Error): void {
+    const released = this.sockets.delete(socket);
+    if (released) this.open--;
+    socket.cancel(err);
+    if (released) this.wakeWaiter();
+  }
+
+  /** Removes a dead idle socket from the pool as soon as it closes. */
+  private evict(socket: NativeSocket): void {
+    const idx = this.idle.indexOf(socket);
+    if (idx >= 0) this.idle.splice(idx, 1);
+    if (this.sockets.delete(socket)) {
+      this.open--;
+      this.wakeWaiter();
+    }
   }
 
   /** A slot is free: open a new connection for the next waiting request. */
@@ -447,17 +477,9 @@ export class NativeConnection implements Connection<Stream.Readable> {
           `Remove the format from the query or use exec() to specify it in SQL.`,
       );
     }
-    const socket = await this.acquire(params.abort_signal);
-    let serverSettings: ServerSettings;
-    try {
-      serverSettings = await this.getServerSettings(
-        socket,
-        params.abort_signal,
-      );
-    } catch (err) {
-      this.discard(socket);
-      throw err;
-    }
+    const { socket, serverSettings } = await this.acquireWithSettings(
+      params.abort_signal,
+    );
     let encoder: OutputEncoder;
     let decode: DecodeOptions;
     try {
@@ -475,7 +497,12 @@ export class NativeConnection implements Connection<Stream.Readable> {
       encoder,
       format,
       decode,
-      { parts: true },
+      {
+        parts: true,
+        wait_end_of_query: isTruthySetting(
+          settings["wait_end_of_query"] ?? settings["http_wait_end_of_query"],
+        ),
+      },
     );
   }
 
@@ -492,6 +519,9 @@ export class NativeConnection implements Connection<Stream.Readable> {
       /** The stream gives {@link ResultChunk} parts to the result set of
        *  query(). If not, it gives the bytes of the text (exec()). */
       parts?: boolean;
+      /** Buffer until `end_of_stream` so `summary` is complete and mid-query
+       *  errors reject `query()`/`exec()` directly (HTTP `wait_end_of_query`). */
+      wait_end_of_query?: boolean;
     } = {},
   ): Promise<ConnQueryResult<Stream.Readable>> {
     const binaryColumns = encoder.canWriteBinaryRows
@@ -500,10 +530,11 @@ export class NativeConnection implements Connection<Stream.Readable> {
     decode.binary_columns = binaryColumns;
     const ignoreError = options.ignore_error ?? false;
     const parts = options.parts ?? false;
+    const waitEnd = options.wait_end_of_query ?? false;
     const query_id = params.query_id ?? crypto.randomUUID();
     const response_headers = this.responseHeaders(socket, query_id, format);
     const progress = new ProgressTracker();
-    let rowsBeforeLimit: number | undefined;
+    let rowsBeforeLimit: bigint | undefined;
 
     return new Promise((resolve, reject) => {
       let resolved = false;
@@ -518,7 +549,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
             // The caller closed the stream before the end of the result.
             finished = true;
             cleanupAbort();
-            this.discard(socket);
+            this.cancel(socket);
           }
           callback(err);
         },
@@ -544,9 +575,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
       const pushPart = (
         text: () => string,
         rows?: (raw: boolean) => { rows: unknown[]; text: string },
+        bytes?: number,
       ) => {
         const raw = socket.rawBytes;
-        const chunk: ResultChunk = { text: () => output(text(), raw) };
+        const chunk: ResultChunk = { text: () => output(text(), raw), bytes };
         if (rows !== undefined) {
           chunk.rows = () => {
             const result = rows(raw);
@@ -565,11 +597,12 @@ export class NativeConnection implements Connection<Stream.Readable> {
           summary: progress.summary(),
         });
       };
-      const fail = (err: Error, reusable: boolean) => {
+      const fail = (err: Error, reusable: boolean, sendCancel = false) => {
         if (finished) return;
         finished = true;
         cleanupAbort();
         if (reusable) this.release(socket);
+        else if (sendCancel) this.cancel(socket, err);
         else this.discard(socket, err);
         if (!resolved) {
           resolved = true;
@@ -579,7 +612,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
         }
       };
       const cleanupAbort = this.onAbort(params.abort_signal, () =>
-        fail(new Error(USER_ABORTED), false),
+        fail(new Error(USER_ABORTED), false, true),
       );
 
       const handler: PacketHandler = {
@@ -588,7 +621,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
             case "data": {
               const block = packet.block;
               if (block.columns.length === 0) break;
-              if (block.rows > 0) resolveOnce();
+              if (block.rows > 0 && !waitEnd) resolveOnce();
               if (!parts) {
                 push(encoder.data(block));
               } else if (encoder.hasDataRows && block.rows > 0) {
@@ -599,9 +632,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
                       binaryColumns.enabled = false;
                     return encoder.dataRows(block, raw);
                   },
+                  block.bytes,
                 );
               } else {
-                pushPart(() => encoder.data(block));
+                pushPart(() => encoder.data(block), undefined, block.bytes);
               }
               break;
             }
@@ -616,7 +650,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
               const text = encoder.progress(packet.progress);
               // Progress rows are output. Give the caller the stream before
               // they can fill its buffer and pause the socket.
-              if (text.length > 0) resolveOnce();
+              if (text.length > 0 && !waitEnd) resolveOnce();
               push(text);
               break;
             }
@@ -679,19 +713,12 @@ export class NativeConnection implements Connection<Stream.Readable> {
   private async runCommand(
     params: RequestParams,
     ignoreError: boolean,
+    onException?: (exception: ServerException) => void,
   ): Promise<ConnCommandResult> {
     assertSupported(params);
-    const socket = await this.acquire(params.abort_signal);
-    let serverSettings: ServerSettings;
-    try {
-      serverSettings = await this.getServerSettings(
-        socket,
-        params.abort_signal,
-      );
-    } catch (err) {
-      this.discard(socket);
-      throw err;
-    }
+    const { socket, serverSettings } = await this.acquireWithSettings(
+      params.abort_signal,
+    );
     const query_id = params.query_id ?? crypto.randomUUID();
     const summary = await this.execute(
       socket,
@@ -701,6 +728,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
       {
         ignore_error: ignoreError,
         release: true,
+        on_exception: onException,
       },
     );
     return {
@@ -726,6 +754,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
        *  keeps the socket (when the request was successful). */
       release: boolean;
       on_block?: (block: Block) => void;
+      on_exception?: (exception: ServerException) => void;
       /** Send and receive the data blocks without compression, whatever the
        *  compression of the client. */
       uncompressed?: boolean;
@@ -734,18 +763,26 @@ export class NativeConnection implements Connection<Stream.Readable> {
     const compression = options.uncompressed
       ? undefined
       : this.params.compression_method;
+    const compressionLevel = options.uncompressed
+      ? undefined
+      : this.params.compression_level;
     const progress = new ProgressTracker();
     const isInsert = startsWithInsert(params.query);
     return new Promise((resolve, reject) => {
       let finished = false;
       let tableColumns = false;
       let dataSent = false;
-      const done = (err: Error | undefined, reusable: boolean) => {
+      const done = (
+        err: Error | undefined,
+        reusable: boolean,
+        sendCancel = false,
+      ) => {
         if (finished) return;
         finished = true;
         cleanupAbort();
         if (!reusable) {
-          this.discard(socket, err);
+          if (sendCancel) this.cancel(socket, err);
+          else this.discard(socket, err);
         } else if (options.release) {
           this.release(socket);
         } else {
@@ -756,7 +793,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
         else resolve(progress.summary());
       };
       const cleanupAbort = this.onAbort(params.abort_signal, () =>
-        done(new Error(USER_ABORTED), false),
+        done(new Error(USER_ABORTED), false, true),
       );
       const handler: PacketHandler = {
         packet: (packet) => {
@@ -769,7 +806,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
                 // The server sent the structure of the table and waits for
                 // the data of the INSERT: there is no data.
                 dataSent = true;
-                socket.write(encodeEmptyBlock(compression));
+                socket.write(encodeEmptyBlock(compression, compressionLevel));
               } else {
                 options.on_block?.(packet.block);
               }
@@ -784,8 +821,12 @@ export class NativeConnection implements Connection<Stream.Readable> {
               progress.profile(packet.info);
               break;
             case "exception":
-              if (options.ignore_error) done(undefined, true);
-              else done(toClickHouseError(packet.exception), true);
+              if (options.ignore_error) {
+                options.on_exception?.(packet.exception);
+                done(undefined, true);
+              } else {
+                done(toClickHouseError(packet.exception), true);
+              }
               break;
             case "end_of_stream":
               done(undefined, true);
@@ -874,7 +915,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
     }
     const query =
       typeof values === "string"
-        ? Buffer.concat([Buffer.from(params.query + "\n"), Buffer.from(values)])
+        ? [Buffer.from(params.query + "\n"), Buffer.from(values)]
         : await this.readInput(
             values,
             this.withShutdown(params.abort_signal),
@@ -898,19 +939,19 @@ export class NativeConnection implements Connection<Stream.Readable> {
         ? 1
         : 0;
     const target = parseInsertTarget(params.query);
-    const socket = await this.acquire(params.abort_signal);
-    let serverSettings: ServerSettings;
-    try {
-      serverSettings = await this.getServerSettings(
-        socket,
-        params.abort_signal,
-      );
-    } catch (err) {
-      this.discard(socket);
-      throw err;
-    }
+    const { socket, serverSettings } = await this.acquireWithSettings(
+      params.abort_signal,
+    );
     const settings = params.clickhouse_settings ?? {};
     const insertSettings = applyInsertSettings(serverSettings.insert, settings);
+    const objectNameColumn =
+      format === "JSONObjectEachRow"
+        ? String(
+            settings["format_json_object_each_row_column_for_object_name"] ??
+              serverSettings.output
+                .format_json_object_each_row_column_for_object_name,
+          )
+        : "";
     // Narrowing the column list asks the server to evaluate DEFAULT
     // expressions for excluded columns.
     const nameColumns =
@@ -919,6 +960,11 @@ export class NativeConnection implements Connection<Stream.Readable> {
       insertSettings.defaults_for_omitted_fields;
     const inputSignal = this.withShutdown(params.abort_signal);
     const query_id = params.query_id ?? crypto.randomUUID();
+    let statementIndex = 0;
+    const nextQueryId = (): string => {
+      const index = statementIndex++;
+      return index === 0 ? query_id : `${query_id}_${index + 1}`;
+    };
     const progress = new ProgressTracker();
     const iterator = rows[Symbol.asyncIterator]();
     /** The rows before the data in a ...WithNames format. */
@@ -978,7 +1024,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
       names: string[] | undefined,
     ): Promise<InsertSession> => {
       const query =
-        names !== undefined && names.length > 0 && target !== undefined
+        names !== undefined &&
+        names.length > 0 &&
+        target !== undefined &&
+        target.columns === undefined
           ? `INSERT INTO ${target.table} (${names
               .map(quoteIdentifier)
               .join(", ")}) FORMAT ${format}`
@@ -988,7 +1037,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
           socket,
           statement(query),
           serverSettings,
-          query_id,
+          nextQueryId(),
           progress,
           insertSettings,
         );
@@ -1036,11 +1085,21 @@ export class NativeConnection implements Connection<Stream.Readable> {
 
     try {
       for (;;) {
-        const batch = await this.readInput(rows, inputSignal, readBatch);
-        if (batch.length === 0 && started) break;
+        const rawBatch = await this.readInput(rows, inputSignal, readBatch);
+        if (rawBatch.length === 0 && started) break;
         started = true;
+        let batch = rawBatch;
+        let jsonObjectDoc: Record<string, unknown> | undefined;
+        if (format === "JSONObjectEachRow" && rawBatch.length > 0) {
+          const unwrapped = unwrapJSONObjectEachRowBatch(
+            rawBatch,
+            objectNameColumn,
+          );
+          batch = unwrapped.rows;
+          jsonObjectDoc = unwrapped.conflictDoc;
+        }
         let names: string[] | undefined;
-        if (nameColumns) {
+        if (nameColumns && jsonObjectDoc === undefined) {
           names = compact ? headerNames : rowKeys(batch);
           const valid = validColumns;
           if (names !== undefined && valid !== undefined) {
@@ -1056,12 +1115,13 @@ export class NativeConnection implements Connection<Stream.Readable> {
           // The rows have a column that the current INSERT does not have.
           await closeSession();
         }
-        if (session === undefined && !textOnly) {
+        if (session === undefined && !textOnly && jsonObjectDoc === undefined) {
           session = await open(names);
           let positions = columnPositions(session, compact, headerNames);
           if (
             positions !== undefined &&
             target !== undefined &&
+            target.columns === undefined &&
             insertSettings.defaults_for_omitted_fields &&
             session.columns.some(
               (column, c) =>
@@ -1093,6 +1153,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
         }
         if (batch.length === 0) break;
         let asText =
+          jsonObjectDoc !== undefined ||
           textOnly ||
           needsServerDefaults(batch, layout!, compact, insertSettings);
         if (!asText) {
@@ -1113,13 +1174,29 @@ export class NativeConnection implements Connection<Stream.Readable> {
           // client does not parse the text of all types: send the rows as
           // JSON text, and the server parses them (as over HTTP).
           await closeSession();
+          const textFormat =
+            jsonObjectDoc !== undefined
+              ? "JSONObjectEachRow"
+              : format === "JSONCompact"
+                ? "JSONCompactEachRow"
+                : format === "JSONCompactStrings"
+                  ? "JSONCompactStringsEachRow"
+                  : compact
+                    ? format
+                    : strings
+                      ? "JSONStringsEachRow"
+                      : "JSONEachRow";
           await this.insertAsText(
             socket,
             statement(params.query),
             serverSettings,
-            query_id,
-            compact ? [...headerRows, ...batch] : batch,
-            compact ? format : strings ? "JSONStringsEachRow" : "JSONEachRow",
+            nextQueryId(),
+            jsonObjectDoc !== undefined
+              ? [jsonObjectDoc]
+              : compact
+                ? [...headerRows, ...batch]
+                : batch,
+            textFormat,
           );
           dataStatements++;
           progress.addSentRows(batch.length);
@@ -1159,7 +1236,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
     const lines = rows.map(stringifyJSON).join("\n");
     await this.execute(
       socket,
-      { ...params, query: Buffer.from(`${sql}\n${lines}\n`) },
+      {
+        ...params,
+        query: [Buffer.from(sql + "\n"), Buffer.from(lines + "\n")],
+      },
       serverSettings,
       query_id,
       { ignore_error: false, release: false },
@@ -1178,6 +1258,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
   ): Promise<InsertSession> {
     const settings = params.clickhouse_settings ?? {};
     const compression = this.params.compression_method;
+    const compressionLevel = this.params.compression_level;
     const header = deferred<Array<{ name: string; type: ColumnType }>>();
     const end = deferred<undefined>();
     let done = false;
@@ -1185,7 +1266,11 @@ export class NativeConnection implements Connection<Stream.Readable> {
     let headerReceived = false;
     let defaults = new Set<string>();
 
-    const finish = (err: Error | undefined, socketReusable: boolean) => {
+    const finish = (
+      err: Error | undefined,
+      socketReusable: boolean,
+      sendCancel = false,
+    ) => {
       if (done) return;
       done = true;
       reusable = socketReusable;
@@ -1193,6 +1278,8 @@ export class NativeConnection implements Connection<Stream.Readable> {
       if (socketReusable) {
         socket.finish();
         socket.clearTimeout();
+      } else if (sendCancel) {
+        socket.cancel(err);
       } else {
         socket.destroy(err);
       }
@@ -1207,7 +1294,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
       }
     };
     const cleanupAbort = this.onAbort(params.abort_signal, () =>
-      finish(new Error(USER_ABORTED), false),
+      finish(new Error(USER_ABORTED), false, true),
     );
     const handler: PacketHandler = {
       packet: (packet) => {
@@ -1273,24 +1360,31 @@ export class NativeConnection implements Connection<Stream.Readable> {
             "The server ended the INSERT before the end of the data",
           );
         }
-        let block;
+        let packet: Buffer;
         try {
-          block = this.encodeRows(columns, batch, compact, positions, ctx);
+          const block = this.encodeRows(
+            columns,
+            batch,
+            compact,
+            positions,
+            ctx,
+          );
+          packet = encodeDataPacket(
+            encodeBlock(block.columns, block.rows, customSerializationFlag),
+            compression,
+            compressionLevel,
+          );
         } catch (err) {
           // The INSERT continues: the caller sends these rows as text.
           if (err instanceof ServerParseNeeded) throw err;
           finish(err as Error, false);
           throw err;
         }
-        await socket.writeAndDrain(
-          encodeDataPacket(
-            encodeBlock(block.columns, block.rows, customSerializationFlag),
-            compression,
-          ),
-        );
+        await socket.writeAndDrain(packet);
       },
       close: async () => {
-        if (!done) socket.write(encodeEmptyBlock(compression));
+        if (!done)
+          socket.write(encodeEmptyBlock(compression, compressionLevel));
         await end.promise;
       },
     };
@@ -1374,25 +1468,29 @@ export class NativeConnection implements Connection<Stream.Readable> {
         this.withShutdown(params.abort_signal),
         () => readInlineQuery(params.query, input),
       );
-      const result = await this.runCommand({ ...params, query }, ignoreError);
-      return { ...result, stream: Stream.Readable.from([]) };
+      let errorText: string | undefined;
+      const result = await this.runCommand(
+        { ...params, query },
+        ignoreError,
+        (exception) => {
+          errorText = exceptionText(exception);
+        },
+      );
+      return {
+        ...result,
+        stream: Stream.Readable.from(
+          errorText !== undefined ? [Buffer.from(errorText)] : [],
+        ),
+      };
     }
     const clauses = readQueryClauses(params.query);
     const settings = { ...params.clickhouse_settings, ...clauses.settings };
     const format = resolveFormat(
       clauses.format ?? settings.default_format ?? "TabSeparated",
     );
-    const socket = await this.acquire(params.abort_signal);
-    let serverSettings: ServerSettings;
-    try {
-      serverSettings = await this.getServerSettings(
-        socket,
-        params.abort_signal,
-      );
-    } catch (err) {
-      this.discard(socket);
-      throw err;
-    }
+    const { socket, serverSettings } = await this.acquireWithSettings(
+      params.abort_signal,
+    );
     let encoder: OutputEncoder;
     let decode: DecodeOptions;
     try {
@@ -1410,7 +1508,12 @@ export class NativeConnection implements Connection<Stream.Readable> {
       encoder,
       format,
       decode,
-      { ignore_error: ignoreError },
+      {
+        ignore_error: ignoreError,
+        wait_end_of_query: isTruthySetting(
+          settings["wait_end_of_query"] ?? settings["http_wait_end_of_query"],
+        ),
+      },
     );
   }
 
@@ -1480,7 +1583,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
     for (const [name, value] of Object.entries(params.query_params ?? {})) {
       parameters.push([name, formatQueryParams({ value })]);
     }
-    const packet = encodeQuery({
+    const packets = encodeQuery({
       query_id,
       query: params.query,
       settings: querySettings,
@@ -1496,15 +1599,37 @@ export class NativeConnection implements Connection<Stream.Readable> {
       });
     }
     socket.setTimeout(this.params.request_timeout, () => {
-      socket.destroy(new Error("Timeout error."));
+      socket.cancel(new Error("Timeout error."));
     });
     socket.start(
       handler,
-      [packet, encodeEmptyBlock(compression)],
+      [
+        ...packets,
+        encodeEmptyBlock(
+          compression,
+          uncompressed ? undefined : this.params.compression_level,
+        ),
+      ],
       decode?.timezone ?? queryTimezone(socket, settings),
       compression !== undefined,
       decode,
     );
+  }
+
+  /** Acquires a socket and loads server settings, returning a healthy socket
+   *  back to the pool if the load is aborted or hits a transient error. */
+  private async acquireWithSettings(
+    signal: AbortSignal | undefined,
+  ): Promise<{ socket: NativeSocket; serverSettings: ServerSettings }> {
+    const socket = await this.acquire(signal);
+    try {
+      const serverSettings = await this.getServerSettings(socket, signal);
+      return { socket, serverSettings };
+    } catch (err) {
+      if (socket.usable) this.release(socket);
+      else this.discard(socket, err as Error);
+      throw err;
+    }
   }
 
   private onAbort(
@@ -1534,34 +1659,55 @@ export class NativeConnection implements Connection<Stream.Readable> {
     return headers;
   }
 
-  /** Reads the output settings of the server once (their defaults depend on
-   *  the server version and on the settings profile of the user). The
-   *  request that reads them stops with its own `abort_signal`. A request
-   *  that waits for the load of another request stops waiting when its own
-   *  signal aborts, and reads the settings itself if that load fails. */
+  private serverSettingsKey(socket: NativeSocket): string {
+    const s = socket.server;
+    return `${s.display_name}\0${s.version_major}.${s.version_minor}.${s.version_patch}\0${s.revision}`;
+  }
+
+  /** Reads the output settings of the server per backend identity with a TTL
+   *  (their defaults depend on the server version and on the settings profile
+   *  of the user). The request that reads them stops with its own
+   *  `abort_signal`. A request that waits for the load of another request
+   *  stops waiting when its own signal aborts, and reads the settings itself
+   *  if that load fails. */
   private async getServerSettings(
     socket: NativeSocket,
     signal: AbortSignal | undefined,
   ): Promise<ServerSettings> {
+    const key = this.serverSettingsKey(socket);
     for (;;) {
       if (signal?.aborted) throw new Error(USER_ABORTED);
-      const shared = this.serverSettings;
-      if (shared === undefined) {
+      const entry = this.serverSettings.get(key);
+      if (entry === undefined || Date.now() >= entry.expiresAt) {
         const promise = this.loadServerSettings(socket, signal);
-        this.serverSettings = promise;
+        const next: CachedServerSettings = {
+          promise,
+          expiresAt: Date.now() + SERVER_SETTINGS_TTL_MS,
+        };
+        if (
+          !this.serverSettings.has(key) &&
+          this.serverSettings.size >= MAX_SERVER_SETTINGS_ENTRIES
+        ) {
+          this.serverSettings.clear();
+        }
+        this.serverSettings.set(key, next);
         promise.catch(() => {
           // Try again with the next request.
-          if (this.serverSettings === promise) this.serverSettings = undefined;
+          if (this.serverSettings.get(key) === next) {
+            this.serverSettings.delete(key);
+          }
         });
         return promise;
       }
       try {
-        return await abortable(shared, signal);
+        return await abortable(entry.promise, signal);
       } catch {
         if (signal?.aborted) throw new Error(USER_ABORTED);
         // The load of another request failed: that request was aborted or
         // lost its connection. Read the settings on this socket.
-        if (this.serverSettings === shared) this.serverSettings = undefined;
+        if (this.serverSettings.get(key) === entry) {
+          this.serverSettings.delete(key);
+        }
       }
     }
   }
@@ -1624,14 +1770,16 @@ export class NativeConnection implements Connection<Stream.Readable> {
       // The user cannot read the settings (no grant, or a limit of the
       // settings profile): the socket is still usable, and the client
       // uses the defaults of a recent server for the life of the client.
-      this.params.log_writer.warn({
-        message:
-          "Cannot read the settings of the user from system.settings. The client formats results and " +
-          "encodes inserts with the defaults of a recent server, not with the user's settings profile, " +
-          "unless a request sets them in clickhouse_settings.",
-        err,
-        args: { connection: socket.server.display_name },
-      });
+      if (this.params.log_level <= ClickHouseLogLevel.WARN) {
+        this.params.log_writer.warn({
+          message:
+            "Cannot read the settings of the user from system.settings. The client formats results and " +
+            "encodes inserts with the defaults of a recent server, not with the user's settings profile, " +
+            "unless a request sets them in clickhouse_settings.",
+          err,
+          args: { connection: socket.server.display_name },
+        });
+      }
       return defaults;
     }
     // A user with readonly = 1 cannot change any setting.
@@ -1658,17 +1806,10 @@ function settingValue(value: unknown): string {
   return String(value);
 }
 
-/** The text that the HTTP interface gives for an error. */
-function exceptionText(exception: {
-  code: number;
-  name: string;
-  message: string;
-}): string {
-  const type = errorCodeName(exception.code);
-  const message = exception.message.startsWith(exception.name + ": ")
-    ? exception.message
-    : `${exception.name}: ${exception.message}`;
-  return `Code: ${exception.code}. ${message}${type ? ` (${type})` : ""}\n`;
+function isTruthySetting(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  const text = String(value).toLowerCase();
+  return text === "1" || text === "true";
 }
 
 function resolveFormat(format: string): DataFormat {
@@ -1682,14 +1823,14 @@ function resolveFormat(format: string): DataFormat {
 async function readInlineQuery(
   sql: string,
   stream: Stream.Readable,
-): Promise<Buffer> {
+): Promise<Buffer[]> {
   const chunks: Buffer[] = [Buffer.from(sql + "\n")];
   for await (const chunk of stream) {
     chunks.push(
       typeof chunk === "string" ? Buffer.from(chunk) : (chunk as Buffer),
     );
   }
-  return Buffer.concat(chunks);
+  return chunks;
 }
 
 interface Deferred<T> {
@@ -1747,25 +1888,129 @@ interface InsertSession {
   close(): Promise<void>;
 }
 
+/** Unwraps `JSONObjectEachRow` entries, injecting the outer object key into
+ *  `objectNameColumn` when configured. If any row already has that column,
+ *  returns a JSON document so the server handles the conflict in
+ *  `JSONObjectEachRow` format. */
+function unwrapJSONObjectEachRowBatch(
+  batch: unknown[],
+  objectNameColumn: string,
+): { rows: unknown[]; conflictDoc: Record<string, unknown> | undefined } {
+  const rows: unknown[] = [];
+  let hasConflict = false;
+  for (const item of batch) {
+    if (!isJSONObjectEachRowEntry(item)) {
+      rows.push(item);
+      continue;
+    }
+    if (objectNameColumn === "") {
+      rows.push(item.value);
+      continue;
+    }
+    if (
+      typeof item.value === "object" &&
+      item.value !== null &&
+      !Array.isArray(item.value)
+    ) {
+      if (Object.hasOwn(item.value, objectNameColumn)) {
+        hasConflict = true;
+        rows.push(item.value);
+      } else {
+        const copy: Record<string, unknown> = {
+          ...(item.value as Record<string, unknown>),
+        };
+        if (objectNameColumn === "__proto__") {
+          Object.defineProperty(copy, "__proto__", {
+            value: item.key,
+            enumerable: true,
+            writable: true,
+            configurable: true,
+          });
+        } else {
+          copy[objectNameColumn] = item.key;
+        }
+        rows.push(copy);
+      }
+    } else {
+      rows.push(item.value);
+    }
+  }
+  if (!hasConflict) {
+    return { rows, conflictDoc: undefined };
+  }
+  const conflictDoc = Object.create(null) as Record<string, unknown>;
+  for (const item of batch) {
+    if (isJSONObjectEachRowEntry(item)) {
+      conflictDoc[item.key] = item.value;
+    }
+  }
+  return { rows, conflictDoc };
+}
+
 /** The names of the columns with a DEFAULT expression, from the columns
  *  description of the TableColumns packet. A line is
  *  `` `name` Type[\tDEFAULT\t<expression>] ``. */
-function columnsWithDefaults(description: string): Set<string> {
+export function columnsWithDefaults(description: string): Set<string> {
   const names = new Set<string>();
   for (const line of description.split("\n")) {
     const fields = line.split("\t");
     if (fields[1] !== "DEFAULT" && fields[1] !== "EPHEMERAL") continue;
     const head = fields[0] as string;
-    let name: string;
-    if (head.startsWith("`")) {
-      const end = head.lastIndexOf("`");
-      name = head.slice(1, end).replace(/\\(.)/g, "$1");
-    } else {
-      name = head.split(" ")[0] as string;
-    }
+    const name = head.startsWith("`")
+      ? parseBacktickIdentifier(head)
+      : (head.split(" ")[0] as string);
     names.add(name);
   }
   return names;
+}
+
+/** Reads a backtick-quoted identifier at the start of `head`, stopping at the
+ *  matching closing backtick rather than any backticks inside the column type. */
+function parseBacktickIdentifier(head: string): string {
+  let name = "";
+  let i = 1;
+  while (i < head.length) {
+    const c = head[i] as string;
+    if (c === "\\") {
+      const next = head[i + 1];
+      if (next === undefined) break;
+      switch (next) {
+        case "n":
+          name += "\n";
+          break;
+        case "t":
+          name += "\t";
+          break;
+        case "r":
+          name += "\r";
+          break;
+        case "0":
+          name += "\0";
+          break;
+        case "b":
+          name += "\b";
+          break;
+        case "f":
+          name += "\f";
+          break;
+        default:
+          name += next;
+          break;
+      }
+      i += 2;
+    } else if (c === "`") {
+      if (head[i + 1] === "`") {
+        name += "`";
+        i += 2;
+      } else {
+        break;
+      }
+    } else {
+      name += c;
+      i++;
+    }
+  }
+  return name;
 }
 
 /** The value of a field of a row, or {@link MISSING}. A field with the value
@@ -1915,10 +2160,14 @@ function quoteIdentifier(name: string): string {
   return "`" + name.replace(/\\/g, "\\\\").replace(/`/g, "\\`") + "`";
 }
 
-function startsWithInsert(query: string | Buffer): boolean {
+function startsWithInsert(query: string | Buffer | Buffer[]): boolean {
   // Skip comments and spaces before the first word.
   const head =
-    typeof query === "string" ? query : query.toString("utf8", 0, 4096);
+    typeof query === "string"
+      ? query
+      : Buffer.isBuffer(query)
+        ? query.toString("utf8", 0, 4096)
+        : (query[0]?.toString("utf8", 0, 4096) ?? "");
   const text = head.replace(/^(\s+|--[^\n]*\n?|\/\*[\s\S]*?\*\/)+/, "");
   return /^insert\b/i.test(text);
 }
@@ -1934,19 +2183,19 @@ function safeUserName(): string {
 /** Collects the Progress packets: the server sends increments. */
 class ProgressTracker {
   private readonly total: Progress = {
-    read_rows: 0,
-    read_bytes: 0,
-    total_rows_to_read: 0,
-    total_bytes_to_read: 0,
-    written_rows: 0,
-    written_bytes: 0,
-    elapsed_ns: 0,
+    read_rows: 0n,
+    read_bytes: 0n,
+    total_rows_to_read: 0n,
+    total_bytes_to_read: 0n,
+    written_rows: 0n,
+    written_bytes: 0n,
+    elapsed_ns: 0n,
   };
-  private resultRows = 0;
-  private insertedRows = 0;
-  private insertedBytes = 0;
-  private sentRows = 0;
-  private resultBytes = 0;
+  private resultRows = 0n;
+  private insertedRows = 0n;
+  private insertedBytes = 0n;
+  private sentRows = 0n;
+  private resultBytes = 0n;
 
   add(p: Progress): void {
     this.total.read_rows += p.read_rows;
@@ -1956,7 +2205,9 @@ class ProgressTracker {
     this.total.written_rows += p.written_rows;
     this.total.written_bytes += p.written_bytes;
     // elapsed_ns is the time since the start of the query
-    this.total.elapsed_ns = Math.max(this.total.elapsed_ns, p.elapsed_ns);
+    if (p.elapsed_ns > this.total.elapsed_ns) {
+      this.total.elapsed_ns = p.elapsed_ns;
+    }
   }
 
   /** Counts the inserted rows from the profile events. The server sends no
@@ -1971,17 +2222,19 @@ class ProgressTracker {
     for (let i = 0; i < block.rows; i++) {
       // Thread 0 has the totals of the query.
       if (threads !== undefined && Number(threads[i]) !== 0) continue;
-      if (names[i] === "InsertedRows") this.insertedRows += Number(values[i]);
-      if (names[i] === "InsertedBytes") this.insertedBytes += Number(values[i]);
+      if (names[i] === "InsertedRows")
+        this.insertedRows += BigInt(values[i] as number | bigint);
+      if (names[i] === "InsertedBytes")
+        this.insertedBytes += BigInt(values[i] as number | bigint);
       if (names[i] === "AsyncInsertBytes")
-        this.insertedBytes += Number(values[i]);
+        this.insertedBytes += BigInt(values[i] as number | bigint);
     }
   }
 
   /** Rows that the client sent in Native blocks: the written rows when the
    *  server does not count them (async inserts). */
   addSentRows(rows: number): void {
-    this.sentRows += rows;
+    this.sentRows += BigInt(rows);
   }
 
   profile(info: ProfileInfo): void {

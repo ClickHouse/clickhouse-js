@@ -411,4 +411,180 @@ describe("[Native] block reader that continues", () => {
     });
     expect(r.pos).toBe(two.length);
   });
+
+  it("isolates Log and ProfileEvents packets from ctx.raw_bytes", () => {
+    const badUtf8Block = new BinaryWriter()
+      .raw(BLOCK_INFO)
+      .varuint(1)
+      .varuint(1)
+      .string("text")
+      .string("String")
+      .u8(0)
+      .bytes(Buffer.from([0xff, 0xfe]))
+      .toBuffer();
+
+    for (const packetType of [
+      ServerPacketType.Log,
+      ServerPacketType.ProfileEvents,
+    ]) {
+      const packet = Buffer.concat([
+        new BinaryWriter().varuint(packetType).string("").toBuffer(),
+        badUtf8Block,
+      ]);
+      const ctx: DecodeContext = { timezone: "UTC", raw_bytes: false };
+      readServerPacket(new BinaryReader(packet), REV, ctx);
+      expect(ctx.raw_bytes).toBe(false);
+    }
+  });
+
+  it("snapshots DecodeContext for lazy binary columns", () => {
+    const ctx: DecodeContext = {
+      timezone: "UTC",
+      binary_columns: { enabled: true },
+    };
+    const packet = dataPacket();
+    const res = readServerPacket(new BinaryReader(packet), REV, ctx);
+    if (res.type !== "data") throw new Error("Not a Data packet");
+
+    // Mutate the context as a subsequent request on the same socket would.
+    ctx.timezone = "Europe/Berlin";
+    ctx.raw_bytes = true;
+
+    expect(res.block.columns.map((c) => c.values)).toEqual(
+      expected.columns.map((c) => c.values),
+    );
+  });
+
+  it("consumes completed compressed frames incrementally when consume_frames is enabled", () => {
+    for (const frameSize of [16, 100]) {
+      const packet = dataPacket(frameSize);
+      const ctx: DecodeContext = {
+        timezone: "UTC",
+        compressed: true,
+        consume_frames: true,
+      };
+      let buf: Buffer = Buffer.alloc(0);
+      let maxBuffered = 0;
+      let consumedTotal = 0;
+      let decoded: Block | undefined;
+      for (let off = 0; off < packet.length; off += 13) {
+        const chunk = packet.subarray(off, Math.min(off + 13, packet.length));
+        buf = buf.length === 0 ? chunk : Buffer.concat([buf, chunk]);
+        maxBuffered = Math.max(maxBuffered, buf.length);
+        const r = new BinaryReader(buf);
+        try {
+          const res = readServerPacket(r, REV, ctx);
+          expect(r.pos).toBe(buf.length);
+          expect(ctx.pending).toBeUndefined();
+          if (res.type !== "data") throw new Error("Not a Data packet");
+          decoded = res.block;
+        } catch (err) {
+          if (!(err instanceof NeedMoreData)) throw err;
+          if (err.consumed > 0) {
+            consumedTotal += err.consumed;
+            buf = buf.subarray(err.consumed);
+          }
+        }
+      }
+      expect(decoded).toEqual(expected);
+      expect(consumedTotal).toBeGreaterThan(0);
+      expect(maxBuffered).toBeLessThan(packet.length);
+    }
+  });
+
+  it("skips multi-column Log packets across chunked reads without setting raw_bytes", () => {
+    const logBlock = new BinaryWriter()
+      .raw(BLOCK_INFO)
+      .varuint(4) // 4 columns
+      .varuint(2) // 2 rows
+      .string("ts")
+      .string("DateTime")
+      .u8(0)
+      .u32(1700000000)
+      .u32(1700000001)
+      .string("msg")
+      .string("String")
+      .u8(0)
+      .bytes(Buffer.from([0xff, 0xfe]))
+      .string("ok")
+      .string("opt")
+      .string("Nullable(String)")
+      .u8(0)
+      .u8(1)
+      .u8(0)
+      .string("")
+      .string("val")
+      .string("arr")
+      .string("Array(UInt32)")
+      .u8(0)
+      .u64(1)
+      .u64(3)
+      .u32(10)
+      .u32(20)
+      .u32(30)
+      .toBuffer();
+
+    const packet = Buffer.concat([
+      new BinaryWriter().varuint(ServerPacketType.Log).string("").toBuffer(),
+      logBlock,
+    ]);
+    const ctx: DecodeContext = { timezone: "UTC", raw_bytes: false };
+    let done = false;
+    for (let end = 5; ; end += 5) {
+      const r = new BinaryReader(
+        packet.subarray(0, Math.min(end, packet.length)),
+      );
+      try {
+        const res = readServerPacket(r, REV, ctx);
+        expect(res).toEqual({ type: "log" });
+        expect(r.pos).toBe(packet.length);
+        done = true;
+        break;
+      } catch (err) {
+        if (!(err instanceof NeedMoreData)) throw err;
+      }
+    }
+    expect(done).toBe(true);
+    expect(ctx.raw_bytes).toBe(false);
+    expect(ctx.pending).toBeUndefined();
+  });
+
+  it("decodes rejected binary String columns (long or non-UTF-8) in one pass", () => {
+    const longStr = "x".repeat(200);
+    const blockBytes = new BinaryWriter()
+      .raw(BLOCK_INFO)
+      .varuint(2)
+      .varuint(2)
+      .string("long_s")
+      .string("String")
+      .u8(0)
+      .string(longStr)
+      .string("short")
+      .string("bad_utf8")
+      .string("String")
+      .u8(0)
+      .bytes(Buffer.from([0xff, 0x41]))
+      .string("ok")
+      .toBuffer();
+
+    const ctx: DecodeContext = {
+      timezone: "UTC",
+      binary_columns: { enabled: true },
+    };
+    const b = readBlock(
+      new BinaryReader(blockBytes),
+      REV,
+      ctx,
+      undefined,
+      true,
+    );
+    expect(b.columns[0]?.binary).toBeUndefined();
+    expect(b.columns[0]?.values).toEqual([longStr, "short"]);
+    expect(b.columns[1]?.binary).toBeUndefined();
+    expect(b.columns[1]?.values).toEqual([
+      decodeString(Buffer.from([0xff, 0x41]), 0, 2, { timezone: "UTC" }),
+      "ok",
+    ]);
+    expect(ctx.raw_bytes).toBe(true);
+  });
 });

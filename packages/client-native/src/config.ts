@@ -17,17 +17,24 @@ import { isZstdAvailable } from "./compression/frames";
 import { ResultSet } from "./result_set";
 import { NodeValuesEncoder } from "./utils";
 
+export type NativeCompressionOption =
+  | "none"
+  | NativeCompressionMethod
+  | { codec: "lz4" }
+  | { codec: "zstd"; level?: number };
+
 export type NativeClickHouseClientConfigOptions = Omit<
   BaseClickHouseClientConfigOptions,
   "url" | "compression"
 > & {
-  /** Compression of the data blocks in both directions: `lz4` or `zstd`.
+  /** Compression of the data blocks in both directions: `lz4` or `zstd`, or
+   *  an object `{ codec: "zstd", level }` to tune the outgoing zstd level.
    *  The client asks the server to use the same method for its data (if the
    *  user can change settings). `zstd` needs Node.js 22.15.0 or later.
    *  `zstd` gives smaller data than `lz4`. The speed of the two methods
    *  depends on the data.
    *  @default "none" */
-  compression?: "none" | NativeCompressionMethod;
+  compression?: NativeCompressionOption;
   /** The URL of the native protocol port of the server:
    *  `tcp://[username:password@]host[:port][/database]`, or `tcps://...` for TLS.
    *  The default port is 9000 for `tcp`, and 9440 for `tcps`.
@@ -56,11 +63,66 @@ export const NativeURLOptions: URLOptions = {
   protocols: ["tcp:", "tcps:"],
 };
 
+function isHttpCompressionConfig(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    ("request" in value || "response" in value)
+  );
+}
+
+const HTTP_COMPRESSION_ERROR =
+  "HTTP compression options (compression_request / compression_response) are not supported by the native protocol client. " +
+  'Use compression: "lz4" or "zstd" (or ?compression=lz4 / ?compression=zstd in the URL).';
+
+function parseCompressionOption(compression: unknown): {
+  method: NativeCompressionMethod | undefined;
+  level: number | undefined;
+} {
+  if (compression === undefined || compression === "none") {
+    return { method: undefined, level: undefined };
+  }
+  if (compression === "lz4" || compression === "zstd") {
+    return { method: compression, level: undefined };
+  }
+  if (isHttpCompressionConfig(compression)) {
+    throw new Error(HTTP_COMPRESSION_ERROR);
+  }
+  if (
+    typeof compression === "object" &&
+    compression !== null &&
+    "codec" in compression
+  ) {
+    const codec = (compression as { codec?: unknown }).codec;
+    if (codec === "lz4") {
+      return { method: "lz4", level: undefined };
+    }
+    if (codec === "zstd") {
+      const level = (compression as { level?: unknown }).level;
+      if (
+        level !== undefined &&
+        (typeof level !== "number" || !Number.isInteger(level))
+      ) {
+        throw new Error(
+          `zstd compression level must be an integer. Got: ${JSON.stringify(level)}`,
+        );
+      }
+      return { method: "zstd", level };
+    }
+  }
+  throw new Error(
+    `The native protocol client supports the compression methods none, lz4 and zstd. Got: ${JSON.stringify(compression)}`,
+  );
+}
+
 export const NativeConfigImpl: Required<
   ImplementationDetails<Stream.Readable>["impl"]
 > = {
   url_options: NativeURLOptions,
   handle_specific_url_params: (config, url) => {
+    if (isHttpCompressionConfig(config.compression)) {
+      throw new Error(HTTP_COMPRESSION_ERROR);
+    }
     const nativeConfig = {
       ...config,
     } as unknown as NativeClickHouseClientConfigOptions;
@@ -100,6 +162,14 @@ export const NativeConfigImpl: Required<
     config: BaseClickHouseClientConfigOptions,
     params: ConnectionParams,
   ) => {
+    if (config.session_id !== undefined) {
+      throw new Error(
+        "session_id is not supported by the native protocol client: each connection is a separate session",
+      );
+    }
+    if (config.role !== undefined) {
+      throw new Error("role is not supported by the native protocol client");
+    }
     const nativeConfig = config as NativeClickHouseClientConfigOptions;
     let tls: NativeTLSOptions | undefined = undefined;
     if (nativeConfig.tls !== undefined) {
@@ -108,17 +178,8 @@ export const NativeConfigImpl: Required<
           ? { type: "Mutual", ...nativeConfig.tls }
           : { type: "Basic", ...nativeConfig.tls };
     }
-    const compression = nativeConfig.compression ?? "none";
-    if (
-      compression !== "none" &&
-      compression !== "lz4" &&
-      compression !== "zstd"
-    ) {
-      throw new Error(
-        `The native protocol client supports the compression methods none, lz4 and zstd. Got: ${JSON.stringify(compression)}`,
-      );
-    }
-    if (compression === "zstd" && !isZstdAvailable()) {
+    const { method, level } = parseCompressionOption(nativeConfig.compression);
+    if (method === "zstd" && !isZstdAvailable()) {
       throw new Error(
         "zstd compression is not supported by this Node.js runtime (v" +
           process.versions.node +
@@ -127,7 +188,8 @@ export const NativeConfigImpl: Required<
     }
     return new NativeConnection({
       ...params,
-      compression_method: compression === "none" ? undefined : compression,
+      compression_method: method,
+      compression_level: level,
       tls,
       connect_timeout: nativeConfig.connect_timeout ?? 10_000,
     });
