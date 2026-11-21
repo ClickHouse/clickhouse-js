@@ -630,32 +630,101 @@ export function parseDateTimeType({
   }
 }
 
+function isTrailingQuoteEscaped(str: string): boolean {
+  let backslashCount = 0;
+  for (let i = str.length - 2; i >= 0 && str[i] === "\\"; i--) {
+    backslashCount++;
+  }
+  return backslashCount % 2 !== 0;
+}
+
+function hasUnescapedQuote(innerStr: string): boolean {
+  for (let i = 0; i < innerStr.length; i++) {
+    if (innerStr[i] === "'") {
+      let backslashCount = 0;
+      for (let j = i - 1; j >= 0 && innerStr[j] === "\\"; j--) {
+        backslashCount++;
+      }
+      if (backslashCount % 2 === 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function parseDateTime64Type({
   columnType,
   sourceType,
 }: ParseColumnTypeParams): ParsedColumnDateTime64 {
   if (
     !columnType.startsWith(DateTime64Prefix) ||
-    columnType.length < DateTime64Prefix.length + 2 // should at least have a precision
+    !columnType.endsWith(")") ||
+    columnType.length < DateTime64Prefix.length + 2 // should at least have a precision: DateTime64(0)
   ) {
     throw new ColumnTypeParseError("Invalid DateTime64 type", {
       columnType,
       sourceType,
     });
   }
-  const precision = parseInt(columnType[DateTime64Prefix.length] ?? "", 10);
-  if (Number.isNaN(precision) || precision < 0 || precision > 9) {
+
+  const params = columnType.slice(DateTime64Prefix.length, -1);
+  const commaIndex = params.indexOf(",");
+
+  if (commaIndex === -1) {
+    const precisionStr = params.trim();
+    const precision = parseInt(precisionStr, 10);
+    if (
+      Number.isNaN(precision) ||
+      precision < 0 ||
+      precision > 9 ||
+      precisionStr !== precision.toString()
+    ) {
+      throw new ColumnTypeParseError("Invalid DateTime64 precision", {
+        columnType,
+        sourceType,
+        precision,
+      });
+    }
+    return {
+      type: "DateTime64",
+      timezone: null,
+      precision,
+      sourceType,
+    };
+  }
+
+  const precisionStr = params.slice(0, commaIndex).trim();
+  const timezoneStr = params.slice(commaIndex + 1).trim();
+
+  const precision = parseInt(precisionStr, 10);
+  if (
+    Number.isNaN(precision) ||
+    precision < 0 ||
+    precision > 9 ||
+    precisionStr !== precision.toString()
+  ) {
     throw new ColumnTypeParseError("Invalid DateTime64 precision", {
       columnType,
       sourceType,
       precision,
     });
   }
-  let timezone = null;
-  if (columnType.length > DateTime64Prefix.length + 2) {
-    // e.g. DateTime64(3, 'UTC') -> UTC
-    timezone = columnType.slice(DateTime64Prefix.length + 4, -2);
+
+  if (
+    !timezoneStr.startsWith("'") ||
+    !timezoneStr.endsWith("'") ||
+    timezoneStr.length < 4 ||
+    isTrailingQuoteEscaped(timezoneStr) ||
+    hasUnescapedQuote(timezoneStr.slice(1, -1))
+  ) {
+    throw new ColumnTypeParseError("Invalid DateTime64 type", {
+      columnType,
+      sourceType,
+    });
   }
+
+  const timezone = timezoneStr.slice(1, -1);
   return {
     type: "DateTime64",
     timezone,

@@ -93,7 +93,17 @@ describe("Columns types parser - DateTime and DateTime64", () => {
     });
 
     it("should throw on invalid DateTime64 type", async () => {
-      const args = [["DateTime64("], ["DateTime64()"], ["String"]];
+      const args = [
+        ["DateTime64("],
+        ["DateTime64()"],
+        ["String"],
+        ["DateTime64(3"],
+        ["DateTime64(3, UTC)"],
+        ["DateTime64(3, '')"],
+        ["DateTime64(3, 'A')"],
+        ["DateTime64(3, 'UTC', 'extra')"],
+        ["DateTime64(3, 'UTC\\')"],
+      ];
       args.forEach(([columnType]) => {
         expect(
           () => parseDateTime64Type({ columnType, sourceType: columnType }),
@@ -103,7 +113,14 @@ describe("Columns types parser - DateTime and DateTime64", () => {
     });
 
     it("should throw on invalid DateTime64 precision", async () => {
-      const args = [[`DateTime64(')`], [`DateTime64(foo)`]];
+      const args = [
+        [`DateTime64(')`],
+        [`DateTime64(foo)`],
+        ["DateTime64(10)"],
+        ["DateTime64(12, 'UTC')"],
+        ["DateTime64(-1)"],
+        ["DateTime64(01)"],
+      ];
       args.forEach(([columnType]) => {
         expect(
           () => parseDateTime64Type({ columnType, sourceType: columnType }),
