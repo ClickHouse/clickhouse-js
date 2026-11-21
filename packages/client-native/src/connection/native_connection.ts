@@ -33,14 +33,11 @@ import {
   readQueryClauses,
 } from "../formats";
 import { encodeText } from "../protocol/columns";
-import type { EncodeContext } from "../protocol/encode";
 import type { ResultChunk } from "../result_chunk";
 import type { DateTimeOutputFormat } from "../protocol/text";
 import type {
   Block,
   ClientIdentity,
-  ProfileInfo,
-  Progress,
   QuerySetting,
   ServerException,
   ServerPacket,
@@ -54,20 +51,52 @@ import {
 } from "../protocol/packets";
 import packageVersion from "../version";
 import {
-  InsertValueError,
   ServerParseNeeded,
-  defaultValue,
   encodeBlock,
-  normalize,
   stringifyJSON,
 } from "../protocol/encode";
 import type { ColumnType } from "../protocol/types";
-import { quoteIdentifier, unwrapType } from "../protocol/types";
+import { quoteIdentifier } from "../protocol/types";
 import type { NativeCompressionMethod } from "../compression/frames";
+import {
+  CLIENT_CLOSED,
+  NativeConnectionPool,
+  USER_ABORTED,
+} from "./connection_pool";
 import { exceptionText, toClickHouseError } from "./errors";
-import type { NativeTLSOptions, PacketHandler } from "./native_socket";
-import { NativeSocket } from "./native_socket";
-import { getArraySource, isJSONObjectEachRowEntry } from "../utils/encoder";
+import type {
+  InsertLayout,
+  InsertSession,
+  InsertSettings,
+  RowContext,
+} from "./insert_helpers";
+import {
+  DefaultInsertSettings,
+  INSERT_BLOCK_ROWS,
+  InsertSettingNames,
+  NO_SUCH_COLUMN_IN_TABLE,
+  applyInsertSettings,
+  columnPositions,
+  columnsWithDefaults,
+  encodeInsertRows,
+  needsServerDefaults,
+  needsTextParser,
+  parseInsertTarget,
+  readInlineQuery,
+  rowKeys,
+  startsWithInsert,
+  unwrapJSONObjectEachRowBatch,
+  withoutToken,
+} from "./insert_helpers";
+import type {
+  NativeSocket,
+  NativeTLSOptions,
+  PacketHandler,
+} from "./native_socket";
+import { ProgressTracker } from "./progress_tracker";
+import { getArraySource } from "../utils/encoder";
+
+export { columnsWithDefaults };
 
 export interface NativeConnectionParams extends ConnectionParams {
   tls: NativeTLSOptions | undefined;
@@ -98,52 +127,6 @@ const NATIVE_FORM_SETTINGS = [
   "output_format_native_write_json_as_string",
   "output_format_native_use_flattened_dynamic_and_json_serialization",
 ];
-
-/** The server settings that change how the server reads the rows of an
- *  INSERT in a JSON format. The client does the same with the rows that it
- *  encodes as Native blocks. */
-interface InsertSettings {
-  /** `input_format_skip_unknown_fields` */
-  skip_unknown_fields: boolean;
-  /** `input_format_null_as_default` */
-  null_as_default: boolean;
-  /** `input_format_defaults_for_omitted_fields` */
-  defaults_for_omitted_fields: boolean;
-  /** `input_format_try_infer_dates` */
-  try_infer_dates: boolean;
-  /** `input_format_try_infer_datetimes` */
-  try_infer_datetimes: boolean;
-}
-
-const DefaultInsertSettings: InsertSettings = {
-  skip_unknown_fields: true,
-  null_as_default: true,
-  defaults_for_omitted_fields: true,
-  try_infer_dates: true,
-  try_infer_datetimes: true,
-};
-
-const InsertSettingNames: Array<[keyof InsertSettings, string]> = [
-  ["skip_unknown_fields", "input_format_skip_unknown_fields"],
-  ["null_as_default", "input_format_null_as_default"],
-  ["defaults_for_omitted_fields", "input_format_defaults_for_omitted_fields"],
-  ["try_infer_dates", "input_format_try_infer_dates"],
-  ["try_infer_datetimes", "input_format_try_infer_datetimes"],
-];
-
-function applyInsertSettings(
-  base: InsertSettings,
-  values: Record<string, unknown>,
-): InsertSettings {
-  const result = { ...base };
-  for (const [key, name] of InsertSettingNames) {
-    const value = values[name];
-    if (value === undefined) continue;
-    const text = String(value).toLowerCase();
-    result[key] = text === "1" || text === "true";
-  }
-  return result;
-}
 
 /** What the client learns from the server once, with the first request. */
 interface ServerSettings {
@@ -206,8 +189,6 @@ function queryTimezone(
   return typeof tz === "string" && tz !== "" ? tz : socket.server.timezone;
 }
 
-const USER_ABORTED = "The user aborted a request.";
-
 /** Server errors that come from the load of the server at the moment, not
  *  from the user: a later request can read the settings. */
 const TRANSIENT_ERROR_CODES = new Set(
@@ -233,7 +214,6 @@ function abortable<T>(
       .finally(() => signal.removeEventListener("abort", abort));
   });
 }
-const CLIENT_CLOSED = "The client is closed";
 
 /** The parameters of one request. The query is a Buffer or Buffer[] when data
  *  in any format follows the SQL (the server parses the data). */
@@ -241,8 +221,6 @@ type RequestParams = Omit<ConnBaseQueryParams, "query"> & {
   query: string | Buffer | Buffer[];
 };
 
-/** The number of rows in each Native block of an INSERT. */
-const INSERT_BLOCK_ROWS = 16_384;
 /** Refresh cached `system.settings` per server identity after 5 minutes. */
 const SERVER_SETTINGS_TTL_MS = 5 * 60_000;
 const MAX_SERVER_SETTINGS_ENTRIES = 64;
@@ -255,25 +233,15 @@ interface CachedServerSettings {
 export class NativeConnection implements Connection<Stream.Readable> {
   private readonly params: NativeConnectionParams;
   private readonly client: ClientIdentity;
-  private readonly idle: NativeSocket[] = [];
-  private readonly waiting: Array<{
-    resolve: (socket: NativeSocket) => void;
-    reject: (err: Error) => void;
-    signal: AbortSignal | undefined;
-  }> = [];
-  private open = 0;
-  private readonly shutdown = new AbortController();
-  private readonly sockets = new Set<NativeSocket>();
+  private readonly pool: NativeConnectionPool;
   private readonly serverSettings = new Map<string, CachedServerSettings>();
 
   private get closed(): boolean {
-    return this.shutdown.signal.aborted;
+    return this.pool.closed;
   }
 
   private withShutdown(signal: AbortSignal | undefined): AbortSignal {
-    return signal === undefined
-      ? this.shutdown.signal
-      : AbortSignal.any([this.shutdown.signal, signal]);
+    return this.pool.withShutdown(signal);
   }
 
   constructor(params: NativeConnectionParams) {
@@ -293,168 +261,27 @@ export class NativeConnection implements Connection<Stream.Readable> {
       os_user: safeUserName(),
       hostname: os.hostname(),
     };
+    this.pool = new NativeConnectionPool(params, this.client);
   }
 
-  // -------------------------------------------------------------------------
-  // Pool
-  // -------------------------------------------------------------------------
-
-  private async acquire(
-    signal: AbortSignal | undefined,
-  ): Promise<NativeSocket> {
-    const socket = await this.takeSocket(signal);
-    // The signal can abort after the pool gave this request the socket, and
-    // before the request listens to the signal. The request has not used the
-    // socket: give it to the next request.
-    if (signal?.aborted) {
-      this.release(socket);
-      throw new Error(USER_ABORTED);
-    }
-    return socket;
-  }
-
-  private async takeSocket(
-    signal: AbortSignal | undefined,
-  ): Promise<NativeSocket> {
-    if (this.closed) throw new Error(CLIENT_CLOSED);
-    if (signal?.aborted) throw new Error(USER_ABORTED);
-    while (this.idle.length > 0) {
-      const socket = this.idle.pop()!;
-      if (socket.usable) return socket;
-      if (this.sockets.delete(socket)) this.open--;
-    }
-    if (this.open < this.params.max_open_connections) {
-      this.open++;
-      try {
-        return await this.connect(signal);
-      } catch (err) {
-        this.open--;
-        this.wakeWaiter();
-        throw err;
-      }
-    }
-    return new Promise((resolve, reject) => {
-      const onAbort = () => {
-        const i = this.waiting.indexOf(waiter);
-        if (i >= 0) {
-          this.waiting.splice(i, 1);
-          reject(new Error(USER_ABORTED));
-        }
-      };
-      const waiter = {
-        signal,
-        resolve: (socket: NativeSocket) => {
-          signal?.removeEventListener("abort", onAbort);
-          resolve(socket);
-        },
-        reject: (err: Error) => {
-          signal?.removeEventListener("abort", onAbort);
-          reject(err);
-        },
-      };
-      this.waiting.push(waiter);
-      signal?.addEventListener("abort", onAbort, { once: true });
-    });
-  }
-
-  private async connect(
-    signal: AbortSignal | undefined,
-  ): Promise<NativeSocket> {
-    const { url, auth } = this.params;
-    if (auth.type !== "Credentials")
-      throw new Error("Unsupported authentication");
-    const secure = url.protocol === "tcps:";
-    const connectSignal = this.withShutdown(signal);
-    try {
-      const socket = await NativeSocket.connect(
-        {
-          host: url.hostname.replace(/^\[(.*)\]$/, "$1"),
-          port: url.port !== "" ? Number(url.port) : secure ? 9440 : 9000,
-          secure,
-          tls: this.params.tls,
-          connect_timeout: this.params.connect_timeout,
-          database: this.params.database,
-          username: auth.username,
-          password: auth.password,
-          client: this.client,
-        },
-        connectSignal,
-      );
-      if (connectSignal.aborted) socket.destroy();
-      connectSignal.throwIfAborted();
-      this.sockets.add(socket);
-      socket.onClose(() => this.evict(socket));
-      return socket;
-    } catch (err) {
-      if (this.closed) throw new Error(CLIENT_CLOSED, { cause: err });
-      if (signal?.aborted) throw new Error(USER_ABORTED, { cause: err });
-      throw err;
-    }
+  private acquire(signal: AbortSignal | undefined): Promise<NativeSocket> {
+    return this.pool.acquire(signal);
   }
 
   private release(socket: NativeSocket): void {
-    socket.finish();
-    socket.clearTimeout();
-    socket.resume();
-    if (this.closed || !socket.usable) {
-      this.discard(socket);
-      return;
-    }
-    const waiter = this.waiting.shift();
-    if (waiter !== undefined) {
-      waiter.resolve(socket);
-    } else {
-      this.idle.push(socket);
-    }
+    this.pool.release(socket);
   }
 
   private discard(socket: NativeSocket, err?: Error): void {
-    const released = this.sockets.delete(socket);
-    if (released) this.open--;
-    socket.destroy(err);
-    if (released) this.wakeWaiter();
+    this.pool.discard(socket, err);
   }
 
-  /** Sends `ClientPacket.Cancel` and removes the socket from the pool. */
   private cancel(socket: NativeSocket, err?: Error): void {
-    const released = this.sockets.delete(socket);
-    if (released) this.open--;
-    socket.cancel(err);
-    if (released) this.wakeWaiter();
-  }
-
-  /** Removes a dead idle socket from the pool as soon as it closes. */
-  private evict(socket: NativeSocket): void {
-    const idx = this.idle.indexOf(socket);
-    if (idx >= 0) this.idle.splice(idx, 1);
-    if (this.sockets.delete(socket)) {
-      this.open--;
-      this.wakeWaiter();
-    }
-  }
-
-  /** A slot is free: open a new connection for the next waiting request. */
-  private wakeWaiter(): void {
-    if (this.closed || this.open >= this.params.max_open_connections) return;
-    const waiter = this.waiting.shift();
-    if (waiter === undefined) return;
-    this.open++;
-    this.connect(waiter.signal).then(waiter.resolve, (err) => {
-      this.open--;
-      waiter.reject(err);
-      this.wakeWaiter();
-    });
+    this.pool.cancel(socket, err);
   }
 
   async close(): Promise<void> {
-    if (this.closed) return;
-    const error = new Error(CLIENT_CLOSED);
-    this.shutdown.abort(error);
-    for (const waiter of this.waiting.splice(0)) {
-      waiter.reject(error);
-    }
-    this.idle.length = 0;
-    for (const socket of this.sockets) this.discard(socket, error);
+    await this.pool.close();
   }
 
   // -------------------------------------------------------------------------
@@ -1388,7 +1215,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
         }
         let packet: Buffer;
         try {
-          const block = this.encodeRows(
+          const block = encodeInsertRows(
             columns,
             batch,
             compact,
@@ -1413,86 +1240,6 @@ export class NativeConnection implements Connection<Stream.Readable> {
           socket.write(encodeEmptyBlock(compression, compressionLevel));
         await end.promise;
       },
-    };
-  }
-
-  /** Makes a block in the order of the columns that the server requested. */
-  private encodeRows(
-    columns: Array<{ name: string; type: ColumnType }>,
-    rows: unknown[],
-    compact: boolean,
-    positions: number[] | undefined,
-    ctx: RowContext,
-  ): {
-    columns: Array<{ name: string; type: ColumnType; values: unknown[] }>;
-    rows: number;
-  } {
-    const rowCount = rows.length;
-    const colCount = columns.length;
-    const outCols = new Array<{
-      name: string;
-      type: ColumnType;
-      values: unknown[];
-    }>(colCount);
-    const colValues = new Array<unknown[]>(colCount);
-    const colTypes = new Array<ColumnType>(colCount);
-    const colNames = new Array<string>(colCount);
-    const colDefaults = new Array<unknown>(colCount);
-    for (let c = 0; c < colCount; c++) {
-      const col = columns[c]!;
-      const values = new Array<unknown>(rowCount);
-      colValues[c] = values;
-      colTypes[c] = col.type;
-      colNames[c] = col.name;
-      colDefaults[c] = defaultValue(col.type);
-      outCols[c] = { name: col.name, type: col.type, values };
-    }
-    if (compact) {
-      for (let r = 0; r < rowCount; r++) {
-        const row = rows[r];
-        if (!Array.isArray(row)) {
-          throw new InsertValueError(
-            `A row of a JSONCompact format must be an array, got: ${typeof row}`,
-          );
-        }
-        for (let c = 0; c < colCount; c++) {
-          const p = positions?.[c] ?? -1;
-          const v =
-            p >= 0 && p < row.length && row[p] !== undefined ? row[p] : MISSING;
-          colValues[c]![r] =
-            v === MISSING ? colDefaults[c] : normalize(colTypes[c]!, v, ctx);
-        }
-      }
-    } else {
-      const knownFields = ctx.known_fields;
-      for (let r = 0; r < rowCount; r++) {
-        const row = rows[r];
-        if (typeof row !== "object" || row === null || Array.isArray(row)) {
-          throw new InsertValueError(
-            `A row must be an object, got: ${typeof row}`,
-          );
-        }
-        const obj = row as Record<string, unknown>;
-        if (knownFields !== undefined) {
-          for (const key in obj) {
-            if (Object.hasOwn(obj, key) && !knownFields.has(key)) {
-              throw new InsertValueError(
-                `Unknown field ${JSON.stringify(key)} in a row (input_format_skip_unknown_fields is 0)`,
-              );
-            }
-          }
-        }
-        for (let c = 0; c < colCount; c++) {
-          const name = colNames[c]!;
-          const v = Object.hasOwn(obj, name) ? obj[name] : undefined;
-          colValues[c]![r] =
-            v === undefined ? colDefaults[c] : normalize(colTypes[c]!, v, ctx);
-        }
-      }
-    }
-    return {
-      columns: outCols,
-      rows: rowCount,
     };
   }
 
@@ -1866,19 +1613,6 @@ function resolveFormat(format: string): DataFormat {
   );
 }
 
-async function readInlineQuery(
-  sql: string,
-  stream: Stream.Readable,
-): Promise<Buffer[]> {
-  const chunks: Buffer[] = [Buffer.from(sql + "\n")];
-  for await (const chunk of stream) {
-    chunks.push(
-      typeof chunk === "string" ? Buffer.from(chunk) : (chunk as Buffer),
-    );
-  }
-  return chunks;
-}
-
 interface Deferred<T> {
   promise: Promise<T>;
   resolve: (value: T) => void;
@@ -1897,411 +1631,10 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve, reject };
 }
 
-const MISSING = Symbol("missing");
-
-/** The server error for a column name that the table does not have. */
-const NO_SUCH_COLUMN_IN_TABLE = "16";
-
-/** How the client changes the rows of an INSERT to values. */
-interface RowContext extends EncodeContext {
-  /** When set, a row with a field that is not in the set is an error. */
-  known_fields: Set<string> | undefined;
-}
-
-/** The columns of an INSERT, and where their values are in the rows. */
-interface InsertLayout {
-  columns: Array<{ name: string; type: ColumnType }>;
-  /** The columns of the table that have a DEFAULT expression. */
-  defaults: Set<string>;
-  /** See {@link columnPositions}. */
-  positions: number[] | undefined;
-}
-
-/** An INSERT that waits for (or receives) Native blocks. */
-interface InsertSession {
-  /** The columns that the server asks for. */
-  columns: Array<{ name: string; type: ColumnType }>;
-  /** The columns of the table that have a DEFAULT expression. */
-  defaults: Set<string>;
-  /** False if the connection cannot run another request. */
-  readonly reusable: boolean;
-  send(
-    batch: unknown[],
-    compact: boolean,
-    positions: number[] | undefined,
-  ): Promise<void>;
-  /** Ends the data and waits for the end of the INSERT. */
-  close(): Promise<void>;
-}
-
-/** Unwraps `JSONObjectEachRow` entries, injecting the outer object key into
- *  `objectNameColumn` when configured. If any row already has that column,
- *  returns a JSON document so the server handles the conflict in
- *  `JSONObjectEachRow` format. */
-function unwrapJSONObjectEachRowBatch(
-  batch: unknown[],
-  objectNameColumn: string,
-): { rows: unknown[]; conflictDoc: Record<string, unknown> | undefined } {
-  const rows: unknown[] = [];
-  let hasConflict = false;
-  for (const item of batch) {
-    if (!isJSONObjectEachRowEntry(item)) {
-      rows.push(item);
-      continue;
-    }
-    if (objectNameColumn === "") {
-      rows.push(item.value);
-      continue;
-    }
-    if (
-      typeof item.value === "object" &&
-      item.value !== null &&
-      !Array.isArray(item.value)
-    ) {
-      if (Object.hasOwn(item.value, objectNameColumn)) {
-        hasConflict = true;
-        rows.push(item.value);
-      } else {
-        const copy: Record<string, unknown> = {
-          ...(item.value as Record<string, unknown>),
-        };
-        if (objectNameColumn === "__proto__") {
-          Object.defineProperty(copy, "__proto__", {
-            value: item.key,
-            enumerable: true,
-            writable: true,
-            configurable: true,
-          });
-        } else {
-          copy[objectNameColumn] = item.key;
-        }
-        rows.push(copy);
-      }
-    } else {
-      rows.push(item.value);
-    }
-  }
-  if (!hasConflict) {
-    return { rows, conflictDoc: undefined };
-  }
-  const conflictDoc = Object.create(null) as Record<string, unknown>;
-  for (const item of batch) {
-    if (isJSONObjectEachRowEntry(item)) {
-      conflictDoc[item.key] = item.value;
-    }
-  }
-  return { rows, conflictDoc };
-}
-
-/** The names of the columns with a DEFAULT expression, from the columns
- *  description of the TableColumns packet. A line is
- *  `` `name` Type[\tDEFAULT\t<expression>] ``. */
-export function columnsWithDefaults(description: string): Set<string> {
-  const names = new Set<string>();
-  for (const line of description.split("\n")) {
-    const fields = line.split("\t");
-    if (fields[1] !== "DEFAULT" && fields[1] !== "EPHEMERAL") continue;
-    const head = fields[0] as string;
-    const name = head.startsWith("`")
-      ? parseBacktickIdentifier(head)
-      : (head.split(" ")[0] as string);
-    names.add(name);
-  }
-  return names;
-}
-
-/** Reads a backtick-quoted identifier at the start of `head`, stopping at the
- *  matching closing backtick rather than any backticks inside the column type. */
-function parseBacktickIdentifier(head: string): string {
-  let name = "";
-  let i = 1;
-  while (i < head.length) {
-    const c = head[i] as string;
-    if (c === "\\") {
-      const next = head[i + 1];
-      if (next === undefined) break;
-      switch (next) {
-        case "n":
-          name += "\n";
-          break;
-        case "t":
-          name += "\t";
-          break;
-        case "r":
-          name += "\r";
-          break;
-        case "0":
-          name += "\0";
-          break;
-        case "b":
-          name += "\b";
-          break;
-        case "f":
-          name += "\f";
-          break;
-        default:
-          name += next;
-          break;
-      }
-      i += 2;
-    } else if (c === "`") {
-      if (head[i + 1] === "`") {
-        name += "`";
-        i += 2;
-      } else {
-        break;
-      }
-    } else {
-      name += c;
-      i++;
-    }
-  }
-  return name;
-}
-
-/** The value of a field of a row, or {@link MISSING}. A field with the value
- *  `undefined` is not in the JSON text of the row: it is missing. */
-function fieldValue(row: Record<string, unknown>, name: string): unknown {
-  if (!Object.prototype.hasOwnProperty.call(row, name)) return MISSING;
-  const value = row[name];
-  return value === undefined ? MISSING : value;
-}
-
-/** True if the type itself has a NULL value. */
-function acceptsNull(type: ColumnType): boolean {
-  switch (type.kind) {
-    case "Nullable":
-    case "Variant":
-    case "Dynamic":
-    case "Nothing":
-      return true;
-    case "LowCardinality":
-      return type.inner.kind === "Nullable";
-    default:
-      return false;
-  }
-}
-
-/** True if the client does not read the text form of the values of the type
- *  (the JSONStrings formats). The server parses these values. */
-function needsTextParser(type: ColumnType): boolean {
-  switch (unwrapType(type).kind) {
-    case "Array":
-    case "Map":
-    case "Tuple":
-    case "Variant":
-    case "Dynamic":
-    case "JSON":
-      return true;
-    default:
-      return false;
-  }
-}
-
-/** For each column of the INSERT, the index of its value in a row of a
- *  JSONCompact format (-1: the rows do not have the column). */
-function columnPositions(
-  session: InsertSession,
-  compact: boolean,
-  names: string[] | undefined,
-): number[] | undefined {
-  if (!compact) return undefined;
-  return session.columns.map((column, i) =>
-    names === undefined ? i : names.indexOf(column.name),
-  );
-}
-
-/**
- * True if the server must fill a value of the batch with a DEFAULT
- * expression: a row leaves out a column that has one, or has `null` for it
- * (`input_format_null_as_default`). A Native block cannot leave out the value
- * of one row, and the server fills a column that a block leaves out with the
- * default value of the type, not with the DEFAULT expression.
- */
-function needsServerDefaults(
-  batch: unknown[],
-  layout: InsertLayout,
-  compact: boolean,
-  settings: InsertSettings,
-): boolean {
-  if (layout.defaults.size === 0 || !settings.defaults_for_omitted_fields) {
-    return false;
-  }
-  for (let c = 0; c < layout.columns.length; c++) {
-    const column = layout.columns[c] as { name: string; type: ColumnType };
-    if (!layout.defaults.has(column.name)) continue;
-    const nullIsDefault = settings.null_as_default && !acceptsNull(column.type);
-    const position = layout.positions?.[c] ?? -1;
-    if (compact && position < 0) return true;
-    for (const row of batch) {
-      let value: unknown;
-      if (compact) {
-        if (!Array.isArray(row)) continue;
-        value = position < row.length ? row[position] : undefined;
-      } else {
-        if (typeof row !== "object" || row === null) continue;
-        value = fieldValue(row as Record<string, unknown>, column.name);
-      }
-      if (value === MISSING || value === undefined) return true;
-      if (value === null && nullIsDefault) return true;
-    }
-  }
-  return false;
-}
-
-/** The parts of the SQL that `insert()` of the common client makes:
- *  `INSERT INTO <table>[ (<columns>)] FORMAT <format>`. */
-interface InsertTarget {
-  table: string;
-  /** The column list with its parentheses, or `undefined`. */
-  columns: string | undefined;
-}
-
-function parseInsertTarget(query: string): InsertTarget | undefined {
-  const match = /^INSERT INTO ([\s\S]+?) FORMAT [A-Za-z0-9_]+$/.exec(query);
-  if (match === null) return undefined;
-  const head = (match[1] as string).trim();
-  // The client does not change an INSERT into a table function: its
-  // arguments and a column list look the same.
-  if (/^(TABLE\s+)?FUNCTION\b/i.test(head)) return undefined;
-  if (!head.endsWith(")")) return { table: head, columns: undefined };
-  let depth = 0;
-  for (let i = head.length - 1; i >= 0; i--) {
-    const c = head[i];
-    if (c === ")") depth++;
-    else if (c === "(") {
-      depth--;
-      if (depth === 0) {
-        const table = head.slice(0, i).trim();
-        if (table === "") return undefined;
-        return { table, columns: head.slice(i) };
-      }
-    }
-  }
-  return undefined;
-}
-
-type RequestSettings = NonNullable<
-  ConnInsertParams<Stream.Readable>["clickhouse_settings"]
->;
-
-function withoutToken(settings: RequestSettings): RequestSettings {
-  const rest = { ...settings };
-  delete rest["insert_deduplication_token"];
-  return rest;
-}
-
-/** The keys of the rows, in the order of their first use. */
-function rowKeys(rows: unknown[]): string[] {
-  const keys = new Set<string>();
-  for (const row of rows) {
-    if (typeof row === "object" && row !== null && !Array.isArray(row)) {
-      for (const key in row as Record<string, unknown>) {
-        if (Object.hasOwn(row, key)) keys.add(key);
-      }
-    }
-  }
-  return [...keys];
-}
-
-function startsWithInsert(query: string | Buffer | Buffer[]): boolean {
-  // Skip comments and spaces before the first word.
-  const head =
-    typeof query === "string"
-      ? query
-      : Buffer.isBuffer(query)
-        ? query.toString("utf8", 0, 4096)
-        : (query[0]?.toString("utf8", 0, 4096) ?? "");
-  const text = head.replace(/^(\s+|--[^\n]*\n?|\/\*[\s\S]*?\*\/)+/, "");
-  return /^insert\b/i.test(text);
-}
-
 function safeUserName(): string {
   try {
     return os.userInfo().username;
   } catch {
     return "";
-  }
-}
-
-/** Collects the Progress packets: the server sends increments. */
-class ProgressTracker {
-  private readonly total: Progress = {
-    read_rows: 0n,
-    read_bytes: 0n,
-    total_rows_to_read: 0n,
-    total_bytes_to_read: 0n,
-    written_rows: 0n,
-    written_bytes: 0n,
-    elapsed_ns: 0n,
-  };
-  private resultRows = 0n;
-  private insertedRows = 0n;
-  private insertedBytes = 0n;
-  private sentRows = 0n;
-  private resultBytes = 0n;
-
-  add(p: Progress): void {
-    this.total.read_rows += p.read_rows;
-    this.total.read_bytes += p.read_bytes;
-    this.total.total_rows_to_read += p.total_rows_to_read;
-    this.total.total_bytes_to_read += p.total_bytes_to_read;
-    this.total.written_rows += p.written_rows;
-    this.total.written_bytes += p.written_bytes;
-    // elapsed_ns is the time since the start of the query
-    if (p.elapsed_ns > this.total.elapsed_ns) {
-      this.total.elapsed_ns = p.elapsed_ns;
-    }
-  }
-
-  /** Counts the inserted rows from the profile events. The server sends no
-   *  Progress packets for some inserts (for example, async inserts). */
-  profileEvents(block: Block): void {
-    const column = (name: string) =>
-      block.columns.find((c) => c.name === name)?.values;
-    const names = column("name");
-    const values = column("value");
-    const threads = column("thread_id");
-    if (names === undefined || values === undefined) return;
-    for (let i = 0; i < block.rows; i++) {
-      // Thread 0 has the totals of the query.
-      if (threads !== undefined && Number(threads[i]) !== 0) continue;
-      if (names[i] === "InsertedRows")
-        this.insertedRows += BigInt(values[i] as number | bigint);
-      if (names[i] === "InsertedBytes")
-        this.insertedBytes += BigInt(values[i] as number | bigint);
-      if (names[i] === "AsyncInsertBytes")
-        this.insertedBytes += BigInt(values[i] as number | bigint);
-    }
-  }
-
-  /** Rows that the client sent in Native blocks: the written rows when the
-   *  server does not count them (async inserts). */
-  addSentRows(rows: number): void {
-    this.sentRows += BigInt(rows);
-  }
-
-  profile(info: ProfileInfo): void {
-    this.resultRows = info.rows;
-    this.resultBytes = info.bytes;
-  }
-
-  totals(): Progress {
-    return this.total;
-  }
-
-  summary(): ClickHouseSummary {
-    return {
-      read_rows: String(this.total.read_rows),
-      read_bytes: String(this.total.read_bytes),
-      written_rows: String(
-        this.total.written_rows || this.insertedRows || this.sentRows,
-      ),
-      written_bytes: String(this.total.written_bytes || this.insertedBytes),
-      total_rows_to_read: String(this.total.total_rows_to_read),
-      result_rows: String(this.resultRows),
-      result_bytes: String(this.resultBytes),
-      elapsed_ns: String(this.total.elapsed_ns),
-    };
   }
 }
