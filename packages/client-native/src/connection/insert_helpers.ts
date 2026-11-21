@@ -355,6 +355,7 @@ export function needsTextParser(type: ColumnType): boolean {
     case "Variant":
     case "Dynamic":
     case "JSON":
+    case "QBit":
       return true;
     default:
       return false;

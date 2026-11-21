@@ -60,6 +60,9 @@ function writeColumn(out: Encoded, type: ColumnType, values: unknown[]): void {
       });
       return;
     }
+    case "QBit":
+      writeQBit(w, type.element, type.dimension, type.stride, values);
+      return;
     case "Bool":
       writeFixed<boolean>(w, values, 1, (b, v, o) => {
         b[o] = v ? 1 : 0;
@@ -378,6 +381,118 @@ function writeDynamic(out: Encoded, values: Array<DynamicNorm | null>): void {
       v === null ? null : { d: index.get(v.t.name) as number, v: v.v },
     ),
   );
+}
+
+/**
+ * Encodes a `QBit(Int8 | BFloat16 | Float32 | Float64, dimension[, stride])`
+ * column into its bit-transposed Native representation.
+ */
+function writeQBit(
+  w: BinaryWriter,
+  element:
+    | { kind: "Int"; bits: 8; signed: true }
+    | { kind: "BFloat16" }
+    | { kind: "Float"; bits: 32 | 64 },
+  dimension: number,
+  stride: number,
+  values: unknown[],
+): void {
+  const rows = values.length;
+  if (rows === 0) return;
+  const bits =
+    element.kind === "BFloat16"
+      ? 16
+      : element.kind === "Int"
+        ? 8
+        : element.bits;
+  const numGroups = dimension / stride;
+  const groupBytes = (stride + 7) >>> 3;
+  const planeBytes = rows * groupBytes;
+  const groupTotalBytes = bits * planeBytes;
+  const buf = Buffer.alloc(numGroups * groupTotalBytes);
+  const scratch = new ArrayBuffer(8);
+  const dv = new DataView(scratch);
+
+  for (let g = 0; g < numGroups; g++) {
+    const groupBase = g * groupTotalBytes;
+    const elemOffset = g * stride;
+    if (bits === 8) {
+      for (let row = 0; row < rows; row++) {
+        const vec = values[row] as number[];
+        const rowBase = groupBase + row * groupBytes;
+        for (let j = 0; j < stride; j++) {
+          const bits8 = (vec[elemOffset + j] as number) & 0xff;
+          const byteOff = rowBase + (groupBytes - 1 - (j >>> 3));
+          const bitMask = 1 << (j & 7);
+          for (let p = 0; p < 8; p++) {
+            if ((bits8 & (1 << (7 - p))) !== 0) {
+              buf[byteOff + p * planeBytes] =
+                (buf[byteOff + p * planeBytes] as number) | bitMask;
+            }
+          }
+        }
+      }
+    } else if (bits === 16) {
+      for (let row = 0; row < rows; row++) {
+        const vec = values[row] as number[];
+        const rowBase = groupBase + row * groupBytes;
+        for (let j = 0; j < stride; j++) {
+          dv.setFloat32(0, vec[elemOffset + j] as number, false);
+          const bits16 = dv.getUint16(0, false);
+          const byteOff = rowBase + (groupBytes - 1 - (j >>> 3));
+          const bitMask = 1 << (j & 7);
+          for (let p = 0; p < 16; p++) {
+            if ((bits16 & (1 << (15 - p))) !== 0) {
+              buf[byteOff + p * planeBytes] =
+                (buf[byteOff + p * planeBytes] as number) | bitMask;
+            }
+          }
+        }
+      }
+    } else if (bits === 32) {
+      for (let row = 0; row < rows; row++) {
+        const vec = values[row] as number[];
+        const rowBase = groupBase + row * groupBytes;
+        for (let j = 0; j < stride; j++) {
+          dv.setFloat32(0, vec[elemOffset + j] as number, false);
+          const bits32 = dv.getUint32(0, false);
+          const byteOff = rowBase + (groupBytes - 1 - (j >>> 3));
+          const bitMask = 1 << (j & 7);
+          for (let p = 0; p < 32; p++) {
+            if ((bits32 & (1 << (31 - p))) !== 0) {
+              buf[byteOff + p * planeBytes] =
+                (buf[byteOff + p * planeBytes] as number) | bitMask;
+            }
+          }
+        }
+      }
+    } else {
+      for (let row = 0; row < rows; row++) {
+        const vec = values[row] as number[];
+        const rowBase = groupBase + row * groupBytes;
+        for (let j = 0; j < stride; j++) {
+          dv.setFloat64(0, vec[elemOffset + j] as number, false);
+          const hi = dv.getUint32(0, false);
+          const lo = dv.getUint32(4, false);
+          const byteOff = rowBase + (groupBytes - 1 - (j >>> 3));
+          const bitMask = 1 << (j & 7);
+          for (let p = 0; p < 32; p++) {
+            if ((hi & (1 << (31 - p))) !== 0) {
+              buf[byteOff + p * planeBytes] =
+                (buf[byteOff + p * planeBytes] as number) | bitMask;
+            }
+          }
+          for (let p = 0; p < 32; p++) {
+            if ((lo & (1 << (31 - p))) !== 0) {
+              buf[byteOff + (32 + p) * planeBytes] =
+                (buf[byteOff + (32 + p) * planeBytes] as number) | bitMask;
+            }
+          }
+        }
+      }
+    }
+  }
+  w.append(buf);
 }
 
 /** A Native block (block info, columns, rows) of stored values. */

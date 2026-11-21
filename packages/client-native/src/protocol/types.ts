@@ -48,12 +48,25 @@ export type ColumnType =
       /** Typed paths, sorted by path (the order of the server). */
       typed_paths: Array<[string, ColumnType]>;
     }
+  | {
+      kind: "QBit";
+      name: string;
+      element: QBitElementType;
+      dimension: number;
+      /** Group size (elements per bit-transposed group); equals `dimension` when omitted. */
+      stride: number;
+    }
   | { kind: "Nothing"; name: string }
   /** The internal variant of a `Dynamic` column that holds values of types
    *  over the `max_types` limit. Each value has a binary type and a value. */
   | { kind: "SharedVariant"; name: string }
   /** A type that the client cannot decode, for example `AggregateFunction`. */
   | { kind: "Unsupported"; name: string };
+
+export type QBitElementType =
+  | { kind: "Int"; name: string; bits: 8; signed: true }
+  | { kind: "BFloat16"; name: string }
+  | { kind: "Float"; name: string; bits: 32 | 64 };
 
 export interface IntType {
   kind: "Int";
@@ -411,6 +424,50 @@ function convert(raw: RawType): ColumnType {
       return { kind: "Float", name, bits: 64 };
     case "BFloat16":
       return { kind: "BFloat16", name };
+    case "QBit": {
+      const rawArgs = raw.args ?? [];
+      if (rawArgs.length !== 2 && rawArgs.length !== 3) {
+        throw new TypeParseError(`Expected 2 or 3 arguments for ${name}`);
+      }
+      const elemArg = rawArgs[0];
+      const dimArg = rawArgs[1];
+      const strideArg = rawArgs[2];
+      if (
+        elemArg?.a !== "type" ||
+        dimArg?.a !== "literal" ||
+        (strideArg !== undefined && strideArg.a !== "literal")
+      ) {
+        throw new TypeParseError(`Invalid QBit arguments in ${name}`);
+      }
+      const element = convert(elemArg.type);
+      const validElement =
+        element.kind === "BFloat16" ||
+        element.kind === "Float" ||
+        (element.kind === "Int" && element.bits === 8 && element.signed);
+      if (!validElement) {
+        throw new TypeParseError(`Unsupported QBit element type in ${name}`);
+      }
+      const dimension = Number(dimArg.value);
+      if (!Number.isInteger(dimension) || dimension <= 0) {
+        throw new TypeParseError(`Invalid QBit dimension in ${name}`);
+      }
+      const stride =
+        strideArg === undefined ? dimension : Number(strideArg.value);
+      if (
+        !Number.isInteger(stride) ||
+        stride <= 0 ||
+        dimension % stride !== 0
+      ) {
+        throw new TypeParseError(`Invalid QBit stride in ${name}`);
+      }
+      return {
+        kind: "QBit",
+        name,
+        element: element as QBitElementType,
+        dimension,
+        stride,
+      };
+    }
     case "Bool":
       return { kind: "Bool", name };
     case "String":

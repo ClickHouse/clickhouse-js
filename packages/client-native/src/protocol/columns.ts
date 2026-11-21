@@ -689,6 +689,8 @@ export function readColumn(
       }
       return out;
     }
+    case "QBit":
+      return readQBitColumn(r, type.element, type.dimension, type.stride, rows);
     case "Bool": {
       const out = new Array<boolean>(rows);
       r.ensure(rows);
@@ -1525,6 +1527,18 @@ export function skipColumn(
     case "FixedString":
       r.skip(rows * type.size);
       return;
+    case "QBit": {
+      const bits =
+        type.element.kind === "BFloat16"
+          ? 16
+          : type.element.kind === "Int"
+            ? 8
+            : type.element.bits;
+      const numGroups = type.dimension / type.stride;
+      const groupBytes = (type.stride + 7) >>> 3;
+      r.skip(rows * numGroups * bits * groupBytes);
+      return;
+    }
     case "Date32":
     case "DateTime":
     case "Time":
@@ -1629,10 +1643,143 @@ export function readRowValue(
     }
     case "Nothing":
       return null;
+    case "QBit": {
+      const n = r.varuint();
+      return readColumn(r, type.element, n, undefined, ctx);
+    }
     case "String":
       return readString(r, ctx);
     default:
       // Fixed-size types are the same in RowBinary and in Native.
       return readColumn(r, type, 1, undefined, ctx)[0];
   }
+}
+
+/**
+ * Decodes a `QBit(Int8 | BFloat16 | Float32 | Float64, dimension[, stride])`
+ * column from its bit-transposed Native representation: `dimension / stride`
+ * consecutive groups, each with `B` contiguous planes (MSB first), each plane
+ * holding `rows * ceil(stride / 8)` bytes with 8-element byte packs stored in
+ * reverse order (`groupBytes - 1` holds elements 0..7, LSB = element 0).
+ */
+function readQBitColumn(
+  r: BinaryReader,
+  element:
+    | { kind: "Int"; bits: 8; signed: true }
+    | { kind: "BFloat16" }
+    | { kind: "Float"; bits: 32 | 64 },
+  dimension: number,
+  stride: number,
+  rows: number,
+): number[][] {
+  const bits =
+    element.kind === "BFloat16"
+      ? 16
+      : element.kind === "Int"
+        ? 8
+        : element.bits;
+  const numGroups = dimension / stride;
+  const groupBytes = (stride + 7) >>> 3;
+  const planeBytes = rows * groupBytes;
+  const groupTotalBytes = bits * planeBytes;
+  const totalBytes = numGroups * groupTotalBytes;
+  r.ensure(totalBytes);
+  const base = r.pos;
+  r.pos += totalBytes;
+  const buf = r.buf;
+  const out = new Array<number[]>(rows);
+  for (let row = 0; row < rows; row++) out[row] = new Array<number>(dimension);
+  const scratch = new ArrayBuffer(8);
+  const dv = new DataView(scratch);
+
+  for (let g = 0; g < numGroups; g++) {
+    const groupBase = base + g * groupTotalBytes;
+    const elemOffset = g * stride;
+    if (bits === 8) {
+      for (let row = 0; row < rows; row++) {
+        const vec = out[row] as number[];
+        const rowBase = groupBase + row * groupBytes;
+        for (let j = 0; j < stride; j++) {
+          const byteOff = rowBase + (groupBytes - 1 - (j >>> 3));
+          const bitMask = 1 << (j & 7);
+          let acc = 0;
+          for (let p = 0; p < 8; p++) {
+            acc =
+              (acc << 1) |
+              (((buf[byteOff + p * planeBytes] as number) & bitMask) !== 0
+                ? 1
+                : 0);
+          }
+          vec[elemOffset + j] = (acc << 24) >> 24;
+        }
+      }
+    } else if (bits === 16) {
+      for (let row = 0; row < rows; row++) {
+        const vec = out[row] as number[];
+        const rowBase = groupBase + row * groupBytes;
+        for (let j = 0; j < stride; j++) {
+          const byteOff = rowBase + (groupBytes - 1 - (j >>> 3));
+          const bitMask = 1 << (j & 7);
+          let acc = 0;
+          for (let p = 0; p < 16; p++) {
+            acc =
+              (acc << 1) |
+              (((buf[byteOff + p * planeBytes] as number) & bitMask) !== 0
+                ? 1
+                : 0);
+          }
+          dv.setUint32(0, (acc << 16) >>> 0, false);
+          vec[elemOffset + j] = dv.getFloat32(0, false);
+        }
+      }
+    } else if (bits === 32) {
+      for (let row = 0; row < rows; row++) {
+        const vec = out[row] as number[];
+        const rowBase = groupBase + row * groupBytes;
+        for (let j = 0; j < stride; j++) {
+          const byteOff = rowBase + (groupBytes - 1 - (j >>> 3));
+          const bitMask = 1 << (j & 7);
+          let acc = 0;
+          for (let p = 0; p < 32; p++) {
+            acc =
+              (acc << 1) |
+              (((buf[byteOff + p * planeBytes] as number) & bitMask) !== 0
+                ? 1
+                : 0);
+          }
+          dv.setUint32(0, acc >>> 0, false);
+          vec[elemOffset + j] = dv.getFloat32(0, false);
+        }
+      }
+    } else {
+      for (let row = 0; row < rows; row++) {
+        const vec = out[row] as number[];
+        const rowBase = groupBase + row * groupBytes;
+        for (let j = 0; j < stride; j++) {
+          const byteOff = rowBase + (groupBytes - 1 - (j >>> 3));
+          const bitMask = 1 << (j & 7);
+          let hi = 0;
+          for (let p = 0; p < 32; p++) {
+            hi =
+              (hi << 1) |
+              (((buf[byteOff + p * planeBytes] as number) & bitMask) !== 0
+                ? 1
+                : 0);
+          }
+          let lo = 0;
+          for (let p = 32; p < 64; p++) {
+            lo =
+              (lo << 1) |
+              (((buf[byteOff + p * planeBytes] as number) & bitMask) !== 0
+                ? 1
+                : 0);
+          }
+          dv.setUint32(0, hi >>> 0, false);
+          dv.setUint32(4, lo >>> 0, false);
+          vec[elemOffset + j] = dv.getFloat64(0, false);
+        }
+      }
+    }
+  }
+  return out;
 }

@@ -858,6 +858,8 @@ export function defaultValue(type: ColumnType): unknown {
       return type.elements.map(defaultValue);
     case "JSON":
       return "{}";
+    case "QBit":
+      return new Array<number>(type.dimension).fill(0);
     default:
       return null;
   }
@@ -1151,6 +1153,17 @@ export function normalize(
       if (typeof value === "string") return value;
       if (typeof value === "object") return stringifyJSON(value);
       return fail(type, value, "not a JSON object");
+    case "QBit": {
+      const items = toArray(type, value);
+      if (items.length !== type.dimension) {
+        fail(
+          type,
+          value,
+          `expected ${type.dimension} elements, got ${items.length}`,
+        );
+      }
+      return items.map((v) => normalize(type.element, v, ctx));
+    }
     case "SharedVariant":
     case "Unsupported":
       return fail(type, value, "the client cannot insert this type");
@@ -1203,7 +1216,7 @@ function preferredKinds(value: unknown): string[] {
     case "object":
       if (value instanceof Date)
         return ["DateTime64", "DateTime", "Date32", "Date"];
-      if (Array.isArray(value)) return ["Array", "Tuple", "Map"];
+      if (Array.isArray(value)) return ["Array", "QBit", "Tuple", "Map"];
       return ["Map", "Tuple", "JSON"];
     default:
       return [];

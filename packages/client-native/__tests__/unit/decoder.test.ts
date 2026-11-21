@@ -11,7 +11,16 @@ import {
   encodeText,
   readColumn,
   readPrefix,
+  readRowValue,
+  skipColumn,
 } from "../../src/protocol/columns";
+import { readBinaryType } from "../../src/protocol/binary_types";
+import {
+  encodeBlock,
+  encodeColumn,
+  normalize,
+} from "../../src/protocol/encode";
+import { DefaultOutputSettings, OutputEncoder } from "../../src/formats";
 import type { Block } from "../../src/protocol/packets";
 import {
   BLOCK_INFO,
@@ -645,5 +654,181 @@ describe("[Native] block reader that continues", () => {
       "ok",
     ]);
     expect(ctx.raw_bytes).toBe(true);
+  });
+
+  it("parses, encodes, decodes, skips, and formats QBit(BFloat16|Float32|Float64, dim)", () => {
+    // Type parsing and validation
+    expect(parseColumnType("QBit(Float32, 10)")).toMatchObject({
+      kind: "QBit",
+      dimension: 10,
+      element: { kind: "Float", bits: 32 },
+    });
+    expect(parseColumnType("QBit(BFloat16, 17)")).toMatchObject({
+      kind: "QBit",
+      dimension: 17,
+      element: { kind: "BFloat16" },
+    });
+    expect(parseColumnType("QBit(Float64, 384)")).toMatchObject({
+      kind: "QBit",
+      dimension: 384,
+      stride: 384,
+      element: { kind: "Float", bits: 64 },
+    });
+    expect(parseColumnType("QBit(Int8, 16, 8)")).toMatchObject({
+      kind: "QBit",
+      dimension: 16,
+      stride: 8,
+      element: { kind: "Int", bits: 8, signed: true },
+    });
+    expect(() => parseColumnType("QBit(Int32, 3)")).toThrow(
+      "Unsupported QBit element type",
+    );
+    expect(() => parseColumnType("QBit(Float32, 0)")).toThrow(
+      "Invalid QBit dimension",
+    );
+    expect(() => parseColumnType("QBit(Float32, 12, 8)")).toThrow(
+      "Invalid QBit stride",
+    );
+    expect(() => parseColumnType("QBit(Float32)")).toThrow(
+      "Expected 2 or 3 arguments",
+    );
+
+    // Binary type tags 0x36 (unstrided) and 0x37 (strided) for Dynamic / SharedVariant
+    const binTypeBytes = new BinaryWriter()
+      .u8(0x36)
+      .u8(0x0d) // Float32
+      .varuint(10)
+      .toBuffer();
+    expect(readBinaryType(new BinaryReader(binTypeBytes))).toEqual(
+      parseColumnType("QBit(Float32, 10)"),
+    );
+    const stridedBinTypeBytes = new BinaryWriter()
+      .u8(0x37)
+      .u8(0x0d) // Float32
+      .varuint(16)
+      .varuint(8)
+      .toBuffer();
+    expect(readBinaryType(new BinaryReader(stridedBinTypeBytes))).toEqual(
+      parseColumnType("QBit(Float32, 16, 8)"),
+    );
+
+    // RowBinary single-value decode (SharedVariant)
+    const rowBin = new BinaryWriter()
+      .varuint(2)
+      .raw(Buffer.from([0x00, 0x00, 0xc0, 0x3f, 0x00, 0x00, 0x20, 0xc0])) // 1.5, -2.5
+      .toBuffer();
+    expect(
+      readRowValue(
+        new BinaryReader(rowBin),
+        parseColumnType("QBit(Float32, 2)"),
+        {
+          timezone: "UTC",
+        },
+      ),
+    ).toEqual([1.5, -2.5]);
+
+    // Round-trip encode -> read -> skip across element types and dimensions (<=8, >8, strided)
+    for (const [typeName, rows] of [
+      [
+        "QBit(Int8, 16, 8)",
+        [
+          [1, -1, 127, -128, 0, 42, -42, 7, 8, -8, 16, -16, 64, -64, 3, -3],
+          [-128, 127, 0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7],
+        ],
+      ],
+      [
+        "QBit(BFloat16, 17)",
+        [
+          [1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, -4],
+          [-0.5, 1.5, 3, 0, 0, 0, 0, 0, -2, 0, 0, 0, 0, 0, 0, 0, 8],
+        ],
+      ],
+      [
+        "QBit(Float32, 10)",
+        [
+          [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          [-1.5, 0, -0, 3.25, 100.5, -0.125, 7, 8, 9.5, -10.25],
+        ],
+      ],
+      [
+        "QBit(Float64, 17)",
+        [
+          Array.from({ length: 17 }, (_, i) => (i - 8) * 1.125),
+          Array.from({ length: 17 }, (_, i) => (i + 1) / 3),
+        ],
+      ],
+    ] as const) {
+      const type = parseColumnType(typeName);
+      const { data } = encodeColumn(type, [...rows]);
+      const buf = Buffer.concat([...data.buffers()]);
+
+      const r1 = new BinaryReader(buf);
+      const decoded = readColumn(r1, type, rows.length, undefined, {
+        timezone: "UTC",
+      });
+      expect(r1.pos).toBe(buf.length);
+      expect(decoded).toEqual(rows);
+
+      const r2 = new BinaryReader(buf);
+      skipColumn(r2, type, rows.length, undefined, { timezone: "UTC" });
+      expect(r2.pos).toBe(buf.length);
+    }
+
+    // Exact wire bytes check for ClickHouse dim=10 [1..10]
+    const dim10Type = parseColumnType("QBit(Float32, 10)");
+    const { data: dim10Data } = encodeColumn(dim10Type, [
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    ]);
+    const dim10Hex = Buffer.concat([...dim10Data.buffers()]).toString("hex");
+    expect(dim10Hex.slice(0, 24)).toBe("000003fe0001000100010001");
+
+    // Formatting (JSONEachRow, CSV, TabSeparated, direct dataRows)
+    const qBlock: Block = {
+      rows: 1,
+      columns: [
+        {
+          name: "q",
+          type: parseColumnType("QBit(Float32, 3)"),
+          values: [[1, 2, -3.5]],
+        },
+      ],
+    };
+    const jsonEnc = new OutputEncoder("JSONEachRow", DefaultOutputSettings);
+    expect(jsonEnc.data(qBlock)).toBe('{"q":[1,2,-3.5]}\n');
+    expect(jsonEnc.dataRows(qBlock, false).rows).toEqual([{ q: [1, 2, -3.5] }]);
+
+    const csvEnc = new OutputEncoder("CSV", DefaultOutputSettings);
+    expect(csvEnc.data(qBlock)).toBe("[1,2,-3.5]\n");
+
+    const tsvEnc = new OutputEncoder("TabSeparated", DefaultOutputSettings);
+    expect(tsvEnc.data(qBlock)).toBe("[1,2,-3.5]\n");
+
+    // Insert normalization: Float32Array, null default, and wrong dimension error
+    const q3Type = parseColumnType("QBit(Float32, 3)");
+    const normCtx = { timezone: "UTC", null_as_default: true };
+    const encoded = encodeBlock(
+      [
+        {
+          name: "v",
+          type: q3Type,
+          values: [
+            normalize(q3Type, new Float32Array([1.5, -2.5, 4]), normCtx),
+            normalize(q3Type, null, normCtx),
+          ],
+        },
+      ],
+      2,
+      true,
+    );
+    const decodedBlock = readBlock(new BinaryReader(encoded), REV, {
+      timezone: "UTC",
+    });
+    expect(decodedBlock.columns[0]?.values).toEqual([
+      [1.5, -2.5, 4],
+      [0, 0, 0],
+    ]);
+    expect(() => normalize(q3Type, [1, 2], normCtx)).toThrow(
+      "expected 3 elements, got 2",
+    );
   });
 });

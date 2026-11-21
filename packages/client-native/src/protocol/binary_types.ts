@@ -173,6 +173,17 @@ function readBinaryTypeName(r: BinaryReader): string {
     }
     case 0x34:
       return `Time64(${r.u8()})`;
+    case 0x36: {
+      const element = readBinaryTypeName(r);
+      const dimension = r.varuint();
+      return `QBit(${element}, ${dimension})`;
+    }
+    case 0x37: {
+      const element = readBinaryTypeName(r);
+      const dimension = r.varuint();
+      const stride = r.varuint();
+      return `QBit(${element}, ${dimension}, ${stride})`;
+    }
     default:
       throw new ProtocolError(
         `The client cannot decode the binary type code 0x${code.toString(16)}`,

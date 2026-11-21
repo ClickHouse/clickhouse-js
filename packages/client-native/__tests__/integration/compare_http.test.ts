@@ -3,7 +3,7 @@ import { createClient as createHttpClient } from "../../../client-node/src";
 import type { ClickHouseClient as HttpClient } from "../../../client-node/src";
 import { createClient } from "../../src";
 import type { ClickHouseClient, DataFormat } from "../../src";
-import { httpURL, nativeURL } from "./utils";
+import { httpURL, nativeURL, uniqueName } from "./utils";
 
 /**
  * The native client must give the same results as the HTTP client. Each case
@@ -284,6 +284,205 @@ describe("[Native] the same results as the HTTP client", () => {
       const { statistics: _n, ...nativeDoc } = n;
       const { statistics: _h, ...httpDoc } = h;
       expect(nativeDoc).toEqual(httpDoc);
+    }
+  });
+
+  it("reads, inserts, and matches HTTP for QBit(BFloat16|Float32|Float64) including dim > 8", async () => {
+    const hasQBitRows = await http
+      .query({
+        query:
+          "SELECT count() AS c FROM system.data_type_families WHERE name = 'QBit'",
+        format: "JSONEachRow",
+      })
+      .then((rs) => rs.json<{ c: string }>());
+    if (Number(hasQBitRows[0]?.c ?? 0) === 0) return;
+
+    const qbitSettings = {
+      ...settings,
+      allow_experimental_qbit_type: 1,
+    } as const;
+    const table = uniqueName("native_qbit");
+    await native.command({
+      query: `CREATE TABLE ${table} (
+        id UInt8,
+        q16 QBit(BFloat16, 10),
+        q32 QBit(Float32, 384),
+        q64 QBit(Float64, 17),
+        qn Nullable(QBit(Float32, 3)),
+        qa Array(QBit(Float32, 2))
+      ) ENGINE = Memory`,
+      clickhouse_settings: qbitSettings,
+    });
+
+    try {
+      const vec384 = Array.from({ length: 384 }, (_, i) => (i + 1) / 384);
+      const vec10 = [1, -2, 3, -4, 5, -6, 7, -8, 9, -10];
+      const vec17 = Array.from({ length: 17 }, (_, i) => (i - 8) * 0.125);
+
+      await native.insert({
+        table,
+        format: "JSONEachRow",
+        clickhouse_settings: qbitSettings,
+        values: [
+          {
+            id: 1,
+            q16: vec10,
+            q32: new Float32Array(vec384),
+            q64: vec17,
+            qn: [1.5, -2.5, 3.25],
+            qa: [
+              [1, 2],
+              [-3.5, 4],
+            ],
+          },
+          {
+            id: 2,
+            q16: null,
+            q32: null,
+            q64: null,
+            qn: null,
+            qa: [],
+          },
+        ],
+      });
+
+      const selectAll = `SELECT id, q16, q32, q64, qn, qa FROM ${table} ORDER BY id`;
+      for (const format of [
+        "JSONEachRow",
+        "JSONStringsEachRow",
+        "CSV",
+        "TabSeparated",
+      ] as const) {
+        const [n, h] = await Promise.all([
+          native
+            .query({
+              query: selectAll,
+              format,
+              clickhouse_settings: qbitSettings,
+            })
+            .then((rs) => rs.text()),
+          http
+            .query({
+              query: selectAll,
+              format,
+              clickhouse_settings: qbitSettings,
+            })
+            .then((rs) => rs.text()),
+        ]);
+        expect(n).toEqual(h);
+      }
+
+      // Verify server-side transposed vector distance sees exact uncorrupted 384-dim QBit bits
+      const distRows = await native
+        .query({
+          query: `SELECT cosineDistanceTransposed(q32, {q:Array(Float32)}, 32) AS d FROM ${table} WHERE id = 1`,
+          query_params: { q: vec384 },
+          format: "JSONEachRow",
+          clickhouse_settings: qbitSettings,
+        })
+        .then((rs) => rs.json<{ d: number }>());
+      expect(Math.abs(distRows[0]?.d ?? 1)).toBeLessThan(1e-5);
+
+      // Verify QBit inside Dynamic(max_types=0) (SharedVariant binary type tag 0x36)
+      const dynSettings = {
+        ...qbitSettings,
+        output_format_native_use_flattened_dynamic_and_json_serialization: 0,
+      } as const;
+      const dynQuery =
+        "SELECT CAST(CAST([1.5, -2.5] AS QBit(Float32, 2)) AS Dynamic(max_types=0)) AS d1";
+      const [nDyn, hDyn] = await Promise.all([
+        native
+          .query({
+            query: dynQuery,
+            format: "JSONEachRow",
+            clickhouse_settings: dynSettings,
+          })
+          .then((rs) => rs.text()),
+        http
+          .query({
+            query: dynQuery,
+            format: "JSONEachRow",
+            clickhouse_settings: dynSettings,
+          })
+          .then((rs) => rs.text()),
+      ]);
+      expect(nDyn).toEqual(hDyn);
+
+      // Verify QBit(Int8, dim, stride) and strided SharedVariant (0x37) on servers that support them
+      let supportsStridedInt8 = false;
+      try {
+        await http.command({
+          query: "SELECT CAST([1, -2, 3, -4] AS QBit(Int8, 4, 2))",
+          clickhouse_settings: qbitSettings,
+        });
+        supportsStridedInt8 = true;
+      } catch {
+        // Older ClickHouse releases (e.g. 26.8) predate Int8 / 3-arg strided QBit.
+      }
+      if (supportsStridedInt8) {
+        const stridedTable = uniqueName("native_qbit_strided");
+        await native.command({
+          query: `CREATE TABLE ${stridedTable} (id UInt8, q8 QBit(Int8, 16, 8)) ENGINE = Memory`,
+          clickhouse_settings: qbitSettings,
+        });
+        try {
+          const vec8 = [
+            1, -1, 127, -128, 0, 42, -42, 7, 8, -8, 16, -16, 64, -64, 3, -3,
+          ];
+          await native.insert({
+            table: stridedTable,
+            format: "JSONEachRow",
+            clickhouse_settings: qbitSettings,
+            values: [
+              { id: 1, q8: vec8 },
+              { id: 2, q8: null },
+            ],
+          });
+          const [n8, h8] = await Promise.all([
+            native
+              .query({
+                query: `SELECT id, q8 FROM ${stridedTable} ORDER BY id`,
+                format: "JSONEachRow",
+                clickhouse_settings: qbitSettings,
+              })
+              .then((rs) => rs.text()),
+            http
+              .query({
+                query: `SELECT id, q8 FROM ${stridedTable} ORDER BY id`,
+                format: "JSONEachRow",
+                clickhouse_settings: qbitSettings,
+              })
+              .then((rs) => rs.text()),
+          ]);
+          expect(n8).toEqual(h8);
+
+          const stridedDynQuery =
+            "SELECT CAST(CAST([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16] AS QBit(Float32, 16, 8)) AS Dynamic(max_types=0)) AS d2";
+          const [nS, hS] = await Promise.all([
+            native
+              .query({
+                query: stridedDynQuery,
+                format: "JSONEachRow",
+                clickhouse_settings: dynSettings,
+              })
+              .then((rs) => rs.text()),
+            http
+              .query({
+                query: stridedDynQuery,
+                format: "JSONEachRow",
+                clickhouse_settings: dynSettings,
+              })
+              .then((rs) => rs.text()),
+          ]);
+          expect(nS).toEqual(hS);
+        } finally {
+          await native.command({
+            query: `DROP TABLE IF EXISTS ${stridedTable}`,
+          });
+        }
+      }
+    } finally {
+      await native.command({ query: `DROP TABLE IF EXISTS ${table}` });
     }
   });
 });

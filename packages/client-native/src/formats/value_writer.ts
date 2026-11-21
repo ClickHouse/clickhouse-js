@@ -418,6 +418,21 @@ export class ValueWriter {
           return this.parsed(type, value);
         }
         return this.jsonObjectValue(value as JSONObjectValue);
+      case "QBit": {
+        const items = value as number[];
+        const out = new Array<number>(items.length);
+        const direct =
+          type.element.kind === "Int" ||
+          (type.element.kind === "Float" && type.element.bits === 64);
+        for (let i = 0; i < items.length; i++) {
+          const v = items[i] as number;
+          if (!Number.isFinite(v)) {
+            return this.parsed(type, value);
+          }
+          out[i] = direct ? v : Number(numberText(type.element, v));
+        }
+        return out;
+      }
       case "Nothing":
         return null;
       default:
@@ -808,6 +823,8 @@ export class ValueWriter {
       case "JSON":
         if (value instanceof RawJSONValue) return this.rawJSON(value);
         return this.pathTree(this.pathsToTree(value as JSONObjectValue));
+      case "QBit":
+        return this.qbitText(type.element, value);
       case "Nothing":
         return "null";
       default:
@@ -951,6 +968,8 @@ export class ValueWriter {
         );
       case "JSON":
         return this.json(type, value);
+      case "QBit":
+        return this.qbitText(type.element, value);
       default:
         return this.scalarText(type, value);
     }
@@ -998,6 +1017,8 @@ export class ValueWriter {
         );
       case "JSON":
         return quotedString(this.json(type, value));
+      case "QBit":
+        return this.qbitText(type.element, value);
       case "Int":
         if (this.kusto && isInterval(type)) {
           return quotedString(kustoInterval(type, value));
@@ -1025,10 +1046,22 @@ export class ValueWriter {
       case "BFloat16":
       case "Decimal":
       case "Bool":
+      case "QBit":
         return true;
       default:
         return false;
     }
+  }
+
+  private qbitText(element: ColumnType, value: unknown): string {
+    const items = value as number[];
+    const isInt = element.kind === "Int";
+    let out = "[";
+    for (let i = 0; i < items.length; i++) {
+      if (i > 0) out += ",";
+      out += isInt ? String(items[i]) : numberText(element, items[i] as number);
+    }
+    return out + "]";
   }
 
   private scalarText(type: ColumnType, value: unknown): string {

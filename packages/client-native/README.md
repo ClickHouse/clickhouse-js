@@ -222,13 +222,13 @@ format, `query()` rejects the request.
 
 ### Supported column types
 
-All column types, except `AggregateFunction`, `QBit` and the deprecated
-`Object('json')`: integers (up to 256 bits), floats, `BFloat16`, `Decimal*`,
-`Bool`, `String`, `FixedString`, `Date`, `Date32`, `DateTime`, `DateTime64`,
-`Time`, `Time64`, `UUID`, `IPv4`, `IPv6`, `Enum8`, `Enum16`, `Nullable`,
-`LowCardinality` (also `LowCardinality(Nullable(T))`), `Array`, `Tuple`,
-`Map`, `Nested`, `Variant`, `Dynamic`, `JSON`, `SimpleAggregateFunction`,
-`Interval*` and the geo types.
+All column types, except `AggregateFunction` and the deprecated
+`Object('json')`: integers (up to 256 bits), floats, `BFloat16`, `QBit`,
+`Decimal*`, `Bool`, `String`, `FixedString`, `Date`, `Date32`, `DateTime`,
+`DateTime64`, `Time`, `Time64`, `UUID`, `IPv4`, `IPv6`, `Enum8`, `Enum16`,
+`Nullable`, `LowCardinality` (also `LowCardinality(Nullable(T))`), `Array`,
+`Tuple`, `Map`, `Nested`, `Variant`, `Dynamic`, `JSON`,
+`SimpleAggregateFunction`, `Interval*` and the geo types.
 
 ## Differences from the HTTP client
 
