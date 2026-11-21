@@ -70,19 +70,16 @@ jobs:
         # passthrough: stream ClickHouse's own TabSeparated text (transport /
         # session / settings coverage). rowbinary: decode
         # RowBinaryWithNamesAndTypes through @clickhouse/rowbinary and re-render
-        # to TabSeparated, exercising the dynamic header->reader path. Each
-        # backend has its own allowlist (see the "Run upstream SQL tests" step).
-        backend: [passthrough, rowbinary]
+        # to TabSeparated, exercising the dynamic header->reader path. native:
+        # connect over TCP with @clickhouse/client-native, decode Native blocks,
+        # and format output in JS. Each backend has its own allowlist (see the
+        # "Run upstream SQL tests" step).
+        backend: [passthrough, rowbinary, native]
         # Round-robin shards keep each job at roughly one minute so the
         # upstream SQL tests no longer dominate PR CI runtime. Bump
         # `shard` and `SHARD_TOTAL` together if the allowlist grows enough
         # that per-shard runtime climbs back above ~1 minute.
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        include:
-          - clickhouse: latest
-            backend: native
-            shard: 1
-            shard_total: 1
     steps:
       - name: Checkout clickhouse-js
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -139,7 +136,7 @@ jobs:
         env:
           CLICKHOUSE_CLIENT_CLI_LOG: ${{ github.workspace }}/upstream-run.log
           SHARD_INDEX: ${{ matrix.shard }}
-          SHARD_TOTAL: ${{ matrix.shard_total || 10 }}
+          SHARD_TOTAL: 10
           TEST_RUNNER_BACKEND: ${{ matrix.backend }}
         run: |
           if [ "${TEST_RUNNER_BACKEND}" = "native" ]; then
