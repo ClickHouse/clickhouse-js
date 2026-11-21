@@ -40,14 +40,17 @@ interface MockServer {
   close(): Promise<void>;
 }
 
-function serverHelloPacket(displayName = "mock-server"): Buffer {
+function serverHelloPacket(
+  displayName = "mock-server",
+  timezone = "UTC",
+): Buffer {
   return new BinaryWriter()
     .varuint(ServerPacketType.Hello)
     .string("MockClickHouse")
     .varuint(24)
     .varuint(8)
     .varuint(CLIENT_REVISION)
-    .string("UTC")
+    .string(timezone)
     .string(displayName)
     .varuint(1)
     .toBuffer();
@@ -244,6 +247,7 @@ async function startMockServer(
   ) => void,
   options?: {
     displayName?: (connectionIndex: number) => string;
+    timezone?: string;
     onCancel?: () => void;
   },
 ): Promise<MockServer> {
@@ -279,7 +283,7 @@ async function startMockServer(
         if (pkt.type === "hello") {
           state.handshakeDone = true;
           const name = options?.displayName?.(connIndex) ?? "mock-server";
-          socket.write(serverHelloPacket(name));
+          socket.write(serverHelloPacket(name, options?.timezone ?? "UTC"));
         } else if (pkt.type === "addendum") {
           state.addendumRead = true;
         } else if (pkt.type === "query") {
@@ -861,6 +865,165 @@ describe("[Native] NativeConnection protocol behavior", () => {
       expect(settingsQueries).toBe(3);
     } finally {
       dateSpy.mockRestore();
+      await client.close();
+    }
+  });
+
+  it("tracks SET session_timezone and output settings per connection and ignores failed SET", async () => {
+    // 2025-02-25 12:30:30 UTC (14:30:30 in Asia/Nicosia)
+    const epochSec = Math.floor(Date.UTC(2025, 1, 25, 12, 30, 30) / 1000);
+    mock = await startMockServer(
+      (q, socket) => {
+        if (q.query.includes("system.settings")) {
+          socket.write(serverEndOfStream());
+          return;
+        }
+        if (q.query.includes("Invalid/Zone")) {
+          socket.write(
+            serverExceptionPacket({
+              code: 36,
+              name: "DB::Exception",
+              message: "Unknown timezone Invalid/Zone",
+              stack_trace: "",
+            }),
+          );
+          return;
+        }
+        if (q.query.startsWith("SET ")) {
+          socket.write(serverEndOfStream());
+          return;
+        }
+        if (q.query.includes("SELECT ts")) {
+          socket.write(
+            Buffer.concat([
+              serverDataPacket(
+                [{ name: "ts", type: "DateTime", values: [epochSec] }],
+                1,
+              ),
+              serverEndOfStream(),
+            ]),
+          );
+          return;
+        }
+        socket.write(
+          Buffer.concat([
+            serverDataPacket([{ name: "n", type: "Int64", values: [42n] }], 1),
+            serverEndOfStream(),
+          ]),
+        );
+      },
+      { timezone: "Asia/Nicosia" },
+    );
+
+    const client = createClient({ url: mock.url, max_open_connections: 1 });
+    try {
+      // Initial query uses server timezone (Asia/Nicosia, UTC+2).
+      const rs0 = await client.query({
+        query: "SELECT ts",
+        format: "JSONEachRow",
+      });
+      expect(await rs0.json()).toEqual([{ ts: "2025-02-25 14:30:30" }]);
+
+      // SET session_timezone via exec() updates subsequent queries on this connection.
+      const setExec = await client.exec({
+        query: "SET session_timezone = 'UTC'",
+      });
+      setExec.stream.resume();
+      await new Promise((resolve) => setExec.stream.once("end", resolve));
+
+      const rs1 = await client.query({
+        query: "SELECT ts",
+        format: "JSONEachRow",
+      });
+      expect(await rs1.json()).toEqual([{ ts: "2025-02-25 12:30:30" }]);
+
+      // Failed SET does not overwrite the active session timezone.
+      await expect(
+        client.command({ query: "SET session_timezone = 'Invalid/Zone'" }),
+      ).rejects.toThrow("Unknown timezone");
+
+      const rs2 = await client.query({
+        query: "SELECT ts",
+        format: "JSONEachRow",
+      });
+      expect(await rs2.json()).toEqual([{ ts: "2025-02-25 12:30:30" }]);
+
+      // Resetting session_timezone via DEFAULT restores the server initial timezone.
+      await client.command({ query: "SET session_timezone = DEFAULT" });
+      const rs3 = await client.query({
+        query: "SELECT ts",
+        format: "JSONEachRow",
+      });
+      expect(await rs3.json()).toEqual([{ ts: "2025-02-25 14:30:30" }]);
+
+      // Output settings set via SET apply to later queries and can be reset with DEFAULT.
+      await client.command({
+        query: "SET output_format_json_quote_64bit_integers = 1",
+      });
+      const rs4 = await client.query({
+        query: "SELECT n",
+        format: "JSONEachRow",
+      });
+      expect(await rs4.json()).toEqual([{ n: "42" }]);
+
+      await client.command({
+        query: "SET output_format_json_quote_64bit_integers = DEFAULT",
+      });
+      const rs5 = await client.query({
+        query: "SELECT n",
+        format: "JSONEachRow",
+      });
+      expect(await rs5.json()).toEqual([{ n: 42 }]);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("terminates 0-row INSERT ... FORMAT statements in exec() without timing out", async () => {
+    let emptyDataBlocks = 0;
+    mock = await startMockServer((q, socket, ctx) => {
+      if (q.query.includes("system.settings")) {
+        socket.write(serverEndOfStream());
+        return;
+      }
+      ctx.onDataBlock = (rows) => {
+        if (rows === 0) {
+          emptyDataBlocks++;
+          socket.write(serverEndOfStream());
+        }
+      };
+      socket.write(
+        Buffer.concat([
+          serverTableColumnsPacket("`field` String"),
+          new BinaryWriter()
+            .varuint(ServerPacketType.Data)
+            .string("")
+            .raw(BLOCK_INFO)
+            .varuint(1)
+            .varuint(0)
+            .string("field")
+            .string("String")
+            .u8(0)
+            .toBuffer(),
+        ]),
+      );
+    });
+
+    const client = createClient({ url: mock.url, request_timeout: 500 });
+    try {
+      for (const query of [
+        "INSERT INTO t FORMAT JSONEachRow ;",
+        "INSERT INTO t FORMAT JSONAsString ;",
+      ]) {
+        const res = await client.exec({ query });
+        const chunks: Buffer[] = [];
+        for await (const chunk of res.stream) {
+          chunks.push(Buffer.from(chunk as Uint8Array));
+        }
+        expect(Buffer.concat(chunks).toString("utf8")).toBe("");
+      }
+      expect(emptyDataBlocks).toBe(2);
+    } finally {
       await client.close();
     }
   });

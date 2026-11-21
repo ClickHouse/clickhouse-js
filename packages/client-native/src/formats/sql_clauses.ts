@@ -38,6 +38,52 @@ export function readQueryClauses(query: string): {
   return { settings, format: tail === query.length ? name.text : undefined };
 }
 
+/**
+ * Parses a standalone `SET name = value [, ...]` statement.
+ * Returns `undefined` for non-`SET` statements (including `SET ROLE ...` or
+ * multi-statement SQL). Unquoted `DEFAULT` maps to `undefined` so the caller
+ * resets that session setting to the server default.
+ */
+export function setStatementSettings(
+  query: string,
+): Record<string, string | undefined> | undefined {
+  let pos = skipSpace(query, 0);
+  if (pos >= query.length || !WORD_CHAR.test(query[pos] as string)) {
+    return undefined;
+  }
+  let end = pos + 1;
+  while (end < query.length && WORD_CHAR.test(query[end] as string)) end++;
+  if (query.slice(pos, end).toUpperCase() !== "SET") return undefined;
+  pos = skipSpace(query, end);
+  if (pos === end) return undefined;
+
+  const result: Record<string, string | undefined> = Object.create(
+    null,
+  ) as Record<string, string | undefined>;
+  let count = 0;
+  for (;;) {
+    pos = skipSpace(query, pos);
+    const name = readName(query, pos);
+    if (name === undefined) break;
+    pos = skipSpace(query, name.end);
+    if (query[pos] !== "=") return undefined;
+    pos = skipSpace(query, pos + 1);
+    const value = readSettingValue(query, pos);
+    if (value === undefined) return undefined;
+    result[name.text] =
+      !value.quoted && value.text.toUpperCase() === "DEFAULT"
+        ? undefined
+        : value.text;
+    count++;
+    pos = skipSpace(query, value.end);
+    if (query[pos] !== ",") break;
+    pos++;
+  }
+  if (count === 0) return undefined;
+  if (query[pos] === ";") pos = skipSpace(query, pos + 1);
+  return pos === query.length ? result : undefined;
+}
+
 function readSettings(
   query: string,
   start: number,
@@ -217,14 +263,23 @@ function readName(query: string, pos: number): Token | undefined {
   return end === pos ? undefined : { text: query.slice(pos, end), end };
 }
 
-function readSettingValue(query: string, pos: number): Token | undefined {
+interface SettingValueToken extends Token {
+  quoted: boolean;
+}
+
+function readSettingValue(
+  query: string,
+  pos: number,
+): SettingValueToken | undefined {
   if (query[pos] === "'") {
     const end = skipQuoted(query, pos);
-    return { text: unquote(query.slice(pos, end)), end };
+    return { text: unquote(query.slice(pos, end)), end, quoted: true };
   }
   let end = pos;
   while (end < query.length && /[^\s,;()]/.test(query[end] as string)) end++;
-  return end === pos ? undefined : { text: query.slice(pos, end), end };
+  return end === pos
+    ? undefined
+    : { text: query.slice(pos, end), end, quoted: false };
 }
 
 const UNESCAPES: Record<string, string> = {

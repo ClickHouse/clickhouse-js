@@ -31,6 +31,7 @@ import {
   SupportedNativeFormats,
   applyOutputSettings,
   readQueryClauses,
+  setStatementSettings,
 } from "../formats";
 import { encodeText } from "../protocol/columns";
 import type { ResultChunk } from "../result_chunk";
@@ -307,12 +308,16 @@ export class NativeConnection implements Connection<Stream.Readable> {
     const { socket, serverSettings } = await this.acquireWithSettings(
       params.abort_signal,
     );
+    const effectiveSettings = { ...socket.sessionSettings, ...settings };
     let encoder: OutputEncoder;
     let decode: DecodeOptions;
     try {
-      const output = applyOutputSettings(serverSettings.output, settings);
+      const output = applyOutputSettings(
+        serverSettings.output,
+        effectiveSettings,
+      );
       encoder = new OutputEncoder(format, output);
-      decode = decodeOptions(socket, settings, output);
+      decode = decodeOptions(socket, effectiveSettings, output);
     } catch (err) {
       this.release(socket);
       throw err;
@@ -327,7 +332,8 @@ export class NativeConnection implements Connection<Stream.Readable> {
       {
         parts: true,
         wait_end_of_query: isTruthySetting(
-          settings["wait_end_of_query"] ?? settings["http_wait_end_of_query"],
+          effectiveSettings["wait_end_of_query"] ??
+            effectiveSettings["http_wait_end_of_query"],
         ),
       },
     );
@@ -459,11 +465,26 @@ export class NativeConnection implements Connection<Stream.Readable> {
       const cleanupAbort = this.onAbort(params.abort_signal, () =>
         fail(new Error(USER_ABORTED), false, true),
       );
+      let tableColumns = false;
+      let insertEndSent = false;
 
       const handler: PacketHandler = {
         packet: (packet: ServerPacket) => {
           switch (packet.type) {
+            case "table_columns":
+              tableColumns = true;
+              break;
             case "data": {
+              if (tableColumns && !insertEndSent) {
+                insertEndSent = true;
+                socket.write(
+                  encodeEmptyBlock(
+                    this.params.compression_method,
+                    this.params.compression_level,
+                  ),
+                );
+                break;
+              }
               const block = packet.block;
               if (block.columns.length === 0) break;
               if (block.rows > 0 && !waitEnd) resolveOnce();
@@ -529,6 +550,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
             case "end_of_stream": {
               finished = true;
               cleanupAbort();
+              const setSettings = setStatementSettings(params.query);
+              if (setSettings !== undefined) {
+                socket.applySessionSettings(setSettings);
+              }
               resolveOnce();
               const totals = progress.totals();
               const stats = {
@@ -682,9 +707,16 @@ export class NativeConnection implements Connection<Stream.Readable> {
                 done(toClickHouseError(packet.exception), true);
               }
               break;
-            case "end_of_stream":
+            case "end_of_stream": {
+              if (typeof params.query === "string") {
+                const setSettings = setStatementSettings(params.query);
+                if (setSettings !== undefined) {
+                  socket.applySessionSettings(setSettings);
+                }
+              }
               done(undefined, true);
               break;
+            }
             default:
               break;
           }
@@ -796,7 +828,10 @@ export class NativeConnection implements Connection<Stream.Readable> {
     const { socket, serverSettings } = await this.acquireWithSettings(
       params.abort_signal,
     );
-    const settings = params.clickhouse_settings ?? {};
+    const settings = {
+      ...socket.sessionSettings,
+      ...params.clickhouse_settings,
+    };
     const insertSettings = applyInsertSettings(serverSettings.insert, settings);
     const objectNameColumn =
       format === "JSONObjectEachRow"
@@ -1281,13 +1316,16 @@ export class NativeConnection implements Connection<Stream.Readable> {
   ): Promise<ConnExecResult<Stream.Readable>> {
     const ignoreError = params.ignore_error_response ?? false;
     assertSupported(params);
-    if (params.values !== undefined) {
+    if (params.values !== undefined || startsWithInsert(params.query)) {
       const input = params.values;
-      const query = await this.readInput(
-        input,
-        this.withShutdown(params.abort_signal),
-        () => readInlineQuery(params.query, input),
-      );
+      const query =
+        input !== undefined
+          ? await this.readInput(
+              input,
+              this.withShutdown(params.abort_signal),
+              () => readInlineQuery(params.query, input),
+            )
+          : params.query;
       let errorText: string | undefined;
       const result = await this.runCommand(
         { ...params, query },
@@ -1304,16 +1342,31 @@ export class NativeConnection implements Connection<Stream.Readable> {
       };
     }
     const clauses = readQueryClauses(params.query);
-    const settings = { ...params.clickhouse_settings, ...clauses.settings };
-    const format = resolveFormat(
-      clauses.format ?? settings.default_format ?? "TabSeparated",
-    );
+    const requestFormat =
+      clauses.format ??
+      clauses.settings["default_format"] ??
+      (typeof params.clickhouse_settings?.["default_format"] === "string"
+        ? params.clickhouse_settings["default_format"]
+        : undefined);
+    const resolvedRequestFormat =
+      requestFormat !== undefined ? resolveFormat(requestFormat) : undefined;
     const { socket, serverSettings } = await this.acquireWithSettings(
       params.abort_signal,
     );
+    const settings = {
+      ...socket.sessionSettings,
+      ...params.clickhouse_settings,
+      ...clauses.settings,
+    };
+    let format: DataFormat;
     let encoder: OutputEncoder;
     let decode: DecodeOptions;
     try {
+      format =
+        resolvedRequestFormat ??
+        resolveFormat(
+          socket.sessionSettings["default_format"] ?? "TabSeparated",
+        );
       const output = applyOutputSettings(serverSettings.output, settings);
       encoder = new OutputEncoder(format, output);
       decode = decodeOptions(socket, settings, output);

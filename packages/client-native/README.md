@@ -94,11 +94,14 @@ the client gives the text to your function.
 The integration tests compare the output of supported formats with the HTTP
 interface. Query statistics and progress rows come from the native protocol.
 The client reads output settings from `system.settings` per server identity
-(cached with a 5-minute TTL) and applies overrides from `clickhouse_settings`
-and from a top-level SQL `SETTINGS` clause.
+(cached with a 5-minute TTL) and applies overrides from session `SET`
+statements on that connection, `clickhouse_settings`, and a top-level SQL
+`SETTINGS` clause.
 For example, set `output_format_write_statistics = 0` on the query that returns
-JSON. A separate `SET` statement or a subquery can leave the client using its
-initial output settings. If the user cannot read `system.settings` (for
+JSON. A `SET` statement applies only to the connection that ran it (with
+`max_open_connections > 1`, prefer `clickhouse_settings` or a top-level
+`SETTINGS` clause), and a subquery `SETTINGS` clause is not read by the client.
+If the user cannot read `system.settings` (for
 example, a settings profile with `max_result_rows` below the number of
 settings), the client logs a warning and uses the defaults of a recent server
 instead of the user's settings profile.
@@ -114,9 +117,10 @@ zone can be in one of the two and not in the other (for example
 can differ from the HTTP interface. A time zone that Node.js does not know is
 an error.
 
-Set `session_timezone` in `clickhouse_settings` or in the top-level `SETTINGS`
-clause of the query. A separate `SET session_timezone` changes the server's
-session but can leave the client formatting results in the previous time zone.
+Set `session_timezone` in `clickhouse_settings`, in the top-level `SETTINGS`
+clause of the query, or with a `SET session_timezone` statement on a
+single-connection client (`max_open_connections: 1`). On a connection pool,
+`SET session_timezone` applies only to the connection that ran it.
 The `iso` output format writes UTC timestamps.
 
 These output settings are not supported, and the client ignores them:

@@ -5,6 +5,7 @@ import {
   OutputSettingNames,
   applyOutputSettings,
   readQueryClauses,
+  setStatementSettings,
   settingsFromQuery,
 } from "../../src/formats";
 import {
@@ -914,6 +915,45 @@ describe("[Native] FORMAT in SQL", () => {
     "SELECT * FROM (SELECT 1 FORMAT CSV)",
   ])("ignores a FORMAT that is not a clause in %s", (query) => {
     expect(readQueryClauses(query).format).toBeUndefined();
+  });
+});
+
+describe("[Native] setStatementSettings", () => {
+  it("parses standalone SET statements with comments and semicolons", () => {
+    expect(setStatementSettings("SET session_timezone = 'UTC'")).toEqual({
+      session_timezone: "UTC",
+    });
+    expect(
+      setStatementSettings(
+        "  -- comment\nset a = 1, b = 'Europe/Berlin', c = '' ; ",
+      ),
+    ).toEqual({
+      a: "1",
+      b: "Europe/Berlin",
+      c: "",
+    });
+  });
+
+  it("maps unquoted DEFAULT to undefined while preserving quoted 'DEFAULT'", () => {
+    const parsed = setStatementSettings(
+      "SET session_timezone = DEFAULT, other = 'DEFAULT'",
+    );
+    expect(parsed).toEqual({
+      session_timezone: undefined,
+      other: "DEFAULT",
+    });
+    expect(
+      Object.prototype.hasOwnProperty.call(parsed, "session_timezone"),
+    ).toBe(true);
+  });
+
+  it("returns undefined for non-SET, SET ROLE, or multi-statement SQL", () => {
+    expect(setStatementSettings("SELECT 1")).toBeUndefined();
+    expect(setStatementSettings("SET ROLE admin")).toBeUndefined();
+    expect(setStatementSettings("SET DEFAULT ROLE NONE TO u")).toBeUndefined();
+    expect(setStatementSettings("SETTER a = 1")).toBeUndefined();
+    expect(setStatementSettings("SET a = 1; SELECT 1")).toBeUndefined();
+    expect(setStatementSettings("SET")).toBeUndefined();
   });
 });
 

@@ -49,6 +49,11 @@ export interface PacketHandler {
  */
 export class NativeSocket {
   readonly server: ServerInfo;
+  private readonly initialTimezone: string;
+  /** Per-connection settings applied by successful `SET` statements. */
+  readonly sessionSettings: Record<string, string> = Object.create(
+    null,
+  ) as Record<string, string>;
   private readonly socket: net.Socket;
   private ctx: DecodeContext;
   private handler: PacketHandler | undefined;
@@ -93,6 +98,7 @@ export class NativeSocket {
   private constructor(socket: net.Socket, server: ServerInfo) {
     this.socket = socket;
     this.server = server;
+    this.initialTimezone = server.timezone;
     this.ctx = { timezone: server.timezone };
     socket.on("data", (chunk: Buffer) => this.onData(chunk));
     socket.on("error", (err) => this.fail(err));
@@ -124,6 +130,22 @@ export class NativeSocket {
   /** True if the socket can run a request. */
   get usable(): boolean {
     return this.failure === undefined && !this.socket.destroyed;
+  }
+
+  /** Applies settings from a completed `SET` statement to this session socket. */
+  applySessionSettings(settings: Record<string, string | undefined>): void {
+    for (const [name, value] of Object.entries(settings)) {
+      if (name === "session_timezone") {
+        const tz =
+          value === undefined || value === "" ? this.initialTimezone : value;
+        this.server.timezone = tz;
+        this.ctx.timezone = tz;
+      } else if (value === undefined) {
+        Reflect.deleteProperty(this.sessionSettings, name);
+      } else {
+        this.sessionSettings[name] = value;
+      }
+    }
   }
 
   /** Starts a request: sends the data and gives the packets to the handler. */
