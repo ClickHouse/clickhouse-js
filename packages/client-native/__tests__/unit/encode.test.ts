@@ -9,6 +9,7 @@ import {
 import {
   InsertValueError,
   ServerParseNeeded,
+  createNormalizer,
   encodeBlock,
   encodeColumn,
   normalize,
@@ -1130,5 +1131,28 @@ describe("[Native] encode edge cases", () => {
       -1n,
       -1n,
     ]);
+  });
+
+  it("matches normalize() via createNormalizer() for scalar and DateTime columns", () => {
+    const dtType = parseColumnType("DateTime");
+    const normDt = createNormalizer(dtType, ctx);
+    expect(normDt("2024-06-15 12:34:56")).toBe(
+      normalize(dtType, "2024-06-15 12:34:56", ctx),
+    );
+    // Repeated string hits the 1-entry cache cleanly.
+    expect(normDt("2024-06-15 12:34:56")).toBe(
+      normalize(dtType, "2024-06-15 12:34:56", ctx),
+    );
+    // Varying and non-standard shapes still delegate accurately.
+    expect(normDt("2024-06-16T01:02:03Z")).toBe(
+      normalize(dtType, "2024-06-16T01:02:03Z", ctx),
+    );
+    expect(normDt(1700000000)).toBe(normalize(dtType, 1700000000, ctx));
+    expect(() => normDt("not-a-date")).toThrow(InsertValueError);
+
+    // ASCII (<128), long ASCII (>=128), and UTF-8 strings round-trip identically.
+    expect(
+      roundTrip("String", ["", "item_42", "a".repeat(128), "café 😀"]),
+    ).toEqual(["", "item_42", "a".repeat(128), "café 😀"]);
   });
 });

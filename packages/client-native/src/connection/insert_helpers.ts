@@ -1,7 +1,11 @@
 import type Stream from "node:stream";
 import type { ConnInsertParams } from "../common/index";
 import type { EncodeContext } from "../protocol/encode";
-import { InsertValueError, defaultValue, normalize } from "../protocol/encode";
+import {
+  InsertValueError,
+  createNormalizer,
+  defaultValue,
+} from "../protocol/encode";
 import type { ColumnType } from "../protocol/types";
 import { unwrapType } from "../protocol/types";
 import { isJSONObjectEachRowEntry } from "../utils/encoder";
@@ -132,14 +136,14 @@ export function encodeInsertRows(
     values: unknown[];
   }>(colCount);
   const colValues = new Array<unknown[]>(colCount);
-  const colTypes = new Array<ColumnType>(colCount);
+  const colNormalizers = new Array<(value: unknown) => unknown>(colCount);
   const colNames = new Array<string>(colCount);
   const colDefaults = new Array<unknown>(colCount);
   for (let c = 0; c < colCount; c++) {
     const col = columns[c]!;
     const values = new Array<unknown>(rowCount);
     colValues[c] = values;
-    colTypes[c] = col.type;
+    colNormalizers[c] = createNormalizer(col.type, ctx);
     colNames[c] = col.name;
     colDefaults[c] = defaultValue(col.type);
     outCols[c] = { name: col.name, type: col.type, values };
@@ -157,7 +161,7 @@ export function encodeInsertRows(
         const v =
           p >= 0 && p < row.length && row[p] !== undefined ? row[p] : MISSING;
         colValues[c]![r] =
-          v === MISSING ? colDefaults[c] : normalize(colTypes[c]!, v, ctx);
+          v === MISSING ? colDefaults[c] : colNormalizers[c]!(v);
       }
     }
   } else {
@@ -183,7 +187,7 @@ export function encodeInsertRows(
         const name = colNames[c]!;
         const v = Object.hasOwn(obj, name) ? obj[name] : undefined;
         colValues[c]![r] =
-          v === undefined ? colDefaults[c] : normalize(colTypes[c]!, v, ctx);
+          v === undefined ? colDefaults[c] : colNormalizers[c]!(v);
       }
     }
   }

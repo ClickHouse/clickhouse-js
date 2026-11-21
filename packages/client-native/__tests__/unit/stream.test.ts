@@ -249,4 +249,70 @@ describe("[Native] ResultSet tracing decoded_bytes", () => {
     }
     expect(parsed).toEqual([{ wrapped: { n: 1 } }, { wrapped: { n: 2 } }]);
   });
+
+  it("pulls streamText sub-batches lazily and stops formatting on early close()", async () => {
+    let calls = 0;
+    const slices = [
+      '{"n":1}\n{"n":2}\n',
+      '{"n":3}\n{"n":4}\n',
+      '{"n":5}\n{"n":6}\n',
+      '{"n":7}\n{"n":8}\n',
+      '{"n":9}\n',
+    ];
+    const chunk: ResultChunk = {
+      text: () => slices.join(""),
+      streamText: () => {
+        let i = 0;
+        return () => {
+          calls++;
+          return i < slices.length ? slices[i++] : undefined;
+        };
+      },
+    };
+    const rs = new ResultSet(
+      Stream.Readable.from([chunk], { objectMode: true }),
+      "JSONEachRow",
+      "q7",
+    );
+    const seen: unknown[] = [];
+    for await (const batch of rs.stream()) {
+      for (const row of batch) seen.push(row.json());
+      rs.close();
+      break;
+    }
+    expect(seen).toEqual([{ n: 1 }, { n: 2 }]);
+    // At most the first batch plus one read-ahead slice are formatted; the rest
+    // of the block is skipped when ResultSet.close() runs.
+    expect(calls).toBeLessThanOrEqual(2);
+  });
+
+  it("consumes all streamText sub-batches with accurate span metrics", async () => {
+    const span = new RecordedSpan();
+    const slices = ['{"n":1}\n{"n":2}\n', '{"n":3}\n'];
+    const chunk: ResultChunk = {
+      text: () => slices.join(""),
+      streamText: () => {
+        let i = 0;
+        return () => (i < slices.length ? slices[i++] : undefined);
+      },
+    };
+    const rs = new ResultSet(
+      Stream.Readable.from([chunk], { objectMode: true }),
+      "JSONEachRow",
+      "q8",
+      undefined,
+      undefined,
+      undefined,
+      span,
+    );
+    const seen: unknown[] = [];
+    for await (const batch of rs.stream()) {
+      for (const row of batch) seen.push(row.json());
+    }
+    expect(seen).toEqual([{ n: 1 }, { n: 2 }, { n: 3 }]);
+    expect(span.attributes["db.response.returned_rows"]).toBe(3);
+    expect(span.attributes["clickhouse.response.decoded_bytes"]).toBe(
+      Buffer.byteLength(slices.join("")),
+    );
+  });
 });

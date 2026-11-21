@@ -863,6 +863,81 @@ export function defaultValue(type: ColumnType): unknown {
   }
 }
 
+/** Builds a per-column normalizer that fast-paths common native JS values
+ *  and delegates edge cases (`null`, string coercion, out-of-range errors)
+ *  to {@link normalize}. */
+export function createNormalizer(
+  type: ColumnType,
+  ctx: EncodeContext,
+): (value: unknown) => unknown {
+  switch (type.kind) {
+    case "Int": {
+      if (type.bits <= 32) {
+        const limits = INT_LIMITS_NUMBER[type.bits] as [number, number, number];
+        const min = type.signed ? limits[0] : 0;
+        const max = type.signed ? limits[1] : limits[2];
+        return (value) => {
+          if (
+            typeof value === "number" &&
+            Number.isInteger(value) &&
+            value >= min &&
+            value <= max
+          ) {
+            return value;
+          }
+          return normalize(type, value, ctx);
+        };
+      }
+      if (type.bits === 64) {
+        const signed = type.signed;
+        return (value) => {
+          if (
+            typeof value === "number" &&
+            Number.isSafeInteger(value) &&
+            (signed || value >= 0)
+          ) {
+            return value;
+          }
+          return normalize(type, value, ctx);
+        };
+      }
+      break;
+    }
+    case "Float":
+    case "BFloat16":
+      return (value) =>
+        typeof value === "number" ? value : normalize(type, value, ctx);
+    case "Bool":
+      return (value) =>
+        typeof value === "boolean" ? value : normalize(type, value, ctx);
+    case "String":
+      return (value) =>
+        typeof value === "string" ? value : normalize(type, value, ctx);
+    case "DateTime": {
+      const tz = type.timezone ?? ctx.timezone;
+      let lastText = "";
+      let lastValue = -1;
+      return (value) => {
+        if (typeof value === "string") {
+          if (lastValue >= 0 && value === lastText) return lastValue;
+          const fast = fastWallClockSeconds(value);
+          if (!Number.isNaN(fast)) {
+            const res = clamp(wallClockToUTC(fast, tz), 0, DATETIME_MAX);
+            lastText = value;
+            lastValue = res;
+            return res;
+          }
+          return toDateTimeSeconds(type, value, tz);
+        }
+        return normalize(type, value, ctx);
+      };
+    }
+    default:
+      break;
+  }
+  return (value) => normalize(type, value, ctx);
+}
+
 /** Checks a value against the column type and returns its stored form. */
 export function normalize(
   type: ColumnType,

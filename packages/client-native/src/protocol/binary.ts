@@ -286,6 +286,26 @@ export class BinaryWriter {
   }
 
   string(v: string): this {
+    const len = v.length;
+    if (len < 0x80) {
+      this.reserve(1 + len);
+      const buf = this.current;
+      const start = this.offset + 1;
+      let ascii = true;
+      for (let i = 0; i < len; i++) {
+        const ch = v.charCodeAt(i);
+        if (ch >= 0x80) {
+          ascii = false;
+          break;
+        }
+        buf[start + i] = ch;
+      }
+      if (ascii) {
+        buf[this.offset] = len;
+        this.offset = start + len;
+        return this;
+      }
+    }
     const length = Buffer.byteLength(v, "utf8");
     if (length < 0x80) {
       this.reserve(1 + length);

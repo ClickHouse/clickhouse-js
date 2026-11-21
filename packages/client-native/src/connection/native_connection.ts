@@ -404,6 +404,9 @@ export class NativeConnection implements Connection<Stream.Readable> {
         rows?: (raw: boolean) => { rows: unknown[]; text: string },
         bytes?: number,
         rowCount?: number,
+        streamText?: (
+          batchRows: number,
+        ) => (() => string | undefined) | undefined,
       ) => {
         const raw = socket.rawBytes;
         const chunk: ResultChunk = {
@@ -415,6 +418,16 @@ export class NativeConnection implements Connection<Stream.Readable> {
           chunk.rows = () => {
             const result = rows(raw);
             return { rows: result.rows, text: output(result.text, raw) };
+          };
+        }
+        if (streamText !== undefined) {
+          chunk.streamText = (batchRows) => {
+            const next = streamText(batchRows);
+            if (next === undefined) return undefined;
+            return () => {
+              const part = next();
+              return part === undefined ? undefined : output(part, raw);
+            };
           };
         }
         if (!stream.push(chunk) && resolved) socket.pause();
@@ -466,6 +479,9 @@ export class NativeConnection implements Connection<Stream.Readable> {
                   },
                   block.bytes,
                   block.rows,
+                  encoder.canWriteBinaryRows
+                    ? (batchRows) => encoder.dataStream(block, batchRows)
+                    : undefined,
                 );
               } else {
                 pushPart(

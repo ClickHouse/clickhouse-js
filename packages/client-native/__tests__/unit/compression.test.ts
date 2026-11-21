@@ -599,6 +599,50 @@ describe("[Native] compressed blocks", () => {
       expect(read(frame)).toThrow("Corrupted LZ4 data");
     });
 
+    it("decompresses overlapping matches accurately across prime and boundary offsets", () => {
+      const offsets = [1, 2, 3, 5, 7, 9, 13, 17, 31, 32, 33, 63, 65];
+      const matchLengths = [4, 16, 31, 32, 33, 100, 1000];
+      for (const offset of offsets) {
+        const seed = Buffer.allocUnsafe(offset);
+        for (let i = 0; i < offset; i++) seed[i] = (i * 37 + 11) & 0xff;
+        for (const matchLen of matchLengths) {
+          // Build a raw LZ4 sequence: `offset` literal bytes, then a match of
+          // `matchLen` bytes at `-offset`, ending with 0 trailing literals.
+          const parts: number[] = [];
+          const litCode = offset >= 15 ? 15 : offset;
+          const mExtra = matchLen - 4;
+          const mCode = mExtra >= 15 ? 15 : mExtra;
+          parts.push((litCode << 4) | mCode);
+          if (offset >= 15) {
+            let rem = offset - 15;
+            while (rem >= 255) {
+              parts.push(255);
+              rem -= 255;
+            }
+            parts.push(rem);
+          }
+          for (let i = 0; i < offset; i++) parts.push(seed[i]!);
+          parts.push(offset & 0xff, (offset >>> 8) & 0xff);
+          if (mExtra >= 15) {
+            let rem = mExtra - 15;
+            while (rem >= 255) {
+              parts.push(255);
+              rem -= 255;
+            }
+            parts.push(rem);
+          }
+          const payload = Buffer.from(parts);
+          const expected = Buffer.allocUnsafe(offset + matchLen);
+          for (let i = 0; i < offset; i++) expected[i] = seed[i]!;
+          for (let i = 0; i < matchLen; i++) {
+            expected[offset + i] = expected[i]!;
+          }
+          const actual = lz4Decompress(payload, expected.length);
+          expect(actual.equals(expected)).toBe(true);
+        }
+      }
+    });
+
     it.skipIf(!isZstdAvailable())("rejects ZSTD data with a wrong size", () => {
       const data = Buffer.from("hello world ".repeat(1000));
       const good = compressFrame(data, "zstd");

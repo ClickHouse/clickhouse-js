@@ -2,7 +2,7 @@ import type { DataFormat } from "../common/index";
 import { BinaryJSONRows } from "../json_rows";
 import type { Block, Column, Progress } from "../protocol/packets";
 import type { ColumnType } from "../protocol/types";
-import { TypedValue } from "../protocol/columns";
+import { RawJSONValue, TypedValue } from "../protocol/columns";
 import { tabs } from "./json_pretty";
 import type { OutputSettings, OutputStatistics } from "./settings";
 import { isSupportedNativeFormat, SupportedNativeFormats } from "./settings";
@@ -166,6 +166,52 @@ export class OutputEncoder {
     );
   }
 
+  /** Lazily formats a large binary block in sub-batches of `batchRows` rows
+   *  for `ResultSet.stream()`, avoiding formatting all 65k rows before the
+   *  consumer reads the first batch. Returns `undefined` when not applicable. */
+  dataStream(
+    block: Block,
+    batchRows: number,
+  ): (() => string | undefined) | undefined {
+    if (
+      block.columns.length === 0 ||
+      block.rows <= batchRows ||
+      !this.canWriteBinaryRows ||
+      block.columns[0]?.binary === undefined
+    ) {
+      return undefined;
+    }
+    const writer = (this.binaryRows ??= new BinaryJSONRows(
+      JSON_ESCAPE_BYTES,
+      this.settings.output_format_json_escape_forward_slashes,
+      this.settings.output_format_json_quote_64bit_integers,
+    ));
+    const prefixes =
+      this.layout === "object_lines"
+        ? this.objectPrefixes(block)
+        : block.columns.map((_, i) => (i === 0 ? "[" : ", "));
+    const suffix = this.layout === "object_lines" ? "}\n" : "]\n";
+    const stepper = writer.open(block, prefixes, suffix);
+    if (stepper === undefined) return undefined;
+    let headerText = "";
+    if (this.columns === undefined) {
+      this.columns = block.columns.map(({ name, type }) => ({ name, type }));
+      this.columnValues = this.columns.map(() => []);
+      headerText = this.header();
+    }
+    this.rows += block.rows;
+    let first = true;
+    return () => {
+      const part = stepper.next(batchRows);
+      if (part === undefined) return undefined;
+      if (first) {
+        first = false;
+        if (headerText.length > 0) return headerText + part;
+      }
+      return part;
+    };
+  }
+
   /**
    * Handles a Data block as {@link data} does, but gives its rows as JS
    * values: the values that `JSON.parse` gives for the text of the rows.
@@ -189,19 +235,39 @@ export class OutputEncoder {
     const columns = block.columns;
     const count = columns.length;
     const rowCount = block.rows;
-    const convert = columns.map((column) => {
+    const data = new Array<unknown[]>(count);
+    for (let c = 0; c < count; c++) {
+      const column = columns[c]!;
+      const rawCol = column.values;
       const fn = values.converter(column.type);
-      return fn === passValue ? undefined : fn;
-    });
-    const data = columns.map((column) => column.values);
+      if (fn === passValue) {
+        data[c] = rawCol;
+      } else if (
+        !raw &&
+        rowCount > 1 &&
+        column.type.kind === "JSON" &&
+        rawCol[0] instanceof RawJSONValue
+      ) {
+        const bulk = tryBulkParseRawJSON(rawCol, rowCount);
+        if (bulk !== undefined) {
+          data[c] = bulk;
+        } else {
+          const out = new Array<unknown>(rowCount);
+          for (let r = 0; r < rowCount; r++) out[r] = fn(rawCol[r]);
+          data[c] = out;
+        }
+      } else {
+        const out = new Array<unknown>(rowCount);
+        for (let r = 0; r < rowCount; r++) out[r] = fn(rawCol[r]);
+        data[c] = out;
+      }
+    }
     const rows = new Array<unknown>(rowCount);
     if (this.layout === "array_lines" || this.layout === "compact_document") {
       for (let r = 0; r < rowCount; r++) {
         const row = new Array<unknown>(count);
         for (let c = 0; c < count; c++) {
-          const fn = convert[c];
-          const v = data[c]![r];
-          row[c] = fn === undefined ? (v === undefined ? null : v) : fn(v);
+          row[c] = data[c]![r] ?? null;
         }
         rows[r] = row;
       }
@@ -210,27 +276,12 @@ export class OutputEncoder {
     const names = columns.map((column) => values.string(column.name));
     const plain = !names.includes("__proto__");
     if (plain) {
-      for (let r = 0; r < rowCount; r++) {
-        const row: Record<string, unknown> = {};
-        for (let c = 0; c < count; c++) {
-          const fn = convert[c];
-          const v = data[c]![r];
-          row[names[c] as string] =
-            fn === undefined ? (v === undefined ? null : v) : fn(v);
-        }
-        rows[r] = row;
-      }
+      buildPlainRowObjects(rows, rowCount, names, data, count);
     } else {
       for (let r = 0; r < rowCount; r++) {
         const row: Record<string, unknown> = {};
         for (let c = 0; c < count; c++) {
-          const fn = convert[c];
-          const v = data[c]![r];
-          setField(
-            row,
-            names[c] as string,
-            fn === undefined ? (v === undefined ? null : v) : fn(v),
-          );
+          setField(row, names[c] as string, data[c]![r] ?? null);
         }
         rows[r] = row;
       }
@@ -823,4 +874,208 @@ function unwrapValueType(type: ColumnType, value: unknown): ColumnType {
 
 function csvQuote(s: string): string {
   return '"' + s.replace(/"/g, '""') + '"';
+}
+
+function tryBulkParseRawJSON(
+  rawCol: unknown[],
+  rowCount: number,
+): unknown[] | undefined {
+  const texts = new Array<string>(rowCount);
+  for (let r = 0; r < rowCount; r++) {
+    const v = rawCol[r];
+    if (!(v instanceof RawJSONValue)) return undefined;
+    texts[r] = v.text;
+  }
+  try {
+    const parsed = JSON.parse("[" + texts.join(",") + "]") as unknown[];
+    return parsed.length === rowCount ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Populates plain row objects (`!names.includes("__proto__")`) with unrolled
+ *  property-assignment sites for 1..8 columns so each column gets its own
+ *  monomorphic V8 inline cache. */
+function buildPlainRowObjects(
+  rows: unknown[],
+  rowCount: number,
+  names: string[],
+  data: unknown[][],
+  count: number,
+): void {
+  switch (count) {
+    case 1: {
+      const n0 = names[0]!;
+      const c0 = data[0]!;
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        row[n0] = c0[r] ?? null;
+        rows[r] = row;
+      }
+      return;
+    }
+    case 2: {
+      const n0 = names[0]!;
+      const n1 = names[1]!;
+      const c0 = data[0]!;
+      const c1 = data[1]!;
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        row[n0] = c0[r] ?? null;
+        row[n1] = c1[r] ?? null;
+        rows[r] = row;
+      }
+      return;
+    }
+    case 3: {
+      const n0 = names[0]!;
+      const n1 = names[1]!;
+      const n2 = names[2]!;
+      const c0 = data[0]!;
+      const c1 = data[1]!;
+      const c2 = data[2]!;
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        row[n0] = c0[r] ?? null;
+        row[n1] = c1[r] ?? null;
+        row[n2] = c2[r] ?? null;
+        rows[r] = row;
+      }
+      return;
+    }
+    case 4: {
+      const n0 = names[0]!;
+      const n1 = names[1]!;
+      const n2 = names[2]!;
+      const n3 = names[3]!;
+      const c0 = data[0]!;
+      const c1 = data[1]!;
+      const c2 = data[2]!;
+      const c3 = data[3]!;
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        row[n0] = c0[r] ?? null;
+        row[n1] = c1[r] ?? null;
+        row[n2] = c2[r] ?? null;
+        row[n3] = c3[r] ?? null;
+        rows[r] = row;
+      }
+      return;
+    }
+    case 5: {
+      const n0 = names[0]!;
+      const n1 = names[1]!;
+      const n2 = names[2]!;
+      const n3 = names[3]!;
+      const n4 = names[4]!;
+      const c0 = data[0]!;
+      const c1 = data[1]!;
+      const c2 = data[2]!;
+      const c3 = data[3]!;
+      const c4 = data[4]!;
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        row[n0] = c0[r] ?? null;
+        row[n1] = c1[r] ?? null;
+        row[n2] = c2[r] ?? null;
+        row[n3] = c3[r] ?? null;
+        row[n4] = c4[r] ?? null;
+        rows[r] = row;
+      }
+      return;
+    }
+    case 6: {
+      const n0 = names[0]!;
+      const n1 = names[1]!;
+      const n2 = names[2]!;
+      const n3 = names[3]!;
+      const n4 = names[4]!;
+      const n5 = names[5]!;
+      const c0 = data[0]!;
+      const c1 = data[1]!;
+      const c2 = data[2]!;
+      const c3 = data[3]!;
+      const c4 = data[4]!;
+      const c5 = data[5]!;
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        row[n0] = c0[r] ?? null;
+        row[n1] = c1[r] ?? null;
+        row[n2] = c2[r] ?? null;
+        row[n3] = c3[r] ?? null;
+        row[n4] = c4[r] ?? null;
+        row[n5] = c5[r] ?? null;
+        rows[r] = row;
+      }
+      return;
+    }
+    case 7: {
+      const n0 = names[0]!;
+      const n1 = names[1]!;
+      const n2 = names[2]!;
+      const n3 = names[3]!;
+      const n4 = names[4]!;
+      const n5 = names[5]!;
+      const n6 = names[6]!;
+      const c0 = data[0]!;
+      const c1 = data[1]!;
+      const c2 = data[2]!;
+      const c3 = data[3]!;
+      const c4 = data[4]!;
+      const c5 = data[5]!;
+      const c6 = data[6]!;
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        row[n0] = c0[r] ?? null;
+        row[n1] = c1[r] ?? null;
+        row[n2] = c2[r] ?? null;
+        row[n3] = c3[r] ?? null;
+        row[n4] = c4[r] ?? null;
+        row[n5] = c5[r] ?? null;
+        row[n6] = c6[r] ?? null;
+        rows[r] = row;
+      }
+      return;
+    }
+    case 8: {
+      const n0 = names[0]!;
+      const n1 = names[1]!;
+      const n2 = names[2]!;
+      const n3 = names[3]!;
+      const n4 = names[4]!;
+      const n5 = names[5]!;
+      const n6 = names[6]!;
+      const n7 = names[7]!;
+      const c0 = data[0]!;
+      const c1 = data[1]!;
+      const c2 = data[2]!;
+      const c3 = data[3]!;
+      const c4 = data[4]!;
+      const c5 = data[5]!;
+      const c6 = data[6]!;
+      const c7 = data[7]!;
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        row[n0] = c0[r] ?? null;
+        row[n1] = c1[r] ?? null;
+        row[n2] = c2[r] ?? null;
+        row[n3] = c3[r] ?? null;
+        row[n4] = c4[r] ?? null;
+        row[n5] = c5[r] ?? null;
+        row[n6] = c6[r] ?? null;
+        row[n7] = c7[r] ?? null;
+        rows[r] = row;
+      }
+      return;
+    }
+    default:
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        for (let c = 0; c < count; c++) {
+          row[names[c] as string] = data[c]![r] ?? null;
+        }
+        rows[r] = row;
+      }
+  }
 }

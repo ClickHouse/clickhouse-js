@@ -7,6 +7,7 @@ const MAX_BUFFER_SIZE = 16 * 1024 * 1024;
 /** Reusable synchronous scratch buffer kept across queries up to this size. */
 const MAX_KEPT_SCRATCH_SIZE = 8 * 1024 * 1024;
 let sharedScratch: Buffer | undefined;
+
 const TRUE = Buffer.from("true");
 const FALSE = Buffer.from("false");
 const LINE_SEPARATOR = Buffer.from("\\u2028");
@@ -34,6 +35,13 @@ interface PreparedField {
   view: DataView | undefined;
   quote: boolean;
   input: number;
+  /** Fixed max bytes per row for non-String fields; 0 for String fields. */
+  rowMaxBytes: number;
+}
+
+/** Lazily formats slices of a binary Native block into JSON text lines. */
+export interface BinaryJSONRowsStepper {
+  next(maxRows: number): string | undefined;
 }
 
 /** Writes JSON rows from the retained bytes of simple Native columns. */
@@ -56,17 +64,18 @@ export class BinaryJSONRows {
     this.quoteInt64 = quoteInt64;
   }
 
-  write(
+  /** Prepares a stepper that formats `block` in chunks of up to `maxRows` rows,
+   *  or returns `undefined` if any column cannot use the binary fast path. */
+  open(
     block: Block,
     prefixes: string[],
     suffix: "}\n" | "]\n",
-  ): string | undefined {
-    // JSON row layouts end with an ASCII bracket and a newline.
+  ): BinaryJSONRowsStepper | undefined {
     const close = suffix.charCodeAt(0);
     const colCount = block.columns.length;
-    const rows = block.rows;
+    const totalRows = block.rows;
     const fields = new Array<PreparedField>(colCount);
-    let capacity = rows * 2;
+    let fixedRowMax = 2; // close + '\n'
     for (let i = 0; i < colCount; i++) {
       const column = block.columns[i] as Column;
       const bytes = column.binary;
@@ -74,196 +83,238 @@ export class BinaryJSONRows {
       const field = prepareField(
         column.type,
         bytes,
-        rows,
         Buffer.from(prefixes[i] as string),
         this.quoteInt64,
       );
       if (field === undefined) return;
-      capacity += field.capacity + rows * field.field.prefix.length;
-      if (capacity > MAX_BUFFER_SIZE) return;
-      fields[i] = field.field;
-    }
-    let out: Buffer;
-    if (capacity <= MAX_KEPT_SCRATCH_SIZE) {
-      if (sharedScratch === undefined || sharedScratch.length < capacity) {
-        sharedScratch = Buffer.allocUnsafe(capacity);
-      }
-      out = sharedScratch;
-    } else {
-      out = Buffer.allocUnsafe(capacity);
+      fixedRowMax += field.prefix.length + field.rowMaxBytes;
+      fields[i] = field;
     }
     const escapes = this.escapes;
     const escapeKind = this.escapeKind;
-    let pos = 0;
-    for (let row = 0; row < rows; row++) {
-      for (let f = 0; f < colCount; f++) {
-        const field = fields[f]!;
-        const prefix = field.prefix;
-        const pLen = prefix.length;
-        for (let i = 0; i < pLen; i++) out[pos++] = prefix[i]!;
-        switch (field.kind) {
-          case FIELD_STRING: {
-            const src = field.bytes;
-            let input = field.input;
-            const length = src[input++]!;
-            const end = input + length;
-            out[pos++] = 34;
-            while (input < end) {
-              const byte = src[input++]!;
-              const flag = escapeKind[byte]!;
-              if (flag === 0) {
-                out[pos++] = byte;
-              } else if (flag === 2) {
-                if (input + 1 < end && src[input] === 0x80) {
-                  const last = src[input + 1];
-                  if (last === 0xa8 || last === 0xa9) {
-                    const esc =
-                      last === 0xa8 ? LINE_SEPARATOR : PARAGRAPH_SEPARATOR;
-                    out.set(esc, pos);
-                    pos += esc.length;
-                    input += 2;
-                    continue;
-                  }
-                }
-                out[pos++] = byte;
-              } else {
-                const esc = escapes[byte]!;
-                out.set(esc, pos);
-                pos += esc.length;
-              }
+    let currentRow = 0;
+    return {
+      next: (maxRows: number): string | undefined => {
+        if (currentRow >= totalRows) return undefined;
+        const endRow = Math.min(currentRow + maxRows, totalRows);
+        const sliceRows = endRow - currentRow;
+        let capacity = sliceRows * fixedRowMax;
+        for (let f = 0; f < colCount; f++) {
+          const field = fields[f]!;
+          if (field.kind === FIELD_STRING) {
+            const bytes = field.bytes;
+            let scan = field.input;
+            let rawBytes = 0;
+            for (let r = 0; r < sliceRows; r++) {
+              const l = bytes[scan]!;
+              rawBytes += l;
+              scan += 1 + l;
             }
-            out[pos++] = 34;
-            field.input = input;
-            break;
-          }
-          case FIELD_BOOL: {
-            const val = field.bytes[row] === 0 ? FALSE : TRUE;
-            out.set(val, pos);
-            pos += val.length;
-            break;
-          }
-          case FIELD_UINT8:
-            pos = writeUnsigned32(out, pos, field.bytes[row]!);
-            break;
-          case FIELD_INT8:
-            pos = writeSigned32(out, pos, field.view!.getInt8(row));
-            break;
-          case FIELD_UINT16:
-            pos = writeUnsigned32(
-              out,
-              pos,
-              field.view!.getUint16(row * 2, true),
-            );
-            break;
-          case FIELD_INT16:
-            pos = writeSigned32(out, pos, field.view!.getInt16(row * 2, true));
-            break;
-          case FIELD_UINT32:
-            pos = writeUnsigned32(
-              out,
-              pos,
-              field.view!.getUint32(row * 4, true),
-            );
-            break;
-          case FIELD_INT32:
-            pos = writeSigned32(out, pos, field.view!.getInt32(row * 4, true));
-            break;
-          case FIELD_UINT64: {
-            const view = field.view!;
-            const offset = row * 8;
-            if (field.quote) out[pos++] = 34;
-            const hi = view.getUint32(offset + 4, true);
-            if (hi === 0) {
-              pos = writeUnsigned32(out, pos, view.getUint32(offset, true));
-            } else if (hi < 0x200000) {
-              pos += out.write(
-                String(hi * 0x100000000 + view.getUint32(offset, true)),
-                pos,
-                "ascii",
-              );
-            } else {
-              pos += out.write(
-                String(view.getBigUint64(offset, true)),
-                pos,
-                "ascii",
-              );
-            }
-            if (field.quote) out[pos++] = 34;
-            break;
-          }
-          case FIELD_INT64: {
-            const view = field.view!;
-            const offset = row * 8;
-            if (field.quote) out[pos++] = 34;
-            const hi = view.getInt32(offset + 4, true);
-            if (hi === 0) {
-              pos = writeUnsigned32(out, pos, view.getUint32(offset, true));
-            } else if (hi === -1) {
-              const lo = view.getUint32(offset, true);
-              if (lo !== 0) {
-                out[pos++] = 45;
-                pos = writeUnsigned32(out, pos, (~lo >>> 0) + 1);
-              } else {
-                pos += out.write("-4294967296", pos, "ascii");
-              }
-            } else if (hi > -0x200000 && hi < 0x200000) {
-              pos += out.write(
-                String(hi * 0x100000000 + view.getUint32(offset, true)),
-                pos,
-                "ascii",
-              );
-            } else {
-              pos += out.write(
-                String(view.getBigInt64(offset, true)),
-                pos,
-                "ascii",
-              );
-            }
-            if (field.quote) out[pos++] = 34;
-            break;
+            // Each byte can escape to at most 6 bytes, plus 2 surrounding quotes.
+            capacity += rawBytes * 6 + sliceRows * 2;
           }
         }
-      }
-      out[pos++] = close;
-      out[pos++] = 10;
-    }
-    // The string owns its contents. The next block can reuse the buffer.
-    return out.toString("utf8", 0, pos);
+        if (capacity > MAX_BUFFER_SIZE) return undefined;
+        let out: Buffer;
+        if (capacity <= MAX_KEPT_SCRATCH_SIZE) {
+          if (sharedScratch === undefined || sharedScratch.length < capacity) {
+            sharedScratch = Buffer.allocUnsafe(capacity);
+          }
+          out = sharedScratch;
+        } else {
+          out = Buffer.allocUnsafe(capacity);
+        }
+        const pos = writeRange(
+          out,
+          fields,
+          colCount,
+          currentRow,
+          endRow,
+          close,
+          escapes,
+          escapeKind,
+        );
+        currentRow = endRow;
+        return out.toString("utf8", 0, pos);
+      },
+    };
   }
+
+  write(
+    block: Block,
+    prefixes: string[],
+    suffix: "}\n" | "]\n",
+  ): string | undefined {
+    const stepper = this.open(block, prefixes, suffix);
+    if (stepper === undefined) return undefined;
+    return stepper.next(block.rows);
+  }
+}
+
+function writeRange(
+  out: Buffer,
+  fields: PreparedField[],
+  colCount: number,
+  startRow: number,
+  endRow: number,
+  close: number,
+  escapes: Escapes,
+  escapeKind: Uint8Array,
+): number {
+  let pos = 0;
+  for (let row = startRow; row < endRow; row++) {
+    for (let f = 0; f < colCount; f++) {
+      const field = fields[f]!;
+      const prefix = field.prefix;
+      const pLen = prefix.length;
+      for (let i = 0; i < pLen; i++) out[pos++] = prefix[i]!;
+      switch (field.kind) {
+        case FIELD_STRING: {
+          const src = field.bytes;
+          let input = field.input;
+          const length = src[input++]!;
+          const end = input + length;
+          out[pos++] = 34;
+          while (input < end) {
+            const byte = src[input++]!;
+            const flag = escapeKind[byte]!;
+            if (flag === 0) {
+              out[pos++] = byte;
+            } else if (flag === 2) {
+              if (input + 1 < end && src[input] === 0x80) {
+                const last = src[input + 1];
+                if (last === 0xa8 || last === 0xa9) {
+                  const esc =
+                    last === 0xa8 ? LINE_SEPARATOR : PARAGRAPH_SEPARATOR;
+                  out.set(esc, pos);
+                  pos += esc.length;
+                  input += 2;
+                  continue;
+                }
+              }
+              out[pos++] = byte;
+            } else {
+              const esc = escapes[byte]!;
+              out.set(esc, pos);
+              pos += esc.length;
+            }
+          }
+          out[pos++] = 34;
+          field.input = input;
+          break;
+        }
+        case FIELD_BOOL: {
+          const val = field.bytes[row] === 0 ? FALSE : TRUE;
+          out.set(val, pos);
+          pos += val.length;
+          break;
+        }
+        case FIELD_UINT8:
+          pos = writeUnsigned32(out, pos, field.bytes[row]!);
+          break;
+        case FIELD_INT8:
+          pos = writeSigned32(out, pos, field.view!.getInt8(row));
+          break;
+        case FIELD_UINT16:
+          pos = writeUnsigned32(out, pos, field.view!.getUint16(row * 2, true));
+          break;
+        case FIELD_INT16:
+          pos = writeSigned32(out, pos, field.view!.getInt16(row * 2, true));
+          break;
+        case FIELD_UINT32:
+          pos = writeUnsigned32(out, pos, field.view!.getUint32(row * 4, true));
+          break;
+        case FIELD_INT32:
+          pos = writeSigned32(out, pos, field.view!.getInt32(row * 4, true));
+          break;
+        case FIELD_UINT64: {
+          const view = field.view!;
+          const offset = row * 8;
+          if (field.quote) out[pos++] = 34;
+          const hi = view.getUint32(offset + 4, true);
+          if (hi === 0) {
+            pos = writeUnsigned32(out, pos, view.getUint32(offset, true));
+          } else if (hi < 0x200000) {
+            pos += out.write(
+              String(hi * 0x100000000 + view.getUint32(offset, true)),
+              pos,
+              "ascii",
+            );
+          } else {
+            pos += out.write(
+              String(view.getBigUint64(offset, true)),
+              pos,
+              "ascii",
+            );
+          }
+          if (field.quote) out[pos++] = 34;
+          break;
+        }
+        case FIELD_INT64: {
+          const view = field.view!;
+          const offset = row * 8;
+          if (field.quote) out[pos++] = 34;
+          const hi = view.getInt32(offset + 4, true);
+          if (hi === 0) {
+            pos = writeUnsigned32(out, pos, view.getUint32(offset, true));
+          } else if (hi === -1) {
+            const lo = view.getUint32(offset, true);
+            if (lo !== 0) {
+              out[pos++] = 45;
+              pos = writeUnsigned32(out, pos, (~lo >>> 0) + 1);
+            } else {
+              pos += out.write("-4294967296", pos, "ascii");
+            }
+          } else if (hi > -0x200000 && hi < 0x200000) {
+            pos += out.write(
+              String(hi * 0x100000000 + view.getUint32(offset, true)),
+              pos,
+              "ascii",
+            );
+          } else {
+            pos += out.write(
+              String(view.getBigInt64(offset, true)),
+              pos,
+              "ascii",
+            );
+          }
+          if (field.quote) out[pos++] = 34;
+          break;
+        }
+      }
+    }
+    out[pos++] = close;
+    out[pos++] = 10;
+  }
+  return pos;
 }
 
 function prepareField(
   type: ColumnType,
   bytes: Buffer,
-  rows: number,
   prefix: Buffer,
   quoteInt64: boolean,
-): { capacity: number; field: PreparedField } | undefined {
+): PreparedField | undefined {
   switch (type.kind) {
     case "String":
       return {
-        // Each value has a one-byte length. An escaped byte occupies at most six bytes.
-        capacity: (bytes.length - rows) * 6 + 2 * rows,
-        field: {
-          kind: FIELD_STRING,
-          prefix,
-          bytes,
-          view: undefined,
-          quote: false,
-          input: 0,
-        },
+        kind: FIELD_STRING,
+        prefix,
+        bytes,
+        view: undefined,
+        quote: false,
+        input: 0,
+        rowMaxBytes: 0,
       };
     case "Bool":
       return {
-        capacity: rows * FALSE.length,
-        field: {
-          kind: FIELD_BOOL,
-          prefix,
-          bytes,
-          view: undefined,
-          quote: false,
-          input: 0,
-        },
+        kind: FIELD_BOOL,
+        prefix,
+        bytes,
+        view: undefined,
+        quote: false,
+        input: 0,
+        rowMaxBytes: FALSE.length,
       };
     case "Int": {
       let kind: number;
@@ -290,8 +341,13 @@ function prepareField(
           ? undefined
           : new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
       return {
-        capacity: rows * (width + (quote ? 2 : 0)),
-        field: { kind, prefix, bytes, view, quote, input: 0 },
+        kind,
+        prefix,
+        bytes,
+        view,
+        quote,
+        input: 0,
+        rowMaxBytes: width + (quote ? 2 : 0),
       };
     }
     default:

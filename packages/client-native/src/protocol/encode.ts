@@ -9,6 +9,7 @@
 export type { EncodeContext } from "./encode/errors";
 export { InsertValueError, ServerParseNeeded } from "./encode/errors";
 export {
+  createNormalizer,
   defaultValue,
   normalize,
   stringifyJSON,

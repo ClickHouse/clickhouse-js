@@ -19,12 +19,15 @@ import {
 } from "./common/index";
 import { NoopClickHouseSpan } from "./common/tracing";
 import { Buffer } from "buffer";
-import type { Readable, TransformCallback } from "stream";
-import Stream, { Transform } from "stream";
+import type { Readable } from "stream";
+import Stream, { Duplex } from "stream";
 import { getAsText } from "./utils";
 import { isResultChunk } from "./result_chunk";
 
 const NEWLINE = 0x0a as const;
+/** Target batch size when lazily slicing a large binary Native block in
+ *  `ResultSet.stream()`, keeping per-batch work and L2 footprint small. */
+const STREAM_BATCH_ROWS = 4096;
 
 /** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
  * Everything else is an exact copy from stream.d.ts */
@@ -309,17 +312,167 @@ export class ResultSet<
     const isDefaultParse = jsonParse === defaultJSONHandling.parse;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
-    const toRows = new Transform({
+
+    const processChunk = (
+      stream: Duplex,
+      chunk: string | Buffer,
+      hintRows: number,
+    ): boolean => {
+      resultSet.addSpanBytes(chunk);
+
+      if (typeof chunk === "string") {
+        if (incompleteChunks.length === 0) {
+          // The usual case: cut the text into rows without a copy to bytes.
+          const text = textRest.length === 0 ? chunk : textRest + chunk;
+          const rows: Row[] = hintRows > 0 ? new Array<Row>(hintRows) : [];
+          let count = 0;
+          let start = 0;
+          if (isDefaultParse) {
+            for (;;) {
+              const end = text.indexOf("\n", start);
+              if (end === -1) break;
+              const row = new DefaultStreamRow(text.slice(start, end));
+              if (count < rows.length) rows[count] = row;
+              else rows.push(row);
+              count++;
+              start = end + 1;
+            }
+          } else {
+            for (;;) {
+              const end = text.indexOf("\n", start);
+              if (end === -1) break;
+              const row = new CustomStreamRow(
+                text.slice(start, end),
+                jsonParse,
+              );
+              if (count < rows.length) rows[count] = row;
+              else rows.push(row);
+              count++;
+              start = end + 1;
+            }
+          }
+          if (count < rows.length) rows.length = count;
+          textRest = start === 0 ? text : text.slice(start);
+          if (count > 0) {
+            resultSet.addSpanRows(count);
+            return stream.push(rows);
+          }
+          return true;
+        }
+        chunk = Buffer.from(chunk);
+      } else if (textRest.length > 0) {
+        incompleteChunks.push(Buffer.from(textRest));
+        textRest = "";
+      }
+
+      const rows: Row[] = [];
+      let lastIdx = 0;
+      let currentChunkPart: Buffer;
+      let more = true;
+
+      while (true) {
+        // an unescaped newline character denotes the end of a row,
+        // or at least the beginning of the exception marker
+        const idx = chunk.indexOf(NEWLINE, lastIdx);
+        if (idx === -1) {
+          incompleteChunks.push(chunk.subarray(lastIdx));
+          if (rows.length > 0) {
+            resultSet.addSpanRows(rows.length);
+            more = stream.push(rows);
+          }
+          break;
+        } else {
+          if (incompleteChunks.length > 0) {
+            incompleteChunks.push(chunk.subarray(lastIdx, idx));
+            currentChunkPart = Buffer.concat(incompleteChunks);
+            // Removing used buffers and reusing the already allocated memory
+            // by setting length to 0
+            incompleteChunks.length = 0;
+          } else {
+            currentChunkPart = chunk.subarray(lastIdx, idx);
+          }
+
+          const text = currentChunkPart.toString();
+          rows.push(
+            isDefaultParse
+              ? new DefaultStreamRow(text)
+              : new CustomStreamRow(text, jsonParse),
+          );
+          lastIdx = idx + 1; // skipping newline character
+        }
+      }
+      return more;
+    };
+
+    let activeStepper: (() => string | Buffer | undefined) | undefined;
+    let pendingWriteCb: ((error?: Error | null) => void) | undefined;
+    let pumping = false;
+
+    const pump = (stream: Duplex): void => {
+      if (pumping || stream.destroyed) return;
+      pumping = true;
+      try {
+        while (activeStepper !== undefined && !stream.destroyed) {
+          let slice: string | Buffer | undefined;
+          try {
+            slice = activeStepper();
+          } catch (err) {
+            activeStepper = undefined;
+            const cb = pendingWriteCb;
+            pendingWriteCb = undefined;
+            cb?.(err as Error);
+            return;
+          }
+          if (slice === undefined) {
+            activeStepper = undefined;
+            const cb = pendingWriteCb;
+            pendingWriteCb = undefined;
+            cb?.();
+            return;
+          }
+          const more = processChunk(stream, slice, STREAM_BATCH_ROWS);
+          if (!more) return;
+        }
+        if (
+          pendingWriteCb !== undefined &&
+          activeStepper === undefined &&
+          !stream.destroyed
+        ) {
+          const cb = pendingWriteCb;
+          pendingWriteCb = undefined;
+          cb();
+        }
+      } finally {
+        pumping = false;
+      }
+    };
+
+    const toRows = new Duplex({
       // Each upstream item is an entire Native block (up to max_block_size rows).
-      // Keep the buffer at 1 block so early ResultSet.close() does not eagerly
-      // decode and format dozens of blocks ahead of the consumer.
-      highWaterMark: 1,
-      transform(
-        part: unknown,
-        _encoding: BufferEncoding,
-        callback: TransformCallback,
-      ) {
-        // The result of query() comes in parts (see ResultChunk).
+      // Keep buffers at 1 and pull sub-batches lazily so early ResultSet.close()
+      // formats only the first slice instead of whole blocks.
+      objectMode: true,
+      readableHighWaterMark: 1,
+      writableHighWaterMark: 1,
+      autoDestroy: true,
+      read() {
+        pump(this);
+      },
+      write(part: unknown, _encoding: BufferEncoding, callback) {
+        if (isResultChunk(part) && part.streamText !== undefined) {
+          let stepper: (() => string | Buffer | undefined) | undefined;
+          try {
+            stepper = part.streamText(STREAM_BATCH_ROWS);
+          } catch (err) {
+            return callback(err as Error);
+          }
+          if (stepper !== undefined) {
+            activeStepper = stepper;
+            pendingWriteCb = callback;
+            pump(this);
+            return;
+          }
+        }
         let chunk: string | Buffer;
         let hintRows = 0;
         try {
@@ -332,93 +485,22 @@ export class ResultSet<
         } catch (err) {
           return callback(err as Error);
         }
-        resultSet.addSpanBytes(chunk);
-
-        if (typeof chunk === "string") {
-          if (incompleteChunks.length === 0) {
-            // The usual case: cut the text into rows without a copy to bytes.
-            const text = textRest.length === 0 ? chunk : textRest + chunk;
-            const rows: Row[] = hintRows > 0 ? new Array<Row>(hintRows) : [];
-            let count = 0;
-            let start = 0;
-            if (isDefaultParse) {
-              for (;;) {
-                const end = text.indexOf("\n", start);
-                if (end === -1) break;
-                const row = new DefaultStreamRow(text.slice(start, end));
-                if (count < rows.length) rows[count] = row;
-                else rows.push(row);
-                count++;
-                start = end + 1;
-              }
-            } else {
-              for (;;) {
-                const end = text.indexOf("\n", start);
-                if (end === -1) break;
-                const row = new CustomStreamRow(
-                  text.slice(start, end),
-                  jsonParse,
-                );
-                if (count < rows.length) rows[count] = row;
-                else rows.push(row);
-                count++;
-                start = end + 1;
-              }
-            }
-            if (count < rows.length) rows.length = count;
-            textRest = start === 0 ? text : text.slice(start);
-            if (count > 0) {
-              resultSet.addSpanRows(count);
-              this.push(rows);
-            }
-            return callback();
-          }
-          chunk = Buffer.from(chunk);
-        } else if (textRest.length > 0) {
-          incompleteChunks.push(Buffer.from(textRest));
-          textRest = "";
+        const more = processChunk(this, chunk, hintRows);
+        if (more) {
+          callback();
+        } else {
+          pendingWriteCb = callback;
         }
-
-        const rows: Row[] = [];
-
-        let lastIdx = 0;
-        let currentChunkPart: Buffer;
-
-        while (true) {
-          // an unescaped newline character denotes the end of a row,
-          // or at least the beginning of the exception marker
-          const idx = chunk.indexOf(NEWLINE, lastIdx);
-          if (idx === -1) {
-            incompleteChunks.push(chunk.subarray(lastIdx));
-            if (rows.length > 0) {
-              resultSet.addSpanRows(rows.length);
-              this.push(rows);
-            }
-            break;
-          } else {
-            if (incompleteChunks.length > 0) {
-              incompleteChunks.push(chunk.subarray(lastIdx, idx));
-              currentChunkPart = Buffer.concat(incompleteChunks);
-              // Removing used buffers and reusing the already allocated memory
-              // by setting length to 0
-              incompleteChunks.length = 0;
-            } else {
-              currentChunkPart = chunk.subarray(lastIdx, idx);
-            }
-
-            const text = currentChunkPart.toString();
-            rows.push(
-              isDefaultParse
-                ? new DefaultStreamRow(text)
-                : new CustomStreamRow(text, jsonParse),
-            );
-            lastIdx = idx + 1; // skipping newline character
-          }
-        }
+      },
+      final(callback) {
+        this.push(null);
         callback();
       },
-      autoDestroy: true,
-      objectMode: true,
+      destroy(err, callback) {
+        activeStepper = undefined;
+        pendingWriteCb = undefined;
+        callback(err);
+      },
     });
 
     const pipeline = Stream.pipeline(

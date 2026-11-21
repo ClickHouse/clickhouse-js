@@ -25,6 +25,12 @@ export interface ResultChunk {
   bytes?: number;
   /** Number of rows in the underlying Native block (hint for pre-sizing). */
   rowCount?: number;
+  /** Optional lazy sub-batch text stepper for `ResultSet.stream()`, yielding
+   *  batches of up to `batchRows` formatted rows at a time so early stream
+   *  cancellation does not format the entire block upfront. */
+  streamText?: (
+    batchRows: number,
+  ) => (() => string | Buffer | undefined) | undefined;
 }
 
 export function isResultChunk(value: unknown): value is ResultChunk {

@@ -524,7 +524,6 @@ function readDataBlock(
   // compressed blocks that are read, and the columns that are decoded, so
   // that each try continues the try before it.
   const pending = ctx.pending as NonNullable<DecodeContext["pending"]>;
-  const data = (pending.data ??= new GrowableBuffer());
   const consumeFrames = ctx.consume_frames === true;
   if (consumeFrames) {
     pending.packet_type = packetType;
@@ -548,8 +547,15 @@ function readDataBlock(
     if (!consumeFrames) {
       pending.frames_offset = r.pos - start;
     }
-    data.append(frame);
-    const view = data.view();
+    let view: Buffer;
+    if (pending.data === undefined || pending.data.length === 0) {
+      // Single-frame fast path: decode directly from the decompressed frame
+      // without copying through GrowableBuffer.
+      view = frame;
+    } else {
+      pending.data.append(frame);
+      view = pending.data.view();
+    }
     const inner = new BinaryReader(view);
     try {
       const block = readBlock(
@@ -566,9 +572,20 @@ function readDataBlock(
     } catch (err) {
       // The block continues in the next compressed block.
       if (!(err instanceof NeedMoreData)) throw err;
-      if (state.columns !== undefined && state.offset > 0) {
+      if (view === frame) {
+        const data = (pending.data ??= new GrowableBuffer());
+        if (state.columns !== undefined && state.offset > 0) {
+          state.bytes = (state.bytes ?? 0) + state.offset;
+          if (state.offset < frame.length) {
+            data.append(frame.subarray(state.offset));
+          }
+          state.offset = 0;
+        } else {
+          data.append(frame);
+        }
+      } else if (state.columns !== undefined && state.offset > 0) {
         // The decoded columns do not need their bytes.
-        data.consume(state.offset);
+        pending.data!.consume(state.offset);
         state.bytes = (state.bytes ?? 0) + state.offset;
         state.offset = 0;
       }

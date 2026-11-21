@@ -59,12 +59,12 @@ export function lz4Decompress(src: Buffer, decompressedSize: number): Buffer {
       throw new Error("Corrupted LZ4 data: literals out of bounds");
     }
     if (literals < SHORT_COPY) {
-      for (let i = 0; i < literals; i++) dst[op + i] = src[ip + i]!;
+      for (let i = 0; i < literals; i++) dst[op++] = src[ip++]!;
     } else {
       src.copy(dst, op, ip, ip + literals);
+      ip += literals;
+      op += literals;
     }
-    ip += literals;
-    op += literals;
     if (ip === end) break; // the last sequence has only literals
     if (ip + 2 > end) throw new Error(TRUNCATED);
     const offset = src[ip]! | (src[ip + 1]! << 8);
@@ -88,11 +88,29 @@ export function lz4Decompress(src: Buffer, decompressedSize: number): Buffer {
     const from = op - offset;
     if (offset === 1 && length >= 16) {
       dst.fill(dst[from]!, op, op + length);
-    } else if (length < SHORT_COPY || offset < length) {
-      // A short match, or a match that overlaps the output: copy bytes in order.
+    } else if (length < SHORT_COPY) {
       for (let i = 0; i < length; i++) dst[op + i] = dst[from + i]!;
-    } else {
+    } else if (offset >= length) {
       dst.copyWithin(op, from, from + length);
+    } else {
+      // Overlapping match with length >= SHORT_COPY: copy one exact period
+      // (`offset` bytes), then double `copied` (always a multiple of `offset`).
+      let copied = offset;
+      if (offset < SHORT_COPY) {
+        for (let i = 0; i < offset; i++) dst[op + i] = dst[from + i]!;
+      } else {
+        dst.copyWithin(op, from, from + offset);
+      }
+      while (copied < SHORT_COPY && copied < length) {
+        const chunk = copied < length - copied ? copied : length - copied;
+        for (let i = 0; i < chunk; i++) dst[op + copied + i] = dst[op + i]!;
+        copied += chunk;
+      }
+      while (copied < length) {
+        const chunk = copied < length - copied ? copied : length - copied;
+        dst.copyWithin(op + copied, op, op + chunk);
+        copied += chunk;
+      }
     }
     op += length;
   }
