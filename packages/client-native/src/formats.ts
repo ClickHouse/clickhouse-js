@@ -405,10 +405,10 @@ function unquote(text: string): string {
 
 /** Query statistics for the formats that show them. */
 export interface OutputStatistics {
-  elapsed_ns: number;
-  rows_read: number;
-  bytes_read: number;
-  rows_before_limit_at_least: number | undefined;
+  elapsed_ns: number | bigint;
+  rows_read: number | bigint;
+  bytes_read: number | bigint;
+  rows_before_limit_at_least: number | bigint | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -1445,7 +1445,7 @@ export class ValueWriter {
   }
 
   private pathsToTree(value: JSONObjectValue): PathTree {
-    const root: PathTree = {};
+    const root = Object.create(null) as PathTree;
     for (const [path, type, v] of value.paths) {
       const parts = path.split(".");
       let node = root;
@@ -1453,7 +1453,7 @@ export class ValueWriter {
         const part = parts[i] as string;
         const child = node[part];
         if (child === undefined || Array.isArray(child)) {
-          const next: PathTree = {};
+          const next = Object.create(null) as PathTree;
           node[part] = next;
           node = next;
         } else {
@@ -2234,7 +2234,7 @@ export class OutputEncoder {
     if (this.settings.output_format_write_statistics) {
       out +=
         ',\n\n\t"statistics":\n\t{\n\t\t"elapsed": ' +
-        stats.elapsed_ns / 1e9 +
+        Number(stats.elapsed_ns) / 1e9 +
         ',\n\t\t"rows_read": ' +
         stats.rows_read +
         ',\n\t\t"bytes_read": ' +

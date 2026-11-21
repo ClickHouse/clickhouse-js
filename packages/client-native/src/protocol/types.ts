@@ -371,32 +371,34 @@ export function parseColumnType(typeString: string): ColumnType {
   return result;
 }
 
-const INT_TYPES: Record<string, IntType> = {};
+const INT_TYPES = new Map<string, IntType>();
 for (const bits of [8, 16, 32, 64, 128, 256] as const) {
-  INT_TYPES[`Int${bits}`] = {
+  INT_TYPES.set(`Int${bits}`, {
     kind: "Int",
     name: `Int${bits}`,
     bits,
     signed: true,
-  };
-  INT_TYPES[`UInt${bits}`] = {
+  });
+  INT_TYPES.set(`UInt${bits}`, {
     kind: "Int",
     name: `UInt${bits}`,
     bits,
     signed: false,
-  };
+  });
 }
 
-const GEO_TYPES: Record<string, string> = {
-  Point: "Tuple(Float64, Float64)",
-  Ring: "Array(Tuple(Float64, Float64))",
-  LineString: "Array(Tuple(Float64, Float64))",
-  MultiLineString: "Array(Array(Tuple(Float64, Float64)))",
-  Polygon: "Array(Array(Tuple(Float64, Float64)))",
-  MultiPolygon: "Array(Array(Array(Tuple(Float64, Float64))))",
-  Geometry:
+const GEO_TYPES = new Map<string, string>([
+  ["Point", "Tuple(Float64, Float64)"],
+  ["Ring", "Array(Tuple(Float64, Float64))"],
+  ["LineString", "Array(Tuple(Float64, Float64))"],
+  ["MultiLineString", "Array(Array(Tuple(Float64, Float64)))"],
+  ["Polygon", "Array(Array(Tuple(Float64, Float64)))"],
+  ["MultiPolygon", "Array(Array(Array(Tuple(Float64, Float64))))"],
+  [
+    "Geometry",
     "Variant(LineString, MultiLineString, MultiPolygon, Point, Polygon, Ring)",
-};
+  ],
+]);
 
 function typeArgs(raw: RawType): RawType[] {
   return (raw.args ?? []).map((arg) => {
@@ -414,14 +416,14 @@ function literalArgs(raw: RawType): string[] {
 
 function convert(raw: RawType): ColumnType {
   const name = raw.text;
-  const intType = INT_TYPES[raw.name];
+  const intType = INT_TYPES.get(raw.name);
   if (intType !== undefined && raw.args === undefined) {
     return intType;
   }
   if (raw.name.startsWith("Interval") && raw.args === undefined) {
     return { kind: "Int", name, bits: 64, signed: true };
   }
-  const geo = GEO_TYPES[raw.name];
+  const geo = GEO_TYPES.get(raw.name);
   if (geo !== undefined && raw.args === undefined) {
     return { ...parseColumnType(geo), name };
   }
@@ -606,7 +608,18 @@ function quoteName(name: string): string {
 /** Compares two strings by their UTF-8 bytes, as the server sorts names. */
 export function compareBytes(a: string, b: string): number {
   if (a === b) return 0;
-  return Buffer.compare(Buffer.from(a), Buffer.from(b));
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const ca = a.charCodeAt(i);
+    const cb = b.charCodeAt(i);
+    if (ca !== cb) {
+      if (ca < 0xd800 && cb < 0xd800) {
+        return ca < cb ? -1 : 1;
+      }
+      return Buffer.compare(Buffer.from(a), Buffer.from(b));
+    }
+  }
+  return a.length < b.length ? -1 : 1;
 }
 
 /** Removes `Nullable` and `LowCardinality` to find the stored value type. */

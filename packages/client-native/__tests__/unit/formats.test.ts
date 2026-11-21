@@ -915,3 +915,30 @@ describe("[Native] FORMAT in SQL", () => {
     expect(readQueryClauses(query).format).toBeUndefined();
   });
 });
+
+describe("[Native] JSON paths with prototype keys", () => {
+  it("does not pollute Object.prototype and preserves __proto__, toString and constructor keys", () => {
+    const intType = parseColumnType("Int32");
+    const jsonValue = new JSONObjectValue([
+      ["__proto__.polluted", intType, 1],
+      ["toString.a", intType, 2],
+      ["constructor.b", intType, 3],
+    ]);
+    const leafProto = new JSONObjectValue([["__proto__", intType, 4]]);
+    const b = block([["j", "JSON", [jsonValue, leafProto]]]);
+
+    const eachRow = encode("JSONEachRow", b);
+    expect(({} as { polluted?: unknown }).polluted).toBeUndefined();
+    expect(eachRow).toBe(
+      '{"j":{"__proto__":{"polluted":1},"toString":{"a":2},"constructor":{"b":3}}}\n' +
+        '{"j":{"__proto__":4}}\n',
+    );
+
+    const pretty = encode("JSON", b);
+    expect(({} as { polluted?: unknown }).polluted).toBeUndefined();
+    expect(pretty).toContain('"__proto__": {\n');
+    expect(pretty).toContain('"polluted": 1');
+    expect(pretty).toContain('"toString": {\n');
+    expect(pretty).toContain('"constructor": {\n');
+  });
+});

@@ -61,6 +61,7 @@ function formatWallClock(ms: number): string {
 const UTC_NAMES = new Set(["UTC", "Etc/UTC", "GMT", "Etc/GMT", "UCT", "Zulu"]);
 
 const SECONDS_PER_DAY = 86_400;
+const MAX_OFFSET_RANGES = 4096;
 
 /** A range of UTC seconds, `start` to `end` (not included), in which the
  *  time zone has one offset. */
@@ -109,6 +110,9 @@ class TimeZoneOffsets {
     let index = this.find(seconds);
     let range = this.ranges[index];
     if (range === undefined || seconds >= range.end) {
+      if (this.ranges.length >= MAX_OFFSET_RANGES) {
+        this.ranges.length = 0;
+      }
       this.addDay(Math.floor(seconds / SECONDS_PER_DAY));
       index = this.find(seconds);
       range = this.ranges[index] as OffsetRange;

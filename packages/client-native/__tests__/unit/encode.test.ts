@@ -1021,3 +1021,74 @@ describe("[Native] strings in a Dynamic column", () => {
     expect(typeOf(5, true)).toBe("Int64");
   });
 });
+
+describe("[Native] encode edge cases", () => {
+  it("round-trips empty Tuple() with one dummy byte per row", () => {
+    const type = parseColumnType("Tuple()");
+    const normalized = [[], [], []].map((v) => normalize(type, v, ctx));
+    const { prefix, data } = encodeColumn(type, normalized);
+    expect(prefix.toBuffer().length).toBe(0);
+    expect(data.toBuffer().length).toBe(3);
+    expect(roundTrip("Tuple()", [[], [], []])).toEqual([[], [], []]);
+  });
+
+  it("allows up to 254 distinct Dynamic types and falls back to server parsing at 255", () => {
+    const dynamic = parseColumnType("Dynamic");
+    const makeValues = (count: number) =>
+      Array.from({ length: count }, (_, i) => ({ [`k${i}`]: i }));
+
+    const maxValues = makeValues(254);
+    const decoded = roundTrip("Dynamic", maxValues);
+    expect(decoded).toHaveLength(254);
+
+    const tooMany = makeValues(255).map((v) => normalize(dynamic, v, ctx));
+    expect(() => encodeColumn(dynamic, tooMany)).toThrow(ServerParseNeeded);
+  });
+
+  it("uses Object.hasOwn for named Tuple fields and catches invalid JSON in Tuple/Map", () => {
+    const namedTuple = parseColumnType(
+      "Tuple(toString String, constructor Int32, x Int32)",
+    );
+    expect(normalize(namedTuple, { x: 7 }, ctx)).toEqual([
+      Buffer.alloc(0),
+      0,
+      7,
+    ]);
+    expect(
+      roundTrip("Tuple(toString String, constructor Int32, x Int32)", [
+        { x: 7 },
+      ]),
+    ).toEqual([["", 0, 7]]);
+
+    const tupleType = parseColumnType("Tuple(Int32, Int32)");
+    expect(() => normalize(tupleType, "[not json", ctx)).toThrow(
+      InsertValueError,
+    );
+
+    const mapType = parseColumnType("Map(String, Int32)");
+    expect(() => normalize(mapType, "{not json", ctx)).toThrow(
+      InsertValueError,
+    );
+    expect(() => normalize(mapType, [1, 2], ctx)).toThrow(InsertValueError);
+    expect(() => normalize(mapType, [["only_key"]], ctx)).toThrow(
+      InsertValueError,
+    );
+
+    // Variant matching should recover from Tuple/Map parse failures with
+    // InsertValueError instead of leaking SyntaxError or TypeError.
+    const variantTuple = parseColumnType("Variant(Tuple(Int32, Int32), Int32)");
+    expect(() => normalize(variantTuple, "[not json", ctx)).toThrow(
+      InsertValueError,
+    );
+
+    const variantMapStr = parseColumnType("Variant(Map(String, Int32), Int32)");
+    expect(() => normalize(variantMapStr, "{not json", ctx)).toThrow(
+      InsertValueError,
+    );
+
+    const variantMapArr = parseColumnType("Variant(Map(String, Int32), Int32)");
+    expect(() => normalize(variantMapArr, [1, 2], ctx)).toThrow(
+      InsertValueError,
+    );
+  });
+});

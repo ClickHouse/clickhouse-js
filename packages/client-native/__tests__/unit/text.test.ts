@@ -181,4 +181,21 @@ describe("[Native] DateTime64 text without zeros at the end", () => {
       "2024-01-01 00:00:00.000000",
     );
   });
+
+  it("stays accurate after exceeding the timezone range cache bound", () => {
+    // Visit > 4096 non-contiguous days (every 2nd day) in a DST timezone.
+    const startDay = 0; // 1970-01-01
+    for (let i = 0; i < 4200; i++) {
+      const ts = (startDay + i * 2) * 86_400;
+      const offset = timezoneOffset(ts, "Europe/Berlin");
+      expect(offset === 3600 || offset === 7200).toBe(true);
+    }
+    // Verify DST boundary after cache reset: 2024-03-31 01:00 UTC in Berlin.
+    expect(formatDateTime(1711846799, "Europe/Berlin")).toBe(
+      "2024-03-31 01:59:59",
+    );
+    expect(formatDateTime(1711846800, "Europe/Berlin")).toBe(
+      "2024-03-31 03:00:00",
+    );
+  });
 });

@@ -1027,9 +1027,18 @@ export function normalize(
         items = value;
       } else if (typeof value === "object" && type.names !== undefined) {
         const obj = value as Record<string, unknown>;
-        items = type.names.map((name) => obj[name]);
+        items = type.names.map((name) =>
+          Object.hasOwn(obj, name) ? obj[name] : undefined,
+        );
       } else if (typeof value === "string" && value.trim().startsWith("[")) {
-        items = JSON.parse(value) as unknown[];
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(value);
+        } catch {
+          return fail(type, value, "not a tuple");
+        }
+        if (!Array.isArray(parsed)) return fail(type, value, "not a tuple");
+        items = parsed;
       } else {
         return fail(type, value, "not a tuple");
       }
@@ -1047,11 +1056,33 @@ export function normalize(
       if (value instanceof Map) {
         pairs = [...value.entries()];
       } else if (Array.isArray(value)) {
+        for (const entry of value) {
+          if (!Array.isArray(entry) || entry.length !== 2) {
+            return fail(
+              type,
+              value,
+              "each map entry must be a [key, value] pair",
+            );
+          }
+        }
         pairs = value as Array<[unknown, unknown]>;
       } else if (typeof value === "object") {
         pairs = Object.entries(value as Record<string, unknown>);
       } else if (typeof value === "string" && value.trim().startsWith("{")) {
-        pairs = Object.entries(JSON.parse(value) as Record<string, unknown>);
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(value);
+        } catch {
+          return fail(type, value, "not a map");
+        }
+        if (
+          typeof parsed !== "object" ||
+          parsed === null ||
+          Array.isArray(parsed)
+        ) {
+          return fail(type, value, "not a map");
+        }
+        pairs = Object.entries(parsed as Record<string, unknown>);
       } else {
         return fail(type, value, "not a map");
       }
@@ -1607,6 +1638,11 @@ function writeColumn(out: Encoded, type: ColumnType, values: unknown[]): void {
       return;
     }
     case "Tuple":
+      if (type.elements.length === 0) {
+        // The server expects one byte for each row of an empty tuple.
+        w.append(Buffer.alloc(n));
+        return;
+      }
       type.elements.forEach((element, i) => {
         writeColumn(
           out,
@@ -1772,6 +1808,13 @@ function writeDynamic(out: Encoded, values: Array<DynamicNorm | null>): void {
   // Serialization V1: the oldest one, which all servers with Dynamic read.
   const types = new Map<string, ColumnType>();
   for (const v of values) if (v !== null) types.set(v.t.name, v.t);
+  // Variant discriminators are 1 byte (0..254; 255 is NULL), and SHARED_VARIANT
+  // occupies one slot, so at most 254 dynamic types fit in one block.
+  if (types.size > 254) {
+    throw new ServerParseNeeded(
+      `Dynamic column has ${types.size} distinct types in one block (maximum 254)`,
+    );
+  }
   const variants = [...types.values(), SHARED_VARIANT].sort((a, b) =>
     compareBytes(a.name, b.name),
   );
