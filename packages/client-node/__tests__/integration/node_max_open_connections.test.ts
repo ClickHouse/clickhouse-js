@@ -45,15 +45,18 @@ describe("[Node.js] max_open_connections config", () => {
 
   it("should use only one connection for insert", async () => {
     const tableName = `node_connections_single_connection_insert_${guid()}`;
+    // The table is created with default timeouts: on ClickHouse Cloud the DDL
+    // alone can take longer than the short request_timeout used below.
+    const ddlClient = createNodeTestClient();
+    await createSimpleTable(ddlClient, tableName);
+    await ddlClient.close();
+
+    // With a single connection, an insert that keeps holding the socket makes
+    // the next insert wait for it and fail with a request timeout.
     client = createNodeTestClient({
       max_open_connections: 1,
       request_timeout: 3000,
     });
-    await createSimpleTable(client, tableName);
-
-    const timeout = setTimeout(() => {
-      throw new Error("Timeout was triggered");
-    }, 3000).unref();
 
     const value1 = { id: "42", name: "hello", sku: [0, 1] };
     const value2 = { id: "43", name: "hello", sku: [0, 1] };
@@ -66,7 +69,6 @@ describe("[Node.js] max_open_connections config", () => {
     }
     await insert(value1);
     await insert(value2); // if previous call holds the socket, the test will time out
-    clearTimeout(timeout);
 
     const result = await client.query({
       query: `SELECT * FROM ${tableName}`,

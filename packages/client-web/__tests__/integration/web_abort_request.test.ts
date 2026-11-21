@@ -34,14 +34,14 @@ describe("[Web] abort request", () => {
   it("cancels a select query while reading response", async () => {
     const controller = new AbortController();
 
+    // An endless query with default block sizes, as in the Node.js test: it
+    // can't finish before the abort, and it produces output quickly enough
+    // that a server or proxy that buffers the response (as on ClickHouse
+    // Cloud) still starts sending it well within the request timeout.
     const rs = await client.query({
-      query: "SELECT number FROM system.numbers LIMIT 100000",
+      query: "SELECT number FROM system.numbers",
       format: "JSONCompactEachRow",
       abort_signal: controller.signal,
-      clickhouse_settings: {
-        // low block size to force streaming 1 row at a time
-        max_block_size: "1",
-      },
     });
 
     let caughtError: Error | null = null;
