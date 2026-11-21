@@ -45,13 +45,13 @@ Node.js 22 or later is necessary. The package has no runtime dependencies.
 The client accepts the configuration of `@clickhouse/client`, with these
 differences:
 
-| Option            | Value                                                                                            |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| `url`             | `tcp://[user:password@]host[:port][/database]` or `tcps://...`. Default: `tcp://localhost:9000`. |
-| `tls`             | `{ ca_cert }` or `{ ca_cert, cert, key }` (mutual TLS), for a `tcps://` URL.                     |
-| `connect_timeout` | The time for a new connection and its handshake, in milliseconds. Default: `10000`.              |
-| `request_timeout` | The maximum time without a packet from the server, in milliseconds. Default: `30000`. See below. |
-| `compression`     | `"none"` (default), `"lz4"` or `"zstd"`: the compression of the data blocks in both directions.  |
+| Option            | Value                                                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`             | `tcp://[user:password@]host[:port][/database]` or `tcps://...`. Default: `tcp://localhost:9000`.                                             |
+| `tls`             | `{ ca_cert }` or `{ ca_cert, cert, key }` (mutual TLS), for a `tcps://` URL.                                                                 |
+| `connect_timeout` | The time for a new connection and its handshake, in milliseconds. Default: `10000`.                                                          |
+| `request_timeout` | The maximum time without a packet from the server, in milliseconds. Default: `30000`. See below.                                             |
+| `compression`     | `"none"` (default), `"lz4"`, `"zstd"`, `{ codec: "lz4" }`, or `{ codec: "zstd", level }`: compression of the data blocks in both directions. |
 
 The client ignores the options that apply only to HTTP: `keep_alive`,
 `http_headers`, `http_agent` and `set_basic_auth_header`.
@@ -62,9 +62,11 @@ and hostname to the server as client metadata with each query.
 
 ### Compression
 
-With `compression: "lz4"` or `"zstd"`, the client compresses the blocks that it
-sends, and asks the server to compress its blocks with the same method (with
-the `network_compression_method` setting, if the user can change settings).
+With `compression: "lz4"`, `"zstd"`, `{ codec: "lz4" }`, or
+`{ codec: "zstd", level }`, the client compresses the blocks that it sends
+(applying `level` to outgoing ZSTD blocks when set), and asks the server to
+compress its blocks with the same method (with the
+`network_compression_method` setting, if the user can change settings).
 The client decompresses LZ4 and ZSTD blocks from the server in all cases.
 `zstd` needs Node.js 22.15.0 or later. The checksums of the compressed blocks
 are computed in WebAssembly. `zstd` uses the zstd of Node.js and gives smaller
@@ -91,8 +93,9 @@ the client gives the text to your function.
 
 The integration tests compare the output of supported formats with the HTTP
 interface. Query statistics and progress rows come from the native protocol.
-The client reads output settings from `system.settings` once and applies
-overrides from `clickhouse_settings` and from a top-level SQL `SETTINGS` clause.
+The client reads output settings from `system.settings` per server identity
+(cached with a 5-minute TTL) and applies overrides from `clickhouse_settings`
+and from a top-level SQL `SETTINGS` clause.
 For example, set `output_format_write_statistics = 0` on the query that returns
 JSON. A separate `SET` statement or a subquery can leave the client using its
 initial output settings. If the user cannot read `system.settings` (for
@@ -195,7 +198,8 @@ settings:
 
 One `insert()` can run more than one `INSERT` statement: one for each
 group of blocks with the same columns, and one for each block that goes as
-JSON text. They have the same `query_id`. The insert is not atomic: after an
+JSON text. The first statement uses `query_id`, and statement _n_ uses
+`<query_id>_<n>`. The insert is not atomic: after an
 error, the rows of the statements before it stay in the table. With
 `insert_deduplication_token`, the first statement that sends rows uses your
 token, and statement _n_ uses `<token>_<n>`. The same rows in the same order
@@ -232,26 +236,75 @@ All column types, except `AggregateFunction`, `QBit` and the deprecated
 - `query()` returns when the first rows arrive or the query ends.
   `JSONEachRowWithProgress` can return when the first progress row arrives.
   An error before `query()` returns rejects the promise. A later error fails
-  the result stream.
+  the result stream. With `wait_end_of_query: 1` (or `http_wait_end_of_query: 1`),
+  `query()` and `exec()` buffer until `EndOfStream` so `summary` is complete and
+  mid-query errors reject the promise directly.
 - `request_timeout` is the maximum time without a packet from the server. The
   server sends progress packets during a long query, so a long query does not
   time out.
 - A statement with `command()` can be an `INSERT` with its data in the SQL
   (`INSERT ... VALUES`) or an `INSERT ... SELECT`.
 - Each connection is a separate session. `session_id`, `role` and the
-  authentication options of one request are not supported. JWT authentication
+  authentication options of one request are not supported (client-level
+  `session_id` and `role` are rejected at `createClient()`). JWT authentication
   is not supported.
 - The server sends the rows of an async insert (`async_insert = 1`) without a
   row count. Then `written_rows` in the summary is the number of rows that the
   client sent.
-- When you close a result set before its end, the client closes that
-  connection and opens a new one for the next request.
+- When you close a result set early, abort a request, or hit `request_timeout`,
+  the client sends a native `Cancel` packet before closing that connection and
+  opens a new one for the next request.
 - `client.close()` closes active and idle connections and cancels pending
   handshakes. Aborting an insert also cancels a pending read from its input
   stream.
 - A user with `readonly = 1` can use the client. The client then does not
   change the settings that select the simplest `Native` forms of `Dynamic` and
   `JSON` columns, and decodes their other forms.
+
+## Performance
+
+Relative performance between `@clickhouse/client-native` (TCP) and
+`@clickhouse/client` (HTTP) depends on the workload:
+
+- **Point queries and concurrent small lookups:** Persistent native TCP framing
+  avoids per-request HTTP header overhead, cutting latency and Node.js CPU by
+  more than half.
+- **Large `.json()` analytics reads (plain or compressed):** Building JS objects
+  directly from decoded `Native` blocks with native LZ4 compression is ~2x
+  faster than HTTP JSON serialization + gzip + `JSON.parse`, while using less
+  client CPU and fewer JS allocations.
+- **Structured `insert()`:** Encoding JS rows into columnar `Native` blocks with
+  LZ4 achieves higher throughput and much lower peak heap than HTTP JSON + gzip,
+  while raw `CSV` stream inserts run at parity with zero extra payload copies.
+- **Text-only streaming (`.stream()` draining raw `row.text` without parsing)
+  and binary-path `JSON` decoding:** HTTP formats text on the server in C++, so
+  draining raw JSON text lines or decoding non-string `JSON` path blocks can be
+  faster over HTTP.
+
+Indicative results from [`benchmarks/native/`](../../benchmarks/native/README.md)
+(macOS, Node.js `v24.16.0`, ClickHouse `26.10.1.1562`, loopback `127.0.0.1`,
+`iterations=7`, `warmup=2`; reproduce on your own hardware before drawing
+conclusions):
+
+| Scenario                                                 | `@clickhouse/client` (HTTP) | `@clickhouse/client-native` (TCP) | Native vs HTTP | CPU/op (HTTP → Native) |                           JS Alloc/op (HTTP → Native) |
+| -------------------------------------------------------- | --------------------------: | --------------------------------: | -------------: | ---------------------: | ----------------------------------------------------: |
+| Sequential `SELECT 1` (200 reqs)                         |       523.6 req/s (1.90 ms) |          **2.4k req/s (0.40 ms)** |      **4.67x** |   0.597 → **0.265 ms** |                                   97.9 → **62.5 KiB** |
+| Concurrent pool (16×25 reqs)                             |                  6.4k req/s |                   **14.0k req/s** |      **2.19x** |   0.232 → **0.112 ms** |                                   79.4 → **53.3 KiB** |
+| `JSONEachRow` `.json()` (100k rows)                      |                1.44M rows/s |                  **2.80M rows/s** |      **1.94x** |     72.3 → **62.1 ms** |                                   53.7 → **50.9 MiB** |
+| `JSONEachRow` `.stream()` (200k rows, text only)         |            **5.37M rows/s** |                      4.85M rows/s |          0.90x |     **30.3** → 83.0 ms |                                   63.3 → **38.2 MiB** |
+| Compressed `.json()` (200k rows, LZ4 vs gzip)            |                1.90M rows/s |                  **4.62M rows/s** |      **2.43x** |    112.6 → **58.8 ms** |                                   97.5 → **47.3 MiB** |
+| Structured `JSONEachRow` insert (100k rows, LZ4 vs gzip) |               664.7k rows/s |                 **767.9k rows/s** |      **1.16x** |     **72.3** → 81.5 ms | **23.8** → 127.2 MiB (peak heap +94.7 → **+1.7 MiB**) |
+| Raw CSV stream insert (1M rows, 24.3 MiB)                |                 160.8 MiB/s |                       159.0 MiB/s |          0.99x |     9.72 → **5.86 ms** |                                     641 → **426 KiB** |
+| Complex types: `Tuple`/`Array`/`JSON`/TZ (50k rows)      |               285.8k rows/s |                 **315.7k rows/s** |      **1.10x** |     **65.9** → 92.9 ms |                                   **38.8** → 52.5 MiB |
+| Binary `JSON` paths (50k rows, 8 keys/row)               |           **195.4k rows/s** |                     145.4k rows/s |          0.74x |    **44.2** → 247.8 ms |                                  **26.5** → 344.0 MiB |
+| Early `ResultSet.close()` on 50M-row query + recovery    |        76.9 req/s (13.0 ms) |          **85.5 req/s (11.7 ms)** |      **1.11x** |     **4.08** → 13.8 ms |                                   **1.01** → 13.0 MiB |
+
+Run the suite locally against your own ClickHouse instance:
+
+```sh
+npm run build
+NODE_OPTIONS="--expose-gc" npx tsx benchmarks/native/index.ts
+```
 
 ## Development
 
