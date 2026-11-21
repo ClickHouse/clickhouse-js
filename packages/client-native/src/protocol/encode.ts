@@ -1,6 +1,6 @@
 import { BinaryWriter } from "./binary";
 import type { ColumnType } from "./types";
-import { compareBytes, parseColumnType } from "./types";
+import { compareBytes, parseColumnType, quoteName } from "./types";
 import { timezoneOffset, wallClockToUTC } from "./text";
 
 /**
@@ -1377,34 +1377,16 @@ function mergeShapes(a: Shape, b: Shape): Shape | undefined {
   return undefined;
 }
 
-const PLAIN_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const NAME_ESCAPES: Record<string, string> = {
-  "\\": "\\\\",
-  "`": "\\`",
-  "\b": "\\b",
-  "\f": "\\f",
-  "\n": "\\n",
-  "\r": "\\r",
-  "\t": "\\t",
-  "\0": "\\0",
-};
-
 /** The name of a tuple element as the server writes it in a type name. The
  *  type names must be the names of the server, because the server sorts the
  *  types of a `Dynamic` column by name. */
 function elementName(name: string): string {
-  if (PLAIN_NAME_RE.test(name)) return name;
   if (name === "") {
     throw new InsertValueError(
       "Cannot insert an object with an empty key into a Dynamic column",
     );
   }
-  return (
-    "`" +
-    // eslint-disable-next-line no-control-regex -- the server escapes them
-    name.replace(/[\\`\x08\f\n\r\t\0]/g, (c) => NAME_ESCAPES[c] as string) +
-    "`"
-  );
+  return quoteName(name);
 }
 
 function shapeTypeName(shape: Shape): string {
@@ -1453,103 +1435,9 @@ function normalizeDynamic(value: unknown, ctx: EncodeContext): DynamicNorm {
 // Native layout
 // ---------------------------------------------------------------------------
 
-/**
- * Collects the bytes of the data of a column. A large buffer is kept as it
- * is ({@link append}), and small values are collected in chunks, so that the
- * block is copied one time only, when the packet is made.
- */
-export class ColumnWriter {
-  private parts: Buffer[] = [];
-  private chunkSize = 256;
-  private current: Buffer = Buffer.allocUnsafe(this.chunkSize);
-  private offset = 0;
-
-  private reserve(n: number): void {
-    if (this.offset + n <= this.current.length) return;
-    this.flush();
-    // Larger chunks for larger columns, up to 64 KiB.
-    this.chunkSize = Math.min(this.chunkSize * 2, 65536);
-    this.current = Buffer.allocUnsafe(Math.max(n, this.chunkSize));
-  }
-
-  private flush(): void {
-    if (this.offset > 0) {
-      this.parts.push(this.current.subarray(0, this.offset));
-      this.current = this.current.subarray(this.offset);
-      this.offset = 0;
-    }
-  }
-
-  u8(v: number): this {
-    this.reserve(1);
-    this.current[this.offset++] = v;
-    return this;
-  }
-
-  u64(v: number): this {
-    this.reserve(8);
-    this.current.writeUInt32LE(v >>> 0, this.offset);
-    this.current.writeUInt32LE(Math.floor(v / 0x100000000), this.offset + 4);
-    this.offset += 8;
-    return this;
-  }
-
-  varuint(v: number): this {
-    this.reserve(10);
-    let value = v;
-    while (value >= 0x80) {
-      this.current[this.offset++] = (value % 0x80) | 0x80;
-      value = Math.floor(value / 0x80);
-    }
-    this.current[this.offset++] = value;
-    return this;
-  }
-
-  /** Writes a VarUInt length and the bytes. */
-  bytes(v: Buffer): this {
-    this.varuint(v.length);
-    this.reserve(v.length);
-    v.copy(this.current, this.offset);
-    this.offset += v.length;
-    return this;
-  }
-
-  string(v: string): this {
-    const length = Buffer.byteLength(v, "utf8");
-    if (length < 0x80) {
-      this.reserve(1 + length);
-      this.current[this.offset++] = length;
-    } else {
-      this.varuint(length);
-      this.reserve(length);
-    }
-    this.current.write(v, this.offset, length, "utf8");
-    this.offset += length;
-    return this;
-  }
-
-  /** Adds a buffer without a copy. The caller must not change it later. */
-  append(v: Buffer): this {
-    if (v.length === 0) return this;
-    this.flush();
-    this.parts.push(v);
-    return this;
-  }
-
-  /** The collected buffers, in order. */
-  buffers(): Buffer[] {
-    this.flush();
-    return this.parts;
-  }
-
-  toBuffer(): Buffer {
-    return Buffer.concat(this.buffers());
-  }
-}
-
 interface Encoded {
   prefix: BinaryWriter;
-  data: ColumnWriter;
+  data: BinaryWriter;
 }
 
 const SHARED_VARIANT: ColumnType = {
@@ -1559,14 +1447,17 @@ const SHARED_VARIANT: ColumnType = {
 
 /** Writes the state prefix and the data of a column of stored values. */
 export function encodeColumn(type: ColumnType, values: unknown[]): Encoded {
-  const out: Encoded = { prefix: new BinaryWriter(), data: new ColumnWriter() };
+  const out: Encoded = {
+    prefix: new BinaryWriter(),
+    data: new BinaryWriter(),
+  };
   writeColumn(out, type, values);
   return out;
 }
 
 /** Writes values of a fixed size into one buffer. */
 function writeFixed<T>(
-  w: ColumnWriter,
+  w: BinaryWriter,
   values: unknown[],
   size: number,
   write: (buf: Buffer, value: T, offset: number) => void,
@@ -1748,7 +1639,7 @@ function writeOffset(buf: Buffer, value: number, offset: number): void {
 }
 
 function writeInts(
-  w: ColumnWriter,
+  w: BinaryWriter,
   bits: 8 | 16 | 32 | 64 | 128 | 256,
   signed: boolean,
   values: unknown[],

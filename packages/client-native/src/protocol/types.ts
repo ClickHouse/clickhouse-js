@@ -74,12 +74,13 @@ export class TypeParseError extends Error {
 // Tokenizer
 // ---------------------------------------------------------------------------
 
-type Token =
+type Token = (
   | { t: "ident"; v: string } // identifier (can contain dots for JSON paths)
   | { t: "quoted_ident"; v: string } // `backquoted` identifier
   | { t: "string"; v: string } // 'literal'
   | { t: "number"; v: string }
-  | { t: "punct"; v: "(" | ")" | "," | "=" | "[" | "]" };
+  | { t: "punct"; v: "(" | ")" | "," | "=" | "[" | "]" }
+) & { start: number };
 
 function tokenize(input: string): Token[] {
   const tokens: Token[] = [];
@@ -96,23 +97,25 @@ function tokenize(input: string): Token[] {
       c === "[" ||
       c === "]"
     ) {
-      tokens.push({ t: "punct", v: c });
+      tokens.push({ t: "punct", v: c, start: i });
       i++;
     } else if (c === "'" || c === "`" || c === '"') {
       const [value, end] = readQuoted(input, i);
       tokens.push(
-        c === "'" ? { t: "string", v: value } : { t: "quoted_ident", v: value },
+        c === "'"
+          ? { t: "string", v: value, start: i }
+          : { t: "quoted_ident", v: value, start: i },
       );
       i = end;
     } else if (/[0-9+-]/.test(c)) {
       let j = i + 1;
       while (j < input.length && /[0-9.eE+-]/.test(input[j] as string)) j++;
-      tokens.push({ t: "number", v: input.slice(i, j) });
+      tokens.push({ t: "number", v: input.slice(i, j), start: i });
       i = j;
     } else if (/[A-Za-z_]/.test(c)) {
       let j = i + 1;
       while (j < input.length && /[A-Za-z0-9_.]/.test(input[j] as string)) j++;
-      tokens.push({ t: "ident", v: input.slice(i, j) });
+      tokens.push({ t: "ident", v: input.slice(i, j), start: i });
       i = j;
     } else {
       throw new TypeParseError(
@@ -193,13 +196,10 @@ class Parser {
   private pos = 0;
   private readonly input: string;
   private readonly tokens: Token[];
-  /** The start offsets of the tokens in the input, to recover the source text. */
-  private readonly offsets: number[];
 
-  constructor(input: string, tokens: Token[], offsets: number[]) {
+  constructor(input: string, tokens: Token[]) {
     this.input = input;
     this.tokens = tokens;
-    this.offsets = offsets;
   }
 
   parseType(): RawType {
@@ -310,10 +310,10 @@ class Parser {
   }
 
   private textFrom(startToken: number): string {
-    const start = this.offsets[startToken] ?? 0;
+    const start = this.tokens[startToken]?.start ?? 0;
     const end =
-      this.pos < this.offsets.length
-        ? (this.offsets[this.pos] as number)
+      this.pos < this.tokens.length
+        ? (this.tokens[this.pos] as Token).start
         : this.input.length;
     return this.input.slice(start, end).trim().replace(/,$/, "").trim();
   }
@@ -323,25 +323,6 @@ class Parser {
       `${message} at token ${this.pos} in type ${this.input}`,
     );
   }
-}
-
-function tokenOffsets(input: string, tokens: Token[]): number[] {
-  // Re-scan the input to find where each token starts. The tokenizer skips only
-  // whitespace between tokens, so the offsets follow from the token lengths.
-  const offsets: number[] = [];
-  let i = 0;
-  for (const tok of tokens) {
-    while (/\s/.test(input[i] ?? "")) i++;
-    offsets.push(i);
-    if (tok.t === "punct") {
-      i += 1;
-    } else if (tok.t === "string" || tok.t === "quoted_ident") {
-      i = readQuoted(input, i)[1];
-    } else {
-      i += tok.v.length;
-    }
-  }
-  return offsets;
 }
 
 // ---------------------------------------------------------------------------
@@ -356,11 +337,7 @@ export function parseColumnType(typeString: string): ColumnType {
   const cached = cache.get(typeString);
   if (cached !== undefined) return cached;
   const tokens = tokenize(typeString);
-  const parser = new Parser(
-    typeString,
-    tokens,
-    tokenOffsets(typeString, tokens),
-  );
+  const parser = new Parser(typeString, tokens);
   const raw = parser.parseType();
   if (!parser.done()) {
     throw new TypeParseError(`Unexpected trailing input in type ${typeString}`);
@@ -599,10 +576,34 @@ function decimalType(
   return { kind: "Decimal", name, bytes, scale };
 }
 
-function quoteName(name: string): string {
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)
-    ? name
-    : "`" + name.replace(/\\/g, "\\\\").replace(/`/g, "\\`") + "`";
+const IDENTIFIER_ESCAPES: Record<string, string> = {
+  "\\": "\\\\",
+  "`": "\\`",
+  "\b": "\\b",
+  "\f": "\\f",
+  "\n": "\\n",
+  "\r": "\\r",
+  "\t": "\\t",
+  "\0": "\\0",
+};
+
+/** Always quotes an identifier in backticks with ClickHouse backslash escapes. */
+export function quoteIdentifier(name: string): string {
+  return (
+    "`" +
+    // eslint-disable-next-line no-control-regex -- escapes control characters as ClickHouse does
+    name.replace(
+      /[\\`\x08\f\n\r\t\0]/g,
+      (c) => IDENTIFIER_ESCAPES[c] as string,
+    ) +
+    "`"
+  );
+}
+
+/** Quotes an identifier in backticks only when it is not a bare ClickHouse
+ *  identifier (matching ClickHouse's `writeBackQuotedStringIfNecessary`). */
+export function quoteName(name: string): string {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : quoteIdentifier(name);
 }
 
 /** Compares two strings by their UTF-8 bytes, as the server sorts names. */

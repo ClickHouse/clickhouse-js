@@ -27,6 +27,15 @@ export class NeedMoreData extends Error {
   }
 }
 
+/**
+ * Reused singleton thrown by {@link BinaryReader.ensure} to avoid allocating a
+ * stack trace on every fragmented TCP chunk.
+ *
+ * Invariant: this instance is mutated synchronously by `ensure()` and MUST be
+ * caught synchronously on the same call stack (never persisted, rethrown across
+ * `await`, or allowed to escape uncaught, as its stack trace reflects module
+ * load rather than the failing read).
+ */
 const NEED_MORE_DATA = new NeedMoreData();
 
 /** Thrown when the data from the server is not correct. The connection
@@ -167,19 +176,32 @@ export class BinaryReader {
   }
 }
 
-/** Collects the binary values of an outgoing packet. */
+/**
+ * Collects binary values of an outgoing packet or Native column.
+ *
+ * Small scalar writes grow exponentially up to 64 KiB chunks; large pre-built
+ * buffers are attached without copying via {@link append}. Call {@link buffers}
+ * for zero-copy chunk access or {@link toBuffer} for a single contiguous buffer.
+ */
 export class BinaryWriter {
   private chunks: Buffer[] = [];
-  private current: Buffer = Buffer.allocUnsafe(256);
+  private chunkSize = 256;
+  private current: Buffer = Buffer.allocUnsafe(this.chunkSize);
   private offset = 0;
 
   private reserve(n: number): void {
     if (this.offset + n <= this.current.length) return;
+    this.flush();
+    this.chunkSize = Math.min(this.chunkSize * 2, 65536);
+    this.current = Buffer.allocUnsafe(Math.max(n, this.chunkSize));
+  }
+
+  private flush(): void {
     if (this.offset > 0) {
       this.chunks.push(this.current.subarray(0, this.offset));
+      this.current = this.current.subarray(this.offset);
+      this.offset = 0;
     }
-    this.current = Buffer.allocUnsafe(Math.max(256, n));
-    this.offset = 0;
   }
 
   u8(v: number): this {
@@ -190,7 +212,12 @@ export class BinaryWriter {
 
   u64(v: bigint | number): this {
     this.reserve(8);
-    this.current.writeBigUInt64LE(BigInt(v), this.offset);
+    if (typeof v === "number") {
+      this.current.writeUInt32LE(v >>> 0, this.offset);
+      this.current.writeUInt32LE(Math.floor(v / 0x100000000), this.offset + 4);
+    } else {
+      this.current.writeBigUInt64LE(v, this.offset);
+    }
     this.offset += 8;
     return this;
   }
@@ -235,6 +262,14 @@ export class BinaryWriter {
     return this;
   }
 
+  /** Appends an existing buffer without copying. The caller must not mutate it. */
+  append(v: Buffer): this {
+    if (v.length === 0) return this;
+    this.flush();
+    this.chunks.push(v);
+    return this;
+  }
+
   /** Writes a fixed-size value with a callback on the buffer. */
   fixedWith(size: number, write: (buf: Buffer, offset: number) => void): this {
     this.reserve(size);
@@ -251,7 +286,17 @@ export class BinaryWriter {
   }
 
   string(v: string): this {
-    return this.bytes(Buffer.from(v, "utf8"));
+    const length = Buffer.byteLength(v, "utf8");
+    if (length < 0x80) {
+      this.reserve(1 + length);
+      this.current[this.offset++] = length;
+    } else {
+      this.varuint(length);
+      this.reserve(length);
+    }
+    this.current.write(v, this.offset, length, "utf8");
+    this.offset += length;
+    return this;
   }
 
   bytes(v: Buffer): this {
@@ -260,6 +305,12 @@ export class BinaryWriter {
     v.copy(this.current, this.offset);
     this.offset += v.length;
     return this;
+  }
+
+  /** The collected buffers, in order. */
+  buffers(): Buffer[] {
+    this.flush();
+    return this.chunks;
   }
 
   toBuffer(): Buffer {

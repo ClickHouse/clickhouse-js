@@ -10,13 +10,8 @@ import type {
   Row,
 } from "./common/index";
 import {
-  extractErrorAtTheEndOfChunk,
   defaultJSONHandling,
-  EXCEPTION_TAG_HEADER_NAME,
-  CARET_RETURN,
   recordSpanError,
-} from "./common/index";
-import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
   RecordsJSONFormats,
@@ -71,7 +66,6 @@ export class ResultSet<
 > implements BaseResultSet<Stream.Readable, Format> {
   public readonly response_headers: ResponseHeaders = {};
 
-  private readonly exceptionTag: string | undefined = undefined;
   private readonly log_error: (error: Error) => void;
   private readonly jsonHandling: JSONHandling;
   private _consumed = false;
@@ -117,8 +111,6 @@ export class ResultSet<
 
     if (_response_headers !== undefined) {
       this.response_headers = Object.freeze(_response_headers);
-      this.exceptionTag = _response_headers[EXCEPTION_TAG_HEADER_NAME] as
-        string | undefined;
     }
   }
 
@@ -293,7 +285,6 @@ export class ResultSet<
     // The text after the last newline of the parts that are strings.
     let textRest = "";
     const logError = this.log_error;
-    const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
@@ -358,15 +349,6 @@ export class ResultSet<
             }
             break;
           } else {
-            // Check for exception in the chunk (only after 25.11)
-            if (
-              exceptionTag !== undefined &&
-              idx >= 1 &&
-              chunk[idx - 1] === CARET_RETURN
-            ) {
-              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag));
-            }
-
             if (incompleteChunks.length > 0) {
               incompleteChunks.push(chunk.subarray(lastIdx, idx));
               currentChunkPart = Buffer.concat(incompleteChunks);

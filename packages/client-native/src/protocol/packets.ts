@@ -40,7 +40,6 @@ export const REVISION = {
   ADDENDUM: 54458,
   PARAMETERS: 54459,
   SERVER_QUERY_TIME_IN_PROGRESS: 54460,
-  TOTAL_BYTES_IN_PROGRESS: 54463,
 } as const;
 
 export const ClientPacket = {
@@ -61,11 +60,9 @@ export const ServerPacketType = {
   ProfileInfo: 6,
   Totals: 7,
   Extremes: 8,
-  TablesStatusResponse: 9,
   Log: 10,
   TableColumns: 11,
   PartUUIDs: 12,
-  ReadTaskRequest: 13,
   ProfileEvents: 14,
   TimezoneUpdate: 17,
 } as const;
@@ -741,8 +738,9 @@ function readProgress(r: BinaryReader, rev: number): Progress {
   const read_rows = r.varuint64();
   const read_bytes = r.varuint64();
   const total_rows_to_read = r.varuint64();
-  const total_bytes_to_read =
-    rev >= REVISION.TOTAL_BYTES_IN_PROGRESS ? r.varuint64() : 0n;
+  // `total_bytes_to_read` was added in protocol revision 54463; this client
+  // negotiates at most CLIENT_REVISION (54460), so it is never sent on wire.
+  const total_bytes_to_read = 0n;
   let written_rows = 0n;
   let written_bytes = 0n;
   if (rev >= REVISION.CLIENT_WRITE_INFO) {

@@ -1,7 +1,7 @@
 import type { BinaryReader } from "./binary";
 import { ProtocolError } from "./binary";
 import type { ColumnType } from "./types";
-import { parseColumnType } from "./types";
+import { parseColumnType, quoteName } from "./types";
 
 /**
  * Decodes a type in the binary type encoding of the server
@@ -57,12 +57,6 @@ const INTERVAL_KINDS = [
 
 function quote(s: string): string {
   return "'" + s.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
-}
-
-function quoteName(s: string): string {
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(s)
-    ? s
-    : "`" + s.replace(/\\/g, "\\\\").replace(/`/g, "\\`") + "`";
 }
 
 /** Decodes a binary type into its type string. */

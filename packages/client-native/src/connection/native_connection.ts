@@ -62,7 +62,7 @@ import {
   stringifyJSON,
 } from "../protocol/encode";
 import type { ColumnType } from "../protocol/types";
-import { unwrapType } from "../protocol/types";
+import { quoteIdentifier, unwrapType } from "../protocol/types";
 import type { NativeCompressionMethod } from "../compression/frames";
 import { exceptionText, toClickHouseError } from "./errors";
 import type { NativeTLSOptions, PacketHandler } from "./native_socket";
@@ -2202,10 +2202,6 @@ function rowKeys(rows: unknown[]): string[] {
     }
   }
   return [...keys];
-}
-
-function quoteIdentifier(name: string): string {
-  return "`" + name.replace(/\\/g, "\\\\").replace(/`/g, "\\`") + "`";
 }
 
 function startsWithInsert(query: string | Buffer | Buffer[]): boolean {

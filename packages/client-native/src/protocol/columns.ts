@@ -339,17 +339,24 @@ function scanStringColumn(
   for (let i = 0; i < rows; i++) {
     let len = 0;
     let multiplier = 1;
+    let byteCount = 0;
     for (;;) {
       // Each of the next rows needs one byte or more.
       if (pos >= limit) r.ensure(pos - r.pos + rows - i);
       const byte = buf[pos++] as number;
       len += (byte & 0x7f) * multiplier;
-      if ((byte & 0x80) === 0) break;
-      short = false;
-      multiplier *= 128;
-      if (multiplier > 2 ** 56) {
-        throw new ProtocolError("A string length is too large");
+      if ((byte & 0x80) === 0) {
+        if (len > Number.MAX_SAFE_INTEGER) {
+          throw new ProtocolError("A VarUInt value is too large");
+        }
+        break;
       }
+      short = false;
+      byteCount++;
+      if (byteCount >= 10) {
+        throw new ProtocolError("A VarUInt value is longer than 10 bytes");
+      }
+      multiplier *= 128;
     }
     pos += len;
     if (pos > limit) r.ensure(pos - r.pos + rows - i - 1);
