@@ -61,7 +61,7 @@ export function lz4Decompress(src: Buffer, decompressedSize: number): Buffer {
     if (literals < SHORT_COPY) {
       for (let i = 0; i < literals; i++) dst[op + i] = src[ip + i]!;
     } else {
-      dst.set(src.subarray(ip, ip + literals), op);
+      src.copy(dst, op, ip, ip + literals);
     }
     ip += literals;
     op += literals;
@@ -86,7 +86,9 @@ export function lz4Decompress(src: Buffer, decompressedSize: number): Buffer {
       throw new Error("Corrupted LZ4 data: match out of bounds");
     }
     const from = op - offset;
-    if (length < SHORT_COPY || offset < length) {
+    if (offset === 1 && length >= 16) {
+      dst.fill(dst[from]!, op, op + length);
+    } else if (length < SHORT_COPY || offset < length) {
       // A short match, or a match that overlaps the output: copy bytes in order.
       for (let i = 0; i < length; i++) dst[op + i] = dst[from + i]!;
     } else {
@@ -144,7 +146,7 @@ function copyBytes(
   if (n < SHORT_COPY) {
     for (let i = 0; i < n; i++) dst[op + i] = src[from + i]!;
   } else {
-    dst.set(src.subarray(from, to), op);
+    src.copy(dst, op, from, to);
   }
 }
 

@@ -267,6 +267,20 @@ function quoteField(value: string): string {
 /** The block info that starts each block: is_overflows = false,
  *  bucket_num = -1, end of fields. */
 export const BLOCK_INFO = Buffer.from([1, 0, 2, 0xff, 0xff, 0xff, 0xff, 0]);
+const DATA_PACKET_HEAD = Buffer.from([ClientPacket.Data, 0]);
+
+/** Encodes a Data packet as zero-copy chunks (`[head, ...frames]`) so the
+ *  socket can write them via `cork()`/`uncork()` without concatenating the
+ *  payload. */
+export function encodeDataPacketChunks(
+  block: Buffer,
+  compression: NativeCompressionMethod | undefined,
+  zstdLevel?: number,
+): Buffer[] {
+  return compression === undefined
+    ? [DATA_PACKET_HEAD, block]
+    : [DATA_PACKET_HEAD, ...compressFrames(block, compression, zstdLevel)];
+}
 
 /** A Data packet with the encoded block (block info, columns and rows).
  *  With compression, the block is in compressed blocks of 1 MiB at most, as
@@ -276,15 +290,7 @@ export function encodeDataPacket(
   compression: NativeCompressionMethod | undefined,
   zstdLevel?: number,
 ): Buffer {
-  const head = new BinaryWriter()
-    .varuint(ClientPacket.Data)
-    .string("")
-    .toBuffer();
-  return Buffer.concat(
-    compression === undefined
-      ? [head, block]
-      : [head, ...compressFrames(block, compression, zstdLevel)],
-  );
+  return Buffer.concat(encodeDataPacketChunks(block, compression, zstdLevel));
 }
 
 /** An empty Data packet: the end of the (external or INSERT) data. */
@@ -685,6 +691,7 @@ export function readBlock(
       // later request on the same socket or a subsequent TimezoneUpdate.
       const columnCtx: DecodeContext = {
         timezone: ctx.timezone,
+        safe_int64: ctx.safe_int64,
         date_time_output_format: ctx.date_time_output_format,
         date_time64_cut_zeros: ctx.date_time64_cut_zeros,
       };

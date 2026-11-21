@@ -1,11 +1,12 @@
 import type { Block, Column } from "./protocol/packets";
 import type { ColumnType } from "./protocol/types";
 
-type Integer = Extract<ColumnType, { kind: "Int" }>;
 type Escapes = ReadonlyArray<Buffer | undefined>;
-type WriteValue = (out: Buffer, pos: number, row: number) => number;
 
 const MAX_BUFFER_SIZE = 16 * 1024 * 1024;
+/** Reusable synchronous scratch buffer kept across queries up to this size. */
+const MAX_KEPT_SCRATCH_SIZE = 8 * 1024 * 1024;
+let sharedScratch: Buffer | undefined;
 const TRUE = Buffer.from("true");
 const FALSE = Buffer.from("false");
 const LINE_SEPARATOR = Buffer.from("\\u2028");
@@ -15,16 +16,43 @@ const DIGIT_PAIRS = Uint8Array.from(
   (_, i) => 48 + (i % 2 === 0 ? Math.floor(i / 20) : Math.floor(i / 2) % 10),
 );
 
+const FIELD_STRING = 0;
+const FIELD_BOOL = 1;
+const FIELD_INT8 = 2;
+const FIELD_UINT8 = 3;
+const FIELD_INT16 = 4;
+const FIELD_UINT16 = 5;
+const FIELD_INT32 = 6;
+const FIELD_UINT32 = 7;
+const FIELD_INT64 = 8;
+const FIELD_UINT64 = 9;
+
+interface PreparedField {
+  kind: number;
+  prefix: Buffer;
+  bytes: Buffer;
+  view: DataView | undefined;
+  quote: boolean;
+  input: number;
+}
+
 /** Writes JSON rows from the retained bytes of simple Native columns. */
 export class BinaryJSONRows {
-  private buffer = Buffer.alloc(0);
   private readonly escapes: Escapes;
+  private readonly escapeKind: Uint8Array;
   private readonly quoteInt64: boolean;
 
   constructor(escapes: Escapes, escapeSlashes: boolean, quoteInt64: boolean) {
     this.escapes = escapeSlashes
       ? escapes
       : escapes.map((value, byte) => (byte === 47 ? undefined : value));
+    const kind = new Uint8Array(256);
+    for (let b = 0; b < 256; b++) {
+      if (this.escapes[b] !== undefined) kind[b] = 1;
+    }
+    // 0xe2 starts UTF-8 U+2028 / U+2029, which ClickHouse escapes in JSON strings.
+    kind[0xe2] = 2;
+    this.escapeKind = kind;
     this.quoteInt64 = quoteInt64;
   }
 
@@ -35,33 +63,166 @@ export class BinaryJSONRows {
   ): string | undefined {
     // JSON row layouts end with an ASCII bracket and a newline.
     const close = suffix.charCodeAt(0);
-    const fields: Array<{ prefix: Buffer; write: WriteValue }> = [];
-    let capacity = block.rows * 2;
-    for (let i = 0; i < block.columns.length; i++) {
+    const colCount = block.columns.length;
+    const rows = block.rows;
+    const fields = new Array<PreparedField>(colCount);
+    let capacity = rows * 2;
+    for (let i = 0; i < colCount; i++) {
       const column = block.columns[i] as Column;
-      if (column.binary === undefined) return;
+      const bytes = column.binary;
+      if (bytes === undefined) return;
       const field = prepareField(
         column.type,
-        column.binary,
-        block.rows,
-        this.escapes,
+        bytes,
+        rows,
+        Buffer.from(prefixes[i] as string),
         this.quoteInt64,
       );
       if (field === undefined) return;
-      const prefix = Buffer.from(prefixes[i] as string);
-      capacity += field.capacity + block.rows * prefix.length;
+      capacity += field.capacity + rows * field.field.prefix.length;
       if (capacity > MAX_BUFFER_SIZE) return;
-      fields.push({ prefix, write: field.write });
+      fields[i] = field.field;
     }
-    if (this.buffer.length < capacity)
-      this.buffer = Buffer.allocUnsafe(capacity);
-    const out = this.buffer;
+    let out: Buffer;
+    if (capacity <= MAX_KEPT_SCRATCH_SIZE) {
+      if (sharedScratch === undefined || sharedScratch.length < capacity) {
+        sharedScratch = Buffer.allocUnsafe(capacity);
+      }
+      out = sharedScratch;
+    } else {
+      out = Buffer.allocUnsafe(capacity);
+    }
+    const escapes = this.escapes;
+    const escapeKind = this.escapeKind;
     let pos = 0;
-    for (let row = 0; row < block.rows; row++) {
-      for (const { prefix, write } of fields) {
-        // eslint-disable-next-line @typescript-eslint/prefer-for-of -- Avoid a Buffer iterator for each field of each row.
-        for (let i = 0; i < prefix.length; i++) out[pos++] = prefix[i]!;
-        pos = write(out, pos, row);
+    for (let row = 0; row < rows; row++) {
+      for (let f = 0; f < colCount; f++) {
+        const field = fields[f]!;
+        const prefix = field.prefix;
+        const pLen = prefix.length;
+        for (let i = 0; i < pLen; i++) out[pos++] = prefix[i]!;
+        switch (field.kind) {
+          case FIELD_STRING: {
+            const src = field.bytes;
+            let input = field.input;
+            const length = src[input++]!;
+            const end = input + length;
+            out[pos++] = 34;
+            while (input < end) {
+              const byte = src[input++]!;
+              const flag = escapeKind[byte]!;
+              if (flag === 0) {
+                out[pos++] = byte;
+              } else if (flag === 2) {
+                if (input + 1 < end && src[input] === 0x80) {
+                  const last = src[input + 1];
+                  if (last === 0xa8 || last === 0xa9) {
+                    const esc =
+                      last === 0xa8 ? LINE_SEPARATOR : PARAGRAPH_SEPARATOR;
+                    out.set(esc, pos);
+                    pos += esc.length;
+                    input += 2;
+                    continue;
+                  }
+                }
+                out[pos++] = byte;
+              } else {
+                const esc = escapes[byte]!;
+                out.set(esc, pos);
+                pos += esc.length;
+              }
+            }
+            out[pos++] = 34;
+            field.input = input;
+            break;
+          }
+          case FIELD_BOOL: {
+            const val = field.bytes[row] === 0 ? FALSE : TRUE;
+            out.set(val, pos);
+            pos += val.length;
+            break;
+          }
+          case FIELD_UINT8:
+            pos = writeUnsigned32(out, pos, field.bytes[row]!);
+            break;
+          case FIELD_INT8:
+            pos = writeSigned32(out, pos, field.view!.getInt8(row));
+            break;
+          case FIELD_UINT16:
+            pos = writeUnsigned32(
+              out,
+              pos,
+              field.view!.getUint16(row * 2, true),
+            );
+            break;
+          case FIELD_INT16:
+            pos = writeSigned32(out, pos, field.view!.getInt16(row * 2, true));
+            break;
+          case FIELD_UINT32:
+            pos = writeUnsigned32(
+              out,
+              pos,
+              field.view!.getUint32(row * 4, true),
+            );
+            break;
+          case FIELD_INT32:
+            pos = writeSigned32(out, pos, field.view!.getInt32(row * 4, true));
+            break;
+          case FIELD_UINT64: {
+            const view = field.view!;
+            const offset = row * 8;
+            if (field.quote) out[pos++] = 34;
+            const hi = view.getUint32(offset + 4, true);
+            if (hi === 0) {
+              pos = writeUnsigned32(out, pos, view.getUint32(offset, true));
+            } else if (hi < 0x200000) {
+              pos += out.write(
+                String(hi * 0x100000000 + view.getUint32(offset, true)),
+                pos,
+                "ascii",
+              );
+            } else {
+              pos += out.write(
+                String(view.getBigUint64(offset, true)),
+                pos,
+                "ascii",
+              );
+            }
+            if (field.quote) out[pos++] = 34;
+            break;
+          }
+          case FIELD_INT64: {
+            const view = field.view!;
+            const offset = row * 8;
+            if (field.quote) out[pos++] = 34;
+            const hi = view.getInt32(offset + 4, true);
+            if (hi === 0) {
+              pos = writeUnsigned32(out, pos, view.getUint32(offset, true));
+            } else if (hi === -1) {
+              const lo = view.getUint32(offset, true);
+              if (lo !== 0) {
+                out[pos++] = 45;
+                pos = writeUnsigned32(out, pos, (~lo >>> 0) + 1);
+              } else {
+                pos += out.write("-4294967296", pos, "ascii");
+              }
+            } else if (hi > -0x200000 && hi < 0x200000) {
+              pos += out.write(
+                String(hi * 0x100000000 + view.getUint32(offset, true)),
+                pos,
+                "ascii",
+              );
+            } else {
+              pos += out.write(
+                String(view.getBigInt64(offset, true)),
+                pos,
+                "ascii",
+              );
+            }
+            if (field.quote) out[pos++] = 34;
+            break;
+          }
+        }
       }
       out[pos++] = close;
       out[pos++] = 10;
@@ -75,117 +236,87 @@ function prepareField(
   type: ColumnType,
   bytes: Buffer,
   rows: number,
-  escapes: Escapes,
+  prefix: Buffer,
   quoteInt64: boolean,
-): { capacity: number; write: WriteValue } | undefined {
+): { capacity: number; field: PreparedField } | undefined {
   switch (type.kind) {
-    case "String": {
-      let input = 0;
+    case "String":
       return {
         // Each value has a one-byte length. An escaped byte occupies at most six bytes.
         capacity: (bytes.length - rows) * 6 + 2 * rows,
-        write: (out, pos) => {
-          const length = bytes[input++]!;
-          const end = input + length;
-          out[pos++] = 34;
-          while (input < end) {
-            const byte = bytes[input++]!;
-            let escaped = escapes[byte];
-            // ClickHouse also escapes U+2028 and U+2029 in JSON strings.
-            if (byte === 0xe2 && input + 1 < end && bytes[input] === 0x80) {
-              const last = bytes[input + 1];
-              if (last === 0xa8 || last === 0xa9) {
-                escaped = last === 0xa8 ? LINE_SEPARATOR : PARAGRAPH_SEPARATOR;
-                input += 2;
-              }
-            }
-            if (escaped === undefined) {
-              out[pos++] = byte;
-            } else {
-              out.set(escaped, pos);
-              pos += escaped.length;
-            }
-          }
-          out[pos++] = 34;
-          return pos;
+        field: {
+          kind: FIELD_STRING,
+          prefix,
+          bytes,
+          view: undefined,
+          quote: false,
+          input: 0,
         },
       };
-    }
     case "Bool":
       return {
         capacity: rows * FALSE.length,
-        write: (out, pos, row) => {
-          const value = bytes[row] === 0 ? FALSE : TRUE;
-          out.set(value, pos);
-          return pos + value.length;
+        field: {
+          kind: FIELD_BOOL,
+          prefix,
+          bytes,
+          view: undefined,
+          quote: false,
+          input: 0,
         },
       };
     case "Int": {
-      const read = integerReader(type, bytes);
-      if (read === undefined) return;
+      let kind: number;
+      switch (type.bits) {
+        case 8:
+          kind = type.signed ? FIELD_INT8 : FIELD_UINT8;
+          break;
+        case 16:
+          kind = type.signed ? FIELD_INT16 : FIELD_UINT16;
+          break;
+        case 32:
+          kind = type.signed ? FIELD_INT32 : FIELD_UINT32;
+          break;
+        case 64:
+          kind = type.signed ? FIELD_INT64 : FIELD_UINT64;
+          break;
+        default:
+          return undefined;
+      }
       const quote = quoteInt64 && type.bits === 64;
       const width = type.bits <= 32 ? 11 : 20;
+      const view =
+        kind === FIELD_UINT8
+          ? undefined
+          : new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
       return {
         capacity: rows * (width + (quote ? 2 : 0)),
-        write: (out, pos, row) => {
-          if (quote) out[pos++] = 34;
-          pos = writeInteger(out, pos, read(row));
-          if (quote) out[pos++] = 34;
-          return pos;
-        },
+        field: { kind, prefix, bytes, view, quote, input: 0 },
       };
     }
+    default:
+      return undefined;
   }
 }
 
-function integerReader(
-  type: Integer,
-  bytes: Buffer,
-): ((row: number) => number | bigint) | undefined {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
-  const { signed } = type;
-  switch (type.bits) {
-    case 8:
-      return signed ? (row) => view.getInt8(row) : (row) => bytes[row]!;
-    case 16:
-      return signed
-        ? (row) => view.getInt16(row * 2, true)
-        : (row) => view.getUint16(row * 2, true);
-    case 32:
-      return signed
-        ? (row) => view.getInt32(row * 4, true)
-        : (row) => view.getUint32(row * 4, true);
-    case 64:
-      return (row) => {
-        const offset = row * 8;
-        const high = signed
-          ? view.getInt32(offset + 4, true)
-          : view.getUint32(offset + 4, true);
-        if (high >= -(2 ** 21) && high < 2 ** 21) {
-          return high * 2 ** 32 + view.getUint32(offset, true);
-        }
-        return signed
-          ? view.getBigInt64(offset, true)
-          : view.getBigUint64(offset, true);
-      };
-  }
-}
-
-function writeInteger(
-  out: Buffer,
-  pos: number,
-  value: number | bigint,
-): number {
-  if (typeof value === "bigint" || value < -0xffffffff || value > 0xffffffff) {
-    return pos + out.write(String(value), pos, "ascii");
-  }
+function writeSigned32(out: Buffer, pos: number, value: number): number {
   if (value < 0) {
     out[pos++] = 45;
-    value = -value;
+    return writeUnsigned32(out, pos, -value);
   }
+  return writeUnsigned32(out, pos, value);
+}
+
+function writeUnsigned32(out: Buffer, pos: number, value: number): number {
   if (value < 10) {
     out[pos] = 48 + value;
     return pos + 1;
+  }
+  if (value < 100) {
+    const pair = value * 2;
+    out[pos] = DIGIT_PAIRS[pair]!;
+    out[pos + 1] = DIGIT_PAIRS[pair + 1]!;
+    return pos + 2;
   }
   const end = pos + decimalWidth(value);
   pos = end;
@@ -205,7 +336,6 @@ function writeInteger(
 }
 
 function decimalWidth(value: number): number {
-  if (value < 100) return 2;
   if (value < 1000) return 3;
   if (value < 10000) return 4;
   if (value < 100000) return 5;

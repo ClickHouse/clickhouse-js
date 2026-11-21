@@ -187,6 +187,65 @@ describe("[Native] column decoder, special cases", () => {
     expect(readColumn(r, uint64, 1, undefined, ctx)).toEqual([max]);
     expect(r.pos).toBe(r.buf.length);
   });
+
+  it("decodes safe 64-bit integers as numbers when safe_int64 is enabled and keeps bigints beyond bounds", () => {
+    const int64 = parseColumnType("Int64");
+    const uint64 = parseColumnType("UInt64");
+    const signedInputs = [
+      -(1n << 63n),
+      -(1n << 53n),
+      -9007194959446016n, // hi = -0x1fffff, lo = 0
+      -4294967296n,
+      -1n,
+      0n,
+      42n,
+      BigInt(Number.MAX_SAFE_INTEGER),
+      BigInt(Number.MAX_SAFE_INTEGER) + 1n,
+      (1n << 63n) - 1n,
+    ];
+    const unsignedInputs = [
+      0n,
+      1n,
+      0xffffffffn,
+      BigInt(Number.MAX_SAFE_INTEGER),
+      BigInt(Number.MAX_SAFE_INTEGER) + 1n,
+      (1n << 64n) - 1n,
+    ];
+    const w = new BinaryWriter();
+    for (const v of signedInputs) w.i64(v);
+    for (const v of unsignedInputs) w.u64(v);
+    const r = new BinaryReader(w.toBuffer());
+    const ctx: DecodeContext = { timezone: "UTC", safe_int64: true };
+    const decodedSigned = readColumn(
+      r,
+      int64,
+      signedInputs.length,
+      undefined,
+      ctx,
+    );
+    const decodedUnsigned = readColumn(
+      r,
+      uint64,
+      unsignedInputs.length,
+      undefined,
+      ctx,
+    );
+    expect(decodedSigned.map((v) => String(v))).toEqual(
+      signedInputs.map((v) => String(v)),
+    );
+    expect(decodedUnsigned.map((v) => String(v))).toEqual(
+      unsignedInputs.map((v) => String(v)),
+    );
+    expect(typeof decodedSigned[0]).toBe("bigint");
+    expect(typeof decodedSigned[1]).toBe("bigint");
+    expect(typeof decodedSigned[2]).toBe("number");
+    expect(typeof decodedSigned[4]).toBe("number");
+    expect(typeof decodedSigned[7]).toBe("number");
+    expect(typeof decodedSigned[8]).toBe("bigint");
+    expect(typeof decodedUnsigned[3]).toBe("number");
+    expect(typeof decodedUnsigned[4]).toBe("bigint");
+    expect(typeof decodedUnsigned[5]).toBe("bigint");
+  });
 });
 
 describe("[Native] strings with bytes that are not UTF-8", () => {

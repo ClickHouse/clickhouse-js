@@ -152,6 +152,7 @@ export class NativeSocket {
       timezone,
       compressed,
       consume_frames: true,
+      safe_int64: true,
       date_time_output_format: decode?.date_time_output_format,
       date_time64_cut_zeros: decode?.date_time64_cut_zeros,
       binary_columns: decode?.binary_columns,
@@ -177,9 +178,26 @@ export class NativeSocket {
   }
 
   /** Sends data and waits until the socket can take more (backpressure). */
-  writeAndDrain(data: Buffer): Promise<void> {
+  writeAndDrain(data: Buffer | Buffer[]): Promise<void> {
     if (this.failure !== undefined) return Promise.reject(this.failure);
-    if (this.socket.write(data)) return Promise.resolve();
+    let ok = true;
+    if (Array.isArray(data)) {
+      if (data.length > 1) {
+        this.socket.cork();
+        try {
+          for (const buf of data) {
+            ok = this.socket.write(buf);
+          }
+        } finally {
+          this.socket.uncork();
+        }
+      } else if (data.length === 1) {
+        ok = this.socket.write(data[0]!);
+      }
+    } else {
+      ok = this.socket.write(data);
+    }
+    if (ok) return Promise.resolve();
     return new Promise((resolve, reject) => {
       const onDrain = () => {
         this.socket.removeListener("close", onClose);

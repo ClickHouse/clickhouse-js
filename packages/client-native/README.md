@@ -270,19 +270,19 @@ Relative performance between `@clickhouse/client-native` (TCP) and
   avoids per-request HTTP header overhead, cutting latency and Node.js CPU by
   more than half.
 - **Large `.json()` analytics reads (plain or compressed):** Building JS objects
-  directly from decoded `Native` blocks with native LZ4 compression is ~2x
-  faster than HTTP JSON serialization + gzip + `JSON.parse`, while using less
-  client CPU and fewer JS allocations.
+  directly from decoded `Native` blocks with native LZ4 compression is ~2.7–2.8x
+  faster than HTTP JSON serialization + gzip + `JSON.parse`, while cutting
+  client CPU by ~45–50% and JS allocations by ~42–65%.
+- **Streaming `.stream()` reads:** The binary-to-JSON row writer and
+  prototype-backed `Row` objects reach >8M rows/s (~1.53x HTTP) with 78% fewer
+  JS allocations than HTTP.
 - **Structured `insert()`:** Encoding JS rows into columnar `Native` blocks with
-  LZ4 reaches >1M rows/s (~1.55x HTTP) with less CPU (-15%) and 70% fewer JS
+  LZ4 reaches >1M rows/s (~1.56x HTTP) with less CPU (-21%) and 71% fewer JS
   allocations than HTTP JSON + gzip, while raw `CSV` stream inserts run at
   parity with zero extra payload copies.
 - **Binary-path `JSON` decoding:** Columnar `JSON` block decoding and direct JS
-  object construction beat HTTP by ~26% even when
+  object construction beat HTTP by ~36% even when
   `output_format_native_write_json_as_string = 0`.
-- **Text-only streaming (`.stream()` draining raw `row.text` without parsing):**
-  HTTP formats text on the server in C++, so draining raw JSON text lines
-  without parsing can be slightly faster over HTTP.
 
 Indicative results from [`benchmarks/native/`](../../benchmarks/native/README.md)
 (macOS, Node.js `v24.16.0`, ClickHouse `26.10.1.1562`, loopback `127.0.0.1`,
@@ -291,16 +291,16 @@ conclusions):
 
 | Scenario                                                 | `@clickhouse/client` (HTTP) | `@clickhouse/client-native` (TCP) | Native vs HTTP | CPU/op (HTTP → Native) | JS Alloc/op (HTTP → Native) |
 | -------------------------------------------------------- | --------------------------: | --------------------------------: | -------------: | ---------------------: | --------------------------: |
-| Sequential `SELECT 1` (200 reqs)                         |       530.3 req/s (1.88 ms) |          **2.4k req/s (0.41 ms)** |      **4.55x** |   0.595 → **0.284 ms** |         97.8 → **59.7 KiB** |
-| Concurrent pool (16×25 reqs)                             |                  6.7k req/s |                   **13.7k req/s** |      **2.04x** |   0.223 → **0.115 ms** |         80.9 → **51.9 KiB** |
-| `JSONEachRow` `.json()` (100k rows)                      |                1.45M rows/s |                  **2.80M rows/s** |      **1.93x** |     **54.8** → 62.5 ms |         54.4 → **51.2 MiB** |
-| `JSONEachRow` `.stream()` (200k rows, text only)         |            **5.28M rows/s** |                      4.79M rows/s |          0.91x |     **30.7** → 84.9 ms |         62.5 → **38.9 MiB** |
-| Compressed `.json()` (200k rows, LZ4 vs gzip)            |                1.90M rows/s |                  **4.52M rows/s** |      **2.38x** |    112.7 → **60.2 ms** |         97.1 → **47.8 MiB** |
-| Structured `JSONEachRow` insert (100k rows, LZ4 vs gzip) |               665.1k rows/s |                  **1.03M rows/s** |      **1.55x** |     70.6 → **59.8 ms** |         23.1 → **6.88 MiB** |
-| Raw CSV stream insert (1M rows, 24.3 MiB)                |                 160.6 MiB/s |                       159.4 MiB/s |          0.99x |     9.36 → **6.31 ms** |           698 → **427 KiB** |
-| Complex types: `Tuple`/`Array`/`JSON`/TZ (50k rows)      |               280.9k rows/s |                 **319.3k rows/s** |      **1.14x** |     **65.0** → 89.9 ms |         **39.0** → 51.0 MiB |
-| Binary `JSON` paths (50k rows, 8 keys/row)               |               196.7k rows/s |                 **247.4k rows/s** |      **1.26x** |     **43.5** → 62.2 ms |         **26.6** → 75.0 MiB |
-| Early `ResultSet.close()` on 50M-row query + recovery    |        81.2 req/s (12.3 ms) |          **85.5 req/s (11.7 ms)** |      **1.11x** |     **3.93** → 13.8 ms |         **1.00** → 13.0 MiB |
+| Sequential `SELECT 1` (200 reqs)                         |       463.9 req/s (2.15 ms) |          **2.1k req/s (0.47 ms)** |      **4.55x** |   0.647 → **0.305 ms** |         95.9 → **56.3 KiB** |
+| Concurrent pool (16×25 reqs)                             |                  6.6k req/s |                   **12.2k req/s** |      **1.86x** |   0.231 → **0.129 ms** |         77.6 → **47.8 KiB** |
+| `JSONEachRow` `.json()` (100k rows)                      |                1.44M rows/s |                  **3.91M rows/s** |      **2.72x** |     83.0 → **42.2 ms** |         54.1 → **31.3 MiB** |
+| `JSONEachRow` `.stream()` (200k rows, binary fast path)  |                5.34M rows/s |                  **8.14M rows/s** |      **1.53x** |     **31.0** → 44.5 ms |         63.5 → **14.0 MiB** |
+| Compressed `.json()` (200k rows, LZ4 vs gzip)            |                1.89M rows/s |                  **5.37M rows/s** |      **2.84x** |    112.1 → **61.2 ms** |         96.9 → **33.5 MiB** |
+| Structured `JSONEachRow` insert (100k rows, LZ4 vs gzip) |               663.7k rows/s |                  **1.03M rows/s** |      **1.56x** |     71.5 → **56.6 ms** |         23.5 → **6.92 MiB** |
+| Raw CSV stream insert (1M rows, 24.3 MiB)                |                 161.8 MiB/s |                       159.4 MiB/s |          0.99x |     9.25 → **6.87 ms** |           578 → **314 KiB** |
+| Complex types: `Tuple`/`Array`/`JSON`/TZ (50k rows)      |               288.1k rows/s |                 **339.1k rows/s** |      **1.18x** |     **65.9** → 77.3 ms |         37.3 → **36.3 MiB** |
+| Binary `JSON` paths (50k rows, 8 keys/row)               |               196.6k rows/s |                 **267.9k rows/s** |      **1.36x** |     **43.8** → 46.8 ms |         **26.1** → 30.0 MiB |
+| Early `ResultSet.close()` on 50M-row query + recovery    |        78.7 req/s (12.7 ms) |          **82.7 req/s (12.1 ms)** |      **1.05x** |     **3.80** → 23.1 ms |         **1.09** → 4.76 MiB |
 
 Run the suite locally against your own ClickHouse instance:
 

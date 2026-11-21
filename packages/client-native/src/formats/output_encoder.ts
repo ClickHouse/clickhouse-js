@@ -11,6 +11,7 @@ import {
   ValueWriter,
   canHaveLines,
   escapeText,
+  passValue,
   setField,
 } from "./value_writer";
 
@@ -187,14 +188,20 @@ export class OutputEncoder {
     values.raw = raw;
     const columns = block.columns;
     const count = columns.length;
-    const convert = columns.map((column) => values.converter(column.type));
+    const rowCount = block.rows;
+    const convert = columns.map((column) => {
+      const fn = values.converter(column.type);
+      return fn === passValue ? undefined : fn;
+    });
     const data = columns.map((column) => column.values);
-    const rows = new Array<unknown>(block.rows);
+    const rows = new Array<unknown>(rowCount);
     if (this.layout === "array_lines" || this.layout === "compact_document") {
-      for (let r = 0; r < block.rows; r++) {
+      for (let r = 0; r < rowCount; r++) {
         const row = new Array<unknown>(count);
         for (let c = 0; c < count; c++) {
-          row[c] = (convert[c] as (v: unknown) => unknown)(data[c]![r]);
+          const fn = convert[c];
+          const v = data[c]![r];
+          row[c] = fn === undefined ? (v === undefined ? null : v) : fn(v);
         }
         rows[r] = row;
       }
@@ -202,14 +209,31 @@ export class OutputEncoder {
     }
     const names = columns.map((column) => values.string(column.name));
     const plain = !names.includes("__proto__");
-    for (let r = 0; r < block.rows; r++) {
-      const row: Record<string, unknown> = {};
-      for (let c = 0; c < count; c++) {
-        const value = (convert[c] as (v: unknown) => unknown)(data[c]![r]);
-        if (plain) row[names[c] as string] = value;
-        else setField(row, names[c] as string, value);
+    if (plain) {
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        for (let c = 0; c < count; c++) {
+          const fn = convert[c];
+          const v = data[c]![r];
+          row[names[c] as string] =
+            fn === undefined ? (v === undefined ? null : v) : fn(v);
+        }
+        rows[r] = row;
       }
-      rows[r] = row;
+    } else {
+      for (let r = 0; r < rowCount; r++) {
+        const row: Record<string, unknown> = {};
+        for (let c = 0; c < count; c++) {
+          const fn = convert[c];
+          const v = data[c]![r];
+          setField(
+            row,
+            names[c] as string,
+            fn === undefined ? (v === undefined ? null : v) : fn(v),
+          );
+        }
+        rows[r] = row;
+      }
     }
     return { rows, text };
   }

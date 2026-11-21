@@ -6,8 +6,8 @@ import type { ColumnType } from "./types";
 import { compareBytes, parseColumnType } from "./types";
 import type { DateTimeOutputFormat } from "./text";
 import {
+  createDateTimeFormatter,
   formatDate,
-  formatDateTime,
   formatDateTime64,
   formatIPv4,
   formatIPv6,
@@ -146,6 +146,9 @@ export interface DecodeContext {
   raw_bytes?: boolean;
   /** Preserve simple Data columns until the consumer chooses text or rows. */
   binary_columns?: { enabled: boolean };
+  /** Decode 64-bit integers that fit in JS safe integers as `number` instead
+   *  of heap-allocated `bigint` (all client formatters accept `number | bigint`). */
+  safe_int64?: boolean;
   /** True when the caller (NativeSocket) consumes already-decompressed
    *  compressed frames from its receive buffer incrementally via
    *  `NeedMoreData.consumed`. */
@@ -662,7 +665,7 @@ export function readColumn(
   if (rows === 0) return [];
   switch (type.kind) {
     case "Int":
-      return readInts(r, type.bits, type.signed, rows);
+      return readInts(r, type.bits, type.signed, rows, ctx.safe_int64);
     case "Float": {
       const out = new Array<number>(rows);
       if (type.bits === 32) {
@@ -728,13 +731,18 @@ export function readColumn(
       return out;
     }
     case "DateTime": {
-      const tz = type.timezone ?? ctx.timezone;
-      const format = ctx.date_time_output_format;
+      const format = createDateTimeFormatter(
+        type.timezone ?? ctx.timezone,
+        ctx.date_time_output_format,
+      );
       const out = new Array<string>(rows);
       r.ensure(rows * 4);
-      for (let i = 0; i < rows; i++, r.pos += 4) {
-        out[i] = formatDateTime(r.buf.readUInt32LE(r.pos), tz, format);
+      const buf = r.buf;
+      let pos = r.pos;
+      for (let i = 0; i < rows; i++, pos += 4) {
+        out[i] = format(buf.readUInt32LE(pos));
       }
+      r.pos = pos;
       return out;
     }
     case "DateTime64": {
@@ -916,6 +924,7 @@ function readInts(
   bits: 8 | 16 | 32 | 64 | 128 | 256,
   signed: boolean,
   rows: number,
+  safeInt64 = false,
 ): Array<number | bigint> {
   const out = new Array<number | bigint>(rows);
   const size = bits / 8;
@@ -954,7 +963,29 @@ function readInts(
     }
     case 64: {
       const view = new DataView(buf.buffer, buf.byteOffset + r.pos, rows * 8);
-      if (signed) {
+      if (safeInt64) {
+        if (signed) {
+          for (let i = 0; i < rows; i++) {
+            const offset = i * 8;
+            const hi = view.getInt32(offset + 4, true);
+            if (hi >= -0x1fffff && hi <= 0x1fffff) {
+              out[i] = hi * 0x100000000 + view.getUint32(offset, true);
+            } else {
+              out[i] = view.getBigInt64(offset, true);
+            }
+          }
+        } else {
+          for (let i = 0; i < rows; i++) {
+            const offset = i * 8;
+            const hi = view.getUint32(offset + 4, true);
+            if (hi <= 0x1fffff) {
+              out[i] = hi * 0x100000000 + view.getUint32(offset, true);
+            } else {
+              out[i] = view.getBigUint64(offset, true);
+            }
+          }
+        }
+      } else if (signed) {
         for (let i = 0; i < rows; i++) out[i] = view.getBigInt64(i * 8, true);
       } else {
         for (let i = 0; i < rows; i++) out[i] = view.getBigUint64(i * 8, true);
@@ -1030,9 +1061,10 @@ function readLowCardinality(
       (8 << keyType) as 8 | 16 | 32 | 64,
       false,
       count,
+      true,
     );
-    for (const index of indexes) {
-      const i = Number(index);
+    for (let j = 0; j < count; j++) {
+      const i = Number(indexes[j]);
       if (nullable && i === 0) {
         out.push(null);
       } else {
@@ -1091,9 +1123,11 @@ function readVariant(
     }
   }
   const counts = new Array<number>(type.variants.length).fill(0);
-  for (const d of discriminators) {
+  const variantCount = counts.length;
+  for (let i = 0; i < rows; i++) {
+    const d = discriminators[i] as number;
     if (d !== NULL_DISCRIMINATOR) {
-      if (d >= counts.length) {
+      if (d >= variantCount) {
         throw new ProtocolError(`Unknown Variant discriminator ${d}`);
       }
       counts[d]!++;
@@ -1139,7 +1173,8 @@ function readDynamic(
   const bits = count <= 0xff ? 8 : count <= 0xffff ? 16 : 32;
   const indexes = readInts(r, bits, false, rows) as number[];
   const counts = new Array<number>(count).fill(0);
-  for (const index of indexes) {
+  for (let i = 0; i < rows; i++) {
+    const index = indexes[i] as number;
     if (index < count) {
       counts[index]!++;
     } else if (index > count) {
@@ -1212,9 +1247,11 @@ function readVariantColumnar(
     }
   }
   const counts = new Array<number>(type.variants.length).fill(0);
-  for (const d of discriminators) {
+  const variantCount = counts.length;
+  for (let i = 0; i < rows; i++) {
+    const d = discriminators[i] as number;
     if (d !== NULL_DISCRIMINATOR) {
-      if (d >= counts.length) {
+      if (d >= variantCount) {
         throw new ProtocolError(`Unknown Variant discriminator ${d}`);
       }
       counts[d]!++;
@@ -1285,7 +1322,8 @@ function readDynamicColumnar(
   const bits = count <= 0xff ? 8 : count <= 0xffff ? 16 : 32;
   const indexes = readInts(r, bits, false, rows) as number[];
   const counts = new Array<number>(count).fill(0);
-  for (const index of indexes) {
+  for (let i = 0; i < rows; i++) {
+    const index = indexes[i] as number;
     if (index < count) {
       counts[index]!++;
     } else if (index > count) {
@@ -1347,9 +1385,10 @@ function readJSON(
     throw new ProtocolError("Missing state prefix of a JSON column");
   }
   if (state.s === "json_string") {
+    const texts = readStrings(r, rows, ctx);
     const out = new Array<RawJSONValue>(rows);
     for (let i = 0; i < rows; i++) {
-      out[i] = new RawJSONValue(readString(r, ctx));
+      out[i] = new RawJSONValue(texts[i]!);
     }
     return out;
   }

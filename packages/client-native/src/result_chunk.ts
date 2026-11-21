@@ -23,6 +23,8 @@ export interface ResultChunk {
   /** Decoded (uncompressed) byte length of the underlying Native block,
    *  used for tracing when `rows()` skips text formatting. */
   bytes?: number;
+  /** Number of rows in the underlying Native block (hint for pre-sizing). */
+  rowCount?: number;
 }
 
 export function isResultChunk(value: unknown): value is ResultChunk {

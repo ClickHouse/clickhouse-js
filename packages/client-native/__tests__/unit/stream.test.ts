@@ -225,4 +225,28 @@ describe("[Native] ResultSet tracing decoded_bytes", () => {
     );
     expect(spanJson.attributes["db.response.returned_rows"]).toBe(1);
   });
+
+  it("streams rows with rowCount hint and custom JSON parser", async () => {
+    const chunk: ResultChunk = {
+      text: () => '{"n":1}\n{"n":2}\n',
+      rowCount: 2,
+    };
+    const rs = new ResultSet(
+      Stream.Readable.from([chunk], { objectMode: true }),
+      "JSONEachRow",
+      "q6",
+      undefined,
+      undefined,
+      {
+        parse: <T>(text: string) =>
+          ({ wrapped: JSON.parse(text) }) as unknown as T,
+        stringify: JSON.stringify,
+      },
+    );
+    const parsed: unknown[] = [];
+    for await (const batch of rs.stream()) {
+      for (const row of batch) parsed.push(row.json());
+    }
+    expect(parsed).toEqual([{ wrapped: { n: 1 } }, { wrapped: { n: 2 } }]);
+  });
 });

@@ -27,10 +27,9 @@ const MAX_COMPRESSED_SIZE = 0x40000000;
 /** The client cuts its data into compressed blocks of this size at most, as
  *  the server does (`max_compress_block_size`). */
 export const MAX_FRAME_DATA_SIZE = 1 << 20;
-/** {@link compressFrame} makes a smaller copy of an LZ4 block when the block
- *  uses less than 1/TRIM_RATIO of its buffer, and the buffer is not small. */
-const TRIM_RATIO = 2;
-const TRIM_MIN_SIZE = 4096;
+/** Reusable synchronous scratch buffer for LZ4 frame compression (at most
+ *  one 1 MiB frame plus LZ4 worst-case expansion and frame header). */
+let lz4Scratch: Buffer | undefined;
 
 export function isZstdAvailable(): boolean {
   return (
@@ -61,17 +60,19 @@ export function compressFrame(
     payload.copy(frame, dataStart);
   } else {
     methodByte = METHOD_LZ4;
-    // LZ4 writes into the buffer of the block: no copy of the payload.
-    const buffer = Buffer.allocUnsafe(
-      dataStart + lz4CompressBound(data.length),
-    );
-    const end = lz4CompressInto(data, buffer, dataStart);
-    if (buffer.length >= TRIM_MIN_SIZE && end * TRIM_RATIO < buffer.length) {
-      // The data compressed well: do not keep the large buffer.
+    const needed = dataStart + lz4CompressBound(data.length);
+    if (data.length <= MAX_FRAME_DATA_SIZE) {
+      if (lz4Scratch === undefined || lz4Scratch.length < needed) {
+        lz4Scratch = Buffer.allocUnsafe(needed);
+      }
+      const end = lz4CompressInto(data, lz4Scratch, dataStart);
+      frame = Buffer.allocUnsafe(end);
+      lz4Scratch.copy(frame, dataStart, dataStart, end);
+    } else {
+      const buffer = Buffer.allocUnsafe(needed);
+      const end = lz4CompressInto(data, buffer, dataStart);
       frame = Buffer.allocUnsafe(end);
       buffer.copy(frame, dataStart, dataStart, end);
-    } else {
-      frame = buffer.subarray(0, end);
     }
   }
   frame[CHECKSUM_SIZE] = methodByte;

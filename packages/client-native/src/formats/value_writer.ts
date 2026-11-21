@@ -278,8 +278,16 @@ function mapEntryType(type: MapType): TupleType {
   return entry;
 }
 
-function passValue(value: unknown): unknown {
+export function passValue(value: unknown): unknown {
   return value === undefined ? null : value;
+}
+
+interface JSONBlockCache {
+  block: JSONColumnarBlock;
+  converters: Array<(v: unknown) => unknown>;
+  paths: string[];
+  flat: boolean;
+  plain: boolean;
 }
 
 /** Sets a field as `JSON.parse` does: `__proto__` is a usual field. */
@@ -422,8 +430,7 @@ export class ValueWriter {
    *  round-tripping through JSON serialization and `JSON.parse`. */
   private jsonObjectValue(
     value: JSONObjectValue,
-    cachedBlock?: JSONColumnarBlock,
-    cachedConverters?: Array<(v: unknown) => unknown>,
+    cache?: JSONBlockCache,
   ): Record<string, unknown> {
     const root: Record<string, unknown> = {};
     const raw = this.raw;
@@ -431,14 +438,58 @@ export class ValueWriter {
     if (block !== undefined && block.shared?.[value.row] === undefined) {
       const row = value.row;
       const colCount = block.paths.length;
-      const converters = block === cachedBlock ? cachedConverters : undefined;
+      if (cache !== undefined && cache.block === block) {
+        const converters = cache.converters;
+        const values = block.values;
+        const skipNull = block.skipNull;
+        if (cache.flat && cache.plain) {
+          const paths = cache.paths;
+          for (let c = 0; c < colCount; c++) {
+            const v = values[c]![row];
+            if (skipNull[c] === 1 && v === null) continue;
+            const fn = converters[c]!;
+            root[paths[c]!] = fn === passValue ? v : fn(v);
+          }
+          return root;
+        }
+        const segments = block.segments;
+        const paths = cache.paths;
+        for (let c = 0; c < colCount; c++) {
+          const v = values[c]![row];
+          if (skipNull[c] === 1 && v === null) continue;
+          const fn = converters[c]!;
+          const converted = fn === passValue ? v : fn(v);
+          const segs = segments[c];
+          if (segs === undefined) {
+            setField(root, paths[c]!, converted);
+          } else {
+            let node = root;
+            const last = segs.length - 1;
+            for (let i = 0; i < last; i++) {
+              const part = raw ? this.string(segs[i]!) : segs[i]!;
+              const child = Object.hasOwn(node, part) ? node[part] : undefined;
+              if (
+                typeof child !== "object" ||
+                child === null ||
+                Array.isArray(child)
+              ) {
+                const next: Record<string, unknown> = {};
+                setField(node, part, next);
+                node = next;
+              } else {
+                node = child as Record<string, unknown>;
+              }
+            }
+            const leaf = raw ? this.string(segs[last]!) : segs[last]!;
+            setField(node, leaf, converted);
+          }
+        }
+        return root;
+      }
       for (let c = 0; c < colCount; c++) {
         const v = block.values[c]![row];
         if (block.skipNull[c] === 1 && v === null) continue;
-        const converted =
-          converters !== undefined
-            ? converters[c]!(v)
-            : this.value(block.types[c]!, v);
+        const converted = this.value(block.types[c]!, v);
         const segs = block.segments[c];
         if (segs === undefined) {
           const key = block.paths[c]!;
@@ -508,8 +559,21 @@ export class ValueWriter {
   converter(type: ColumnType): (value: unknown) => unknown {
     switch (type.kind) {
       case "Int":
-        if (type.bits < 64 && !(this.kusto && isInterval(type))) {
-          return passValue;
+        if (!(this.kusto && isInterval(type))) {
+          if (type.bits < 64) return passValue;
+          return this.s.output_format_json_quote_64bit_integers
+            ? (v) => (v === null || v === undefined ? null : String(v))
+            : (v) => (v === null || v === undefined ? null : Number(v));
+        }
+        break;
+      case "Float":
+        if (type.bits === 64 && !this.s.output_format_json_quote_64bit_floats) {
+          const denormal = this.s.output_format_json_quote_denormals;
+          return (value) => {
+            if (value === null || value === undefined) return null;
+            const v = value as number;
+            return Number.isFinite(v) ? v : denormal ? nonFiniteText(v) : null;
+          };
         }
         break;
       case "Bool":
@@ -519,6 +583,7 @@ export class ValueWriter {
         return this.converter(type.inner);
       case "Array": {
         const inner = this.converter(type.inner);
+        if (inner === passValue) return passValue;
         return (value) => {
           if (value === null || value === undefined) return null;
           const items = value as unknown[];
@@ -527,22 +592,59 @@ export class ValueWriter {
           return out;
         };
       }
+      case "Tuple": {
+        if (this.tupleNames(type) === undefined) {
+          const elemConverters = type.elements.map((e) => this.converter(e));
+          if (elemConverters.every((fn) => fn === passValue)) {
+            return passValue;
+          }
+          const len = elemConverters.length;
+          return (value) => {
+            if (value === null || value === undefined) return null;
+            const items = value as unknown[];
+            const out = new Array<unknown>(len);
+            for (let i = 0; i < len; i++) {
+              const fn = elemConverters[i]!;
+              out[i] = fn === passValue ? items[i] : fn(items[i]);
+            }
+            return out;
+          };
+        }
+        break;
+      }
       case "JSON": {
-        // Cache per-column converters across all rows of a columnar JSON block.
-        let cachedBlock: JSONColumnarBlock | undefined;
-        let cachedConverters: Array<(v: unknown) => unknown> | undefined;
+        // Cache per-column converters and resolved keys across all rows of a columnar JSON block.
+        let cache: JSONBlockCache | undefined;
         return (value) => {
           if (value === null || value === undefined) return null;
           if (value instanceof RawJSONValue) {
-            return this.parsed(type, value);
+            return this.raw ? this.parsed(type, value) : JSON.parse(value.text);
           }
           const jsonVal = value as JSONObjectValue;
           const block = jsonVal.block;
-          if (block !== undefined && block !== cachedBlock) {
-            cachedBlock = block;
-            cachedConverters = block.types.map((t) => this.converter(t));
+          if (
+            block !== undefined &&
+            (cache === undefined || cache.block !== block)
+          ) {
+            const raw = this.raw;
+            const paths = raw
+              ? block.paths.map((k) => this.string(k))
+              : block.paths;
+            let flat = true;
+            let plain = true;
+            for (let c = 0; c < paths.length; c++) {
+              if (block.segments[c] !== undefined) flat = false;
+              if (paths[c] === "__proto__") plain = false;
+            }
+            cache = {
+              block,
+              converters: block.types.map((t) => this.converter(t)),
+              paths,
+              flat,
+              plain,
+            };
           }
-          return this.jsonObjectValue(jsonVal, cachedBlock, cachedConverters);
+          return this.jsonObjectValue(jsonVal, cache);
         };
       }
       case "String":

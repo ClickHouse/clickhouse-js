@@ -44,7 +44,7 @@ import type {
 } from "../protocol/packets";
 import {
   REVISION,
-  encodeDataPacket,
+  encodeDataPacketChunks,
   encodeEmptyBlock,
   encodePing,
   encodeQuery,
@@ -403,9 +403,14 @@ export class NativeConnection implements Connection<Stream.Readable> {
         text: () => string,
         rows?: (raw: boolean) => { rows: unknown[]; text: string },
         bytes?: number,
+        rowCount?: number,
       ) => {
         const raw = socket.rawBytes;
-        const chunk: ResultChunk = { text: () => output(text(), raw), bytes };
+        const chunk: ResultChunk = {
+          text: () => output(text(), raw),
+          bytes,
+          rowCount,
+        };
         if (rows !== undefined) {
           chunk.rows = () => {
             const result = rows(raw);
@@ -460,9 +465,15 @@ export class NativeConnection implements Connection<Stream.Readable> {
                     return encoder.dataRows(block, raw);
                   },
                   block.bytes,
+                  block.rows,
                 );
               } else {
-                pushPart(() => encoder.data(block), undefined, block.bytes);
+                pushPart(
+                  () => encoder.data(block),
+                  undefined,
+                  block.bytes,
+                  block.rows,
+                );
               }
               break;
             }
@@ -1213,7 +1224,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
             "The server ended the INSERT before the end of the data",
           );
         }
-        let packet: Buffer;
+        let packet: Buffer[];
         try {
           const block = encodeInsertRows(
             columns,
@@ -1222,7 +1233,7 @@ export class NativeConnection implements Connection<Stream.Readable> {
             positions,
             ctx,
           );
-          packet = encodeDataPacket(
+          packet = encodeDataPacketChunks(
             encodeBlock(block.columns, block.rows, customSerializationFlag),
             compression,
             compressionLevel,

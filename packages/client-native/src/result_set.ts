@@ -183,7 +183,7 @@ export class ResultSet<
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
       const stream = this.consume();
-      const result: T[] = [];
+      let result: T[] = [];
       const parse = this.jsonHandling.parse;
       // The text after the last newline: the start of a row.
       let rest = "";
@@ -210,7 +210,19 @@ export class ResultSet<
             if (this.hasActiveSpan() && chunk.bytes !== undefined) {
               this.span_bytes += chunk.bytes;
             }
-            for (const row of part.rows) result.push(row as T);
+            const partRows = part.rows;
+            const partLen = partRows.length;
+            if (partLen > 0) {
+              if (result.length === 0) {
+                result = partRows as T[];
+              } else {
+                const base = result.length;
+                result.length = base + partLen;
+                for (let i = 0; i < partLen; i++) {
+                  result[base + i] = partRows[i] as T;
+                }
+              }
+            }
           } else {
             parseLines(chunk.text());
           }
@@ -245,8 +257,16 @@ export class ResultSet<
             if (this.hasActiveSpan() && chunk.bytes !== undefined) {
               this.span_bytes += chunk.bytes;
             }
-            data ??= [];
-            for (const row of part.rows) data.push(row);
+            const partRows = part.rows;
+            if (data === undefined) {
+              data = partRows;
+            } else if (partRows.length > 0) {
+              const base = data.length;
+              data.length = base + partRows.length;
+              for (let i = 0; i < partRows.length; i++) {
+                data[base + i] = partRows[i];
+              }
+            }
           } else {
             add(chunk.text());
           }
@@ -285,10 +305,15 @@ export class ResultSet<
     // The text after the last newline of the parts that are strings.
     let textRest = "";
     const logError = this.log_error;
-    const jsonHandling = this.jsonHandling;
+    const jsonParse = this.jsonHandling.parse;
+    const isDefaultParse = jsonParse === defaultJSONHandling.parse;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
     const toRows = new Transform({
+      // Each upstream item is an entire Native block (up to max_block_size rows).
+      // Keep the buffer at 1 block so early ResultSet.close() does not eagerly
+      // decode and format dozens of blocks ahead of the consumer.
+      highWaterMark: 1,
       transform(
         part: unknown,
         _encoding: BufferEncoding,
@@ -296,34 +321,54 @@ export class ResultSet<
       ) {
         // The result of query() comes in parts (see ResultChunk).
         let chunk: string | Buffer;
+        let hintRows = 0;
         try {
-          chunk = isResultChunk(part) ? part.text() : (part as Buffer);
+          if (isResultChunk(part)) {
+            hintRows = part.rowCount ?? 0;
+            chunk = part.text();
+          } else {
+            chunk = part as Buffer;
+          }
         } catch (err) {
           return callback(err as Error);
         }
         resultSet.addSpanBytes(chunk);
-        const rows: Row[] = [];
 
         if (typeof chunk === "string") {
           if (incompleteChunks.length === 0) {
             // The usual case: cut the text into rows without a copy to bytes.
-            const text = textRest + chunk;
+            const text = textRest.length === 0 ? chunk : textRest + chunk;
+            const rows: Row[] = hintRows > 0 ? new Array<Row>(hintRows) : [];
+            let count = 0;
             let start = 0;
-            for (;;) {
-              const end = text.indexOf("\n", start);
-              if (end === -1) break;
-              const rowText = text.slice(start, end);
-              rows.push({
-                text: rowText,
-                json<T>(): T {
-                  return jsonHandling.parse(rowText);
-                },
-              });
-              start = end + 1;
+            if (isDefaultParse) {
+              for (;;) {
+                const end = text.indexOf("\n", start);
+                if (end === -1) break;
+                const row = new DefaultStreamRow(text.slice(start, end));
+                if (count < rows.length) rows[count] = row;
+                else rows.push(row);
+                count++;
+                start = end + 1;
+              }
+            } else {
+              for (;;) {
+                const end = text.indexOf("\n", start);
+                if (end === -1) break;
+                const row = new CustomStreamRow(
+                  text.slice(start, end),
+                  jsonParse,
+                );
+                if (count < rows.length) rows[count] = row;
+                else rows.push(row);
+                count++;
+                start = end + 1;
+              }
             }
+            if (count < rows.length) rows.length = count;
             textRest = start === 0 ? text : text.slice(start);
-            if (rows.length > 0) {
-              resultSet.addSpanRows(rows.length);
+            if (count > 0) {
+              resultSet.addSpanRows(count);
               this.push(rows);
             }
             return callback();
@@ -333,6 +378,8 @@ export class ResultSet<
           incompleteChunks.push(Buffer.from(textRest));
           textRest = "";
         }
+
+        const rows: Row[] = [];
 
         let lastIdx = 0;
         let currentChunkPart: Buffer;
@@ -360,12 +407,11 @@ export class ResultSet<
             }
 
             const text = currentChunkPart.toString();
-            rows.push({
-              text,
-              json<T>(): T {
-                return jsonHandling.parse(text);
-              },
-            });
+            rows.push(
+              isDefaultParse
+                ? new DefaultStreamRow(text)
+                : new CustomStreamRow(text, jsonParse),
+            );
             lastIdx = idx + 1; // skipping newline character
           }
         }
@@ -448,6 +494,28 @@ const resultSetClosedMessage = "ResultSet has been closed";
  *  destroying a stream that has none would throw it as uncaught. */
 function ignoreClosureError(): void {
   // expected: the error is the closure signal
+}
+
+class DefaultStreamRow implements Row {
+  readonly text: string;
+  constructor(text: string) {
+    this.text = text;
+  }
+  json<T>(): T {
+    return defaultJSONHandling.parse<T>(this.text);
+  }
+}
+
+class CustomStreamRow implements Row {
+  readonly text: string;
+  private readonly parse: JSONHandling["parse"];
+  constructor(text: string, parse: JSONHandling["parse"]) {
+    this.text = text;
+    this.parse = parse;
+  }
+  json<T>(): T {
+    return this.parse<T>(this.text);
+  }
 }
 
 /** Best-effort row count for a fully-parsed non-streaming JSON document, used

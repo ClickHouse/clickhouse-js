@@ -354,8 +354,9 @@ describe("[Native] regressions", () => {
     it("gives the socket back when the signal aborts as the pool hands it over", async () => {
       const c = createClient({ url: nativeURL(), max_open_connections: 1 });
       // The pool of the client, to abort right after it hands over a socket.
-      const pool = (c as unknown as { connection: Record<string, unknown> })
-        .connection as {
+      const pool = (
+        c as unknown as { connection: { pool: Record<string, unknown> } }
+      ).connection.pool as {
         release: (socket: unknown) => void;
         idle: unknown[];
         open: number;
@@ -396,8 +397,9 @@ describe("[Native] regressions", () => {
     // can start on it at once.
     it("reuses the socket right after a server error", async () => {
       const c = createClient({ url: nativeURL(), max_open_connections: 1 });
-      const pool = (c as unknown as { connection: Record<string, unknown> })
-        .connection as { sockets: Set<unknown>; open: number };
+      const pool = (
+        c as unknown as { connection: { pool: Record<string, unknown> } }
+      ).connection.pool as { sockets: Set<unknown>; open: number };
       const failures: Array<() => Promise<unknown>> = [
         () => c.query({ query: "SELECT throwIf(1, 'boom')" }),
         () =>

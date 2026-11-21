@@ -30,15 +30,30 @@ export function formatDate(days: number): string {
 }
 
 const TWO_DIGITS: string[] = [];
-for (let i = 0; i < 60; i++) TWO_DIGITS.push(pad2(i));
+const TWO_DIGITS_Z: string[] = [];
+for (let i = 0; i < 60; i++) {
+  const s = pad2(i);
+  TWO_DIGITS.push(s);
+  TWO_DIGITS_Z.push(s + "Z");
+}
+
+const HH_MM: string[] = new Array<string>(1440);
+const HH_MM_ISO: string[] = new Array<string>(1440);
+for (let h = 0; h < 24; h++) {
+  const hh = TWO_DIGITS[h]!;
+  for (let m = 0; m < 60; m++) {
+    const hm = hh + ":" + TWO_DIGITS[m]! + ":";
+    HH_MM[h * 60 + m] = " " + hm;
+    HH_MM_ISO[h * 60 + m] = "T" + hm;
+  }
+}
 
 /** Recent `YYYY-MM-DD` texts by day number: a result often has many values
  *  of the same days. */
 const dayTexts = new Map<number, string>();
 
-/** Milliseconds since the epoch (a wall-clock time as UTC) to `YYYY-MM-DD hh:mm:ss`. */
-function formatWallClock(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
+/** Seconds since the epoch (a wall-clock time as UTC) to `YYYY-MM-DD hh:mm:ss`. */
+function formatWallClockSeconds(seconds: number): string {
   const day = Math.floor(seconds / 86400);
   let date = dayTexts.get(day);
   if (date === undefined) {
@@ -47,15 +62,20 @@ function formatWallClock(ms: number): string {
     dayTexts.set(day, date);
   }
   const t = seconds - day * 86400;
-  return (
-    date +
-    " " +
-    TWO_DIGITS[Math.floor(t / 3600)] +
-    ":" +
-    TWO_DIGITS[Math.floor(t / 60) % 60] +
-    ":" +
-    TWO_DIGITS[t % 60]
-  );
+  return date + HH_MM[(t / 60) | 0]! + TWO_DIGITS[t % 60]!;
+}
+
+/** Seconds since the epoch (UTC) to `YYYY-MM-DDThh:mm:ssZ`. */
+function formatIsoSeconds(seconds: number): string {
+  const day = Math.floor(seconds / 86400);
+  let date = dayTexts.get(day);
+  if (date === undefined) {
+    date = formatDate(day);
+    if (dayTexts.size > 10_000) dayTexts.clear();
+    dayTexts.set(day, date);
+  }
+  const t = seconds - day * 86400;
+  return date + HH_MM_ISO[(t / 60) | 0]! + TWO_DIGITS_Z[t % 60]!;
 }
 
 const UTC_NAMES = new Set(["UTC", "Etc/UTC", "GMT", "Etc/GMT", "UCT", "Zulu"]);
@@ -279,6 +299,20 @@ export function wallClockToUTC(wall: number, timezone: string): number {
  */
 export type DateTimeOutputFormat = "simple" | "iso" | "unix_timestamp";
 
+/** Resolves a `DateTime` formatter once per column to avoid per-row timezone map lookups. */
+export function createDateTimeFormatter(
+  timezone: string,
+  format: DateTimeOutputFormat = "simple",
+): (seconds: number) => string {
+  if (format === "simple") {
+    const zone = zoneOffsets(timezone);
+    if (zone === null) return formatWallClockSeconds;
+    return (seconds) => formatWallClockSeconds(seconds + zone.offset(seconds));
+  }
+  if (format === "iso") return formatIsoSeconds;
+  return String;
+}
+
 /** UTC seconds since the epoch to the text of a `DateTime` value. */
 export function formatDateTime(
   seconds: number,
@@ -288,11 +322,10 @@ export function formatDateTime(
   if (format === "simple") {
     const zone = zoneOffsets(timezone);
     const offset = zone === null ? 0 : zone.offset(seconds);
-    return formatWallClock((seconds + offset) * 1000);
+    return formatWallClockSeconds(seconds + offset);
   }
   if (format === "iso") {
-    const text = formatWallClock(seconds * 1000);
-    return text.slice(0, 10) + "T" + text.slice(11) + "Z";
+    return formatIsoSeconds(seconds);
   }
   return String(seconds);
 }
