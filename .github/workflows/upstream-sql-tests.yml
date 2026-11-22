@@ -1,5 +1,8 @@
 name: "upstream-sql-tests"
 
+# Runs the allowlisted ClickHouse core SQL tests (tests/queries/0_stateless)
+# through @clickhouse/client. See tests/clickhouse-test-runner/README.md.
+#
 # upstream-sql-tests-label.yml also calls this workflow, for the
 # `tests:run-core-sql` label on a PR.
 
@@ -9,8 +12,8 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
-      upstream_ref:
-        description: "ClickHouse/ClickHouse ref to check out (defaults to the pinned commit)"
+      clickhouse_version:
+        description: "ClickHouse version to try: a full version with four numbers, for example 26.11.1.10 (default: tests/clickhouse-test-runner/clickhouse-version)"
         required: false
         default: ""
         type: string
@@ -27,22 +30,15 @@ on:
       - "tests/clickhouse-test-runner/**"
       - ".github/workflows/upstream-sql-tests.yml"
 
+# A new push to a PR cancels the older run of that PR. Nightly, manual and
+# push runs each get a group of their own, so that they do not cancel each
+# other. In a run of the label workflow, `github.workflow` is the name of the
+# calling workflow, so that run does not cancel a path-triggered run either.
 concurrency:
-  group: "${{ github.workflow }}-${{ github.ref }}"
+  group: "${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}"
   cancel-in-progress: true
 
 env:
-  UPSTREAM_REPO: "ClickHouse/ClickHouse"
-  # Pinned ClickHouse commit for the upstream test suite. Floating `master`
-  # drifts ahead of the `head`/`latest` server images (e.g. new tests using
-  # settings the image doesn't know yet -> "Unknown setting ..."), which
-  # spuriously reds this workflow. This SHA is a known-good snapshot (last green
-  # run); bump it deliberately, or override per-run via the workflow_dispatch
-  # `upstream_ref` input.
-  # v26.10.2.103-stable: the 26.10 tests, for the 26.10 `latest` server image.
-  # Bump it when `latest` moves to a new release; that move is what reddened
-  # this workflow from 2026-10-25.
-  UPSTREAM_REF: "c6428ebcc39fdff48bb0f50e128b2078701901d5"
   # Network resilience: npm's default of 2 fetch retries is not enough for
   # the transient registry errors (ECONNRESET) we regularly hit in CI.
   NPM_CONFIG_FETCH_RETRIES: "5"
@@ -54,44 +50,24 @@ jobs:
   upstream-sql-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    name: "upstream-sql-tests (${{ matrix.backend }}, shard ${{ matrix.shard }})"
     strategy:
       fail-fast: false
       matrix:
-        # Only the released `latest` image. The nightly `head` image rebuilds
-        # ~twice a day and routinely ships EXPLAIN/plan/index output changes and
-        # new settings ahead of any released server, spuriously reding this
-        # workflow (and every PR that touches the test runner). `latest` is a
-        # stable target; bleeding-edge coverage is not worth the daily noise.
-        clickhouse: [latest]
-        # passthrough: stream ClickHouse's own TabSeparated text (transport /
-        # session / settings coverage). rowbinary: decode
-        # RowBinaryWithNamesAndTypes through @clickhouse/rowbinary and re-render
-        # to TabSeparated, exercising the dynamic header->reader path. Each
-        # backend has its own allowlist (see the "Run upstream SQL tests" step).
+        # passthrough: stream ClickHouse's own TabSeparated text (transport,
+        # session, settings and error coverage). rowbinary: decode
+        # RowBinaryWithNamesAndTypes through @clickhouse/rowbinary and write
+        # the TabSeparated text again, so each value goes through the decoder.
+        # Each backend has its own allowlist; run-upstream-tests.sh selects it.
         backend: [passthrough, rowbinary]
-        # Round-robin shards keep each job at roughly one minute so the
-        # upstream SQL tests no longer dominate PR CI runtime. Bump
-        # `shard` and `SHARD_TOTAL` together if the allowlist grows enough
-        # that per-shard runtime climbs back above ~1 minute.
+        # Round-robin shards of the allowlist. Change SHARD_TOTAL below
+        # together with this list.
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - name: Checkout clickhouse-js
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Checkout ClickHouse upstream
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: ${{ env.UPSTREAM_REPO }}
-          ref: ${{ github.event.inputs.upstream_ref || env.UPSTREAM_REF }}
-          path: tests/clickhouse-test-runner/.upstream/ClickHouse
-          sparse-checkout: |
-            tests/clickhouse-test
-            tests/queries
-            tests/config
-            tests/ci
-            tests/performance
-            docker/test/util
-          fetch-depth: 1
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -103,53 +79,85 @@ jobs:
         with:
           python-version: "3.12"
 
+      # jinja2 renders the `.sql.j2` tests in tests/clickhouse-test.
       - name: Install Python dependencies for upstream clickhouse-test
         run: |
           python -m pip install --upgrade pip
           pip install jinja2
 
-      - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
+      # The server version and the upstream tests are pinned together in
+      # tests/clickhouse-test-runner/clickhouse-version: the `.reference`
+      # files of another release do not match the output of the server. A new
+      # server release changes nothing here until a PR bumps the pin. The
+      # `clickhouse_version` input of a manual run tries another version
+      # without a commit.
+      - name: Select the ClickHouse version
+        id: version
         env:
-          CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
-        with:
-          compose-file: "docker-compose.yml"
-          down-flags: "--volumes"
+          INPUT_VERSION: ${{ github.event.inputs.clickhouse_version }}
+        run: |
+          version="${INPUT_VERSION:-$(tests/clickhouse-test-runner/scripts/pinned-version.sh)}"
+          if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::clickhouse_version must be a full version such as 26.10.4.207 (got: '${version}')"
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      # The stock image, not the repository's docker-compose.yml, which has
+      # its own config.xml and users.xml. CLICKHOUSE_SKIP_USER_SETUP keeps the
+      # default user of the image, which has the access management and named
+      # collection control that some tests need. --hostname:
+      # tests/clickhouse-test replaces the host name of its own machine with
+      # `localhost` in the output of each test, and some `.reference` files
+      # have `localhost` for hostName().
+      - name: Start ClickHouse ${{ steps.version.outputs.version }}
+        env:
+          CLICKHOUSE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker run -d --name clickhouse-upstream-tests --hostname "$(hostname)" \
+            -p 8123:8123 -p 9000:9000 \
+            -e CLICKHOUSE_SKIP_USER_SETUP=1 --ulimit nofile=262144:262144 \
+            "clickhouse/clickhouse-server:${CLICKHOUSE_VERSION}"
+          for _ in $(seq 1 60); do
+            if curl -fsS "localhost:8123/ping" > /dev/null 2>&1; then exit 0; fi
+            sleep 2
+          done
+          docker logs clickhouse-upstream-tests
+          exit 1
+
+      - name: Get the upstream tests of ClickHouse ${{ steps.version.outputs.version }}
+        id: upstream
+        env:
+          CLICKHOUSE_VERSION: ${{ steps.version.outputs.version }}
+        run: tests/clickhouse-test-runner/scripts/fetch-upstream.sh "${CLICKHOUSE_VERSION}"
 
       - name: Build test runner
         run: |
           npm install
           npm run build
 
-      - name: Make upstream test script executable
-        run: |
-          chmod +x tests/clickhouse-test-runner/.upstream/ClickHouse/tests/clickhouse-test
-
+      # Each failed test fails the job. The runner prints the diff of each
+      # failed test; upstream-tests.log keeps that output for the artifact.
+      # `shell: bash` sets pipefail, so the exit code of the runner stays the
+      # result of the step.
       - name: Run upstream SQL tests
-        id: run-tests
+        shell: bash
         env:
           CLICKHOUSE_CLIENT_CLI_LOG: ${{ github.workspace }}/upstream-run.log
           SHARD_INDEX: ${{ matrix.shard }}
           SHARD_TOTAL: 10
           TEST_RUNNER_BACKEND: ${{ matrix.backend }}
-        run: |
-          # The rowbinary backend can only validate tests whose decoded types it
-          # can render back to TabSeparated, so it runs a dedicated (smaller)
-          # allowlist; passthrough runs the full one.
-          if [ "${TEST_RUNNER_BACKEND}" = "rowbinary" ]; then
-            export UPSTREAM_TEST_LIST="${{ github.workspace }}/tests/clickhouse-test-runner/rowbinary-allowlist.txt"
-          fi
-          bash tests/clickhouse-test-runner/scripts/run-upstream-tests.sh --no-stateful
+        run: tests/clickhouse-test-runner/scripts/run-upstream-tests.sh -j 4 2>&1 | tee upstream-tests.log
 
       - name: Upload test artifacts
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: upstream-sql-tests-${{ matrix.backend }}-${{ matrix.clickhouse }}-shard-${{ matrix.shard }}
+          name: upstream-sql-tests-${{ steps.upstream.outputs.ref }}-${{ matrix.backend }}-shard-${{ matrix.shard }}
           retention-days: 14
           if-no-files-found: ignore
           path: |
+            upstream-tests.log
             upstream-run.log
             tests/clickhouse-test-runner/.upstream/ClickHouse/tests/queries/**/*.stdout
             tests/clickhouse-test-runner/.upstream/ClickHouse/tests/queries/**/*.stderr
-            tests/clickhouse-test-runner/.upstream/ClickHouse/tests/queries/**/*.diff
