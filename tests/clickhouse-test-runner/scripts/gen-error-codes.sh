@@ -24,13 +24,16 @@ ref="$(cat "$(dirname "${src}")/../../.upstream-ref" 2> /dev/null || echo unknow
   echo "// of ClickHouse ${ref}. Do not edit."
   echo ""
   echo "/** Error name -> error code, as in src/Common/ErrorCodes.cpp. */"
-  echo "export const ERROR_CODES: ReadonlyMap<string, number> = new Map<string, number>(["
+  # The layout is the one of prettier, so the committed file stays unchanged.
+  echo "export const ERROR_CODES: ReadonlyMap<string, number> = new Map<string, number>("
+  echo "  ["
   # Each code is a line `M(62, SYNTAX_ERROR) \` of the APPLY_FOR_ERROR_CODES list.
-  sed -nE 's/^[[:space:]]*M\(([0-9]+),[[:space:]]*([A-Z0-9_]+)\).*/  ["\2", \1],/p' "${src}"
-  echo "]);"
+  sed -nE 's/^[[:space:]]*M\(([0-9]+),[[:space:]]*([A-Z0-9_]+)\).*/    ["\2", \1],/p' "${src}"
+  echo "  ],"
+  echo ");"
 } > "${out}"
 
-count="$(grep -c '^  \["' "${out}")"
+count="$(grep -c '^    \["' "${out}")"
 if ((count < 100)); then
   echo "Error: only ${count} error codes found in ${src}; the format of the file changed." >&2
   exit 1
