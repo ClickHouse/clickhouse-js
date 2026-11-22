@@ -25,10 +25,14 @@ on:
     paths:
       - "tests/clickhouse-test-runner/**"
       - ".github/workflows/upstream-sql-tests.yml"
+      # A change of only the documents does not change a test result.
+      - "!tests/clickhouse-test-runner/**/*.md"
   pull_request:
     paths:
       - "tests/clickhouse-test-runner/**"
       - ".github/workflows/upstream-sql-tests.yml"
+      # A change of only the documents does not change a test result.
+      - "!tests/clickhouse-test-runner/**/*.md"
 
 # A new push to a PR cancels the older run of that PR. Nightly, manual and
 # push runs each get a group of their own, so that they do not cancel each

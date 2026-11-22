@@ -281,8 +281,9 @@ shim does not hide a real `clickhouse-client` on your machine.
 ## CI
 
 [`upstream-sql-tests.yml`](../../.github/workflows/upstream-sql-tests.yml)
-runs both allowlists nightly, manually, and on pushes to `main` and PRs that
-change this directory or the workflow.
+runs the three allowlists nightly, manually, and on pushes to `main` and PRs
+that change this directory or the workflow. A change of only the `.md` files
+of this directory does not start a run.
 
 To run it on another PR, for example a change in a client, add the
 `tests:run-core-sql` label
