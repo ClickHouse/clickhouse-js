@@ -38,9 +38,17 @@ result back. Set it with `TEST_RUNNER_BACKEND`:
   `TabSeparated` ([`src/tsv-serialize.ts`](src/tsv-serialize.ts)). Thus a test
   passes only when the decoder reads every value correctly. Other statements
   run as with `passthrough`. A decode or write error fails the statement.
+- **`json`**: for each statement that returns rows and has no `FORMAT` clause,
+  the shim calls `client.query({ format: 'JSONCompactEachRowWithNamesAndTypes' })`
+  and `ResultSet.json()`, the read path that most users use, and writes the
+  rows as `TabSeparated` ([`src/json-serialize.ts`](src/json-serialize.ts)).
+  Thus a test passes only when `ResultSet.json()` gives each value as the
+  server sent it. Dynamic and Variant values have no type in JSON: the writer
+  writes them from the JS value. Other statements run as with `passthrough`.
 
 Each backend has its own allowlist: `upstream-allowlist.txt` for
-`passthrough` and `rowbinary-allowlist.txt` for `rowbinary`.
+`passthrough`, `rowbinary-allowlist.txt` for `rowbinary` and
+`json-allowlist.txt` for `json`.
 `run-upstream-tests.sh` selects the list of the backend. The `rowbinary`
 backend uses the published `@clickhouse/rowbinary` package (installed by the
 normal `npm install`). The source of that package has its own tests
@@ -136,25 +144,26 @@ running tests of the list only. It does not read `KNOWN_FAILURES` or
 
 ### Environment variables
 
-| Variable                                              | Default                                                                         | Description                                                                                                                             |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `TEST_RUNNER_BACKEND`                                 | `passthrough`                                                                   | `passthrough` or `rowbinary` (see [Backends](#backends)). It also selects the default `UPSTREAM_TEST_LIST`.                             |
-| `UPSTREAM_CLICKHOUSE_DIR`                             | `tests/clickhouse-test-runner/.upstream/ClickHouse`                             | The checkout of `ClickHouse/ClickHouse`.                                                                                                |
-| `UPSTREAM_TEST_LIST`                                  | `upstream-allowlist.txt` or `rowbinary-allowlist.txt`, by `TEST_RUNNER_BACKEND` | The file with the tests to run.                                                                                                         |
-| `SHARD_INDEX`, `SHARD_TOTAL`                          | `1`, `1`                                                                        | Run only shard `SHARD_INDEX` of `SHARD_TOTAL` round-robin shards of the list.                                                           |
-| `KNOWN_FAILURES`                                      | (none)                                                                          | Run the known failures of these groups instead (comma-separated IDs, or `all`).                                                         |
-| `CLICKHOUSE_CLIENT_CLI_LOG`                           | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log`              | A file. Each invocation of the shim adds its arguments, statements and errors to it.                                                    |
-| `CLICKHOUSE_HOST`                                     | `localhost`                                                                     | The server host. The runner gives it to the shim as `--host`.                                                                           |
-| `CLICKHOUSE_PORT_TCP`, `CLICKHOUSE_PORT_HTTP`         | `9000`, `8123`                                                                  | The ports of the server. The runner gives `--port=$CLICKHOUSE_PORT_TCP` (the native port); the shim uses `CLICKHOUSE_PORT_HTTP` for it. |
-| `CLICKHOUSE_PORT_TCP_SECURE`, `CLICKHOUSE_PORT_HTTPS` | `9440`, `8443`                                                                  | The same mapping for `--secure`.                                                                                                        |
-| `ALLOW_VERSION_MISMATCH`                              | `0`                                                                             | `1` runs the tests also when the server and the upstream tests are of different versions.                                               |
-| `UPSTREAM_REPO_URL`                                   | the ClickHouse repository on GitHub                                             | The repository that `fetch-upstream.sh` fetches the tests from.                                                                         |
-| `CLICKHOUSE_CONTAINER`                                | `clickhouse-upstream-tests`                                                     | `run-with-real-client.sh` only: the server container whose `clickhouse-client` runs the tests.                                          |
+| Variable                                              | Default                                                            | Description                                                                                                                             |
+| ----------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `TEST_RUNNER_BACKEND`                                 | `passthrough`                                                      | `passthrough`, `rowbinary` or `json` (see [Backends](#backends)). It also selects the default `UPSTREAM_TEST_LIST`.                     |
+| `UPSTREAM_CLICKHOUSE_DIR`                             | `tests/clickhouse-test-runner/.upstream/ClickHouse`                | The checkout of `ClickHouse/ClickHouse`.                                                                                                |
+| `UPSTREAM_TEST_LIST`                                  | the allowlist of the backend (see [Backends](#backends))           | The file with the tests to run.                                                                                                         |
+| `SHARD_INDEX`, `SHARD_TOTAL`                          | `1`, `1`                                                           | Run only shard `SHARD_INDEX` of `SHARD_TOTAL` round-robin shards of the list.                                                           |
+| `KNOWN_FAILURES`                                      | (none)                                                             | Run the known failures of these groups instead (comma-separated IDs, or `all`).                                                         |
+| `CLICKHOUSE_CLIENT_CLI_LOG`                           | `tests/clickhouse-test-runner/.upstream/clickhouse-client-cli.log` | A file. Each invocation of the shim adds its arguments, statements and errors to it.                                                    |
+| `CLICKHOUSE_HOST`                                     | `localhost`                                                        | The server host. The runner gives it to the shim as `--host`.                                                                           |
+| `CLICKHOUSE_PORT_TCP`, `CLICKHOUSE_PORT_HTTP`         | `9000`, `8123`                                                     | The ports of the server. The runner gives `--port=$CLICKHOUSE_PORT_TCP` (the native port); the shim uses `CLICKHOUSE_PORT_HTTP` for it. |
+| `CLICKHOUSE_PORT_TCP_SECURE`, `CLICKHOUSE_PORT_HTTPS` | `9440`, `8443`                                                     | The same mapping for `--secure`.                                                                                                        |
+| `ALLOW_VERSION_MISMATCH`                              | `0`                                                                | `1` runs the tests also when the server and the upstream tests are of different versions.                                               |
+| `UPSTREAM_REPO_URL`                                   | the ClickHouse repository on GitHub                                | The repository that `fetch-upstream.sh` fetches the tests from.                                                                         |
+| `CLICKHOUSE_CONTAINER`                                | `clickhouse-upstream-tests`                                        | `run-with-real-client.sh` only: the server container whose `clickhouse-client` runs the tests.                                          |
 
 ## The allowlist
 
 [`upstream-allowlist.txt`](upstream-allowlist.txt) (`passthrough`) and
-[`rowbinary-allowlist.txt`](rowbinary-allowlist.txt) (`rowbinary`) list the
+[`rowbinary-allowlist.txt`](rowbinary-allowlist.txt) (`rowbinary`) and
+[`json-allowlist.txt`](json-allowlist.txt) (`json`) list the
 tests that pass reliably, one test name per line. The name is the file name
 without `.sql` or `.sql.j2`. `#` starts a comment. The script gives the runner
 anchored regular expressions, so each name selects exactly one test. (The
@@ -182,13 +191,14 @@ with a header:
 # <test>  # [<id>]
 ```
 
-`client` is a bug in `@clickhouse/client` or `@clickhouse/rowbinary`, and only
+`client` is a bug in `@clickhouse/client`, `@clickhouse/rowbinary` or
+`@clickhouse/datatype-parser`, and only
 these groups have the `Reproduction:` and `Issue:` lines. `shim` is a gap in
 the shim. `?` is the `[untriaged]` group: tests that pass through the real
 `clickhouse-client` and fail through the shim for a cause that is not known
 yet. An ID has only lowercase letters, digits and `-`. A test that fails with
-`passthrough` is not in `rowbinary-allowlist.txt`: its group is in
-`upstream-allowlist.txt`.
+`passthrough` is not in `rowbinary-allowlist.txt` or `json-allowlist.txt`: its
+group is in `upstream-allowlist.txt`.
 
 To run the known failures of one or more groups, for example to check a fix:
 
@@ -239,7 +249,8 @@ clickhouse-upstream-tests`, then the `docker run` of step 2 of "Run the
    depend on the queries of other tests.
 
 5. Run the `passthrough` tests that pass with `TEST_RUNNER_BACKEND=rowbinary`
-   too, and do the same steps for `rowbinary-allowlist.txt`.
+   and `TEST_RUNNER_BACKEND=json` too, and do the same steps for
+   `rowbinary-allowlist.txt` and `json-allowlist.txt`.
 
 6. Add the new names in sorted order, above the known failures, and update the
    counts at the top.
@@ -281,7 +292,7 @@ when it ends: to test a later push, add the label again. The token of a PR
 from a fork cannot remove the label, so remove it by hand before you add it
 again.
 
-- The matrix is `{passthrough, rowbinary} × 10` round-robin shards of the
+- The matrix is `{passthrough, rowbinary, json} × 10` round-robin shards of the
   allowlist of the backend, at `-j 4`.
 - A new push to a PR cancels the older run of that PR. Nightly, manual and
   push runs do not cancel each other.
@@ -355,8 +366,9 @@ hints are ported from the harness of clickhouse-connect.
   `--param_<name>=<value>` gives a query parameter to each statement that has
   a `{<name>:<type>}` placeholder.
 - **Output.** The shim sends the format of the backend as `default_format`
-  and does not change the query text. A statement with a `FORMAT` clause gets
-  that format.
+  (`query()` of the `json` backend does the same) and does not change the
+  query text. A statement with a `FORMAT` clause, also with a quoted name
+  (``FORMAT `Null` ``), gets that format.
 - **Errors.** An unexpected error stops the shim. It writes the error to
   stderr and exits with the code 1.
 

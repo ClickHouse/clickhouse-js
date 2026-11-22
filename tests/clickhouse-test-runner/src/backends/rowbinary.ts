@@ -98,9 +98,12 @@ export function shouldDecode(stmt: string): boolean {
   return kw !== null && RESULT_KEYWORDS.has(kw);
 }
 
-/** A trailing/explicit `FORMAT <name>` clause (also matches INSERT ... FORMAT). */
+/**
+ * A trailing/explicit `FORMAT <name>` clause (also matches INSERT ... FORMAT).
+ * The name can be quoted, as in FORMAT `Null`.
+ */
 function hasExplicitFormat(stmt: string): boolean {
-  return /\bFORMAT\s+[A-Za-z0-9_]+/i.test(stmt);
+  return /\bFORMAT\s+(`[^`]+`|"[^"]+"|[A-Za-z0-9_]+)/i.test(stmt);
 }
 
 /**

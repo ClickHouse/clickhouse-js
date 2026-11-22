@@ -15,8 +15,9 @@ TEST_RUNNER_BACKEND="${TEST_RUNNER_BACKEND:-passthrough}"
 case "${TEST_RUNNER_BACKEND}" in
   passthrough) default_list="${RUNNER_DIR}/upstream-allowlist.txt" ;;
   rowbinary) default_list="${RUNNER_DIR}/rowbinary-allowlist.txt" ;;
+  json) default_list="${RUNNER_DIR}/json-allowlist.txt" ;;
   *)
-    echo "Error: unknown TEST_RUNNER_BACKEND '${TEST_RUNNER_BACKEND}' (expected passthrough or rowbinary)." >&2
+    echo "Error: unknown TEST_RUNNER_BACKEND '${TEST_RUNNER_BACKEND}' (expected passthrough, rowbinary or json)." >&2
     exit 1
     ;;
 esac

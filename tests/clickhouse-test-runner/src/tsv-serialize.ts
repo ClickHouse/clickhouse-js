@@ -49,7 +49,7 @@ export class TSVRenderError extends Error {
 }
 
 /** Types whose text is unquoted+escaped at top level but single-quoted when nested. */
-function renderStringish(s: string, nested: boolean): string {
+export function renderStringish(s: string, nested: boolean): string {
   return nested ? `'${escapeQuoted(s)}'` : escapeRaw(s);
 }
 
@@ -101,7 +101,7 @@ function chFloatText(s: string): string {
  * double, which is exactly what `String(number)` produces in V8 (and what
  * ClickHouse emits).
  */
-function formatFloat(n: number): string {
+export function formatFloat(n: number): string {
   return floatSpecial(n) ?? chFloatText(String(n));
 }
 
@@ -211,7 +211,7 @@ function renderPointArray(
   return `[${(value as unknown[]).map(renderElem).join(",")}]`;
 }
 
-function requireArg(node: Node, index: number): Node {
+export function requireArg(node: Node, index: number): Node {
   const arg = node.arguments[index];
   if (arg === undefined) {
     throw new TSVRenderError(`type ${node.name} is missing argument ${index}`);

@@ -107,6 +107,14 @@ export class Session {
   }
 
   /**
+   * The command-line settings without `default_format`, for `query()`, which
+   * sets the format of the request itself.
+   */
+  querySettings(): ClickHouseSettings {
+    return Object.fromEntries(this.settings);
+  }
+
+  /**
    * The query parameters for a statement. A user gives them to the statements
    * that use them, as clickhouse-client does with `--param_<name>`.
    */

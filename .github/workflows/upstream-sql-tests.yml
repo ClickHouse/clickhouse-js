@@ -58,8 +58,10 @@ jobs:
         # session, settings and error coverage). rowbinary: decode
         # RowBinaryWithNamesAndTypes through @clickhouse/rowbinary and write
         # the TabSeparated text again, so each value goes through the decoder.
+        # json: read the rows with query() and ResultSet.json(), the default
+        # read path of the client, and write the TabSeparated text again.
         # Each backend has its own allowlist; run-upstream-tests.sh selects it.
-        backend: [passthrough, rowbinary]
+        backend: [passthrough, rowbinary, json]
         # Round-robin shards of the allowlist. Change SHARD_TOTAL below
         # together with this list.
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

@@ -11,7 +11,7 @@ The goal is to find bugs in the client. To pass more tests is not the goal. A fa
 ## Rules
 
 1. **Find the cause of a failure before you do anything with the test.** A test fails for one of three causes:
-   - **The client**: `@clickhouse/client` (the HTTP transport, sessions, settings, query parameters, error parsing) or, for the `rowbinary` backend, `@clickhouse/rowbinary`. This is what the harness is for.
+   - **The client**: `@clickhouse/client` (the HTTP transport, sessions, settings, query parameters, error parsing, and for the `json` backend `ResultSet.json()`) or, for the `rowbinary` backend, `@clickhouse/rowbinary`. The decoding backends also use `@clickhouse/datatype-parser`. This is what the harness is for.
    - **The shim** (the program in this directory). It does not do what `clickhouse-client` does.
    - **The environment.** The test cannot pass through any client on this server (see [Environment causes](#environment-causes)).
 2. **The default for a client bug is a fix in the client**, in a PR of its own, with a regression test in the package (read the `AGENTS.md` of the package first) and a changelog entry. In the same PR, enable the tests of its known-failure group and update the counts. Keep changes to harness logic in a separate PR. A PR that changes only a client does not start the harness workflow: add the `tests:run-core-sql` label (see the README, CI).
@@ -24,16 +24,18 @@ The goal is to find bugs in the client. To pass more tests is not the goal. A fa
 
 Do these steps in this order. Build once from the repository root (`npm install && npm run build`).
 
-1. **Run the test through the harness**, with both backends:
+1. **Run the test through the harness**, with each backend:
 
    ```bash
    UPSTREAM_TEST_LIST=<(echo <test>) CLICKHOUSE_CLIENT_CLI_LOG=/tmp/cli.log \
      tests/clickhouse-test-runner/scripts/run-upstream-tests.sh
    UPSTREAM_TEST_LIST=<(echo <test>) TEST_RUNNER_BACKEND=rowbinary \
      tests/clickhouse-test-runner/scripts/run-upstream-tests.sh
+   UPSTREAM_TEST_LIST=<(echo <test>) TEST_RUNNER_BACKEND=json \
+     tests/clickhouse-test-runner/scripts/run-upstream-tests.sh
    ```
 
-   A test that passes with `passthrough` and fails with `rowbinary` points to `@clickhouse/rowbinary` or to the TSV writer of the shim ([`src/tsv-serialize.ts`](src/tsv-serialize.ts)), not to the transport.
+   A test that passes with `passthrough` and fails with `rowbinary` points to `@clickhouse/rowbinary` or to the TSV writer of the shim ([`src/tsv-serialize.ts`](src/tsv-serialize.ts)), not to the transport. A test that fails only with `json` points to `ResultSet.json()` or to the JSON writer ([`src/json-serialize.ts`](src/json-serialize.ts)).
 
 2. **Run the test through the real `clickhouse-client`** in the server container, on the same server:
 
@@ -81,7 +83,7 @@ These are **not** environment causes. Find the bug:
 - Do not run two sweeps at the same time on one server. The memory pressure causes `MEMORY_LIMIT_EXCEEDED` failures that are not real.
 - CI does not run failed tests again (`--dont_retry_failures`). A test must pass without retries before you add it.
 - When a test in an allowlist starts to fail sometimes, find the cause first (rule 1). Remove it only when the cause is in the environment or in the test itself, and write the reason.
-- `rowbinary-allowlist.txt` is a subset of `upstream-allowlist.txt`: a test that fails with `passthrough` cannot pass with `rowbinary`.
+- `rowbinary-allowlist.txt` and `json-allowlist.txt` are subsets of `upstream-allowlist.txt`: a test that fails with `passthrough` cannot pass with a decoding backend.
 
 ## Bump the server version
 
@@ -90,7 +92,7 @@ The server version and the upstream tests are pinned together in [`clickhouse-ve
 1. Select the version: a full version with a server image tag and a `v<version>-stable` or `v<version>-lts` tag upstream, normally the version of the `latest` image.
 2. Try it: start a manual run with the `clickhouse_version` input, or run the allowlists locally on that version (`fetch-upstream.sh <version>`, and a fresh server of that version).
 3. For each allowlisted test that now fails, find the cause (rule 1). A release changes the tests and the server output, so many tests can fail at the same time with no change in the client. Run the same test through the real client (`run-with-real-client.sh`) on the same server.
-4. Run the known failures (`KNOWN_FAILURES=all`), with both backends. Enable the tests that pass now.
+4. Run the known failures (`KNOWN_FAILURES=all`), with each backend. Enable the tests that pass now.
 5. Fix the names of allowlisted tests that the run reports as not in the checkout (upstream renamed or removed them).
 6. You can also try the new tests of the release (see "Grow the allowlist" in the README).
 7. Change `clickhouse-version`, run `fetch-upstream.sh`, and commit the `src/error-codes.ts` that it generates.
