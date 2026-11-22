@@ -147,8 +147,12 @@ export class Session {
     }
     appendLog(this.logPath, "executing_query=" + st.sql);
     let err: unknown = null;
+    // The server accepted the statement: an error after this point (while the
+    // result is read or written) comes after the echo, which is then done.
+    let accepted = false;
     try {
       const write = await execute(st.sql);
+      accepted = true;
       this.echo(st);
       await write();
     } catch (e) {
@@ -159,8 +163,9 @@ export class Session {
       // statement is echoed.
       const code = errorCode(e);
       if (
-        code !== SYNTAX_ERROR ||
-        (e instanceof Error && e.message.includes(ANALYSIS_ERROR))
+        !accepted &&
+        (code !== SYNTAX_ERROR ||
+          (e instanceof Error && e.message.includes(ANALYSIS_ERROR)))
       ) {
         this.echo(st);
       }
