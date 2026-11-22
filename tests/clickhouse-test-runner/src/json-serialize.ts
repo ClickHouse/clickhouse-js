@@ -93,6 +93,10 @@ export function renderJsonValue(
   value: unknown,
   nested: boolean,
 ): string {
+  // A JSON value of JSON type is JSON text, also `null`; it is not SQL NULL.
+  if (node.kind === NodeKind.DataType && node.name === "JSON") {
+    return renderStringish(jsonText(value), nested);
+  }
   if (value === null || value === undefined) return nested ? "NULL" : "\\N";
 
   if (node.kind === NodeKind.EnumDataType) {
@@ -175,8 +179,6 @@ export function renderJsonValue(
     case "Dynamic":
     case "Variant":
       return renderUntyped(value, nested);
-    case "JSON":
-      return renderStringish(jsonText(value), nested);
     case "MultiPoint":
     case "Ring":
     case "LineString":

@@ -78,6 +78,8 @@ describe("renderJsonValue", () => {
       '{"a":"x\\\\/y","b":1.5}',
     );
     expect(render("Array(JSON)", [{ a: 1 }], false)).toBe(`['{"a":1}']`);
+    expect(render("JSON", null)).toBe("null");
+    expect(render("Array(JSON)", [null])).toBe("['null']");
   });
 
   it("throws for a type that it cannot write", () => {

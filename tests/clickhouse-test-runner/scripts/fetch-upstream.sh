@@ -32,6 +32,8 @@ if [[ ! -e "${UPSTREAM_CLICKHOUSE_DIR}/.git" ]]; then
   git -C "${UPSTREAM_CLICKHOUSE_DIR}" init -q
   git -C "${UPSTREAM_CLICKHOUSE_DIR}" remote add origin "${UPSTREAM_REPO_URL}"
 fi
+# Also for an existing checkout: the tag lookups and the fetch use origin.
+git -C "${UPSTREAM_CLICKHOUSE_DIR}" remote set-url origin "${UPSTREAM_REPO_URL}"
 
 # A release has the tag v<version>-stable. An LTS release has only
 # v<version>-lts.
