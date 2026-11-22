@@ -55,8 +55,7 @@ export function toSearchParams({
 }: ToSearchParamsOptions): URLSearchParams {
   let entries: [string, string][];
   if (param_entries) {
-    entries = param_entries;
-    entries.push(["query_id", query_id]);
+    entries = [...param_entries, ["query_id", query_id]];
   } else {
     entries = [["query_id", query_id]];
     if (query_params !== undefined) {
