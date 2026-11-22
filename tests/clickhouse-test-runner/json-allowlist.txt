@@ -6,7 +6,7 @@
 #   # <test>  # [<id>]                known failure of group <id> (see the end
 #                                     of this file); it does not run
 #
-# Running: 10088.
+# Running: 10087.
 # Known failures: 704 in 9 groups.
 
 00001_select_1
@@ -9230,7 +9230,6 @@
 05163_bloom_filter_array_date_literal
 05164_key_condition_lossy_constant_not_equals
 05165_merge_expressions_non_deterministic_array_join
-05166_external_distinct_ratio_rounding
 05166_limit_by_const_with_totals_joined_subquery
 05166_nondeterministic_nested_lambda_constant_folding
 05166_subcolumn_rewrite_nullable_element_type_mismatch
