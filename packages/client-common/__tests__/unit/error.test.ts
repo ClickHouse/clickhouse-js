@@ -19,6 +19,112 @@ describe("parseError", () => {
     );
   });
 
+  // The message can contain `(UPPERCASE)` groups before the real type: a type
+  // name, a token of a syntax error, or NULL. The type is the group before
+  // ` (version ...)`.
+  it.each([
+    {
+      name: "a type name in the message",
+      text: `Code: 43. DB::Exception: First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). (ILLEGAL_TYPE_OF_ARGUMENT) (version 26.10.4.207 (official build))`,
+      code: "43",
+      type: "ILLEGAL_TYPE_OF_ARGUMENT",
+      message: `First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). `,
+    },
+    {
+      name: "a token of a syntax error",
+      text: `Code: 62. DB::Exception: Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. (SYNTAX_ERROR) (version 26.10.4.207 (official build))`,
+      code: "62",
+      type: "SYNTAX_ERROR",
+      message: `Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. `,
+    },
+    {
+      name: "(NULL)",
+      text: `Code: 62. DB::Exception: Syntax error: failed at position 34 (NULL): NULL. Expected one of: token, end of query. (SYNTAX_ERROR) (version 26.10.4.207 (official build))`,
+      code: "62",
+      type: "SYNTAX_ERROR",
+      message: `Syntax error: failed at position 34 (NULL): NULL. Expected one of: token, end of query. `,
+    },
+  ])("parses the type after $name", ({ text, code, type, message }) => {
+    const error = parseError(text) as ClickHouseError;
+    expect(error).toBeInstanceOf(ClickHouseError);
+    expect(error.code).toBe(code);
+    expect(error.type).toBe(type);
+    expect(error.message).toBe(message);
+  });
+
+  it("gives the type of the outer exception for a wrapped exception", () => {
+    const error = parseError(
+      `Code: 636. DB::Exception: The table structure cannot be extracted from a JSONEachRow format file. Error:\nCode: 117. DB::Exception: Duplicate column name found while schema inference: "x". (INCORRECT_DATA) (version 26.10.4.207 (official build)).\nYou can specify the structure manually. (CANNOT_EXTRACT_TABLE_STRUCTURE) (version 26.10.4.207 (official build))\n`,
+    ) as ClickHouseError;
+    expect(error).toBeInstanceOf(ClickHouseError);
+    expect(error.code).toBe("636");
+    expect(error.type).toBe("CANNOT_EXTRACT_TABLE_STRUCTURE");
+  });
+
+  // With the setting `stacktrace`, the server adds the stack after the type.
+  it("parses the type before a stack trace", () => {
+    const error = parseError(
+      `Code: 43. DB::Exception: First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). (ILLEGAL_TYPE_OF_ARGUMENT), Stack trace (when copying this message, always include the lines below):\n\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x000000001604dca4\n1. DB::Exception::Exception(PreformattedMessage&&, int) @ 0x000000000b7c4c90 (version 26.10.4.207 (official build))\n`,
+    ) as ClickHouseError;
+    expect(error).toBeInstanceOf(ClickHouseError);
+    expect(error.code).toBe("43");
+    expect(error.type).toBe("ILLEGAL_TYPE_OF_ARGUMENT");
+    expect(error.message).toBe(
+      "First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). ",
+    );
+  });
+
+  it("gives the outer type of a wrapped exception before a stack trace", () => {
+    const error = parseError(
+      `Code: 636. DB::Exception: The table structure cannot be extracted from a JSONEachRow format file. Error:\nCode: 117. DB::Exception: Duplicate column name found while schema inference: "x". (INCORRECT_DATA) (version 26.10.4.207 (official build)).\nYou can specify the structure manually. (CANNOT_EXTRACT_TABLE_STRUCTURE), Stack trace (when copying this message, always include the lines below):\n\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x000000001604dca4\n`,
+    ) as ClickHouseError;
+    expect(error.code).toBe("636");
+    expect(error.type).toBe("CANNOT_EXTRACT_TABLE_STRUCTURE");
+  });
+
+  // The parser must stay fast on a large text without a type at the end of an
+  // exception: a regex with backtracking took seconds for this input.
+  it("parses a large text in linear time", () => {
+    const text =
+      "Code: 62. DB::Exception: broken (SYNTAX_ERROR)\n".repeat(20_000) +
+      "__exception__";
+    const started = performance.now();
+    const error = parseError(text) as ClickHouseError;
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(error.code).toBe("62");
+    expect(error.type).toBe("SYNTAX_ERROR");
+    expect(error.message).toBe("broken ");
+  });
+
+  it("returns a plain Error for a text that is not a server error", () => {
+    const html = "<html><body>(BAD_GATEWAY) Code: 502</body></html>";
+    const error = parseError(html);
+    expect(error).not.toBeInstanceOf(ClickHouseError);
+    expect(error.message).toBe(html);
+  });
+
+  // The server leaves out ` (version ...)` for a request with a `session_id`.
+  it("parses the type at the end of a text without a version", () => {
+    const error = parseError(
+      `Code: 62. DB::Exception: Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. (SYNTAX_ERROR)\n`,
+    ) as ClickHouseError;
+    expect(error).toBeInstanceOf(ClickHouseError);
+    expect(error.code).toBe("62");
+    expect(error.type).toBe("SYNTAX_ERROR");
+    expect(error.message).toBe(
+      "Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. ",
+    );
+  });
+
+  it("takes the first (TYPE) group when the type is not at the end", () => {
+    const error = parseError(
+      `1\n2\nCode: 62. DB::Exception: Syntax error. (SYNTAX_ERROR)\n__exception__`,
+    ) as ClickHouseError;
+    expect(error).toBeInstanceOf(ClickHouseError);
+    expect(error.type).toBe("SYNTAX_ERROR");
+    expect(error.message).toBe("Syntax error. ");
+  });
+
   // With a JSON-family output format, the server may report an error through
   // that format: on 24.8 for every error, on later versions for an error raised
   // while the result is written. These are the response shapes seen for each
