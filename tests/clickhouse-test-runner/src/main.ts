@@ -2,8 +2,7 @@
 import { readFileSync } from "node:fs";
 import { parseArgs, printUsage } from "./args.js";
 import { appendLog, resolveLogPath, safeForLog } from "./log.js";
-import { splitQueries } from "./split-queries.js";
-import { buildStatements, type Statement } from "./test-hint.js";
+import { splitStatements, type Statement } from "./split.js";
 import { handleExtractFromConfig } from "./extract-from-config.js";
 import { executeWithClient } from "./backends/client.js";
 import { executeWithRowBinary } from "./backends/rowbinary.js";
@@ -54,8 +53,8 @@ async function main(): Promise<void> {
   }
 
   // Like clickhouse-client, run every ";"-separated statement, with or without
-  // `--multiquery`: `.sh` tests pass multi-statement scripts to plain `-q`.
-  const statements: Statement[] = buildStatements(splitQueries(query));
+  // `--multiquery`.
+  const statements: Statement[] = splitStatements(query);
   if (statements.length === 0) {
     // The input contained only comments/whitespace (e.g. a leftover error
     // hint after the final statement). Nothing to run; exit cleanly like the
@@ -72,12 +71,10 @@ async function main(): Promise<void> {
   appendLog(logPath, "send_logs_level=" + safeForLog(args.sendLogsLevel));
   appendLog(logPath, "max_insert_threads=" + safeForLog(args.maxInsertThreads));
   appendLog(logPath, "server_settings=" + JSON.stringify(args.serverSettings));
+  appendLog(logPath, "params=" + JSON.stringify(args.params));
   appendLog(logPath, "queries_count=" + String(statements.length));
   for (const stmt of statements) {
     appendLog(logPath, "query=" + stmt.sql);
-    if (stmt.expectedError !== null) {
-      appendLog(logPath, "expected_error=" + stmt.expectedError.label);
-    }
   }
 
   // Backend selection is via env (the upstream runner controls argv): the

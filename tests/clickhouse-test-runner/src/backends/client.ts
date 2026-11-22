@@ -1,40 +1,23 @@
-import { appendLog } from "../log.js";
-import {
-  type BackendOptions,
-  buildClickHouseSettings,
-  createSessionClient,
-  settleExpectedError,
-} from "./shared.js";
+import { type BackendOptions, Session } from "./shared.js";
 
 /**
- * Passthrough backend (the default): stream ClickHouse's own `TabSeparated`
- * output straight to stdout. The client only transports bytes; ClickHouse does
- * all the formatting. This is what `default_format = TabSeparated` (in
- * {@link buildClickHouseSettings}) selects.
+ * Passthrough backend (the default): copy ClickHouse's own `TabSeparated`
+ * output to stdout. The client only transports bytes; ClickHouse writes the
+ * text. `default_format = TabSeparated` selects it, so the query text is sent
+ * as it is.
  */
 export async function executeWithClient(opts: BackendOptions): Promise<void> {
-  const { args, statements, logPath } = opts;
-  const client = createSessionClient(args, logPath);
-  const clickhouse_settings = buildClickHouseSettings(args);
-
-  try {
-    for (const stmt of statements) {
-      appendLog(logPath, "executing_query=" + stmt.sql);
-      let execError: unknown = null;
-      try {
-        const result = await client.exec({
-          query: stmt.sql,
-          clickhouse_settings,
-        });
-        for await (const chunk of result.stream) {
-          process.stdout.write(chunk);
-        }
-      } catch (err) {
-        execError = err;
+  const session = new Session(opts.args, opts.logPath);
+  await session.run(opts.statements, async (sql) => {
+    const result = await session.current.exec({
+      query: sql,
+      clickhouse_settings: session.requestSettings("TabSeparated"),
+      query_params: session.queryParams(sql),
+    });
+    return async () => {
+      for await (const chunk of result.stream) {
+        process.stdout.write(chunk);
       }
-      settleExpectedError(stmt, execError, logPath);
-    }
-  } finally {
-    await client.close();
-  }
+    };
+  });
 }

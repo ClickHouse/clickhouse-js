@@ -163,10 +163,10 @@ select `00396_uuid_v7`.) The harness does not try `.sh` tests.
 
 A file has two kinds of lines:
 
-| Line                                                       | Meaning                                                                                                                                                                                               |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `00001_select_1`                                           | The test runs.                                                                                                                                                                                        |
-| `# 00161_rounding_functions  # [shim-last-statement-hint]` | A **known failure**: the test does not run, because of a bug in the client or a gap in the shim. The ID in brackets names the group. The header of the group, lower in the file, describes the cause. |
+| Line                                                | Meaning                                                                                                                                                                                               |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `00001_select_1`                                    | The test runs.                                                                                                                                                                                        |
+| `# 00990_request_splitting  # [error-without-type]` | A **known failure**: the test does not run, because of a bug in the client or a gap in the shim. The ID in brackets names the group. The header of the group, lower in the file, describes the cause. |
 
 The known failures are at the end of the file, in groups. Each group starts
 with a header:
@@ -312,21 +312,57 @@ From this directory, after `npm install` in the repository root:
 - `npm run lint` — run ESLint with `--max-warnings=0`.
 - `npm test` — run the Vitest unit suite (`__tests__/**/*.test.ts`).
 
-## Status
+## How the shim imitates clickhouse-client
 
-This is a developer-facing harness. It is **not** a complete
-`clickhouse-client` replacement; only the flags and behaviors that
-`tests/clickhouse-test` uses are implemented. The `shim` groups of the
-allowlists list the known gaps. Two behaviors differ from what an HTTP client
-would expect, because the shim follows `clickhouse-client`:
+The shim sends nothing that `clickhouse-client` does not send, because some
+tests read their own queries from `system.query_log`. Only the flags and
+behaviors that `tests/clickhouse-test` uses are implemented; the `shim` groups
+of the allowlists list the known gaps. The statement splitter and the test
+hints are ported from the harness of clickhouse-connect.
 
-- `--port` is `clickhouse-client`'s native TCP port. `clickhouse-test` exports
-  `CLICKHOUSE_PORT_TCP` and passes `--port=$CLICKHOUSE_PORT_TCP`, so that port
-  is mapped to `CLICKHOUSE_PORT_HTTP` (default `8123`; `9440` maps to
+- **Port.** `--port` is the native TCP port of `clickhouse-client`.
+  `clickhouse-test` passes `--port=$CLICKHOUSE_PORT_TCP`, so that port is
+  mapped to `CLICKHOUSE_PORT_HTTP` (default `8123`; `9440` maps to
   `CLICKHOUSE_PORT_HTTPS`, default `8443`). Any other port is used as an HTTP
   port.
-- Every `;`-separated statement runs, with or without `--multiquery` (`-n`),
-  as `clickhouse-client` does for `--query` and stdin.
+- **Statements** ([`src/split.ts`](src/split.ts)). The `-- Tags:` header is not
+  part of a statement. A statement ends at a top-level `;` and goes to the
+  server with its `;`. A comment on the same line after the `;` belongs to the
+  statement. The inline data of `INSERT ... FORMAT <name>` (other than
+  `Values`) ends at an empty line. Every statement runs, with or without
+  `--multiquery` (`-n`).
+- **Test hints** ([`src/test-hint.ts`](src/test-hint.ts)).
+  `-- { serverError X }`, `-- { clientError X }` and `-- { error X }` make the
+  error the expected result. `X` is a list of codes or names;
+  [`src/error-codes.ts`](src/error-codes.ts) maps the names to codes, as
+  `clickhouse-client` does. The error must have one of these codes. The shim
+  also checks that `ClickHouseError.type` is the name of the code, because a
+  user reads it. An error hint in a leading comment is ignored. Over HTTP the
+  server finds all errors, so a server error can satisfy a `clientError` hint.
+  `-- { echo }`, `-- { echoOn }` and `-- { echoOff }` count in any comment and
+  print the statements before their results, except a statement with a syntax
+  error that the server finds before it analyzes the query. The first result
+  that does not match its hint stops the shim. `-- { retry ... }` is not
+  supported.
+- **Session** ([`src/backends/shared.ts`](src/backends/shared.ts)). Each
+  invocation has one `session_id`, so `SET`, `USE` and temporary tables last
+  for the whole invocation. The client sends its `database` with each request,
+  and that database replaces the current database of the session, so after a
+  `USE` the shim makes a client with the new database (on the same session).
+- **Settings and parameters.** The server settings of the command line go
+  with each request, as `clickhouse-client` sends them; a `SET` of the same
+  setting in the test removes it, because the session then has the value.
+  `--param_<name>=<value>` gives a query parameter to each statement that has
+  a `{<name>:<type>}` placeholder.
+- **Output.** The shim sends the format of the backend as `default_format`
+  and does not change the query text. A statement with a `FORMAT` clause gets
+  that format.
+- **Errors.** An unexpected error stops the shim. It writes the error to
+  stderr and exits with the code 1.
+
+[`scripts/gen-error-codes.sh`](scripts/gen-error-codes.sh) generates
+`src/error-codes.ts` from `src/Common/ErrorCodes.cpp` of the upstream checkout.
+`fetch-upstream.sh` runs it; commit the file when it changes.
 
 The `SERVER_SETTINGS` and `CLIENT_ONLY_SETTINGS` allowlists in
 [`src/settings.ts`](src/settings.ts) are copied from the Java port and may

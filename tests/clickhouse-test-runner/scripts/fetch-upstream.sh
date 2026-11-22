@@ -46,10 +46,10 @@ fi
 echo "Upstream ref: ${ref}" >&2
 # Not cone mode: cone mode takes only directories. tests/ci,
 # tests/performance and docker/test/util have files that tests/clickhouse-test
-# and some `.sh` tests read.
+# reads. src/Common/ErrorCodes.cpp gives the error names of the test hints.
 git -C "${UPSTREAM_CLICKHOUSE_DIR}" sparse-checkout set --no-cone \
   /tests/clickhouse-test /tests/queries/ /tests/config/ /tests/ci/ /tests/performance/ \
-  /docker/test/util/
+  /docker/test/util/ /src/Common/ErrorCodes.cpp
 # A tag and a branch both resolve here, so the same command takes `master`.
 if ! git -C "${UPSTREAM_CLICKHOUSE_DIR}" fetch -q --depth 1 --filter=blob:none origin "${ref}"; then
   echo "Error: cannot fetch ${ref} from ${UPSTREAM_REPO_URL}." >&2
@@ -58,6 +58,8 @@ fi
 git -C "${UPSTREAM_CLICKHOUSE_DIR}" checkout -q --force FETCH_HEAD
 chmod +x "${UPSTREAM_CLICKHOUSE_DIR}/tests/clickhouse-test"
 echo "${ref}" > "${UPSTREAM_CLICKHOUSE_DIR}/.upstream-ref"
+
+"${SCRIPT_DIR}/gen-error-codes.sh" "${UPSTREAM_CLICKHOUSE_DIR}"
 
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   echo "ref=${ref}" >> "${GITHUB_OUTPUT}"

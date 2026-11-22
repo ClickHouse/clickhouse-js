@@ -59,7 +59,7 @@ A test cannot pass through any client on the CI server when it needs one of thes
 - Server configuration of the upstream CI: named collections, dictionaries, storage policies, disks, users and grants, macros (`NAMED_COLLECTION_DOESNT_EXIST`, `NO_ELEMENTS_IN_CONFIG`, `UNKNOWN_POLICY`, `UNKNOWN_DISK`).
 - Features that the server build or platform does not have (`SUPPORT_IS_DISABLED`).
 - Stateful datasets (`--no-stateful`) or long tests (`--no-long`).
-- Behavior of the HTTP interface itself. For example, the server sends `WITH TOTALS` and `extremes` rows differently over HTTP, and an HTTP request fails when the current database of the session was dropped.
+- Behavior of the HTTP interface itself. For example, an HTTP request fails when the current database of the session was dropped: the client names that database in each request.
 - Features of `clickhouse-client` itself that are not part of a driver: `INTO OUTFILE`, `FROM INFILE`, client-side parsing of `INSERT` data, the progress and profile-event output, and client-only settings.
 - Tests that conflict with other tests of the set: a fixed table UUID, or server state that a test leaves behind (failpoints, row policies). Such a test passes alone on a fresh server and fails in a full run.
 - Memory limits of the server, when the test also fails through the real `clickhouse-client`.
@@ -93,7 +93,7 @@ The server version and the upstream tests are pinned together in [`clickhouse-ve
 4. Run the known failures (`KNOWN_FAILURES=all`), with both backends. Enable the tests that pass now.
 5. Fix the names of allowlisted tests that the run reports as not in the checkout (upstream renamed or removed them).
 6. You can also try the new tests of the release (see "Grow the allowlist" in the README).
-7. Change `clickhouse-version`.
+7. Change `clickhouse-version`, run `fetch-upstream.sh`, and commit the `src/error-codes.ts` that it generates.
 
 ## Keep the documents in sync
 
