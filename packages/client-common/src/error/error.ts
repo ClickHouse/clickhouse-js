@@ -42,7 +42,16 @@ function parseServerError(text: string): ParsedClickHouseError | undefined {
   const codeMatch = codeRe.exec(text);
   if (codeMatch === null) return undefined;
   const afterCode = codeMatch.index + codeMatch[0].length;
-  const stackTraceAt = text.indexOf(stackTraceMarker, afterCode);
+  // The stack trace starts right after a type: `(TYPE), Stack trace (`. The
+  // same text elsewhere is part of the message.
+  let stackTraceAt = -1;
+  for (const m of text.matchAll(typeGroupRe)) {
+    const end = m.index + m[0].length;
+    if (end > afterCode && text.startsWith(stackTraceMarker, end)) {
+      stackTraceAt = end;
+      break;
+    }
+  }
   const head = stackTraceAt < 0 ? text : text.slice(0, stackTraceAt);
   const firstMarker = head.indexOf(exceptionMarker, afterCode);
   if (firstMarker < 0) return undefined;

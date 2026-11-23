@@ -74,6 +74,16 @@ describe("parseError", () => {
     );
   });
 
+  it("keeps a stack trace marker that is part of the message", () => {
+    const error = parseError(
+      `Code: 395. DB::Exception: bad, Stack trace (not a stack). (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.10.4.207 (official build))`,
+    ) as ClickHouseError;
+    expect(error).toBeInstanceOf(ClickHouseError);
+    expect(error.code).toBe("395");
+    expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+    expect(error.message).toBe("bad, Stack trace (not a stack). ");
+  });
+
   it("gives the outer type of a wrapped exception before a stack trace", () => {
     const error = parseError(
       `Code: 636. DB::Exception: The table structure cannot be extracted from a JSONEachRow format file. Error:\nCode: 117. DB::Exception: Duplicate column name found while schema inference: "x". (INCORRECT_DATA) (version 26.10.4.207 (official build)).\nYou can specify the structure manually. (CANNOT_EXTRACT_TABLE_STRUCTURE), Stack trace (when copying this message, always include the lines below):\n\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x000000001604dca4\n`,
