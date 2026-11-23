@@ -1,177 +1,181 @@
-// Support for upstream `clickhouse-test` error hints.
+// Test hints, as clickhouse-client parses them (see src/Client/TestHint.cpp of
+// ClickHouse/ClickHouse):
 //
-// Many `.sql` tests in ClickHouse/ClickHouse annotate a statement that is
-// *expected to fail* with a trailing comment, e.g.:
+//   SELECT throwIf(1); -- { serverError FUNCTION_THROW_IF_VALUE_IS_NON_ZERO }
+//   SELECT 1 / 0;      -- { serverError 153, 6 }
+//   -- { echoOn }
 //
-//   SELECT throwIf(1);                 -- { serverError FUNCTION_THROW_IF_VALUE_IS_NON_ZERO }
-//   SELECT * FROM does_not_parse(;     -- { clientError SYNTAX_ERROR }
-//   SELECT 1 / 0;                      -- { serverError 153, 6 }
-//
-// The real `clickhouse-client` parses these hints (see upstream
-// `src/Client/TestHint.cpp`) and, when the query raises the expected error,
-// treats it as a pass and emits no output. Our Node shim must do the same,
-// otherwise the propagated `ClickHouseError` aborts the script and the test is
-// reported as a failure even though the server behaved exactly as expected.
-//
-// Upstream rule we mirror: an error hint is only honored when it *trails* the
-// statement it refers to — hints in a leading comment are ignored. Because our
-// statement splitter cuts on `;`, the trailing comment of statement N ends up
-// as the leading comment of statement N+1 (or as a standalone comment-only
-// final element). We therefore attach a leading hint to the *previous*
-// statement, which reproduces the upstream "trailing comment" semantics.
+// An error hint counts only when it is not in a leading comment of the
+// statement. An echo hint counts in any comment. Ported from the harness of
+// clickhouse-connect (clickhouse_test_runner/hint.py).
 
-/** A set of error codes/names a query is expected to fail with. */
-export interface ExpectedError {
-  /** Human-readable hint, e.g. `serverError SIZES_OF_ARRAYS_DONT_MATCH`. */
-  label: string;
-  /** Numeric error codes (as strings), matched against `ClickHouseError.code`. */
-  codes: Set<string>;
-  /** Named error codes, matched against `ClickHouseError.type`. */
-  names: Set<string>;
+import { ERROR_CODES } from "./error-codes.js";
+import {
+  heredocEnd,
+  isSpace,
+  skipBlockComment,
+  skipLineComment,
+  skipQuoted,
+  startsLineComment,
+} from "./lexer.js";
+
+export interface TestHint {
+  /** Codes of `serverError` (or `error`). */
+  serverErrors: number[];
+  /** Codes of `clientError` (or `error`). */
+  clientErrors: number[];
+  /** Set by `echo` or `echoOn` (true) and `echoOff` (false). */
+  echo: boolean | null;
+  /** Set when a hint is malformed or names an unknown error. */
+  parseError: string | null;
 }
 
-/** A single statement to run, with an optional expected-error annotation. */
-export interface Statement {
-  sql: string;
-  expectedError: ExpectedError | null;
+const ERROR_NAMES: ReadonlyMap<number, string> = new Map(
+  [...ERROR_CODES].map(([name, code]) => [code, name]),
+);
+
+/** The name of an error code, or undefined when the code is not known. */
+export function errorName(code: number): string | undefined {
+  return ERROR_NAMES.get(code);
 }
 
-const ERROR_COMMANDS = new Set(["serverError", "clientError", "error"]);
+export function emptyHint(): TestHint {
+  return { serverErrors: [], clientErrors: [], echo: null, parseError: null };
+}
+
+export function expectsError(h: TestHint): boolean {
+  return h.serverErrors.length > 0 || h.clientErrors.length > 0;
+}
 
 /**
- * Parse the contents of a single hint comment (the text *including* the comment
- * markers). Returns the expected error if the comment carries a
- * `serverError` / `clientError` / `error` directive, otherwise `null`.
- *
- * We deliberately merge `serverError` and `clientError` codes into one
- * acceptance set: over HTTP every failure surfaces as a server error, so a
- * `clientError` hint (which upstream attributes to the native client's local
- * parsing) is still satisfied when the matching code comes back from the
- * server.
+ * Whether the error code satisfies the hint. Over HTTP the server finds every
+ * error, also the syntax errors that clickhouse-client finds locally, so a
+ * server error can satisfy a `clientError` hint too.
  */
-export function parseHintComment(comment: string): ExpectedError | null {
-  const open = comment.indexOf("{");
-  if (open === -1) return null;
-  const close = comment.indexOf("}", open + 1);
-  if (close === -1) return null;
+export function hintMatches(h: TestHint, code: number): boolean {
+  return h.serverErrors.includes(code) || h.clientErrors.includes(code);
+}
 
-  const inner = comment.slice(open + 1, close);
-  const tokens = inner.split(/[\s,]+/).filter((t) => t.length > 0);
-  const cmdIndex = tokens.findIndex((t) => ERROR_COMMANDS.has(t));
-  if (cmdIndex === -1) return null;
+export function hintLabel(h: TestHint): string {
+  const codes = (values: number[]): string =>
+    values.map((c) => errorName(c) ?? String(c)).join(", ");
+  if (h.serverErrors.length > 0 && h.clientErrors.length > 0) {
+    return "error " + codes(h.serverErrors);
+  }
+  if (h.serverErrors.length > 0) return "serverError " + codes(h.serverErrors);
+  return "clientError " + codes(h.clientErrors);
+}
 
-  const command = tokens[cmdIndex];
-  const codes = new Set<string>();
-  const names = new Set<string>();
-  // Everything after the command keyword is a comma-separated list of codes,
-  // each either a numeric error code or a named one (e.g. SYNTAX_ERROR).
-  for (const token of tokens.slice(cmdIndex + 1)) {
-    if (/^\d+$/.test(token)) {
-      codes.add(token);
+function tokenize(body: string): string[] {
+  const out: string[] = [];
+  let i = 0;
+  const n = body.length;
+  while (i < n) {
+    const c = body.charAt(i);
+    if (isSpace(c)) {
+      i++;
+    } else if (c === ",") {
+      out.push(",");
+      i++;
     } else {
-      names.add(token);
+      let j = i;
+      while (j < n && !isSpace(body.charAt(j)) && body.charAt(j) !== ",") j++;
+      out.push(body.slice(i, j));
+      i = j;
     }
   }
-  if (codes.size === 0 && names.size === 0) return null;
-
-  const label = `${command} ${tokens.slice(cmdIndex + 1).join(", ")}`;
-  return { label, codes, names };
+  return out;
 }
 
-/**
- * Walk the leading run of whitespace and comments of a statement and return the
- * first error hint found, or `null`. Scanning stops at the first non-comment
- * token (where the SQL body begins), so genuine trailing hints — which live in
- * the *next* split element — are not picked up here.
- */
-function extractLeadingHint(statement: string): ExpectedError | null {
+function parseHintBody(h: TestHint, body: string, leading: boolean): void {
+  const tokens = tokenize(body);
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i]!;
+    if (tok === "echo" || tok === "echoOn") {
+      h.echo = true;
+    } else if (tok === "echoOff") {
+      h.echo = false;
+    } else if (tok === "retry") {
+      // `retry N until|while serverError X` is used by a few tests that wait
+      // for a background process. It is not supported.
+      h.parseError = 'the "retry" test hint is not supported';
+      return;
+    } else if (
+      tok === "serverError" ||
+      tok === "clientError" ||
+      tok === "error"
+    ) {
+      if (leading) continue;
+      const values: number[] = [];
+      for (const t of tokens.slice(i + 1)) {
+        if (t === ",") continue;
+        if (/^\d+$/.test(t)) {
+          values.push(Number(t));
+          continue;
+        }
+        const code = ERROR_CODES.get(t);
+        if (code === undefined) {
+          h.parseError = `unknown error name '${t}' in test hint`;
+          return;
+        }
+        values.push(code);
+      }
+      if (tok === "serverError") {
+        h.serverErrors = values;
+      } else if (tok === "clientError") {
+        h.clientErrors = values;
+      } else {
+        h.serverErrors = values;
+        h.clientErrors = [...values];
+      }
+      return;
+    }
+  }
+}
+
+/** The characters that can start a comment, a quoted text or a heredoc. */
+const INTERESTING = /[-#/'"`$]/g;
+
+/** Parse the test hints in the comments of a statement (its `full` text). */
+export function parseTestHint(full: string): TestHint {
+  const h = emptyHint();
+  let leading = true;
   let i = 0;
-  const n = statement.length;
+  const n = full.length;
   while (i < n) {
-    const ch = statement.charAt(i);
-    if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
+    const c = full.charAt(i);
+    if (isSpace(c)) {
       i++;
       continue;
     }
-    if (ch === "-" && statement.charAt(i + 1) === "-") {
-      const newlineIdx = statement.indexOf("\n", i + 2);
-      const end = newlineIdx === -1 ? n : newlineIdx;
-      const hint = parseHintComment(statement.slice(i, end));
-      if (hint) return hint;
-      i = end;
+    let end: number;
+    if (startsLineComment(full, i)) {
+      end = skipLineComment(full, i);
+    } else if (full.startsWith("/*", i)) {
+      end = skipBlockComment(full, i);
+    } else if (c === "'" || c === '"' || c === "`") {
+      leading = false;
+      i = skipQuoted(full, i);
+      continue;
+    } else if (c === "$") {
+      leading = false;
+      const e = heredocEnd(full, i);
+      i = e > 0 ? e : i + 1;
+      continue;
+    } else {
+      leading = false;
+      INTERESTING.lastIndex = i + 1;
+      const m = INTERESTING.exec(full);
+      i = m ? m.index : n;
       continue;
     }
-    if (ch === "/" && statement.charAt(i + 1) === "*") {
-      const closeIdx = statement.indexOf("*/", i + 2);
-      const end = closeIdx === -1 ? n : closeIdx + 2;
-      const hint = parseHintComment(statement.slice(i, end));
-      if (hint) return hint;
-      i = end;
-      continue;
+    const comment = full.slice(i, end);
+    const open = comment.indexOf("{");
+    if (open >= 0) {
+      const close = comment.indexOf("}", open);
+      if (close >= 0) parseHintBody(h, comment.slice(open + 1, close), leading);
     }
-    break; // SQL body starts here
+    i = end;
   }
-  return null;
-}
-
-/** Whether a split element contains any SQL beyond comments/whitespace. */
-function hasSqlContent(statement: string): boolean {
-  let i = 0;
-  const n = statement.length;
-  while (i < n) {
-    const ch = statement.charAt(i);
-    if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
-      i++;
-      continue;
-    }
-    if (ch === "-" && statement.charAt(i + 1) === "-") {
-      const newlineIdx = statement.indexOf("\n", i + 2);
-      i = newlineIdx === -1 ? n : newlineIdx;
-      continue;
-    }
-    if (ch === "/" && statement.charAt(i + 1) === "*") {
-      const closeIdx = statement.indexOf("*/", i + 2);
-      i = closeIdx === -1 ? n : closeIdx + 2;
-      continue;
-    }
-    return true;
-  }
-  return false;
-}
-
-/**
- * Turn the raw output of `splitQueries` into executable statements, attaching
- * each trailing error hint to the statement it annotates. Comment-only
- * elements (e.g. a hint left dangling after the final statement) carry their
- * hint to the preceding statement and are otherwise dropped.
- */
-export function buildStatements(rawQueries: string[]): Statement[] {
-  const statements: Statement[] = [];
-  for (const raw of rawQueries) {
-    const hint = extractLeadingHint(raw);
-    const previous = statements[statements.length - 1];
-    if (hint && previous !== undefined) {
-      // The trailing hint of the previous statement (upstream semantics).
-      previous.expectedError = hint;
-    }
-    // A leading hint with no preceding statement is ignored, matching upstream.
-    if (hasSqlContent(raw)) {
-      statements.push({ sql: raw, expectedError: null });
-    }
-  }
-  return statements;
-}
-
-/** Whether an error raised by the client matches the expected-error hint. */
-export function errorMatchesExpectation(
-  err: unknown,
-  expected: ExpectedError,
-): boolean {
-  if (typeof err !== "object" || err === null) return false;
-  const code = (err as { code?: unknown }).code;
-  const type = (err as { type?: unknown }).type;
-  if (typeof code === "string" && expected.codes.has(code)) return true;
-  if (typeof code === "number" && expected.codes.has(String(code))) return true;
-  if (typeof type === "string" && expected.names.has(type)) return true;
-  return false;
+  return h;
 }

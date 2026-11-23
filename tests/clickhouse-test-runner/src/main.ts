@@ -2,11 +2,11 @@
 import { readFileSync } from "node:fs";
 import { parseArgs, printUsage } from "./args.js";
 import { appendLog, resolveLogPath, safeForLog } from "./log.js";
-import { splitQueries } from "./split-queries.js";
-import { buildStatements, type Statement } from "./test-hint.js";
+import { splitStatements, type Statement } from "./split.js";
 import { handleExtractFromConfig } from "./extract-from-config.js";
 import { executeWithClient } from "./backends/client.js";
 import { executeWithRowBinary } from "./backends/rowbinary.js";
+import { executeWithJson } from "./backends/json.js";
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -54,8 +54,8 @@ async function main(): Promise<void> {
   }
 
   // Like clickhouse-client, run every ";"-separated statement, with or without
-  // `--multiquery`: `.sh` tests pass multi-statement scripts to plain `-q`.
-  const statements: Statement[] = buildStatements(splitQueries(query));
+  // `--multiquery`.
+  const statements: Statement[] = splitStatements(query);
   if (statements.length === 0) {
     // The input contained only comments/whitespace (e.g. a leftover error
     // hint after the final statement). Nothing to run; exit cleanly like the
@@ -72,12 +72,10 @@ async function main(): Promise<void> {
   appendLog(logPath, "send_logs_level=" + safeForLog(args.sendLogsLevel));
   appendLog(logPath, "max_insert_threads=" + safeForLog(args.maxInsertThreads));
   appendLog(logPath, "server_settings=" + JSON.stringify(args.serverSettings));
+  appendLog(logPath, "params=" + JSON.stringify(args.params));
   appendLog(logPath, "queries_count=" + String(statements.length));
   for (const stmt of statements) {
     appendLog(logPath, "query=" + stmt.sql);
-    if (stmt.expectedError !== null) {
-      appendLog(logPath, "expected_error=" + stmt.expectedError.label);
-    }
   }
 
   // Backend selection is via env (the upstream runner controls argv): the
@@ -86,9 +84,13 @@ async function main(): Promise<void> {
   // Reject an unknown value rather than silently falling back to passthrough,
   // which would hide a typo'd TEST_RUNNER_BACKEND in CI.
   const backend = process.env["TEST_RUNNER_BACKEND"] ?? "passthrough";
-  if (backend !== "passthrough" && backend !== "rowbinary") {
+  if (
+    backend !== "passthrough" &&
+    backend !== "rowbinary" &&
+    backend !== "json"
+  ) {
     process.stderr.write(
-      `Error: unknown TEST_RUNNER_BACKEND "${backend}" (expected "passthrough" or "rowbinary")\n`,
+      `Error: unknown TEST_RUNNER_BACKEND "${backend}" (expected "passthrough", "rowbinary" or "json")\n`,
     );
     process.exitCode = 1;
     return;
@@ -98,6 +100,8 @@ async function main(): Promise<void> {
   try {
     if (backend === "rowbinary") {
       await executeWithRowBinary({ args, statements, logPath });
+    } else if (backend === "json") {
+      await executeWithJson({ args, statements, logPath });
     } else {
       await executeWithClient({ args, statements, logPath });
     }
