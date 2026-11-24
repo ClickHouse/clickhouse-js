@@ -18,6 +18,10 @@
 // server writes in the middle of a streamed result), the type is the first group
 // after the last `Exception: ` that has a group after it, as before.
 //
+// Without any group (for example, the server cuts the message of an exception
+// block to fit in 16 KiB), a text that starts as a server error is an error
+// without a type, and the message is the rest of the text.
+//
 // NOTE: In normal usage, the string fed to `parseError` comes from ClickHouse,
 // but it may still include user-controlled fragments (e.g. parts of a query) or
 // even non-ClickHouse payloads (proxy/HTML errors) when parsing failed requests.
@@ -31,6 +35,7 @@ const typeLettersRe = /[A-Z]{3}/;
 const exceptionMarker = "Exception: ";
 const stackTraceMarker = ", Stack trace (";
 const versionMarker = " (version ";
+const serverErrorStartRe = /^Code: \d+\. DB::\w*Exception: /;
 
 interface TypeGroup {
   start: number;
@@ -80,7 +85,14 @@ function parseServerError(text: string): ParsedClickHouseError | undefined {
     type = ends[ends.length - 1]?.type;
   } else {
     const last = groups[groups.length - 1];
-    if (last === undefined) return undefined;
+    if (last === undefined) {
+      if (!serverErrorStartRe.test(head)) return undefined;
+      return {
+        code: codeMatch[1] as string,
+        message: head.slice(firstMarker + exceptionMarker.length),
+        type: undefined,
+      };
+    }
     const marker = head.lastIndexOf(
       exceptionMarker,
       last.start - exceptionMarker.length,
