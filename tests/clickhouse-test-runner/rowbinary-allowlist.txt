@@ -6,8 +6,8 @@
 #   # <test>  # [<id>]                known failure of group <id> (see the end
 #                                     of this file); it does not run
 #
-# Running: 10260.
-# Known failures: 531 in 7 groups.
+# Running: 10353.
+# Known failures: 539 in 8 groups.
 
 00001_select_1
 00002_system_numbers
@@ -944,6 +944,7 @@
 00974_full_outer_join
 00974_low_cardinality_cast
 00975_json_hang
+00975_move_partition_merge_tree
 00975_recursive_materialized_view
 00975_values_list
 00976_asof_join_on
@@ -981,6 +982,7 @@
 00997_extract_all_crash_6627
 00997_set_index_array
 00997_trim
+00998_constraints_all_tables
 00999_full_join_dup_keys_crash
 00999_join_not_nullable_types
 00999_join_on_expression
@@ -1215,6 +1217,7 @@
 01114_alter_modify_compact_parts
 01114_clear_column_compact_parts
 01114_materialize_clear_index_compact_parts
+01114_mysql_database_engine_segfault
 01115_join_with_dictionary
 01115_prewhere_array_join
 01116_asof_join_dolbyzerr
@@ -1299,6 +1302,7 @@
 01246_extractAllGroupsVertical
 01246_least_greatest_generic
 01247_least_greatest_filimonov
+01247_some_msan_crashs_from_22517
 01248_least_greatest_mixed_const
 01249_bad_arguments_for_bloom_filter
 01250_fixed_string_comparison
@@ -1540,6 +1544,7 @@
 01414_bloom_filter_index_with_const_column
 01414_freeze_does_not_prevent_alters
 01414_low_cardinality_nullable
+01414_mutations_and_errors
 01414_push_predicate_when_contains_with_clause
 01415_inconsistent_merge_tree_settings
 01415_overlimiting_threads_for_repica_bug
@@ -1768,6 +1773,7 @@
 01558_transform_null_in
 01558_ttest
 01559_aggregate_null_for_empty_fix
+01559_misplaced_codec_diagnostics
 01560_DateTime_and_DateTime64_comparision
 01560_cancel_agg_func_combinator_native_name_constraint
 01560_crash_in_agg_empty_arglist
@@ -1776,6 +1782,7 @@
 01561_Date_and_DateTime64_comparision
 01561_aggregate_functions_of_key_with_join
 01562_agg_null_for_empty_ahead
+01564_test_hint_woes
 01566_negate_formatting
 01567_system_processes_current_database
 01571_window_functions
@@ -1783,6 +1790,7 @@
 01576_if_null_external_aggregation
 01579_date_datetime_index_comparison
 01580_column_const_comparision
+01581_deduplicate_by_columns_local
 01581_to_int_inf_nan
 01582_any_join_supertype
 01582_deterministic_function_with_predicate
@@ -1808,6 +1816,7 @@
 01600_multiple_left_join_with_aliases
 01600_remerge_sort_lowered_memory_bytes_ratio
 01600_select_in_different_types
+01601_accurate_cast
 01601_detach_permanently
 01602_array_aggregation
 01602_modified_julian_day_msan
@@ -2135,6 +2144,7 @@
 01786_group_by_pk_many_streams
 01787_arena_assert_column_nothing
 01787_map_remote
+01788_update_nested_type_subcolumn_check
 01795_TinyLog_rwlock_ub
 01796_Log_rwlock_ub
 01797_StripeLog_rwlock_ub
@@ -2296,12 +2306,14 @@
 01926_order_by_desc_limit
 01926_union_all_schmak
 01927_query_views_log_current_database
+01931_storage_merge_no_columns
 01932_alter_index_with_order
 01932_null_valid_identifier
 01933_invalid_date
 01934_constexpr_aggregate_function_parameters
 01936_empty_function_support_uuid
 01936_quantiles_cannot_return_null
+01936_three_parts_identifiers_in_wrong_places
 01937_nested_chinese
 01938_joins_identifiers
 01939_type_map_json
@@ -2354,6 +2366,7 @@
 02008_materialize_column
 02008_test_union_distinct_in_subquery
 02008_tuple_to_name_value_pairs
+02009_array_join_partition
 02010_array_index_bad_cast
 02011_dictionary_empty_attribute_list
 02011_normalize_utf8
@@ -2467,6 +2480,7 @@
 02113_untuple_func_alias
 02114_bool_type
 02115_map_contains_analyzer
+02116_tuple_element_analyzer
 02119_sumcount
 02123_MySQLWire_regression
 02124_comparison_betwwen_decimal_and_float
@@ -2688,7 +2702,10 @@
 02267_output_format_prometheus
 02267_special_operator_parse_alias_check
 02267_type_inference_for_insert_into_function_null
+02268_json_wrong_root_type_in_schema_inference
+02269_create_table_with_collation
 02269_insert_select_with_format_without_schema_inference
+02269_to_start_of_interval_overflow
 02271_fix_column_matcher_and_column_transformer
 02271_int_sql_compatibility
 02271_temporary_table_show_rows_bytes
@@ -2712,6 +2729,7 @@
 02292_hash_array_tuples
 02292_nested_not_flattened_detach
 02293_arrow_dictionary_indexes
+02293_compatibility_ignore_auto_increment_in_create_table
 02293_grouping_function
 02293_h3_distance
 02293_h3_hex_ring
@@ -2811,6 +2829,7 @@
 02345_striped_compact_parts
 02346_exclude_materialize_skip_indexes_on_insert
 02346_exclude_materialize_skip_indexes_on_merge
+02346_function_hasPhrase
 02346_non_negative_derivative
 02346_position_countsubstrings_zero_byte
 02346_system_tokenizers
@@ -3101,6 +3120,7 @@
 02388_analyzer_recursive_lambda
 02388_conversion_from_string_with_datetime64_to_date_and_date32
 02389_analyzer_nested_lambda
+02391_hashed_dictionary_shards
 02391_recursive_buffer
 02392_every_setting_must_have_documentation
 02393_every_metric_must_have_documentation
@@ -3148,8 +3168,11 @@
 02422_read_numbers_as_strings
 02423_json_quote_float64
 02423_multidimensional_array_get_data_at
+02424_pod_array_overflow
 02425_categorical_information_value_properties
 02426_create_suspicious_fixed_string
+02426_pod_array_overflow_2
+02426_pod_array_overflow_3
 02426_to_string_nullable_fixedstring
 02427_column_nullable_ubsan
 02427_msan_group_array_resample
@@ -3171,6 +3194,7 @@
 02454_disable_mergetree_with_lightweight_delete_column
 02454_json_object_each_row_column_for_object_name
 02455_count_state_asterisk
+02455_duplicate_column_names_in_schema_inference
 02455_extract_fixed_string_from_nested_json
 02455_improve_feedback_when_replacing_partition_with_different_primary_key
 02456_BLAKE3_hash_function_test
@@ -3188,6 +3212,7 @@
 02458_default_setting
 02458_key_condition_not_like_prefix
 02458_relax_too_many_parts
+02458_use_structure_from_insertion_table
 02459_group_by_all
 02459_low_cardinality_uint128_aggregator
 02459_materialized_view_default_value
@@ -3212,6 +3237,7 @@
 02469_obfuscate_table_function
 02470_suspicious_low_cardinality_msan
 02471_wrong_date_monotonicity
+02472_segfault_expression_parser
 02473_extract_low_cardinality_from_json
 02473_map_element_nullable
 02473_prewhere_with_bigint
@@ -3282,6 +3308,7 @@
 02481_xxh3_hash_function
 02482_execute_functions_before_sorting_bug
 02482_if_with_nothing_argument
+02482_value_block_assert
 02483_check_virtuals_shile_using_structure_from_insertion_table
 02483_cuturlparameter_with_arrays
 02483_merge_projections
@@ -3333,6 +3360,7 @@
 02497_analyzer_sum_if_count_if_pass_crash_fix
 02497_having_without_actual_aggregation_bug
 02497_if_transform_strings_to_enum
+02497_schema_inference_nulls
 02497_storage_join_right_assert
 02498_analyzer_aggregate_functions_arithmetic_operations_pass_fix
 02498_analyzer_settings_push_down
@@ -3346,6 +3374,7 @@
 02500_prevent_drop_nested_if_empty_part
 02501_analyzer_expired_context_crash_fix
 02502_analyzer_insert_select_crash_fix
+02502_bad_values_schema_inference
 02502_fuzz_bad_cast_to_ast_literal
 02503_bad_compatibility_setting
 02503_in_lc_const_args_bug
@@ -3380,6 +3409,7 @@
 02515_analyzer_null_for_empty
 02515_and_or_if_multiif_not_return_lc
 02515_distinct_zero_size_key_bug_44831
+02515_generate_ulid
 02515_tuple_lambda_parsing
 02516_projections_and_context
 02516_projections_with_rollup
@@ -3444,6 +3474,7 @@
 02542_transform_new
 02542_transform_old
 02551_ipv4_implicit_uint64
+02552_analyzer_optimize_group_by_function_keys_crash
 02552_check_referential_table_dependencies
 02552_client_format_settings
 02552_inner_join_with_where_true
@@ -3553,6 +3584,7 @@
 02679_explain_merge_tree_prewhere_row_policy
 02679_query_parameters_dangling_pointer
 02680_datetime64_monotonic_check
+02680_default_star
 02680_illegal_type_of_filter_projection
 02680_instr_alias_for_position_case_insensitive
 02680_lc_null_as_default
@@ -3631,6 +3663,7 @@
 02725_cnf_large_check
 02725_memory-for-merges
 02725_sleep_max_time
+02725_url_support_virtual_column
 02726_async_insert_flush_queue
 02730_dictionary_hashed_load_factor_element_count
 02730_with_fill_by_sorting_prefix
@@ -3685,6 +3718,7 @@
 02782_inconsistent_formatting_and_constant_folding
 02782_values_null_to_lc_nullable
 02783_date_predicate_optimizations
+02783_max_bytes_to_read_in_schema_inference
 02783_parsedatetimebesteffort_syslog
 02784_move_all_conditions_to_prewhere_analyzer_asan
 02784_projections_read_in_order_bug
@@ -3696,6 +3730,7 @@
 02787_transform_null
 02788_current_schemas_function
 02788_fix_logical_error_in_sorting
+02789_describe_table_settings
 02789_functions_after_sorting_and_columns_with_same_names_bug
 02789_functions_after_sorting_and_columns_with_same_names_bug_2
 02789_jit_cannot_convert_column
@@ -3707,6 +3742,7 @@
 02791_final_block_structure_mismatch_bug
 02791_predicate_pushdown_different_types
 02792_drop_projection_lwd
+02794_pushdown_invalid_get
 02795_full_join_assert_cast
 02796_projection_date_filter_on_view
 02797_aggregator_huge_mem_usage_bug
@@ -3978,6 +4014,8 @@
 02921_parameterized_view_except_queries
 02922_respect_nulls_Nullable
 02922_respect_nulls_extensive
+02922_respect_nulls_parser
+02922_respect_nulls_states
 02923_cte_equality_disjunction
 02923_explain_expired_context
 02923_join_use_nulls_modulo
@@ -4085,6 +4123,7 @@
 02982_create_mv_inner_extra
 02982_dont_infer_exponent_floats
 02982_minmax_nan_null_order
+02982_unambiguous_alter_commands
 02983_empty_map
 02983_empty_map_hasToken
 02984_topk_empty_merge
@@ -4532,6 +4571,7 @@
 03198_group_array_intersect
 03198_h3_polygon_to_cells
 03198_json_extract_more_types
+03198_table_function_directory_path
 03199_fix_auc_tie_handling
 03199_has_lc_fixed_string
 03199_join_with_materialized_column
@@ -4608,6 +4648,7 @@
 03217_fliter_pushdown_no_keys
 03217_json_merge_patch_stack_overflow
 03217_primary_index_memory_leak
+03218_materialize_msan
 03221_create_if_not_exists_setting
 03221_incomplete_utf8_sequence
 03221_key_condition_bug
@@ -4653,6 +4694,7 @@
 03230_show_create_query_identifier_quoting_style
 03230_subcolumns_mv
 03230_system_projections
+03231_alter_no_properties_before_remove_modify_reset
 03231_csv_dont_infer_bool_from_string
 03231_prewhere_conditions_order
 03231_values_respect_format_settings_in_fields_conversion
@@ -5083,6 +5125,7 @@
 03381_query_result_cache_table_subqueries
 03381_query_result_cache_union_subqueries
 03389_regexp_rewrite_nullable_group_by
+03390_non_constant_case
 03391_logical_error_sort_column
 03392_crash_group_by_use_nulls
 03392_inconsistent_formatting_of_lambda
@@ -5133,6 +5176,7 @@
 03404_ubsan_distinct_join_const_column
 03405_bool_array_to_fixed_strings
 03405_join_using_alias_constant
+03405_json_parsing_error_bug
 03405_merge_filter_into_join
 03405_naive_bayes_classifier_token
 03405_non_zero_batch_mode
@@ -5154,6 +5198,7 @@
 03412_analyzer_correlated_subquery_bug
 03412_merge_final_prewhere
 03413_analyzer_correlated_subqueries_bug_2
+03413_dynamic_in_in
 03413_experimental_settings_cannot_be_enabled_by_default
 03414_analyzer_correlated_subqueries_in_function
 03414_formatDateTime_compound_formatter_after_varsize_formatter
@@ -5327,9 +5372,11 @@
 03550_union_intersect_except_default_mode_rewrite_exception_safety
 03551_cast_decimal_to_float
 03551_no_alter_for_columns_to_sum
+03552_inconsistent_formatting_operator_as_table_function
 03553_inconsistent_formatting_of_dictionary
 03555_inconsistent_formatting_ttl
 03557_parasitic_cse_in_formatter
+03558_no_alias_in_single_expressions
 03559_explain_ast_in_subquery
 03560_low_cardinality_keys_filter
 03560_new_analyzer_default_expression
@@ -5385,6 +5432,7 @@
 03578_parallel_replicas_formatting_tuple
 03578_ttl_column_in_order_by_validation
 03579_mergeTreeIndex_params
+03579_multi_if_short_circuit
 03579_system_columns_column_alias
 03580_external_merge_sort_with_lazy_columns
 03580_heredoc_ambiguity
@@ -5433,6 +5481,7 @@
 03601_inconsistent_table_names
 03601_insert_squashing_remove_const
 03601_replace_regex_fixedstring_empty_needle
+03601_temporary_views
 03602_alter_update_nullable_json
 03602_embeddedrock_path
 03602_query_system_tables_definer
@@ -5506,6 +5555,7 @@
 03639_hash_of_dynamic_column
 03640_alter_table_rewrite_parts
 03640_load_marks_synchronously
+03640_multiple_mutations_with_error_with_rewrite_parts
 03640_multiple_mutations_with_rewrite_parts
 03640_skip_indexes_data_types_with_or
 03640_skip_indexes_with_or
@@ -5619,6 +5669,7 @@
 03712_tuple_inside_nullable_implicit_cast_for_in_function_1_1
 03712_tuple_inside_nullable_implicit_cast_for_in_function_1_2
 03712_tuple_inside_nullable_implicit_cast_for_in_function_2
+03713_data_types_binary_deserialization_stack_overflow
 03713_optimize_inverse_dictionary_lookup_setting_rewrite_in_to_join
 03713_replicated_columns_in_external_data_bug
 03714_base32_base58_short_string
@@ -5652,6 +5703,7 @@
 03722_normal_projection_key_columns
 03722_random_utf8_bug
 03723_incorrect_implicit_projection
+03724_filter_assume_not_null_materialize
 03724_to_date_time_or_null_negative_arg_bug
 03725_json_dynamic_subcolumn_prewhere_zero_index_granularity_bytes
 03726_distributed_alias_column_order
@@ -5734,6 +5786,7 @@
 03753_log_engine_shared_prefixes_bug
 03753_negative_index_for_tuple
 03753_replacing_empty_order_by
+03753_segfault_with_empty_callback
 03753_tuple_inside_nullable_experimental_setting
 03754_fractional_limit_offset_multiple_streams
 03754_h3_polygon_to_cells_const
@@ -5747,6 +5800,7 @@
 03755_large_primary_key_explain
 03755_nested_recursive_cte
 03755_obfuscate_query
+03756_capn_proto_message_size_limit
 03756_high_cardinality_primary_key_set
 03756_high_cardinality_primary_key_set_explain
 03756_mongodb_secret_arguments
@@ -5754,6 +5808,7 @@
 03756_time_series_wrong_tags_group
 03756_update_query_formatting
 03757_ast_not_formatting
+03757_nothing_null_safe_comparison
 03757_optimize_skip_unused_shards_with_type_cast
 03758_positional_argument_agg_projection
 03758_validate_ngram_length
@@ -5934,9 +5989,11 @@
 03812_join_order_ubsan_overflow
 03812_quantile_timing_deserialization_bug
 03812_reading_subcolumns_of_aliases
+03813_size_subcolumn_of_dynamic_subcolumn
 03813_subquery_column_aliases_in_join
 03814_in_function_strict_conversion
 03814_optimize_read_in_order_projection
+03814_subquery_parser_partially
 03814_system_unload_dictionaries
 03814_system_unload_dictionary
 03814_tuple_inside_nullable_schema_inference
@@ -6474,8 +6531,11 @@
 04054_ast_json_serialization
 04054_block_mismatch
 04054_caseWithExpression_nullable_when
+04054_compound_interval_literals
+04054_create_or_replace_materialized_view
 04054_hash_join_with_row_store
 04054_join_optimizer_overlapping_column_names
+04054_limit_with_ties_offset_syntax
 04054_merge_after_alter_to_tuple
 04054_parse_datetime_best_effort_overflow
 04054_readwkb_bounds_checking
@@ -6569,6 +6629,7 @@
 04066_union_all_column_identifier_collision
 04067_columns_cache_partial_granule_reads
 04067_group_by_use_nulls_apply_aggregate
+04067_regexp_invalid_pattern
 04068_aggregate_null_for_empty_with_null_combinator
 04068_arrayTranspose
 04068_columns_cache_range_intersections
@@ -6649,6 +6710,7 @@
 04077_vector_similarity_cosine_msan
 04077_virtual_column_table_log_stripelog
 04077_wide_part_writer_cancel_on_exception
+04078_error_hint_parsing_exception
 04078_grace_hash_join_read_in_order
 04078_key_condition_todatetime_date_monotonicity
 04078_truncate_tables_like_format_space
@@ -6722,6 +6784,7 @@
 04101_crosstab_window_state_serialization_pool
 04101_null_representation_with_special_serializations
 04101_parseDateTime64BestEffort_double_dot_fractional
+04101_schema_inference_length_error_no_crash
 04101_variant_dynamic_type_mismatch_settings
 04101_volume_reducing_function_push_down
 04102_lazy_materialization_with_patch_parts
@@ -6784,8 +6847,10 @@
 04117_aggregate_state_multiply_self_merge_uaf
 04117_lightweight_delete_nonadaptive_granularity
 04117_mappopulateseries_int8_overflow
+04117_parser_system_query_variants
 04117_top_k_optimization_with_final
 04119_object_storage_bad_arg_count_no_logical_error
+04119_parser_snapshot_query_ast_format
 04120_parseDateTime_format_specifiers
 04122_serialization_time64_formats
 04123_kql_operators
@@ -6829,6 +6894,7 @@
 04145_vertical_merge_wide_rows_small_block_size
 04146_analyzer_group_by_const_grouping_sets_struct
 04146_array_fold_lowcardinality_nonconst
+04146_hashed_array_dictionary_shards_update_field
 04146_ipv6_hashing_distinct_values
 04146_max_bytes_ratio_before_external_join
 04146_merge_tree_mutations_cleanup_truncate_drop_partition
@@ -6979,6 +7045,7 @@
 04217_array_concat_json_extract_keys_index
 04217_arrayjoin_set_index_lowcardinality_70058
 04217_create_table_as_with_settings
+04218_avro_confluent_extra_coverage
 04218_format_readable_precision
 04218_partition_pk_pruning_constants_folding
 04218_running_accumulate_state_uaf
@@ -7211,6 +7278,7 @@
 04296_system_instrument_sleep_invalid_arguments
 04299_alter_column_null_modifier
 04299_analyzer_identifier_cache_scalar_in_node_reuse
+04299_at_time_zone
 04299_constraint_subst_correlated_subquery_root
 04299_key_condition_not_positive_monotonicity
 04299_limit_by_collation
@@ -7243,6 +7311,7 @@
 04305_array_distance_bfloat16
 04305_ast_fuzzer_skips_backup_restore
 04305_constraint_const_substitution_correlated_subquery
+04305_create_handler_basic
 04305_database_engines_documentation
 04305_date32_pre_epoch_monotonicity
 04305_dictionary_layouts_documentation
@@ -7468,6 +7537,7 @@
 04337_top_k_skip_index_lightweight_delete
 04337_ttl_aggregate_function_column_reject
 04337_tuple_inside_nullable_subcolumn_shared_cache
+04338_04305_values_non_column_argument_logical_error
 04338_accurate_cast_or_null_dynamic_tuple
 04338_async_insert_current_user
 04338_changedate_datetime64_scale_array_push
@@ -7501,6 +7571,7 @@
 04340_rapidjson_memory_tracking
 04340_set_index_row_policy_const_folded_function
 04341_analyzer_identifier_cache_shared_expression_mutation
+04341_broken_mutation_part_log_flush
 04341_cascades_constant_in_no_subquery
 04341_distributed_plan_join_function_key_type_mismatch
 04341_dynamic_mutation_variant_discr_streams
@@ -7514,6 +7585,7 @@
 04342_distributed_plan_read_with_projection
 04342_dynamic_mutation_dummy_placeholder_stream
 04342_group_format_serialization
+04342_inconsistent_ast_move_part_to_shard
 04342_join_reorder_aggregation_subquery_imprecise_stats
 04342_limit_after_non_selected_columns
 04342_parquet_v3_prewhere_intermediate_name_collision
@@ -7536,6 +7608,7 @@
 04349_construction_settings_from_context
 04349_limit_after_union_settings_limit
 04350_106533_statistics_pruning_nan_inversion
+04350_ast_json_parser_impossible_field_combinations
 04350_limit_after_replace
 04351_bloom_filter_text_index_like_escape
 04351_limit_after_intersect_except_settings
@@ -7849,6 +7922,7 @@
 04499_toStartOfInterval_floor
 04499_tostartof_minute_interval_extreme_overflow
 04500_cascades_sort_size_limits
+04500_index_hint_nothing_argument_type
 04500_key_condition_multi_atom_deterministic_alongside_direct
 04500_optimize_or_like_chain_non_utf8
 04500_parallel_full_sorting_merge_join_sorted_inputs
@@ -7945,6 +8019,7 @@
 04510_explain_analyze_join_stats
 04510_key_condition_multi_atom_tuple_in_wrapped_set
 04510_minmax_block_columns_projection_merge
+04510_mutation_query_plan_only_virtual_columns
 04510_not_has_function_explain
 04510_optimize_and_compare_chain_comparison_domains
 04510_qbit_array_element_slice
@@ -7966,6 +8041,7 @@
 04512_cascades_trivial_count_sparsity_gating
 04512_constraint_on_subcolumn
 04512_correlated_subquery_cross_join_aggregate_dedup
+04512_eval_table_function
 04512_every_database_engine_must_have_documentation
 04512_filter_push_down_limit_by_nondeterministic
 04512_format_row_no_newline_empty_row_underflow
@@ -8139,6 +8215,7 @@
 04600_system_documentation_full_page_no_synthetic_sections
 04601_valid_for_non_interval_rejected
 04601_window_clause_query_parameters
+04602_orc_native_union_nested
 04602_parallel_full_sorting_merge_join_fallback_strict_keys
 04602_valid_until_pre_1900_rejected
 04603_analyzer_compatibility_multiple_joins_qualify_column_names
@@ -8149,6 +8226,7 @@
 04603_join_using_nested_projection_alias
 04603_limit_offset_settings_union
 04603_materialize_statistics_on_insert_size_gate
+04603_orc_native_union_oversized
 04603_projection_part_type_ignores_base_quantize_codec
 04603_reservoir_sampler_multiply_total_values_overflow
 04603_sz3_codec_non_finite
@@ -8205,6 +8283,7 @@
 04613_distributed_plan_merge_broadcast_join
 04613_estimate_compression_ratio_none
 04613_parse_comment_rollback
+04613_pipe_operators
 04613_row_policy_additional_table_filter_shared_column
 04613_system_users_valid_until_datetime64
 04614_ai_functions_insecure_endpoint
@@ -8252,6 +8331,7 @@
 04626_caseinsensitive_long_needle_simd_extend
 04626_lwu_sort_key_column_with_default
 04626_minmax_block_number_downgrade_merge
+04626_mutation_in_partition_query_parameter
 04626_right_join_duplicate_left_column_union_all
 04626_text_index_flush_settings
 04627_analyzer_compatibility_final_all_joined_tables
@@ -8415,6 +8495,7 @@
 04658_uniq_variadic_if_no_key
 04659_propagate_predicate_across_equi_join_no_primary_key_analysis
 04659_storage_join_mixed_on_expression
+04660_column_comment_after_modifiers
 04660_non_constant_rhs_in_lambda_lhs
 04660_random_hadamard_transform_constant_folding
 04661_accurate_cast_non_integral_float_to_date_datetime
@@ -8425,6 +8506,7 @@
 04665_merge_filter_into_join_dynamic_key
 04665_obfuscate_unsupported_types
 04665_part_minmax_block_columns_after_reload
+04665_remote_engine_settings_clause
 04665_valueless_query_construction_setting
 04666_ast_json_mutation_multiple_partitions
 04666_direct_null_in_non_constant_rhs
@@ -8591,6 +8673,7 @@
 04820_quantile_deterministic_stripe_log
 04820_rewrite_in_to_join_prewhere_exists
 04821_block_nested_loop_join_spill
+04821_kql_datetime_local_utc_and_set_escape
 04821_logsql_rate_civil_time_and_transformers
 04821_parse_remote_description_long_address
 04821_postgresql_array_position
@@ -8716,9 +8799,11 @@
 04891_explain_analyze_join_estimation
 04891_logsql_typed_fields_review
 04891_mergetree_index_respects_row_policy
+04891_optimize_inverse_dictionary_lookup_single_key_tuple
 04891_query_condition_cache_join_by_pk_ranges
 04891_query_log_join_columns
 04891_streaming_queries_watermark_simple
+04891_time_window_functions
 04891_time_window_functions_wrapped_interval_overflow
 04891_timeseries_lowcardinality_id
 04892_array_join_with_grouping_sets_distributed
@@ -8981,6 +9066,7 @@
 05046_aggregator_array_combinator_empty_range_ubsan
 05046_cascades_aggregation_pushdown_merge_shuffle
 05046_collect_sets_url_named_collection_parameterized_view
+05046_create_token_parser
 05046_creating_set_deduplication_abandoning_event
 05046_distributed_plan_private_preview_tier
 05046_json_cached_serialization_compact_wrapped
@@ -9159,12 +9245,14 @@
 05072_case_with_expression_nullable_enum_117206
 05072_limit_after_json_ast_invariants
 05073_column_ttl_recompute_materialized
+05073_limit_after_distinct_on_duplicate_range
 05073_to_hour_to_minute_epoch_offset_fast_path
 05073_ttl_array_join_rejected
 05074_check_constraint_array_join_rejected
 05074_limit_after_boundary_alias_format
 05074_materialize_ttl_recompute_materialized
 05075_bloom_filter_index_array_nullable
+05075_limit_after_with_ties_after_limit_by
 05075_materialize_ttl_materialized_extra_inputs
 05076_explain_analyze_aggregation_memory
 05076_external_distinct_preliminary_policy
@@ -9817,6 +9905,7 @@
 05258_top_k_filter_nan_in_array
 05258_ttl_group_by_set_subcolumn_sorting_key
 05258_vertical_ttl_delete_unmaterialized_input
+05258_window_function_state_in_query_rejected
 05258_window_functions_range_frame_offsets_and_peers
 05258_with_elements_expansion_bound
 05259_agg_if_nullable_single_null_map_in_order
@@ -10054,6 +10143,7 @@
 05331_function_composition_placeholders_in_subquery
 05331_geometry_intersect_empty_linear
 05331_h3_polygon_to_cells_small_polygons
+05331_inconsistent_ast_in_under_tuple_element_in_function_arg
 05331_ipcrypt_secret_arguments
 05331_join_engine_count_matches_read
 05331_join_order_one_side_unknown_rows
@@ -10067,6 +10157,7 @@
 05331_top_k_through_join_merge_table_filter
 05331_xgboost_validation_without_rows
 05332_aggregation_bucket_top_k_simple_count
+05332_apply_lambda_call_followed_by_operator
 05332_function_composition_nested_placeholders
 05332_lazy_load_tables_unload_primary_key_server_wide
 05332_obfuscate_profile_seed_query_cache
@@ -10231,12 +10322,14 @@
 05410_parse_date_time_daylight_saving_time
 05417_array_join_window_cut_once
 05421_bloom_filter_text_index_total_size
+05427_azure_sas_url_parsing
 05427_polygon_convex_hull_empty_exterior_ring
 05427_sparsity_date32_default_not_zero
 05428_malformed_nested_json_type_parser
 05441_ai_functions_privileges
 05441_dpsub_conflict_detector_computed_column_null_supplying
 05441_kql_bin_narrow_datetime
+05441_msgpack_schema_inference_untypeable_map_key
 05441_obfuscate_more_types
 05442_ai_functions_privileges_stored_expressions
 05442_dpsub_conflict_detector_partial_merge_semi_join
@@ -10280,7 +10373,7 @@
 #     -- decode with @clickhouse/rowbinary: 'SimpleAggregateFunction is not supported by this parser'
 #     SELECT ()::Tuple() FORMAT RowBinaryWithNamesAndTypes  -- 'unsupported RowBinary type: Tuple'
 #   Issue: not filed yet
-#   Tests: 126
+#   Tests: 128
 # 00915_simple_aggregate_function  # [rowbinary-unsupported-types]
 # 00915_simple_aggregate_function_summing_merge_tree  # [rowbinary-unsupported-types]
 # 01045_array_zip  # [rowbinary-unsupported-types]
@@ -10371,6 +10464,7 @@
 # 04019_formats_nullable_empty_tuple_roundtrip  # [rowbinary-unsupported-types]
 # 04029_msgpack_nullable_empty_tuple_roundtrip  # [rowbinary-unsupported-types]
 # 04039_json_typed_path_nested_subcolumn  # [rowbinary-unsupported-types]
+# 04056_tuple_inside_nullable_casting  # [rowbinary-unsupported-types]
 # 04057_json_variant_offsets_cache_bug  # [rowbinary-unsupported-types]
 # 04057_tuple_empty_supertype  # [rowbinary-unsupported-types]
 # 04064_tuple_inside_nullable_arrow_orc_roundtrip  # [rowbinary-unsupported-types]
@@ -10402,6 +10496,7 @@
 # 05243_time_series_deduplication_caches  # [rowbinary-unsupported-types]
 # 05255_timeseries_external_time_ranges_table  # [rowbinary-unsupported-types]
 # 05255_timeseries_time_ranges_table  # [rowbinary-unsupported-types]
+# 05291_json_shared_typed_paths_type  # [rowbinary-unsupported-types]
 # 05316_json_lazy_type_hints_mutations  # [rowbinary-unsupported-types]
 # 05317_json_lazy_type_hints_non_hint_changes  # [rowbinary-unsupported-types]
 # 05321_aggregate_arithmetic_compound_operand  # [rowbinary-unsupported-types]
@@ -10417,7 +10512,7 @@
 #     SELECT 1::Variant(UInt8, String) FORMAT RowBinaryWithNamesAndTypes
 #     -- the decoded value is 1, without the active member UInt8
 #   Issue: https://github.com/ClickHouse/clickhouse-js/issues/910
-#   Tests: 208
+#   Tests: 213
 # 01825_json_type_10  # [rowbinary-value-without-type]
 # 01825_json_type_18  # [rowbinary-value-without-type]
 # 01825_json_type_bools  # [rowbinary-value-without-type]
@@ -10569,16 +10664,20 @@
 # 04507_json_bracket_subcolumn_collision_guard  # [rowbinary-value-without-type]
 # 04510_accurateCastOrDefault_settings  # [rowbinary-value-without-type]
 # 04511_bool_json_special_values_gate  # [rowbinary-value-without-type]
+# 04511_orc_native_union_type  # [rowbinary-value-without-type]
 # 04512_accurateCastOrDefault_nullable_target  # [rowbinary-value-without-type]
 # 04512_orc_native_union_branch_hints  # [rowbinary-value-without-type]
 # 04512_orc_native_union_write  # [rowbinary-value-without-type]
 # 04513_orc_native_union_integer_targets  # [rowbinary-value-without-type]
 # 04515_orc_native_union_bool_targets  # [rowbinary-value-without-type]
 # 04516_orc_native_union_struct_branch_null  # [rowbinary-value-without-type]
+# 04545_getsubcolumn_json_type_hint_no_crash  # [rowbinary-value-without-type]
 # 04549_lowcardinality_shared_dictionary_ownership_validator  # [rowbinary-value-without-type]
 # 04600_orc_native_union_timestamp_kinds  # [rowbinary-value-without-type]
 # 04601_orc_native_union_struct_projection  # [rowbinary-value-without-type]
 # 04602_group_by_all_suspicious_types  # [rowbinary-value-without-type]
+# 04604_orc_native_union_string_kinds  # [rowbinary-value-without-type]
+# 04605_orc_native_union_struct_branch_pruning  # [rowbinary-value-without-type]
 # 04611_substreams_cache_ownership_validator_whole_path  # [rowbinary-value-without-type]
 # 04613_variant_constant_folding_distributed  # [rowbinary-value-without-type]
 # 04628_logical_optimizer_in_rewrite_variant_type  # [rowbinary-value-without-type]
@@ -10609,6 +10708,7 @@
 # 05104_array_intersect_nullable_overflow  # [rowbinary-value-without-type]
 # 05136_json_shared_data_bucketed_map_without_statistics  # [rowbinary-value-without-type]
 # 05153_variant_truncated_compact_discriminators  # [rowbinary-value-without-type]
+# 05182_json_bracket_nullable_and_chain_semantics  # [rowbinary-value-without-type]
 # 05210_json_bracket_nullable_key  # [rowbinary-value-without-type]
 # 05212_nullable_tuple_element_to_subcolumn  # [rowbinary-value-without-type]
 # 05213_json_shared_data_size_subcolumn_advanced  # [rowbinary-value-without-type]
@@ -10626,6 +10726,17 @@
 # 05320_nested_member_added_by_alter_subcolumns  # [rowbinary-value-without-type]
 # 05325_rename_nested_leaf_json_dynamic_mutation  # [rowbinary-value-without-type]
 # 05366_json_path_element_not_string_subcolumn_rewrite  # [rowbinary-value-without-type]
+
+#-----------------------------------------------------------------------------
+# [rowbinary-invalid-utf8] client: @clickhouse/rowbinary replaces bytes of a String that are not valid UTF-8
+#   readString and readFixedString decode the bytes as UTF-8, so each invalid
+#   byte becomes U+FFFD. A String can hold any bytes. There is no error.
+#   Reproduction:
+#     SELECT unhex('FF') AS s FORMAT RowBinaryWithNamesAndTypes
+#     -- decode with @clickhouse/rowbinary: s is '\uFFFD', not the byte 0xFF
+#   Issue: not filed yet
+#   Tests: 1
+# 03447_base32_encode_decode  # [rowbinary-invalid-utf8]
 
 #-----------------------------------------------------------------------------
 # [rowbinary-geometry-discriminant] client: @clickhouse/rowbinary reads a Geometry discriminant that it does not know
