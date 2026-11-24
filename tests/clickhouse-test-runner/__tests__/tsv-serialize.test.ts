@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { parseDataType } from "@clickhouse/datatype-parser";
 import { formatUUID } from "@clickhouse/rowbinary/readers/uuid";
-import { renderValue, compileRowRenderers } from "../src/tsv-serialize.js";
+import {
+  renderValue,
+  compileRowRenderers,
+  setDefaultTimeZone,
+} from "../src/tsv-serialize.js";
 
 /**
  * Render a single value at top level or nested, given a ClickHouse type string.
@@ -223,5 +227,53 @@ describe("compileRowRenderers", () => {
     expect(renderers[0]!(7)).toBe("7");
     expect(renderers[1]!("hi")).toBe("hi");
     expect(renderers[2]!([1, 2])).toBe("[1,2]");
+  });
+});
+
+describe("renderValue — server details", () => {
+  it("escapes the quote, backspace and form feed also at the top level", () => {
+    // SELECT concat('q\'', char(8), char(12)) FORMAT TabSeparated -> q\'\b\f
+    expect(render("String", "q'\b\f")).toBe("q\\'\\b\\f");
+    expect(render("String", "\v")).toBe("\v");
+  });
+
+  it("writes DateTime in the time zone of the column", () => {
+    const d = new Date(Date.UTC(2020, 0, 1, 3, 0, 0));
+    expect(render("DateTime('Asia/Tokyo')", d)).toBe("2020-01-01 12:00:00");
+    expect(render("DateTime64(3, 'Asia/Tokyo')", [d, 5_000_000])).toBe(
+      "2020-01-01 12:00:00.005",
+    );
+    expect(render("DateTime", d)).toBe("2020-01-01 03:00:00");
+  });
+
+  it("writes DateTime without a time zone in the session time zone", () => {
+    const d = new Date(Date.UTC(2020, 0, 1, 3, 0, 0));
+    try {
+      setDefaultTimeZone("Europe/Moscow");
+      expect(render("DateTime", d)).toBe("2020-01-01 06:00:00");
+      expect(render("DateTime('UTC')", d)).toBe("2020-01-01 03:00:00");
+    } finally {
+      setDefaultTimeZone(null);
+    }
+  });
+
+  it("writes Geometry from the shape of the value", () => {
+    expect(render("Geometry", [1, 2])).toBe("(1,2)");
+    expect(
+      render("Geometry", [
+        [0, 0],
+        [1, 1],
+      ]),
+    ).toBe("[(0,0),(1,1)]");
+    expect(render("Geometry", null)).toBe("\\N");
+  });
+
+  it("writes Nested as an array of tuples", () => {
+    expect(
+      render("Nested(a UInt8, b String)", [
+        { a: 1, b: "x" },
+        { a: 2, b: "y" },
+      ]),
+    ).toBe("[(1,'x'),(2,'y')]");
   });
 });
