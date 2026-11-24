@@ -24,6 +24,7 @@
 // So the parser only scans the text with simple patterns and string searches:
 // its time is linear in the length of the text.
 const codeRe = /(?:Code|Error): (\d+)/;
+const lineCodeRe = /^(?:Code|Error): (\d+)\. *DB::Exception: /gm;
 // A type has at least three consecutive uppercase letters, so that groups like
 // `(2)` are not mistaken for it.
 const typeGroupRe = /\(([A-Z0-9_]+)\)/g;
@@ -70,6 +71,29 @@ function parseServerError(text: string): ParsedClickHouseError | undefined {
   const ends = groups.filter(
     (g) => g.end === textEnd || head.startsWith(versionMarker, g.end),
   );
+  if (ends.length === 1) {
+    // In a versionless wrap, the server introduces the inner exception with
+    // ":\nCode: ..." and resumes the outer message after "(INNER_TYPE).\n".
+    // Use the last such suffix before the outer type, since the inner message
+    // itself may contain a line ending in a token like "(TABLE).".
+    const nested = /:\r?\n(?:Code|Error): \d+\. *DB::Exception: /.exec(head);
+    if (nested) {
+      const innerStart = nested.index + nested[0].length;
+      for (let i = groups.length - 1; i >= 0; i--) {
+        const group = groups[i]!;
+        if (group.start <= innerStart) break;
+        if (
+          group.start < ends[0]!.start &&
+          head[group.start - 1] === " " &&
+          (head.startsWith(".\n", group.end) ||
+            head.startsWith(".\r\n", group.end))
+        ) {
+          ends.unshift(group);
+          break;
+        }
+      }
+    }
+  }
   // With groups at the end of an exception: the message ends at the first one,
   // and the type is the last one. Otherwise: the first group after the last
   // `Exception: ` that has a group after it.
@@ -89,10 +113,14 @@ function parseServerError(text: string): ParsedClickHouseError | undefined {
     type = messageEnd?.type;
   }
   if (messageEnd === undefined) return undefined;
-  const marker = head.lastIndexOf(
-    exceptionMarker,
-    messageEnd.start - exceptionMarker.length,
-  );
+  // With one type suffix, any additional prefix is still part of the message.
+  const marker =
+    ends.length === 1
+      ? firstMarker
+      : head.lastIndexOf(
+          exceptionMarker,
+          messageEnd.start - exceptionMarker.length,
+        );
   return {
     code: codeMatch[1] as string,
     message: head.slice(marker + exceptionMarker.length, messageEnd.start),
@@ -131,30 +159,16 @@ export class ClickHouseError extends Error {
  *  - `["<text>"]` for JSONCompactEachRow and its `...WithNames[AndTypes]` variants, after the header rows;
  *  - `{"row":{"exception": "<text>"}}` for JSONEachRowWithProgress on 24.8 (later versions write
  *    `{"exception": "<text>"}` at the top level, like the other formats).
- *  This function returns each string in the body that has one of these shapes. The caller keeps the
- *  first string that it can parse as a ClickHouse error. In this way, the message does not keep the
- *  JSON escaping (for example, `\\"` instead of `"`). The caller also skips a column name and a data
- *  value in a column named `exception`. */
-function jsonExceptionCandidates(text: string): string[] {
-  const trimmed = text.trimStart();
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-    return [];
-  }
-  const candidates: string[] = [];
-  // The whole body is one JSON document, or one JSON value per line.
-  for (const candidate of [trimmed, ...trimmed.split("\n")]) {
-    let value: unknown;
+ *  Only the final row or the whole document can carry the server exception. */
+function jsonException(text: string): string | undefined {
+  if (text.startsWith("{") || text.startsWith("[")) {
     try {
-      value = JSON.parse(candidate);
+      return getException(JSON.parse(text));
     } catch {
-      continue; // not a JSON document: try the next candidate
-    }
-    const exception = getException(value);
-    if (exception !== undefined) {
-      candidates.push(exception);
+      // A partial result can end with a plain-text exception.
     }
   }
-  return candidates;
+  return undefined;
 }
 
 /** Returns the `exception` string of a parsed JSON value. The value must have one of the shapes listed above. */
@@ -180,17 +194,44 @@ function getException(value: unknown): string | undefined {
   return undefined;
 }
 
+function plainException(text: string, exceptionCode?: string): string {
+  let start: number | undefined;
+  for (const match of text.matchAll(lineCodeRe)) {
+    if (exceptionCode !== undefined && match[1] !== exceptionCode) continue;
+    if (start !== undefined) {
+      // A completed error in a result column can precede the real error.
+      // An unfinished first line can contain the start of a multiline message.
+      const line = text.slice(start, text.indexOf("\n", start));
+      const suffix = / \(([A-Z0-9_]+)\)(?= \(version |\t|\r?$)/.exec(line);
+      if (!suffix || !typeLettersRe.test(suffix[1] as string)) break;
+    }
+    start = match.index;
+  }
+  return text.slice(start ?? 0);
+}
+
 export function parseError(input: string | Error): ClickHouseError | Error {
+  return parseResponseError(input);
+}
+
+/** The HTTP exception code disambiguates a result row from a multiline error
+ *  when both start with an incomplete exception prefix. */
+export function parseResponseError(
+  input: string | Error,
+  exceptionCode?: string,
+): ClickHouseError | Error {
   const inputIsError = input instanceof Error;
   const text = inputIsError ? input.message : input;
-  // Try the JSON candidates first. The raw text of a JSON-wrapped error also
-  // matches, but then the message keeps the JSON escaping.
-  for (const candidate of [...jsonExceptionCandidates(text), text]) {
-    const parsed = parseServerError(candidate);
-    if (parsed) {
-      return new ClickHouseError(parsed);
-    }
-  }
+  const body = text.trim();
+  const lastLine = body.lastIndexOf("\n");
+  const exception =
+    (lastLine < 0
+      ? undefined
+      : jsonException(body.slice(lastLine + 1).trimStart())) ??
+    jsonException(body) ??
+    plainException(body, exceptionCode);
+  const parsed = parseServerError(exception);
+  if (parsed) return new ClickHouseError(parsed);
   return inputIsError ? input : new Error(input);
 }
 

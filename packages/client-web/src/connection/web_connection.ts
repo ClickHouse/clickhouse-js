@@ -26,6 +26,7 @@ import {
   FORMAT_HEADER_NAME,
 } from "../common/index";
 import { getAsText } from "../utils";
+import { parseResponseError } from "../common/error";
 
 type WebInsertParams<T> = Omit<
   ConnInsertParams<ReadableStream<T>>,
@@ -267,15 +268,14 @@ export class WebConnection implements Connection<ReadableStream> {
         signal: abortController.signal,
       });
       clearTimeout(timeout);
-      if (
-        isSuccessfulResponse(response.status) &&
-        !response.headers.has("x-clickhouse-exception-code")
-      ) {
+      const exceptionCode = response.headers.get("x-clickhouse-exception-code");
+      if (isSuccessfulResponse(response.status) && exceptionCode === null) {
         return response;
       } else {
         return Promise.reject(
-          parseError(
+          parseResponseError(
             await getAsText(response.body || new ReadableStream<Uint8Array>()),
+            exceptionCode ?? undefined,
           ),
         );
       }

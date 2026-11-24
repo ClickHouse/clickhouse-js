@@ -5,7 +5,6 @@ import {
   enhanceStackTrace,
   getCurrentStackTrace,
   isSuccessfulResponse,
-  parseError,
   sleep,
   ClickHouseLogLevel,
   type LogWriter,
@@ -16,6 +15,7 @@ import {
   type CompressionMethod,
   type RequestCompression,
 } from "../common/index";
+import { parseResponseError } from "../common/error";
 import { getAsText, isStream } from "../utils";
 import {
   createRequestCompressor,
@@ -283,9 +283,10 @@ export class SocketPool {
           params.try_decompress_response_stream ?? true;
         const ignoreErrorResponse = params.ignore_error_response ?? false;
         // even if the stream decompression is disabled, we have to decompress it in case of an error
+        const exceptionCode = _response.headers["x-clickhouse-exception-code"];
         const isFailedResponse =
           !isSuccessfulResponse(_response.statusCode) ||
-          _response.headers["x-clickhouse-exception-code"] !== undefined;
+          exceptionCode !== undefined;
         if (
           tryDecompressResponseStream ||
           (isFailedResponse && !ignoreErrorResponse)
@@ -330,7 +331,10 @@ export class SocketPool {
           try {
             const errorMessage = await getAsText(responseStream);
             const err = enhanceStackTrace(
-              parseError(errorMessage),
+              parseResponseError(
+                errorMessage,
+                typeof exceptionCode === "string" ? exceptionCode : undefined,
+              ),
               currentStackTrace,
             );
             reject(err);
