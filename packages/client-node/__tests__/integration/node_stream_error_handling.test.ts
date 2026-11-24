@@ -4,6 +4,8 @@ import {
   streamErrorQueryParams,
 } from "@test/fixtures/stream_errors";
 import { isClickHouseVersionAtLeast } from "@test/utils/server_version";
+import Stream from "stream";
+import { ResultSet } from "@clickhouse/client";
 import type { ClickHouseClient } from "@clickhouse/client";
 import type { ClickHouseError } from "@clickhouse/client";
 import { createNodeTestClient } from "../utils/node_client";
@@ -152,6 +154,82 @@ describe("[Node.js] Stream error handling", () => {
       expect(rows).toEqual(Array.from({ length: 5 }, (_, i) => `${i}\r`));
     });
   }
+
+  // A socket read can end anywhere in the exception block. Get a real body
+  // from the server (also through the proxies of a Cloud service), then give
+  // it to a ResultSet cut at each offset in the block.
+  it("gives the server error for a real body split at any offset in the exception block", async ({
+    skip,
+  }) => {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
+      skip();
+    }
+
+    const { query, clickhouse_settings } = streamErrorQueryParams();
+    const result = await client.exec({
+      query: `${query} FORMAT JSONEachRow`,
+      clickhouse_settings,
+    });
+    const parts: Buffer[] = [];
+    try {
+      for await (const part of result.stream) {
+        parts.push(part);
+      }
+    } catch {
+      // The server closes the connection after the exception block.
+    }
+    const body = Buffer.concat(parts);
+    const tag = result.response_headers["x-clickhouse-exception-tag"];
+    expect(typeof tag).toBe("string");
+    const start = body.indexOf("\r\n__exception__\r\n");
+    expect(start).toBeGreaterThan(0);
+    const expectedRows = body
+      .subarray(0, start)
+      .toString()
+      .split("\n")
+      .filter((row) => row.length > 0);
+    expect(expectedRows.length).toBe(10);
+
+    const read = async (chunks: Buffer[]) => {
+      const rs = ResultSet.instance({
+        stream: Stream.Readable.from(chunks),
+        format: "JSONEachRow",
+        query_id: result.query_id,
+        log_error: () => {},
+        response_headers: result.response_headers,
+      });
+      const rows: string[] = [];
+      try {
+        for await (const batch of rs.stream()) {
+          for (const row of batch) {
+            rows.push(row.text);
+          }
+        }
+      } catch (err) {
+        return { rows, err };
+      }
+      return { rows, err: null };
+    };
+
+    const splits: Buffer[][] = [];
+    for (let cut = start - 2; cut < body.length; cut++) {
+      splits.push([body.subarray(0, cut), body.subarray(cut)]);
+    }
+    const bytes = [body.subarray(0, start)];
+    for (let i = start; i < body.length; i++) {
+      bytes.push(body.subarray(i, i + 1));
+    }
+    splits.push(bytes);
+
+    for (const chunks of splits) {
+      const { rows, err } = await read(chunks);
+      assertError(err as ClickHouseError);
+      expect((err as ClickHouseError).type).toBe(
+        "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+      );
+      expect(rows).toEqual(expectedRows);
+    }
+  });
 
   it.skip("with .json()", async ({ skip }) => {
     if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {

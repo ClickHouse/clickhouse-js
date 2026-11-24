@@ -5,6 +5,7 @@ import {
   streamErrorQueryParams,
 } from "@test/fixtures/stream_errors";
 import { isClickHouseVersionAtLeast } from "@test/utils/server_version";
+import { ResultSet } from "@clickhouse/client-web";
 import type { ClickHouseClient } from "@clickhouse/client-web";
 import type { ClickHouseError } from "@clickhouse/client-web";
 import { createWebTestClient } from "../utils/web_client";
@@ -137,4 +138,119 @@ describe("[Web] Stream error handling", () => {
       expect(rows).toEqual(Array.from({ length: 5 }, (_, i) => `${i}\r`));
     });
   }
+
+  // A read can end anywhere in the exception block. Get a real body from the
+  // server (also through the proxies of a Cloud service), then give it to a
+  // ResultSet cut at each offset in the block.
+  it("gives the server error for a real body split at any offset in the exception block", async ({
+    skip,
+  }) => {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
+      skip();
+    }
+
+    const { query, clickhouse_settings } = streamErrorQueryParams();
+    const marker = new TextEncoder().encode("\r\n__exception__\r\n");
+    const indexOf = (bytes: Uint8Array, sub: Uint8Array) => {
+      outer: for (let i = 0; i + sub.length <= bytes.length; i++) {
+        for (let j = 0; j < sub.length; j++) {
+          if (bytes[i + j] !== sub[j]) continue outer;
+        }
+        return i;
+      }
+      return -1;
+    };
+
+    // Chromium can drop the last bytes of the response when the server
+    // closes the connection (#1140). Then get the body again.
+    let body = new Uint8Array();
+    let start = -1;
+    let result: Awaited<ReturnType<ClickHouseClient["exec"]>> | undefined;
+    for (let attempt = 0; attempt < 5 && start === -1; attempt++) {
+      result = await client.exec({
+        query: `${query} FORMAT JSONEachRow`,
+        // The browser always asks for a compressed response. The server then
+        // keeps the first rows in the compression buffer, and gives a 500
+        // response without the exception block.
+        clickhouse_settings: {
+          ...clickhouse_settings,
+          enable_http_compression: 0,
+        },
+      });
+      const parts: Uint8Array[] = [];
+      const reader = result.stream.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          parts.push(value);
+        }
+      } catch {
+        // The server closes the connection after the exception block.
+      }
+      body = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+      let offset = 0;
+      for (const p of parts) {
+        body.set(p, offset);
+        offset += p.length;
+      }
+      start = indexOf(body, marker);
+    }
+    expect(start).toBeGreaterThan(0);
+    const tag = result!.response_headers["x-clickhouse-exception-tag"];
+    expect(typeof tag).toBe("string");
+    const expectedRows = new TextDecoder()
+      .decode(body.subarray(0, start))
+      .split("\n")
+      .filter((row) => row.length > 0);
+    expect(expectedRows.length).toBe(10);
+
+    const read = async (chunks: Uint8Array[]) => {
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(chunk);
+          controller.close();
+        },
+      });
+      const rs = new ResultSet(
+        stream,
+        "JSONEachRow",
+        result!.query_id,
+        result!.response_headers,
+      );
+      const rows: string[] = [];
+      const reader = rs.stream().getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          for (const row of value) {
+            rows.push(row.text);
+          }
+        }
+      } catch (err) {
+        return { rows, err };
+      }
+      return { rows, err: null };
+    };
+
+    const splits: Uint8Array[][] = [];
+    for (let cut = start - 2; cut < body.length; cut++) {
+      splits.push([body.subarray(0, cut), body.subarray(cut)]);
+    }
+    const bytes = [body.subarray(0, start)];
+    for (let i = start; i < body.length; i++) {
+      bytes.push(body.subarray(i, i + 1));
+    }
+    splits.push(bytes);
+
+    for (const chunks of splits) {
+      const { rows, err } = await read(chunks);
+      assertError(err as ClickHouseError);
+      expect((err as ClickHouseError).type).toBe(
+        "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+      );
+      expect(rows).toEqual(expectedRows);
+    }
+  });
 });
