@@ -2,9 +2,9 @@
 
 ## Improvements
 
-- The Web client now reports HTTP response metadata and failed HTTP requests through the configured logger. ([#187])
+- The Web client now reports HTTP response metadata and failed HTTP requests through the configured logger. ([#1176])
 
-[#187]: https://github.com/ClickHouse/clickhouse-js/issues/187
+[#1176]: https://github.com/ClickHouse/clickhouse-js/pull/1176
 
 ## Bug fixes
 
