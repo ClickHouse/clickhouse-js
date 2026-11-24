@@ -62,3 +62,25 @@ it("reports the query failure after compressed result rows", async () => {
     await client.close();
   }
 });
+
+it("uses the header code for a multiline exception after partial text results", async () => {
+  const client = createTestClient({ compression: { response: true } });
+  const message = "boom\nCode: 60. DB::Exception: old log text";
+  try {
+    await expect(
+      client.query({
+        query: `SELECT 'Code: 42. DB::Exception: incomplete log entry'
+                FROM numbers(10) WHERE throwIf(number = 5, {message:String}) = 0`,
+        query_params: { message },
+        format: "TabSeparated",
+        clickhouse_settings: { max_block_size: "1", max_threads: 1 },
+      }),
+    ).rejects.toMatchObject({
+      code: "395",
+      type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+      message: expect.stringContaining(message),
+    });
+  } finally {
+    await client.close();
+  }
+});
