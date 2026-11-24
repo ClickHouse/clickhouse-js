@@ -1,19 +1,104 @@
-// In cluster mode, the server wraps the original exception, repeating the
-// `Code`/`Exception`/`(TYPE)` markers, e.g.:
+// A server error has the form
+//   Code: <code>. DB::Exception: <message> (<TYPE>) (version <version>)
+// The server leaves out ` (version ...)` for a request with a `session_id`, and
+// adds `, Stack trace (...)` and the stack after the type with the setting
+// `stacktrace`. The message itself can have `(UPPERCASE)` groups, for example a
+// type name (`Nullable(JSON)`), a token of a syntax error (`(TABLE)`) or
+// `(NULL)`, so the type is the group at the end of an exception: before
+// ` (version ` or at the end of the text.
+//
+// The server can wrap one exception in another, and repeat the markers, e.g.:
 //   Code: 57. DB::Exception: There was an error on [host:9000]: Code: 57. DB::Exception: <message>. (TABLE_ALREADY_EXISTS) (version ...). (TABLE_ALREADY_EXISTS) (version ...)
-// The leading `.*Exception: ` is greedy so we anchor on the innermost (last)
-// exception, while `(?<message>.+?)` is lazy so the message stops at the first
-// `(TYPE)` marker rather than swallowing the repeated suffixes. The type
-// lookahead requires at least three consecutive uppercase letters so that
-// parenthesised groups like `(2)` or `(official build)` are not mistaken for it.
+//   Code: 636. DB::Exception: ... Error:\nCode: 117. DB::Exception: <message>. (INCORRECT_DATA) (version ...).\n... (CANNOT_EXTRACT_TABLE_STRUCTURE) (version ...)
+// The code is the first one (of the outer exception), and so is the type: the
+// last group at the end of an exception. The message is the innermost one: from
+// the last `Exception: ` before the first such group.
+//
+// Without a group at the end of an exception (for example, an exception that the
+// server writes in the middle of a streamed result), the type is the first group
+// after the last `Exception: ` that has a group after it, as before.
 //
 // NOTE: In normal usage, the string fed to `parseError` comes from ClickHouse,
 // but it may still include user-controlled fragments (e.g. parts of a query) or
 // even non-ClickHouse payloads (proxy/HTML errors) when parsing failed requests.
-// Keep this regex simple to avoid excessive backtracking on large/unexpected input.
-// (If this ever becomes a concern, consider a non-regex parser or input length limits.)
-const errorRe =
-  /(Code|Error): (?<code>\d+).*Exception: (?<message>.+?)\((?<type>(?=[A-Z0-9_]*[A-Z]{3})[A-Z0-9_]+)\)/s;
+// So the parser only scans the text with simple patterns and string searches:
+// its time is linear in the length of the text.
+const codeRe = /(?:Code|Error): (\d+)/;
+// A type has at least three consecutive uppercase letters, so that groups like
+// `(2)` are not mistaken for it.
+const typeGroupRe = /\(([A-Z0-9_]+)\)/g;
+const typeLettersRe = /[A-Z]{3}/;
+const exceptionMarker = "Exception: ";
+const stackTraceMarker = ", Stack trace (";
+const versionMarker = " (version ";
+
+interface TypeGroup {
+  start: number;
+  end: number;
+  type: string;
+}
+
+function parseServerError(text: string): ParsedClickHouseError | undefined {
+  const codeMatch = codeRe.exec(text);
+  if (codeMatch === null) return undefined;
+  const afterCode = codeMatch.index + codeMatch[0].length;
+  // The stack trace starts right after a type: `(TYPE), Stack trace (`. The
+  // same text elsewhere is part of the message.
+  let stackTraceAt = -1;
+  for (const m of text.matchAll(typeGroupRe)) {
+    const end = m.index + m[0].length;
+    if (end > afterCode && text.startsWith(stackTraceMarker, end)) {
+      stackTraceAt = end;
+      break;
+    }
+  }
+  const head = stackTraceAt < 0 ? text : text.slice(0, stackTraceAt);
+  const firstMarker = head.indexOf(exceptionMarker, afterCode);
+  if (firstMarker < 0) return undefined;
+
+  const groups: TypeGroup[] = [];
+  for (const m of head.matchAll(typeGroupRe)) {
+    const type = m[1] as string;
+    if (
+      m.index > firstMarker + exceptionMarker.length &&
+      typeLettersRe.test(type)
+    ) {
+      groups.push({ start: m.index, end: m.index + m[0].length, type });
+    }
+  }
+  const textEnd = head.trimEnd().length;
+  const ends = groups.filter(
+    (g) => g.end === textEnd || head.startsWith(versionMarker, g.end),
+  );
+  // With groups at the end of an exception: the message ends at the first one,
+  // and the type is the last one. Otherwise: the first group after the last
+  // `Exception: ` that has a group after it.
+  let messageEnd: TypeGroup | undefined;
+  let type: string | undefined;
+  if (ends.length > 0) {
+    messageEnd = ends[0];
+    type = ends[ends.length - 1]?.type;
+  } else {
+    const last = groups[groups.length - 1];
+    if (last === undefined) return undefined;
+    const marker = head.lastIndexOf(
+      exceptionMarker,
+      last.start - exceptionMarker.length,
+    );
+    messageEnd = groups.find((g) => g.start > marker + exceptionMarker.length);
+    type = messageEnd?.type;
+  }
+  if (messageEnd === undefined) return undefined;
+  const marker = head.lastIndexOf(
+    exceptionMarker,
+    messageEnd.start - exceptionMarker.length,
+  );
+  return {
+    code: codeMatch[1] as string,
+    message: head.slice(marker + exceptionMarker.length, messageEnd.start),
+    type,
+  };
+}
 
 interface ParsedClickHouseError {
   message: string;
@@ -101,10 +186,9 @@ export function parseError(input: string | Error): ClickHouseError | Error {
   // Try the JSON candidates first. The raw text of a JSON-wrapped error also
   // matches, but then the message keeps the JSON escaping.
   for (const candidate of [...jsonExceptionCandidates(text), text]) {
-    const groups = candidate.match(errorRe)?.groups as
-      ParsedClickHouseError | undefined;
-    if (groups) {
-      return new ClickHouseError(groups);
+    const parsed = parseServerError(candidate);
+    if (parsed) {
+      return new ClickHouseError(parsed);
     }
   }
   return inputIsError ? input : new Error(input);
