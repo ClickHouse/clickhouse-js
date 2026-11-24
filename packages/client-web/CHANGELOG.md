@@ -4,12 +4,14 @@
 
 - `ClickHouseError.type` is now the type of the error, also when the message has other `(UPPERCASE)` groups before it, such as a type name (`Nullable(JSON)`), a token of a syntax error (`failed at position 38 (TABLE)`) or `(NULL)`. Before, the client took the first such group, so `type` was wrong (for example `JSON` instead of `ILLEGAL_TYPE_OF_ARGUMENT`) and `message` was cut there. This also works with the `stacktrace` setting and for a request with a `session_id`. For a wrapped error, such as `CANNOT_EXTRACT_TABLE_STRUCTURE` around `INCORRECT_DATA`, `type` is now the type of the outer error, which has the same `code`. ([#1174])
 - `ResultSet.stream()` and `ResultSet.json()` now detect in-band error rows in `JSONEachRow` and `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled. They report the server error instead of returning it as data, including when `exception` is the only result column. Real data in a column named `exception` stays as data, even if its value looks like a server error. ([#1168])
+- Validate `DateTime64` parameter syntax and reject out-of-range precision (`> 9`) in `parseColumnType` / `parseDateTime64Type`. Previously, malformed strings such as `DateTime64(10)` were silently decoded as precision `1`. ([#1161])
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
+[#1161]: https://github.com/ClickHouse/clickhouse-js/pull/1161
 [#1168]: https://github.com/ClickHouse/clickhouse-js/pull/1168
 [#1174]: https://github.com/ClickHouse/clickhouse-js/pull/1174
 
