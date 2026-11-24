@@ -143,6 +143,24 @@ describe("[Node.js] mid-stream exception tag detection", () => {
       });
     }
 
+    // A consumer that reads with `for await` gets the rows only from the
+    // stream buffer, which the error discards.
+    async function collectWithIterator(
+      rs: ReturnType<typeof makeResultSet>,
+    ): Promise<{ rows: string[]; error: Error | undefined }> {
+      const rows: string[] = [];
+      try {
+        for await (const chunk of rs.stream()) {
+          for (const row of chunk) {
+            rows.push(row.text);
+          }
+        }
+      } catch (error) {
+        return { rows, error: error as Error };
+      }
+      return { rows, error: undefined };
+    }
+
     // A stream that fails can discard the rows that the consumer did not
     // read yet. The rows that reach it must be the first data rows, in order.
     function expectDataRows(rows: string[], dataRows: string[]) {
@@ -185,6 +203,21 @@ describe("[Node.js] mid-stream exception tag detection", () => {
         expect(error?.message).toContain(serverMessage);
         expectDataRows(rows, dataRows);
       });
+
+      it(`gives an async iterator every data row before the server error (${name} rows)`, async () => {
+        const splits = [[body], inChunksOf(body, 1)];
+        for (let at = 1; at < body.length; at++) {
+          splits.push([body.subarray(0, at), body.subarray(at)]);
+        }
+        for (const chunks of splits) {
+          const sizes = chunks.map((chunk) => chunk.length).join(",");
+          const { rows, error } = await collectWithIterator(
+            makeResultSet(chunks),
+          );
+          expect(error?.message, `chunks ${sizes}`).toContain(serverMessage);
+          expect(rows, `chunks ${sizes}`).toEqual(dataRows);
+        }
+      });
     }
 
     it("surfaces the full server error when a 16 KiB block spans several chunks", async () => {
@@ -209,6 +242,20 @@ describe("[Node.js] mid-stream exception tag detection", () => {
       );
       const { error } = await collect(makeResultSet([body]));
       expect(error?.message).toContain("exception block is incomplete");
+    });
+
+    it("gives an async iterator every data row before the error when the response ends inside the block", async () => {
+      const body = Buffer.from(
+        "0\n1\n2\n" + exceptionBlock(errMsg).slice(0, -10),
+        "latin1",
+      );
+      for (const chunks of [[body], inChunksOf(body, 1)]) {
+        const { rows, error } = await collectWithIterator(
+          makeResultSet(chunks),
+        );
+        expect(error?.message).toContain("exception block is incomplete");
+        expect(rows).toEqual(["0", "1", "2"]);
+      }
     });
 
     // When the bytes after a `\r\n` are not an exception block, they are

@@ -249,6 +249,19 @@ export class ResultSet<
       };
     };
     const detectJSONError = createJSONEachRowErrorDetector(this.format);
+    // Completes a transform or flush step, with the server error if there is
+    // one. Give a consumer that keeps up a chance to read the rows that the
+    // stream emitted before the error destroys the stream. The stream discards
+    // rows that are still in its buffer, for example with a slow consumer.
+    const callbackAfterRows = (
+      callback: TransformCallback,
+      error: Error | undefined,
+    ) => {
+      if (error === undefined) {
+        return callback();
+      }
+      setImmediate(() => callback(error));
+    };
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
     const toRows = new Transform({
@@ -261,7 +274,8 @@ export class ResultSet<
 
         if (exceptionBlock !== undefined && exceptionTag !== undefined) {
           exceptionBlock = Buffer.concat([exceptionBlock, chunk]);
-          return callback(
+          return callbackAfterRows(
+            callback,
             errorFromExceptionBlock(exceptionBlock, exceptionTag),
           );
         }
@@ -340,7 +354,8 @@ export class ResultSet<
                 // is cut by it, if any, is incomplete and is dropped.
                 incompleteChunks.length = 0;
                 exceptionBlock = chunk.subarray(idx + 1);
-                return callback(
+                return callbackAfterRows(
+                  callback,
                   errorFromExceptionBlock(exceptionBlock, exceptionTag),
                 );
               }
@@ -363,12 +378,7 @@ export class ResultSet<
                 resultSet.addSpanRows(rows.length);
                 this.push(rows);
               }
-              // Give a consumer that keeps up a chance to read these rows
-              // before the error destroys the stream. The stream discards
-              // rows that are still in its buffer, for example with a slow
-              // consumer.
-              setImmediate(() => callback(error));
-              return;
+              return callbackAfterRows(callback, error);
             }
             rows.push(row);
             lastIdx = idx + 1; // skipping newline character
@@ -378,7 +388,8 @@ export class ResultSet<
       },
       flush(callback: TransformCallback) {
         if (exceptionBlock !== undefined && exceptionTag !== undefined) {
-          return callback(
+          return callbackAfterRows(
+            callback,
             errorFromExceptionBlock(exceptionBlock, exceptionTag, true),
           );
         }

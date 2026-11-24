@@ -82,5 +82,50 @@ describe("[Web] Stream error handling", () => {
         Array.from({ length: rowCount }, (_, i) => `${i}\r`),
       );
     });
+
+    // The last rows and the exception block often arrive in one chunk. A
+    // reader must get every row before the error.
+    it(`gives a reader every ${format} row before a mid-stream exception`, async ({
+      skip,
+    }) => {
+      if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
+        skip();
+      }
+
+      const rs = await client.query({
+        query: "SELECT number FROM numbers(10) WHERE throwIf(number = 5) = 0",
+        format,
+        clickhouse_settings: {
+          ...settings,
+          // One row per block, formatted in order: the server always sends
+          // the rows 0 to 4 before the exception block.
+          max_block_size: "1",
+          max_threads: 1,
+          output_format_parallel_formatting: 0,
+          http_write_exception_in_output_format: 0,
+        },
+      });
+
+      const rows: string[] = [];
+      let caughtError: unknown;
+      const reader = rs.stream().getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          for (const row of value) {
+            rows.push(row.text);
+          }
+        }
+      } catch (err) {
+        caughtError = err;
+      }
+
+      expect(caughtError).toMatchObject({
+        code: "395",
+        type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+      });
+      expect(rows).toEqual(Array.from({ length: 5 }, (_, i) => `${i}\r`));
+    });
   }
 });
