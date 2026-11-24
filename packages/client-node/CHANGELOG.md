@@ -6,6 +6,10 @@
 
 [#1124]: https://github.com/ClickHouse/clickhouse-js/pull/1124
 
+## Improvements
+
+- `TupleParam` now accepts plain JavaScript objects (e.g. from named `Tuple` query results) in addition to arrays. Values are formatted in property order as a ClickHouse Tuple literal. ([#1162])
+
 ## Bug fixes
 
 - `ClickHouseError.type` is now the type of the error, also when the message has other `(UPPERCASE)` groups before it, such as a type name (`Nullable(JSON)`), a token of a syntax error (`failed at position 38 (TABLE)`) or `(NULL)`. Before, the client took the first such group, so `type` was wrong (for example `JSON` instead of `ILLEGAL_TYPE_OF_ARGUMENT`) and `message` was cut there. This also works with the `stacktrace` setting and for a request with a `session_id`. For a wrapped error, such as `CANNOT_EXTRACT_TABLE_STRUCTURE` around `INCORRECT_DATA`, `type` is now the type of the outer error, which has the same `code`. ([#1174])
@@ -22,6 +26,7 @@
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
 [#1141]: https://github.com/ClickHouse/clickhouse-js/pull/1141
 [#1148]: https://github.com/ClickHouse/clickhouse-js/pull/1148
+[#1162]: https://github.com/ClickHouse/clickhouse-js/pull/1162
 [#1168]: https://github.com/ClickHouse/clickhouse-js/pull/1168
 [#1174]: https://github.com/ClickHouse/clickhouse-js/pull/1174
 [nodejs/node#66781]: https://github.com/nodejs/node/issues/66781
