@@ -1,4 +1,5 @@
 import { describe, it, beforeEach, afterEach, expect } from "vitest";
+import { server } from "vitest/browser";
 import {
   assertError,
   streamErrorQueryParams,
@@ -88,6 +89,14 @@ describe("[Web] Stream error handling", () => {
     it(`gives a reader every ${format} row before a mid-stream exception`, async ({
       skip,
     }) => {
+      // After the exception block, the server closes the connection without
+      // the last chunk. Chromium then sometimes drops the bytes that the
+      // reader has not read yet, and the read fails with `TypeError: network
+      // error` instead of the ClickHouseError. See
+      // https://github.com/ClickHouse/clickhouse-js/issues/1140
+      if (server.browser === "chromium") {
+        skip();
+      }
       if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
         skip();
       }
