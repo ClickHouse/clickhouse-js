@@ -42,3 +42,23 @@ describe("X-ClickHouse-Exception-Code header (200 with exception)", () => {
     });
   });
 });
+
+it("reports the query failure after compressed result rows", async () => {
+  const client = createTestClient({ compression: { response: true } });
+  try {
+    await expect(
+      client.query({
+        query: `SELECT 'Code: 60. DB::Exception: Unknown table. (UNKNOWN_TABLE) (version 1)' AS exception
+                FROM numbers(10) WHERE throwIf(number = 5, 'boom') = 0`,
+        format: "JSONEachRow",
+        clickhouse_settings: { max_block_size: "1", max_threads: 1 },
+      }),
+    ).rejects.toMatchObject({
+      code: "395",
+      type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+      message: expect.stringMatching(/^boom/),
+    });
+  } finally {
+    await client.close();
+  }
+});

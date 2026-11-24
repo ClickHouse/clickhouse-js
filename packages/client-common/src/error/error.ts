@@ -131,30 +131,16 @@ export class ClickHouseError extends Error {
  *  - `["<text>"]` for JSONCompactEachRow and its `...WithNames[AndTypes]` variants, after the header rows;
  *  - `{"row":{"exception": "<text>"}}` for JSONEachRowWithProgress on 24.8 (later versions write
  *    `{"exception": "<text>"}` at the top level, like the other formats).
- *  This function returns each string in the body that has one of these shapes. The caller keeps the
- *  first string that it can parse as a ClickHouse error. In this way, the message does not keep the
- *  JSON escaping (for example, `\\"` instead of `"`). The caller also skips a column name and a data
- *  value in a column named `exception`. */
-function jsonExceptionCandidates(text: string): string[] {
-  const trimmed = text.trimStart();
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-    return [];
-  }
-  const candidates: string[] = [];
-  // The whole body is one JSON document, or one JSON value per line.
-  for (const candidate of [trimmed, ...trimmed.split("\n")]) {
-    let value: unknown;
+ *  Only the final row or the whole document can carry the server exception. */
+function jsonException(text: string): string | undefined {
+  if (text.startsWith("{") || text.startsWith("[")) {
     try {
-      value = JSON.parse(candidate);
+      return getException(JSON.parse(text));
     } catch {
-      continue; // not a JSON document: try the next candidate
-    }
-    const exception = getException(value);
-    if (exception !== undefined) {
-      candidates.push(exception);
+      // A partial result can end with a plain-text exception.
     }
   }
-  return candidates;
+  return undefined;
 }
 
 /** Returns the `exception` string of a parsed JSON value. The value must have one of the shapes listed above. */
@@ -180,17 +166,41 @@ function getException(value: unknown): string | undefined {
   return undefined;
 }
 
+// A plain-text exception starts on a new line after any result rows. A
+// wrapped exception can also start on a new line inside its parent's message.
+// Each type suffix closes one exception, from the innermost to the outermost.
+function plainException(text: string): string {
+  const markers =
+    /(?:Code|Error): \d+\. *DB::Exception: |\(([A-Z0-9_]+)\)(?= \(version |, Stack trace \(|$)/g;
+  const starts: number[] = [];
+  let start = 0;
+  for (const match of text.matchAll(markers)) {
+    if (match[1] !== undefined) {
+      if (typeLettersRe.test(match[1])) start = starts.pop() ?? start;
+    } else if (match.index === 0 || text[match.index - 1] === "\n") {
+      start = match.index;
+      starts.push(start);
+    } else if (starts.length > 0) {
+      // An inline nested exception belongs to the same line as its parent.
+      starts.push(start);
+    }
+  }
+  return text.slice(start);
+}
+
 export function parseError(input: string | Error): ClickHouseError | Error {
   const inputIsError = input instanceof Error;
   const text = inputIsError ? input.message : input;
-  // Try the JSON candidates first. The raw text of a JSON-wrapped error also
-  // matches, but then the message keeps the JSON escaping.
-  for (const candidate of [...jsonExceptionCandidates(text), text]) {
-    const parsed = parseServerError(candidate);
-    if (parsed) {
-      return new ClickHouseError(parsed);
-    }
-  }
+  const body = text.trim();
+  const lastLine = body.lastIndexOf("\n");
+  const exception =
+    (lastLine < 0
+      ? undefined
+      : jsonException(body.slice(lastLine + 1).trimStart())) ??
+    jsonException(body) ??
+    plainException(body);
+  const parsed = parseServerError(exception);
+  if (parsed) return new ClickHouseError(parsed);
   return inputIsError ? input : new Error(input);
 }
 

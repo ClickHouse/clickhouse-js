@@ -135,6 +135,63 @@ describe("parseError", () => {
     expect(error.message).toBe("Syntax error. ");
   });
 
+  describe("an exception after result rows", () => {
+    const row =
+      "Code: 60. DB::Exception: Unknown table. (UNKNOWN_TABLE) (version 1)";
+    const failure =
+      'Code: 395. DB::Exception: failed at "x". (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 1)';
+    it.each([
+      ["JSONEachRow", JSON.stringify({ exception: row, n: 1 }), failure],
+      ["JSONCompactEachRow", JSON.stringify([row]), failure],
+      [
+        "partial JSON document",
+        `{"data":[\n{"msg":${JSON.stringify(row)}},`,
+        failure,
+      ],
+      ["TabSeparated", `Error: 404 from upstream\t0\n${row}\t1`, failure],
+      ["CSV", `"${row}",0`, failure],
+      [
+        "incomplete exception text in a row",
+        "Code: 60. DB::Exception: missing type",
+        failure,
+      ],
+      [
+        "row with the same code",
+        failure.replace('failed at "x"', "old failure"),
+        failure,
+      ],
+      [
+        "JSON exception row",
+        JSON.stringify({ exception: row }),
+        JSON.stringify({ exception: failure }),
+      ],
+      [
+        "compact JSON exception row",
+        JSON.stringify([row]),
+        JSON.stringify([failure]),
+      ],
+    ])("reads the final exception for %s", (_, rows, exception) => {
+      const error = parseError(`${rows}\n${exception}\n`);
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error).toMatchObject({
+        code: "395",
+        type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+        message: 'failed at "x". ',
+      });
+    });
+
+    it("keeps the outer code when rows precede a multiline wrapped exception", () => {
+      const error = parseError(
+        `${row}\nCode: 636. DB::Exception: Cannot infer structure. Error:\n${failure}.\nSpecify the structure. (CANNOT_EXTRACT_TABLE_STRUCTURE) (version 1)\n`,
+      );
+      expect(error).toMatchObject({
+        code: "636",
+        type: "CANNOT_EXTRACT_TABLE_STRUCTURE",
+        message: 'failed at "x". ',
+      });
+    });
+  });
+
   // With a JSON-family output format, the server may report an error through
   // that format: on 24.8 for every error, on later versions for an error raised
   // while the result is written. These are the response shapes seen for each
