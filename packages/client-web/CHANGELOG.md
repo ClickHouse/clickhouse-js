@@ -1,5 +1,11 @@
 # 1.25.1
 
+## Improvements
+
+- The Web client now reports HTTP response metadata and failed HTTP requests through the configured logger. ([#187])
+
+[#187]: https://github.com/ClickHouse/clickhouse-js/issues/187
+
 ## Bug fixes
 
 - `ResultSet.stream()` and `ResultSet.json()` now detect in-band error rows in `JSONEachRow` and `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled. They report the server error instead of returning it as data, including when `exception` is the only result column. Real data in a column named `exception` stays as data, even if its value looks like a server error. ([#1168])
