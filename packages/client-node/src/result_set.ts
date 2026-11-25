@@ -268,9 +268,18 @@ export class ResultSet<
       failAfterRows(error);
       callback();
     };
+    // The error that `failAfterRows` logged and recorded on the span.
+    let reportedError: Error | undefined;
     const failAfterRows = (error: Error) => {
       source.unpipe(toRows);
       source.destroy();
+      if (!toRows.failed) {
+        // Log the error and end the span now: the consumer can stop before
+        // it reads the rows before the error, and then `toRows` never fails.
+        reportedError = error;
+        logError(error);
+        resultSet.finishSpan(error);
+      }
       toRows.failAfterRows(error);
     };
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -508,6 +517,7 @@ export class ResultSet<
     Stream.finished(toRows, { readable: false }, (err) => {
       if (
         err &&
+        err !== reportedError &&
         err.name !== "AbortError" &&
         err.message !== resultSetClosedMessage
       ) {

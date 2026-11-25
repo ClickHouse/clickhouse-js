@@ -388,21 +388,11 @@ describe("[Node.js] mid-stream errors with a slow consumer", () => {
   });
 
   it("stops at close() when rows and the server error are pending", async () => {
-    const span = {
-      setAttributes: vi.fn(),
-      setStatus: vi.fn(),
-      recordException: vi.fn(),
-      end: vi.fn(),
-    };
-    const log_error = vi.fn();
-    const rs = ResultSet.instance({
-      stream: bufferSource(['{"n":1}\n', '{"n":2}\n', errorRow]),
-      format: "JSONEachRow",
-      query_id: "test",
-      log_error,
-      response_headers: {},
-      span,
-    });
+    const { rs, span, log_error } = makeResultSetWithSpan([
+      '{"n":1}\n',
+      '{"n":2}\n',
+      errorRow,
+    ]);
     const stream = rs.stream();
     const error = new Promise((resolve) => stream.on("error", resolve));
     await sleep(20); // The server error is found; the rows are not read.
@@ -410,8 +400,64 @@ describe("[Node.js] mid-stream errors with a slow consumer", () => {
     expect(await error).toMatchObject({ message: "ResultSet has been closed" });
     expect(stream.destroyed).toBe(true);
     await sleep(0);
-    expect(log_error).not.toHaveBeenCalled();
+    // The server error was found before close(): it is logged and recorded.
+    expect(log_error).toHaveBeenCalledTimes(1);
+    expect(log_error).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "395" }),
+    );
     expect(span.end).toHaveBeenCalledTimes(1);
-    expect(span.recordException).not.toHaveBeenCalled();
+    expect(span.recordException).toHaveBeenCalledTimes(1);
+    expect(span.recordException).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "395" }),
+    );
   });
+
+  it.each(layouts)(
+    "logs the server error and ends the span when the consumer does not read the rows: %s",
+    async (_, chunks) => {
+      const { rs, span, log_error } = makeResultSetWithSpan(chunks);
+      const stream = rs.stream();
+      await sleep(20); // The server error is found; the rows are not read.
+      expect(log_error).toHaveBeenCalledTimes(1);
+      expect(log_error).toHaveBeenCalledWith(
+        expect.objectContaining({ code: "395" }),
+      );
+      expect(span.end).toHaveBeenCalledTimes(1);
+      expect(span.recordException).toHaveBeenCalledWith(
+        expect.objectContaining({ code: "395" }),
+      );
+      // A consumer that reads later still gets the rows, then the error,
+      // and the error is not logged again.
+      const received: unknown[] = [];
+      const read = async () => {
+        for await (const batch of stream) {
+          received.push(...batch.map((row) => row.json()));
+        }
+      };
+      await expect(read()).rejects.toMatchObject({ code: "395" });
+      expect(received).toEqual([{ n: 1 }, { n: 2 }]);
+      expect(log_error).toHaveBeenCalledTimes(1);
+      expect(span.end).toHaveBeenCalledTimes(1);
+      expect(span.recordException).toHaveBeenCalledTimes(1);
+    },
+  );
 });
+
+function makeResultSetWithSpan(chunks: readonly string[]) {
+  const span = {
+    setAttributes: vi.fn(),
+    setStatus: vi.fn(),
+    recordException: vi.fn(),
+    end: vi.fn(),
+  };
+  const log_error = vi.fn();
+  const rs = ResultSet.instance({
+    stream: bufferSource(chunks),
+    format: "JSONEachRow",
+    query_id: "test",
+    log_error,
+    response_headers: { "x-clickhouse-exception-tag": tag },
+    span,
+  });
+  return { rs, span, log_error };
+}
