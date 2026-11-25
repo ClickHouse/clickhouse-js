@@ -32,7 +32,14 @@ The [`examples`](.) directory is being refactored to be AI-agent-friendly. The g
    - `security/` — TLS, RBAC, SQL-injection-safe parameter binding.
    - `schema-and-deployments/` — `CREATE TABLE` examples for each deployment shape and
      deployment-shaped connection strings.
-6. A small number of examples are **intentionally duplicated** across folders so each folder is a
+6. Examples run as written and teach correct use:
+   - every fixture file that an example reads exists in the repository, and the test setup gives the
+     environment values that the example reads;
+   - use `query()` for a `SELECT`, and use `command()` only for statements that return no rows;
+   - consume every result set, and close the client in `finally`;
+   - an example follows its own advice (for example, with a session ID, also set
+     `max_open_connections: 1`).
+7. A small number of examples are **intentionally duplicated** across folders so each folder is a
    self-contained skill corpus. Each duplicated example has one _primary_ location; the secondary
    copies are excluded from the Vitest runner via the per-package `vitest.config.ts`. When you edit
    a duplicated example, update **all** copies. The current duplicates and their primary locations
