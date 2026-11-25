@@ -225,6 +225,120 @@ describe("[Web] ResultSet.binaryStream() and rawStream()", () => {
     });
   });
 
+  describe("source", () => {
+    /** A source that the test controls, with a span. */
+    function controlled(onCancel?: (reason: unknown) => void) {
+      let controller!: ReadableStreamDefaultController<Uint8Array>;
+      const stream = new ReadableStream<Uint8Array>(
+        {
+          start(c) {
+            controller = c;
+          },
+          cancel: onCancel,
+        },
+        { highWaterMark: 0 },
+      );
+      const span = { ended: 0, errors: [] as unknown[] };
+      const rs = new ResultSet(
+        stream,
+        "Parquet",
+        guid(),
+        { "x-clickhouse-exception-tag": tag },
+        undefined,
+        {
+          setAttributes() {
+            //
+          },
+          setStatus() {
+            //
+          },
+          recordException(error: Error) {
+            span.errors.push(error);
+          },
+          end() {
+            span.ended++;
+          },
+        },
+      );
+      return { stream, controller, span, output: rs.binaryStream() };
+    }
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+    it("fails and ends the span when the source fails between two reads", async () => {
+      const f = controlled();
+      const reader = f.output.getReader();
+      const first = reader.read();
+      f.controller.enqueue(encoder.encode("abc"));
+      await first;
+      // No read is pending: the consumer only waits on `closed`.
+      const closed = reader.closed.then(
+        () => "closed",
+        (err: unknown) => err,
+      );
+      const err = new TypeError("terminated");
+      f.controller.error(err);
+      // Without the fix, `closed` never settles: do not wait for it.
+      const result = await Promise.race([
+        closed,
+        new Promise((resolve) => setTimeout(() => resolve("pending"), 200)),
+      ]);
+      expect(result).toBe(err);
+      expect(f.span.ended).toBe(1);
+    });
+
+    it("gives the held bytes, then the error, when the source fails between two reads", async () => {
+      const f = controlled();
+      const reader = f.output.getReader();
+      const first = reader.read();
+      f.controller.enqueue(encoder.encode("abc\r"));
+      expect(new TextDecoder().decode((await first).value)).toBe("abc");
+      const err = new TypeError("terminated");
+      f.controller.error(err);
+      await tick();
+      expect(f.span.ended).toBe(1);
+      expect(new TextDecoder().decode((await reader.read()).value)).toBe("\r");
+      await expect(reader.read()).rejects.toBe(err);
+      expect(f.span.ended).toBe(1);
+    });
+
+    it("ends the span and cancels the source on a cancel during a read", async () => {
+      const cancelled: unknown[] = [];
+      const f = controlled((reason) => {
+        cancelled.push(reason);
+      });
+      const reader = f.output.getReader();
+      const pending = reader.read();
+      await tick();
+      await reader.cancel("stop");
+      expect(await pending).toEqual({ done: true, value: undefined });
+      expect(cancelled).toEqual(["stop"]);
+      expect(f.span.ended).toBe(1);
+    });
+
+    for (const end of ["success", "server error", "source error", "cancel"]) {
+      it(`releases the source reader after ${end}`, async () => {
+        const f = controlled();
+        if (end === "cancel") {
+          await f.output.cancel();
+        } else {
+          const result = read(f.output);
+          if (end === "success") {
+            f.controller.enqueue(data);
+            f.controller.close();
+          } else if (end === "server error") {
+            f.controller.enqueue(join(data, block));
+          } else {
+            f.controller.error(new TypeError("terminated"));
+          }
+          await result;
+        }
+        await tick();
+        expect(f.stream.locked).toBe(false);
+        expect(f.span.ended).toBe(1);
+      });
+    }
+  });
+
   it("can be called only once, and not after the other methods", async () => {
     const rs = makeResultSet(source([data]));
     rs.binaryStream();

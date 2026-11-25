@@ -446,57 +446,105 @@ export class ResultSet<
     // a callback in all browsers, so the bytes that the scanner holds and the
     // end of the span would be lost. This stream reads the source itself.
     const reader = (this._stream as ReadableStream<Uint8Array>).getReader();
-    const fail = (
-      controller: ReadableStreamDefaultController<Uint8Array>,
-      error: unknown,
-    ) => {
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    /** `true` while `pull` waits for a chunk: then `pull` handles an error. */
+    let reading = false;
+    /** `true` after the end, an error, or a cancel. */
+    let finished = false;
+    /** Held bytes and the error of a source failure between two reads. */
+    let failure: { data: Uint8Array; error: unknown } | undefined;
+    const releaseSource = (reason?: unknown) => {
+      // Cancelling a source that has ended or failed does nothing. Then the
+      // lock is released, so that the caller can use its stream again.
+      reader
+        .cancel(reason)
+        .catch(() => undefined)
+        .finally(() => reader.releaseLock());
+    };
+    const fail = (error: unknown) => {
+      finished = true;
       this.finishSpan(error);
       controller.error(error);
+      releaseSource(error);
     };
+    // A source failure when no read is pending: a consumer that waits on
+    // `reader.closed` still gets the error, and the span ends now.
+    reader.closed.catch((err: unknown) => {
+      if (reading || finished) {
+        return;
+      }
+      const end = scanner?.end();
+      const error = end?.error ?? err;
+      if (end !== undefined && end.data.length > 0) {
+        // The held bytes go to the next read, and then the error.
+        this.finishSpan(error);
+        failure = { data: end.data, error };
+      } else {
+        fail(error);
+      }
+    });
     return new ReadableStream<Uint8Array>(
       {
+        start: (c) => {
+          controller = c;
+        },
         // Reads until there are bytes for the consumer, the end, or an error.
         // With a high-water mark of 0, `pull` runs only for a pending read,
         // so the bytes before an error go to that read, before the error.
-        pull: async (controller) => {
+        pull: async (c) => {
+          if (failure !== undefined) {
+            c.enqueue(failure.data);
+            return fail(failure.error);
+          }
           while (true) {
             let result: ReadableStreamReadResult<Uint8Array>;
+            reading = true;
             try {
               result = await reader.read();
             } catch (err) {
+              reading = false;
+              if (finished) {
+                return;
+              }
               const end = scanner?.end();
               if (end !== undefined && end.data.length > 0) {
-                controller.enqueue(end.data);
+                c.enqueue(end.data);
               }
-              return fail(controller, end?.error ?? err);
+              return fail(end?.error ?? err);
+            }
+            reading = false;
+            if (finished) {
+              // The consumer cancelled the stream during the read.
+              return;
             }
             if (result.done) {
               const end = scanner?.end();
               if (end !== undefined && end.data.length > 0) {
-                controller.enqueue(end.data);
+                c.enqueue(end.data);
               }
               if (end?.error !== undefined) {
-                return fail(controller, end.error);
+                return fail(end.error);
               }
+              finished = true;
               this.finishSpan();
-              controller.close();
+              c.close();
+              releaseSource();
               return;
             }
             const chunk = result.value;
             this.span_bytes += chunk.length;
             if (scanner === undefined) {
-              controller.enqueue(chunk);
+              c.enqueue(chunk);
               return;
             }
             const { data, error } = scanner.push(chunk);
             if (data.length > 0) {
-              controller.enqueue(data);
+              c.enqueue(data);
             }
             if (error !== undefined) {
               // The server closes the connection after the block: fail now,
               // and do not wait for the end of the response.
-              reader.cancel(error).catch(() => undefined);
-              return fail(controller, error);
+              return fail(error);
             }
             if (data.length > 0) {
               return;
@@ -504,8 +552,9 @@ export class ResultSet<
           }
         },
         cancel: (reason) => {
+          finished = true;
           this.finishSpan(reason);
-          return reader.cancel(reason);
+          return reader.cancel(reason).finally(() => reader.releaseLock());
         },
       },
       { highWaterMark: 0 },
