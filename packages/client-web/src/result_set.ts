@@ -442,44 +442,74 @@ export class ResultSet<
       this.exceptionTag !== undefined && this.exceptionTag.length > 0
         ? new BinaryExceptionScanner(this.exceptionTag)
         : undefined;
-    const transformer: TransformerWithCancel<Uint8Array, Uint8Array> = {
-      transform: (chunk, controller) => {
-        this.span_bytes += chunk.length;
-        if (scanner === undefined) {
-          controller.enqueue(chunk);
-          return;
-        }
-        const { data, error } = scanner.push(chunk);
-        if (data.length > 0) {
-          controller.enqueue(data);
-        }
-        if (error !== undefined) {
-          // The server closes the connection after the block: fail now, and
-          // do not wait for the end of the response.
-          this.finishSpan(error);
-          controller.error(error);
-        }
-      },
-      flush: (controller) => {
-        if (scanner !== undefined) {
-          const { data, error } = scanner.end();
-          if (data.length > 0) {
-            controller.enqueue(data);
-          }
-          if (error !== undefined) {
-            this.finishSpan(error);
-            controller.error(error);
-            return;
-          }
-        }
-        this.finishSpan();
-      },
-      cancel: (reason?: unknown) => {
-        // The consumer cancelled the stream, or the source failed.
-        this.finishSpan(reason);
-      },
+    // Not `pipeThrough`: when the source fails, it aborts a transform without
+    // a callback in all browsers, so the bytes that the scanner holds and the
+    // end of the span would be lost. This stream reads the source itself.
+    const reader = (this._stream as ReadableStream<Uint8Array>).getReader();
+    const fail = (
+      controller: ReadableStreamDefaultController<Uint8Array>,
+      error: unknown,
+    ) => {
+      this.finishSpan(error);
+      controller.error(error);
     };
-    return this._stream.pipeThrough(new TransformStream(transformer));
+    return new ReadableStream<Uint8Array>(
+      {
+        // Reads until there are bytes for the consumer, the end, or an error.
+        // With a high-water mark of 0, `pull` runs only for a pending read,
+        // so the bytes before an error go to that read, before the error.
+        pull: async (controller) => {
+          while (true) {
+            let result: ReadableStreamReadResult<Uint8Array>;
+            try {
+              result = await reader.read();
+            } catch (err) {
+              const end = scanner?.end();
+              if (end !== undefined && end.data.length > 0) {
+                controller.enqueue(end.data);
+              }
+              return fail(controller, end?.error ?? err);
+            }
+            if (result.done) {
+              const end = scanner?.end();
+              if (end !== undefined && end.data.length > 0) {
+                controller.enqueue(end.data);
+              }
+              if (end?.error !== undefined) {
+                return fail(controller, end.error);
+              }
+              this.finishSpan();
+              controller.close();
+              return;
+            }
+            const chunk = result.value;
+            this.span_bytes += chunk.length;
+            if (scanner === undefined) {
+              controller.enqueue(chunk);
+              return;
+            }
+            const { data, error } = scanner.push(chunk);
+            if (data.length > 0) {
+              controller.enqueue(data);
+            }
+            if (error !== undefined) {
+              // The server closes the connection after the block: fail now,
+              // and do not wait for the end of the response.
+              reader.cancel(error).catch(() => undefined);
+              return fail(controller, error);
+            }
+            if (data.length > 0) {
+              return;
+            }
+          }
+        },
+        cancel: (reason) => {
+          this.finishSpan(reason);
+          return reader.cancel(reason);
+        },
+      },
+      { highWaterMark: 0 },
+    );
   }
 
   /** See {@link BaseResultSet.rawStream} */

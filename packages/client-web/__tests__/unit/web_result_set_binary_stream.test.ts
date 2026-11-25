@@ -133,6 +133,98 @@ describe("[Web] ResultSet.binaryStream() and rawStream()", () => {
     expect(bytes).toEqual(data);
   });
 
+  it("gives the held bytes before a source error with no block", async () => {
+    for (const tail of [
+      "\r",
+      "\r\n",
+      "\r\n__exc",
+      `\r\n__exception__\r\n${tag.slice(0, 5)}`,
+    ]) {
+      const body = join(Uint8Array.of(0, 1, 2), encoder.encode(tail));
+      const rs = makeResultSet(source([body], true));
+      const { bytes, error } = await read(rs.binaryStream());
+      expect(error, JSON.stringify(tail)).toBeInstanceOf(TypeError);
+      expect(bytes, JSON.stringify(tail)).toEqual(body);
+    }
+  });
+
+  describe("span", () => {
+    function fakeSpan() {
+      return {
+        ended: 0,
+        errors: [] as Error[],
+        attributes: {} as Record<string, unknown>,
+        setAttributes(attributes: Record<string, unknown>) {
+          Object.assign(this.attributes, attributes);
+        },
+        setStatus() {
+          //
+        },
+        recordException(error: Error) {
+          this.errors.push(error);
+        },
+        end() {
+          this.ended++;
+        },
+      };
+    }
+    function withSpan(stream: ReadableStream) {
+      const span = fakeSpan();
+      const rs = new ResultSet(
+        stream,
+        "Parquet",
+        guid(),
+        { "x-clickhouse-exception-tag": tag },
+        undefined,
+        span,
+      );
+      return { rs, span };
+    }
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+    it("ends once at the end of the response, with the byte count", async () => {
+      const { rs, span } = withSpan(source([data]));
+      await read(rs.binaryStream());
+      await tick();
+      expect(span.ended).toBe(1);
+      expect(span.errors).toEqual([]);
+      expect(span.attributes["clickhouse.response.decoded_bytes"]).toBe(
+        data.length,
+      );
+    });
+
+    it("ends once with the server error", async () => {
+      const { rs, span } = withSpan(source([data, block]));
+      await read(rs.binaryStream());
+      await tick();
+      expect(span.ended).toBe(1);
+      expectServerError(span.errors[0]);
+    });
+
+    it("ends once with a source error", async () => {
+      const { rs, span } = withSpan(source([data], true));
+      await read(rs.binaryStream());
+      await tick();
+      expect(span.ended).toBe(1);
+      expect(span.errors[0]).toBeInstanceOf(TypeError);
+    });
+
+    it("ends once when the consumer cancels, and cancels the source", async () => {
+      let cancelled = 0;
+      const { rs, span } = withSpan(
+        new ReadableStream({
+          cancel() {
+            cancelled++;
+          },
+        }),
+      );
+      await rs.binaryStream().cancel("stop");
+      await tick();
+      expect(cancelled).toBe(1);
+      expect(span.ended).toBe(1);
+    });
+  });
+
   it("can be called only once, and not after the other methods", async () => {
     const rs = makeResultSet(source([data]));
     rs.binaryStream();

@@ -138,6 +138,44 @@ describe("[Node.js] ResultSet.binaryStream() and rawStream()", () => {
     expect(bytes.equals(data)).toBe(true);
   });
 
+  it("gives the held bytes before a source error with no block", async () => {
+    // A `\r`, or a start of a block opening, at the end of the bytes that
+    // came: without the tag, they are data.
+    for (const tail of [
+      "\r",
+      "\r\n",
+      "\r\n__exc",
+      `\r\n__exception__\r\n${tag.slice(0, 5)}`,
+    ]) {
+      const body = Buffer.concat([Buffer.from([0, 1, 2]), Buffer.from(tail)]);
+      const rs = makeResultSet(failingSource([body]));
+      const { bytes, error } = await read(rs.binaryStream());
+      expect((error as NodeJS.ErrnoException).code).toBe("ECONNRESET");
+      expect(bytes.equals(body), JSON.stringify(tail)).toBe(true);
+    }
+  });
+
+  it("gives all bytes and the server error when the block is still in the source buffer", async () => {
+    // With a slow consumer, the end of the response, with the block, is still
+    // in the buffer of the source when the connection closes.
+    const big = Buffer.alloc(3 * 1024 * 1024, 0x61);
+    const body = Buffer.concat([big, block]);
+    const source = new Readable({ read() {} });
+    for (let i = 0; i < body.length; i += 16 * 1024) {
+      source.push(body.subarray(i, i + 16 * 1024));
+    }
+    const rs = makeResultSet(source);
+    const stream = rs.binaryStream();
+    const err = new Error("aborted") as NodeJS.ErrnoException;
+    err.code = "ECONNRESET";
+    setTimeout(() => source.destroy(err), 5);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const { bytes, error } = await read(stream);
+    expectServerError(error);
+    expect(bytes.length).toBe(big.length);
+    expect(bytes.equals(big)).toBe(true);
+  });
+
   it("closes the source when the consumer stops early", async () => {
     const source = Readable.from([data, data, data]);
     const rs = makeResultSet(source);

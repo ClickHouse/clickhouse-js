@@ -29,7 +29,7 @@ describe("BinaryExceptionScanner", () => {
   }
 
   /** Scans the chunks as a consumer gets them: each result is copied. */
-  function scan(chunks: Uint8Array[], isSourceError = false) {
+  function scan(chunks: Uint8Array[]) {
     const scanner = new BinaryExceptionScanner(tag);
     const out: Uint8Array[] = [];
     let error: Error | undefined;
@@ -42,7 +42,7 @@ describe("BinaryExceptionScanner", () => {
       }
     }
     if (error === undefined) {
-      const r = scanner.end(isSourceError);
+      const r = scanner.end();
       out.push(r.data.slice());
       error = r.error;
     }
@@ -106,13 +106,6 @@ describe("BinaryExceptionScanner", () => {
     expectServerError(r.error);
   });
 
-  it("gives the server error when the source fails after the complete block", () => {
-    // The server closes the connection after the block.
-    const { bytes, error } = scan([join(data, block())], true);
-    expectServerError(error);
-    expect(bytes).toEqual(data);
-  });
-
   it("ignores a block opening with another tag", () => {
     const other = join(data, block("zzzzzzzzzzzzzzzz"));
     const { bytes, error } = scan([other]);
@@ -127,24 +120,24 @@ describe("BinaryExceptionScanner", () => {
       end < full.length;
       end++
     ) {
-      for (const isSourceError of [false, true]) {
-        const { bytes, error } = scan(
-          [join(data, full.subarray(0, end))],
-          isSourceError,
-        );
-        expect(error?.message, `end at ${end}`).toContain(
-          "exception block is incomplete",
-        );
-        expect(bytes).toEqual(data);
-      }
+      const { bytes, error } = scan([join(data, full.subarray(0, end))]);
+      expect(error?.message, `end at ${end}`).toContain(
+        "exception block is incomplete",
+      );
+      expect(bytes).toEqual(data);
     }
   });
 
-  it("gives the bytes of a cut block opening as data when the response ends", () => {
-    const cut = join(data, block().subarray(0, 10));
-    const { bytes, error } = scan([cut]);
-    expect(error).toBeUndefined();
-    expect(bytes).toEqual(cut);
+  it("gives the held bytes as data at the end: a \\r, or a cut block opening", () => {
+    // `end()` is also called when the connection fails: the bytes that came
+    // are data, if they do not start a block with the tag.
+    const opening = encoder.encode(`\r\n__exception__\r\n${tag}`);
+    for (let n = 1; n < opening.length; n++) {
+      const cut = join(data, opening.subarray(0, n));
+      const { bytes, error } = scan([cut]);
+      expect(error, `${n} bytes`).toBeUndefined();
+      expect(bytes, `${n} bytes`).toEqual(cut);
+    }
   });
 
   it("gives an error for a block that is longer than 16 KiB", () => {

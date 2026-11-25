@@ -604,7 +604,7 @@ export class ResultSet<
           return;
         }
         if (scanner !== undefined) {
-          const { data, error } = scanner.end(sourceError !== undefined);
+          const { data, error } = scanner.end();
           pushBytes(data);
           if (error !== undefined) {
             return fail(error);

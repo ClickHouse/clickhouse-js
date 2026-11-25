@@ -317,12 +317,12 @@ export class BinaryExceptionScanner {
   }
 
   /**
-   * Ends the scan. `isSourceError` tells that the response stream failed (for
-   * example, the connection was closed): then the error is the server error,
-   * if the block is complete, or an error about an incomplete block, if the
-   * block started. Otherwise the caller gives the source error.
+   * Ends the scan, when the response ends or the response stream fails (for
+   * example, the connection was closed). If the block started, the error is
+   * the server error, when the block is complete, or an error about an
+   * incomplete block. Otherwise the caller gives the source error, if any.
    */
-  end(isSourceError = false): BinaryScanResult {
+  end(): BinaryScanResult {
     if (this.failed) {
       return { data: NO_BYTES };
     }
@@ -333,11 +333,11 @@ export class BinaryExceptionScanner {
         error: errorFromExceptionBlock(this.block, this.exceptionTag, true),
       };
     }
-    // A `\r` or a cut block opening at the end. After a source error, the
-    // stream fails anyway, and the bytes do not change the result.
+    // A `\r` or a cut block opening at the end. Without the tag, these bytes
+    // cannot be told from data, so they are data, also before a source error.
     const data = this.held;
     this.held = NO_BYTES;
-    return { data: isSourceError ? NO_BYTES : data };
+    return { data };
   }
 
   /** The bytes of `chunk` up to a block opening or a possible one, if any.
