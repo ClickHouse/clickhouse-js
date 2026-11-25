@@ -78,7 +78,7 @@ export function decompressResponse(
  * `Stream.pipeline` discards it.
  */
 function decompress(
-  response: Http.IncomingMessage,
+  response: Stream.Readable,
   decompressor: Zlib.Gunzip | Zlib.ZstdDecompress | Zlib.BrotliDecompress,
   log_writer: LogWriter,
   log_level: ClickHouseLogLevel,

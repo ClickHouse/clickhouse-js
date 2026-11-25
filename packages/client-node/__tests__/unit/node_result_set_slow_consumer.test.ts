@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { Readable } from "node:stream";
 import { setTimeout as sleep } from "node:timers/promises";
-import { ClickHouseError, ResultSet } from "../../src";
+import { ClickHouseError, ResultSet, type Row } from "../../src";
 
 // See https://github.com/ClickHouse/clickhouse-js/issues/1167
 
@@ -62,7 +62,7 @@ const consumers = {
     try {
       for await (const batch of rs.stream()) {
         await sleep(20);
-        received.push(...batch.map((row) => row.json()));
+        received.push(...batch.map((row: Row) => row.json()));
       }
     } catch (err) {
       return { received, error: err };
@@ -74,7 +74,7 @@ const consumers = {
     const stream = rs.stream();
     const error = await new Promise((resolve) => {
       stream.on("data", (batch) => {
-        received.push(...batch.map((row) => row.json()));
+        received.push(...batch.map((row: Row) => row.json()));
         stream.pause();
         setTimeout(() => stream.resume(), 20);
       });
@@ -91,7 +91,7 @@ const consumers = {
       stream.on("readable", () => {
         let batch;
         while ((batch = stream.read()) !== null) {
-          received.push(...batch.map((row) => row.json()));
+          received.push(...batch.map((row: Row) => row.json()));
         }
       });
       stream.on("error", resolve);
@@ -112,6 +112,7 @@ describe("[Node.js] mid-stream errors with a slow consumer", () => {
           expect(received).toEqual([{ n: 1 }, { n: 2 }]);
           expect(error).toBeInstanceOf(ClickHouseError);
           expect(error).toMatchObject({ code: "395" });
+          expect(log_error).toHaveBeenCalledTimes(1);
           expect(log_error).toHaveBeenCalledWith(error);
         },
       );
@@ -161,7 +162,7 @@ describe("[Node.js] mid-stream errors with a slow consumer", () => {
   it("destroys the source when the consumer stops early", async () => {
     const source = new Readable({ read() {} });
     source.push(Buffer.from(rows));
-    const { rs, log_error } = makeResultSet(source);
+    const { rs } = makeResultSet(source);
     for await (const _ of rs.stream()) {
       break;
     }
@@ -313,8 +314,63 @@ describe("[Node.js] mid-stream errors with a slow consumer", () => {
     const { received, error } = await consumers["a slow async iterator"](rs);
     expect(received).toEqual([{ n: 1 }, { n: 2 }]);
     expect(error).toMatchObject({ message: "socket hang up" });
+    expect(log_error).toHaveBeenCalledTimes(1);
     expect(log_error).toHaveBeenCalledWith(error);
   });
+
+  it("logs a network error and ends the span when the consumer does not read the rows", async () => {
+    const source = new Readable({ read() {} });
+    source.push(Buffer.from(rows));
+    const { rs, span, log_error } = makeResultSetWithSpan([], source);
+    setImmediate(() =>
+      source.destroy(
+        Object.assign(new Error("aborted"), { code: "ECONNRESET" }),
+      ),
+    );
+    const stream = rs.stream();
+    await sleep(20); // The network error comes; the rows are not read.
+    expect(log_error).toHaveBeenCalledTimes(1);
+    expect(log_error).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "ECONNRESET" }),
+    );
+    expect(span.end).toHaveBeenCalledTimes(1);
+    expect(span.recordException).toHaveBeenCalledTimes(1);
+    // A consumer that reads later still gets the rows, then the error, and
+    // the error is not logged again.
+    const received: unknown[] = [];
+    const read = async () => {
+      for await (const batch of stream) {
+        received.push(...batch.map((row: Row) => row.json()));
+      }
+    };
+    await expect(read()).rejects.toMatchObject({ code: "ECONNRESET" });
+    expect(received).toEqual([{ n: 1 }, { n: 2 }]);
+    expect(log_error).toHaveBeenCalledTimes(1);
+    expect(span.end).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["the error block", block],
+    ["the error row", errorRow],
+  ])(
+    "does not report the server error after close() in a 'data' listener: %s",
+    async (_, ending) => {
+      // One chunk: `push` gives the row to the 'data' listener, which calls
+      // close(), before the client handles the error after the row.
+      const { rs, span, log_error } = makeResultSetWithSpan([
+        '{"n":1}\n' + ending,
+      ]);
+      const stream = rs.stream();
+      const errors: unknown[] = [];
+      stream.on("error", (err) => errors.push(err));
+      stream.on("data", () => rs.close());
+      await sleep(20);
+      expect(errors).toMatchObject([{ message: "ResultSet has been closed" }]);
+      expect(log_error).not.toHaveBeenCalled();
+      expect(span.end).toHaveBeenCalledTimes(1);
+      expect(span.recordException).not.toHaveBeenCalled();
+    },
+  );
 
   it("stops at once when the caller aborts the request", async () => {
     const source = new Readable({ read() {} });
@@ -378,7 +434,8 @@ describe("[Node.js] mid-stream errors with a slow consumer", () => {
     const error = await new Promise((resolve) => {
       stream.on("readable", () => {
         const batch = stream.read();
-        if (batch !== null) received.push(...batch.map((row) => row.json()));
+        if (batch !== null)
+          received.push(...batch.map((row: Row) => row.json()));
       });
       stream.on("error", resolve);
       stream.on("end", () => resolve(undefined));
@@ -431,7 +488,7 @@ describe("[Node.js] mid-stream errors with a slow consumer", () => {
       const received: unknown[] = [];
       const read = async () => {
         for await (const batch of stream) {
-          received.push(...batch.map((row) => row.json()));
+          received.push(...batch.map((row: Row) => row.json()));
         }
       };
       await expect(read()).rejects.toMatchObject({ code: "395" });
@@ -443,7 +500,10 @@ describe("[Node.js] mid-stream errors with a slow consumer", () => {
   );
 });
 
-function makeResultSetWithSpan(chunks: readonly string[]) {
+function makeResultSetWithSpan(
+  chunks: readonly string[],
+  stream: Readable = bufferSource(chunks),
+) {
   const span = {
     setAttributes: vi.fn(),
     setStatus: vi.fn(),
@@ -452,7 +512,7 @@ function makeResultSetWithSpan(chunks: readonly string[]) {
   };
   const log_error = vi.fn();
   const rs = ResultSet.instance({
-    stream: bufferSource(chunks),
+    stream,
     format: "JSONEachRow",
     query_id: "test",
     log_error,

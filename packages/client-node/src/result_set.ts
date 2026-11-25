@@ -273,7 +273,10 @@ export class ResultSet<
     const failAfterRows = (error: Error) => {
       source.unpipe(toRows);
       source.destroy();
-      if (!toRows.failed) {
+      // `toRows` is destroyed when `close()` came first, for example from a
+      // 'data' listener that `push` called: the consumer does not get the
+      // error, so it is not reported.
+      if (!toRows.failed && !toRows.destroyed) {
         // Log the error and end the span now: the consumer can stop before
         // it reads the rows before the error, and then `toRows` never fails.
         reportedError = error;
