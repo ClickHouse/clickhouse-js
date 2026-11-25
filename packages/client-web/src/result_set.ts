@@ -394,6 +394,18 @@ export class ResultSet<
           this.addSpanRows(rows.length);
           controller.enqueue(rows);
         }
+        if (detectJSONError !== undefined && incompleteChunks.length > 0) {
+          // An error row is the last row, and the server can end the
+          // response without a newline after it.
+          const error = detectJSONError(
+            decoder.decode(concatBytes(incompleteChunks)),
+          );
+          if (error !== undefined) {
+            this.finishSpan(error);
+            controller.error(error);
+            return;
+          }
+        }
         // The readable side of the transform completes when the source
         // stream is fully consumed - finalize the query span.
         this.finishSpan();
