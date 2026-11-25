@@ -1,9 +1,9 @@
-import { createClient } from '@clickhouse/client'
-import Fs from 'node:fs'
-import { cwd } from 'node:process'
-import Path from 'node:path'
+import { createClient } from "@clickhouse/client";
+import Fs from "node:fs";
+import { cwd } from "node:process";
+import Path from "node:path";
 
-const client = createClient()
+const client = createClient();
 
 const { stream } = await client.exec({
   query: `SELECT * from system.numbers LIMIT 10 FORMAT Parquet`,
@@ -11,14 +11,14 @@ const { stream } = await client.exec({
     /** See also https://clickhouse.com/docs/en/interfaces/formats#parquet-format-settings.
      *  You could specify these (and other settings) here. */
   },
-})
+});
 
-const filename = Path.resolve(cwd(), './node/out.parquet')
-const writeStream = Fs.createWriteStream(filename)
-stream.pipe(writeStream)
+const filename = Path.resolve(cwd(), "./node/out.parquet");
+const writeStream = Fs.createWriteStream(filename);
+stream.pipe(writeStream);
 await new Promise((resolve) => {
-  stream.on('end', resolve)
-})
+  stream.on("end", resolve);
+});
 
 /*
 
@@ -41,4 +41,4 @@ await new Promise((resolve) => {
 
  */
 
-await client.close()
+await client.close();

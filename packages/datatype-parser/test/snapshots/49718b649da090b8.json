@@ -1,0 +1,23 @@
+{
+  "type": "Map(LowCardinality(String), UInt32)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Map",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "LowCardinality",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "String"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "UInt32"
+      }
+    ]
+  }
+}

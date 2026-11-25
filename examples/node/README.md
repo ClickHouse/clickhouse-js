@@ -7,7 +7,8 @@ Each subfolder is a self-contained corpus for one use case, suitable for
 backing a focused AI agent skill:
 
 - [`coding/`](coding/) — day-to-day API usage: connect, configure, ping, basic
-  insert/select, parameter binding, sessions, data types, custom JSON handling.
+  insert/select, parameter binding, sessions, data types, custom JSON handling,
+  and OpenTelemetry tracing via the `tracer` hooks.
 - [`performance/`](performance/) — async inserts, streaming with backpressure,
   file/Parquet streams, progress streaming, and `INSERT FROM SELECT`. Node-only.
 - [`troubleshooting/`](troubleshooting/) — abort/cancel, timeouts, long-running

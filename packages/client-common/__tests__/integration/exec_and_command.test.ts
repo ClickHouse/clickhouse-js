@@ -1,139 +1,139 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import type { ExecParams } from '@clickhouse/client-common'
-import { type ClickHouseClient } from '@clickhouse/client-common'
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import type { ExecParams } from "@clickhouse/client-common";
+import { type ClickHouseClient } from "@clickhouse/client-common";
 import {
   createTestClient,
   getClickHouseTestEnvironment,
   guid,
   TestEnv,
   validateUUID,
-} from '../utils'
+} from "../utils";
 
-describe('exec and command', () => {
-  let client: ClickHouseClient
+describe("exec and command", () => {
+  let client: ClickHouseClient;
   beforeEach(() => {
-    client = createTestClient()
-  })
+    client = createTestClient();
+  });
   afterEach(async () => {
-    await client.close()
-  })
+    await client.close();
+  });
 
-  it('sends a command to execute', async () => {
-    const { ddl, tableName, engine } = getDDL()
+  it("sends a command to execute", async () => {
+    const { ddl, tableName, engine } = getDDL();
 
     const { query_id } = await runExec({
       query: ddl,
-    })
+    });
 
     // generated automatically
-    expect(validateUUID(query_id)).toBeTruthy()
+    expect(validateUUID(query_id)).toBeTruthy();
 
     await checkCreatedTable({
       tableName,
       engine,
-    })
-  })
+    });
+  });
 
-  it('should use query_id override', async () => {
-    const { ddl, tableName, engine } = getDDL()
+  it("should use query_id override", async () => {
+    const { ddl, tableName, engine } = getDDL();
 
-    const query_id = guid()
+    const query_id = guid();
 
     const { query_id: q_id } = await runExec({
       query: ddl,
       query_id,
-    })
-    expect(query_id).toEqual(q_id)
+    });
+    expect(query_id).toEqual(q_id);
 
     await checkCreatedTable({
       tableName,
       engine,
-    })
-  })
+    });
+  });
 
-  it('should not swallow ClickHouse error', async () => {
-    const { ddl } = getDDL()
+  it("should not swallow ClickHouse error", async () => {
+    const { ddl } = getDDL();
     const commands = async () => {
       const command = () =>
         runExec({
           query: ddl,
-        })
-      await command()
-      await command()
-    }
+        });
+      await command();
+      await command();
+    };
     await expect(commands()).rejects.toMatchObject(
       expect.objectContaining({
-        code: '57',
-        type: 'TABLE_ALREADY_EXISTS',
+        code: "57",
+        type: "TABLE_ALREADY_EXISTS",
       }),
-    )
-  })
+    );
+  });
 
-  it('should get the response headers with command', async () => {
+  it("should get the response headers with command", async () => {
     // does not actually return anything, but still sends us the headers
     const result = await client.command({
-      query: 'SELECT 42 FORMAT TSV',
-    })
+      query: "SELECT 42 FORMAT TSV",
+    });
 
     expect(
-      result.response_headers['Content-Type'] ??
-        result.response_headers['content-type'],
-    ).toEqual('text/tab-separated-values; charset=UTF-8')
-  })
+      result.response_headers["Content-Type"] ??
+        result.response_headers["content-type"],
+    ).toEqual("text/tab-separated-values; charset=UTF-8");
+  });
 
-  it('should get the response headers with exec', async () => {
+  it("should get the response headers with exec", async () => {
     const result = await client.exec({
-      query: 'SELECT 42 FORMAT CSV',
-    })
+      query: "SELECT 42 FORMAT CSV",
+    });
 
     expect(
-      result.response_headers['Content-Type'] ??
-        result.response_headers['content-type'],
-    ).toEqual('text/csv; charset=UTF-8; header=absent')
-  })
+      result.response_headers["Content-Type"] ??
+        result.response_headers["content-type"],
+    ).toEqual("text/csv; charset=UTF-8; header=absent");
+  });
 
-  it('should get the http status code with exec', async () => {
+  it("should get the http status code with exec", async () => {
     const result = await client.exec({
-      query: 'SELECT 42 FORMAT CSV',
-    })
+      query: "SELECT 42 FORMAT CSV",
+    });
 
-    expect(result.http_status_code).toBe(200)
-  })
+    expect(result.http_status_code).toBe(200);
+  });
 
-  it('can specify a parameterized query', async () => {
+  it("can specify a parameterized query", async () => {
     const result = await client.query({
       query: `SELECT * from system.tables where name = 'numbers'`,
-      format: 'JSON',
-    })
+      format: "JSON",
+    });
 
-    const json = await result.json<{ name: string }>()
-    expect(json.rows).toBe(1)
-    expect(json.data[0].name).toBe('numbers')
-  })
+    const json = await result.json<{ name: string }>();
+    expect(json.rows).toBe(1);
+    expect(json.data[0].name).toBe("numbers");
+  });
 
   async function checkCreatedTable({
     tableName,
     engine,
   }: {
-    tableName: string
-    engine: string
+    tableName: string;
+    engine: string;
   }) {
     const selectResult = await client.query({
       query: `SELECT * from system.tables where name = '${tableName}'`,
-      format: 'JSON',
-    })
+      format: "JSON",
+    });
 
     const { data, rows } = await selectResult.json<{
-      name: string
-      engine: string
-      create_table_query: string
-    }>()
+      name: string;
+      engine: string;
+      create_table_query: string;
+    }>();
 
-    expect(rows).toBe(1)
-    const table = data[0]
-    expect(table.name).toBe(tableName)
-    expect(table.engine).toBe(engine)
-    expect(typeof table.create_table_query).toBe('string')
+    expect(rows).toBe(1);
+    const table = data[0];
+    expect(table.name).toBe(tableName);
+    expect(table.engine).toBe(engine);
+    expect(typeof table.create_table_query).toBe("string");
   }
 
   async function runExec(params: ExecParams): Promise<{ query_id: string }> {
@@ -143,18 +143,18 @@ describe('exec and command', () => {
         // ClickHouse responds to a command when it's completely finished
         wait_end_of_query: 1,
       },
-    })
-    return { query_id }
+    });
+    return { query_id };
   }
-})
+});
 
 function getDDL(): {
-  ddl: string
-  tableName: string
-  engine: string
+  ddl: string;
+  tableName: string;
+  engine: string;
 } {
-  const env = getClickHouseTestEnvironment()
-  const tableName = `command_test_${guid()}`
+  const env = getClickHouseTestEnvironment();
+  const tableName = `command_test_${guid()}`;
   switch (env) {
     // ENGINE and ON CLUSTER can be omitted in the cloud statements.
     // It will use Shared (CloudSMT)/Replicated (Cloud) MergeTree by default.
@@ -163,8 +163,8 @@ function getDDL(): {
         CREATE TABLE ${tableName}
         (id UInt64, name String, sku Array(UInt8), timestamp DateTime)
         ORDER BY (id)
-      `
-      return { ddl, tableName, engine: 'SharedMergeTree' }
+      `;
+      return { ddl, tableName, engine: "SharedMergeTree" };
     }
     case TestEnv.LocalSingleNode: {
       const ddl = `
@@ -172,8 +172,8 @@ function getDDL(): {
         (id UInt64, name String, sku Array(UInt8), timestamp DateTime)
         ENGINE = MergeTree()
         ORDER BY (id)
-      `
-      return { ddl, tableName, engine: 'MergeTree' }
+      `;
+      return { ddl, tableName, engine: "MergeTree" };
     }
 
     case TestEnv.LocalCluster: {
@@ -182,8 +182,8 @@ function getDDL(): {
         (id UInt64, name String, sku Array(UInt8), timestamp DateTime)
         ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
         ORDER BY (id)
-      `
-      return { ddl, tableName, engine: 'ReplicatedMergeTree' }
+      `;
+      return { ddl, tableName, engine: "ReplicatedMergeTree" };
     }
   }
 }

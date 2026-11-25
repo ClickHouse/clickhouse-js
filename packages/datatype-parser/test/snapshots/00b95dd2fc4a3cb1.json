@@ -1,0 +1,53 @@
+{
+  "type": "Array(Tuple(LowCardinality(String), Array(Nullable(Decimal(18, 4)))))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "TupleDataType",
+        "name": "Tuple",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "LowCardinality",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "String"
+              }
+            ]
+          },
+          {
+            "type": "DataType",
+            "name": "Array",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "Nullable",
+                "arguments": [
+                  {
+                    "type": "DataType",
+                    "name": "Decimal",
+                    "arguments": [
+                      {
+                        "type": "Literal",
+                        "value_type": "UInt64",
+                        "value": "18"
+                      },
+                      {
+                        "type": "Literal",
+                        "value_type": "UInt64",
+                        "value": "4"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

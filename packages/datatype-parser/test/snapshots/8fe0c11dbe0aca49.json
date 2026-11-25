@@ -1,0 +1,23 @@
+{
+  "type": "Map(Int64, Nullable(Float64))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Map",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Int64"
+      },
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Float64"
+          }
+        ]
+      }
+    ]
+  }
+}

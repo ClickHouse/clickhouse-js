@@ -1,27 +1,34 @@
-import type { ClickHouseSettings } from '../settings'
+import type { CompressionMethod } from "../connection";
+import type { ClickHouseSettings } from "../settings";
 
-export type HttpHeader = number | string | string[]
-export type HttpHeaders = Record<string, HttpHeader | undefined>
+export type HttpHeader = number | string | string[];
+export type HttpHeaders = Record<string, HttpHeader | undefined>;
 
 export function withCompressionHeaders({
   headers,
-  enable_request_compression,
-  enable_response_compression,
+  request_compression_codec,
+  response_compression_codec,
 }: {
-  headers: HttpHeaders
-  enable_request_compression: boolean | undefined
-  enable_response_compression: boolean | undefined
+  headers: HttpHeaders;
+  // The codec name is also the `Content-Encoding` / `Accept-Encoding` value;
+  // `undefined` disables the corresponding header.
+  request_compression_codec: CompressionMethod | undefined;
+  response_compression_codec: CompressionMethod | undefined;
 }): Record<string, string> {
   return {
     ...headers,
-    ...(enable_response_compression ? { 'Accept-Encoding': 'gzip' } : {}),
-    ...(enable_request_compression ? { 'Content-Encoding': 'gzip' } : {}),
-  }
+    ...(response_compression_codec
+      ? { "Accept-Encoding": response_compression_codec }
+      : {}),
+    ...(request_compression_codec
+      ? { "Content-Encoding": request_compression_codec }
+      : {}),
+  };
 }
 
 export function withHttpSettings(
   clickhouse_settings?: ClickHouseSettings,
-  compression?: boolean,
+  compression?: { codec: CompressionMethod } | undefined,
 ): ClickHouseSettings {
   return {
     ...(compression
@@ -30,15 +37,15 @@ export function withHttpSettings(
         }
       : {}),
     ...clickhouse_settings,
-  }
+  };
 }
 
 export function isSuccessfulResponse(statusCode?: number): boolean {
-  return Boolean(statusCode && 200 <= statusCode && statusCode < 300)
+  return Boolean(statusCode && 200 <= statusCode && statusCode < 300);
 }
 
 export function isJWTAuth(auth: unknown): auth is { access_token: string } {
-  return auth !== null && typeof auth === 'object' && 'access_token' in auth
+  return auth !== null && typeof auth === "object" && "access_token" in auth;
 }
 
 export function isCredentialsAuth(
@@ -46,10 +53,24 @@ export function isCredentialsAuth(
 ): auth is { username: string; password: string } {
   return (
     auth !== null &&
-    typeof auth === 'object' &&
-    'username' in auth &&
-    'password' in auth
-  )
+    typeof auth === "object" &&
+    "username" in auth &&
+    "password" in auth
+  );
 }
 
-export const EXCEPTION_TAG_HEADER_NAME = 'x-clickhouse-exception-tag'
+export const EXCEPTION_TAG_HEADER_NAME = "x-clickhouse-exception-tag";
+
+/** The format of the response. In a request, this header replaces the `default_format` setting. */
+export const FORMAT_HEADER_NAME = "x-clickhouse-format";
+
+/** Returns a copy of `headers` without the header `name`. The name match ignores the case. */
+export function withoutHeader<H extends HttpHeaders>(
+  headers: H,
+  name: string,
+): H {
+  const lowerName = name.toLowerCase();
+  return Object.fromEntries(
+    Object.entries(headers).filter(([key]) => key.toLowerCase() !== lowerName),
+  ) as H;
+}

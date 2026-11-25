@@ -3,7 +3,7 @@ import type {
   ResponseHeaders,
   ResponseJSON,
   SpecialEventRow,
-} from './clickhouse_types'
+} from "./clickhouse_types";
 import type {
   DataFormat,
   RawDataFormat,
@@ -11,9 +11,9 @@ import type {
   SingleDocumentJSONFormat,
   StreamableDataFormat,
   StreamableJSONDataFormat,
-} from './data_formatter'
+} from "./data_formatter";
 
-export type RowOrProgress<T> = { row: T } | ProgressRow | SpecialEventRow<T>
+export type RowOrProgress<T> = { row: T } | ProgressRow | SpecialEventRow<T>;
 
 export type ResultStream<Format extends DataFormat | unknown, Stream> =
   // JSON*EachRow (except JSONObjectEachRow), CSV, TSV etc.
@@ -26,11 +26,11 @@ export type ResultStream<Format extends DataFormat | unknown, Stream> =
         Format extends RecordsJSONFormat
         ? never
         : // If we fail to infer the literal type, allow getting the stream
-          Stream
+          Stream;
 
 export type ResultJSONType<T, F extends DataFormat | unknown> =
   // Emits either a { row: T } or an object with progress
-  F extends 'JSONEachRowWithProgress'
+  F extends "JSONEachRowWithProgress"
     ? RowOrProgress<T>[]
     : // JSON*EachRow formats except JSONObjectEachRow
       F extends StreamableJSONDataFormat
@@ -45,11 +45,11 @@ export type ResultJSONType<T, F extends DataFormat | unknown> =
             F extends RawDataFormat
             ? never
             : // happens only when Format could not be inferred from a literal
-                T[] | Record<string, T> | ResponseJSON<T>
+              T[] | Record<string, T> | ResponseJSON<T>;
 
 export type RowJSONType<T, F extends DataFormat | unknown> =
   // Emits either a { row: T } or an object with progress
-  F extends 'JSONEachRowWithProgress'
+  F extends "JSONEachRowWithProgress"
     ? RowOrProgress<T>
     : // JSON*EachRow formats
       F extends StreamableJSONDataFormat
@@ -57,29 +57,24 @@ export type RowJSONType<T, F extends DataFormat | unknown> =
       : // CSV, TSV, non-streamable JSON formats - cannot be streamed as JSON
         F extends RawDataFormat | SingleDocumentJSONFormat | RecordsJSONFormat
         ? never
-        : T // happens only when Format could not be inferred from a literal
+        : T; // happens only when Format could not be inferred from a literal
 
 export interface Row<
   JSONType = unknown,
   Format extends DataFormat | unknown = unknown,
 > {
   /** A string representation of a row. */
-  text: string
+  text: string;
 
   /**
    * Returns a JSON representation of a row.
    * The method will throw if called on a response in JSON incompatible format.
    * It is safe to call this method multiple times.
    */
-  json<T = JSONType>(): RowJSONType<T, Format>
+  json<T = JSONType>(): RowJSONType<T, Format>;
 }
 
-export interface BaseResultSet<
-  Stream,
-  Format extends DataFormat | unknown,
-  BinaryStream = Stream,
-  RawStream = BinaryStream,
-> {
+export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
   /**
    * The method waits for all the rows to be fully loaded
    * and returns the result as a string.
@@ -89,7 +84,7 @@ export interface BaseResultSet<
    * The method should throw if the underlying stream was already consumed
    * by calling the other methods.
    */
-  text(): Promise<string>
+  text(): Promise<string>;
 
   /**
    * The method waits for the all the rows to be fully loaded.
@@ -101,7 +96,7 @@ export interface BaseResultSet<
    * by calling the other methods, or if it is called for non-JSON formats,
    * such as CSV, TSV, etc.
    */
-  json<T = unknown>(): Promise<ResultJSONType<T, Format>>
+  json<T = unknown>(): Promise<ResultJSONType<T, Format>>;
 
   /**
    * Returns a readable stream for responses that can be streamed.
@@ -127,10 +122,6 @@ export interface BaseResultSet<
    *   * CustomSeparatedWithNamesAndTypes
    *   * Parquet
    *
-   * For binary formats such as `Parquet`, `ORC`, `Arrow`, `ArrowStream`,
-   * and `Native`, prefer {@link binaryStream}. This method is row-oriented
-   * and splits the response on newline bytes.
-   *
    * Formats that CANNOT be streamed (the method returns "never" in TS):
    *   * JSON
    *   * JSONStrings
@@ -148,57 +139,14 @@ export interface BaseResultSet<
    * and if the underlying stream was already consumed
    * by calling the other methods.
    */
-  stream(): ResultStream<Format, Stream>
-
-  /**
-   * Returns a readable stream of binary response bytes, without splitting it
-   * into rows.
-   *
-   * This is the correct way to consume binary formats such as `Parquet`,
-   * `ORC`, `Arrow`, `ArrowStream`, or `Native`, where the row-oriented
-   * {@link stream} method would corrupt the payload (it splits the body on
-   * newline characters, which are meaningless in binary data and can be
-   * misinterpreted as row or exception boundaries).
-   *
-   * Unlike calling {@link ClickHouseClient.exec} directly, this method still
-   * detects a mid-stream exception appended by the server and propagates it as
-   * a stream error.
-   *
-   * Each iteration provides a chunk of raw bytes (`Buffer` in Node.js,
-   * `Uint8Array` in the Web client).
-   *
-   * Should be called only once.
-   *
-   * The method should throw if the underlying stream was already consumed
-   * by calling the other methods.
-   */
-  binaryStream(): BinaryStream
-
-  /**
-   * Returns the underlying raw response stream as provided by the transport.
-   *
-   * Unlike {@link binaryStream}, this method does not inspect the trailing
-   * bytes for a ClickHouse exception marker and does not apply any row or
-   * binary framing logic. If the server appends a mid-stream exception, it
-   * will be delivered as raw bytes and must be handled by the caller.
-   *
-   * Use this only for low-level piping or when you explicitly need the exact
-   * underlying stream object and accept the responsibility for parsing,
-   * validation, and error handling yourself.
-   *
-   * Should be called only once.
-   *
-   * The method should throw if the underlying stream was already consumed
-   * by calling the other methods.
-   */
-  rawStream(): RawStream
+  stream(): ResultStream<Format, Stream>;
 
   /** Close the underlying stream. */
-  close(): void
+  close(): void;
 
   /** ClickHouse server QueryID. */
-  query_id: string
+  query_id: string;
 
   /** Response headers. */
-  response_headers: ResponseHeaders
+  response_headers: ResponseHeaders;
 }

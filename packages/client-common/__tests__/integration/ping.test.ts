@@ -1,16 +1,16 @@
-import { describe, it, expect, afterEach } from 'vitest'
-import { type ClickHouseClient } from '@clickhouse/client-common'
-import { createTestClient } from '../utils'
+import { describe, it, expect, afterEach } from "vitest";
+import { type ClickHouseClient } from "@clickhouse/client-common";
+import { createTestClient } from "../utils";
 
-describe('ping', () => {
-  let client: ClickHouseClient
+describe("ping", () => {
+  let client: ClickHouseClient;
   afterEach(async () => {
-    await client.close()
-  })
+    await client.close();
+  });
 
-  it('makes a ping request', async () => {
-    client = createTestClient()
-    const response = await client.ping()
-    expect(response.success).toBe(true)
-  })
-})
+  it("makes a ping request", async () => {
+    client = createTestClient();
+    const response = await client.ping();
+    expect(response.success).toBe(true);
+  });
+});

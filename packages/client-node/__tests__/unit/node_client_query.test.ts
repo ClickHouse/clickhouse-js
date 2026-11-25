@@ -1,102 +1,102 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import Http from 'http'
-import { NodeClickHouseClient } from '../../src/client'
-import { NodeConfigImpl } from '../../src/config'
-import { emitResponseBody, stubClientRequest } from '../utils/http_stubs'
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import Http from "http";
+import { NodeClickHouseClient } from "../../src/client";
+import { NodeConfigImpl } from "../../src/config";
+import { emitResponseBody, stubClientRequest } from "../utils/http_stubs";
 
 const UUID_REGEX =
-  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 beforeEach(() => {
-  vi.clearAllMocks()
-})
+  vi.clearAllMocks();
+});
 
-describe('[Node.js] NodeClickHouseClient query method', () => {
-  it('should call query method and return ResultSet', async () => {
+describe("[Node.js] NodeClickHouseClient query method", () => {
+  it("should call query method and return ResultSet", async () => {
     // Create a client instance using the internal constructor
     const client = new NodeClickHouseClient({
       impl: NodeConfigImpl,
-      url: 'http://localhost:8123',
-    })
+      url: "http://localhost:8123",
+    });
 
     // Mock the underlying HTTP request
-    const httpRequestStub = vi.spyOn(Http, 'request')
-    const request = stubClientRequest()
-    httpRequestStub.mockReturnValue(request)
+    const httpRequestStub = vi.spyOn(Http, "request");
+    const request = stubClientRequest();
+    httpRequestStub.mockReturnValue(request);
 
     // Start a query
     const queryPromise = client.query({
-      query: 'SELECT number FROM system.numbers LIMIT 1',
-      format: 'JSONEachRow',
-    })
+      query: "SELECT number FROM system.numbers LIMIT 1",
+      format: "JSONEachRow",
+    });
 
     // Emit a response
-    const responseBody = JSON.stringify({ number: '0' }) + '\n'
-    await emitResponseBody(request, responseBody)
+    const responseBody = JSON.stringify({ number: "0" }) + "\n";
+    await emitResponseBody(request, responseBody);
 
     // Wait for the query to complete
-    const result = await queryPromise
+    const result = await queryPromise;
 
     // Verify the result is a ResultSet
-    expect(result).toBeDefined()
-    expect(result.query_id).toMatch(UUID_REGEX)
+    expect(result).toBeDefined();
+    expect(result.query_id).toMatch(UUID_REGEX);
 
     // Verify the stream can be consumed
-    const text = await result.text()
+    const text = await result.text();
     expect(text).toMatchInlineSnapshot(`
       "{"number":"0"}
       "
-    `)
+    `);
 
     // Close the client
-    await client.close()
-  })
+    await client.close();
+  });
 
-  it('should handle query with different format parameter', async () => {
+  it("should handle query with different format parameter", async () => {
     const client = new NodeClickHouseClient({
       impl: NodeConfigImpl,
-      url: 'http://localhost:8123',
-    })
+      url: "http://localhost:8123",
+    });
 
-    const httpRequestStub = vi.spyOn(Http, 'request')
-    const request = stubClientRequest()
-    httpRequestStub.mockReturnValue(request)
+    const httpRequestStub = vi.spyOn(Http, "request");
+    const request = stubClientRequest();
+    httpRequestStub.mockReturnValue(request);
 
     const queryPromise = client.query({
-      query: 'SELECT 1',
-      format: 'CSV',
-    })
+      query: "SELECT 1",
+      format: "CSV",
+    });
 
-    const responseBody = '1\n'
-    await emitResponseBody(request, responseBody)
+    const responseBody = "1\n";
+    await emitResponseBody(request, responseBody);
 
-    const result = await queryPromise
-    expect(result).toBeDefined()
+    const result = await queryPromise;
+    expect(result).toBeDefined();
 
-    const text = await result.text()
-    expect(text).toMatchInlineSnapshot(`"1\n"`)
+    const text = await result.text();
+    expect(text).toMatchInlineSnapshot(`"1\n"`);
 
-    await client.close()
-  })
+    await client.close();
+  });
 
-  it('should maintain type safety with query format', async () => {
+  it("should maintain type safety with query format", async () => {
     const client = new NodeClickHouseClient({
       impl: NodeConfigImpl,
-      url: 'http://localhost:8123',
-    })
+      url: "http://localhost:8123",
+    });
 
-    const httpRequestStub = vi.spyOn(Http, 'request')
-    const request = stubClientRequest()
-    httpRequestStub.mockReturnValue(request)
+    const httpRequestStub = vi.spyOn(Http, "request");
+    const request = stubClientRequest();
+    httpRequestStub.mockReturnValue(request);
 
     // Test with JSON format (default)
     const queryPromise = client.query({
-      query: 'SELECT 42 as answer',
-      format: 'JSON',
-    })
+      query: "SELECT 42 as answer",
+      format: "JSON",
+    });
 
     const responseBody = JSON.stringify({
-      meta: [{ name: 'answer', type: 'UInt8' }],
+      meta: [{ name: "answer", type: "UInt8" }],
       data: [{ answer: 42 }],
       rows: 1,
       statistics: {
@@ -104,14 +104,14 @@ describe('[Node.js] NodeClickHouseClient query method', () => {
         rows_read: 1,
         bytes_read: 1,
       },
-    })
-    await emitResponseBody(request, responseBody)
+    });
+    await emitResponseBody(request, responseBody);
 
-    const result = await queryPromise
-    expect(result).toBeDefined()
+    const result = await queryPromise;
+    expect(result).toBeDefined();
 
     // Verify we can get JSON response
-    const json = await result.json()
+    const json = await result.json();
     expect(json).toMatchInlineSnapshot(`
       {
         "data": [
@@ -132,8 +132,8 @@ describe('[Node.js] NodeClickHouseClient query method', () => {
           "rows_read": 1,
         },
       }
-    `)
+    `);
 
-    await client.close()
-  })
-})
+    await client.close();
+  });
+});

@@ -1,0 +1,439 @@
+/**
+ * Render decoded `RowBinaryWithNamesAndTypes` values back into the exact text
+ * ClickHouse produces for the `TabSeparated` format, so the upstream
+ * `clickhouse-test` runner can diff our output against the checked-in
+ * `.reference` files.
+ *
+ * This is the value-oracle half of the RowBinary backend: ClickHouse is the
+ * byte oracle (it produces the RowBinary), our parser decodes it, and this
+ * module re-serializes the decoded JS values. A faithful round-trip
+ * (RowBinary-decode → TSV-render == server's TSV) is what proves the dynamic
+ * header→reader path decoded every column correctly.
+ *
+ * The renderer is TYPE-DIRECTED: it walks the column's parsed data-type AST
+ * (from `@clickhouse/datatype-parser`, the same AST the parser folds into
+ * readers) alongside the decoded value, because the JS value alone is
+ * insufficient to reproduce ClickHouse's text — e.g. a `DateTime64(P)` decodes
+ * to `[Date, nanoseconds]` but the sub-second precision `P` that decides how
+ * many fractional digits to print lives only in the type.
+ *
+ * Two text contexts, mirroring ClickHouse's `serializeTextEscaped` (top level)
+ * vs `serializeTextQuoted` (inside Array/Tuple/Map):
+ *   - top level: strings/dates/etc. are escaped but UNQUOTED; NULL is `\N`.
+ *   - nested:    the same values are wrapped in single quotes; NULL is `NULL`.
+ * Numbers, decimals and booleans are bare in both contexts.
+ *
+ * Types that it does not render (Variant, JSON, Dynamic: their decoded values
+ * do not carry their type, which the text depends on) throw
+ * {@link TSVRenderError}; the RowBinary backend treats that as a decode failure
+ * for the statement, so such tests stay known failures rather than passing
+ * through an unexercised path.
+ */
+
+import {
+  parseDataType,
+  NodeKind,
+  type Node,
+} from "@clickhouse/datatype-parser";
+import { formatDecimal } from "@clickhouse/rowbinary/readers/decimals";
+import { formatTime, formatTime64 } from "@clickhouse/rowbinary/readers/time";
+import { formatUUID } from "@clickhouse/rowbinary/readers/uuid";
+import { formatIPv4, formatIPv6 } from "@clickhouse/rowbinary/readers/ip";
+
+/** Thrown when a column type has no TSV renderer yet (see module note). */
+export class TSVRenderError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TSVRenderError";
+  }
+}
+
+/** Types whose text is unquoted+escaped at top level but single-quoted when nested. */
+export function renderStringish(s: string, nested: boolean): string {
+  return nested ? `'${escapeQuoted(s)}'` : escapeRaw(s);
+}
+
+// C-style escapes for the characters that ClickHouse escapes in the
+// TabSeparated format, at the top level and inside Array/Tuple/Map (the same
+// set in both contexts: `'a\'b'` is written as `a\'b` at the top level).
+// Backslash itself is included so a SINGLE-pass `replace` is complete:
+// escaping in one pass (rather than chaining `.replace`s) avoids re-processing
+// the backslashes we introduce.
+const ESCAPES: Record<string, string> = {
+  "\\": "\\\\",
+  "'": "\\'",
+  "\b": "\\b",
+  "\f": "\\f",
+  "\t": "\\t",
+  "\n": "\\n",
+  "\r": "\\r",
+  "\0": "\\0",
+};
+
+/** TabSeparated top-level escaping (`serializeTextEscaped`). */
+function escapeRaw(s: string): string {
+  return s.replace(/[\\'\b\f\t\n\r\0]/g, (c) => ESCAPES[c]!);
+}
+
+/** Quoted escaping (`serializeTextQuoted`): the same escapes, in single quotes. */
+const escapeQuoted = escapeRaw;
+
+/** ClickHouse's lower-case words for the non-finite floats and signed zero, else null. */
+function floatSpecial(n: number): string | null {
+  if (Number.isNaN(n)) return "nan";
+  if (n === Infinity) return "inf";
+  if (n === -Infinity) return "-inf";
+  if (n === 0) return Object.is(n, -0) ? "-0" : "0";
+  return null;
+}
+
+/**
+ * Reconcile JS's number text with ClickHouse's: ClickHouse writes a positive
+ * exponent without the `+` (`3.4028235e38`, not JS's `3.4028235e+38`); negative
+ * exponents (`1e-10`) already match.
+ */
+function chFloatText(s: string): string {
+  return s.replace("e+", "e");
+}
+
+/**
+ * ClickHouse `Float64` text: the shortest decimal that round-trips to the
+ * double, which is exactly what `String(number)` produces in V8 (and what
+ * ClickHouse emits).
+ */
+export function formatFloat(n: number): string {
+  return floatSpecial(n) ?? chFloatText(String(n));
+}
+
+/**
+ * ClickHouse `Float32` text. The parser widens a Float32 to a JS double, so
+ * `String(n)` would print the double's full precision (e.g. `0.2689400017261505`
+ * for a value ClickHouse prints as `0.26894`). ClickHouse instead emits the
+ * shortest decimal that round-trips to the *single*-precision value, so search
+ * increasing precisions for the shortest string whose `Math.fround` is `n`.
+ */
+function formatFloat32(n: number): string {
+  const special = floatSpecial(n);
+  if (special !== null) return special;
+  for (let p = 1; p < 9; p++) {
+    const candidate = Number(n.toPrecision(p));
+    if (Math.fround(candidate) === n) return chFloatText(String(candidate));
+  }
+  return chFloatText(String(n));
+}
+
+const pad2 = (n: number): string => String(n).padStart(2, "0");
+
+/** `YYYY-MM-DD` from the UTC components of the parser's `Date` (days since epoch). */
+function formatDate(d: Date): string {
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+}
+
+/**
+ * The time zone of a DateTime column that has no time zone in its type: the
+ * `session_timezone` of the session, else the time zone of the server. The
+ * backend sets it before it writes a result. The server of the tests runs in
+ * UTC.
+ */
+let defaultTimeZone = "UTC";
+
+export function setDefaultTimeZone(tz: string | null): void {
+  defaultTimeZone = tz !== null && tz.length > 0 ? tz : "UTC";
+}
+
+const timeZoneFormats = new Map<string, Intl.DateTimeFormat>();
+
+function timeZoneFormat(tz: string): Intl.DateTimeFormat {
+  let f = timeZoneFormats.get(tz);
+  if (f === undefined) {
+    try {
+      f = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hourCycle: "h23",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch {
+      throw new TSVRenderError(`unknown time zone ${tz}`);
+    }
+    timeZoneFormats.set(tz, f);
+  }
+  return f;
+}
+
+/** `YYYY-MM-DD HH:MM:SS` of `d` in the time zone `tz`. */
+function formatDateTime(d: Date, tz: string): string {
+  if (tz === "UTC") {
+    return `${formatDate(d)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`;
+  }
+  const p: Record<string, string> = {};
+  for (const part of timeZoneFormat(tz).formatToParts(d)) {
+    p[part.type] = part.value;
+  }
+  return `${p["year"]!.padStart(4, "0")}-${p["month"]}-${p["day"]} ${p["hour"]}:${p["minute"]}:${p["second"]}`;
+}
+
+/**
+ * `YYYY-MM-DD HH:MM:SS[.fff...]` for `DateTime64(P)`. The parser hands back
+ * `[Date (whole seconds), nanoseconds]`; the P-digit fraction is the
+ * nanoseconds scaled down to the column precision.
+ */
+function formatDateTime64(
+  value: unknown,
+  precision: number,
+  tz: string,
+): string {
+  const [d, ns] = value as [Date, number];
+  const base = formatDateTime(d, tz);
+  if (precision <= 0) return base;
+  // TRUNCATE toward the precision, matching ClickHouse's text output — never
+  // round, which could nudge the fraction up to 10^precision and would then
+  // need to carry into the seconds field.
+  const frac = Math.trunc(ns / 10 ** (9 - precision));
+  return `${base}.${String(frac).padStart(precision, "0")}`;
+}
+
+/** A geo `Point` decodes to `[x, y]` (two Float64s) and renders as `(x,y)`. */
+function renderPoint(value: unknown): string {
+  const [x, y] = value as [number, number];
+  return `(${formatFloat(x)},${formatFloat(y)})`;
+}
+
+/** `[elem,elem,…]` for the array-of-Point geo nestings (Ring/Polygon/Multi*). */
+function renderPointArray(
+  value: unknown,
+  renderElem: (e: unknown) => string,
+): string {
+  return `[${(value as unknown[]).map(renderElem).join(",")}]`;
+}
+
+export function requireArg(node: Node, index: number): Node {
+  const arg = node.arguments[index];
+  if (arg === undefined) {
+    throw new TSVRenderError(`type ${node.name} is missing argument ${index}`);
+  }
+  return arg;
+}
+
+/** The time zone argument at `index` of a DateTime type, else the default. */
+function timeZoneArg(node: Node, index: number): string {
+  const arg = node.arguments[index];
+  if (arg === undefined) return defaultTimeZone;
+  if (arg.kind !== NodeKind.Literal) {
+    throw new TSVRenderError(`expected a time zone literal in ${node.name}`);
+  }
+  return String(arg.value).replace(/^'(.*)'$/s, "$1");
+}
+
+/**
+ * A `Geometry` value: the six geo types have the same text form (a Point is
+ * `(x,y)`, the others are nested lists of points), so the value alone gives
+ * the text, also when the value does not tell which geo type it is.
+ */
+function renderGeometry(value: unknown): string {
+  const v = value as unknown[];
+  if (v.length === 2 && typeof v[0] === "number" && typeof v[1] === "number") {
+    return renderPoint(v);
+  }
+  return `[${v.map(renderGeometry).join(",")}]`;
+}
+
+/** `Nested(a T1, b T2)` (with flatten_nested = 0) is `Array(Tuple(a T1, b T2))`. */
+function renderNested(node: Node, value: unknown): string {
+  const rows = (value as Record<string, unknown>[]).map((row) => {
+    const cells = node.arguments.map((child) => {
+      if (child.kind !== NodeKind.NameTypePair || child.data_type === null) {
+        throw new TSVRenderError(
+          "malformed Nested(...): expected name/type pairs",
+        );
+      }
+      return renderValue(child.data_type, row[child.name], true);
+    });
+    return `(${cells.join(",")})`;
+  });
+  return `[${rows.join(",")}]`;
+}
+
+function literalInt(node: Node): number {
+  if (node.kind !== NodeKind.Literal) {
+    throw new TSVRenderError(`expected a literal argument in ${node.name}`);
+  }
+  return Number(node.value);
+}
+
+/**
+ * Render one decoded value as ClickHouse TSV text. `nested` selects the quoted
+ * (inside a composite) vs top-level serialization. Mirrors the type dispatch in
+ * the parser's `astToReader`, so the value shapes line up by construction.
+ */
+export function renderValue(
+  node: Node,
+  value: unknown,
+  nested: boolean,
+): string {
+  // NULL is type-independent: only the surrounding context decides its text.
+  if (value === null || value === undefined) return nested ? "NULL" : "\\N";
+
+  if (node.kind === NodeKind.EnumDataType) {
+    // @clickhouse/rowbinary's enum readers already resolve the underlying
+    // integer to its NAME via the type's value→name map, so render that string
+    // directly (ClickHouse TSV prints the enum name, not the integer).
+    return renderStringish(String(value), nested);
+  }
+  if (node.kind === NodeKind.TupleDataType) {
+    return renderTuple(node, value);
+  }
+  if (node.kind !== NodeKind.DataType) {
+    throw new TSVRenderError(`cannot render a ${node.kind} node`);
+  }
+
+  switch (node.name) {
+    // --- transparent wrappers ---
+    case "Nullable":
+    case "LowCardinality":
+      return renderValue(requireArg(node, 0), value, nested);
+
+    // --- composites (children always render in the nested/quoted context) ---
+    case "Array":
+    case "QBit": {
+      const elem = requireArg(node, 0);
+      return `[${(value as unknown[]).map((v) => renderValue(elem, v, true)).join(",")}]`;
+    }
+    case "Map": {
+      const keyT = requireArg(node, 0);
+      const valT = requireArg(node, 1);
+      const entries = [...(value as Map<unknown, unknown>)].map(
+        ([k, v]) =>
+          `${renderValue(keyT, k, true)}:${renderValue(valT, v, true)}`,
+      );
+      return `{${entries.join(",")}}`;
+    }
+
+    // --- geo: fixed nestings of Point (a Float64 pair). ClickHouse renders
+    // these the same in any context, so `nested` is irrelevant here.
+    case "Point":
+      return renderPoint(value);
+    case "Ring":
+    case "LineString":
+      return renderPointArray(value, renderPoint);
+    case "Polygon":
+    case "MultiLineString":
+      return renderPointArray(value, (r) => renderPointArray(r, renderPoint));
+    case "MultiPolygon":
+      return renderPointArray(value, (poly) =>
+        renderPointArray(poly, (r) => renderPointArray(r, renderPoint)),
+      );
+
+    // --- stringish (unquoted+escaped at top level, single-quoted when nested) ---
+    case "String":
+    case "FixedString":
+      return renderStringish(value as string, nested);
+    case "UUID":
+      return renderStringish(formatUUID(value as Buffer), nested);
+    case "IPv4":
+      return renderStringish(formatIPv4(value as number), nested);
+    case "IPv6":
+      return renderStringish(formatIPv6(value as Buffer), nested);
+    case "Date":
+    case "Date32":
+      return renderStringish(formatDate(value as Date), nested);
+    case "DateTime":
+    case "DateTime32":
+      return renderStringish(
+        formatDateTime(value as Date, timeZoneArg(node, 0)),
+        nested,
+      );
+    case "DateTime64":
+      return renderStringish(
+        formatDateTime64(
+          value,
+          node.arguments.length > 0 ? literalInt(node.arguments[0]!) : 3,
+          timeZoneArg(node, 1),
+        ),
+        nested,
+      );
+    case "Nested":
+      return renderNested(node, value);
+    case "Geometry":
+      return renderGeometry(value);
+    case "Time":
+      return renderStringish(formatTime(value as number), nested);
+    case "Time64":
+      return renderStringish(
+        formatTime64(value as readonly [bigint, number]),
+        nested,
+      );
+
+    // --- numeric / boolean (bare in both contexts) ---
+    case "Bool":
+      return value ? "true" : "false";
+    case "Float32":
+      return formatFloat32(value as number);
+    case "Float64":
+    case "BFloat16":
+      return formatFloat(value as number);
+    case "Decimal":
+    case "Decimal32":
+    case "Decimal64":
+    case "Decimal128":
+    case "Decimal256":
+      return stripDecimalTrailingZeros(
+        formatDecimal(value as readonly [bigint, number]),
+      );
+
+    default:
+      // Integers (incl. 64/128/256-bit bigints) and Interval* are plain digits.
+      if (
+        node.name.startsWith("Int") ||
+        node.name.startsWith("UInt") ||
+        node.name.startsWith("Interval")
+      ) {
+        return String(value);
+      }
+      throw new TSVRenderError(`no TSV renderer for type ${node.name}`);
+  }
+}
+
+/**
+ * ClickHouse text output drops a Decimal's trailing fractional zeros, and the
+ * decimal point with them (`1.20` -> `1.2`, `3.00` -> `3`), under the default
+ * `output_format_decimal_trailing_zeros = 0`. `formatDecimal` keeps the full
+ * scale, so trim it here. The upstream runner never randomizes that setting.
+ */
+export function stripDecimalTrailingZeros(text: string): string {
+  if (!text.includes(".")) return text;
+  return text.replace(/0+$/, "").replace(/\.$/, "");
+}
+
+/** `(a,b,c)` — named (object) or positional (array) tuples both print positionally. */
+function renderTuple(node: Node, value: unknown): string {
+  const cells = node.arguments.map((field, i) => {
+    const name = node.element_names[i];
+    const v =
+      name !== undefined && name.length > 0 && !Array.isArray(value)
+        ? (value as Record<string, unknown>)[name]
+        : (value as unknown[])[i];
+    return renderValue(field, v, true);
+  });
+  return `(${cells.join(",")})`;
+}
+
+/** Parse each column type string once and return a per-column top-level renderer. */
+export function compileRowRenderers(
+  types: string[],
+): ((value: unknown) => string)[] {
+  return types.map((t) => {
+    const result = parseDataType(t);
+    if (!result.ok() || result.ast === null) {
+      throw new TSVRenderError(
+        `cannot parse column type ${JSON.stringify(t)}: ${result.error?.message ?? "unknown"}`,
+      );
+    }
+    const node = result.ast;
+    return (value: unknown) => renderValue(node, value, false);
+  });
+}

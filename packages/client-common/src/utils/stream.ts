@@ -1,14 +1,38 @@
-import { parseError } from '../error'
+import { parseError } from "../error";
 
-const EXCEPTION_MARKER = '__exception__'
+const EXCEPTION_MARKER = "__exception__";
 
-const NEWLINE = 0x0a as const
-export const CARET_RETURN = 0x0d as const
+const NEWLINE = 0x0a as const;
+export const CARET_RETURN = 0x0d as const;
 
-/** The literal prefix that precedes a mid-stream exception block (after 25.11).
- *  The full start marker is this prefix followed by the exception tag value
- *  taken from the {@link EXCEPTION_TAG_HEADER_NAME} response header. */
-const EXCEPTION_START_PREFIX = `\r\n${EXCEPTION_MARKER}\r\n`
+// Error envelopes have a space after the colon; ordinary JSON rows do not.
+// Capture the encoded message, so JSON.parse checks and decodes only a string.
+const JSON_EXCEPTION_MESSAGE = /^\{"exception": (".*")\}$/s;
+
+/** Creates an error decoder for the JSON formats that use object rows.
+ *  The wire format distinguishes errors from a column named `exception`.
+ *  Compact JSON formats do not have that distinction. */
+export function createJSONEachRowErrorDetector(
+  format: unknown,
+): ((text: string) => Error | undefined) | undefined {
+  if (format !== "JSONEachRow" && format !== "JSONStringsEachRow") {
+    return undefined;
+  }
+
+  return (text) => {
+    const encodedMessage = JSON_EXCEPTION_MESSAGE.exec(text)?.[1];
+    if (encodedMessage === undefined) return undefined;
+
+    let message: string;
+    try {
+      message = JSON.parse(encodedMessage);
+    } catch {
+      // A malformed string or extra object fields are not an error envelope.
+      return undefined;
+    }
+    return parseError(message);
+  };
+}
 
 /**
  * After 25.11, a newline error character is preceded by a caret return
@@ -33,31 +57,41 @@ export function extractErrorAtTheEndOfChunk(
       EXCEPTION_MARKER.length + // __exception__
       2 + // \r\n
       exceptionTag.length + // <value taken from the header>
-      2 // \r\n
+      2; // \r\n
 
-    let errMsgLenStartIdx = chunk.length - bytesCountAfterErrLenHint
+    let errMsgLenStartIdx = chunk.length - bytesCountAfterErrLenHint;
     if (errMsgLenStartIdx < 1) {
       return new Error(
-        'there was an error in the stream, but the last chunk is malformed',
-      )
+        "there was an error in the stream, but the last chunk is malformed",
+      );
     }
 
+    // Scan backwards for the newline that delimits the error-length hint.
+    // The scan is floored at the start of the chunk: a malformed trailer (e.g.
+    // truncated by a proxy, with no newline below the hint) must not send the
+    // index negative and spin forever, which would block the event loop since
+    // `chunk[-1]` is `undefined` (never a newline) and nothing throws.
     do {
-      --errMsgLenStartIdx
-    } while (chunk[errMsgLenStartIdx] !== NEWLINE)
+      --errMsgLenStartIdx;
+    } while (errMsgLenStartIdx >= 0 && chunk[errMsgLenStartIdx] !== NEWLINE);
+    if (errMsgLenStartIdx < 0) {
+      return new Error(
+        "there was an error in the stream, but the last chunk is malformed",
+      );
+    }
 
-    const textDecoder = new TextDecoder('utf-8')
+    const textDecoder = new TextDecoder("utf-8");
 
     const errMsgLen = parseInt(
       textDecoder.decode(
         chunk.subarray(errMsgLenStartIdx, -bytesCountAfterErrLenHint),
       ),
-    )
+    );
 
     if (isNaN(errMsgLen) || errMsgLen <= 0) {
       return new Error(
-        'there was an error in the stream; failed to parse the message length',
-      )
+        "there was an error in the stream; failed to parse the message length",
+      );
     }
 
     const errMsg = textDecoder.decode(
@@ -65,135 +99,149 @@ export function extractErrorAtTheEndOfChunk(
         errMsgLenStartIdx - errMsgLen + 1, // skipping the newline character
         errMsgLenStartIdx,
       ),
-    )
+    );
 
-    return parseError(errMsg)
+    return parseError(errMsg);
   } catch (err) {
     // theoretically, it can happen if a proxy cuts the last chunk
-    return err as Error
+    return err as Error;
   }
-}
-
-const EMPTY_BYTES = new Uint8Array(0)
-
-function indexOfSubarray(
-  haystack: Uint8Array,
-  needle: Uint8Array,
-  fromIndex = 0,
-): number {
-  if (needle.length === 0) return -1
-  outer: for (let i = fromIndex; i <= haystack.length - needle.length; i++) {
-    for (let j = 0; j < needle.length; j++) {
-      if (haystack[i + j] !== needle[j]) {
-        continue outer
-      }
-    }
-    return i
-  }
-  return -1
-}
-
-function concatBytes(chunks: Uint8Array[], totalLength: number): Uint8Array {
-  if (chunks.length === 1) return chunks[0]
-  const result = new Uint8Array(totalLength)
-  let offset = 0
-  for (const chunk of chunks) {
-    result.set(chunk, offset)
-    offset += chunk.length
-  }
-  return result
 }
 
 /**
- * The result of feeding a chunk to {@link RawStreamExceptionDetector}:
- * `data` is the slice of raw bytes that is safe to emit downstream,
- * and `error`, when present, is a parsed mid-stream exception that terminates
- * the stream.
- */
-export interface RawStreamChunkResult {
-  data: Uint8Array
-  error?: Error
-}
-
-/**
- * A stateful helper that lets raw (binary) streams - such as Parquet - be
- * forwarded byte-for-byte while still detecting and parsing a mid-stream
- * exception that the server may append at the very end of the response.
+ * Sound discriminator for the mid-stream exception trailer.
  *
- * Unlike the row-oriented {@link extractErrorAtTheEndOfChunk} heuristic (which
- * keys off a bare `\r\n` and therefore yields false positives on binary data),
- * this detector matches the full exception start marker
- * `\r\n__exception__\r\n<tag>`, where `<tag>` is the random value taken from the
- * {@link EXCEPTION_TAG_HEADER_NAME} response header. This combination is
- * effectively impossible to encounter by chance inside binary payloads.
+ * When an error occurs after ClickHouse (25.11+) has already started streaming
+ * a 200 response, it terminates the body with the exact byte sequence
+ * `<exceptionTag>\r\n__exception__\r\n`, where `exceptionTag` is the random
+ * per-response token echoed by the `x-clickhouse-exception-tag` response header.
+ * Returns `true` only when `chunk` ends with that sequence.
+ *
+ * Requiring both the fixed `__exception__` marker *and* the random per-response
+ * tag makes detection reliable, so a bare `\r\n` occurring inside a *successful*
+ * response body — binary formats such as Parquet, or CRLF-terminated CSV/TSV
+ * rows (`output_format_*_crlf_end_of_line`) — is not mistaken for an exception.
+ * @internal
  */
-export class RawStreamExceptionDetector {
-  private readonly startMarker: Uint8Array
-  /** Bytes withheld from the previous chunk that could be a partial start marker. */
-  private pending: Uint8Array = EMPTY_BYTES
-  /** Once the start marker is found, all subsequent bytes are accumulated here. */
-  private readonly exceptionChunks: Uint8Array[] = []
-  private exceptionLength = 0
-  private inException = false
-
-  constructor(private readonly exceptionTag: string) {
-    this.startMarker = new TextEncoder().encode(
-      EXCEPTION_START_PREFIX + exceptionTag,
-    )
+export function endsWithExceptionMarker(
+  chunk: Uint8Array,
+  exceptionTag: string,
+): boolean {
+  // The random per-response tag is the discriminator; without it the check
+  // cannot be sound. Refuse to treat the chunk as an exception rather than
+  // fall back to a marker-only match (better to miss a degenerate tag-less
+  // trailer than to abort a successful stream on a stray `__exception__`).
+  if (exceptionTag.length === 0) {
+    return false;
   }
-
-  /**
-   * Feeds the next chunk of the raw stream to the detector.
-   * @returns the slice of raw bytes that is safe to emit to the consumer.
-   */
-  push(chunk: Uint8Array): Uint8Array {
-    if (this.inException) {
-      this.exceptionChunks.push(chunk)
-      this.exceptionLength += chunk.length
-      return EMPTY_BYTES
-    }
-
-    const buf =
-      this.pending.length === 0
-        ? chunk
-        : concatBytes([this.pending, chunk], this.pending.length + chunk.length)
-    this.pending = EMPTY_BYTES
-
-    const markerIdx = indexOfSubarray(buf, this.startMarker)
-    if (markerIdx !== -1) {
-      this.inException = true
-      const exceptionPart = buf.subarray(markerIdx)
-      this.exceptionChunks.push(exceptionPart)
-      this.exceptionLength += exceptionPart.length
-      return buf.subarray(0, markerIdx)
-    }
-
-    // No full marker. The tail of the current buffer could still be the
-    // beginning of a start marker that completes in the next chunk, so we hold
-    // back the last (markerLength - 1) bytes until we can be sure.
-    const keep = Math.min(this.startMarker.length - 1, buf.length)
-    this.pending = buf.subarray(buf.length - keep)
-    return buf.subarray(0, buf.length - keep)
+  // Suffix layout, from `chunk.length` backwards:
+  //   <exceptionTag> \r \n __exception__ \r \n
+  const suffixLength = exceptionTag.length + 2 + EXCEPTION_MARKER.length + 2;
+  if (chunk.length < suffixLength) {
+    return false;
   }
-
-  /**
-   * Signals the end of the stream.
-   * @returns any remaining bytes to emit as `data`, and a parsed `error` if a
-   * mid-stream exception was detected.
-   */
-  flush(): RawStreamChunkResult {
-    if (this.inException) {
-      const fullException = concatBytes(
-        this.exceptionChunks,
-        this.exceptionLength,
-      )
-      return {
-        data: EMPTY_BYTES,
-        error: extractErrorAtTheEndOfChunk(fullException, this.exceptionTag),
-      }
+  let pos = chunk.length - suffixLength;
+  for (let i = 0; i < exceptionTag.length; i++) {
+    if (chunk[pos++] !== exceptionTag.charCodeAt(i)) {
+      return false;
     }
-    const data = this.pending
-    this.pending = EMPTY_BYTES
-    return { data }
   }
+  if (chunk[pos++] !== CARET_RETURN || chunk[pos++] !== NEWLINE) {
+    return false;
+  }
+  for (let i = 0; i < EXCEPTION_MARKER.length; i++) {
+    if (chunk[pos++] !== EXCEPTION_MARKER.charCodeAt(i)) {
+      return false;
+    }
+  }
+  return chunk[pos++] === CARET_RETURN && chunk[pos] === NEWLINE;
+}
+
+/** ClickHouse caps the whole mid-stream exception block at 16 KiB. */
+const MAX_EXCEPTION_BLOCK_SIZE = 16 * 1024;
+
+/** See {@link matchExceptionBlockStart}. */
+export type ExceptionBlockStartMatch = "match" | "partial" | "none";
+
+/**
+ * A mid-stream exception block (ClickHouse 25.11+) opens with
+ * `\r\n__exception__\r\n<exceptionTag>`, where `exceptionTag` is the random
+ * per-response token echoed by the `x-clickhouse-exception-tag` header.
+ *
+ * Call this for a `\n` that is preceded by `\r`, with `offset` set to the index
+ * right after that `\n`. Returns:
+ * - `"match"` when the bytes from `offset` complete the block opening;
+ * - `"partial"` when the bytes from `offset` are an incomplete prefix of it,
+ *   so that the next chunk is necessary to decide;
+ * - `"none"` otherwise (e.g. a CRLF-terminated CSV/TSV row, or binary data).
+ *
+ * To continue a `"partial"` result with the next chunk, set `matchedLength` to
+ * the number of bytes after the `\n` that matched before, and `offset` to `0`.
+ * @internal
+ */
+export function matchExceptionBlockStart(
+  bytes: Uint8Array,
+  offset: number,
+  exceptionTag: string,
+  matchedLength = 0,
+): ExceptionBlockStartMatch {
+  // Same reasoning as in endsWithExceptionMarker: the tag is the discriminator.
+  if (exceptionTag.length === 0) {
+    return "none";
+  }
+  // Layout after the opening `\r\n`: __exception__ \r \n <exceptionTag>
+  const expectedLength = EXCEPTION_MARKER.length + 2 + exceptionTag.length;
+  const available = Math.min(
+    matchedLength + bytes.length - offset,
+    expectedLength,
+  );
+  for (let i = matchedLength; i < available; i++) {
+    let expected: number;
+    if (i < EXCEPTION_MARKER.length) {
+      expected = EXCEPTION_MARKER.charCodeAt(i);
+    } else if (i === EXCEPTION_MARKER.length) {
+      expected = CARET_RETURN;
+    } else if (i === EXCEPTION_MARKER.length + 1) {
+      expected = NEWLINE;
+    } else {
+      expected = exceptionTag.charCodeAt(i - EXCEPTION_MARKER.length - 2);
+    }
+    if (bytes[offset + i - matchedLength] !== expected) {
+      return "none";
+    }
+  }
+  return available === expectedLength ? "match" : "partial";
+}
+
+/**
+ * Parses a mid-stream exception block, which can arrive split across several
+ * chunks. `block` holds the bytes of the block received so far, from its
+ * opening (see {@link matchExceptionBlockStart}) onwards.
+ *
+ * Returns the server error once the block is complete, i.e. when it ends with
+ * `<exceptionTag>\r\n__exception__\r\n`. Returns `undefined` while more bytes
+ * are necessary, unless `isEndOfStream` is set (the response ended before the
+ * block was complete) or the block exceeds the 16 KiB that ClickHouse allows;
+ * then it returns an error that tells that the block is incomplete or malformed.
+ * @internal
+ */
+export function errorFromExceptionBlock(
+  block: Uint8Array,
+  exceptionTag: string,
+  isEndOfStream = false,
+): Error | undefined {
+  if (endsWithExceptionMarker(block, exceptionTag)) {
+    return extractErrorAtTheEndOfChunk(block, exceptionTag);
+  }
+  if (isEndOfStream) {
+    return new Error(
+      "there was an error in the stream, but the exception block is incomplete",
+    );
+  }
+  if (block.length > MAX_EXCEPTION_BLOCK_SIZE) {
+    return new Error(
+      "there was an error in the stream, but the exception block is malformed",
+    );
+  }
+  return undefined;
 }

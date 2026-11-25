@@ -1,10 +1,10 @@
 {
   "name": "@clickhouse/clickhouse-test-runner",
   "private": true,
-  "version": "1.20.0",
+  "version": "1.23.0",
   "description": "Node.js port of ClickHouse/clickhouse-java tests/clickhouse-client harness",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.13.0"
   },
   "type": "module",
   "bin": {
@@ -12,23 +12,25 @@
   },
   "scripts": {
     "pack": "true",
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/main.js",
+    "build": "npm run build:rowbinary && rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/main.js",
+    "//build:rowbinary": "The in-repo @clickhouse/rowbinary skill is linked via file: (not a workspace, so it stays out of the root install/lint/test sweeps and keeps its own standalone CI). Its dist is gitignored, so build it here — the test runner is the last workspace built, so packages/* (datatype-parser) are already compiled when the skill's tsc resolves them.",
+    "build:rowbinary": "tsc -p ../../skills/clickhouse-js-node-rowbinary/tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings=0 .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run --root ."
   },
   "dependencies": {
-    "@clickhouse/client": "*"
+    "@clickhouse/client": "*",
+    "@clickhouse/rowbinary": "file:../../skills/clickhouse-js-node-rowbinary"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
-    "@types/node": "25.5.0",
-    "eslint": "^9.39.4",
-    "eslint-plugin-prettier": "^5.5.5",
-    "prettier": "3.8.1",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.0",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "25.9.3",
+    "eslint": "^10.14.0",
+    "prettier": "3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
     "vitest": "^4.0.16"
   }
 }

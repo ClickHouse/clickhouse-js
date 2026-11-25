@@ -1,0 +1,13 @@
+{
+  "type": "LowCardinality(String)",
+  "data_type": {
+    "type": "DataType",
+    "name": "LowCardinality",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      }
+    ]
+  }
+}

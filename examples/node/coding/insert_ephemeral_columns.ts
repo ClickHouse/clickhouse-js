@@ -1,8 +1,8 @@
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
 // Ephemeral columns documentation: https://clickhouse.com/docs/en/sql-reference/statements/create/table#ephemeral
-const tableName = 'insert_ephemeral_columns'
-const client = createClient()
+const tableName = "insert_ephemeral_columns";
+const client = createClient();
 
 await client.command({
   query: `
@@ -15,31 +15,31 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 
 await client.insert({
   table: tableName,
   values: [
     {
-      id: '42',
-      message_default: 'foo',
+      id: "42",
+      message_default: "foo",
     },
     {
-      id: '144',
-      message_default: 'bar',
+      id: "144",
+      message_default: "bar",
     },
   ],
-  format: 'JSONEachRow',
+  format: "JSONEachRow",
   // The name of the ephemeral column has to be specified here
   // to trigger the default values logic for the rest of the columns
-  columns: ['id', 'message_default'],
-})
+  columns: ["id", "message_default"],
+});
 
 const rows = await client.query({
   query: `SELECT *
           FROM ${tableName}`,
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 
-console.info(await rows.json())
-await client.close()
+console.info(await rows.json());
+await client.close();

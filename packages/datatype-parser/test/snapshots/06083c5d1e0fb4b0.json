@@ -1,0 +1,55 @@
+{
+  "type": "Tuple(Array(Int32), Map(String, Float64), Nullable(DateTime64(3, 'UTC')))",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Int32"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "Map",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "String"
+          },
+          {
+            "type": "DataType",
+            "name": "Float64"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "DateTime64",
+            "arguments": [
+              {
+                "type": "Literal",
+                "value_type": "UInt64",
+                "value": "3"
+              },
+              {
+                "type": "Literal",
+                "value_type": "String",
+                "value": "UTC"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

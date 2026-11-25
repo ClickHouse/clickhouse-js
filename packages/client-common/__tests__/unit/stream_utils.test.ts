@@ -1,135 +1,320 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from "vitest";
 import {
+  endsWithExceptionMarker,
+  errorFromExceptionBlock,
   extractErrorAtTheEndOfChunk,
-  RawStreamExceptionDetector,
-} from '../../src/index'
+  matchExceptionBlockStart,
+} from "../../src/index";
 
-describe('utils/stream', () => {
-  const errMsg = 'boom'
-  const tag = 'FOOBAR'
+describe("utils/stream", () => {
+  const errMsg = "boom";
+  const tag = "FOOBAR";
 
-  it('should handle a valid error chunk', async () => {
-    const chunk = buildValidErrorChunk(errMsg, tag)
+  it("should handle a valid error chunk", async () => {
+    const chunk = buildValidErrorChunk(errMsg, tag);
 
-    const err = extractErrorAtTheEndOfChunk(chunk, tag)
-    expect(err).toBeDefined()
-    expect(err).toBeInstanceOf(Error)
-    expect(err!.message).toBe(errMsg)
-  })
+    const err = extractErrorAtTheEndOfChunk(chunk, tag);
+    expect(err).toBeDefined();
+    expect(err).toBeInstanceOf(Error);
+    expect(err!.message).toBe(errMsg);
+  });
 
-  it('should handle a broken chunk', async () => {
+  it("should handle a broken chunk", async () => {
     const chunk = new TextEncoder().encode(
-      '\r\nsome random data \nthat does not conform\r\t to the protocol\r\n',
-    )
+      "\r\nsome random data \nthat does not conform\r\t to the protocol\r\n",
+    );
 
-    const err = extractErrorAtTheEndOfChunk(chunk, tag)
-    expect(err).toBeDefined()
-    expect(err).toBeInstanceOf(Error)
-    expect(err?.message).toContain('error in the stream')
-  })
+    const err = extractErrorAtTheEndOfChunk(chunk, tag);
+    expect(err).toBeDefined();
+    expect(err).toBeInstanceOf(Error);
+    expect(err?.message).toContain("error in the stream");
+  });
 
-  it('should handle a partial of a valid chunk', async () => {
-    const chunk = buildValidErrorChunk(errMsg, tag).slice(0, 20)
+  it("should handle a partial of a valid chunk", async () => {
+    const chunk = buildValidErrorChunk(errMsg, tag).slice(0, 20);
 
-    const err = extractErrorAtTheEndOfChunk(chunk, tag)
-    expect(err).toBeDefined()
-    expect(err).toBeInstanceOf(Error)
-    expect(err?.message).toContain('error in the stream')
-  })
-})
+    const err = extractErrorAtTheEndOfChunk(chunk, tag);
+    expect(err).toBeDefined();
+    expect(err).toBeInstanceOf(Error);
+    expect(err?.message).toContain("error in the stream");
+  });
 
-describe('utils/stream RawStreamExceptionDetector', () => {
-  const errMsg = 'boom'
-  const tag = 'FOOBAR'
+  // Regression: a malformed trailer whose only newline sits *above* the
+  // error-length hint (e.g. a single long CRLF-terminated row, or a trailer
+  // truncated by a proxy) used to run the backward scan index below zero and
+  // spin forever, blocking the Node.js event loop (nothing throws, so the
+  // surrounding try/catch could not rescue it). It must now return a plain
+  // Error instead of hanging.
+  it("returns an error instead of hanging when there is no length delimiter", () => {
+    const chunk = new TextEncoder().encode("x".repeat(100) + "\r\n");
 
-  // Binary payload that contains \r\n (0x0d 0x0a) byte sequences, which used to
-  // be misinterpreted as the mid-stream exception marker by the row-oriented
-  // stream() parser. Regression test for the "failed to parse the message
-  // length" error reported for the Parquet format.
-  // https://github.com/ClickHouse/clickhouse-js/issues/607
-  const binaryWithCRLF = new Uint8Array([
-    1, 2, 0x0d, 0x0a, 3, 4, 0x0d, 0x0a, 0x0d, 0x0a, 5, 6, 7, 8, 9, 10,
-  ])
+    const err = extractErrorAtTheEndOfChunk(chunk, tag);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toContain("error in the stream");
+  }, 5000);
+});
 
-  function feed(chunks: Uint8Array[]): {
-    data: Uint8Array
-    error?: Error
-  } {
-    const detector = new RawStreamExceptionDetector(tag)
-    const out: number[] = []
-    for (const chunk of chunks) {
-      const data = detector.push(chunk)
-      out.push(...data)
+describe("utils/stream endsWithExceptionMarker", () => {
+  const tag = "abcdefghijklmnop";
+  const enc = (s: string) => new TextEncoder().encode(s);
+
+  // A binary payload (e.g. Parquet) that merely happens to end in a \r\n pair.
+  const binaryEndingInCRLF = () => {
+    const bytes = new Uint8Array(64);
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = (i * 7) % 251;
     }
-    const flushed = detector.flush()
-    out.push(...flushed.data)
-    return { data: new Uint8Array(out), error: flushed.error }
+    bytes[62] = 0x0d;
+    bytes[63] = 0x0a;
+    return bytes;
+  };
+
+  const cases: Array<{
+    name: string;
+    chunk: Uint8Array;
+    checkTag: string;
+    expected: boolean;
+  }> = [
+    {
+      name: "the exact end-of-stream trailer for the tag",
+      chunk: enc(`${tag}\r\n__exception__\r\n`),
+      checkTag: tag,
+      expected: true,
+    },
+    {
+      name: "a full exception trailer preceded by a body",
+      chunk: buildValidErrorChunk("boom", tag),
+      checkTag: tag,
+      expected: true,
+    },
+    {
+      name: "a successful CRLF-terminated CSV/TSV body",
+      chunk: enc("0\r\n1\r\n2\r\n"),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      name: "a binary body that merely ends in a \\r\\n pair",
+      chunk: binaryEndingInCRLF(),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      name: "a chunk shorter than the marker",
+      chunk: enc("\r\n"),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      name: "the __exception__ marker present but a different tag value",
+      chunk: enc(`ponmlkjihgfedcba\r\n__exception__\r\n`),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      // Full-length suffix, correct tag, but the two bytes after the tag are
+      // not the `\r\n` separator: a near-miss trailer must be rejected.
+      name: "the tag matches but the bytes after it are not a CRLF separator",
+      chunk: enc(`${tag}XX__exception__\r\n`),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      // Correct tag and `\r\n`, but the fixed marker bytes are wrong: without a
+      // literal `__exception__` this is not a trailer.
+      name: "the tag and CRLF match but the __exception__ marker bytes differ",
+      chunk: enc(`${tag}\r\n${"x".repeat("__exception__".length)}\r\n`),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      // Everything matches except the terminating newline — the closest
+      // possible near-miss to a real trailer must still be rejected.
+      name: "a full-length trailer whose terminating newline byte is corrupted",
+      chunk: enc(`${tag}\r\n__exception__\rX`),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      name: "a trailer exactly one byte too short (missing final newline)",
+      chunk: enc(`${tag}\r\n__exception__\r`),
+      checkTag: tag,
+      expected: false,
+    },
+    {
+      // Guards the implicit non-empty-tag precondition: the tag is the only
+      // discriminator, so an empty tag must never match the bare marker.
+      name: "an empty tag against a body ending in the bare marker",
+      chunk: enc(`garbage\r\n__exception__\r\n`),
+      checkTag: "",
+      expected: false,
+    },
+  ];
+
+  for (const { name, chunk, checkTag, expected } of cases) {
+    it(`returns ${expected} for ${name}`, () => {
+      expect(endsWithExceptionMarker(chunk, checkTag)).toBe(expected);
+    });
+  }
+});
+
+describe("utils/stream matchExceptionBlockStart", () => {
+  const tag = "abcdefghijklmnop";
+  const enc = (s: string) => new TextEncoder().encode(s);
+  // The `offset` argument points right after the `\n` of the `\r\n`.
+  const opening = `__exception__\r\n${tag}`;
+
+  const cases: Array<{
+    name: string;
+    afterCRLF: string;
+    checkTag: string;
+    expected: "match" | "partial" | "none";
+  }> = [
+    {
+      name: "the complete block opening, followed by the message",
+      afterCRLF: `${opening}\r\nCode: 395. boom\n`,
+      checkTag: tag,
+      expected: "match",
+    },
+    {
+      name: "the complete block opening, at the end of the chunk",
+      afterCRLF: opening,
+      checkTag: tag,
+      expected: "match",
+    },
+    {
+      name: "no bytes after the CRLF yet",
+      afterCRLF: "",
+      checkTag: tag,
+      expected: "partial",
+    },
+    {
+      name: "a prefix of the marker",
+      afterCRLF: "__exce",
+      checkTag: tag,
+      expected: "partial",
+    },
+    {
+      name: "the marker and a prefix of the tag",
+      afterCRLF: `__exception__\r\n${tag.slice(0, 5)}`,
+      checkTag: tag,
+      expected: "partial",
+    },
+    {
+      name: "the next CRLF-terminated CSV/TSV row",
+      afterCRLF: "1\r\n",
+      checkTag: tag,
+      expected: "none",
+    },
+    {
+      name: "a row that starts like the marker but differs",
+      afterCRLF: "__exceptional\r\n",
+      checkTag: tag,
+      expected: "none",
+    },
+    {
+      name: "the marker with a different tag",
+      afterCRLF: "__exception__\r\nponmlkjihgfedcba\r\n",
+      checkTag: tag,
+      expected: "none",
+    },
+    {
+      name: "the marker without the CRLF before the tag",
+      afterCRLF: `__exception__\n${tag}\r\n`,
+      checkTag: tag,
+      expected: "none",
+    },
+    {
+      name: "an empty tag",
+      afterCRLF: "__exception__\r\n\r\n",
+      checkTag: "",
+      expected: "none",
+    },
+  ];
+
+  for (const { name, afterCRLF, checkTag, expected } of cases) {
+    it(`returns "${expected}" for ${name}`, () => {
+      const prefix = "0\r\n";
+      const bytes = enc(prefix + afterCRLF);
+      expect(matchExceptionBlockStart(bytes, prefix.length, checkTag)).toBe(
+        expected,
+      );
+    });
   }
 
-  function splitEveryByte(bytes: Uint8Array): Uint8Array[] {
-    return Array.from(bytes, (b) => new Uint8Array([b]))
-  }
+  it("continues a partial match with the bytes of the next chunk", () => {
+    const complete = enc(`${opening}\r\nCode: 395. boom\n`);
+    const differentLastByte = enc(`${opening.slice(0, -1)}X`);
+    for (let matched = 0; matched < opening.length; matched++) {
+      expect(
+        matchExceptionBlockStart(complete.subarray(matched), 0, tag, matched),
+      ).toBe("match");
+      expect(
+        matchExceptionBlockStart(
+          complete.subarray(matched, opening.length - 1),
+          0,
+          tag,
+          matched,
+        ),
+      ).toBe("partial");
+      expect(
+        matchExceptionBlockStart(
+          differentLastByte.subarray(matched),
+          0,
+          tag,
+          matched,
+        ),
+      ).toBe("none");
+    }
+  });
+});
 
-  it('should pass binary data containing \\r\\n through unchanged', () => {
-    const { data, error } = feed([binaryWithCRLF])
-    expect(error).toBeUndefined()
-    expect(Array.from(data)).toEqual(Array.from(binaryWithCRLF))
-  })
+describe("utils/stream errorFromExceptionBlock", () => {
+  const tag = "abcdefghijklmnop";
+  const enc = (s: string) => new TextEncoder().encode(s);
+  const errMsg =
+    "Code: 395. DB::Exception: boom. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO)";
+  // The block bytes after the opening `\r\n`, as ClickHouse writes them.
+  const block = (msg: string) =>
+    `__exception__\r\n${tag}\r\n${msg}\n${msg.length + 1} ${tag}\r\n__exception__\r\n`;
 
-  it('should not produce false positives across chunk boundaries', () => {
-    const { data, error } = feed(splitEveryByte(binaryWithCRLF))
-    expect(error).toBeUndefined()
-    expect(Array.from(data)).toEqual(Array.from(binaryWithCRLF))
-  })
+  it("returns the server error when the block is complete", () => {
+    const err = errorFromExceptionBlock(enc(block(errMsg)), tag);
+    expect(err).toMatchObject({
+      message: expect.stringContaining("boom"),
+      code: "395",
+      type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
+    });
+  });
 
-  it('should detect a real exception appended after binary data', () => {
-    const exception = buildExceptionBlock(errMsg, tag)
-    const full = concat(binaryWithCRLF, exception)
+  it("returns the full server error for the largest block", () => {
+    // ClickHouse limits the whole block to 16 KiB.
+    const longMsg = "Code: 395. DB::Exception: " + "x".repeat(16 * 1024 - 120);
+    const bytes = enc(block(longMsg));
+    expect(bytes.length).toBeLessThanOrEqual(16 * 1024);
+    const err = errorFromExceptionBlock(bytes, tag);
+    expect(err!.message).toContain("x".repeat(16 * 1024 - 120));
+  });
 
-    const { data, error } = feed([full])
-    // the binary part is preserved and emitted untouched
-    expect(Array.from(data)).toEqual(Array.from(binaryWithCRLF))
-    expect(error).toBeInstanceOf(Error)
-    expect(error?.message).toBe(errMsg)
-  })
+  it("returns undefined while the block is incomplete", () => {
+    const incomplete = block(errMsg).slice(0, -5);
+    expect(errorFromExceptionBlock(enc(incomplete), tag)).toBeUndefined();
+  });
 
-  it('should detect an exception split across the start marker boundary', () => {
-    const exception = buildExceptionBlock(errMsg, tag)
-    const full = concat(binaryWithCRLF, exception)
-    // split in the middle of the "\r\n__exception__\r\n<tag>" start marker
-    const splitAt = binaryWithCRLF.length + 5
+  it("returns an error when the stream ends before the block is complete", () => {
+    const incomplete = block(errMsg).slice(0, -5);
+    const err = errorFromExceptionBlock(enc(incomplete), tag, true);
+    expect(err).toBeInstanceOf(Error);
+    expect(err!.message).toContain("exception block is incomplete");
+  });
 
-    const { data, error } = feed([
-      full.subarray(0, splitAt),
-      full.subarray(splitAt),
-    ])
-    expect(Array.from(data)).toEqual(Array.from(binaryWithCRLF))
-    expect(error).toBeInstanceOf(Error)
-    expect(error?.message).toBe(errMsg)
-  })
-})
-
-function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
-  const result = new Uint8Array(a.length + b.length)
-  result.set(a, 0)
-  result.set(b, a.length)
-  return result
-}
-
-/** The exception block the server appends at the end of the stream. */
-function buildExceptionBlock(errMsg: string, tag: string): Uint8Array {
-  const blockStr =
-    '\r\n__exception__\r\n' +
-    tag +
-    '\n' +
-    errMsg +
-    '\n' +
-    (errMsg.length + 1) + // +1 to len for the newline character
-    ' ' +
-    tag +
-    '\r\n__exception__\r\n'
-  return new TextEncoder().encode(blockStr)
-}
+  it("returns an error when the block exceeds 16 KiB without its closing marker", () => {
+    const tooLong = `__exception__\r\n${tag}\r\n${"x".repeat(16 * 1024)}`;
+    const err = errorFromExceptionBlock(enc(tooLong), tag);
+    expect(err).toBeInstanceOf(Error);
+    expect(err!.message).toContain("exception block is malformed");
+  });
+});
 
 /**
  * \r\n__exception__\r\nFOOBAR
@@ -138,14 +323,14 @@ function buildExceptionBlock(errMsg: string, tag: string): Uint8Array {
  */
 export function buildValidErrorChunk(errMsg: string, tag: string): Uint8Array {
   const chunkStr =
-    'body-body-body-body\r\n__exception__\r\n' +
+    "body-body-body-body\r\n__exception__\r\n" +
     tag +
-    '\n' +
+    "\n" +
     errMsg +
-    '\n' +
+    "\n" +
     (errMsg.length + 1) + // +1 to len for the newline character
-    ' ' +
+    " " +
     tag +
-    '\r\n__exception__\r\n'
-  return new TextEncoder().encode(chunkStr)
+    "\r\n__exception__\r\n";
+  return new TextEncoder().encode(chunkStr);
 }

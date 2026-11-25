@@ -1,260 +1,260 @@
-import type { ClickHouseClient, Row } from '@clickhouse/client-common'
-import { describe, it, beforeEach, afterEach, expect } from 'vitest'
-import { createTestClient } from '@test/utils/client'
-import type Stream from 'stream'
+import type { ClickHouseClient, Row } from "@clickhouse/client-common";
+import { describe, it, beforeEach, afterEach, expect } from "vitest";
+import { createTestClient } from "@test/utils/client";
+import type Stream from "stream";
 
-describe('[Node.js] SELECT streaming', () => {
-  let client: ClickHouseClient<Stream.Readable>
+describe("[Node.js] SELECT streaming", () => {
+  let client: ClickHouseClient<Stream.Readable>;
   afterEach(async () => {
-    await client.close()
-  })
+    await client.close();
+  });
   beforeEach(async () => {
-    client = createTestClient()
-  })
+    client = createTestClient();
+  });
 
-  describe('consume the response only once', () => {
+  describe("consume the response only once", () => {
     function assertAlreadyConsumed<T>(fn: () => T) {
-      expect(fn).toThrow('Stream has been already consumed')
+      expect(fn).toThrow("Stream has been already consumed");
     }
-    it('should consume a JSON response only once', async () => {
+    it("should consume a JSON response only once", async () => {
       const rs = await client.query({
-        query: 'SELECT * FROM system.numbers LIMIT 1',
-        format: 'JSONEachRow',
-      })
-      expect(await rs.json()).toEqual([{ number: '0' }])
+        query: "SELECT * FROM system.numbers LIMIT 1",
+        format: "JSONEachRow",
+      });
+      expect(await rs.json()).toEqual([{ number: "0" }]);
       // wrap in a func to avoid changing inner "this"
       await expect(rs.json()).rejects.toThrow(
         /Stream has been already consumed/,
-      )
+      );
       await expect(rs.text()).rejects.toThrow(
         /Stream has been already consumed/,
-      )
+      );
       await expect(async () => rs.stream()).rejects.toThrow(
         /Stream has been already consumed/,
-      )
-    })
+      );
+    });
 
-    it('should consume a text response only once', async () => {
+    it("should consume a text response only once", async () => {
       const rs = await client.query({
-        query: 'SELECT * FROM system.numbers LIMIT 1',
-        format: 'JSONEachRow',
-      })
-      expect(await rs.text()).toEqual('{"number":"0"}\n')
+        query: "SELECT * FROM system.numbers LIMIT 1",
+        format: "JSONEachRow",
+      });
+      expect(await rs.text()).toEqual('{"number":"0"}\n');
       // wrap in a func to avoid changing inner "this"
       await expect(rs.json()).rejects.toThrow(
         /Stream has been already consumed/,
-      )
+      );
       await expect(rs.text()).rejects.toThrow(
         /Stream has been already consumed/,
-      )
+      );
       await expect(async () => rs.stream()).rejects.toThrow(
         /Stream has been already consumed/,
-      )
-    })
+      );
+    });
 
-    it('should consume a stream response only once', async () => {
+    it("should consume a stream response only once", async () => {
       const rs = await client.query({
-        query: 'SELECT * FROM system.numbers LIMIT 1',
-        format: 'JSONEachRow',
-      })
-      let result = ''
+        query: "SELECT * FROM system.numbers LIMIT 1",
+        format: "JSONEachRow",
+      });
+      let result = "";
       for await (const rows of rs.stream()) {
         rows.forEach((row: Row) => {
-          result += row.text
-        })
+          result += row.text;
+        });
       }
-      expect(result).toEqual('{"number":"0"}')
+      expect(result).toEqual('{"number":"0"}');
       // wrap in a func to avoid changing inner "this"
       await expect(rs.json()).rejects.toThrow(
         /Stream has been already consumed/,
-      )
+      );
       await expect(rs.text()).rejects.toThrow(
         /Stream has been already consumed/,
-      )
+      );
       await expect(async () => rs.stream()).rejects.toThrow(
         /Stream has been already consumed/,
-      )
-    })
-  })
+      );
+    });
+  });
 
-  describe('select result as stream()', () => {
-    it('throws an exception if format is not stream-able', async () => {
+  describe("select result as stream()", () => {
+    it("throws an exception if format is not stream-able", async () => {
       const result = await client.query({
-        query: 'SELECT number FROM system.numbers LIMIT 5',
-        format: 'JSON',
-      })
+        query: "SELECT number FROM system.numbers LIMIT 5",
+        format: "JSON",
+      });
       try {
         await expect(async () => result.stream()).rejects.toThrow(
           /JSON format is not streamable/,
-        )
+        );
       } finally {
-        result.close()
+        result.close();
       }
-    })
+    });
 
-    it('can pause response stream', async () => {
+    it("can pause response stream", async () => {
       const result = await client.query({
-        query: 'SELECT number FROM system.numbers LIMIT 10000',
-        format: 'CSV',
-      })
+        query: "SELECT number FROM system.numbers LIMIT 10000",
+        format: "CSV",
+      });
 
-      const stream = result.stream()
+      const stream = result.stream();
 
-      let last = ''
-      let i = 0
+      let last = "";
+      let i = 0;
       for await (const rows of stream) {
         rows.forEach((row: Row) => {
-          last = row.text
-          i++
+          last = row.text;
+          i++;
           if (i % 1000 === 0) {
-            stream.pause()
-            setTimeout(() => stream.resume(), 100)
+            stream.pause();
+            setTimeout(() => stream.resume(), 100);
           }
-        })
+        });
       }
-      expect(last).toBe('9999')
-    })
+      expect(last).toBe("9999");
+    });
 
-    describe('text()', () => {
-      it('returns stream of rows in CSV format', async () => {
+    describe("text()", () => {
+      it("returns stream of rows in CSV format", async () => {
         const result = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'CSV',
-        })
+          query: "SELECT number FROM system.numbers LIMIT 5",
+          format: "CSV",
+        });
 
-        const rs = await rowsText(result.stream())
-        expect(rs).toEqual(['0', '1', '2', '3', '4'])
-      })
+        const rs = await rowsText(result.stream());
+        expect(rs).toEqual(["0", "1", "2", "3", "4"]);
+      });
 
-      it('returns stream of rows in TabSeparated format', async () => {
+      it("returns stream of rows in TabSeparated format", async () => {
         const result = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'TabSeparated',
-        })
+          query: "SELECT number FROM system.numbers LIMIT 5",
+          format: "TabSeparated",
+        });
 
-        const rs = await rowsText(result.stream())
-        expect(rs).toEqual(['0', '1', '2', '3', '4'])
-      })
-    })
+        const rs = await rowsText(result.stream());
+        expect(rs).toEqual(["0", "1", "2", "3", "4"]);
+      });
+    });
 
-    describe('json()', () => {
-      it('returns stream of objects in JSONEachRow format', async () => {
+    describe("json()", () => {
+      it("returns stream of objects in JSONEachRow format", async () => {
         const result = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONEachRow',
-        })
+          query: "SELECT number FROM system.numbers LIMIT 5",
+          format: "JSONEachRow",
+        });
 
-        const rs = await rowsValues(result.stream())
+        const rs = await rowsValues(result.stream());
         expect(rs).toEqual([
-          { number: '0' },
-          { number: '1' },
-          { number: '2' },
-          { number: '3' },
-          { number: '4' },
-        ])
-      })
+          { number: "0" },
+          { number: "1" },
+          { number: "2" },
+          { number: "3" },
+          { number: "4" },
+        ]);
+      });
 
-      it('returns stream of objects in JSONStringsEachRow format', async () => {
+      it("returns stream of objects in JSONStringsEachRow format", async () => {
         const result = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONStringsEachRow',
-        })
+          query: "SELECT number FROM system.numbers LIMIT 5",
+          format: "JSONStringsEachRow",
+        });
 
-        const rs = await rowsValues(result.stream())
+        const rs = await rowsValues(result.stream());
         expect(rs).toEqual([
-          { number: '0' },
-          { number: '1' },
-          { number: '2' },
-          { number: '3' },
-          { number: '4' },
-        ])
-      })
+          { number: "0" },
+          { number: "1" },
+          { number: "2" },
+          { number: "3" },
+          { number: "4" },
+        ]);
+      });
 
-      it('returns stream of objects in JSONCompactEachRow format', async () => {
+      it("returns stream of objects in JSONCompactEachRow format", async () => {
         const result = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactEachRow',
-        })
+          query: "SELECT number FROM system.numbers LIMIT 5",
+          format: "JSONCompactEachRow",
+        });
 
-        const rs = await rowsValues(result.stream())
-        expect(rs).toEqual([['0'], ['1'], ['2'], ['3'], ['4']])
-      })
+        const rs = await rowsValues(result.stream());
+        expect(rs).toEqual([["0"], ["1"], ["2"], ["3"], ["4"]]);
+      });
 
-      it('returns stream of objects in JSONCompactEachRowWithNames format', async () => {
+      it("returns stream of objects in JSONCompactEachRowWithNames format", async () => {
         const result = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactEachRowWithNames',
-        })
+          query: "SELECT number FROM system.numbers LIMIT 5",
+          format: "JSONCompactEachRowWithNames",
+        });
 
-        const rs = await rowsValues(result.stream())
-        expect(rs).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
-      })
+        const rs = await rowsValues(result.stream());
+        expect(rs).toEqual([["number"], ["0"], ["1"], ["2"], ["3"], ["4"]]);
+      });
 
-      it('returns stream of objects in JSONCompactEachRowWithNamesAndTypes format', async () => {
+      it("returns stream of objects in JSONCompactEachRowWithNamesAndTypes format", async () => {
         const result = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactEachRowWithNamesAndTypes',
-        })
+          query: "SELECT number FROM system.numbers LIMIT 5",
+          format: "JSONCompactEachRowWithNamesAndTypes",
+        });
 
-        const rs = await rowsValues(result.stream())
+        const rs = await rowsValues(result.stream());
         expect(rs).toEqual([
-          ['number'],
-          ['UInt64'],
-          ['0'],
-          ['1'],
-          ['2'],
-          ['3'],
-          ['4'],
-        ])
-      })
+          ["number"],
+          ["UInt64"],
+          ["0"],
+          ["1"],
+          ["2"],
+          ["3"],
+          ["4"],
+        ]);
+      });
 
-      it('returns stream of objects in JSONCompactStringsEachRowWithNames format', async () => {
+      it("returns stream of objects in JSONCompactStringsEachRowWithNames format", async () => {
         const result = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactStringsEachRowWithNames',
-        })
+          query: "SELECT number FROM system.numbers LIMIT 5",
+          format: "JSONCompactStringsEachRowWithNames",
+        });
 
-        const rs = await rowsValues(result.stream())
-        expect(rs).toEqual([['number'], ['0'], ['1'], ['2'], ['3'], ['4']])
-      })
+        const rs = await rowsValues(result.stream());
+        expect(rs).toEqual([["number"], ["0"], ["1"], ["2"], ["3"], ["4"]]);
+      });
 
-      it('returns stream of objects in JSONCompactStringsEachRowWithNamesAndTypes format', async () => {
+      it("returns stream of objects in JSONCompactStringsEachRowWithNamesAndTypes format", async () => {
         const result = await client.query({
-          query: 'SELECT number FROM system.numbers LIMIT 5',
-          format: 'JSONCompactStringsEachRowWithNamesAndTypes',
-        })
+          query: "SELECT number FROM system.numbers LIMIT 5",
+          format: "JSONCompactStringsEachRowWithNamesAndTypes",
+        });
 
-        const rs = await rowsValues(result.stream())
+        const rs = await rowsValues(result.stream());
         expect(rs).toEqual([
-          ['number'],
-          ['UInt64'],
-          ['0'],
-          ['1'],
-          ['2'],
-          ['3'],
-          ['4'],
-        ])
-      })
-    })
-  })
-})
+          ["number"],
+          ["UInt64"],
+          ["0"],
+          ["1"],
+          ["2"],
+          ["3"],
+          ["4"],
+        ]);
+      });
+    });
+  });
+});
 
 async function rowsValues(stream: Stream.Readable): Promise<any[]> {
-  const result: any[] = []
+  const result: any[] = [];
   for await (const rows of stream) {
     rows.forEach((row: Row) => {
-      result.push(row.json())
-    })
+      result.push(row.json());
+    });
   }
-  return result
+  return result;
 }
 
 async function rowsText(stream: Stream.Readable): Promise<string[]> {
-  const result: string[] = []
+  const result: string[] = [];
   for await (const rows of stream) {
     rows.forEach((row: Row) => {
-      result.push(row.text)
-    })
+      result.push(row.text);
+    });
   }
-  return result
+  return result;
 }

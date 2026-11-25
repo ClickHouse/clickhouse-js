@@ -1,70 +1,70 @@
-import type { ClickHouseClient } from '@clickhouse/client-common'
+import type { ClickHouseClient } from "@clickhouse/client-common";
 
 interface ServerVersion {
-  major: number
-  minor: number
+  major: number;
+  minor: number;
 }
 
-const versionCache: WeakMap<ClickHouseClient, ServerVersion> = new WeakMap()
+const versionCache: WeakMap<ClickHouseClient, ServerVersion> = new WeakMap();
 
 export async function getServerVersion(
   client: ClickHouseClient,
 ): Promise<ServerVersion> {
-  const cachedVersion = versionCache.get(client)
+  const cachedVersion = versionCache.get(client);
   if (cachedVersion) {
-    return cachedVersion
+    return cachedVersion;
   }
 
   const rs = await client.query({
     query: `SELECT version() as version`,
-    format: 'JSONEachRow',
-  })
+    format: "JSONEachRow",
+  });
 
   // Example result: [ { version: '25.8.1.3994' } ]
-  const result = await rs.json<{ version: string }>()
-  const firstRow = result[0]
+  const result = await rs.json<{ version: string }>();
+  const firstRow = result[0];
   if (!firstRow) {
     throw new Error(
       `Unable to determine ClickHouse server version, empty result from query`,
-    )
+    );
   }
-  const version = firstRow.version
+  const version = firstRow.version;
   if (!version) {
     throw new Error(
       `Unable to determine ClickHouse server version, missing 'version' field in query result: ${JSON.stringify(
         firstRow,
       )}`,
-    )
+    );
   }
-  console.info('Got server version:', version)
+  console.info("Got server version:", version);
 
-  const versionMatch = version.match(/^(\d+)\.(\d+)/)
+  const versionMatch = version.match(/^(\d+)\.(\d+)/);
   if (!versionMatch) {
     throw new Error(
       `Unable to parse ClickHouse server version from string: ${version}`,
-    )
+    );
   }
 
-  const major = parseInt(versionMatch[1], 10)
+  const major = parseInt(versionMatch[1], 10);
   if (isNaN(major)) {
     throw new Error(
       `Unable to parse ClickHouse server major version component from string: ${versionMatch[1]}`,
-    )
+    );
   }
 
-  const minor = parseInt(versionMatch[2], 10)
+  const minor = parseInt(versionMatch[2], 10);
   if (isNaN(minor)) {
     throw new Error(
       `Unable to parse ClickHouse server minor version component from string: ${versionMatch[2]}`,
-    )
+    );
   }
 
   const serverVersion = {
     major,
     minor,
-  }
-  versionCache.set(client, serverVersion)
-  return serverVersion
+  };
+  versionCache.set(client, serverVersion);
+  return serverVersion;
 }
 
 export async function isClickHouseVersionAtLeast(
@@ -72,16 +72,16 @@ export async function isClickHouseVersionAtLeast(
   major: number,
   minor: number,
 ): Promise<boolean> {
-  const serverVersion = await getServerVersion(client)
+  const serverVersion = await getServerVersion(client);
 
   if (serverVersion.major > major) {
-    return true
+    return true;
   }
   if (serverVersion.major === major && serverVersion.minor >= minor) {
-    return true
+    return true;
   }
   console.info(
     `ClickHouse server version ${serverVersion.major}.${serverVersion.minor} does not meet required version ${major}.${minor}`,
-  )
-  return false
+  );
+  return false;
 }

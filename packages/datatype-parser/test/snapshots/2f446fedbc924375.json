@@ -1,0 +1,7 @@
+{
+  "type": "INT(10) UNSIGNED",
+  "data_type": {
+    "type": "DataType",
+    "name": "INT UNSIGNED"
+  }
+}

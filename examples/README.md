@@ -65,6 +65,7 @@ parameter binding, sessions, data types, and custom JSON handling.
 | `INSERT INTO ... VALUES` with functions        | [node/coding/insert_values_and_functions.ts](node/coding/insert_values_and_functions.ts)                               | [web/coding/insert_values_and_functions.ts](web/coding/insert_values_and_functions.ts)                               |
 | Insert JS `Date` objects                       | [node/coding/insert_js_dates.ts](node/coding/insert_js_dates.ts)                                                       | [web/coding/insert_js_dates.ts](web/coding/insert_js_dates.ts)                                                       |
 | Insert decimals                                | [node/coding/insert_decimals.ts](node/coding/insert_decimals.ts)                                                       | [web/coding/insert_decimals.ts](web/coding/insert_decimals.ts)                                                       |
+| Insert a UUID into a `UInt128` column          | [node/coding/insert_uuid_into_uint128.ts](node/coding/insert_uuid_into_uint128.ts)                                     | [web/coding/insert_uuid_into_uint128.ts](web/coding/insert_uuid_into_uint128.ts)                                     |
 | Async inserts (waiting for ack)                | [node/coding/async_insert.ts](node/coding/async_insert.ts)                                                             | [web/coding/async_insert.ts](web/coding/async_insert.ts)                                                             |
 | Simple select in `JSONEachRow`                 | [node/coding/select_json_each_row.ts](node/coding/select_json_each_row.ts)                                             | [web/coding/select_json_each_row.ts](web/coding/select_json_each_row.ts)                                             |
 | Overview of select data formats                | [node/coding/select_data_formats_overview.ts](node/coding/select_data_formats_overview.ts)                             | [web/coding/select_data_formats_overview.ts](web/coding/select_data_formats_overview.ts)                             |
@@ -74,8 +75,10 @@ parameter binding, sessions, data types, and custom JSON handling.
 | Temporary tables with `session_id`             | [node/coding/session_id_and_temporary_tables.ts](node/coding/session_id_and_temporary_tables.ts)                       | [web/coding/session_id_and_temporary_tables.ts](web/coding/session_id_and_temporary_tables.ts)                       |
 | `SET` commands per `session_id`                | [node/coding/session_level_commands.ts](node/coding/session_level_commands.ts)                                         | [web/coding/session_level_commands.ts](web/coding/session_level_commands.ts)                                         |
 | Dynamic / Variant / JSON                       | [node/coding/dynamic_variant_json.ts](node/coding/dynamic_variant_json.ts)                                             | [web/coding/dynamic_variant_json.ts](web/coding/dynamic_variant_json.ts)                                             |
+| `QBit` vector type (ClickHouse 25.10+)         | [node/coding/qbit.ts](node/coding/qbit.ts)                                                                             | [web/coding/qbit.ts](web/coding/qbit.ts)                                                                             |
 | `Time` / `Time64` (ClickHouse 25.6+)           | [node/coding/time_time64.ts](node/coding/time_time64.ts)                                                               | [web/coding/time_time64.ts](web/coding/time_time64.ts)                                                               |
 | Custom JSON `parse`/`stringify`                | [node/coding/custom_json_handling.ts](node/coding/custom_json_handling.ts)                                             | [web/coding/custom_json_handling.ts](web/coding/custom_json_handling.ts)                                             |
+| OpenTelemetry tracing via the `tracer` hooks   | [node/coding/otel_tracing.ts](node/coding/otel_tracing.ts)                                                             | —                                                                                                                    |
 
 ### `performance/` — Streaming, batching, and high-throughput patterns
 
@@ -116,6 +119,7 @@ precision pitfalls.
 | Ping that times out (Node.js only)                | [node/troubleshooting/ping_timeout.ts](node/troubleshooting/ping_timeout.ts)                                                   | —                                                                                                                            |
 | Cancelling an outgoing request                    | [node/troubleshooting/abort_request.ts](node/troubleshooting/abort_request.ts)                                                 | [web/troubleshooting/abort_request.ts](web/troubleshooting/abort_request.ts)                                                 |
 | Cancelling a query on the server                  | [node/troubleshooting/cancel_query.ts](node/troubleshooting/cancel_query.ts)                                                   | [web/troubleshooting/cancel_query.ts](web/troubleshooting/cancel_query.ts)                                                   |
+| Measuring event-loop delay (no server required)   | [node/troubleshooting/event_loop_delay.ts](node/troubleshooting/event_loop_delay.ts)                                           | —                                                                                                                            |
 | Long-running queries via progress headers         | [node/troubleshooting/long_running_queries_progress_headers.ts](node/troubleshooting/long_running_queries_progress_headers.ts) | [web/troubleshooting/long_running_queries_progress_headers.ts](web/troubleshooting/long_running_queries_progress_headers.ts) |
 | Long-running queries via request cancellation     | [node/troubleshooting/long_running_queries_cancel_request.ts](node/troubleshooting/long_running_queries_cancel_request.ts)     | —                                                                                                                            |
 | Read-only user limitations (server error surface) | [node/troubleshooting/read_only_user.ts](node/troubleshooting/read_only_user.ts)                                               | [web/troubleshooting/read_only_user.ts](web/troubleshooting/read_only_user.ts)                                               |
@@ -154,11 +158,13 @@ deployment-shaped connection strings.
 
 ### Prerequisites
 
-Environment requirements for all examples:
+Environment requirements for most examples:
 
-- Node.js 18+
+- Node.js 22+
 - NPM
 - Docker Compose
+
+The [event-loop delay example](node/troubleshooting/event_loop_delay.ts) only needs Node.js and NPM. It does not connect to ClickHouse.
 
 Run ClickHouse in Docker from the root folder of this repository:
 
@@ -191,11 +197,11 @@ category-relative path, for example:
 
 ```sh
 # from examples/node
-npx tsx --transpile-only coding/array_json_each_row.ts
-npx tsx --transpile-only performance/insert_streaming_with_backpressure.ts
+npx tsx coding/array_json_each_row.ts
+npx tsx performance/insert_streaming_with_backpressure.ts
 
 # from examples/web
-npx tsx --transpile-only coding/array_json_each_row.ts
+npx tsx coding/array_json_each_row.ts
 ```
 
 ### TLS examples
@@ -212,9 +218,9 @@ sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 After that, you should be able to run the examples (from `examples/node`):
 
 ```bash
-npx tsx --transpile-only security/basic_tls.ts
-npx tsx --transpile-only security/mutual_tls.ts
-npx tsx --transpile-only schema-and-deployments/create_table_on_premise_cluster.ts
+npx tsx security/basic_tls.ts
+npx tsx security/mutual_tls.ts
+npx tsx schema-and-deployments/create_table_on_premise_cluster.ts
 ```
 
 ### ClickHouse Cloud examples
@@ -239,7 +245,7 @@ Cloud examples assume that you are using the `default` user and database.
 Run one of the Cloud examples (from `examples/node`):
 
 ```
-npx tsx --transpile-only schema-and-deployments/create_table_cloud.ts
+npx tsx schema-and-deployments/create_table_cloud.ts
 ```
 
 ### Environment variables for runnable examples

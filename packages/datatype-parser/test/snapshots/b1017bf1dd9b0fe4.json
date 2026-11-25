@@ -1,0 +1,35 @@
+{
+  "type": "Tuple(Decimal(10, 2), Nullable(String))",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Decimal",
+        "arguments": [
+          {
+            "type": "Literal",
+            "value_type": "UInt64",
+            "value": "10"
+          },
+          {
+            "type": "Literal",
+            "value_type": "UInt64",
+            "value": "2"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "String"
+          }
+        ]
+      }
+    ]
+  }
+}

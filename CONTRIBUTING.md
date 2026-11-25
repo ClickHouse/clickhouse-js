@@ -9,7 +9,7 @@ and help us maintain up-to-date documentation.
 
 You have installed:
 
-- a compatible LTS version of Node.js: `v20.x`, `v22.x` or `v24.x`
+- a compatible version of Node.js: `v22.x`, `v24.x` or `v26.x`
 - NPM >= `9.x`
 
 ### Create a fork of the repository and clone it
@@ -37,10 +37,11 @@ sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
 
 ## Style Guide
 
-We use an automatic code formatting with `prettier` and `eslint`, both should be installed after running `npm i`.
+We use automatic code formatting with `prettier` and linting with `eslint`, both should be installed after running `npm i`.
 
 Additionally, every commit should trigger a [Husky](https://typicode.github.io/husky/) Git hook that applies `prettier`
-and checks the code with `eslint` via `lint-staged` automatically.
+to the staged files via `lint-staged` automatically. `eslint` is not run by the commit hook; it runs in CI (with
+`--max-warnings=0`), so run it manually with `npm run lint` (or `npm run lint:fix`) before pushing.
 
 ## Testing
 
@@ -50,15 +51,14 @@ everyone in the community can safely benefit from your contribution.
 
 ### Tooling
 
-We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports both Node.js, Web environments and edge runtimes.
+We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports Node.js, Web environments, and edge runtimes.
 
-The repository uses three consolidated Vitest configuration files:
+The repository keeps two Vitest configuration files, embedded in the client packages:
 
-- `vitest.client-common.config.ts` - Tests for the common client package
-- `vitest.node.config.ts` - Tests for the Node.js client package
-- `vitest.web.config.ts` - Tests for the Web client package
+- `packages/client-node/vitest.config.ts` - Tests for the Node.js client package
+- `packages/client-web/vitest.config.ts` - Tests for the Web client package
 
-Each config supports multiple test modes controlled by the `TEST_MODE` environment variable, allowing different test scenarios (unit, integration, TLS, etc.) to be run with a single configuration file.
+The shared (common) sources live in `packages/client-common` and are bundled into both clients; the common specs are run as part of the Node.js and Web test suites, so the common code is covered without a separate config. Each config supports multiple test modes controlled by the `TEST_MODE` environment variable, allowing different test scenarios (unit, integration, TLS, etc.) to be run with a single configuration file.
 
 ### Type checking and linting
 
@@ -69,18 +69,32 @@ npm run typecheck
 npm run lint:fix
 ```
 
-However, usually, it is enough to rely on Husky Git hooks.
+Formatting can be checked or applied repo-wide with:
+
+```bash
+npm run prettier:check
+npm run prettify
+```
+
+CI runs `npm run prettier:check` for every PR (the `format` workflow), also for a PR that changes only docs, skills, or workflows.
+
+The Husky Git hook formats staged files with `prettier` on commit, but does not run `eslint`; make sure to run
+`npm run lint` before pushing, as CI enforces it with zero warnings.
+
+Every ESLint rule is configured as a `warn` (the only hard errors come from the TypeScript compiler, i.e.
+`npm run typecheck`). Because CI runs `eslint --max-warnings=0`, any ESLint warning still fails the build, so
+treat all warnings as errors that must be fixed before merging.
 
 ### Running unit tests
 
 Does not require a running ClickHouse server.
 
 ```bash
-# Run common unit tests
-npm run test:common:unit
-
-# Run Node.js unit tests
+# Run Node.js unit tests (also runs the common unit tests)
 npm run test:node:unit
+
+# Run Web unit tests (also runs the common unit tests)
+npm run test:web:unit
 ```
 
 ### Running integration tests
@@ -142,7 +156,6 @@ npm run test:node:integration:tls
 #### Local two nodes cluster integration tests
 
 Used when `CLICKHOUSE_TEST_ENVIRONMENT` is set to `local_cluster`.
-
 
 Run the tests (Node.js):
 

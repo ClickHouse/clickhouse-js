@@ -1,0 +1,17 @@
+{
+  "type": "Map(String, Float64)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Map",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "Float64"
+      }
+    ]
+  }
+}

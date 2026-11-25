@@ -1,0 +1,23 @@
+{
+  "type": "Array(Enum8('a' = 1, 'b' = 2))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "EnumDataType",
+        "name": "Enum8",
+        "values": [
+          {
+            "name": "a",
+            "value": 1
+          },
+          {
+            "name": "b",
+            "value": 2
+          }
+        ]
+      }
+    ]
+  }
+}

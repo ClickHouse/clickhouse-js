@@ -1,0 +1,41 @@
+{
+  "type": "Enum16('a' = 1, 'b' = 2, 'c' = 3, 'd' = 4, 'e' = 5, 'f' = 6, 'g' = 7, 'h' = 8)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum16",
+    "values": [
+      {
+        "name": "a",
+        "value": 1
+      },
+      {
+        "name": "b",
+        "value": 2
+      },
+      {
+        "name": "c",
+        "value": 3
+      },
+      {
+        "name": "d",
+        "value": 4
+      },
+      {
+        "name": "e",
+        "value": 5
+      },
+      {
+        "name": "f",
+        "value": 6
+      },
+      {
+        "name": "g",
+        "value": 7
+      },
+      {
+        "name": "h",
+        "value": 8
+      }
+    ]
+  }
+}

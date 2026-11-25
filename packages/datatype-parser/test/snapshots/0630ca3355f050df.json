@@ -1,0 +1,19 @@
+{
+  "type": "DateTime64(0, 'America/Los_Angeles')",
+  "data_type": {
+    "type": "DataType",
+    "name": "DateTime64",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "UInt64",
+        "value": "0"
+      },
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "America/Los_Angeles"
+      }
+    ]
+  }
+}

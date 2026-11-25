@@ -1,32 +1,32 @@
-import { describe, it, expect } from 'vitest'
-import { formatQuerySettings, SettingsMap } from '../../src/index'
+import { describe, it, expect } from "vitest";
+import { formatQuerySettings, SettingsMap } from "../../src/index";
 
-describe('formatQuerySettings', () => {
-  it('formats boolean', () => {
-    expect(formatQuerySettings(true)).toBe('1')
-    expect(formatQuerySettings(false)).toBe('0')
-  })
+describe("formatQuerySettings", () => {
+  it("formats boolean", () => {
+    expect(formatQuerySettings(true)).toBe("1");
+    expect(formatQuerySettings(false)).toBe("0");
+  });
 
-  it('formats a number', () => {
-    expect(formatQuerySettings(1)).toBe('1')
-  })
+  it("formats a number", () => {
+    expect(formatQuerySettings(1)).toBe("1");
+  });
 
-  it('formats a string', () => {
-    expect(formatQuerySettings('42')).toBe('42')
-  })
+  it("formats a string", () => {
+    expect(formatQuerySettings("42")).toBe("42");
+  });
 
-  it('formats a Map', () => {
+  it("formats a Map", () => {
     expect(
-      formatQuerySettings(SettingsMap.from({ foo: 'bar', baz: 'qux' })),
-    ).toBe(`{'foo':'bar','baz':'qux'}`)
-  })
+      formatQuerySettings(SettingsMap.from({ foo: "bar", baz: "qux" })),
+    ).toBe(`{'foo':'bar','baz':'qux'}`);
+  });
 
-  it('throws on unsupported values', () => {
+  it("throws on unsupported values", () => {
     expect(() => formatQuerySettings(undefined as any)).toThrowError(
-      'Unsupported value in query settings: [undefined].',
-    )
+      "Unsupported value in query settings: [undefined].",
+    );
     expect(() => formatQuerySettings([1, 2] as any)).toThrowError(
-      'Unsupported value in query settings: [1,2].',
-    )
-  })
-})
+      "Unsupported value in query settings: [1,2].",
+    );
+  });
+});

@@ -1,11 +1,11 @@
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
 // Inserting and reading back values for all four `Decimal(P, S)` widths (32/64/128/256-bit).
 // Decimal values are passed as strings to avoid floating-point precision loss, and read back
 // using `toString(decN)` for the same reason. Reach for this when storing money or other
 // fixed-precision quantities.
-const client = createClient()
-const tableName = 'insert_decimals_example_web'
+const client = createClient();
+const tableName = "insert_decimals_example_web";
 await client.command({
   query: `
     CREATE OR REPLACE TABLE ${tableName}
@@ -19,27 +19,27 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 const row1 = {
   id: 1,
-  dec32: '1234567.89',
-  dec64: '123456789123456.789',
-  dec128: '1234567891234567891234567891.1234567891',
+  dec32: "1234567.89",
+  dec64: "123456789123456.789",
+  dec128: "1234567891234567891234567891.1234567891",
   dec256:
-    '12345678912345678912345678911234567891234567891234567891.12345678911234567891',
-}
+    "12345678912345678912345678911234567891234567891234567891.12345678911234567891",
+};
 const row2 = {
   id: 2,
-  dec32: '12.01',
-  dec64: '5000000.405',
-  dec128: '1.0000000004',
-  dec256: '42.00000000000000013007',
-}
+  dec32: "12.01",
+  dec64: "5000000.405",
+  dec128: "1.0000000004",
+  dec256: "42.00000000000000013007",
+};
 await client.insert({
   table: tableName,
   values: [row1, row2],
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 const resultSet = await client.query({
   query: `
     SELECT toString(dec32)  AS decimal32,
@@ -48,7 +48,7 @@ const resultSet = await client.query({
            toString(dec256) AS decimal256
     FROM ${tableName}
   `,
-  format: 'JSONEachRow',
-})
-console.log('Result:', await resultSet.json())
-await client.close()
+  format: "JSONEachRow",
+});
+console.log("Result:", await resultSet.json());
+await client.close();

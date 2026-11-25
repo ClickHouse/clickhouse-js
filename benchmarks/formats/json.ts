@@ -1,5 +1,5 @@
-import { createClient } from '@clickhouse/client'
-import { attachExceptionHandlers } from '../common'
+import { createClient } from "@clickhouse/client";
+import { attachExceptionHandlers } from "../common";
 
 /*
 Large strings table definition:
@@ -22,87 +22,87 @@ Large strings table definition:
   FROM numbers(100000);
 */
 
-const WarmupIterations = 3
-const BenchmarkIterations = 10
+const WarmupIterations = 3;
+const BenchmarkIterations = 10;
 
-const largeStringsQuery = `SELECT * FROM large_strings ORDER BY id ASC LIMIT 50000`
-const cellTowersQuery = `SELECT * FROM cell_towers ORDER BY (radio, mcc, net, created) ASC LIMIT 200000`
-const queries = [largeStringsQuery, cellTowersQuery]
+const largeStringsQuery = `SELECT * FROM large_strings ORDER BY id ASC LIMIT 50000`;
+const cellTowersQuery = `SELECT * FROM cell_towers ORDER BY (radio, mcc, net, created) ASC LIMIT 200000`;
+const queries = [largeStringsQuery, cellTowersQuery];
 
-const formats = ['JSONEachRow'] as const
+const formats = ["JSONEachRow"] as const;
 
 void (async () => {
   const client = createClient({
-    url: 'http://localhost:8123',
+    url: "http://localhost:8123",
     compression: {
       request: false,
       response: false,
     },
-  })
+  });
 
-  type TotalPerQuery = Record<string, number>
+  type TotalPerQuery = Record<string, number>;
   const results: Record<(typeof formats)[number], TotalPerQuery> = {
     JSONEachRow: {},
-  }
+  };
 
   async function benchmarkJSON(
     format: (typeof formats)[number],
     query: string,
     keepResults: boolean,
   ) {
-    const start = +new Date()
+    const start = +new Date();
     const rs = await client.query({
       query,
       format,
-    })
-    await rs.json() // discard the result
-    const elapsed = +new Date() - start
+    });
+    await rs.json(); // discard the result
+    const elapsed = +new Date() - start;
     if (keepResults) {
-      const current = results[format][query] ?? 0
-      results[format][query] = current + elapsed
+      const current = results[format][query] ?? 0;
+      results[format][query] = current + elapsed;
     }
-    logResult(format, query, elapsed)
+    logResult(format, query, elapsed);
   }
 
-  attachExceptionHandlers()
-  process.on('SIGINT', closeAndExit)
-  process.on('SIGINT', closeAndExit)
+  attachExceptionHandlers();
+  process.on("SIGINT", closeAndExit);
+  process.on("SIGINT", closeAndExit);
 
-  console.log('Warmup')
+  console.log("Warmup");
   for (let i = 0; i < WarmupIterations; i++) {
-    await runQueries(false)
+    await runQueries(false);
   }
-  console.log('Benchmarking')
+  console.log("Benchmarking");
   for (let i = 0; i < BenchmarkIterations; i++) {
-    await runQueries(true)
+    await runQueries(true);
   }
-  console.log('Results:', results)
-  console.log('Average results:')
+  console.log("Results:", results);
+  console.log("Average results:");
   for (const format of formats) {
     for (const query of queries) {
-      const avg = Math.floor(results[format][query] / BenchmarkIterations)
-      logResult(format, query, avg)
+      const avg = Math.floor(results[format][query] / BenchmarkIterations);
+      logResult(format, query, avg);
     }
   }
-  await closeAndExit()
+  await closeAndExit();
 
   function logResult(format: string, query: string, elapsed: number) {
-    const elapsedStr = elapsed.toString(10) + ' ms'
+    const elapsedStr = elapsed.toString(10) + " ms";
     console.log(
       `[${elapsedStr.padEnd(10)}][${format.padEnd(18)}][${query.padEnd(80)}]`,
-    )
+    );
   }
 
   async function runQueries(keepResults: boolean) {
     for (const query of queries) {
       for (const format of formats) {
-        await benchmarkJSON(format, query, keepResults)
+        await benchmarkJSON(format, query, keepResults);
       }
     }
   }
 
   async function closeAndExit() {
-    await client.close()
-    process.exit(0)
+    await client.close();
+    process.exit(0);
   }
-})()
+})();

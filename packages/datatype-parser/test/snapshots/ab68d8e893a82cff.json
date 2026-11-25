@@ -1,0 +1,7 @@
+{
+  "type": "BOOLEAN",
+  "data_type": {
+    "type": "DataType",
+    "name": "BOOLEAN"
+  }
+}

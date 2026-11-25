@@ -1,0 +1,19 @@
+{
+  "type": "LowCardinality(Nullable(UInt32))",
+  "data_type": {
+    "type": "DataType",
+    "name": "LowCardinality",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Nullable",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "UInt32"
+          }
+        ]
+      }
+    ]
+  }
+}

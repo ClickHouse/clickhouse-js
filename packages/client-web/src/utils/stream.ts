@@ -1,21 +1,21 @@
 // See https://github.com/v8/v8/commit/ea56bf5513d0cbd2a35a9035c5c2996272b8b728
-const MaxStringLength = Math.pow(2, 29) - 24
+const MaxStringLength = Math.pow(2, 29) - 24;
 
 export function isStream(obj: any): obj is ReadableStream {
   return (
-    obj !== null && obj !== undefined && typeof obj.pipeThrough === 'function'
-  )
+    obj !== null && obj !== undefined && typeof obj.pipeThrough === "function"
+  );
 }
 
 export async function getAsText(stream: ReadableStream): Promise<string> {
-  let text = ''
+  let text = "";
 
-  const textDecoder = new TextDecoder()
-  const reader = stream.getReader()
+  const textDecoder = new TextDecoder();
+  const reader = stream.getReader();
 
   while (true) {
-    const { done, value } = await reader.read()
-    const decoded = textDecoder.decode(value, { stream: true })
+    const { done, value } = await reader.read();
+    const decoded = textDecoder.decode(value, { stream: true });
     if (decoded.length + text.length > MaxStringLength) {
       // The error message is crafted to be similar to the one thrown by Node's implementation.
       // A simple try/catch block around the concatenation of the decoded chunk would not work
@@ -24,23 +24,23 @@ export async function getAsText(stream: ReadableStream): Promise<string> {
       // detect this condition across browsers.
       // Also, Vitest crashes while running the try/catch implementatioin in Firefox.
       throw new Error(
-        'The response length exceeds the maximum allowed size of V8 String: ' +
+        "The response length exceeds the maximum allowed size of V8 String: " +
           `${MaxStringLength}; consider limiting the amount of requested rows.`,
-      )
+      );
     }
-    text += decoded
-    if (done) break
+    text += decoded;
+    if (done) break;
   }
 
   // flush unfinished multi-byte characters
-  const decoded = textDecoder.decode()
+  const decoded = textDecoder.decode();
   if (decoded.length + text.length > MaxStringLength) {
     throw new Error(
-      'The response length exceeds the maximum allowed size of V8 String: ' +
+      "The response length exceeds the maximum allowed size of V8 String: " +
         `${MaxStringLength}; consider limiting the amount of requested rows.`,
-    )
+    );
   }
-  text += decoded
+  text += decoded;
 
-  return text
+  return text;
 }

@@ -1,0 +1,33 @@
+{
+  "type": "Tuple(UInt8, String, Float64, Date, UUID, Bool)",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt8"
+      },
+      {
+        "type": "DataType",
+        "name": "String"
+      },
+      {
+        "type": "DataType",
+        "name": "Float64"
+      },
+      {
+        "type": "DataType",
+        "name": "Date"
+      },
+      {
+        "type": "DataType",
+        "name": "UUID"
+      },
+      {
+        "type": "DataType",
+        "name": "Bool"
+      }
+    ]
+  }
+}

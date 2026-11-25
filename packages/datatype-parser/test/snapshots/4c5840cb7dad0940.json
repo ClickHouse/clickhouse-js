@@ -1,0 +1,26 @@
+{
+  "type": "Tuple(a UInt8, b UInt16, c UInt32, d UInt64)",
+  "data_type": {
+    "type": "TupleDataType",
+    "name": "Tuple",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt8"
+      },
+      {
+        "type": "DataType",
+        "name": "UInt16"
+      },
+      {
+        "type": "DataType",
+        "name": "UInt32"
+      },
+      {
+        "type": "DataType",
+        "name": "UInt64"
+      }
+    ],
+    "element_names": ["a", "b", "c", "d"]
+  }
+}

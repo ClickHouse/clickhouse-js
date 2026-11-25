@@ -1,0 +1,7 @@
+{
+  "type": "BINARY",
+  "data_type": {
+    "type": "DataType",
+    "name": "BINARY"
+  }
+}

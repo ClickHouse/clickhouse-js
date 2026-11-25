@@ -4,43 +4,43 @@
 // a custom serializer before passing it to the JSON.stringify function.
 //
 // This example also shows how you can serialize Date objects in a custom way.
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
 const valueSerializer = (value: unknown): unknown => {
   if (value instanceof Date) {
     // if you would have put this in the `replacer` parameter of JSON.stringify, (e.x: JSON.stringify(obj, replacerFn))
     // it would have been an ISO string, but since we are serializing before `stringify`ing,
     // it will convert it before the `.toJSON()` method has been called
-    return value.getTime()
+    return value.getTime();
   }
 
-  if (typeof value === 'bigint') {
-    return value.toString()
+  if (typeof value === "bigint") {
+    return value.toString();
   }
 
   if (Array.isArray(value)) {
-    return value.map(valueSerializer)
+    return value.map(valueSerializer);
   }
 
-  if (typeof value === 'object' && value !== null) {
+  if (typeof value === "object" && value !== null) {
     return Object.fromEntries(
       Object.entries(value).map(([k, v]) => [k, valueSerializer(v)]),
-    )
+    );
   }
 
-  return value
-}
+  return value;
+};
 
-const tableName = 'inserts_custom_json_handling_web'
+const tableName = "inserts_custom_json_handling_web";
 const client = createClient({
   json: {
     parse: JSON.parse,
     stringify: (obj: unknown) => JSON.stringify(valueSerializer(obj)),
   },
-})
+});
 await client.command({
   query: `DROP TABLE IF EXISTS ${tableName}`,
-})
+});
 await client.command({
   query: `
     CREATE TABLE ${tableName}
@@ -48,7 +48,7 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 await client.insert({
   table: tableName,
   values: [
@@ -57,11 +57,11 @@ await client.insert({
       dt: new Date(),
     },
   ],
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 const rows = await client.query({
   query: `SELECT * FROM ${tableName}`,
-  format: 'JSONEachRow',
-})
-console.info(await rows.json())
-await client.close()
+  format: "JSONEachRow",
+});
+console.info(await rows.json());
+await client.close();

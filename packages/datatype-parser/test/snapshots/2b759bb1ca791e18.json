@@ -1,0 +1,25 @@
+{
+  "type": "Nested(x Int32, y Int32)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Nested",
+    "arguments": [
+      {
+        "type": "NameTypePair",
+        "name": "x",
+        "data_type": {
+          "type": "DataType",
+          "name": "Int32"
+        }
+      },
+      {
+        "type": "NameTypePair",
+        "name": "y",
+        "data_type": {
+          "type": "DataType",
+          "name": "Int32"
+        }
+      }
+    ]
+  }
+}

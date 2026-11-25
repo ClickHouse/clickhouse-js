@@ -1,249 +1,443 @@
 import type {
   BaseResultSet,
+  ClickHouseSpan,
+  ClickHouseSpanAttributes,
   DataFormat,
   JSONHandling,
   ResponseHeaders,
   ResultJSONType,
   ResultStream,
   Row,
-} from '@clickhouse/client-common'
+} from "./common/index";
 import {
   CARET_RETURN,
-  extractErrorAtTheEndOfChunk,
-  RawStreamExceptionDetector,
-} from '@clickhouse/client-common'
+  errorFromExceptionBlock,
+  matchExceptionBlockStart,
+  recordSpanError,
+} from "./common/index";
 import {
   isNotStreamableJSONFamily,
   isStreamableJSONFamily,
+  RecordsJSONFormats,
   validateStreamFormat,
-} from '@clickhouse/client-common'
-import { getAsText } from './utils'
+} from "./common/index";
+import { getAsText } from "./utils";
+import { createJSONEachRowErrorDetector } from "./common/utils/stream";
 
-const NEWLINE = 0x0a as const
+const NEWLINE = 0x0a as const;
+
+/** The last byte of the incomplete row, or `undefined` if it is empty. */
+function lastByte(chunks: Uint8Array[]): number | undefined {
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const chunk = chunks[i]!;
+    if (chunk.length > 0) {
+      return chunk[chunk.length - 1];
+    }
+  }
+  return undefined;
+}
+
+function concatBytes(chunks: Uint8Array[]): Uint8Array {
+  let length = 0;
+  for (const chunk of chunks) {
+    length += chunk.length;
+  }
+  const result = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
+
+/** The WHATWG Streams spec includes a `cancel` callback on `Transformer`, but
+ *  TypeScript's DOM lib does not yet declare it.  This local extension adds it
+ *  so we can detect source-stream aborts and consumer-side cancellations. */
+type TransformerWithCancel<I = any, O = any> = Transformer<I, O> & {
+  cancel?: (reason?: unknown) => void | PromiseLike<void>;
+};
 
 export class ResultSet<
   Format extends DataFormat | unknown,
-> implements BaseResultSet<
-  ReadableStream<Row[]>,
-  Format,
-  ReadableStream<Uint8Array>,
-  ReadableStream<Uint8Array>
-> {
-  public readonly response_headers: ResponseHeaders
+> implements BaseResultSet<ReadableStream<Row[]>, Format> {
+  public readonly response_headers: ResponseHeaders;
 
-  private readonly exceptionTag: string | undefined = undefined
-  private isAlreadyConsumed = false
-  private readonly jsonHandling: JSONHandling
+  private readonly exceptionTag: string | undefined = undefined;
+  private isAlreadyConsumed = false;
+  private readonly jsonHandling: JSONHandling;
+  private _stream: ReadableStream;
+  private readonly format: Format;
+  /** The `clickhouse.query.stream` span owned by this result set (if the
+   *  client was configured with a tracer); it ends via {@link finishSpan}
+   *  when the response stream is fully consumed, closed, or fails. */
+  private readonly span: ClickHouseSpan | undefined;
+  /** Decoded (decompressed) bytes received from the server so far. */
+  private span_bytes = 0;
+  /** Rows decoded from the response stream so far. */
+  private span_rows = 0;
+  private span_rows_counted = false;
+  /** UTF-16 code-unit length of the response body, recorded by {@link text}
+   *  instead of {@link span_bytes} to avoid the `TextEncoder` allocation that
+   *  accurate byte counting would require. */
+  private span_text_length: number | undefined;
+  private span_finished = false;
+  public readonly query_id: string;
 
   constructor(
-    private _stream: ReadableStream,
-    private readonly format: Format,
-    public readonly query_id: string,
+    _stream: ReadableStream,
+    format: Format,
+    query_id: string,
     _response_headers?: ResponseHeaders,
     jsonHandling: JSONHandling = {
       parse: JSON.parse,
       stringify: JSON.stringify,
     },
+    span?: ClickHouseSpan,
   ) {
+    this._stream = _stream;
+    this.format = format;
+    this.query_id = query_id;
+    this.span = span;
     this.response_headers =
-      _response_headers !== undefined ? Object.freeze(_response_headers) : {}
-    this.exceptionTag = this.response_headers['x-clickhouse-exception-tag'] as
-      | string
-      | undefined
+      _response_headers !== undefined ? Object.freeze(_response_headers) : {};
+    this.exceptionTag = this.response_headers["x-clickhouse-exception-tag"] as
+      string | undefined;
 
-    this.jsonHandling = jsonHandling
+    this.jsonHandling = jsonHandling;
   }
 
   /** See {@link BaseResultSet.text} */
   async text(): Promise<string> {
-    this.markAsConsumed()
-    return getAsText(this._stream)
+    this.markAsConsumed();
+    try {
+      const text = await getAsText(this._stream);
+      // text.length is the UTF-16 code-unit count of the response body, not a
+      // byte count.  We record it as `clickhouse.response.text_length` rather
+      // than `span_bytes` (`clickhouse.response.decoded_bytes`) to avoid the
+      // `TextEncoder` allocation that accurate byte counting would require here.
+      this.span_text_length = text.length;
+      this.finishSpan();
+      return text;
+    } catch (err) {
+      this.finishSpan(err);
+      throw err;
+    }
   }
 
   /** See {@link BaseResultSet.json} */
   async json<T>(): Promise<ResultJSONType<T, Format>> {
     // JSONEachRow, etc.
     if (isStreamableJSONFamily(this.format as DataFormat)) {
-      const result: T[] = []
-      const reader = this.stream<T>().getReader()
+      const result: T[] = [];
+      // The span progress is updated and the span is finished by the stream() pipeline.
+      const reader = this.stream<T>().getReader();
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) {
-          break
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          for (const row of value) {
+            result.push(row.json() as T);
+          }
         }
-        for (const row of value) {
-          result.push(row.json() as T)
-        }
+      } catch (err) {
+        this.finishSpan(err);
+        throw err;
       }
-      return result as any
+      return result as any;
     }
     // JSON, JSONObjectEachRow, etc.
     if (isNotStreamableJSONFamily(this.format as DataFormat)) {
-      const text = await getAsText(this._stream)
-      return this.jsonHandling.parse(text)
+      try {
+        const text = await getAsText(this._stream);
+        // Same as text(): record text.length (UTF-16 code-unit count) rather
+        // than span_bytes to avoid the TextEncoder allocation.
+        this.span_text_length = text.length;
+        const parsed = this.jsonHandling.parse<ResultJSONType<T, Format>>(text);
+        // Record the returned row count for non-streaming consumption too, so
+        // `db.response.returned_rows` is present regardless of the format /
+        // consumption style (see countReturnedRows).
+        const rows = countReturnedRows(parsed, this.format as DataFormat);
+        if (rows !== undefined) {
+          this.addSpanRows(rows);
+        }
+        this.finishSpan();
+        return parsed;
+      } catch (err) {
+        this.finishSpan(err);
+        throw err;
+      }
     }
     // should not be called for CSV, etc.
-    throw new Error(`Cannot decode ${this.format} as JSON`)
+    throw new Error(`Cannot decode ${this.format} as JSON`);
   }
 
   /** See {@link BaseResultSet.stream} */
   stream<T>(): ResultStream<Format, ReadableStream<Row<T, Format>[]>> {
-    this.markAsConsumed()
-    validateStreamFormat(this.format)
+    this.markAsConsumed();
+    validateStreamFormat(this.format);
 
-    const incompleteChunks: Uint8Array[] = []
-    let totalIncompleteLength = 0
+    const incompleteChunks: Uint8Array[] = [];
+    let totalIncompleteLength = 0;
+    // The bytes from the start of a row up to a `\r\n` that can open a
+    // mid-stream exception block, when the chunk ends before it is possible to
+    // decide. The first bytes of the next chunk decide.
+    let undecidedBytes: Uint8Array | undefined;
+    // A mid-stream exception block, collected until it is complete.
+    let exceptionBlock: Uint8Array | undefined;
 
-    const exceptionTag = this.exceptionTag
-    const jsonHandling = this.jsonHandling
-    const decoder = new TextDecoder('utf-8')
-    const transform = new TransformStream({
+    const exceptionTag = this.exceptionTag;
+    const jsonHandling = this.jsonHandling;
+    const detectJSONError = createJSONEachRowErrorDetector(this.format);
+    const decoder = new TextDecoder("utf-8");
+    const toRow = (bytes: Uint8Array): Row => {
+      const text = decoder.decode(bytes);
+      return {
+        text,
+        json<T>(): T {
+          return jsonHandling.parse(text);
+        },
+      };
+    };
+    const transformerOptions: TransformerWithCancel<Uint8Array, Row[]> = {
       start() {
         //
       },
       transform: (chunk: Uint8Array, controller) => {
         if (chunk === null) {
-          controller.terminate()
+          controller.terminate();
         }
 
-        const rows: Row[] = []
+        this.span_bytes += chunk.length;
 
-        let idx: number
-        let lastIdx = 0
+        if (exceptionBlock !== undefined && exceptionTag !== undefined) {
+          exceptionBlock = concatBytes([exceptionBlock, chunk]);
+          const err = errorFromExceptionBlock(exceptionBlock, exceptionTag);
+          if (err !== undefined) {
+            this.finishSpan(err);
+            controller.error(err);
+          }
+          return;
+        }
+        const rows: Row[] = [];
+
+        if (undecidedBytes !== undefined && exceptionTag !== undefined) {
+          // The kept bytes are a row, its `\r\n`, and the start of a possible
+          // exception block opening. Decide with the first bytes of the chunk.
+          const rowEnd = undecidedBytes.indexOf(NEWLINE);
+          const afterRow = undecidedBytes.subarray(rowEnd + 1);
+          if (
+            afterRow.indexOf(NEWLINE) === -1 &&
+            matchExceptionBlockStart(
+              chunk,
+              0,
+              exceptionTag,
+              afterRow.length,
+            ) === "none"
+          ) {
+            // Not an exception block: the kept row is complete, and the bytes
+            // after it start the next row. Scan the chunk without a copy.
+            rows.push(toRow(undecidedBytes.subarray(0, rowEnd)));
+            if (afterRow.length > 0) {
+              incompleteChunks.push(afterRow);
+              totalIncompleteLength += afterRow.length;
+            }
+          } else {
+            chunk = concatBytes([undecidedBytes, chunk]);
+          }
+          undecidedBytes = undefined;
+        }
+
+        let idx: number;
+        let lastIdx = 0;
 
         while (true) {
           // an unescaped newline character denotes the end of a row,
           // or at least the beginning of the exception marker
-          idx = chunk.indexOf(NEWLINE, lastIdx)
+          idx = chunk.indexOf(NEWLINE, lastIdx);
           if (idx === -1) {
             // there is no complete row in the rest of the current chunk
             // to be processed during the next transform iteration
-            const incompleteChunk = chunk.slice(lastIdx)
-            incompleteChunks.push(incompleteChunk)
-            totalIncompleteLength += incompleteChunk.length
+            const incompleteChunk = chunk.slice(lastIdx);
+            incompleteChunks.push(incompleteChunk);
+            totalIncompleteLength += incompleteChunk.length;
 
             // send the extracted rows to the consumer, if any
             if (rows.length > 0) {
-              controller.enqueue(rows)
+              this.addSpanRows(rows.length);
+              controller.enqueue(rows);
             }
-            break
+            break;
           } else {
-            let bytesToDecode: Uint8Array
+            let bytesToDecode: Uint8Array;
 
-            // Check for exception in the chunk (only after 25.11)
+            // Check for a mid-stream exception block (only after 25.11). The
+            // `\r`-before-`\n` test is a cheap pre-filter; the block is only
+            // confirmed by its opening marker and the random tag, so a stray
+            // `\r\n` in a successful response body (binary Parquet, CRLF
+            // CSV/TSV rows) is not a false positive. The block can be split
+            // across chunks: it is collected until it is complete, and its
+            // bytes are never emitted as rows.
             if (
               exceptionTag !== undefined &&
-              idx >= 1 &&
-              chunk[idx - 1] === CARET_RETURN
+              (idx > 0 ? chunk[idx - 1] : lastByte(incompleteChunks)) ===
+                CARET_RETURN
             ) {
-              controller.error(extractErrorAtTheEndOfChunk(chunk, exceptionTag))
+              const match = matchExceptionBlockStart(
+                chunk,
+                idx + 1,
+                exceptionTag,
+              );
+              if (match !== "none") {
+                if (rows.length > 0) {
+                  this.addSpanRows(rows.length);
+                  controller.enqueue(rows);
+                }
+                if (match === "partial") {
+                  incompleteChunks.push(chunk.subarray(lastIdx));
+                  undecidedBytes = concatBytes(incompleteChunks);
+                  incompleteChunks.length = 0;
+                  totalIncompleteLength = 0;
+                  return;
+                }
+                // The rest of the response is the exception block. A row that
+                // is cut by it, if any, is incomplete and is dropped.
+                incompleteChunks.length = 0;
+                totalIncompleteLength = 0;
+                exceptionBlock = chunk.slice(idx + 1);
+                const err = errorFromExceptionBlock(
+                  exceptionBlock,
+                  exceptionTag,
+                );
+                if (err !== undefined) {
+                  this.finishSpan(err);
+                  controller.error(err);
+                }
+                return; // stop further processing of this chunk
+              }
             }
 
             // using the incomplete chunks from the previous iterations
             if (incompleteChunks.length > 0) {
               const completeRowBytes = new Uint8Array(
                 totalIncompleteLength + idx,
-              )
+              );
 
-              let offset = 0
+              let offset = 0;
               incompleteChunks.forEach((incompleteChunk) => {
-                completeRowBytes.set(incompleteChunk, offset)
-                offset += incompleteChunk.length
-              })
+                completeRowBytes.set(incompleteChunk, offset);
+                offset += incompleteChunk.length;
+              });
 
               // finalize the row with the current chunk slice that ends with a newline
-              const finalChunk = chunk.slice(0, idx)
-              completeRowBytes.set(finalChunk, offset)
+              const finalChunk = chunk.slice(0, idx);
+              completeRowBytes.set(finalChunk, offset);
 
               // Reset the incomplete chunks.
               // Removing used buffers and reusing the already allocated memory
               // by setting length to 0
-              incompleteChunks.length = 0
-              totalIncompleteLength = 0
+              incompleteChunks.length = 0;
+              totalIncompleteLength = 0;
 
-              bytesToDecode = completeRowBytes
+              bytesToDecode = completeRowBytes;
             } else {
-              bytesToDecode = chunk.slice(lastIdx, idx)
+              bytesToDecode = chunk.slice(lastIdx, idx);
             }
 
-            const text = decoder.decode(bytesToDecode)
-            rows.push({
-              text,
-              json<T>(): T {
-                return jsonHandling.parse(text)
-              },
-            })
+            const row = toRow(bytesToDecode);
+            const error = detectJSONError?.(row.text);
+            if (error) {
+              if (rows.length > 0) {
+                this.addSpanRows(rows.length);
+                controller.enqueue(rows);
+              }
+              this.finishSpan(error);
+              controller.error(error);
+              return;
+            }
+            rows.push(row);
 
-            lastIdx = idx + 1 // skipping newline character
+            lastIdx = idx + 1; // skipping newline character
           }
         }
       },
-    })
+      flush: (controller) => {
+        if (exceptionBlock !== undefined && exceptionTag !== undefined) {
+          const err = errorFromExceptionBlock(
+            exceptionBlock,
+            exceptionTag,
+            true,
+          );
+          this.finishSpan(err);
+          controller.error(err);
+          return;
+        }
+        if (undecidedBytes !== undefined) {
+          // The response ended before these bytes could complete an exception
+          // block opening. Without the tag, they cannot be told from data, so
+          // they are rows (e.g. the end of a CRLF-terminated CSV/TSV response).
+          const rows: Row[] = [];
+          let lastIdx = 0;
+          while (true) {
+            const idx = undecidedBytes.indexOf(NEWLINE, lastIdx);
+            if (idx === -1) {
+              // The bytes after the last newline are not a complete row. They
+              // are dropped, the same as `incompleteChunks` at the end.
+              break;
+            }
+            rows.push(toRow(undecidedBytes.subarray(lastIdx, idx)));
+            lastIdx = idx + 1;
+          }
+          this.addSpanRows(rows.length);
+          controller.enqueue(rows);
+        }
+        if (detectJSONError !== undefined && incompleteChunks.length > 0) {
+          // An error row is the last row, and the server can end the
+          // response without a newline after it.
+          const error = detectJSONError(
+            decoder.decode(concatBytes(incompleteChunks)),
+          );
+          if (error !== undefined) {
+            this.finishSpan(error);
+            controller.error(error);
+            return;
+          }
+        }
+        // The readable side of the transform completes when the source
+        // stream is fully consumed - finalize the query span.
+        this.finishSpan();
+      },
+      cancel: (reason?: unknown) => {
+        // Called when the readable side is cancelled by the consumer, or
+        // when the writable side is aborted (e.g. source stream network
+        // error).  Either way, the span must be properly ended.
+        this.finishSpan(reason);
+      },
+    };
+    const transform = new TransformStream(transformerOptions);
 
     const pipeline = this._stream.pipeThrough(transform, {
       preventClose: false,
       preventAbort: false,
       preventCancel: false,
-    })
-    return pipeline as any
-  }
-
-  /** See {@link BaseResultSet.binaryStream} */
-  binaryStream(): ReadableStream<Uint8Array> {
-    this.markAsConsumed()
-
-    const exceptionTag = this.exceptionTag
-    const detector =
-      exceptionTag !== undefined
-        ? new RawStreamExceptionDetector(exceptionTag)
-        : undefined
-    const transform = new TransformStream<Uint8Array, Uint8Array>({
-      transform: (chunk, controller) => {
-        if (chunk === null) {
-          controller.terminate()
-          return
-        }
-        if (detector === undefined) {
-          controller.enqueue(chunk)
-          return
-        }
-        const data = detector.push(chunk)
-        if (data.length > 0) {
-          controller.enqueue(data)
-        }
-      },
-      flush: (controller) => {
-        if (detector === undefined) {
-          return
-        }
-        const { data, error } = detector.flush()
-        if (error !== undefined) {
-          controller.error(error)
-          return
-        }
-        if (data.length > 0) {
-          controller.enqueue(data)
-        }
-      },
-    })
-
-    return this._stream.pipeThrough(transform, {
-      preventClose: false,
-      preventAbort: false,
-      preventCancel: false,
-    })
-  }
-
-  /** See {@link BaseResultSet.rawStream} */
-  rawStream(): ReadableStream<Uint8Array> {
-    this.markAsConsumed()
-    return this._stream
+    });
+    return pipeline as any;
   }
 
   async close(): Promise<void> {
-    this.markAsConsumed()
-    await this._stream.cancel()
+    this.markAsConsumed();
+    try {
+      await this._stream.cancel();
+    } catch (err) {
+      // Cancelling rejects when the stream has already errored or is locked.
+      // The span still has to end exactly once, so finish it with that error.
+      this.finishSpan(err);
+      throw err;
+    }
+    this.finishSpan();
   }
 
   /**
@@ -254,15 +448,77 @@ export class ResultSet<
    * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
    */
   async [Symbol.asyncDispose]() {
-    await this.close()
+    await this.close();
   }
 
   private markAsConsumed() {
     if (this.isAlreadyConsumed) {
-      throw new Error(streamAlreadyConsumedMessage)
+      throw new Error(streamAlreadyConsumedMessage);
     }
-    this.isAlreadyConsumed = true
+    this.isAlreadyConsumed = true;
+  }
+
+  /** Add the number of rows decoded from the response stream. */
+  private addSpanRows(count: number): void {
+    this.span_rows_counted = true;
+    this.span_rows += count;
+  }
+
+  /** Record the final response metrics (`clickhouse.response.decoded_bytes`,
+   *  `clickhouse.response.text_length` when called from {@link text}, and
+   *  `db.response.returned_rows` when rows were counted) and the error
+   *  (if any) on the span, and end it. Safe to call multiple times - only
+   *  the first call wins. */
+  private finishSpan(err?: unknown): void {
+    if (this.span === undefined || this.span_finished) {
+      return;
+    }
+    this.span_finished = true;
+    const attributes: ClickHouseSpanAttributes = {};
+    if (this.span_text_length !== undefined) {
+      // Recorded by text(): UTF-16 code-unit count, not a byte count.
+      attributes["clickhouse.response.text_length"] = this.span_text_length;
+    } else {
+      // Recorded by stream() / json() streamable path: actual decoded bytes
+      // accumulated from raw Uint8Array chunks.
+      attributes["clickhouse.response.decoded_bytes"] = this.span_bytes;
+    }
+    if (this.span_rows_counted) {
+      attributes["db.response.returned_rows"] = this.span_rows;
+    }
+    this.span.setAttributes(attributes);
+    if (err !== undefined && err !== null) {
+      recordSpanError(this.span, err);
+    }
+    this.span.end();
   }
 }
 
-const streamAlreadyConsumedMessage = 'Stream has been already consumed'
+const streamAlreadyConsumedMessage = "Stream has been already consumed";
+
+/** Best-effort row count for a fully-parsed non-streaming JSON document, used
+ *  to populate `db.response.returned_rows` for `json()` consumption. Returns
+ *  `undefined` when the shape is unrecognized (the attribute is then omitted).
+ *  - `JSONObjectEachRow` (and other record formats) parse to `Record<string, T>`
+ *    -> the number of keys.
+ *  - `JSON`, `JSONCompact`, etc. parse to `{ data: T[], rows: number, ... }`
+ *    -> the reported `rows`, falling back to `data.length`. */
+function countReturnedRows(
+  parsed: unknown,
+  format: DataFormat,
+): number | undefined {
+  if (parsed === null || typeof parsed !== "object") {
+    return undefined;
+  }
+  if ((RecordsJSONFormats as readonly string[]).includes(format)) {
+    return Object.keys(parsed).length;
+  }
+  const obj = parsed as { rows?: unknown; data?: unknown };
+  if (typeof obj.rows === "number") {
+    return obj.rows;
+  }
+  if (Array.isArray(obj.data)) {
+    return obj.data.length;
+  }
+  return undefined;
+}

@@ -10,6 +10,8 @@ out
 coverage
 coverage-web
 .nyc_output
-packages/*/README.md
 packages/*/LICENSE
 packages/*/skills/
+# Vitest browser mode: screenshots and attachments of failed tests
+__screenshots__/
+.vitest-attachments/

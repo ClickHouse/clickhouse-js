@@ -1,14 +1,14 @@
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
-if (typeof CLICKHOUSE_CLUSTER_URL === 'undefined') {
-  throw new Error('CLICKHOUSE_CLUSTER_URL is required')
+if (typeof CLICKHOUSE_CLUSTER_URL === "undefined") {
+  throw new Error("CLICKHOUSE_CLUSTER_URL is required");
 }
 
 // ClickHouse cluster - for example, as defined in our `docker-compose.yml`
 // (services `clickhouse1`/`clickhouse2` behind the `nginx` round-robin entrypoint on port 8127).
 const client = createClient({
   url: CLICKHOUSE_CLUSTER_URL,
-})
+});
 
 await client.command({
   // Sample macro definitions are located in `.docker/clickhouse/cluster/serverN_config.xml`
@@ -28,6 +28,6 @@ await client.command({
   clickhouse_settings: {
     wait_end_of_query: 1,
   },
-})
+});
 
-await client.close()
+await client.close();

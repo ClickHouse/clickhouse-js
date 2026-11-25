@@ -1,0 +1,14 @@
+{
+  "type": "Object('json')",
+  "data_type": {
+    "type": "DataType",
+    "name": "Object",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "json"
+      }
+    ]
+  }
+}

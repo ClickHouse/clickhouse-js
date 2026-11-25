@@ -1,0 +1,7 @@
+{
+  "type": "INTEGER SIGNED",
+  "data_type": {
+    "type": "DataType",
+    "name": "INTEGER SIGNED"
+  }
+}

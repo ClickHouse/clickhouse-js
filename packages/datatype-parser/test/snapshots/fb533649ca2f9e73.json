@@ -1,0 +1,7 @@
+{
+  "type": "MEDIUMINT",
+  "data_type": {
+    "type": "DataType",
+    "name": "MEDIUMINT"
+  }
+}

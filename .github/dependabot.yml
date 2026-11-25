@@ -1,26 +1,41 @@
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 version: 2
 updates:
-  - package-ecosystem: 'github-actions'
-    directory: '.github/workflows'
+  - package-ecosystem: "github-actions"
+    directory: ".github/workflows"
     schedule:
-      interval: 'weekly'
-      day: 'monday'
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
     groups:
       workflows:
-        dependency-type: 'development'
-  - package-ecosystem: 'npm'
-    directory: '/'
+        dependency-type: "development"
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
-      interval: 'weekly'
-      day: 'monday'
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+      exclude:
+        - "@clickhouse/*"
     groups:
+      # Vitest packages peer-depend on the exact same version, so they must move
+      # together; a partial major bump fails `npm install` with ERESOLVE.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
       dev-dependencies:
-        dependency-type: 'development'
+        dependency-type: "development"
     ignore:
-      - dependency-name: '@opentelemetry/auto-instrumentations-node'
-        versions: ['0.70.0']
-      - dependency-name: '@types/node'
-        versions: ['25.3.0']
-      - dependency-name: 'typescript-eslint'
-        versions: ['8.56.0']
+      # Vitest majors need a deliberate migration across all workspaces.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        versions: ["25.3.0"]
+      - dependency-name: "typescript-eslint"
+        versions: ["8.56.0"]

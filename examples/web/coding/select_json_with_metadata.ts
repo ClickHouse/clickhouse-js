@@ -5,13 +5,13 @@
 // See also:
 //  - `select_json_each_row.ts` for row-by-row JSON output.
 //  - `select_data_formats_overview.ts` for a broader format comparison.
-import { createClient, type ResponseJSON } from '@clickhouse/client-web'
+import { createClient, type ResponseJSON } from "@clickhouse/client-web";
 
-const client = createClient()
+const client = createClient();
 const rows = await client.query({
-  query: 'SELECT number FROM system.numbers LIMIT 2',
-  format: 'JSON',
-})
-const result = await rows.json<ResponseJSON<{ number: string }>>()
-console.log(result)
-await client.close()
+  query: "SELECT number FROM system.numbers LIMIT 2",
+  format: "JSON",
+});
+const result = await rows.json<ResponseJSON<{ number: string }>>();
+console.log(result);
+await client.close();

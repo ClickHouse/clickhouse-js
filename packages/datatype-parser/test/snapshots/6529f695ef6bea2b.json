@@ -1,0 +1,7 @@
+{
+  "type": "CHARACTER",
+  "data_type": {
+    "type": "DataType",
+    "name": "CHARACTER"
+  }
+}

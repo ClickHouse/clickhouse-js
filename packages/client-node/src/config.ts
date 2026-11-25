@@ -1,54 +1,58 @@
 import type {
+  ClickHouseSpan,
   DataFormat,
   ImplementationDetails,
   JSONHandling,
   ResponseHeaders,
-} from '@clickhouse/client-common'
+} from "./common/index";
 import {
   type BaseClickHouseClientConfigOptions,
+  type CompressionMethod,
+  type Connection,
   type ConnectionParams,
   numberConfigURLValue,
-} from '@clickhouse/client-common'
-import type http from 'http'
-import type https from 'node:https'
-import type Stream from 'stream'
-import { NodeConnectionFactory, type TLSParams } from './connection'
-import { ResultSet } from './result_set'
-import { NodeValuesEncoder } from './utils'
+} from "./common/index";
+import type http from "http";
+import type https from "node:https";
+import type Stream from "stream";
+import Zlib from "zlib";
+import { NodeConnectionFactory, type TLSParams } from "./connection";
+import { ResultSet } from "./result_set";
+import { NodeValuesEncoder } from "./utils";
 
 export type NodeClickHouseClientConfigOptions =
   BaseClickHouseClientConfigOptions & {
-    tls?: BasicTLSOptions | MutualTLSOptions
+    tls?: BasicTLSOptions | MutualTLSOptions;
     /** HTTP Keep-Alive related settings */
     keep_alive?: {
       /** Enable or disable the HTTP Keep-Alive mechanism.
        *  @default true */
-      enabled?: boolean
+      enabled?: boolean;
       /** For how long keep a particular idle socket alive on the client side (in milliseconds).
        *  It is supposed to be at least a second less than the ClickHouse server KeepAlive timeout,
        *  which is by default `3000` ms for pre-23.11 versions.
        *
        *  When set to `0`, the idle socket management feature is disabled.
        *  @default 2500 */
-      idle_socket_ttl?: number
+      idle_socket_ttl?: number;
       /** Eagerly destroy the sockets that are considered stale (idle for more than `idle_socket_ttl`),
        *  without waiting for the timeout to trigger. This allows freeing up stale sockets
        *  in case of longer event loop delays.
        *  @default false */
-      eagerly_destroy_stale_sockets?: boolean
-    }
+      eagerly_destroy_stale_sockets?: boolean;
+    };
     /** Custom HTTP agent to use for the outgoing HTTP(s) requests.
      *  If set, {@link BaseClickHouseClientConfigOptions.max_open_connections}, {@link tls} and {@link keep_alive}
      *  options have no effect, as it is part of the default underlying agent configuration.
      *  @experimental - unstable API; it might be a subject to change in the future;
      *                  please provide your feedback in the repository.
      *  @default undefined */
-    http_agent?: http.Agent | https.Agent
+    http_agent?: http.Agent | https.Agent;
     /** Enable or disable the `Authorization` header with basic auth for the outgoing HTTP(s) requests.
      *  @experimental - unstable API; it might be a subject to change in the future;
      *                  please provide your feedback in the repository.
      *  @default true (enabled) */
-    set_basic_auth_header?: boolean
+    set_basic_auth_header?: boolean;
     /** You could try enabling this option if you encounter an error with an unclear or truncated stack trace;
      *  as it might happen due to the way the Node.js handles the stack traces in the async code.
      *  Note that it might have a noticeable performance impact due to
@@ -58,7 +62,7 @@ export type NodeClickHouseClientConfigOptions =
      *  @experimental - unstable API; it might be a subject to change in the future;
      *                  please provide your feedback in the repository.
      *  @default false (disabled) */
-    capture_enhanced_stack_trace?: boolean
+    capture_enhanced_stack_trace?: boolean;
     /** Override the maximum length (in bytes) of HTTP response headers accepted from the server.
      *  Forwarded as the `maxHeaderSize` option to {@link http.request} / {@link https.request}.
      *
@@ -75,76 +79,155 @@ export type NodeClickHouseClientConfigOptions =
      *  request implementation; for the bundled HTTP/HTTPS connections it is passed straight
      *  through to the request options.
      *  @default undefined */
-    max_response_headers_size?: number
-  }
+    max_response_headers_size?: number;
+    /** Pre-built backend connection to use for this client instead of the
+     *  default HTTP(S) connection factory. When provided, the client routes
+     *  every method (`query` / `insert` / `command` / `exec` / `ping` /
+     *  `close`) through this connection's implementation of the internal
+     *  {@link Connection} contract, and the HTTP-related options above
+     *  (`tls`, `keep_alive`, `http_agent`, `max_open_connections`, …) are
+     *  ignored.
+     *
+     *  This is a deliberately narrow, internal experiment to unblock the chDB
+     *  integration — NOT the start of a public pluggable-backend / plugin system.
+     *  The {@link Connection} contract is intentionally not re-exported from the
+     *  package entrypoint, so a backend must deep-import or structurally match its
+     *  shape; that friction is by design and signals the API may change. Keeping
+     *  the client's public surface slim avoids a second client family mirroring the
+     *  whole public API.
+     *
+     *  @experimental - unstable API; used only for integrating with chDB.
+     *  @see https://github.com/chdb-io/chdb-node/pull/52
+     *  @default undefined */
+    connection?: Connection<Stream.Readable>;
+  };
 
 interface BasicTLSOptions {
-  ca_cert: Buffer
+  ca_cert: Buffer;
 }
 
 interface MutualTLSOptions {
-  ca_cert: Buffer
-  cert: Buffer
-  key: Buffer
+  ca_cert: Buffer;
+  cert: Buffer;
+  key: Buffer;
+}
+
+function unknownCodecError(
+  value: string,
+  direction: "request" | "response",
+): Error {
+  return new Error(
+    `Unknown ${direction} compression codec "${value}". ` +
+      `Supported codecs: gzip, zstd, br.`,
+  );
+}
+
+// zstd's zlib APIs were added in Node.js 22.15.0, and compression /
+// decompression are separate functions - so each direction is gated on its own,
+// naming the missing function to make the diagnosis concrete.
+
+/** Fails fast at client creation on an unknown request codec, or on `zstd` when
+ *  this Node.js runtime's `zlib` does not provide the zstd compression API -
+ *  rather than a TypeError deep in a later insert. The boolean forms (`false`
+ *  off, `true` gzip) need no validation and are filtered out by the caller. */
+function ensureRequestCodecSupported(value: CompressionMethod): void {
+  if (value === "zstd") {
+    if (typeof Zlib.createZstdCompress !== "function") {
+      throw new Error(
+        "zstd compression is not supported by this Node.js runtime (v" +
+          process.versions.node +
+          "): the built-in zlib module does not provide `createZstdCompress` " +
+          "(the zstd APIs were added in Node.js 22.15.0). Use gzip compression instead.",
+      );
+    }
+  } else if (value !== "gzip" && value !== "br") {
+    throw unknownCodecError(value, "request");
+  }
+}
+
+/** Fails fast at client creation on an unknown response codec, or on `zstd`
+ *  when this Node.js runtime's `zlib` does not provide the zstd decompression
+ *  API - rather than a TypeError deep in a later query. The boolean forms
+ *  (`false` off, `true` gzip) need no validation and are filtered by the caller. */
+function ensureResponseCodecSupported(value: CompressionMethod): void {
+  if (value === "zstd") {
+    if (typeof Zlib.createZstdDecompress !== "function") {
+      throw new Error(
+        "zstd compression is not supported by this Node.js runtime (v" +
+          process.versions.node +
+          "): the built-in zlib module does not provide `createZstdDecompress` " +
+          "(the zstd APIs were added in Node.js 22.15.0). Use gzip compression instead.",
+      );
+    }
+  } else if (value !== "gzip" && value !== "br") {
+    throw unknownCodecError(value, "response");
+  }
 }
 
 export const NodeConfigImpl: Required<
-  ImplementationDetails<Stream.Readable>['impl']
+  ImplementationDetails<Stream.Readable>["impl"]
 > = {
   handle_specific_url_params: (config, url) => {
-    const nodeConfig: NodeClickHouseClientConfigOptions = { ...config }
-    const unknownParams = new Set<string>()
-    const handledParams = new Set<string>()
-    const urlSearchParamsKeys = [...url.searchParams.keys()]
+    const nodeConfig: NodeClickHouseClientConfigOptions = { ...config };
+    const unknownParams = new Set<string>();
+    const handledParams = new Set<string>();
+    const urlSearchParamsKeys = [...url.searchParams.keys()];
     if (urlSearchParamsKeys.length > 0) {
       urlSearchParamsKeys.forEach((key) => {
-        const value = url.searchParams.get(key) as string
+        const value = url.searchParams.get(key) as string;
         switch (key) {
-          case 'keep_alive_idle_socket_ttl':
+          case "keep_alive_idle_socket_ttl":
             if (nodeConfig.keep_alive === undefined) {
-              nodeConfig.keep_alive = {}
+              nodeConfig.keep_alive = {};
             }
             nodeConfig.keep_alive.idle_socket_ttl = numberConfigURLValue({
               key,
               value,
               min: 0,
-            })
-            handledParams.add(key)
-            break
+            });
+            handledParams.add(key);
+            break;
           default:
-            unknownParams.add(key)
+            unknownParams.add(key);
         }
-      })
+      });
     }
     return {
       config: nodeConfig,
       unknown_params: unknownParams,
       handled_params: handledParams,
-    }
+    };
   },
   make_connection: (
     nodeConfig: NodeClickHouseClientConfigOptions,
     params: ConnectionParams,
   ) => {
-    let tls: TLSParams | undefined = undefined
+    const { compress_request, decompress_response } = params.compression;
+    if (compress_request) {
+      ensureRequestCodecSupported(compress_request.codec);
+    }
+    if (decompress_response) {
+      ensureResponseCodecSupported(decompress_response.codec);
+    }
+    let tls: TLSParams | undefined = undefined;
     if (nodeConfig.tls !== undefined) {
-      if ('cert' in nodeConfig.tls && 'key' in nodeConfig.tls) {
+      if ("cert" in nodeConfig.tls && "key" in nodeConfig.tls) {
         tls = {
-          type: 'Mutual',
+          type: "Mutual",
           ...nodeConfig.tls,
-        }
+        };
       } else {
         tls = {
-          type: 'Basic',
+          type: "Basic",
           ...nodeConfig.tls,
-        }
+        };
       }
     }
     // normally, it should be already set after processing the config
     const keep_alive = {
       enabled: nodeConfig?.keep_alive?.enabled ?? true,
       idle_socket_ttl: nodeConfig?.keep_alive?.idle_socket_ttl ?? 2500,
-    }
+    };
     return NodeConnectionFactory.create({
       connection_params: params,
       set_basic_auth_header: nodeConfig.set_basic_auth_header ?? true,
@@ -156,7 +239,7 @@ export const NodeConfigImpl: Required<
       keep_alive,
       tls,
       max_response_headers_size: nodeConfig.max_response_headers_size,
-    })
+    });
   },
   values_encoder: (jsonHandling: JSONHandling) =>
     new NodeValuesEncoder(jsonHandling),
@@ -167,6 +250,7 @@ export const NodeConfigImpl: Required<
     log_error: (err: Error) => void,
     response_headers: ResponseHeaders,
     jsonHandling: JSONHandling,
+    span?: ClickHouseSpan,
   ) =>
     ResultSet.instance({
       stream,
@@ -175,5 +259,6 @@ export const NodeConfigImpl: Required<
       log_error,
       response_headers,
       jsonHandling,
+      span,
     })) as any,
-}
+};

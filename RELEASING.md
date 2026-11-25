@@ -1,63 +1,16 @@
 # Release process
 
-Tools required:
+The release process now lives in the in-repo **`release` skill**, which is the
+single source of truth and is kept in step with the GitHub Actions workflows:
 
-- Node.js >= `20.x`
-- NPM >= `11.x`
-- jq (https://stedolan.github.io/jq/)
+- [.claude/skills/release/SKILL.md](.claude/skills/release/SKILL.md)
 
-We prefer to keep versions the same across the packages, and release all at once, even if there were no changes in some.
+It covers all the packages — `@clickhouse/client`, `@clickhouse/client-web`,
+the deprecated `@clickhouse/client-common`, and the standalone
+`@clickhouse/datatype-parser` and `@clickhouse/rowbinary` — including version
+bumping, syncing the protected `release` branch from `main`, the `npm-publish`
+approval gate, and creating the GitHub Release from `CHANGELOG.md`.
 
-Bump the version:
-
-```bash
-# get the current version
-cat packages/client-common/package.json | grep '"version":'
-# update the version appropriately and set it to the environment variable
-export NEW_VERSION=[new_version]
-```
-
-Make sure that the working directory is up to date and clean:
-
-```bash
-git checkout main
-git pull
-git clean -dfX
-```
-
-```bash
-git checkout -b release-$NEW_VERSION
-.scripts/update_version.sh "$NEW_VERSION"
-```
-
-Commit the version update and push it to the repository:
-
-```bash
-git add .
-git commit -m "chore: bump version to $NEW_VERSION"
-git push -u origin release-$NEW_VERSION
-```
-
-Create a PR and merge it. Wait for the CI/CD pipeline to publish a signed `head` version.
-
-After the package is published it can be tested in a separate project by installing it with the `head` tag:
-
-```bash
-npm install @clickhouse/client@head
-```
-
-and run a simple e2e test: https://github.com/ClickHouse/clickhouse-js/actions/workflows/npm.yml
-
-Promote the `head` tag to `latest`:
-
-```bash
-npm dist-tag add @clickhouse/client-common@head latest
-npm dist-tag add @clickhouse/client@head latest
-npm dist-tag add @clickhouse/client-web@head latest
-```
-
-Check that the packages have been published correctly: <https://www.npmjs.com/org/clickhouse>
-
-Then create a new release in GitHub for `$NEW_VERSION` and include the corresponding changelog notes.
-
-All done, thanks!
+If you use Claude Code in this repo, just ask it to "release `<package>`" and it
+will drive the process. Otherwise, follow the steps in the skill document
+directly.

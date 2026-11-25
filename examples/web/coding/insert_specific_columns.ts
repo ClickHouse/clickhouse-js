@@ -1,9 +1,9 @@
 // Explicitly specifying a list of columns to insert the data into.
 // For the inverse (excluding certain columns instead), see `insert_exclude_columns.ts`.
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
-const tableName = 'insert_specific_columns_web'
-const client = createClient()
+const tableName = "insert_specific_columns_web";
+const client = createClient();
 
 await client.command({
   query: `
@@ -12,28 +12,28 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 
 await client.insert({
   table: tableName,
-  values: [{ message: 'foo' }],
-  format: 'JSONEachRow',
+  values: [{ message: "foo" }],
+  format: "JSONEachRow",
   // `id` column value for this row will be zero
-  columns: ['message'],
-})
+  columns: ["message"],
+});
 
 await client.insert({
   table: tableName,
   values: [{ id: 42 }],
-  format: 'JSONEachRow',
+  format: "JSONEachRow",
   // `message` column value for this row will be an empty string
-  columns: ['id'],
-})
+  columns: ["id"],
+});
 
 const rows = await client.query({
   query: `SELECT * FROM ${tableName} ORDER BY id, message DESC`,
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 
-console.info(await rows.json())
-await client.close()
+console.info(await rows.json());
+await client.close();

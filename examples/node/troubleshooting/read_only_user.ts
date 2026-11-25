@@ -1,15 +1,15 @@
-import { createClient } from '@clickhouse/client'
-import { randomUUID } from 'node:crypto'
+import { createClient } from "@clickhouse/client";
+import { randomUUID } from "node:crypto";
 
 /**
  * An illustration of limitations and client-specific settings for users created in `READONLY = 1` mode.
  */
-const defaultClient = createClient()
+const defaultClient = createClient();
 
 // using the default (non-read-only) user to create a read-only one for the purposes of the example
-const guid = randomUUID().replace(/-/g, '')
-const readOnlyUsername = `clickhouse_js_examples_readonly_user_${guid}`
-const readOnlyPassword = `${guid}_pwd`
+const guid = randomUUID().replace(/-/g, "");
+const readOnlyUsername = `clickhouse_js_examples_readonly_user_${guid}`;
+const readOnlyPassword = `${guid}_pwd`;
 const commands = [
   `
     CREATE USER ${readOnlyUsername}
@@ -22,22 +22,22 @@ const commands = [
     ON default.*
     TO ${readOnlyUsername}
   `,
-]
+];
 for (const query of commands) {
   await defaultClient.command({
     query,
     clickhouse_settings: {
       wait_end_of_query: 1,
     },
-  })
+  });
 }
 console.log(
   `Created user ${readOnlyUsername} with restricted access to the system database`,
-)
-printSeparator()
+);
+printSeparator();
 
 // and a test table with some data in there
-const testTableName = 'clickhouse_js_examples_readonly_user_test_data'
+const testTableName = "clickhouse_js_examples_readonly_user_test_data";
 await defaultClient.command({
   query: `
     CREATE OR REPLACE TABLE ${testTableName}
@@ -48,114 +48,114 @@ await defaultClient.command({
   clickhouse_settings: {
     wait_end_of_query: 1,
   },
-})
+});
 await defaultClient.insert({
   table: testTableName,
   values: [
-    { id: 12, name: 'foo' },
-    { id: 42, name: 'bar' },
+    { id: 12, name: "foo" },
+    { id: 42, name: "bar" },
   ],
-  format: 'JSONEachRow',
-})
+  format: "JSONEachRow",
+});
 
 // Read-only user
 let readOnlyUserClient = createClient({
   username: readOnlyUsername,
   password: readOnlyPassword,
-})
+});
 
 // read-only user cannot insert the data into the table
 await readOnlyUserClient
   .insert({
     table: testTableName,
     values: [
-      { id: 12, name: 'foo' },
-      { id: 42, name: 'bar' },
+      { id: 12, name: "foo" },
+      { id: 42, name: "bar" },
     ],
-    format: 'JSONEachRow',
+    format: "JSONEachRow",
   })
   .catch((err) => {
     console.error(
-      '[Expected error] Readonly user cannot insert the data into the table. Cause:\n',
+      "[Expected error] Readonly user cannot insert the data into the table. Cause:\n",
       err,
-    )
-  })
-printSeparator()
+    );
+  });
+printSeparator();
 
 // ... cannot query from system.users because no grant (system.numbers will still work, though)
 await readOnlyUserClient
   .query({
-    query: 'SELECT * FROM system.users LIMIT 5',
-    format: 'JSONEachRow',
+    query: "SELECT * FROM system.users LIMIT 5",
+    format: "JSONEachRow",
   })
   .catch((err) => {
     console.error(
-      '[Expected error] Cannot query system.users cause it was not granted. Cause:\n',
+      "[Expected error] Cannot query system.users cause it was not granted. Cause:\n",
       err,
-    )
-  })
-printSeparator()
+    );
+  });
+printSeparator();
 
 // ... can query the test table since it is granted
 const rs = await readOnlyUserClient.query({
   query: `SELECT * FROM ${testTableName}`,
-  format: 'JSONEachRow',
-})
-console.log('Select result:', await rs.json())
-printSeparator()
+  format: "JSONEachRow",
+});
+console.log("Select result:", await rs.json());
+printSeparator();
 
 // ... cannot use ClickHouse settings
-await readOnlyUserClient.close()
+await readOnlyUserClient.close();
 readOnlyUserClient = createClient({
   username: readOnlyUsername,
   password: readOnlyPassword,
   clickhouse_settings: {
     send_progress_in_http_headers: 1,
   },
-})
+});
 
 await readOnlyUserClient
   .query({
     query: `SELECT * FROM ${testTableName}`,
-    format: 'JSONEachRow',
+    format: "JSONEachRow",
   })
   .catch((err) => {
     console.error(
       `[Expected error] Cannot modify 'send_progress_in_http_headers' setting in readonly mode. Cause:\n`,
       err,
-    )
-  })
-printSeparator()
+    );
+  });
+printSeparator();
 
 // ... cannot use response compression. Request compression is still allowed.
-await readOnlyUserClient.close()
+await readOnlyUserClient.close();
 readOnlyUserClient = createClient({
   username: readOnlyUsername,
   password: readOnlyPassword,
   compression: {
     response: true,
   },
-})
+});
 await readOnlyUserClient
   .query({
     query: `SELECT * FROM ${testTableName}`,
-    format: 'JSONEachRow',
+    format: "JSONEachRow",
   })
   .catch((err) => {
     console.error(
       `[Expected error] Cannot enable compression setting in readonly mode. Cause:\n`,
       err,
-    )
-  })
-printSeparator()
+    );
+  });
+printSeparator();
 
-console.log('All done!')
+console.log("All done!");
 
-await readOnlyUserClient.close()
-await defaultClient.close()
+await readOnlyUserClient.close();
+await defaultClient.close();
 
 function printSeparator() {
   console.log(
-    '------------------------------------------------------------------------',
-  )
+    "------------------------------------------------------------------------",
+  );
 }

@@ -29,25 +29,25 @@
 // JSON*EachRow formats (see the list above); it's just that the ClickHouse JSON
 // format and a few others are represented as a single object in the response
 // and cannot be streamed by the client.
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
-const client = createClient()
+const client = createClient();
 const rows = await client.query({
-  query: 'SELECT number FROM system.numbers_mt LIMIT 5',
-  format: 'JSONEachRow', // or JSONCompactEachRow, JSONStringsEachRow, etc.
-})
-const stream = rows.stream()
-const reader = stream.getReader()
+  query: "SELECT number FROM system.numbers_mt LIMIT 5",
+  format: "JSONEachRow", // or JSONCompactEachRow, JSONStringsEachRow, etc.
+});
+const stream = rows.stream();
+const reader = stream.getReader();
 try {
   while (true) {
-    const { done, value: chunk } = await reader.read()
-    if (done) break
+    const { done, value: chunk } = await reader.read();
+    if (done) break;
     chunk.forEach((row) => {
-      console.log(row.json()) // or `row.text` to avoid parsing JSON
-    })
+      console.log(row.json()); // or `row.text` to avoid parsing JSON
+    });
   }
-  console.log('Completed!')
+  console.log("Completed!");
 } finally {
-  reader.releaseLock()
+  reader.releaseLock();
 }
-await client.close()
+await client.close();

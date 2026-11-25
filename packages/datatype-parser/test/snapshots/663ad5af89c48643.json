@@ -1,0 +1,37 @@
+{
+  "type": "Array(Map(String, Variant(Int64, Float64, String)))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Map",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "String"
+          },
+          {
+            "type": "DataType",
+            "name": "Variant",
+            "arguments": [
+              {
+                "type": "DataType",
+                "name": "Int64"
+              },
+              {
+                "type": "DataType",
+                "name": "Float64"
+              },
+              {
+                "type": "DataType",
+                "name": "String"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

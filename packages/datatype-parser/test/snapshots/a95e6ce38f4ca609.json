@@ -1,0 +1,24 @@
+{
+  "type": "Map(FixedString(8), UInt32)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Map",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "FixedString",
+        "arguments": [
+          {
+            "type": "Literal",
+            "value_type": "UInt64",
+            "value": "8"
+          }
+        ]
+      },
+      {
+        "type": "DataType",
+        "name": "UInt32"
+      }
+    ]
+  }
+}

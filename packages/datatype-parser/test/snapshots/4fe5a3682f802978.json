@@ -1,0 +1,7 @@
+{
+  "type": "TINYINT",
+  "data_type": {
+    "type": "DataType",
+    "name": "TINYINT"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "type": "Variant(UInt8, Int16, UInt32)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Variant",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "UInt8"
+      },
+      {
+        "type": "DataType",
+        "name": "Int16"
+      },
+      {
+        "type": "DataType",
+        "name": "UInt32"
+      }
+    ]
+  }
+}

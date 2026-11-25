@@ -1,0 +1,13 @@
+{
+  "type": "Array(Bool)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Bool"
+      }
+    ]
+  }
+}

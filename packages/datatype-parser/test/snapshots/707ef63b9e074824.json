@@ -1,0 +1,21 @@
+{
+  "type": "Enum8('UPPER' = 1, 'lower' = 2, 'MiXeD' = 3)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum8",
+    "values": [
+      {
+        "name": "UPPER",
+        "value": 1
+      },
+      {
+        "name": "lower",
+        "value": 2
+      },
+      {
+        "name": "MiXeD",
+        "value": 3
+      }
+    ]
+  }
+}

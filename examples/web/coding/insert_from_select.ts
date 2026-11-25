@@ -2,10 +2,10 @@
 // Demonstrates that `client.command` can run server-side data movement queries
 // (no client-side rows are sent), and that aggregate states are read back via
 // `finalizeAggregation`. Inspired by https://github.com/ClickHouse/clickhouse-js/issues/166
-import { createClient } from '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client-web";
 
-const tableName = 'insert_from_select_web'
-const client = createClient()
+const tableName = "insert_from_select_web";
+const client = createClient();
 await client.command({
   query: `
     CREATE OR REPLACE TABLE ${tableName}
@@ -13,15 +13,15 @@ await client.command({
     ENGINE MergeTree()
     ORDER BY (id)
   `,
-})
+});
 await client.command({
   query: `
     INSERT INTO ${tableName}
     SELECT '42', quantilesBFloat16State(0.5)(arrayJoin([toFloat32(10), toFloat32(20)]))`,
-})
+});
 const rows = await client.query({
   query: `SELECT finalizeAggregation(data) AS result FROM ${tableName}`,
-  format: 'JSONEachRow',
-})
-console.info(await rows.json())
-await client.close()
+  format: "JSONEachRow",
+});
+console.info(await rows.json());
+await client.close();

@@ -1,4 +1,4 @@
-name: 'examples'
+name: "examples"
 
 permissions: {}
 on:
@@ -7,27 +7,50 @@ on:
     branches:
       - main
       - release
-    paths-ignore:
-      - '**/*.md'
-      - 'LICENSE'
-      - 'benchmarks/**'
+    paths:
+      - "packages/**"
+      - "examples/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
+      - ".github/workflows/examples.yml"
   pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'LICENSE'
-      - 'benchmarks/**'
+    paths:
+      - "packages/**"
+      - "examples/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
+      - ".github/workflows/examples.yml"
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.ref }}'
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 env:
-  OTEL_SERVICE_NAME: vitest
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-  OTEL_EXPORTER_OTLP_HEADERS: 'authorization=${{ secrets.OTEL_EXPORTER_OTLP_API_KEY }}'
-  OTEL_RESOURCE_ATTRIBUTES: 'service.namespace=clickhouse-js,deployment.environment=ci'
-  VITEST_OTEL_ENABLED: 'true'
-  VITEST_COVERAGE: 'true'
+  VITEST_COVERAGE: "true"
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
 
 jobs:
   code-quality:
@@ -41,10 +64,10 @@ jobs:
       run:
         working-directory: examples/${{ matrix.package }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -72,18 +95,18 @@ jobs:
       run:
         working-directory: examples/${{ matrix.package }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Start ClickHouse (version - ${{ matrix.clickhouse }}) in Docker
-        uses: isbang/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.2
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
         env:
           CLICKHOUSE_VERSION: ${{ matrix.clickhouse }}
         with:
-          compose-file: 'docker-compose.yml'
-          down-flags: '--volumes'
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -106,15 +129,11 @@ jobs:
           sleep 8
 
       - name: Run examples
+        # The ClickHouse Cloud example only runs after a merge or manually, as
+        # in tests-cloud.yml: the Cloud service is shared and has limits. On PRs
+        # the credentials are left empty, so the example skips itself.
         env:
-          CLICKHOUSE_CLOUD_URL: https://${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD }}/
-          CLICKHOUSE_CLOUD_PASSWORD: ${{ secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD }}
+          CLICKHOUSE_CLOUD_URL: ${{ github.event_name != 'pull_request' && format('https://{0}/', secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_HOST_SMT_PROD) || '' }}
+          CLICKHOUSE_CLOUD_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.INTEGRATIONS_TEAM_TESTS_CLOUD_PASSWORD_SMT_PROD || '' }}
         run: |
           npm run run-examples
-
-  success:
-    needs: ['code-quality', 'run-examples']
-    runs-on: ubuntu-latest
-    steps:
-      - name: All examples checks passed
-        run: echo "All examples checks passed! 🎉"

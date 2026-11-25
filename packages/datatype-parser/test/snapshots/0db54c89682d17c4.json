@@ -1,0 +1,7 @@
+{
+  "type": "IntervalDay",
+  "data_type": {
+    "type": "DataType",
+    "name": "IntervalDay"
+  }
+}

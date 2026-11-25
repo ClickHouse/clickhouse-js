@@ -35,38 +35,38 @@ A custom `{ parse, stringify }` lets you plug in `JSONBig`,
 ## Recipe: BigInt-safe stringify, custom Date handling
 
 ```ts
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
 const valueSerializer = (value: unknown): unknown => {
   // Serialize Date as a UNIX millis number (instead of toJSON's ISO string)
   if (value instanceof Date) {
-    return value.getTime()
+    return value.getTime();
   }
 
   // Serialize BigInt as a string so JSON.stringify won't throw
-  if (typeof value === 'bigint') {
-    return value.toString()
+  if (typeof value === "bigint") {
+    return value.toString();
   }
 
   if (Array.isArray(value)) {
-    return value.map(valueSerializer)
+    return value.map(valueSerializer);
   }
 
-  if (typeof value === 'object' && value !== null) {
+  if (typeof value === "object" && value !== null) {
     return Object.fromEntries(
       Object.entries(value).map(([k, v]) => [k, valueSerializer(v)]),
-    )
+    );
   }
 
-  return value
-}
+  return value;
+};
 
 const client = createClient({
   json: {
     parse: JSON.parse, // use default parsing
     stringify: (obj: unknown) => JSON.stringify(valueSerializer(obj)),
   },
-})
+});
 
 await client.command({
   query: `
@@ -75,20 +75,20 @@ await client.command({
     ENGINE MergeTree
     ORDER BY id
   `,
-})
+});
 
 await client.insert({
-  table: 'inserts_custom_json_handling',
-  format: 'JSONEachRow',
+  table: "inserts_custom_json_handling",
+  format: "JSONEachRow",
   values: [
     {
-      id: BigInt('250000000000000200'), // serialized as a string
+      id: BigInt("250000000000000200"), // serialized as a string
       dt: new Date(), // serialized as ms since epoch
     },
   ],
-})
+});
 
-await client.close()
+await client.close();
 ```
 
 > The custom `valueSerializer` runs **before** `JSON.stringify`, so values
@@ -102,10 +102,10 @@ or precision-lossy numbers), plug in a `BigInt`-aware parser such as
 [`json-bigint`](https://www.npmjs.com/package/json-bigint):
 
 ```ts
-import { createClient } from '@clickhouse/client'
-import JSONBig from 'json-bigint'
+import { createClient } from "@clickhouse/client";
+import JSONBig from "json-bigint";
 
-const bigJson = JSONBig({ useNativeBigInt: true })
+const bigJson = JSONBig({ useNativeBigInt: true });
 
 const client = createClient({
   json: {
@@ -115,7 +115,7 @@ const client = createClient({
   clickhouse_settings: {
     output_format_json_quote_64bit_integers: 0,
   },
-})
+});
 ```
 
 `output_format_json_quote_64bit_integers: 0` is the default since
@@ -130,19 +130,20 @@ JSON-format responses.
 If adding a dependency is awkward (locked lockfile, restricted environment,
 or you just don't want to pull in `json-bigint`), you can plug in a
 hand-rolled reviver. This uses the `context.source` argument that
-`JSON.parse` revivers gained in Node `>= 20.16` / `>= 21.7`, so the raw
-numeric literal is available before it's coerced to a JS `number`:
+`JSON.parse` revivers have in every Node.js version that the client supports
+(Node.js `>= 22`), so the raw numeric literal is available before it's coerced
+to a JS `number`:
 
 ```ts
-import { createClient } from '@clickhouse/client'
+import { createClient } from "@clickhouse/client";
 
 const parseBigInt = (text: string) =>
   JSON.parse(text, function (key, value, context) {
-    if (key.endsWith('__bigint')) {
-      return BigInt(context.source)
+    if (key.endsWith("__bigint")) {
+      return BigInt(context.source);
     }
-    return value
-  })
+    return value;
+  });
 
 const client = createClient({
   json: {
@@ -150,23 +151,23 @@ const client = createClient({
     stringify: JSON.stringify, // use default stringify
   },
   clickhouse_settings: { output_format_json_quote_64bit_integers: 0 },
-})
+});
 
 const rs = await client.query({
-  query: 'SELECT toUInt64(250000000000000200) AS id__bigint',
-})
-const { data } = await rs.json()
-console.log(data[0].id__bigint) // 250000000000000200
+  query: "SELECT toUInt64(250000000000000200) AS id__bigint",
+});
+const { data } = await rs.json();
+console.log(data[0].id__bigint); // 250000000000000200
 
-await client.close()
+await client.close();
 ```
 
 Trade-offs versus `json-bigint`:
 
 - ✓ No new dependency to install.
 - ✓ Only promotes known to be 64-bit integers to `BigInt`.
-- ✗ Requires Node `>= 20.16` / `>= 21.7` for the reviver `context.source`.
-  On older Node, prefer `json-bigint` or upgrade Node.
+- ✗ Requires a JavaScript runtime with the reviver `context.source`
+  (Node.js `>= 22` has it). On a runtime without it, use `json-bigint`.
 - ✗ Outgoing `stringify` still uses default `JSON.stringify`, which throws
   on `BigInt`. Pair with the `valueSerializer` pattern above if your
   inserts contain `BigInt` values.

@@ -1,11 +1,15 @@
 {
-  "extends": "../tsconfig.json",
-  "include": ["dev/**/*.ts", "formats/**/*.ts", "leaks/**/*.ts"],
+  "extends": "../tsconfig.base.json",
+  "include": [
+    "dev/**/*.ts",
+    "formats/**/*.ts",
+    "leaks/**/*.ts",
+    "transport/**/*.ts"
+  ],
   "compilerOptions": {
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "outDir": "dist",
-    "baseUrl": "./",
     "paths": {
       "@clickhouse/client-common": ["../packages/client-common/src/index.ts"],
       "@clickhouse/client": ["../packages/client-node/src/index.ts"],

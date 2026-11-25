@@ -1,9 +1,9 @@
 ---
 name: Question
 about: Ask a question about the client
-title: ''
+title: ""
 labels: question
-assignees: ''
+assignees: ""
 ---
 
 > Make sure to check the [documentation](https://clickhouse.com/docs/en/integrations/language-clients/javascript) first.

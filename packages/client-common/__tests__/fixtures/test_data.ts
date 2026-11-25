@@ -1,14 +1,14 @@
-import { expect } from 'vitest'
-import type { ClickHouseClient } from '@clickhouse/client-common'
-import { sleep } from '../utils'
+import { expect } from "vitest";
+import type { ClickHouseClient } from "@clickhouse/client-common";
+import { sleep } from "../utils";
 
 export const jsonValues = [
-  { id: '42', name: 'hello', sku: [0, 1] },
-  { id: '43', name: 'world', sku: [2, 3] },
-  { id: '44', name: 'foo', sku: [3, 4] },
-  { id: '45', name: 'bar', sku: [4, 5] },
-  { id: '46', name: 'baz', sku: [6, 7] },
-]
+  { id: "42", name: "hello", sku: [0, 1] },
+  { id: "43", name: "world", sku: [2, 3] },
+  { id: "44", name: "foo", sku: [3, 4] },
+  { id: "45", name: "bar", sku: [4, 5] },
+  { id: "46", name: "baz", sku: [6, 7] },
+];
 
 export async function assertJsonValues(
   client: ClickHouseClient,
@@ -16,19 +16,19 @@ export async function assertJsonValues(
   tryCount = 1,
   tryDelayMs = 1000,
 ) {
-  let result: unknown[] = []
+  let result: unknown[] = [];
   for (let i = 0; i < tryCount; i++) {
     result = await client
       .query({
         query: `SELECT * FROM ${tableName} ORDER BY id ASC`,
-        format: 'JSONEachRow',
+        format: "JSONEachRow",
       })
-      .then((r) => r.json())
+      .then((r) => r.json());
     if (result.length === jsonValues.length) {
-      break
+      break;
     }
     // wait a bit before retrying
-    await sleep(tryDelayMs)
+    await sleep(tryDelayMs);
   }
-  expect(result).toEqual(jsonValues)
+  expect(result).toEqual(jsonValues);
 }

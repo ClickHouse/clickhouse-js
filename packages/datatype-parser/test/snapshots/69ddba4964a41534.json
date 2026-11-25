@@ -1,0 +1,17 @@
+{
+  "type": "Enum8('café' = 1, 'naïve' = 2)",
+  "data_type": {
+    "type": "EnumDataType",
+    "name": "Enum8",
+    "values": [
+      {
+        "name": "café",
+        "value": 1
+      },
+      {
+        "name": "naïve",
+        "value": 2
+      }
+    ]
+  }
+}

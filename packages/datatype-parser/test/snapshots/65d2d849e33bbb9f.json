@@ -1,0 +1,19 @@
+{
+  "type": "Array(Array(Int32))",
+  "data_type": {
+    "type": "DataType",
+    "name": "Array",
+    "arguments": [
+      {
+        "type": "DataType",
+        "name": "Array",
+        "arguments": [
+          {
+            "type": "DataType",
+            "name": "Int32"
+          }
+        ]
+      }
+    ]
+  }
+}

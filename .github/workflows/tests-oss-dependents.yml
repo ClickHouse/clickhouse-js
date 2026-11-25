@@ -1,0 +1,97 @@
+name: "oss-dependents"
+
+permissions: {}
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - release
+    paths:
+      - "packages/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
+      - ".github/workflows/tests-oss-dependents.yml"
+  pull_request:
+    paths:
+      - "packages/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "tsconfig.dev.json"
+      - "eslint.config.base.mjs"
+      - "docker-compose.yml"
+      - "packages/client-node/vitest.config.ts"
+      - "packages/client-node/vitest.setup.ts"
+      - "packages/client-web/vitest.config.ts"
+      - "packages/client-web/vitest.setup.ts"
+      - ".github/workflows/tests-oss-dependents.yml"
+
+  schedule:
+    - cron: "0 9 * * *"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  # Network resilience: npm's default of 2 fetch retries is not enough for
+  # the transient registry errors (ECONNRESET) we regularly hit in CI.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "10000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "60000"
+  NPM_CONFIG_FETCH_TIMEOUT: "600000"
+
+jobs:
+  # Runnable reproductions of how the top OSS dependents use the client, resolved
+  # against the workspace source via the @clickhouse/client* vitest aliases. This
+  # is a separate workflow so a regression that breaks a known consumer is clearly
+  # attributable. It targets only the stable ClickHouse release on a local
+  # single-node instance, across the supported Node.js versions.
+  oss-dependents-tests:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Start ClickHouse (stable) in Docker
+        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
+        env:
+          CLICKHOUSE_VERSION: latest
+        with:
+          compose-file: "docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Setup NodeJS ${{ matrix.node }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      # The oss-dependents specs resolve `@clickhouse/client*` to the built
+      # workspace packages (not `src`), so build before running them.
+      - name: Build workspace packages
+        run: |
+          npm run build
+
+      - name: Run OSS-dependent integration tests
+        run: |
+          npm run test:node:oss-dependents

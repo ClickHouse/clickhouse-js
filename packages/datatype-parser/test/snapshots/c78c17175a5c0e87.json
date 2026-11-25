@@ -1,0 +1,7 @@
+{
+  "type": "BINARY VARYING",
+  "data_type": {
+    "type": "DataType",
+    "name": "BINARY VARYING"
+  }
+}

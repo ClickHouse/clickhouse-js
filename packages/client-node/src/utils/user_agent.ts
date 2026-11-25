@@ -1,4 +1,4 @@
-import { Runtime } from './runtime'
+import { Runtime } from "./runtime";
 
 /**
  * Generate a user agent string like
@@ -13,8 +13,8 @@ import { Runtime } from './runtime'
 export function getUserAgent(application_id?: string): string {
   const defaultUserAgent = `clickhouse-js/${Runtime.package} (lv:nodejs/${
     Runtime.node
-  }; os:${Runtime.os})`
+  }; os:${Runtime.os})`;
   return application_id
     ? `${application_id} ${defaultUserAgent}`
-    : defaultUserAgent
+    : defaultUserAgent;
 }

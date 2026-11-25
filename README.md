@@ -12,8 +12,12 @@
 <img alt="NPM Downloads" src="https://img.shields.io/npm/dw/%40clickhouse%2Fclient?color=%233178C6&logo=npm">
 </a>
 
-<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml">
-<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests.yml/badge.svg?branch=main">
+<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-node.yml">
+<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-node.yml/badge.svg?branch=main">
+</a>
+
+<a href="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-web.yml">
+<img src="https://github.com/ClickHouse/clickhouse-js/actions/workflows/tests-web.yml/badge.svg?branch=main">
 </a>
 
 <a href="https://codecov.io/gh/ClickHouse/clickhouse-js">
@@ -29,7 +33,7 @@ Official JS client for [ClickHouse](https://clickhouse.com/), written purely in 
 
 The client has zero external dependencies and is optimized for maximum performance.
 
-The repository consists of three packages:
+The repository consists of four packages:
 
 - `@clickhouse/client` - a version of the client designed for Node.js platform only. It is built on top of [HTTP](https://nodejs.org/api/http.html)
   and [Stream](https://nodejs.org/api/stream.html) APIs; supports streaming for both selects and inserts.
@@ -37,6 +41,9 @@ The repository consists of three packages:
   and [Web Streams](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) APIs; supports streaming for selects.
   Compatible with Chrome/Firefox browsers and Cloudflare workers.
 - `@clickhouse/client-common` - shared common types and the base framework for building a custom client implementation.
+- `@clickhouse/rowbinary` - a library for reading (and soon writing) ClickHouse RowBinary format.
+
+The client works with both ClickHouse Cloud and self-hosted ClickHouse. You can [start a free Cloud trial](https://console.clickhouse.cloud/signUp?utm_medium=referral&utm_source=github&utm_campaign=readme&utm_content=clickhouse-js) or [install ClickHouse](https://clickhouse.com/docs/get-started/setup/install) locally.
 
 ## Installation
 
@@ -58,12 +65,11 @@ npm i @clickhouse/client-web
 
 Node.js must be available in the environment to run the Node.js client. The client is compatible with all the [maintained](https://github.com/nodejs/release#readme) Node.js releases.
 
-| Node.js version | Supported?  |
-| --------------- | ----------- |
-| 24.x            | ✔           |
-| 22.x            | ✔           |
-| 20.x            | ✔           |
-| 18.x            | Best effort |
+| Node.js version | Supported? |
+| --------------- | ---------- |
+| 26.x            | ✔          |
+| 24.x            | ✔          |
+| 22.x            | ✔          |
 
 ### TypeScript
 
@@ -80,23 +86,23 @@ The client may work with older versions too; however, this is best-effort suppor
 ## Quick start
 
 ```ts
-import { createClient } from '@clickhouse/client' // or '@clickhouse/client-web'
+import { createClient } from "@clickhouse/client"; // or '@clickhouse/client-web'
 
 const client = createClient({
-  url: process.env.CLICKHOUSE_URL ?? 'http://localhost:8123',
-  username: process.env.CLICKHOUSE_USER ?? 'default',
-  password: process.env.CLICKHOUSE_PASSWORD ?? '',
-})
+  url: process.env.CLICKHOUSE_URL ?? "http://localhost:8123",
+  username: process.env.CLICKHOUSE_USER ?? "default",
+  password: process.env.CLICKHOUSE_PASSWORD ?? "",
+});
 
 const resultSet = await client.query({
-  query: 'SELECT * FROM system.tables',
-  format: 'JSONEachRow',
-})
+  query: "SELECT * FROM system.tables",
+  format: "JSONEachRow",
+});
 
-const tables = await resultSet.json()
-console.log(tables)
+const tables = await resultSet.json();
+console.log(tables);
 
-await client.close()
+await client.close();
 ```
 
 See more examples in the [examples directory](./examples).
@@ -104,6 +110,18 @@ See more examples in the [examples directory](./examples).
 ## Documentation
 
 See the [ClickHouse website](https://clickhouse.com/docs/integrations/javascript) for the full documentation.
+
+## Changelog
+
+Each package keeps its own changelog:
+
+- `@clickhouse/client` — [`packages/client-node/CHANGELOG.md`](./packages/client-node/CHANGELOG.md)
+- `@clickhouse/client-web` — [`packages/client-web/CHANGELOG.md`](./packages/client-web/CHANGELOG.md)
+- `@clickhouse/client-common` (deprecated) — [`packages/client-common/CHANGELOG.md`](./packages/client-common/CHANGELOG.md)
+- `@clickhouse/datatype-parser` — [`packages/datatype-parser/CHANGELOG.md`](./packages/datatype-parser/CHANGELOG.md)
+- `@clickhouse/rowbinary` — [`skills/clickhouse-js-node-rowbinary/CHANGELOG.md`](./skills/clickhouse-js-node-rowbinary/CHANGELOG.md)
+
+History through `@clickhouse/client` 1.23.0 lives in the now-frozen repository-wide [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## AI Agent Skills
 
@@ -135,3 +153,5 @@ If you have any questions or need help, feel free to reach out to us in the [Com
 ## Contributing
 
 Check out our [contributing guide](./CONTRIBUTING.md).
+
+If you'd like to build a client for an alternative runtime (such as Bun or Cloudflare Workers) or an alternative protocol (such as the native ClickHouse protocol or gRPC over a proxy), see [Building specialized clients for alternative runtimes and protocols](./ALTERNATIVE_CLIENTS.md).

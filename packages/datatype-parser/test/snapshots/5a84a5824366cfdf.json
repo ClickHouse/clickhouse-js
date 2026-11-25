@@ -1,0 +1,14 @@
+{
+  "type": "Time64(0)",
+  "data_type": {
+    "type": "DataType",
+    "name": "Time64",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "UInt64",
+        "value": "0"
+      }
+    ]
+  }
+}

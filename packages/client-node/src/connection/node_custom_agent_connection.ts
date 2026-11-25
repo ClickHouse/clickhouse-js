@@ -1,34 +1,34 @@
-import Http from 'http'
-import Https from 'https'
-import type { NodeConnectionParams } from './node_base_connection'
-import type { RequestParams } from './socket_pool'
-import { NodeBaseConnection } from './node_base_connection'
-import { withCompressionHeaders } from '@clickhouse/client-common'
+import Http from "http";
+import Https from "https";
+import type { NodeConnectionParams } from "./node_base_connection";
+import type { RequestParams } from "./socket_pool";
+import { NodeBaseConnection } from "./node_base_connection";
+import { withCompressionHeaders } from "../common/index";
 
 export class NodeCustomAgentConnection extends NodeBaseConnection {
-  private readonly httpRequestFn: typeof Http.request | typeof Https.request
+  private readonly httpRequestFn: typeof Http.request | typeof Https.request;
   constructor(params: NodeConnectionParams) {
     if (!params.http_agent) {
       throw new Error(
-        'http_agent is required to create NodeCustomAgentConnection',
-      )
+        "http_agent is required to create NodeCustomAgentConnection",
+      );
     }
-    super(params, params.http_agent)
+    super(params, params.http_agent);
 
     // See https://github.com/ClickHouse/clickhouse-js/issues/352
-    if (params.url.protocol.startsWith('https')) {
-      this.httpRequestFn = Https.request
+    if (params.url.protocol.startsWith("https")) {
+      this.httpRequestFn = Https.request;
     } else {
-      this.httpRequestFn = Http.request
+      this.httpRequestFn = Http.request;
     }
   }
 
   protected createClientRequest(params: RequestParams): Http.ClientRequest {
     const headers = withCompressionHeaders({
       headers: params.headers,
-      enable_request_compression: params.enable_request_compression,
-      enable_response_compression: params.enable_response_compression,
-    })
+      request_compression_codec: params.request_compression?.codec,
+      response_compression_codec: params.response_compression_codec,
+    });
     return this.httpRequestFn(params.url, {
       method: params.method,
       agent: this.agent,
@@ -38,6 +38,6 @@ export class NodeCustomAgentConnection extends NodeBaseConnection {
       ...(this.params.max_response_headers_size !== undefined && {
         maxHeaderSize: this.params.max_response_headers_size,
       }),
-    })
+    });
   }
 }

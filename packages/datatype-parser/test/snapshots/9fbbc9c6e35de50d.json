@@ -1,0 +1,14 @@
+{
+  "type": "DateTime('America/New_York')",
+  "data_type": {
+    "type": "DataType",
+    "name": "DateTime",
+    "arguments": [
+      {
+        "type": "Literal",
+        "value_type": "String",
+        "value": "America/New_York"
+      }
+    ]
+  }
+}
