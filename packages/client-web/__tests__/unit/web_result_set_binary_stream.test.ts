@@ -133,6 +133,23 @@ describe("[Web] ResultSet.binaryStream() and rawStream()", () => {
     expect(bytes).toEqual(data);
   });
 
+  it("gives the held bytes at the end of the response", async () => {
+    for (const tail of ["\r", "\r\n__exc"]) {
+      const body = join(data, encoder.encode(tail));
+      const rs = makeResultSet(source([body]));
+      const { bytes, error } = await read(rs.binaryStream());
+      expect(error, JSON.stringify(tail)).toBeUndefined();
+      expect(bytes, JSON.stringify(tail)).toEqual(body);
+    }
+  });
+
+  it("gives an incomplete block error when the response ends in the block", async () => {
+    const rs = makeResultSet(source([data, block.subarray(0, 60)]));
+    const { bytes, error } = await read(rs.binaryStream());
+    expect((error as Error).message).toContain("exception block is incomplete");
+    expect(bytes).toEqual(data);
+  });
+
   it("gives the held bytes before a source error with no block", async () => {
     for (const tail of [
       "\r",

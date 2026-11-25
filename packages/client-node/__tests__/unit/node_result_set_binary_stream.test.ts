@@ -176,6 +176,40 @@ describe("[Node.js] ResultSet.binaryStream() and rawStream()", () => {
     expect(bytes.equals(big)).toBe(true);
   });
 
+  it("logs the error and ends the span when the consumer destroys the stream with an error", async () => {
+    const logged: Error[] = [];
+    const span = { ended: 0, errors: [] as Error[] };
+    const rs = ResultSet.instance({
+      stream: new Stream.PassThrough(),
+      format: "Parquet",
+      query_id: guid(),
+      log_error: (err) => logged.push(err),
+      response_headers: { "x-clickhouse-exception-tag": tag },
+      span: {
+        setAttributes() {
+          //
+        },
+        setStatus() {
+          //
+        },
+        recordException(error: Error) {
+          span.errors.push(error);
+        },
+        end() {
+          span.ended++;
+        },
+      },
+    });
+    const stream = rs.binaryStream();
+    const err = new Error("consumer failed");
+    stream.on("error", () => undefined);
+    stream.destroy(err);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(logged).toEqual([err]);
+    expect(span.ended).toBe(1);
+    expect(span.errors).toEqual([err]);
+  });
+
   it("closes the source when the consumer stops early", async () => {
     const source = Readable.from([data, data, data]);
     const rs = makeResultSet(source);

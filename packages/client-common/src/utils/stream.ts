@@ -248,10 +248,10 @@ export function errorFromExceptionBlock(
 
 const NO_BYTES = new Uint8Array(0);
 
-/** A copy of `bytes[start, end)` that does not share memory with `bytes`. */
-function copyBytes(bytes: Uint8Array, start = 0, end = bytes.length) {
-  const copy = new Uint8Array(end - start);
-  copy.set(bytes.subarray(start, end));
+/** A copy of `bytes` from `start` that does not share memory with `bytes`. */
+function copyBytes(bytes: Uint8Array, start: number) {
+  const copy = new Uint8Array(bytes.length - start);
+  copy.set(bytes.subarray(start));
   return copy;
 }
 

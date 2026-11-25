@@ -149,6 +149,13 @@ describe("BinaryExceptionScanner", () => {
     expect(r.error?.message).toContain("exception block is malformed");
   });
 
+  it("gives nothing after an error", () => {
+    const scanner = new BinaryExceptionScanner(tag);
+    expectServerError(scanner.push(join(data, block())).error);
+    expect(scanner.push(data)).toEqual({ data: new Uint8Array(0) });
+    expect(scanner.end()).toEqual({ data: new Uint8Array(0) });
+  });
+
   it("does not use the memory of the chunks that it gave", () => {
     // The consumer can transfer or change the buffer of a chunk (for example,
     // postMessage(chunk, [chunk.buffer]) to a worker).
