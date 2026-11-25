@@ -42,7 +42,7 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
           await expect(result).rejects.toMatchObject({
             code: "395",
             type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
-            message: 'boom: "日本語"\nnext line. ',
+            message: 'boom: "日本語"\nnext line.',
           });
         },
       );
@@ -141,7 +141,7 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"] as const)(
           await expect(result).rejects.toMatchObject({
             code: "395",
             type: "FUNCTION_THROW_IF_VALUE_IS_NON_ZERO",
-            message: 'a"} b. ',
+            message: 'a"} b.',
           });
           // Only the error message is decoded eagerly.
           expect(nativeParse).toHaveBeenCalledTimes(1);

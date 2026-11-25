@@ -7,6 +7,13 @@
 // `(NULL)`, so the type is the group at the end of an exception: before
 // ` (version ` or at the end of the text.
 //
+// The message can also have user text (for example from `throwIf`) that looks
+// like these markers: `(FOO) (version 1)` or `(FOO), Stack trace (`. So the
+// parser takes only text in the format of the server markers: ` (version `
+// with a version of four numbers (`26.11.1.312`), and the full stack trace
+// sentence with no end of an exception after it. User text in exactly this
+// format, such as `(FOO) (version 26.11.1.312)`, can still change the result.
+//
 // The server can wrap one exception in another, and repeat the markers, e.g.:
 //   Code: 57. DB::Exception: There was an error on [host:9000]: Code: 57. DB::Exception: <message>. (TABLE_ALREADY_EXISTS) (version ...). (TABLE_ALREADY_EXISTS) (version ...)
 //   Code: 636. DB::Exception: ... Error:\nCode: 117. DB::Exception: <message>. (INCORRECT_DATA) (version ...).\n... (CANNOT_EXTRACT_TABLE_STRUCTURE) (version ...)
@@ -33,9 +40,17 @@ const codeRe = /(?:Code|Error): (\d+)/;
 const typeGroupRe = /\(([A-Z0-9_]+)\)/g;
 const typeLettersRe = /[A-Z]{3}/;
 const exceptionMarker = "Exception: ";
-const stackTraceMarker = ", Stack trace (";
-const versionMarker = " (version ";
+const stackTraceMarker =
+  ", Stack trace (when copying this message, always include the lines below):";
 const serverErrorStartRe = /^Code: \d+\. DB::\w*Exception: /;
+// A sticky regex: `versionRe.lastIndex = i; versionRe.test(text)` checks for
+// the marker at the position `i` only.
+const versionRe = / \(version \d+\.\d+\.\d+\.\d+/y;
+
+function hasVersionAt(text: string, index: number): boolean {
+  versionRe.lastIndex = index;
+  return versionRe.test(text);
+}
 
 interface TypeGroup {
   start: number;
@@ -47,44 +62,65 @@ function parseServerError(text: string): ParsedClickHouseError | undefined {
   const codeMatch = codeRe.exec(text);
   if (codeMatch === null) return undefined;
   const afterCode = codeMatch.index + codeMatch[0].length;
-  // The stack trace starts right after a type: `(TYPE), Stack trace (`. The
-  // same text elsewhere is part of the message.
-  let stackTraceAt = -1;
-  for (const m of text.matchAll(typeGroupRe)) {
-    const end = m.index + m[0].length;
-    if (end > afterCode && text.startsWith(stackTraceMarker, end)) {
-      stackTraceAt = end;
-      break;
-    }
-  }
-  const head = stackTraceAt < 0 ? text : text.slice(0, stackTraceAt);
-  const firstMarker = head.indexOf(exceptionMarker, afterCode);
+  const firstMarker = text.indexOf(exceptionMarker, afterCode);
   if (firstMarker < 0) return undefined;
 
-  const groups: TypeGroup[] = [];
-  for (const m of head.matchAll(typeGroupRe)) {
+  // Collect the groups that can be the type, and find the first stack trace
+  // sentence, which starts right after a type: `(TYPE), Stack trace (when
+  // copying ...`. The same text after a group that cannot be a type is part of
+  // the message.
+  let groups: TypeGroup[] = [];
+  let head = text;
+  let cut = -1;
+  for (const m of text.matchAll(typeGroupRe)) {
+    const start = m.index;
+    const end = start + m[0].length;
     const type = m[1] as string;
+    const canBeType = typeLettersRe.test(type);
+    if (start > firstMarker + exceptionMarker.length && canBeType) {
+      groups.push({ start, end, type });
+    }
     if (
-      m.index > firstMarker + exceptionMarker.length &&
-      typeLettersRe.test(type)
+      cut < 0 &&
+      canBeType &&
+      end > afterCode &&
+      text.startsWith(stackTraceMarker, end)
     ) {
-      groups.push({ start: m.index, end: m.index + m[0].length, type });
+      cut = end;
     }
   }
-  const textEnd = head.trimEnd().length;
-  const ends = groups.filter(
-    (g) => g.end === textEnd || head.startsWith(versionMarker, g.end),
-  );
+  // The server adds its stack trace sentence only when the message has no
+  // `Stack trace` text, and a stack has no end group after it. So an end group
+  // after the sentence means that the sentence is user text.
+  if (cut >= 0) {
+    const fullEnd = text.trimEnd().length;
+    const laterEnd = groups.some(
+      (g) => g.start >= cut && (g.end === fullEnd || hasVersionAt(text, g.end)),
+    );
+    if (!laterEnd) {
+      head = text.slice(0, cut);
+      groups = groups.filter((g) => g.end <= cut);
+    }
+  }
+  // The message of a group starts after the last `Exception: ` before it.
+  const messageStart = (g: TypeGroup) =>
+    head.lastIndexOf(exceptionMarker, g.start - exceptionMarker.length) +
+    exceptionMarker.length;
+
   // With groups at the end of an exception: the message ends at the first one,
   // and the type is the last one. Otherwise: the first group after the last
   // `Exception: ` that has a group after it.
+  const textEnd = head.trimEnd().length;
+  const ends = groups.filter(
+    (g) => g.end === textEnd || hasVersionAt(head, g.end),
+  );
   let messageEnd: TypeGroup | undefined;
-  let type: string | undefined;
+  let typeGroup: TypeGroup | undefined;
   if (ends.length > 0) {
     messageEnd = ends[0];
-    type = ends[ends.length - 1]?.type;
+    typeGroup = ends.at(-1);
   } else {
-    const last = groups[groups.length - 1];
+    const last = groups.at(-1);
     if (last === undefined) {
       if (!serverErrorStartRe.test(head)) return undefined;
       return {
@@ -93,22 +129,14 @@ function parseServerError(text: string): ParsedClickHouseError | undefined {
         type: undefined,
       };
     }
-    const marker = head.lastIndexOf(
-      exceptionMarker,
-      last.start - exceptionMarker.length,
-    );
-    messageEnd = groups.find((g) => g.start > marker + exceptionMarker.length);
-    type = messageEnd?.type;
+    const from = messageStart(last);
+    messageEnd = typeGroup = groups.find((g) => g.start > from);
   }
   if (messageEnd === undefined) return undefined;
-  const marker = head.lastIndexOf(
-    exceptionMarker,
-    messageEnd.start - exceptionMarker.length,
-  );
   return {
     code: codeMatch[1] as string,
-    message: head.slice(marker + exceptionMarker.length, messageEnd.start),
-    type,
+    message: head.slice(messageStart(messageEnd), messageEnd.start).trimEnd(),
+    type: typeGroup?.type,
   };
 }
 

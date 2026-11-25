@@ -21,17 +21,11 @@ export function decompressResponse(
 
   if (encoding === "gzip") {
     return {
-      response: Stream.pipeline(
+      response: decompress(
         response,
         Zlib.createGunzip(),
-        function pipelineCb(err) {
-          if (err && log_level <= ClickHouseLogLevel.ERROR) {
-            log_writer.error({
-              message: "An error occurred while decompressing the response",
-              err,
-            });
-          }
-        },
+        log_writer,
+        log_level,
       ),
     };
   }
@@ -52,39 +46,72 @@ export function decompressResponse(
       };
     }
     return {
-      response: Stream.pipeline(
+      response: decompress(
         response,
         Zlib.createZstdDecompress(),
-        function pipelineCb(err) {
-          if (err && log_level <= ClickHouseLogLevel.ERROR) {
-            log_writer.error({
-              message: "An error occurred while decompressing the response",
-              err,
-            });
-          }
-        },
+        log_writer,
+        log_level,
       ),
     };
   }
 
   if (encoding === "br") {
     return {
-      response: Stream.pipeline(
+      response: decompress(
         response,
         Zlib.createBrotliDecompress(),
-        function pipelineCb(err) {
-          if (err && log_level <= ClickHouseLogLevel.ERROR) {
-            log_writer.error({
-              message: "An error occurred while decompressing the response",
-              err,
-            });
-          }
-        },
+        log_writer,
+        log_level,
       ),
     };
   }
 
   return { error: new Error(`Unexpected encoding: ${encoding}`) };
+}
+
+/**
+ * Pipes `response` through `decompressor`, the same as `Stream.pipeline`,
+ * but when `response` fails, `decompressor` first gives the output for the
+ * bytes that were received. The server aborts the connection after a
+ * mid-stream error. With a slow consumer, the end of the response, with the
+ * server error, can still be in the buffer of `response` at that time, and
+ * `Stream.pipeline` discards it.
+ */
+function decompress(
+  response: Stream.Readable,
+  decompressor: Zlib.Gunzip | Zlib.ZstdDecompress | Zlib.BrotliDecompress,
+  log_writer: LogWriter,
+  log_level: ClickHouseLogLevel,
+): Stream.Readable {
+  // `finished` also reports a response that is already destroyed, and a
+  // response that closes with no error. It calls back in the 'error' event,
+  // while the response has its buffer.
+  Stream.finished(response, (err) => {
+    if (!err || decompressor.destroyed || decompressor.writableEnded) {
+      return;
+    }
+    response.unpipe(decompressor);
+    // A destroyed stream discards its buffer, but still has it when it
+    // emits 'error'.
+    for (let chunk = response.read(); chunk !== null; chunk = response.read()) {
+      decompressor.write(chunk);
+    }
+    // The response is incomplete: flush the output, then fail.
+    decompressor.flush(() => decompressor.destroy(err));
+  });
+  decompressor.on("error", (err) => {
+    if (log_level <= ClickHouseLogLevel.ERROR) {
+      log_writer.error({
+        message: "An error occurred while decompressing the response",
+        err,
+      });
+    }
+  });
+  // Releases the socket when the consumer stops before the end, or when the
+  // decompression fails.
+  decompressor.on("close", () => response.destroy());
+  response.pipe(decompressor);
+  return decompressor;
 }
 
 export function isDecompressionError(result: any): result is { error: Error } {
