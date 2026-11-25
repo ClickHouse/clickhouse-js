@@ -3,15 +3,20 @@
 ## Bug fixes
 
 - A `Date` query parameter before 1970-01-01 is now sent as a valid negative Unix timestamp. Before, the client put padding zeros in front of the minus sign and shifted the value by up to 2 seconds: `new Date(-1500)` was sent as `00000000-2.500` instead of `-1.500`. ([#1165])
+- Fixed the detection of mid-stream exceptions (ClickHouse 25.11+) in `ResultSet.stream()`. A bare `\r\n` in a _successful_ response body is no longer mistaken for an error: an exception is confirmed only by the `__exception__` marker together with the random per-response `x-clickhouse-exception-tag` token. This unbreaks streaming binary formats such as `Parquet` and CRLF-terminated `CSV` / `TSV` (`output_format_*_crlf_end_of_line`). The exception block is now also detected when it is split across several chunks of the response: it is buffered until it is complete, its bytes are not emitted as rows, and the error contains the full server message. The rows that the server sent before the exception block reach the consumer before the error. In Chromium, the stream can still fail with `TypeError: network error` instead of a `ClickHouseError` when the server closes the connection before the reader has read the end of the response (see [#1140]). If the exception block is malformed, the stream fails with an error instead of hanging the event loop. ([#975])
+- `ClickHouseError.type` is now the type of the error, also when the message has other `(UPPERCASE)` groups before it, such as a type name (`Nullable(JSON)`), a token of a syntax error (`failed at position 38 (TABLE)`) or `(NULL)`. Before, the client took the first such group, so `type` was wrong (for example `JSON` instead of `ILLEGAL_TYPE_OF_ARGUMENT`) and `message` was cut there. This also works with the `stacktrace` setting and for a request with a `session_id`. For a wrapped error, such as `CANNOT_EXTRACT_TABLE_STRUCTURE` around `INCORRECT_DATA`, `type` is now the type of the outer error, which has the same `code`. ([#1174])
 - `ResultSet.stream()` and `ResultSet.json()` now detect in-band error rows in `JSONEachRow` and `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled. They report the server error instead of returning it as data, including when `exception` is the only result column. Real data in a column named `exception` stays as data, even if its value looks like a server error. ([#1168])
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 
+[#975]: https://github.com/ClickHouse/clickhouse-js/pull/975
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
+[#1140]: https://github.com/ClickHouse/clickhouse-js/issues/1140
 [#1165]: https://github.com/ClickHouse/clickhouse-js/pull/1165
 [#1168]: https://github.com/ClickHouse/clickhouse-js/pull/1168
+[#1174]: https://github.com/ClickHouse/clickhouse-js/pull/1174
 
 # 1.25.0
 
