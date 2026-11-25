@@ -139,6 +139,132 @@ describe("parseError", () => {
     expect(error.message).toBe("Syntax error.");
   });
 
+  // The message can have user text, for example from `throwIf`, and that text
+  // can look like the markers of the server. These texts have the shape of the
+  // texts of a ClickHouse 26.11 server.
+  describe("a message with text that looks like a server marker", () => {
+    const fullMessage = (userText: string) =>
+      `${userText}: while executing 'FUNCTION throwIf(1_UInt8 :: 1, '${userText}'_String :: 2) -> throwIf(1_UInt8, '${userText}'_String) UInt8 : 3'.`;
+
+    it("keeps the message after a (TYPE) group with a version that is not the server's", () => {
+      const userText = "see (FOO_BAR) (version 1) here";
+      const error = parseError(
+        `Code: 395. DB::Exception: ${fullMessage(userText)} (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.11.1.312 (official build))\n`,
+      ) as ClickHouseError;
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.code).toBe("395");
+      expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+      expect(error.message).toBe(fullMessage(userText));
+    });
+
+    it("keeps the message after such a group without a version (session_id)", () => {
+      const userText = "a (FOO_BAR) (version 1) b";
+      const error = parseError(
+        `Code: 395. DB::Exception: ${fullMessage(userText)} (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO)\n`,
+      ) as ClickHouseError;
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+      expect(error.message).toBe(fullMessage(userText));
+    });
+
+    // With the setting `stacktrace`, the server sends the full message.
+    // Without it, the server cuts its message at `, Stack trace` itself.
+    it("gives the real type when a (TYPE) group comes before a stack trace text of the user", () => {
+      const userText = "x (ABC), Stack trace (y)";
+      const error = parseError(
+        `Code: 395. DB::Exception: ${fullMessage(userText)} (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.11.1.312 (official build))\n`,
+      ) as ClickHouseError;
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+      expect(error.message).toBe(fullMessage(userText));
+    });
+
+    it("gives a ClickHouseError when a (2) group comes before a stack trace text of the user", () => {
+      const userText = "x (2), Stack trace (y)";
+      const error = parseError(
+        `Code: 395. DB::Exception: ${fullMessage(userText)} (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.11.1.312 (official build))\n`,
+      ) as ClickHouseError;
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.code).toBe("395");
+      expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+      expect(error.message).toBe(fullMessage(userText));
+    });
+
+    // A robustness test: the server adds no stack trace when the message has
+    // `Stack trace` text.
+    it("cuts at the real stack trace after a stack trace text of the user", () => {
+      const error = parseError(
+        "Code: 60. DB::Exception: Unknown table expression identifier 't (ABC), Stack trace (y)'. (UNKNOWN_TABLE), Stack trace (when copying this message, always include the lines below):\n\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x000000001604dca4\n1. DB::Exception::Exception(PreformattedMessage&&, int) @ 0x000000000b7c4c90 (version 26.10.4.207 (official build))\n",
+      ) as ClickHouseError;
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.code).toBe("60");
+      expect(error.type).toBe("UNKNOWN_TABLE");
+      expect(error.message).toBe(
+        "Unknown table expression identifier 't (ABC), Stack trace (y)'.",
+      );
+    });
+
+    it("does not cut at the stack trace sentence after a group that cannot be a type", () => {
+      const userText =
+        "x (2), Stack trace (when copying this message, always include the lines below):";
+      const error = parseError(
+        `Code: 395. DB::Exception: ${userText} y. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.11.1.312 (official build))\n`,
+      ) as ClickHouseError;
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.code).toBe("395");
+      expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+      expect(error.message).toBe(`${userText} y.`);
+    });
+
+    it("keeps the message after a group with a version of fewer than four numbers", () => {
+      const userText = "see (FOO_BAR) (version 1.2) here";
+      const error = parseError(
+        `Code: 395. DB::Exception: ${fullMessage(userText)} (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.11.1.312 (official build))\n`,
+      ) as ClickHouseError;
+      expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+      expect(error.message).toBe(fullMessage(userText));
+    });
+
+    it("gives the real type when the user text has the full stack trace sentence", () => {
+      const userText =
+        "x (ABC), Stack trace (when copying this message, always include the lines below): z";
+      const error = parseError(
+        `Code: 395. DB::Exception: ${fullMessage(userText)} (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.11.1.312 (official build))\n`,
+      ) as ClickHouseError;
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+      expect(error.message).toBe(fullMessage(userText));
+    });
+
+    it("gives a ClickHouseError when the message starts with a group and the full stack trace sentence", () => {
+      const userText =
+        "(ABC), Stack trace (when copying this message, always include the lines below): z";
+      const error = parseError(
+        `Code: 395. DB::Exception: ${fullMessage(userText)} (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO)\n`,
+      ) as ClickHouseError;
+      expect(error).toBeInstanceOf(ClickHouseError);
+      expect(error.code).toBe("395");
+      expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+      expect(error.message).toBe(fullMessage(userText));
+    });
+
+    it("keeps a message that the server cut at its own stack trace text", () => {
+      const error = parseError(
+        "Code: 395. DB::Exception: x (ABC),. (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.11.1.312 (official build))\n",
+      ) as ClickHouseError;
+      expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
+      expect(error.message).toBe("x (ABC),.");
+    });
+  });
+
+  it("removes all the whitespace before the type from the message", () => {
+    const error = parseError(
+      "Code: 1. DB::Exception: line one.\n\t  (SOME_ERROR) (version 26.11.1.312 (official build))",
+    ) as ClickHouseError;
+    expect(error.type).toBe("SOME_ERROR");
+    expect(error.message).toBe("line one.");
+  });
+
   // With a JSON-family output format, the server may report an error through
   // that format: on 24.8 for every error, on later versions for an error raised
   // while the result is written. These are the response shapes seen for each
