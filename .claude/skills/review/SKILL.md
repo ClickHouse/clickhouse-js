@@ -87,7 +87,13 @@ your own conclusions. Ask it to attack the assumptions of the change.
 3. **Docs:** when the change touches user docs or contributor docs (README,
    CONTRIBUTING, `AGENTS.md`, harness docs) or what they describe, the
    `docs-drift-reviewer` agent in report-only mode.
-4. **A second model**, if you have one (for example Codex), with the same brief.
+4. **Other clients:** a fresh subagent checks how the other ClickHouse clients
+   (Go, Java, C#, Python, Rust, C++) solve the same problem, with
+   `gh search code --owner ClickHouse <term>` or local checkouts of their
+   `main`. It reports for each client: the same design, a different design
+   (which one), or the same bug, and whether the change goes against a design
+   that the other clients share.
+5. **A second model**, if you have one (for example Codex), with the same brief.
 
 If a reviewer is not available, do that pass yourself and say in the report
 that it was not independent.
