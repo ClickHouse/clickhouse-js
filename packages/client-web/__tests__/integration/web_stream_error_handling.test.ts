@@ -253,4 +253,81 @@ describe("[Web] Stream error handling", () => {
       expect(rows).toEqual(expectedRows);
     }
   });
+
+  // ClickHouse writes a newline after the in-band error row. A proxy can cut
+  // the response there. Get a real body, and remove the final newline (#1167).
+  it("detects an in-band error row with no final newline in a real body", async ({
+    skip,
+  }) => {
+    if (!(await isClickHouseVersionAtLeast(client, 25, 11))) {
+      skip();
+    }
+
+    const { query, clickhouse_settings } = streamErrorQueryParams();
+    // Chromium can drop the last bytes of the response when the server
+    // closes the connection (#1140). Then get the body again.
+    let text = "";
+    let result: Awaited<ReturnType<ClickHouseClient["exec"]>> | undefined;
+    for (let attempt = 0; attempt < 5 && !text.endsWith("}\n"); attempt++) {
+      result = await client.exec({
+        query: `${query} FORMAT JSONEachRow`,
+        clickhouse_settings: {
+          ...clickhouse_settings,
+          http_write_exception_in_output_format: true,
+          // See the test above: a compressed response loses the first rows.
+          enable_http_compression: 0,
+        },
+      });
+      const parts: string[] = [];
+      const decoder = new TextDecoder();
+      const reader = result.stream.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          parts.push(decoder.decode(value, { stream: true }));
+        }
+      } catch {
+        // The server can close the connection after the error row.
+      }
+      text = parts.join("");
+    }
+    expect(text.endsWith("}\n")).toBe(true);
+    const errorStart = text.lastIndexOf('{"exception": ');
+    expect(errorStart).toBeGreaterThan(0);
+    const expectedRows = text
+      .slice(0, errorStart)
+      .split("\n")
+      .filter((row) => row.length > 0);
+    expect(expectedRows.length).toBe(10);
+
+    const bodies: Array<[string, string, string[]]> = [
+      ["rows and the error row", text.slice(0, -1), expectedRows],
+      ["only the error row", text.slice(errorStart, -1), []],
+    ];
+    for (const [name, body, expected] of bodies) {
+      const rs = new ResultSet(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(body));
+            controller.close();
+          },
+        }),
+        "JSONEachRow",
+        result!.query_id,
+        result!.response_headers,
+      );
+      const rows: string[] = [];
+      let err: unknown = null;
+      try {
+        for await (const batch of rs.stream()) {
+          for (const row of batch) rows.push(row.text);
+        }
+      } catch (e) {
+        err = e;
+      }
+      expect({ name, rows }).toEqual({ name, rows: expected });
+      assertError(err as ClickHouseError);
+    }
+  });
 });

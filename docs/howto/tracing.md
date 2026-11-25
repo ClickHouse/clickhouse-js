@@ -171,6 +171,14 @@ propagates to the caller of `query` / `command` / `exec` / `insert` /
 > `ResultSet` is never consumed nor closed, the `clickhouse.query.stream` span
 > is never ended. For `command`/`exec`/`insert`/`ping`, a single span ends
 > when the method returns.
+>
+> A mid-stream error (the server fails after it sent some rows) ends the
+> `clickhouse.query.stream` span when the client reads the error. This can be
+> before your code reads the rows that came before the error. The client
+> reads the response only as fast as your code reads the rows. Thus, if your
+> code stops reading before the client gets to the error, and does not call
+> `close()`, the span does not end, and the Node.js client does not log the
+> error. If your code calls `close()`, the span ends without the error.
 
 ## Enriching spans with `span_attributes`
 
