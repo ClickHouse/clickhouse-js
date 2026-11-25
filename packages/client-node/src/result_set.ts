@@ -10,7 +10,6 @@ import type {
   Row,
 } from "./common/index";
 import {
-  BinaryExceptionScanner,
   errorFromExceptionBlock,
   matchExceptionBlockStart,
   defaultJSONHandling,
@@ -28,7 +27,10 @@ import { Buffer } from "buffer";
 import type { Readable, TransformCallback } from "stream";
 import Stream, { Transform } from "stream";
 import { getAsText } from "./utils";
-import { createJSONEachRowErrorDetector } from "./common/utils/stream";
+import {
+  BinaryExceptionScanner,
+  createJSONEachRowErrorDetector,
+} from "./common/utils/stream";
 
 const NEWLINE = 0x0a as const;
 

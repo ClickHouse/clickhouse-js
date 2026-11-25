@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { BinaryExceptionScanner, ClickHouseError } from "../../src/index";
+import { ClickHouseError } from "../../src/index";
+import { BinaryExceptionScanner } from "../../src/utils/stream";
 
 // The scanner gives the bytes of a binary response (for example Parquet)
 // unchanged, and finds a mid-stream exception block (ClickHouse 25.11+):

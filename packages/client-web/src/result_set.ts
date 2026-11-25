@@ -10,7 +10,6 @@ import type {
   Row,
 } from "./common/index";
 import {
-  BinaryExceptionScanner,
   CARET_RETURN,
   errorFromExceptionBlock,
   matchExceptionBlockStart,
@@ -23,7 +22,10 @@ import {
   validateStreamFormat,
 } from "./common/index";
 import { getAsText } from "./utils";
-import { createJSONEachRowErrorDetector } from "./common/utils/stream";
+import {
+  BinaryExceptionScanner,
+  createJSONEachRowErrorDetector,
+} from "./common/utils/stream";
 
 const NEWLINE = 0x0a as const;
 
