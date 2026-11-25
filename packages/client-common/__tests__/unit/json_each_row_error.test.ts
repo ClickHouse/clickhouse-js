@@ -14,7 +14,7 @@ describe.each(["JSONEachRow", "JSONStringsEachRow"])(
       expect(error).toBeInstanceOf(ClickHouseError);
       expect(error).toMatchObject({
         code: "395",
-        message: '日本語: "quoted"\nnext \\ line. ',
+        message: '日本語: "quoted"\nnext \\ line.',
       });
     });
 
