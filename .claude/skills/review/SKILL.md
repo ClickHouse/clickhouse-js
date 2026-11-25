@@ -51,17 +51,23 @@ the report.
 - **Old code.** The tests of the changed behavior must fail on the old code.
   Do not change the files of the review checkout: make a second worktree at
   the base (`git worktree add --detach .local/base-<n> <base>`, with a name of
-  its own), copy the new test files into it, run them there, and remove it
-  after. When the lockfiles are the same, link the review checkout's
-  `node_modules` into it instead of a new install. Do not use `git stash`.
+  its own), run `npm ci` and `npm run build` in it, copy the new test files
+  into it, run them there, and remove it after. Do not link the review
+  checkout's `node_modules` into it: the workspace links in
+  `node_modules/@clickhouse/` would point to the new code. Do not use
+  `git stash`.
   When the change has no test, write a small probe test in `.local/` and run
   it on both commits.
 - **A run counts only when** the exit code is 0, the summary shows a test
   count above 0, and the new tests are in the output as run, not skipped. A
   run that must fail (for example a `KNOWN_FAILURES` group) counts when it
   fails for the expected reason.
-- Do not end your turn while tests run in the background with nothing that
-  will wake you.
+- A test that fails on the base commit too, with the same server, is not a
+  finding of this change (for example a server newer than the code). Name it
+  in one line under the test results.
+- **Wait in the same turn.** While tests or reviewers run in the background,
+  check their results again in the same turn. Do not end your turn to wait
+  for a notification: in some harnesses no notification wakes you.
 
 ## 4. Independent reviewers (at the same time)
 

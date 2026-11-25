@@ -14,7 +14,8 @@ authors accepted. You do not need to open them.
 
 - `must_fix`: wrong data, lost or duplicated rows, an error that does not
   reach the caller, a hang, a crash, a security or privacy problem, a breaking
-  change with no note, SQL parsing in the client.
+  change with no note, SQL parsing in the client, a change that makes CI fail
+  (a build, a lint or a test suite that passed on the base).
 - `should_fix`: a missing test, changelog entry or docs; a fix in one client
   that the other client needs too; a changelog or docs claim that is not true
   (user docs and contributor docs: README, CONTRIBUTING, `AGENTS.md`, harness
