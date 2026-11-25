@@ -71,10 +71,21 @@ console.log(await rs.text());
 ```
 
 Streaming raw text/Parquet line-by-line belongs in
-[`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance)
-— in particular, Parquet exports use `client.exec()` and pipe the raw
-response stream rather than `ResultSet.stream()` (see
-[`select_parquet_as_file.ts`](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/performance/select_parquet_as_file.ts)).
+[`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance).
+For a Parquet export, use `rs.binaryStream()`, not `rs.stream()`: it gives the
+response bytes as they are, and with ClickHouse 25.11+ it fails with a
+`ClickHouseError` when the server sends an error after a part of the result.
+
+```ts
+import { pipeline } from "node:stream/promises";
+import fs from "node:fs";
+
+const rs = await client.query({
+  query: "SELECT * FROM my_table",
+  format: "Parquet",
+});
+await pipeline(rs.binaryStream(), fs.createWriteStream("my_table.parquet"));
+```
 
 ## Format chooser
 
@@ -89,12 +100,14 @@ response stream rather than `ResultSet.stream()` (see
 
 ## ResultSet methods
 
-| Method               | Returns                                          | Notes                                                                                                                                                                                                                                                                                                                                |
-| -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `await rs.json<T>()` | `T[]` for `*EachRow`, single-doc shape otherwise | Buffers the full response                                                                                                                                                                                                                                                                                                            |
-| `await rs.text()`    | `string`                                         | Buffers the full response — for textual formats only (CSV/TSV/etc.)                                                                                                                                                                                                                                                                  |
-| `rs.stream()`        | Node `Readable` of `Row[]` chunks                | Use for large newline-delimited results (`JSONEachRow`/`JSONCompactEachRow`/`CSV`/`TSV`); **not** suitable for binary formats like `Parquet` — for those, use `client.exec()` and pipe the raw response stream (see [`examples/node/performance/`](https://github.com/ClickHouse/clickhouse-js/tree/main/examples/node/performance)) |
-| `rs.close()`         | `void` (synchronous)                             | Always call if you obtained `stream()` and stop reading early                                                                                                                                                                                                                                                                        |
+| Method               | Returns                                          | Notes                                                                                                                                                                             |
+| -------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `await rs.json<T>()` | `T[]` for `*EachRow`, single-doc shape otherwise | Buffers the full response                                                                                                                                                         |
+| `await rs.text()`    | `string`                                         | Buffers the full response — for textual formats only (CSV/TSV/etc.)                                                                                                               |
+| `rs.stream()`        | Node `Readable` of `Row[]` chunks                | Use for large newline-delimited results (`JSONEachRow`/`JSONCompactEachRow`/`CSV`/`TSV`); **not** suitable for binary formats like `Parquet` — for those, use `rs.binaryStream()` |
+| `rs.binaryStream()`  | Node `Readable` of `Buffer` chunks               | The response bytes as they are, for binary formats like `Parquet`; fails with a `ClickHouseError` on a mid-stream server error (ClickHouse 25.11+)                                |
+| `rs.rawStream()`     | The response `Readable` as it is                 | No check for a mid-stream server error; prefer `rs.binaryStream()`                                                                                                                |
+| `rs.close()`         | `void` (synchronous)                             | Always call if you obtained `stream()` and stop reading early                                                                                                                     |
 
 ## Common pitfalls
 

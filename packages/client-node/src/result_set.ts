@@ -10,6 +10,7 @@ import type {
   Row,
 } from "./common/index";
 import {
+  BinaryExceptionScanner,
   errorFromExceptionBlock,
   matchExceptionBlockStart,
   defaultJSONHandling,
@@ -79,14 +80,20 @@ export interface ResultSetOptions<Format extends DataFormat> {
 
 export class ResultSet<
   Format extends DataFormat | unknown,
-> implements BaseResultSet<Stream.Readable, Format> {
+> implements BaseResultSet<
+  Stream.Readable,
+  Format,
+  StreamReadable<Buffer>,
+  Stream.Readable
+> {
   public readonly response_headers: ResponseHeaders = {};
 
   private readonly exceptionTag: string | undefined = undefined;
   private readonly log_error: (error: Error) => void;
   private readonly jsonHandling: JSONHandling;
   private _consumed = false;
-  /** The stream that {@link stream} returns, if it was called. */
+  /** The stream that {@link stream} or {@link binaryStream} returns, if one
+   *  of them was called. */
   private rowStream: RowsTransform | undefined;
   /**
    * The stream of the response body.
@@ -102,6 +109,8 @@ export class ResultSet<
   private readonly span: ClickHouseSpan | undefined;
   /** Decoded (decompressed) bytes received from the server so far. */
   private span_bytes = 0;
+  /** `false` after {@link rawStream}, which does not count the bytes. */
+  private span_bytes_counted = true;
   /** Rows decoded from the response stream so far. */
   private span_rows = 0;
   private span_rows_counted = false;
@@ -158,9 +167,10 @@ export class ResultSet<
       return;
     }
     this.span_finished = true;
-    const attributes: ClickHouseSpanAttributes = {
-      "clickhouse.response.decoded_bytes": this.span_bytes,
-    };
+    const attributes: ClickHouseSpanAttributes = {};
+    if (this.span_bytes_counted) {
+      attributes["clickhouse.response.decoded_bytes"] = this.span_bytes;
+    }
     if (this.span_rows_counted) {
       attributes["db.response.returned_rows"] = this.span_rows;
     }
@@ -533,6 +543,125 @@ export class ResultSet<
     source.pipe(toRows);
     this.rowStream = toRows;
     return toRows as any;
+  }
+
+  /** See {@link BaseResultSet.binaryStream}. */
+  binaryStream(): StreamReadable<Buffer> {
+    const logError = this.log_error;
+    const scanner =
+      this.exceptionTag !== undefined && this.exceptionTag.length > 0
+        ? new BinaryExceptionScanner(this.exceptionTag)
+        : undefined;
+    const source = this.consume();
+    // The same error handling as in `stream()`: after an error, the source is
+    // destroyed, and the bytes before the error stay in the buffer of `toBytes`
+    // until the consumer reads them; then `toBytes` fails with the error.
+    let reportedError: Error | undefined;
+    const fail = (error: Error) => {
+      source.unpipe(toBytes);
+      source.destroy();
+      if (!toBytes.failed && !toBytes.destroyed) {
+        reportedError = error;
+        logError(error);
+        resultSet.finishSpan(error);
+      }
+      toBytes.failAfterRows(error);
+    };
+    const pushBytes = (bytes: Uint8Array) => {
+      if (bytes.length > 0) {
+        toBytes.push(
+          Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+        );
+      }
+    };
+    let sourceError: Error | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const resultSet = this;
+    const toBytes = new RowsTransform({
+      transform(
+        chunk: Buffer,
+        _encoding: BufferEncoding,
+        callback: TransformCallback,
+      ) {
+        if (toBytes.failed) {
+          return callback();
+        }
+        resultSet.span_bytes += chunk.length;
+        if (scanner === undefined) {
+          return callback(null, chunk);
+        }
+        const { data, error } = scanner.push(chunk);
+        pushBytes(data);
+        if (error !== undefined) {
+          fail(error);
+        }
+        callback();
+      },
+      flush(callback: TransformCallback) {
+        // With an error, the callback is not called: it would end the
+        // readable side before the stream fails.
+        if (toBytes.failed) {
+          return;
+        }
+        if (scanner !== undefined) {
+          const { data, error } = scanner.end(sourceError !== undefined);
+          pushBytes(data);
+          if (error !== undefined) {
+            return fail(error);
+          }
+        }
+        if (sourceError !== undefined) {
+          return fail(sourceError);
+        }
+        callback();
+      },
+      autoDestroy: true,
+    });
+    // See `stream()`: the server closes the connection after a mid-stream
+    // error, so the source fails. `toBytes` first scans the chunks that are
+    // still in the buffer of the source, because they can hold the error.
+    Stream.finished(source, { writable: false }, (err) => {
+      if (!err || toBytes.failed || toBytes.writableEnded) {
+        return;
+      }
+      if (err.name === "AbortError" || err.message === resultSetClosedMessage) {
+        toBytes.destroy(err);
+        return;
+      }
+      sourceError = err;
+      source.unpipe(toBytes);
+      for (let chunk = source.read(); chunk !== null; chunk = source.read()) {
+        toBytes.write(chunk);
+      }
+      toBytes.end();
+    });
+    toBytes.on("close", () => source.destroy());
+    Stream.finished(toBytes, { readable: false }, (err) => {
+      if (
+        err &&
+        err !== reportedError &&
+        err.name !== "AbortError" &&
+        err.message !== resultSetClosedMessage
+      ) {
+        logError(err);
+        resultSet.finishSpan(err);
+      } else {
+        resultSet.finishSpan();
+      }
+    });
+    source.pipe(toBytes);
+    this.rowStream = toBytes;
+    return toBytes as any;
+  }
+
+  /** See {@link BaseResultSet.rawStream}. */
+  rawStream(): Stream.Readable {
+    const source = this.consume();
+    // The bytes are not counted: a 'data' listener would change how the
+    // caller reads the stream.
+    this.span_bytes_counted = false;
+    Stream.finished(source, (err) => this.finishSpan(err ?? undefined));
+    return source;
   }
 
   /** See {@link BaseResultSet.close}. */

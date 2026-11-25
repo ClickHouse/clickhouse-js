@@ -52,7 +52,8 @@ Reference: https://clickhouse.com/docs/integrations/javascript
 5. **Pick the right method for the job:**
    - `client.insert()` — write rows.
    - `client.query()` + `resultSet.json()` / `.text()` / `.stream()` — read
-     rows that return data.
+     rows that return data. For a binary format such as `Parquet`, use
+     `.binaryStream()`.
    - `client.command()` — DDL and other statements that don't return rows
      (`CREATE`, `DROP`, `TRUNCATE`, `ALTER`, `SET` in a session, etc.).
    - `client.exec()` — when you need the raw response stream of an arbitrary

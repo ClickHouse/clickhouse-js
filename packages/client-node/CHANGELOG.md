@@ -8,6 +8,20 @@
 [#1124]: https://github.com/ClickHouse/clickhouse-js/pull/1124
 [#1181]: https://github.com/ClickHouse/clickhouse-js/pull/1181
 
+## New features
+
+- Added `ResultSet.binaryStream()`: a stream of the response bytes of `query()`, with no split into rows. Use it for binary formats such as `Parquet`. The bytes are the same as the bytes that the server sent. With ClickHouse 25.11+, when the server sends an error after a part of the result, the stream gives the bytes before the error and then fails with a `ClickHouseError` that has the code and the type of the error. The stream of `client.exec()` gives the same bytes, but a network error in place of the server error. Also added `ResultSet.rawStream()`, which gives the response stream as it is, with no check for a mid-stream error. ([#778])
+
+  ```ts
+  const rs = await client.query({
+    query: "SELECT * FROM t",
+    format: "Parquet",
+  });
+  await pipeline(rs.binaryStream(), fs.createWriteStream("t.parquet"));
+  ```
+
+[#778]: https://github.com/ClickHouse/clickhouse-js/pull/778
+
 ## Bug fixes
 
 - Fixed the detection of mid-stream exceptions (ClickHouse 25.11+) in `ResultSet.stream()`. A bare `\r\n` in a _successful_ response body is no longer mistaken for an error: an exception is confirmed only by the `__exception__` marker together with the random per-response `x-clickhouse-exception-tag` token. This unbreaks streaming binary formats such as `Parquet` and CRLF-terminated `CSV` / `TSV` (`output_format_*_crlf_end_of_line`). The exception block is now also detected when it is split across several chunks of the response: it is buffered until it is complete, its bytes are not emitted as rows, and the error contains the full server message. The rows that the server sent before the exception block reach the consumer before the error, also with `for await`. If the exception block is malformed, the stream fails with an error instead of hanging the event loop. ([#975])

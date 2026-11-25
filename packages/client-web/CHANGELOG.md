@@ -1,10 +1,25 @@
-# 1.25.1
+# 1.26.0
 
 ## Migration Notes
 
 - `ClickHouseError.message` no longer ends with the whitespace before the error type (`Table x already exists.` instead of `Table x already exists. `). `code` and `type` do not change. If your code compares the exact message text, update it. ([#1181])
 
 [#1181]: https://github.com/ClickHouse/clickhouse-js/pull/1181
+
+## New features
+
+- Added `ResultSet.binaryStream()`: a stream of the response bytes of `query()`, with no split into rows. Each chunk is a `Uint8Array`. Use it for binary formats such as `Parquet`. The bytes are the same as the bytes that the server sent. With ClickHouse 25.11+, when the server sends an error after a part of the result, the stream gives the bytes before the error and then fails with a `ClickHouseError` that has the code and the type of the error. As with `ResultSet.stream()`, `fetch` can give a `TypeError` in place of the server error (see [#1140]). Also added `ResultSet.rawStream()`, which gives the response stream as it is, with no check for a mid-stream error. ([#778])
+
+  ```ts
+  const rs = await client.query({
+    query: "SELECT * FROM t",
+    format: "Parquet",
+  });
+  const reader = rs.binaryStream().getReader();
+  ```
+
+[#778]: https://github.com/ClickHouse/clickhouse-js/pull/778
+[#1140]: https://github.com/ClickHouse/clickhouse-js/issues/1140
 
 ## Bug fixes
 

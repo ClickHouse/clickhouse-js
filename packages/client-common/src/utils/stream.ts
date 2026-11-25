@@ -245,3 +245,142 @@ export function errorFromExceptionBlock(
   }
   return undefined;
 }
+
+const NO_BYTES = new Uint8Array(0);
+
+/** A copy of `bytes[start, end)` that does not share memory with `bytes`. */
+function copyBytes(bytes: Uint8Array, start = 0, end = bytes.length) {
+  const copy = new Uint8Array(end - start);
+  copy.set(bytes.subarray(start, end));
+  return copy;
+}
+
+function joinBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const result = new Uint8Array(a.length + b.length);
+  result.set(a, 0);
+  result.set(b, a.length);
+  return result;
+}
+
+/** See {@link BinaryExceptionScanner}. */
+export interface BinaryScanResult {
+  /** The bytes that the consumer can have. Can be empty. */
+  data: Uint8Array;
+  /** The server error, or an error about a malformed or incomplete block. */
+  error?: Error;
+}
+
+/**
+ * Finds a mid-stream exception block (ClickHouse 25.11+) in a stream of bytes
+ * of any format, for example Parquet, and gives all the other bytes unchanged.
+ *
+ * The block opens with `\r\n__exception__\r\n<exceptionTag>`, where
+ * `exceptionTag` is the random per-response token of the
+ * `x-clickhouse-exception-tag` header, so a `\r\n` in binary data is not taken
+ * for a block. The server closes the connection right after the block, so the
+ * error is given as soon as the block is complete, and not at the end of the
+ * stream.
+ *
+ * The bytes that the scanner keeps between two chunks (a possible start of
+ * the block, or the block) are copies. The consumer can change or transfer the
+ * buffers of the chunks that it gets.
+ * @internal
+ */
+export class BinaryExceptionScanner {
+  /** The last bytes of the stream, if they can start a block opening: a
+   *  `\r`, or a `\r\n` and the start of `__exception__\r\n<exceptionTag>`. */
+  private held: Uint8Array = NO_BYTES;
+  /** The block from after its opening `\r\n`, once it has started. */
+  private block: Uint8Array | undefined;
+  private failed = false;
+  private readonly exceptionTag: string;
+
+  /** `exceptionTag` must not be empty. */
+  constructor(exceptionTag: string) {
+    this.exceptionTag = exceptionTag;
+  }
+
+  /** Scans the next chunk of the response. */
+  push(chunk: Uint8Array): BinaryScanResult {
+    if (this.failed) {
+      return { data: NO_BYTES };
+    }
+    if (this.block !== undefined) {
+      this.block = joinBytes(this.block, chunk);
+      return this.blockResult(NO_BYTES);
+    }
+    // The held bytes go in front of the chunk. This copies the chunk, but only
+    // when the previous chunk ended with a `\r` or a cut block opening.
+    const bytes = this.held.length > 0 ? joinBytes(this.held, chunk) : chunk;
+    this.held = NO_BYTES;
+    return this.blockResult(this.scan(bytes));
+  }
+
+  /**
+   * Ends the scan. `isSourceError` tells that the response stream failed (for
+   * example, the connection was closed): then the error is the server error,
+   * if the block is complete, or an error about an incomplete block, if the
+   * block started. Otherwise the caller gives the source error.
+   */
+  end(isSourceError = false): BinaryScanResult {
+    if (this.failed) {
+      return { data: NO_BYTES };
+    }
+    if (this.block !== undefined) {
+      this.failed = true;
+      return {
+        data: NO_BYTES,
+        error: errorFromExceptionBlock(this.block, this.exceptionTag, true),
+      };
+    }
+    // A `\r` or a cut block opening at the end. After a source error, the
+    // stream fails anyway, and the bytes do not change the result.
+    const data = this.held;
+    this.held = NO_BYTES;
+    return { data: isSourceError ? NO_BYTES : data };
+  }
+
+  /** The bytes of `chunk` up to a block opening or a possible one, if any.
+   *  The rest is kept in {@link held} or {@link block}. */
+  private scan(chunk: Uint8Array): Uint8Array {
+    let from = 0;
+    while (true) {
+      const idx = chunk.indexOf(NEWLINE, from);
+      if (idx === -1) {
+        break;
+      }
+      from = idx + 1;
+      // A `\n` at index 0 is not after a `\r`: a `\r` at the end of the
+      // previous chunk is held, and it is in front of this chunk.
+      if (idx === 0 || chunk[idx - 1] !== CARET_RETURN) {
+        continue;
+      }
+      const match = matchExceptionBlockStart(chunk, idx + 1, this.exceptionTag);
+      if (match === "none") {
+        continue;
+      }
+      if (match === "partial") {
+        this.held = copyBytes(chunk, idx - 1);
+      } else {
+        this.block = copyBytes(chunk, idx + 1);
+      }
+      return chunk.subarray(0, idx - 1);
+    }
+    if (chunk.length > 0 && chunk[chunk.length - 1] === CARET_RETURN) {
+      this.held = copyBytes(chunk, chunk.length - 1);
+      return chunk.subarray(0, chunk.length - 1);
+    }
+    return chunk;
+  }
+
+  private blockResult(data: Uint8Array): BinaryScanResult {
+    if (this.block === undefined) {
+      return { data };
+    }
+    const error = errorFromExceptionBlock(this.block, this.exceptionTag);
+    if (error !== undefined) {
+      this.failed = true;
+    }
+    return { data, error };
+  }
+}

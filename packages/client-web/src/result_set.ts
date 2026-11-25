@@ -10,6 +10,7 @@ import type {
   Row,
 } from "./common/index";
 import {
+  BinaryExceptionScanner,
   CARET_RETURN,
   errorFromExceptionBlock,
   matchExceptionBlockStart,
@@ -60,7 +61,12 @@ type TransformerWithCancel<I = any, O = any> = Transformer<I, O> & {
 
 export class ResultSet<
   Format extends DataFormat | unknown,
-> implements BaseResultSet<ReadableStream<Row[]>, Format> {
+> implements BaseResultSet<
+  ReadableStream<Row[]>,
+  Format,
+  ReadableStream<Uint8Array>,
+  ReadableStream<Uint8Array>
+> {
   public readonly response_headers: ResponseHeaders;
 
   private readonly exceptionTag: string | undefined = undefined;
@@ -74,6 +80,8 @@ export class ResultSet<
   private readonly span: ClickHouseSpan | undefined;
   /** Decoded (decompressed) bytes received from the server so far. */
   private span_bytes = 0;
+  /** `false` after {@link rawStream}, which does not count the bytes. */
+  private span_bytes_counted = true;
   /** Rows decoded from the response stream so far. */
   private span_rows = 0;
   private span_rows_counted = false;
@@ -427,6 +435,63 @@ export class ResultSet<
     return pipeline as any;
   }
 
+  /** See {@link BaseResultSet.binaryStream} */
+  binaryStream(): ReadableStream<Uint8Array> {
+    this.markAsConsumed();
+    const scanner =
+      this.exceptionTag !== undefined && this.exceptionTag.length > 0
+        ? new BinaryExceptionScanner(this.exceptionTag)
+        : undefined;
+    const transformer: TransformerWithCancel<Uint8Array, Uint8Array> = {
+      transform: (chunk, controller) => {
+        this.span_bytes += chunk.length;
+        if (scanner === undefined) {
+          controller.enqueue(chunk);
+          return;
+        }
+        const { data, error } = scanner.push(chunk);
+        if (data.length > 0) {
+          controller.enqueue(data);
+        }
+        if (error !== undefined) {
+          // The server closes the connection after the block: fail now, and
+          // do not wait for the end of the response.
+          this.finishSpan(error);
+          controller.error(error);
+        }
+      },
+      flush: (controller) => {
+        if (scanner !== undefined) {
+          const { data, error } = scanner.end();
+          if (data.length > 0) {
+            controller.enqueue(data);
+          }
+          if (error !== undefined) {
+            this.finishSpan(error);
+            controller.error(error);
+            return;
+          }
+        }
+        this.finishSpan();
+      },
+      cancel: (reason?: unknown) => {
+        // The consumer cancelled the stream, or the source failed.
+        this.finishSpan(reason);
+      },
+    };
+    return this._stream.pipeThrough(new TransformStream(transformer));
+  }
+
+  /** See {@link BaseResultSet.rawStream} */
+  rawStream(): ReadableStream<Uint8Array> {
+    this.markAsConsumed();
+    // The bytes are not counted, and the span ends with the result set: the
+    // stream is given as is, so the client does not see when it ends.
+    this.span_bytes_counted = false;
+    this.finishSpan();
+    return this._stream;
+  }
+
   async close(): Promise<void> {
     this.markAsConsumed();
     try {
@@ -478,9 +543,9 @@ export class ResultSet<
     if (this.span_text_length !== undefined) {
       // Recorded by text(): UTF-16 code-unit count, not a byte count.
       attributes["clickhouse.response.text_length"] = this.span_text_length;
-    } else {
-      // Recorded by stream() / json() streamable path: actual decoded bytes
-      // accumulated from raw Uint8Array chunks.
+    } else if (this.span_bytes_counted) {
+      // Recorded by stream() / json() streamable path / binaryStream(): actual
+      // decoded bytes accumulated from raw Uint8Array chunks.
       attributes["clickhouse.response.decoded_bytes"] = this.span_bytes;
     }
     if (this.span_rows_counted) {
