@@ -42,61 +42,57 @@ function parseServerError(text: string): ParsedClickHouseError | undefined {
   const codeMatch = codeRe.exec(text);
   if (codeMatch === null) return undefined;
   const afterCode = codeMatch.index + codeMatch[0].length;
-  // The stack trace starts right after a type: `(TYPE), Stack trace (`. The
-  // same text elsewhere is part of the message.
-  let stackTraceAt = -1;
+  const firstMarker = text.indexOf(exceptionMarker, afterCode);
+  if (firstMarker < 0) return undefined;
+
+  // Collect the groups that can be the type. Stop at a stack trace, which
+  // starts right after a type: `(TYPE), Stack trace (`. The same text
+  // elsewhere is part of the message.
+  const groups: TypeGroup[] = [];
+  let head = text;
   for (const m of text.matchAll(typeGroupRe)) {
-    const end = m.index + m[0].length;
+    const start = m.index;
+    const end = start + m[0].length;
+    const type = m[1] as string;
+    if (
+      start > firstMarker + exceptionMarker.length &&
+      typeLettersRe.test(type)
+    ) {
+      groups.push({ start, end, type });
+    }
     if (end > afterCode && text.startsWith(stackTraceMarker, end)) {
-      stackTraceAt = end;
+      head = text.slice(0, end);
       break;
     }
   }
-  const head = stackTraceAt < 0 ? text : text.slice(0, stackTraceAt);
-  const firstMarker = head.indexOf(exceptionMarker, afterCode);
-  if (firstMarker < 0) return undefined;
+  // The message of a group starts after the last `Exception: ` before it.
+  const messageStart = (g: TypeGroup) =>
+    head.lastIndexOf(exceptionMarker, g.start - exceptionMarker.length) +
+    exceptionMarker.length;
 
-  const groups: TypeGroup[] = [];
-  for (const m of head.matchAll(typeGroupRe)) {
-    const type = m[1] as string;
-    if (
-      m.index > firstMarker + exceptionMarker.length &&
-      typeLettersRe.test(type)
-    ) {
-      groups.push({ start: m.index, end: m.index + m[0].length, type });
-    }
-  }
+  // With groups at the end of an exception: the message ends at the first one,
+  // and the type is the last one. Otherwise: the first group after the last
+  // `Exception: ` that has a group after it.
   const textEnd = head.trimEnd().length;
   const ends = groups.filter(
     (g) => g.end === textEnd || head.startsWith(versionMarker, g.end),
   );
-  // With groups at the end of an exception: the message ends at the first one,
-  // and the type is the last one. Otherwise: the first group after the last
-  // `Exception: ` that has a group after it.
   let messageEnd: TypeGroup | undefined;
-  let type: string | undefined;
+  let typeGroup: TypeGroup | undefined;
   if (ends.length > 0) {
     messageEnd = ends[0];
-    type = ends[ends.length - 1]?.type;
+    typeGroup = ends.at(-1);
   } else {
-    const last = groups[groups.length - 1];
+    const last = groups.at(-1);
     if (last === undefined) return undefined;
-    const marker = head.lastIndexOf(
-      exceptionMarker,
-      last.start - exceptionMarker.length,
-    );
-    messageEnd = groups.find((g) => g.start > marker + exceptionMarker.length);
-    type = messageEnd?.type;
+    const from = messageStart(last);
+    messageEnd = typeGroup = groups.find((g) => g.start > from);
   }
   if (messageEnd === undefined) return undefined;
-  const marker = head.lastIndexOf(
-    exceptionMarker,
-    messageEnd.start - exceptionMarker.length,
-  );
   return {
     code: codeMatch[1] as string,
-    message: head.slice(marker + exceptionMarker.length, messageEnd.start),
-    type,
+    message: head.slice(messageStart(messageEnd), messageEnd.start).trimEnd(),
+    type: typeGroup?.type,
   };
 }
 

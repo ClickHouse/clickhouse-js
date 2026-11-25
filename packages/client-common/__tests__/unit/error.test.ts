@@ -8,14 +8,15 @@ import {
 
 describe("parseError", () => {
   it("parses a single line error", () => {
-    const message = `Code: 62.DB::Exception: Syntax error: failed at position 15 ('unknown_table') (line 1, col 15): unknown_table FORMAT JSON. Expected alias cannot be here. (SYNTAX_ERROR) (version 22.7.1.2484 (official build))`;
+    const message =
+      "Code: 62.DB::Exception: Syntax error: failed at position 15 ('unknown_table') (line 1, col 15): unknown_table FORMAT JSON. Expected alias cannot be here. (SYNTAX_ERROR) (version 22.7.1.2484 (official build))";
     const error = parseError(message) as ClickHouseError;
 
     expect(error).toBeInstanceOf(ClickHouseError);
     expect(error.code).toBe("62");
     expect(error.type).toBe("SYNTAX_ERROR");
     expect(error.message).toBe(
-      `Syntax error: failed at position 15 ('unknown_table') (line 1, col 15): unknown_table FORMAT JSON. Expected alias cannot be here. `,
+      "Syntax error: failed at position 15 ('unknown_table') (line 1, col 15): unknown_table FORMAT JSON. Expected alias cannot be here.",
     );
   });
 
@@ -25,24 +26,27 @@ describe("parseError", () => {
   it.each([
     {
       name: "a type name in the message",
-      text: `Code: 43. DB::Exception: First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). (ILLEGAL_TYPE_OF_ARGUMENT) (version 26.10.4.207 (official build))`,
+      text: "Code: 43. DB::Exception: First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). (ILLEGAL_TYPE_OF_ARGUMENT) (version 26.10.4.207 (official build))",
       code: "43",
       type: "ILLEGAL_TYPE_OF_ARGUMENT",
-      message: `First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). `,
+      message:
+        "First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a').",
     },
     {
       name: "a token of a syntax error",
-      text: `Code: 62. DB::Exception: Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. (SYNTAX_ERROR) (version 26.10.4.207 (official build))`,
+      text: "Code: 62. DB::Exception: Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. (SYNTAX_ERROR) (version 26.10.4.207 (official build))",
       code: "62",
       type: "SYNTAX_ERROR",
-      message: `Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. `,
+      message:
+        "Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD.",
     },
     {
       name: "(NULL)",
-      text: `Code: 62. DB::Exception: Syntax error: failed at position 34 (NULL): NULL. Expected one of: token, end of query. (SYNTAX_ERROR) (version 26.10.4.207 (official build))`,
+      text: "Code: 62. DB::Exception: Syntax error: failed at position 34 (NULL): NULL. Expected one of: token, end of query. (SYNTAX_ERROR) (version 26.10.4.207 (official build))",
       code: "62",
       type: "SYNTAX_ERROR",
-      message: `Syntax error: failed at position 34 (NULL): NULL. Expected one of: token, end of query. `,
+      message:
+        "Syntax error: failed at position 34 (NULL): NULL. Expected one of: token, end of query.",
     },
   ])("parses the type after $name", ({ text, code, type, message }) => {
     const error = parseError(text) as ClickHouseError;
@@ -64,24 +68,24 @@ describe("parseError", () => {
   // With the setting `stacktrace`, the server adds the stack after the type.
   it("parses the type before a stack trace", () => {
     const error = parseError(
-      `Code: 43. DB::Exception: First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). (ILLEGAL_TYPE_OF_ARGUMENT), Stack trace (when copying this message, always include the lines below):\n\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x000000001604dca4\n1. DB::Exception::Exception(PreformattedMessage&&, int) @ 0x000000000b7c4c90 (version 26.10.4.207 (official build))\n`,
+      "Code: 43. DB::Exception: First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). (ILLEGAL_TYPE_OF_ARGUMENT), Stack trace (when copying this message, always include the lines below):\n\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x000000001604dca4\n1. DB::Exception::Exception(PreformattedMessage&&, int) @ 0x000000000b7c4c90 (version 26.10.4.207 (official build))\n",
     ) as ClickHouseError;
     expect(error).toBeInstanceOf(ClickHouseError);
     expect(error.code).toBe("43");
     expect(error.type).toBe("ILLEGAL_TYPE_OF_ARGUMENT");
     expect(error.message).toBe(
-      "First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a'). ",
+      "First argument for function tupleElement must be Tuple, Nullable(Tuple), QBit, JSON, Nullable(JSON) or array of these. Actual UInt8: In scope SELECT tupleElement(1, 'a').",
     );
   });
 
   it("keeps a stack trace marker that is part of the message", () => {
     const error = parseError(
-      `Code: 395. DB::Exception: bad, Stack trace (not a stack). (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.10.4.207 (official build))`,
+      "Code: 395. DB::Exception: bad, Stack trace (not a stack). (FUNCTION_THROW_IF_VALUE_IS_NON_ZERO) (version 26.10.4.207 (official build))",
     ) as ClickHouseError;
     expect(error).toBeInstanceOf(ClickHouseError);
     expect(error.code).toBe("395");
     expect(error.type).toBe("FUNCTION_THROW_IF_VALUE_IS_NON_ZERO");
-    expect(error.message).toBe("bad, Stack trace (not a stack). ");
+    expect(error.message).toBe("bad, Stack trace (not a stack).");
   });
 
   it("gives the outer type of a wrapped exception before a stack trace", () => {
@@ -103,7 +107,7 @@ describe("parseError", () => {
     expect(performance.now() - started).toBeLessThan(500);
     expect(error.code).toBe("62");
     expect(error.type).toBe("SYNTAX_ERROR");
-    expect(error.message).toBe("broken ");
+    expect(error.message).toBe("broken");
   });
 
   it("returns a plain Error for a text that is not a server error", () => {
@@ -116,23 +120,23 @@ describe("parseError", () => {
   // The server leaves out ` (version ...)` for a request with a `session_id`.
   it("parses the type at the end of a text without a version", () => {
     const error = parseError(
-      `Code: 62. DB::Exception: Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. (SYNTAX_ERROR)\n`,
+      "Code: 62. DB::Exception: Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. (SYNTAX_ERROR)\n",
     ) as ClickHouseError;
     expect(error).toBeInstanceOf(ClickHouseError);
     expect(error.code).toBe("62");
     expect(error.type).toBe("SYNTAX_ERROR");
     expect(error.message).toBe(
-      "Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD. ",
+      "Syntax error: failed at position 38 (TABLE): TABLE y. Expected one of: DISK, VOLUME, SHARD.",
     );
   });
 
   it("takes the first (TYPE) group when the type is not at the end", () => {
     const error = parseError(
-      `1\n2\nCode: 62. DB::Exception: Syntax error. (SYNTAX_ERROR)\n__exception__`,
+      "1\n2\nCode: 62. DB::Exception: Syntax error. (SYNTAX_ERROR)\n__exception__",
     ) as ClickHouseError;
     expect(error).toBeInstanceOf(ClickHouseError);
     expect(error.type).toBe("SYNTAX_ERROR");
-    expect(error.message).toBe("Syntax error. ");
+    expect(error.message).toBe("Syntax error.");
   });
 
   // With a JSON-family output format, the server may report an error through
@@ -183,7 +187,7 @@ describe("parseError", () => {
       expect(error.code).toBe("62");
       expect(error.type).toBe("SYNTAX_ERROR");
       expect(error.message).toBe(
-        `Syntax error: failed at position 8 ('a"b'): a"b. `,
+        `Syntax error: failed at position 8 ('a"b'): a"b.`,
       );
     });
   });
@@ -216,56 +220,60 @@ describe("parseError", () => {
     expect(error.type).toBe("SYNTAX_ERROR");
     expect(error.message).toBe(
       `Syntax error: failed at position 15 ('unknown_table') (line 1, col 15): unknown_table
-    FORMAT JSON. Expected alias cannot be here. `,
+    FORMAT JSON. Expected alias cannot be here.`,
     );
   });
 
   it("should handle replica message corner case", () => {
-    const message = `Code: 285. DB::Exception: Number of alive replicas (2) is less than requested quorum (3). (TOO_FEW_LIVE_REPLICAS) (version 22.8.1.11291 (official build))`;
+    const message =
+      "Code: 285. DB::Exception: Number of alive replicas (2) is less than requested quorum (3). (TOO_FEW_LIVE_REPLICAS) (version 22.8.1.11291 (official build))";
     const error = parseError(message) as ClickHouseError;
 
     expect(error).toBeInstanceOf(ClickHouseError);
     expect(error.code).toBe("285");
     expect(error.type).toBe("TOO_FEW_LIVE_REPLICAS");
     expect(error.message).toBe(
-      "Number of alive replicas (2) is less than requested quorum (3). ",
+      "Number of alive replicas (2) is less than requested quorum (3).",
     );
   });
 
   describe("error codes with numbers", () => {
     it("should work with S3_ERROR", () => {
-      const message = `Code: 499. DB::Exception: Could not list objects in bucket my-bucket with prefix my-organization, S3 exception: Some S3 error, message: Could not list objects. (S3_ERROR) (version 22.8.1.11291 (official build))`;
+      const message =
+        "Code: 499. DB::Exception: Could not list objects in bucket my-bucket with prefix my-organization, S3 exception: Some S3 error, message: Could not list objects. (S3_ERROR) (version 22.8.1.11291 (official build))";
       const error = parseError(message) as ClickHouseError;
 
       expect(error).toBeInstanceOf(ClickHouseError);
       expect(error.code).toBe("499");
       expect(error.type).toBe("S3_ERROR");
       expect(error.message).toBe(
-        "Could not list objects in bucket my-bucket with prefix my-organization, S3 exception: Some S3 error, message: Could not list objects. ",
+        "Could not list objects in bucket my-bucket with prefix my-organization, S3 exception: Some S3 error, message: Could not list objects.",
       );
     });
 
     it("should work with BZIP2_STREAM_DECODER_FAILED", () => {
-      const message = `Code: 594. DB::Exception: bzip2 stream encoder init failed: error code: 42 (BZIP2_STREAM_DECODER_FAILED) (version 22.8.1.11291 (official build))`;
+      const message =
+        "Code: 594. DB::Exception: bzip2 stream encoder init failed: error code: 42 (BZIP2_STREAM_DECODER_FAILED) (version 22.8.1.11291 (official build))";
       const error = parseError(message) as ClickHouseError;
 
       expect(error).toBeInstanceOf(ClickHouseError);
       expect(error.code).toBe("594");
       expect(error.type).toBe("BZIP2_STREAM_DECODER_FAILED");
       expect(error.message).toBe(
-        "bzip2 stream encoder init failed: error code: 42 ",
+        "bzip2 stream encoder init failed: error code: 42",
       );
     });
 
     it("should work with LZ4_ENCODER_FAILED", () => {
-      const message = `Code: 617. DB::Exception: creation of LZ4 compression context failed. LZ4F version: 1.9.3 (LZ4_ENCODER_FAILED) (version 22.8.1.11291 (official build))`;
+      const message =
+        "Code: 617. DB::Exception: creation of LZ4 compression context failed. LZ4F version: 1.9.3 (LZ4_ENCODER_FAILED) (version 22.8.1.11291 (official build))";
       const error = parseError(message) as ClickHouseError;
 
       expect(error).toBeInstanceOf(ClickHouseError);
       expect(error.code).toBe("617");
       expect(error.type).toBe("LZ4_ENCODER_FAILED");
       expect(error.message).toBe(
-        "creation of LZ4 compression context failed. LZ4F version: 1.9.3 ",
+        "creation of LZ4 compression context failed. LZ4F version: 1.9.3",
       );
     });
   });
@@ -302,21 +310,22 @@ describe("parseError", () => {
       const stackTrace = "bar\n";
       const enhancedError = enhanceStackTrace(err, stackTrace);
 
-      expect(enhancedError.stack).toContain(`foo\nbar\n`);
+      expect(enhancedError.stack).toContain("foo\nbar\n");
       expect(enhancedError.message).toBe("test error");
     });
   });
 
   describe("Cluster mode errors", () => {
     it("should work with TABLE_ALREADY_EXISTS", async () => {
-      const message = `Code: 57. DB::Exception: There was an error on [clickhouse2:9000]: Code: 57. DB::Exception: Table default.command_test_2a751694160745f5aebe586c90b27515 already exists. (TABLE_ALREADY_EXISTS) (version 22.6.5.22 (official build)). (TABLE_ALREADY_EXISTS) (version 22.6.5.22 (official build))`;
+      const message =
+        "Code: 57. DB::Exception: There was an error on [clickhouse2:9000]: Code: 57. DB::Exception: Table default.command_test_2a751694160745f5aebe586c90b27515 already exists. (TABLE_ALREADY_EXISTS) (version 22.6.5.22 (official build)). (TABLE_ALREADY_EXISTS) (version 22.6.5.22 (official build))";
       const error = parseError(message) as ClickHouseError;
 
       expect(error).toBeInstanceOf(ClickHouseError);
       expect(error.code).toBe("57");
       expect(error.type).toBe("TABLE_ALREADY_EXISTS");
       expect(error.message).toBe(
-        "Table default.command_test_2a751694160745f5aebe586c90b27515 already exists. ",
+        "Table default.command_test_2a751694160745f5aebe586c90b27515 already exists.",
       );
     });
   });
