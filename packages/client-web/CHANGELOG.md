@@ -13,12 +13,14 @@
 - `ResultSet.stream()` and `ResultSet.json()` now detect in-band error rows in `JSONEachRow` and `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled. They report the server error instead of returning it as data, including when `exception` is the only result column. Real data in a column named `exception` stays as data, even if its value looks like a server error. ([#1168])
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 - In `JSONEachRow` and `JSONStringsEachRow`, an in-band error row at the end of the response with no newline after it is now detected. Before, the client did not read the bytes after the last newline, so the result was incomplete and there was no error. ClickHouse writes the newline, so this is a defensive fix. ([#1182])
+- (Web only) An `abort_signal` shared by several in-flight requests now cancels all of them, and a handler that the caller set on `signal.onabort` still runs. Before, each request replaced that handler, so `abort()` cancelled only the last request and the caller's handler did not run. An abort while the response body is being read still cancels that read. ([#1135])
 
 [#975]: https://github.com/ClickHouse/clickhouse-js/pull/975
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
 [#998]: https://github.com/ClickHouse/clickhouse-js/pull/998
 [#1024]: https://github.com/ClickHouse/clickhouse-js/pull/1024
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
+[#1135]: https://github.com/ClickHouse/clickhouse-js/issues/1135
 [#1140]: https://github.com/ClickHouse/clickhouse-js/issues/1140
 [#1168]: https://github.com/ClickHouse/clickhouse-js/pull/1168
 [#1174]: https://github.com/ClickHouse/clickhouse-js/pull/1174
