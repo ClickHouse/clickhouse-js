@@ -16,6 +16,7 @@ describe("shouldDecode", () => {
   it("does not decode statements with an explicit FORMAT clause", () => {
     expect(shouldDecode("SELECT 1 FORMAT JSON")).toBe(false);
     expect(shouldDecode("SELECT 1 FORMAT TabSeparated")).toBe(false);
+    expect(shouldDecode("SELECT 1 FORMAT `Null`")).toBe(false);
     expect(shouldDecode("SELECT 1 SETTINGS max_threads=1 FORMAT Pretty")).toBe(
       false,
     );

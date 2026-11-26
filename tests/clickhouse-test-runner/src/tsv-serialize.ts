@@ -23,10 +23,11 @@
  *   - nested:    the same values are wrapped in single quotes; NULL is `NULL`.
  * Numbers, decimals and booleans are bare in both contexts.
  *
- * Types this v1 does not yet render (Variant, JSON, Dynamic, the geo types,
- * Nested) throw {@link TSVRenderError}; the RowBinary backend treats that as a
- * decode failure for the statement, so such tests stay off the rowbinary
- * allowlist rather than silently passing through an unexercised path.
+ * Types that it does not render (Variant, JSON, Dynamic: their decoded values
+ * do not carry their type, which the text depends on) throw
+ * {@link TSVRenderError}; the RowBinary backend treats that as a decode failure
+ * for the statement, so such tests stay known failures rather than passing
+ * through an unexercised path.
  */
 
 import {
@@ -48,33 +49,34 @@ export class TSVRenderError extends Error {
 }
 
 /** Types whose text is unquoted+escaped at top level but single-quoted when nested. */
-function renderStringish(s: string, nested: boolean): string {
+export function renderStringish(s: string, nested: boolean): string {
   return nested ? `'${escapeQuoted(s)}'` : escapeRaw(s);
 }
 
-// C-style escapes for the control characters ClickHouse escapes in text
-// formats. Backslash itself is included so a SINGLE-pass `replace` is complete:
+// C-style escapes for the characters that ClickHouse escapes in the
+// TabSeparated format, at the top level and inside Array/Tuple/Map (the same
+// set in both contexts: `'a\'b'` is written as `a\'b` at the top level).
+// Backslash itself is included so a SINGLE-pass `replace` is complete:
 // escaping in one pass (rather than chaining `.replace`s) avoids re-processing
-// the backslashes we introduce, and lets static analysis see that `\` is
-// handled.
-const RAW_ESCAPES: Record<string, string> = {
+// the backslashes we introduce.
+const ESCAPES: Record<string, string> = {
   "\\": "\\\\",
+  "'": "\\'",
+  "\b": "\\b",
+  "\f": "\\f",
   "\t": "\\t",
   "\n": "\\n",
   "\r": "\\r",
   "\0": "\\0",
 };
-const QUOTED_ESCAPES: Record<string, string> = { ...RAW_ESCAPES, "'": "\\'" };
 
-/** TabSeparated top-level escaping (`serializeTextEscaped`): backslash + delimiters. */
+/** TabSeparated top-level escaping (`serializeTextEscaped`). */
 function escapeRaw(s: string): string {
-  return s.replace(/[\\\t\n\r\0]/g, (c) => RAW_ESCAPES[c]!);
+  return s.replace(/[\\'\b\f\t\n\r\0]/g, (c) => ESCAPES[c]!);
 }
 
-/** Quoted escaping (`serializeTextQuoted`): as {@link escapeRaw} plus the single quote. */
-function escapeQuoted(s: string): string {
-  return s.replace(/[\\\t\n\r\0']/g, (c) => QUOTED_ESCAPES[c]!);
-}
+/** Quoted escaping (`serializeTextQuoted`): the same escapes, in single quotes. */
+const escapeQuoted = escapeRaw;
 
 /** ClickHouse's lower-case words for the non-finite floats and signed zero, else null. */
 function floatSpecial(n: number): string | null {
@@ -99,7 +101,7 @@ function chFloatText(s: string): string {
  * double, which is exactly what `String(number)` produces in V8 (and what
  * ClickHouse emits).
  */
-function formatFloat(n: number): string {
+export function formatFloat(n: number): string {
   return floatSpecial(n) ?? chFloatText(String(n));
 }
 
@@ -127,9 +129,52 @@ function formatDate(d: Date): string {
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
-/** `YYYY-MM-DD HH:MM:SS` in UTC. Server tz is UTC, so tz-less columns match. */
-function formatDateTime(d: Date): string {
-  return `${formatDate(d)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`;
+/**
+ * The time zone of a DateTime column that has no time zone in its type: the
+ * `session_timezone` of the session, else the time zone of the server. The
+ * backend sets it before it writes a result. The server of the tests runs in
+ * UTC.
+ */
+let defaultTimeZone = "UTC";
+
+export function setDefaultTimeZone(tz: string | null): void {
+  defaultTimeZone = tz !== null && tz.length > 0 ? tz : "UTC";
+}
+
+const timeZoneFormats = new Map<string, Intl.DateTimeFormat>();
+
+function timeZoneFormat(tz: string): Intl.DateTimeFormat {
+  let f = timeZoneFormats.get(tz);
+  if (f === undefined) {
+    try {
+      f = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hourCycle: "h23",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch {
+      throw new TSVRenderError(`unknown time zone ${tz}`);
+    }
+    timeZoneFormats.set(tz, f);
+  }
+  return f;
+}
+
+/** `YYYY-MM-DD HH:MM:SS` of `d` in the time zone `tz`. */
+function formatDateTime(d: Date, tz: string): string {
+  if (tz === "UTC") {
+    return `${formatDate(d)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`;
+  }
+  const p: Record<string, string> = {};
+  for (const part of timeZoneFormat(tz).formatToParts(d)) {
+    p[part.type] = part.value;
+  }
+  return `${p["year"]!.padStart(4, "0")}-${p["month"]}-${p["day"]} ${p["hour"]}:${p["minute"]}:${p["second"]}`;
 }
 
 /**
@@ -137,9 +182,13 @@ function formatDateTime(d: Date): string {
  * `[Date (whole seconds), nanoseconds]`; the P-digit fraction is the
  * nanoseconds scaled down to the column precision.
  */
-function formatDateTime64(value: unknown, precision: number): string {
+function formatDateTime64(
+  value: unknown,
+  precision: number,
+  tz: string,
+): string {
   const [d, ns] = value as [Date, number];
-  const base = formatDateTime(d);
+  const base = formatDateTime(d, tz);
   if (precision <= 0) return base;
   // TRUNCATE toward the precision, matching ClickHouse's text output — never
   // round, which could nudge the fraction up to 10^precision and would then
@@ -162,12 +211,51 @@ function renderPointArray(
   return `[${(value as unknown[]).map(renderElem).join(",")}]`;
 }
 
-function requireArg(node: Node, index: number): Node {
+export function requireArg(node: Node, index: number): Node {
   const arg = node.arguments[index];
   if (arg === undefined) {
     throw new TSVRenderError(`type ${node.name} is missing argument ${index}`);
   }
   return arg;
+}
+
+/** The time zone argument at `index` of a DateTime type, else the default. */
+function timeZoneArg(node: Node, index: number): string {
+  const arg = node.arguments[index];
+  if (arg === undefined) return defaultTimeZone;
+  if (arg.kind !== NodeKind.Literal) {
+    throw new TSVRenderError(`expected a time zone literal in ${node.name}`);
+  }
+  return String(arg.value).replace(/^'(.*)'$/s, "$1");
+}
+
+/**
+ * A `Geometry` value: the six geo types have the same text form (a Point is
+ * `(x,y)`, the others are nested lists of points), so the value alone gives
+ * the text, also when the value does not tell which geo type it is.
+ */
+function renderGeometry(value: unknown): string {
+  const v = value as unknown[];
+  if (v.length === 2 && typeof v[0] === "number" && typeof v[1] === "number") {
+    return renderPoint(v);
+  }
+  return `[${v.map(renderGeometry).join(",")}]`;
+}
+
+/** `Nested(a T1, b T2)` (with flatten_nested = 0) is `Array(Tuple(a T1, b T2))`. */
+function renderNested(node: Node, value: unknown): string {
+  const rows = (value as Record<string, unknown>[]).map((row) => {
+    const cells = node.arguments.map((child) => {
+      if (child.kind !== NodeKind.NameTypePair || child.data_type === null) {
+        throw new TSVRenderError(
+          "malformed Nested(...): expected name/type pairs",
+        );
+      }
+      return renderValue(child.data_type, row[child.name], true);
+    });
+    return `(${cells.join(",")})`;
+  });
+  return `[${rows.join(",")}]`;
 }
 
 function literalInt(node: Node): number {
@@ -255,15 +343,23 @@ export function renderValue(
       return renderStringish(formatDate(value as Date), nested);
     case "DateTime":
     case "DateTime32":
-      return renderStringish(formatDateTime(value as Date), nested);
+      return renderStringish(
+        formatDateTime(value as Date, timeZoneArg(node, 0)),
+        nested,
+      );
     case "DateTime64":
       return renderStringish(
         formatDateTime64(
           value,
           node.arguments.length > 0 ? literalInt(node.arguments[0]!) : 3,
+          timeZoneArg(node, 1),
         ),
         nested,
       );
+    case "Nested":
+      return renderNested(node, value);
+    case "Geometry":
+      return renderGeometry(value);
     case "Time":
       return renderStringish(formatTime(value as number), nested);
     case "Time64":
