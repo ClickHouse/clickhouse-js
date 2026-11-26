@@ -265,6 +265,27 @@ describe("parseError", () => {
     expect(error.message).toBe("line one.");
   });
 
+  // The server cuts an exception block to 16 KiB, so a long message has no
+  // (TYPE) and no ` (version ...)` at the end.
+  it("parses the code of a message that the server cut before the type", () => {
+    const message =
+      "Code: 395. DB::Exception: boom Exception: " + "x".repeat(100);
+    const error = parseError(`${message}'. (FUNCTIO`) as ClickHouseError;
+    expect(error).toBeInstanceOf(ClickHouseError);
+    expect(error.code).toBe("395");
+    expect(error.type).toBeUndefined();
+    expect(error.message).toBe(
+      "boom Exception: " + "x".repeat(100) + "'. (FUNCTIO",
+    );
+  });
+
+  it("returns a plain Error without a type when the text does not start as a server error", () => {
+    const text = "Proxy failure. Error: 502. Upstream Exception: timeout";
+    const error = parseError(text);
+    expect(error).not.toBeInstanceOf(ClickHouseError);
+    expect(error.message).toBe(text);
+  });
+
   // With a JSON-family output format, the server may report an error through
   // that format: on 24.8 for every error, on later versions for an error raised
   // while the result is written. These are the response shapes seen for each
