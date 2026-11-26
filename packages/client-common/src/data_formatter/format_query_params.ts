@@ -89,10 +89,14 @@ function formatQueryParamsInternal({
       return `'${value.toISOString().slice(0, 10)}'`;
     }
     // The ClickHouse server parses numbers as time-zone-agnostic Unix timestamps
-    const unixTimestamp = Math.floor(value.getTime() / 1000)
-      .toString()
-      .padStart(10, "0");
-    const milliseconds = value.getUTCMilliseconds();
+    // Work on the absolute value: flooring a negative (pre-1970) time and then
+    // adding the positive millisecond part would shift the result by up to 2s.
+    const time = value.getTime();
+    const absTime = Math.abs(time);
+    const seconds = Math.floor(absTime / 1000);
+    const milliseconds = absTime % 1000;
+    const unixTimestamp =
+      time < 0 ? `-${seconds}` : seconds.toString().padStart(10, "0");
     return milliseconds === 0
       ? unixTimestamp
       : `${unixTimestamp}.${milliseconds.toString().padStart(3, "0")}`;
