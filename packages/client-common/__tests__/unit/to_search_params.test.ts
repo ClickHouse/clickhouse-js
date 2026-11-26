@@ -138,6 +138,28 @@ describe("toSearchParams", () => {
       ["role", "single-role"],
     ]);
   });
+
+  it("should not mutate caller param_entries across calls", () => {
+    const preSerialized: [string, string][] = [["param_foo", "42"]];
+    const first = toSearchParams({
+      database: "analytics",
+      query_id: "q-1",
+      param_entries: preSerialized,
+      query: "SELECT 1",
+    });
+    const second = toSearchParams({
+      database: "analytics",
+      query_id: "q-2",
+      param_entries: preSerialized,
+      query: "SELECT 1",
+    });
+
+    expect(preSerialized).toEqual([["param_foo", "42"]]);
+    expect(first.getAll("query_id")).toEqual(["q-1"]);
+    expect(first.getAll("database")).toEqual(["analytics"]);
+    expect(second.getAll("query_id")).toEqual(["q-2"]);
+    expect(second.getAll("database")).toEqual(["analytics"]);
+  });
 });
 
 function toSortedArray(params: URLSearchParams): [string, string][] {

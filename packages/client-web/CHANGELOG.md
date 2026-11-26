@@ -8,6 +8,7 @@
 
 ## Bug fixes
 
+- `toSearchParams()` no longer mutates a caller-provided `param_entries` array when appending `query_id`. ([#1170])
 - Fixed the detection of mid-stream exceptions (ClickHouse 25.11+) in `ResultSet.stream()`. A bare `\r\n` in a _successful_ response body is no longer mistaken for an error: an exception is confirmed only by the `__exception__` marker together with the random per-response `x-clickhouse-exception-tag` token. This unbreaks streaming binary formats such as `Parquet` and CRLF-terminated `CSV` / `TSV` (`output_format_*_crlf_end_of_line`). The exception block is now also detected when it is split across several chunks of the response: it is buffered until it is complete, its bytes are not emitted as rows, and the error contains the full server message. The rows that the server sent before the exception block reach the consumer before the error. In Chromium and with the `fetch` of Node.js, the stream can still fail with a `TypeError` (`network error` in Chromium, `terminated` in Node.js) instead of a `ClickHouseError` when the server closes the connection before the reader has read the end of the response. Then the reader also does not get the rows that it did not read yet. `fetch` itself discards these bytes, so the client cannot give them (see [#1140]). If the exception block is malformed, the stream fails with an error instead of hanging the event loop. ([#975])
 - `ClickHouseError.type` is now the type of the error, also when the message has other `(UPPERCASE)` groups before it, such as a type name (`Nullable(JSON)`), a token of a syntax error (`failed at position 38 (TABLE)`) or `(NULL)`. Before, the client took the first such group, so `type` was wrong (for example `JSON` instead of `ILLEGAL_TYPE_OF_ARGUMENT`) and `message` was cut there. This also works with the `stacktrace` setting, for a request with a `session_id`, and when the message has text such as `(FOO) (version 1)` or `(ABC), Stack trace (` in the message of `throwIf`. For a wrapped error, such as `CANNOT_EXTRACT_TABLE_STRUCTURE` around `INCORRECT_DATA`, `type` is now the type of the outer error, which has the same `code`. ([#1174], [#1181])
 - `ResultSet.stream()` and `ResultSet.json()` now detect in-band error rows in `JSONEachRow` and `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled. They report the server error instead of returning it as data, including when `exception` is the only result column. Real data in a column named `exception` stays as data, even if its value looks like a server error. ([#1168])
@@ -21,6 +22,7 @@
 [#1119]: https://github.com/ClickHouse/clickhouse-js/pull/1119
 [#1140]: https://github.com/ClickHouse/clickhouse-js/issues/1140
 [#1168]: https://github.com/ClickHouse/clickhouse-js/pull/1168
+[#1170]: https://github.com/ClickHouse/clickhouse-js/pull/1170
 [#1174]: https://github.com/ClickHouse/clickhouse-js/pull/1174
 [#1181]: https://github.com/ClickHouse/clickhouse-js/pull/1181
 [#1182]: https://github.com/ClickHouse/clickhouse-js/pull/1182
