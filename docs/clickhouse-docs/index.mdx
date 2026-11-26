@@ -306,6 +306,8 @@ Alternatively, if it's too large to fit into memory at once, you can call the `s
 
 For `JSONEachRow` and `JSONStringsEachRow`, `stream()` and `json()` detect an in-band `{"exception": "..."}` error row. This can occur when `http_write_exception_in_output_format` is enabled. Recognized messages produce a `ClickHouseError` with the server code and message. Other messages also cause the result to fail. ClickHouse writes a space after the colon in an error envelope and omits it in data rows. This lets the client preserve a real column named `exception` and still detect a later server error. Compact JSON row formats do not have this distinction. With those formats, set `http_write_exception_in_output_format: false` to avoid this ambiguity. ClickHouse 25.11 and later then use tagged error blocks.
 
+For a binary format such as `Parquet`, call the `binaryStream` method instead. It gives the response bytes as they are, with no split into rows: `Buffer` chunks in Node.js, and `Uint8Array` chunks in the web version. With ClickHouse 25.11+, when the server sends an error after a part of the result, the stream gives the bytes before the error and then fails with a `ClickHouseError` that has the code and the type of the error. In the web version, `fetch` can fail with a `TypeError` instead, when the server closes the connection before the reader has read the end of the response (see [#1140](https://github.com/ClickHouse/clickhouse-js/issues/1140)). The `rawStream` method gives the response stream as it is, with no check for such an error.
+
 Please refer to the list of the [supported data formats](/integrations/language-clients/js/index#supported-data-formats) to determine what the best format is for streaming in your case. For example, if you want to stream JSON objects, you could choose [JSONEachRow](/reference/formats/JSON/JSONEachRow), and each row will be parsed as a JS object, or, perhaps, a more compact [JSONCompactColumns](/reference/formats/JSON/JSONCompactColumns) format that will result in each row being a compact array of values. See also: [streaming files](/integrations/language-clients/js/index#streaming-files-nodejs-only).
 
 <Warning>
@@ -313,7 +315,7 @@ If the `ResultSet` or its stream isn't fully consumed, it will be destroyed afte
 </Warning>
 
 ```ts
-interface BaseResultSet<Stream> {
+interface BaseResultSet<Stream, BinaryStream, RawStream> {
   // See "Query ID" section above
   query_id: string
 
@@ -331,6 +333,15 @@ interface BaseResultSet<Stream> {
   // Every iteration over the stream provides an array of Row[] in the selected DataFormat
   // Should be called only once
   stream(): Stream
+
+  // Returns a readable stream of the response bytes, with no split into rows
+  // Use it for binary formats such as Parquet; finds a mid-stream server error (25.11+)
+  // Should be called only once
+  binaryStream(): BinaryStream
+
+  // Returns the response stream as it is, with no check for a mid-stream server error
+  // Should be called only once
+  rawStream(): RawStream
 }
 
 interface Row {
@@ -828,7 +839,14 @@ It's only that formats like [ClickHouse JSON](/reference/formats/JSON/JSON) and 
 | CustomSeparatedWithNamesAndTypes           | ❌             | ❌              | ✔️                    | ❌             | ✔️             |
 | Parquet                                    | ❌             | ❌              | ✔️                    | ❌             | ✔️❗- see below |
 
-For Parquet, the main use case for selects likely will be writing the resulting stream into a file. See [the example](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/performance/select_parquet_as_file.ts) in the client repository.
+For Parquet, the main use case for selects likely will be writing the resulting stream into a file. Use `ResultSet.binaryStream()` for it: `ResultSet.stream()` splits the response into text rows, so its rows do not give the original bytes. For example, in Node.js:
+
+```ts
+const rs = await client.query({ query: 'SELECT * FROM t', format: 'Parquet' })
+await pipeline(rs.binaryStream(), fs.createWriteStream('t.parquet'))
+```
+
+See also [the example](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/performance/select_parquet_as_file.ts) in the client repository, which uses `client.exec()`.
 
 `JSONEachRowWithProgress` is an output-only format that supports progress reporting in the stream. See [this example](https://github.com/ClickHouse/clickhouse-js/blob/main/examples/node/performance/select_json_each_row_with_progress.ts) for more details.
 

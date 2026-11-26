@@ -164,7 +164,11 @@ propagates to the caller of `query` / `command` / `exec` / `insert` /
 >   metrics. `returned_rows` is recorded both for row-streaming consumption
 >   (`stream()`, and `json()` on the streamable JSON formats) and for
 >   non-streaming `json()` on `JSON` / `JSONObjectEachRow` / the other
->   single-document JSON formats.
+>   single-document JSON formats. `binaryStream()` ends the span in the same
+>   way as `stream()`, with `decoded_bytes` and without `returned_rows`.
+>   `rawStream()` gives the response stream as it is, so the span has neither
+>   metric. In Node.js, the span ends when that stream ends or fails; in the
+>   Web client, it ends when `rawStream()` is called.
 >
 > This split makes it easy to distinguish the original request round-trip from
 > a stream that may never end (e.g. tailing a live materialized view). If the

@@ -22,7 +22,10 @@ import {
   validateStreamFormat,
 } from "./common/index";
 import { getAsText } from "./utils";
-import { createJSONEachRowErrorDetector } from "./common/utils/stream";
+import {
+  BinaryExceptionScanner,
+  createJSONEachRowErrorDetector,
+} from "./common/utils/stream";
 
 const NEWLINE = 0x0a as const;
 
@@ -60,7 +63,12 @@ type TransformerWithCancel<I = any, O = any> = Transformer<I, O> & {
 
 export class ResultSet<
   Format extends DataFormat | unknown,
-> implements BaseResultSet<ReadableStream<Row[]>, Format> {
+> implements BaseResultSet<
+  ReadableStream<Row[]>,
+  Format,
+  ReadableStream<Uint8Array>,
+  ReadableStream<Uint8Array>
+> {
   public readonly response_headers: ResponseHeaders;
 
   private readonly exceptionTag: string | undefined = undefined;
@@ -74,6 +82,8 @@ export class ResultSet<
   private readonly span: ClickHouseSpan | undefined;
   /** Decoded (decompressed) bytes received from the server so far. */
   private span_bytes = 0;
+  /** `false` after {@link rawStream}, which does not count the bytes. */
+  private span_bytes_counted = true;
   /** Rows decoded from the response stream so far. */
   private span_rows = 0;
   private span_rows_counted = false;
@@ -427,6 +437,142 @@ export class ResultSet<
     return pipeline as any;
   }
 
+  /** See {@link BaseResultSet.binaryStream} */
+  binaryStream(): ReadableStream<Uint8Array> {
+    this.markAsConsumed();
+    const scanner =
+      this.exceptionTag !== undefined && this.exceptionTag.length > 0
+        ? new BinaryExceptionScanner(this.exceptionTag)
+        : undefined;
+    // Not `pipeThrough`: when the source fails, it aborts a transform without
+    // a callback in all browsers, so the bytes that the scanner holds and the
+    // end of the span would be lost. This stream reads the source itself.
+    const reader = (this._stream as ReadableStream<Uint8Array>).getReader();
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    /** `true` while `pull` waits for a chunk: then `pull` handles an error. */
+    let reading = false;
+    /** `true` after the end, an error, or a cancel. */
+    let finished = false;
+    /** Held bytes and the error of a source failure between two reads. */
+    let failure: { data: Uint8Array; error: unknown } | undefined;
+    const releaseSource = (reason?: unknown) => {
+      // Cancelling a source that has ended or failed does nothing. Then the
+      // lock is released, so that the caller can use its stream again.
+      reader
+        .cancel(reason)
+        .catch(() => undefined)
+        .finally(() => reader.releaseLock());
+    };
+    const fail = (error: unknown) => {
+      finished = true;
+      this.finishSpan(error);
+      controller.error(error);
+      releaseSource(error);
+    };
+    // A source failure when no read is pending: a consumer that waits on
+    // `reader.closed` still gets the error, and the span ends now.
+    reader.closed.catch((err: unknown) => {
+      if (reading || finished) {
+        return;
+      }
+      const end = scanner?.end();
+      const error = end?.error ?? err;
+      if (end !== undefined && end.data.length > 0) {
+        // The held bytes go to the next read, and then the error.
+        this.finishSpan(error);
+        failure = { data: end.data, error };
+      } else {
+        fail(error);
+      }
+    });
+    return new ReadableStream<Uint8Array>(
+      {
+        start: (c) => {
+          controller = c;
+        },
+        // Reads until there are bytes for the consumer, the end, or an error.
+        // With a high-water mark of 0, `pull` runs only for a pending read,
+        // so the bytes before an error go to that read, before the error.
+        pull: async (c) => {
+          if (failure !== undefined) {
+            c.enqueue(failure.data);
+            return fail(failure.error);
+          }
+          while (true) {
+            let result: ReadableStreamReadResult<Uint8Array>;
+            reading = true;
+            try {
+              result = await reader.read();
+            } catch (err) {
+              reading = false;
+              if (finished) {
+                return;
+              }
+              const end = scanner?.end();
+              if (end !== undefined && end.data.length > 0) {
+                c.enqueue(end.data);
+              }
+              return fail(end?.error ?? err);
+            }
+            reading = false;
+            if (finished) {
+              // The consumer cancelled the stream during the read.
+              return;
+            }
+            if (result.done) {
+              const end = scanner?.end();
+              if (end !== undefined && end.data.length > 0) {
+                c.enqueue(end.data);
+              }
+              if (end?.error !== undefined) {
+                return fail(end.error);
+              }
+              finished = true;
+              this.finishSpan();
+              c.close();
+              releaseSource();
+              return;
+            }
+            const chunk = result.value;
+            this.span_bytes += chunk.length;
+            if (scanner === undefined) {
+              c.enqueue(chunk);
+              return;
+            }
+            const { data, error } = scanner.push(chunk);
+            if (data.length > 0) {
+              c.enqueue(data);
+            }
+            if (error !== undefined) {
+              // The server closes the connection after the block: fail now,
+              // and do not wait for the end of the response.
+              return fail(error);
+            }
+            if (data.length > 0) {
+              return;
+            }
+          }
+        },
+        cancel: (reason) => {
+          finished = true;
+          this.finishSpan(reason);
+          return reader.cancel(reason).finally(() => reader.releaseLock());
+        },
+      },
+      { highWaterMark: 0 },
+    );
+  }
+
+  /** See {@link BaseResultSet.rawStream} */
+  rawStream(): ReadableStream<Uint8Array> {
+    this.markAsConsumed();
+    // The bytes are not counted, and the span ends with the result set: the
+    // stream is given as is, so the client does not see when it ends.
+    this.span_bytes_counted = false;
+    this.finishSpan();
+    return this._stream;
+  }
+
   async close(): Promise<void> {
     this.markAsConsumed();
     try {
@@ -478,9 +624,9 @@ export class ResultSet<
     if (this.span_text_length !== undefined) {
       // Recorded by text(): UTF-16 code-unit count, not a byte count.
       attributes["clickhouse.response.text_length"] = this.span_text_length;
-    } else {
-      // Recorded by stream() / json() streamable path: actual decoded bytes
-      // accumulated from raw Uint8Array chunks.
+    } else if (this.span_bytes_counted) {
+      // Recorded by stream() / json() streamable path / binaryStream(): actual
+      // decoded bytes accumulated from raw Uint8Array chunks.
       attributes["clickhouse.response.decoded_bytes"] = this.span_bytes;
     }
     if (this.span_rows_counted) {

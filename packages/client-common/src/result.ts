@@ -74,7 +74,12 @@ export interface Row<
   json<T = JSONType>(): RowJSONType<T, Format>;
 }
 
-export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
+export interface BaseResultSet<
+  Stream,
+  Format extends DataFormat | unknown,
+  BinaryStream = Stream,
+  RawStream = BinaryStream,
+> {
   /**
    * The method waits for all the rows to be fully loaded
    * and returns the result as a string.
@@ -122,6 +127,10 @@ export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
    *   * CustomSeparatedWithNamesAndTypes
    *   * Parquet
    *
+   * For a binary format such as `Parquet`, use {@link binaryStream}: this
+   * method splits the response into rows at each newline byte and decodes
+   * the rows as UTF-8 text, so the rows do not give the original bytes.
+   *
    * Formats that CANNOT be streamed (the method returns "never" in TS):
    *   * JSON
    *   * JSONStrings
@@ -140,6 +149,42 @@ export interface BaseResultSet<Stream, Format extends DataFormat | unknown> {
    * by calling the other methods.
    */
   stream(): ResultStream<Format, Stream>;
+
+  /**
+   * Returns a readable stream of the response bytes, without a split into
+   * rows. Use it for binary formats such as `Parquet`: the bytes are the same
+   * as the bytes that the server sent. It is possible to call this method for
+   * all formats.
+   *
+   * Each chunk is a `Buffer` in Node.js and a `Uint8Array` in the Web client.
+   *
+   * With ClickHouse 25.11+, the server can send an error after a part of the
+   * result (a mid-stream exception). Then the stream gives the bytes before
+   * the error, and after them it fails with a `ClickHouseError` that has the
+   * code and the type of the server error. With older servers, the error text
+   * is part of the bytes. The stream of `client.exec()` does not find this
+   * error.
+   *
+   * Should be called only once.
+   *
+   * The method should throw if the underlying stream was already consumed
+   * by calling the other methods.
+   */
+  binaryStream(): BinaryStream;
+
+  /**
+   * Returns the response stream as it comes from the transport. This method
+   * does not find a mid-stream exception: if the server sends an error after
+   * a part of the result, the bytes of the error are part of the stream, and
+   * the stream then fails with a network error, because the server closes the
+   * connection. Use {@link binaryStream} if you want to get the server error.
+   *
+   * Should be called only once.
+   *
+   * The method should throw if the underlying stream was already consumed
+   * by calling the other methods.
+   */
+  rawStream(): RawStream;
 
   /** Close the underlying stream. */
   close(): void;
