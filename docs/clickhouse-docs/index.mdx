@@ -1064,13 +1064,13 @@ Configuration parameters are:
 - `response: true` instructs ClickHouse server to respond with compressed response body. Default value: `response: false`
 - `request: true` enables compression on the client request body. Default value: `request: false`
 
-### Logging (Node.js only) {#logging-nodejs-only}
+### Logging {#logging-nodejs-only}
 
 <Warning>
 The logging is an experimental feature and is subject to change in the future.
 </Warning>
 
-The default logger implementation emits log records into `stdout` via `console.debug/info` methods and `stderr` via `console.warn/error` methods.
+The default logger implementation uses `console.debug`, `console.info`, `console.warn`, and `console.error` in both clients.
 You can customize the logging logic via providing a `LoggerClass`, and choose the desired log level via `level` parameter (default is `WARN`):
 
 ```typescript
@@ -1111,13 +1111,15 @@ const client = createClient({
 })
 ```
 
-Currently, the client will log the following events:
+The Node.js client uses the following log levels.
 
 - `TRACE` - low-level information about the Keep-Alive sockets life cycle
 - `DEBUG` - response information (without authorization headers and host info)
 - `INFO` - mostly unused, will print the current log level when the client is initialized
 - `WARN` - non-fatal errors; failed `ping` request is logged as a warning, as the underlying error is included in the returned result
 - `ERROR` - fatal errors from `query`/`insert`/`exec`/`command` methods, such as a failed request
+
+The Web client reports HTTP responses at `DEBUG`. It reports HTTP request failures for `ping()` at `WARN` and other HTTP request failures at `ERROR`. The log includes the operation, query ID, HTTP method, and response status when available. A request failure includes a brief diagnostic. The calling application receives the underlying error.
 
 You can find the default Logger implementation [here](https://github.com/ClickHouse/clickhouse-js/blob/main/packages/client-common/src/logger.ts).
 
@@ -1390,7 +1392,6 @@ With certificates _and_ a custom _HTTPS_ Agent, it is likely necessary to disabl
 
 - Streaming for select queries works, but it is disabled for inserts (on the type level as well).
 - Request compression is disabled and configuration is ignored. Response compression works.
-- No logging support yet.
 
 ## Tips for performance optimizations {#tips-for-performance-optimizations}
 

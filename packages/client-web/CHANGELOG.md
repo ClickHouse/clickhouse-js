@@ -6,6 +6,12 @@
 
 [#1181]: https://github.com/ClickHouse/clickhouse-js/pull/1181
 
+## Improvements
+
+- The Web client now reports HTTP response metadata and failed HTTP requests through the configured logger. ([#1176])
+
+[#1176]: https://github.com/ClickHouse/clickhouse-js/pull/1176
+
 ## Bug fixes
 
 - Fixed the detection of mid-stream exceptions (ClickHouse 25.11+) in `ResultSet.stream()`. A bare `\r\n` in a _successful_ response body is no longer mistaken for an error: an exception is confirmed only by the `__exception__` marker together with the random per-response `x-clickhouse-exception-tag` token. This unbreaks streaming binary formats such as `Parquet` and CRLF-terminated `CSV` / `TSV` (`output_format_*_crlf_end_of_line`). The exception block is now also detected when it is split across several chunks of the response: it is buffered until it is complete, its bytes are not emitted as rows, and the error contains the full server message. The rows that the server sent before the exception block reach the consumer before the error. In Chromium and with the `fetch` of Node.js, the stream can still fail with a `TypeError` (`network error` in Chromium, `terminated` in Node.js) instead of a `ClickHouseError` when the server closes the connection before the reader has read the end of the response. Then the reader also does not get the rows that it did not read yet. `fetch` itself discards these bytes, so the client cannot give them (see [#1140]). If the exception block is malformed, the stream fails with an error instead of hanging the event loop. ([#975])

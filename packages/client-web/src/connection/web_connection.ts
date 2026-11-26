@@ -12,6 +12,7 @@ import type {
 } from "../common/index";
 import {
   buildMultipartBody,
+  ClickHouseLogLevel,
   serializeQueryParamsForUrl,
   formatQueryParams,
   isCredentialsAuth,
@@ -33,6 +34,8 @@ type WebInsertParams<T> = Omit<
 > & {
   values: string;
 };
+
+type WebOperation = "Query" | "Exec" | "Command" | "Insert" | "Ping";
 
 export type WebConnectionParams = ConnectionParams & {
   fetch?: typeof fetch;
@@ -114,6 +117,7 @@ export class WebConnection implements Connection<ReadableStream> {
     }
 
     const response = await this.request({
+      operation: "Query",
       body,
       params,
       searchParams,
@@ -131,7 +135,7 @@ export class WebConnection implements Connection<ReadableStream> {
   async exec(
     params: ConnBaseQueryParams,
   ): Promise<ConnQueryResult<ReadableStream<Uint8Array>>> {
-    const result = await this.runExec(params);
+    const result = await this.runExec(params, "Exec");
     return {
       query_id: result.query_id,
       stream: result.stream || new ReadableStream<Uint8Array>(),
@@ -143,7 +147,7 @@ export class WebConnection implements Connection<ReadableStream> {
 
   async command(params: ConnBaseQueryParams): Promise<ConnCommandResult> {
     const { stream, query_id, summary, response_headers, http_status_code } =
-      await this.runExec(params);
+      await this.runExec(params, "Command");
     if (stream !== null) {
       await stream.cancel();
     }
@@ -164,6 +168,7 @@ export class WebConnection implements Connection<ReadableStream> {
       query_id,
     });
     const response = await this.request({
+      operation: "Insert",
       body: params.values,
       params,
       searchParams,
@@ -184,6 +189,7 @@ export class WebConnection implements Connection<ReadableStream> {
     // so we are using a simple SELECT as a workaround
     try {
       const response = await this.request({
+        operation: "Ping",
         body: null,
         searchParams: toSearchParams({
           database: undefined,
@@ -212,6 +218,7 @@ export class WebConnection implements Connection<ReadableStream> {
   }
 
   private async request({
+    operation,
     body,
     params,
     searchParams,
@@ -219,13 +226,16 @@ export class WebConnection implements Connection<ReadableStream> {
     method,
     headers: prebuiltHeaders,
   }: {
+    operation: WebOperation;
     body: string | null;
     params?: ConnBaseQueryParams;
-    searchParams?: URLSearchParams;
+    searchParams: URLSearchParams;
     pathname?: string;
     method?: "GET" | "POST";
     headers?: Record<string, string>;
   }): Promise<Response> {
+    const { log_level, log_writer } = this.params;
+    const requestMethod = method ?? "POST";
     const url = transformUrl({
       url: this.params.url,
       pathname,
@@ -248,6 +258,9 @@ export class WebConnection implements Connection<ReadableStream> {
       };
     }
 
+    let error: unknown;
+    let failureMessage: string;
+    let responseStatus: number | undefined;
     try {
       const headers = withCompressionHeaders({
         headers: prebuiltHeaders ?? this.defaultHeadersWithOverride(params),
@@ -263,40 +276,77 @@ export class WebConnection implements Connection<ReadableStream> {
         body,
         headers,
         keepalive: this.params.keep_alive.enabled,
-        method: method ?? "POST",
+        method: requestMethod,
         signal: abortController.signal,
       });
       clearTimeout(timeout);
+      responseStatus = response.status;
+      if (log_level <= ClickHouseLogLevel.DEBUG) {
+        log_writer.debug({
+          module: "WebConnection",
+          message: "Got a response from ClickHouse.",
+          args: {
+            operation,
+            query_id: searchParams.get("query_id"),
+            request_method: requestMethod,
+            response_status: response.status,
+          },
+        });
+      }
       if (
         isSuccessfulResponse(response.status) &&
         !response.headers.has("x-clickhouse-exception-code")
       ) {
         return response;
-      } else {
-        return Promise.reject(
-          parseError(
-            await getAsText(response.body || new ReadableStream<Uint8Array>()),
-          ),
-        );
       }
+      failureMessage = "ClickHouse reported a request error.";
+      error = parseError(
+        await getAsText(response.body || new ReadableStream<Uint8Array>()),
+      );
     } catch (err) {
       clearTimeout(timeout);
       if (isAborted) {
-        return Promise.reject(new Error("The user aborted a request."));
+        failureMessage = "The user aborted a request.";
+        error = new Error(failureMessage);
+      } else if (isTimedOut) {
+        failureMessage = "Timeout error.";
+        error = new Error(failureMessage);
+      } else {
+        failureMessage = "Unable to complete the HTTP request.";
+        error = err instanceof Error ? parseError(err) : err;
       }
-      if (isTimedOut) {
-        return Promise.reject(new Error("Timeout error."));
-      }
-      if (err instanceof Error) {
-        // maybe it's a ClickHouse error
-        return Promise.reject(parseError(err));
-      }
-      // shouldn't happen
-      throw err;
     }
+
+    const isPing = operation === "Ping";
+    const failureLevel = isPing
+      ? ClickHouseLogLevel.WARN
+      : ClickHouseLogLevel.ERROR;
+    if (log_level <= failureLevel) {
+      const entry = {
+        module: "WebConnection",
+        message: `${operation}: HTTP request error.`,
+        args: {
+          operation,
+          query_id: searchParams.get("query_id"),
+          request_method: requestMethod,
+          response_status: responseStatus,
+        },
+        // Server and fetch errors may include request or response data.
+        err: new Error(failureMessage),
+      };
+      if (isPing) {
+        log_writer.warn(entry);
+      } else {
+        log_writer.error(entry);
+      }
+    }
+    throw error;
   }
 
-  private async runExec(params: ConnBaseQueryParams): Promise<RunExecResult> {
+  private async runExec(
+    params: ConnBaseQueryParams,
+    operation: "Exec" | "Command",
+  ): Promise<RunExecResult> {
     const query_id = getQueryId(params.query_id);
     const searchParams = toSearchParams({
       database: this.params.database,
@@ -307,6 +357,7 @@ export class WebConnection implements Connection<ReadableStream> {
       query_id,
     });
     const response = await this.request({
+      operation,
       body: params.query,
       params,
       searchParams,
@@ -332,15 +383,14 @@ export class WebConnection implements Connection<ReadableStream> {
     const parse = this.params.json?.parse ?? JSON.parse;
     try {
       return parse(summaryHeader) as ClickHouseSummary;
-    } catch (err) {
-      this.params.log_writer.warn({
-        module: "WebConnection",
-        message: "Failed to parse X-ClickHouse-Summary header.",
-        args: {
-          "X-ClickHouse-Summary": summaryHeader,
-          error: String(err),
-        },
-      });
+    } catch {
+      const { log_level, log_writer } = this.params;
+      if (log_level <= ClickHouseLogLevel.WARN) {
+        log_writer.warn({
+          module: "WebConnection",
+          message: "Failed to parse X-ClickHouse-Summary header.",
+        });
+      }
       return undefined;
     }
   }
