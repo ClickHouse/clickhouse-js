@@ -34,6 +34,8 @@ import type Stream from "stream";
 import { getUserAgent } from "../utils";
 import { drainStreamInternal } from "./stream";
 import { type RequestParams, SocketPool } from "./socket_pool";
+import type { NodeTransport, NodeTransportFactory } from "./transport";
+import { passThroughRequestAbort, type RequestAbort } from "./request_abort";
 
 export type NodeConnectionParams = ConnectionParams & {
   tls?: TLSParams;
@@ -58,6 +60,11 @@ export type NodeConnectionParams = ConnectionParams & {
    * When `undefined`, the Node.js default applies.
    */
   max_response_headers_size?: number;
+  /**
+   * Optional HTTP transport. When `undefined`, the connection uses the
+   * built-in `node:http` / `node:https` modules.
+   */
+  transport?: NodeTransportFactory;
 };
 
 export type TLSParams =
@@ -77,19 +84,33 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   protected readonly defaultHeaders: Http.OutgoingHttpHeaders;
 
   private readonly connectionId: string = crypto.randomUUID();
-  private readonly socketPool: SocketPool;
+  private readonly transport: NodeTransport;
   protected readonly params: NodeConnectionParams;
-  protected readonly agent: Http.Agent;
+  protected readonly agent: Http.Agent | undefined;
 
-  protected constructor(params: NodeConnectionParams, agent: Http.Agent) {
+  /** @param agent the agent for the built-in `node:http` / `node:https` transport.
+   *  Must be `undefined` when {@link NodeConnectionParams.transport} is set. */
+  protected constructor(
+    params: NodeConnectionParams,
+    agent: Http.Agent | undefined,
+  ) {
     this.params = params;
     this.agent = agent;
-    this.socketPool = new SocketPool(
-      this.connectionId,
-      this.params,
-      this.createClientRequest.bind(this),
-      this.agent,
-    );
+    if (params.transport !== undefined) {
+      this.transport = params.transport.create({
+        ...params,
+        connection_id: this.connectionId,
+      });
+    } else if (agent !== undefined) {
+      this.transport = new SocketPool(
+        this.connectionId,
+        this.params,
+        this.createClientRequest.bind(this),
+        agent,
+      );
+    } else {
+      throw new Error("An HTTP agent or a transport is required");
+    }
     if (params.auth.type === "Credentials") {
       this.defaultAuthHeader = `Basic ${Buffer.from(
         `${params.auth.username}:${params.auth.password}`,
@@ -109,7 +130,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   async ping(params: ConnPingParams): Promise<ConnPingResult> {
     const { log_writer, log_level } = this.params;
     const query_id = this.getQueryId(params.query_id);
-    const { controller, controllerCleanup } = this.getAbortController(params);
+    const requestAbort = this.getRequestAbort(params);
     try {
       let result: RequestResult;
       if (params.select) {
@@ -123,7 +144,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             query: PingQuery,
             method: "GET",
             url: transformUrl({ url: this.params.url, searchParams }),
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             headers: this.buildRequestHeaders(),
             query_id,
             log_writer,
@@ -137,7 +158,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             query: "ping",
             method: "GET",
             url: transformUrl({ url: this.params.url, pathname: "/ping" }),
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             headers: this.buildRequestHeaders(),
             query_id,
             log_writer,
@@ -159,7 +180,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     } catch (error) {
       // it is used to ensure that the outgoing request is terminated,
       // and we don't get unhandled error propagation later
-      controller.abort("Ping failed");
+      requestAbort.abort("Ping failed");
       // not an error, as this might be semi-expected
       if (log_level <= ClickHouseLogLevel.WARN) {
         log_writer.warn({
@@ -176,7 +197,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         error: error as Error, // should NOT be propagated to the user
       };
     } finally {
-      controllerCleanup();
+      requestAbort.cleanup();
     }
   }
 
@@ -224,7 +245,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       query_id,
       role: params.role,
     });
-    const { controller, controllerCleanup } = this.getAbortController(params);
+    const requestAbort = this.getRequestAbort(params);
     // Accept-Encoding is sent whenever the server is asked to compress
     // (enable_http_compression), independent of whether the client decompresses;
     // the codec is the explicitly configured one, defaulting to gzip.
@@ -258,7 +279,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             method: "POST",
             url: transformUrl({ url: this.params.url, searchParams }),
             body,
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             response_compression_codec: responseCompressionCodec,
             parse_summary: true,
             headers,
@@ -277,7 +298,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         http_status_code,
       };
     } catch (err) {
-      controller.abort("Query HTTP request failed");
+      requestAbort.abort("Query HTTP request failed");
       this.logRequestError({
         op: "Query",
         query_id: query_id,
@@ -292,7 +313,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       });
       throw err; // should be propagated to the user
     } finally {
-      controllerCleanup();
+      requestAbort.cleanup();
     }
   }
 
@@ -310,7 +331,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       role: params.role,
       query_id,
     });
-    const { controller, controllerCleanup } = this.getAbortController(params);
+    const requestAbort = this.getRequestAbort(params);
     try {
       const { stream, summary, response_headers, http_status_code } =
         await this.request(
@@ -318,7 +339,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             method: "POST",
             url: transformUrl({ url: this.params.url, searchParams }),
             body: params.values,
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             request_compression: this.params.compression.compress_request,
             parse_summary: true,
             headers: this.buildRequestHeaders(params),
@@ -340,7 +361,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       );
       return { query_id, summary, response_headers, http_status_code };
     } catch (err) {
-      controller.abort("Insert HTTP request failed");
+      requestAbort.abort("Insert HTTP request failed");
       this.logRequestError({
         op: "Insert",
         query_id: query_id,
@@ -354,7 +375,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       });
       throw err; // should be propagated to the user
     } finally {
-      controllerCleanup();
+      requestAbort.cleanup();
     }
   }
 
@@ -440,9 +461,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   }
 
   async close(): Promise<void> {
-    if (this.agent !== undefined && this.agent.destroy !== undefined) {
-      this.agent.destroy();
-    }
+    await this.transport.close();
   }
 
   protected defaultHeadersWithOverride(
@@ -463,6 +482,9 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
   protected buildRequestHeaders(
     params?: ConnBaseQueryParams,
   ): Http.OutgoingHttpHeaders {
+    if (this.params.tls !== undefined) {
+      return this.buildTLSRequestHeaders(this.params.tls, params);
+    }
     const headers = this.defaultHeadersWithOverride(params);
     if (isJWTAuth(params?.auth)) {
       return {
@@ -488,6 +510,45 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     };
   }
 
+  /** With custom TLS certificates, ClickHouse gets the credentials from the
+   *  `X-ClickHouse-User` / `X-ClickHouse-Key` headers instead of `Authorization`. */
+  private buildTLSRequestHeaders(
+    tls: TLSParams,
+    params?: ConnBaseQueryParams,
+  ): Http.OutgoingHttpHeaders {
+    if (this.params.auth.type === "JWT") {
+      throw new Error(
+        "JWT auth is not supported with HTTPS connection using custom certificates",
+      );
+    }
+    let headers: Http.OutgoingHttpHeaders;
+    if (isCredentialsAuth(params?.auth)) {
+      headers = {
+        ...this.defaultHeadersWithOverride(params),
+        "X-ClickHouse-User": params.auth.username,
+        "X-ClickHouse-Key": params.auth.password,
+      };
+    } else {
+      headers = {
+        ...this.defaultHeadersWithOverride(params),
+        "X-ClickHouse-User": this.params.auth.username,
+        "X-ClickHouse-Key": this.params.auth.password,
+      };
+    }
+    const tlsType = tls.type;
+    switch (tlsType) {
+      case "Basic":
+        return headers;
+      case "Mutual":
+        return {
+          ...headers,
+          "X-ClickHouse-SSL-Certificate-Auth": "on",
+        };
+      default:
+        throw new Error(`Unknown TLS type: ${tlsType}`);
+    }
+  }
+
   protected abstract createClientRequest(
     params: RequestParams,
   ): Http.ClientRequest;
@@ -496,22 +557,13 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     return query_id || crypto.randomUUID();
   }
 
-  // a wrapper over the user's Signal to terminate the failed requests
-  private getAbortController(params: { abort_signal?: AbortSignal }): {
-    controller: AbortController;
-    controllerCleanup: () => void;
-  } {
-    const controller = new AbortController();
-    function onAbort() {
-      controller.abort();
-    }
-    params.abort_signal?.addEventListener("abort", onAbort);
-    return {
-      controller,
-      controllerCleanup: () => {
-        params.abort_signal?.removeEventListener("abort", onAbort);
-      },
-    };
+  /** How this connection gives the user's `abort_signal` to its transport.
+   *  The default passes it unchanged, for transports with native `AbortSignal`
+   *  support. The built-in `node:http` / `node:https` connections override it. */
+  protected getRequestAbort(params: {
+    abort_signal?: AbortSignal;
+  }): RequestAbort {
+    return passThroughRequestAbort(params);
   }
 
   private logRequestError({
@@ -569,7 +621,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       query_id,
     };
     const searchParams = toSearchParams(toSearchParamsOptions);
-    const { controller, controllerCleanup } = this.getAbortController(params);
+    const requestAbort = this.getRequestAbort(params);
     const tryDecompressResponseStream =
       params.op === "Exec"
         ? // allows disabling stream decompression for the `Exec` operation only
@@ -586,7 +638,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
             method: "POST",
             url: transformUrl({ url: this.params.url, searchParams }),
             body: sendQueryInParams ? params.values : params.query,
-            abort_signal: controller.signal,
+            abort_signal: requestAbort.signal,
             parse_summary: true,
             request_compression: this.params.compression.compress_request,
             response_compression_codec:
@@ -609,7 +661,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
         http_status_code,
       };
     } catch (err) {
-      controller.abort(`${params.op} HTTP request failed`);
+      requestAbort.abort(`${params.op} HTTP request failed`);
       this.logRequestError({
         op: params.op,
         query_id: query_id,
@@ -623,7 +675,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       });
       throw err; // should be propagated to the user
     } finally {
-      controllerCleanup();
+      requestAbort.cleanup();
     }
   }
 
@@ -631,7 +683,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     params: RequestParams,
     op: ConnOperation,
   ): Promise<RequestResult> {
-    return this.socketPool.request(params, op);
+    return this.transport.request(params, op);
   }
 }
 

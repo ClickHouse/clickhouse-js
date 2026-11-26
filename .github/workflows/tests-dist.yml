@@ -21,6 +21,7 @@ on:
       - "packages/client-web/vitest.config.ts"
       - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/tests-dist.yml"
+      - ".scripts/smoke_test_pack.sh"
   pull_request:
     paths:
       - "packages/**"
@@ -36,6 +37,7 @@ on:
       - "packages/client-web/vitest.config.ts"
       - "packages/client-web/vitest.setup.ts"
       - ".github/workflows/tests-dist.yml"
+      - ".scripts/smoke_test_pack.sh"
 
   schedule:
     - cron: "0 9 * * *"
@@ -79,6 +81,12 @@ jobs:
       # the node integration suite with TEST_TARGET=dist.
       - name: Run node integration tests against dist
         run: npm run test:node:integration:dist
+
+      # The same check as before a publish (publish-client.yml): install the
+      # packed tarball into an empty app, and import it from ESM and CommonJS,
+      # including the optional `@clickhouse/client/undici` entry point.
+      - name: Smoke test the packed tarball
+        run: .scripts/smoke_test_pack.sh @clickhouse/client
 
   web-dist-integration:
     timeout-minutes: 10

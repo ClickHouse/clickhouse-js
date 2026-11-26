@@ -9,8 +9,12 @@ import { createTestClient } from "@test/utils/client";
 import * as http from "http";
 import { AddressInfo } from "net";
 import type { ClickHouseClientConfigOptions } from "@clickhouse/client";
+import { isUndiciTestTransport } from "../utils/feature_detection";
 
-describe("[Node.js] Eager socket destruction", () => {
+// `eagerly_destroy_stale_sockets` is a feature of the node:http transport only.
+const describeHttpTransport = describe.skipIf(isUndiciTestTransport());
+
+describeHttpTransport("[Node.js] Eager socket destruction", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
