@@ -1,4 +1,4 @@
-import { formatQueryParams } from "../data_formatter";
+import { extractIdentifierParams, formatQueryParams } from "../data_formatter";
 
 const SAFE_PART_NAME = /^[A-Za-z0-9_.-]+$/;
 
@@ -22,14 +22,19 @@ export const MAX_URL_BIND_PARAM_LENGTH = 4096;
  */
 export function serializeQueryParamsForUrl(
   query_params: Record<string, unknown>,
+  query?: string,
 ): [string, string][] | null {
   const entries: [string, string][] = [];
+  const identifierParams = extractIdentifierParams(query);
   // Raw length is a lower bound on the encoded length, so large payloads
   // short-circuit without materializing the encoded string.
   let rawLength = 0;
   for (const [key, value] of Object.entries(query_params)) {
     const name = `param_${key}`;
-    const formatted = formatQueryParams({ value });
+    const formatted = formatQueryParams({
+      value,
+      escapeString: !identifierParams.has(key),
+    });
     rawLength += name.length + formatted.length;
     if (rawLength > MAX_URL_BIND_PARAM_LENGTH) {
       return null;

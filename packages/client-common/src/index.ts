@@ -141,6 +141,7 @@ export {
 export {
   formatQuerySettings,
   formatQueryParams,
+  extractIdentifierParams,
   encodeJSON,
   isSupportedRawFormat,
   isStreamableJSONFamily,

@@ -560,4 +560,28 @@ describe("select with query binding", () => {
       ]);
     });
   });
+
+  it("handles special characters in an Identifier parameter", async () => {
+    for (const name of [
+      "plain",
+      "a`b",
+      "e\\f",
+      "it's",
+      "x\ty",
+      "x\ny",
+      "x\ry",
+    ]) {
+      const rs = await client.query({
+        query: "SELECT 1 AS {name:Identifier}, {text:String} AS val",
+        format: "JSON",
+        query_params: { name, text: name },
+      });
+      const json = (await rs.json()) as {
+        meta: { name: string }[];
+        data: { val: string }[];
+      };
+      expect(json.meta[0].name).toBe(name);
+      expect(json.data[0].val).toBe(name);
+    }
+  });
 });

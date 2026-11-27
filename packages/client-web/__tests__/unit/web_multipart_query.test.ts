@@ -255,4 +255,84 @@ describe("[Web] Multipart query params", () => {
       expect(headers["Content-Type"]).toBeUndefined();
     });
   });
+
+  describe("Identifier parameter serialization", () => {
+    const rawIdentifier = "it's\\col\t1";
+    const escapedString = "it\\'s\\\\col\\t1";
+    const identifierQuery =
+      "SELECT 1 AS {name:Identifier} WHERE s = {text:String}";
+
+    it("should leave Identifier param unescaped in URL mode", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({ fetch: fetchStub });
+
+      await adapter.query({
+        query: identifierQuery,
+        query_params: { name: rawIdentifier, text: rawIdentifier },
+      });
+
+      const { url } = lastFetchCall(fetchStub);
+      const parsed = new URL(url);
+      expect(parsed.searchParams.get("query")).toBeNull();
+      expect(parsed.searchParams.get("param_name")).toBe(rawIdentifier);
+      expect(parsed.searchParams.get("param_text")).toBe(escapedString);
+    });
+
+    it("should leave Identifier param unescaped in multipart body mode", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({
+        use_multipart_params: true,
+        fetch: fetchStub,
+      });
+
+      await adapter.query({
+        query: identifierQuery,
+        query_params: { name: rawIdentifier, text: rawIdentifier },
+      });
+
+      const { init } = lastFetchCall(fetchStub);
+      const body = init.body as string;
+      expect(body).toContain(
+        `Content-Disposition: form-data; name="param_name"\r\n\r\n${rawIdentifier}\r\n`,
+      );
+      expect(body).toContain(
+        `Content-Disposition: form-data; name="param_text"\r\n\r\n${escapedString}\r\n`,
+      );
+    });
+
+    it("should leave Identifier param unescaped with use_multipart_params_auto", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({
+        use_multipart_params_auto: true,
+        fetch: fetchStub,
+      });
+
+      await adapter.query({
+        query: identifierQuery,
+        query_params: { name: rawIdentifier, text: rawIdentifier },
+      });
+
+      const { url, headers } = lastFetchCall(fetchStub);
+      const parsed = new URL(url);
+      expect(headers["Content-Type"]).toBeUndefined();
+      expect(parsed.searchParams.get("param_name")).toBe(rawIdentifier);
+      expect(parsed.searchParams.get("param_text")).toBe(escapedString);
+    });
+
+    it("should leave Identifier param unescaped in command() URL params", async () => {
+      const fetchStub = stubFetch();
+      const adapter = buildWebConnection({ fetch: fetchStub });
+
+      await adapter.command({
+        query: identifierQuery,
+        query_params: { name: rawIdentifier, text: rawIdentifier },
+      });
+
+      const { url } = lastFetchCall(fetchStub);
+      const parsed = new URL(url);
+      expect(parsed.searchParams.get("query")).toBeNull();
+      expect(parsed.searchParams.get("param_name")).toBe(rawIdentifier);
+      expect(parsed.searchParams.get("param_text")).toBe(escapedString);
+    });
+  });
 });

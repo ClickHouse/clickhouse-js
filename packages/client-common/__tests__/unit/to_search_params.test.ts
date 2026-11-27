@@ -138,6 +138,34 @@ describe("toSearchParams", () => {
       ["role", "single-role"],
     ]);
   });
+
+  it("should not string-escape Identifier query_params while escaping String query_params", () => {
+    const rawIdentifier = "e\\f'g\th\ni\rj`k";
+    const params = toSearchParams({
+      database: "default",
+      query_id: "my-query-id",
+      query_text: "SELECT 1 AS {name:Identifier} WHERE s = {text:String}",
+      query_params: {
+        name: rawIdentifier,
+        text: rawIdentifier,
+      },
+    });
+    expect(params.has("query")).toBe(false);
+    expect(params.get("param_name")).toBe(rawIdentifier);
+    expect(params.get("param_text")).toBe("e\\\\f\\'g\\th\\ni\\rj`k");
+  });
+
+  it("should inspect query as fallback when query_text is omitted", () => {
+    const params = toSearchParams({
+      database: "default",
+      query_id: "my-query-id",
+      query: "INSERT INTO t ({col:Identifier}) FORMAT JSONEachRow",
+      query_params: {
+        col: "it's\\col",
+      },
+    });
+    expect(params.get("param_col")).toBe("it's\\col");
+  });
 });
 
 function toSortedArray(params: URLSearchParams): [string, string][] {
