@@ -3,8 +3,10 @@
  * as the LZ4 codec of ClickHouse uses it: one block, no frame header.
  *
  * Real data has many short literals and matches. A `Buffer.copy` call costs
- * more than a byte loop for a few bytes, so the code copies short runs with
- * loops and long runs with `copyWithin` / `set`.
+ * more than a loop for a few bytes, so the code copies short runs 8 bytes at a
+ * time through a `DataView` (as the reference implementation's "wild copy"
+ * does, but only inside the buffers) and long runs with `copy` /
+ * `copyWithin` / `fill`.
  */
 
 const MIN_MATCH = 4;
@@ -21,8 +23,9 @@ const MIN_HASH_LOG = 8;
  *  match). */
 const MAX_EXPANSION = 255;
 const TRUNCATED = "Corrupted LZ4 data: the data ends in a sequence";
-/** Copies shorter than this use a byte loop. */
-const SHORT_COPY = 32;
+/** Copies of this many bytes or more use `copy` / `copyWithin`; shorter ones
+ *  use word or byte loops. */
+const LONG_COPY = 64;
 /** After 2^SKIP_TRIGGER positions without a match, the search step grows
  *  (the "acceleration" of LZ4): incompressible data is not searched byte by byte. */
 const SKIP_TRIGGER = 6;
@@ -40,7 +43,11 @@ export function lz4Decompress(src: Buffer, decompressedSize: number): Buffer {
       `Corrupted LZ4 data: ${src.length} bytes cannot give ${decompressedSize} bytes`,
     );
   }
-  const dst = Buffer.allocUnsafe(decompressedSize);
+  const n = decompressedSize;
+  const dst = Buffer.allocUnsafe(n);
+  // Word views for the 8-byte copies of short runs.
+  const sv = new DataView(src.buffer, src.byteOffset, src.length);
+  const dv = new DataView(dst.buffer, dst.byteOffset, n);
   let ip = 0;
   let op = 0;
   const end = src.length;
@@ -55,15 +62,28 @@ export function lz4Decompress(src: Buffer, decompressedSize: number): Buffer {
         literals += b;
       } while (b === 255);
     }
-    if (ip + literals > end || op + literals > decompressedSize) {
+    const literalsEnd = ip + literals;
+    if (literalsEnd > end || op + literals > n) {
       throw new Error("Corrupted LZ4 data: literals out of bounds");
     }
-    if (literals < SHORT_COPY) {
-      for (let i = 0; i < literals; i++) dst[op++] = src[ip++]!;
+    if (literals < LONG_COPY) {
+      // Copy whole words: up to 7 bytes more than the literals, when both
+      // buffers have them. The next sequence overwrites the extra bytes.
+      const words = (literals + 7) & ~7;
+      if (ip + words <= end && op + words <= n) {
+        for (let i = 0; i < literals; i += 8) {
+          dv.setInt32(op + i, sv.getInt32(ip + i, true), true);
+          dv.setInt32(op + i + 4, sv.getInt32(ip + i + 4, true), true);
+        }
+        op += literals;
+        ip = literalsEnd;
+      } else {
+        while (ip < literalsEnd) dst[op++] = src[ip++]!;
+      }
     } else {
-      src.copy(dst, op, ip, ip + literals);
-      ip += literals;
+      src.copy(dst, op, ip, literalsEnd);
       op += literals;
+      ip = literalsEnd;
     }
     if (ip === end) break; // the last sequence has only literals
     if (ip + 2 > end) throw new Error(TRUNCATED);
@@ -82,42 +102,48 @@ export function lz4Decompress(src: Buffer, decompressedSize: number): Buffer {
       } while (b === 255);
     }
     length += MIN_MATCH;
-    if (op + length > decompressedSize) {
+    const matchEnd = op + length;
+    if (matchEnd > n) {
       throw new Error("Corrupted LZ4 data: match out of bounds");
     }
-    const from = op - offset;
-    if (offset === 1 && length >= 16) {
-      dst.fill(dst[from]!, op, op + length);
-    } else if (length < SHORT_COPY) {
-      for (let i = 0; i < length; i++) dst[op + i] = dst[from + i]!;
+    let from = op - offset;
+    if (length < LONG_COPY) {
+      // Whole words when a word does not overlap its own source (offset >= 8)
+      // and the output has room for the extra bytes.
+      if (offset >= 8 && op + ((length + 7) & ~7) <= n) {
+        for (let i = 0; i < length; i += 8) {
+          dv.setInt32(op + i, dv.getInt32(from + i, true), true);
+          dv.setInt32(op + i + 4, dv.getInt32(from + i + 4, true), true);
+        }
+        op = matchEnd;
+      } else {
+        while (op < matchEnd) dst[op++] = dst[from++]!;
+      }
+    } else if (offset === 1) {
+      dst.fill(dst[from]!, op, matchEnd);
+      op = matchEnd;
     } else if (offset >= length) {
       dst.copyWithin(op, from, from + length);
+      op = matchEnd;
     } else {
-      // Overlapping match with length >= SHORT_COPY: copy one exact period
-      // (`offset` bytes), then double `copied` (always a multiple of `offset`).
-      let copied = offset;
-      if (offset < SHORT_COPY) {
+      // Overlapping long match: copy one period (`offset` bytes), then double
+      // `copied` (always a multiple of `offset`).
+      if (offset < LONG_COPY) {
         for (let i = 0; i < offset; i++) dst[op + i] = dst[from + i]!;
       } else {
         dst.copyWithin(op, from, from + offset);
       }
-      while (copied < SHORT_COPY && copied < length) {
-        const chunk = copied < length - copied ? copied : length - copied;
-        for (let i = 0; i < chunk; i++) dst[op + copied + i] = dst[op + i]!;
-        copied += chunk;
-      }
+      let copied = offset;
       while (copied < length) {
         const chunk = copied < length - copied ? copied : length - copied;
         dst.copyWithin(op + copied, op, op + chunk);
         copied += chunk;
       }
+      op = matchEnd;
     }
-    op += length;
   }
-  if (op !== decompressedSize) {
-    throw new Error(
-      `Corrupted LZ4 data: ${op} bytes instead of ${decompressedSize}`,
-    );
+  if (op !== n) {
+    throw new Error(`Corrupted LZ4 data: ${op} bytes instead of ${n}`);
   }
   return dst;
 }
@@ -126,10 +152,6 @@ export function lz4Decompress(src: Buffer, decompressedSize: number): Buffer {
  *  One table for all calls: compression is synchronous. A call uses (and
  *  clears) only the first entries when the input is small. */
 const table = new Int32Array(1 << HASH_LOG);
-
-function read32(b: Uint8Array, i: number): number {
-  return b[i]! | (b[i + 1]! << 8) | (b[i + 2]! << 16) | (b[i + 3]! << 24);
-}
 
 /** The hash of a 4-byte sequence. The table has 2^(32 - shift) entries. */
 function hash4(v: number, shift: number): number {
@@ -142,30 +164,6 @@ function hashLog(n: number): number {
   let log = MIN_HASH_LOG;
   while (log < HASH_LOG && 1 << log < n) log++;
   return log;
-}
-
-function writeLength(dst: Buffer, op: number, length: number): number {
-  while (length >= 255) {
-    dst[op++] = 255;
-    length -= 255;
-  }
-  dst[op++] = length;
-  return op;
-}
-
-function copyBytes(
-  dst: Buffer,
-  op: number,
-  src: Buffer,
-  from: number,
-  to: number,
-): void {
-  const n = to - from;
-  if (n < SHORT_COPY) {
-    for (let i = 0; i < n; i++) dst[op + i] = src[from + i]!;
-  } else {
-    src.copy(dst, op, from, to);
-  }
 }
 
 /** Greedy LZ4 compression with a hash table of 4-byte sequences. */
@@ -183,6 +181,8 @@ export function lz4CompressInto(src: Buffer, dst: Buffer, op: number): number {
   const n = src.length;
   let anchor = 0;
   if (n >= MF_LIMIT + 1) {
+    // 4-byte little-endian reads of the input.
+    const sv = new DataView(src.buffer, src.byteOffset, n);
     const log = hashLog(n);
     const shift = 32 - log;
     table.fill(0, 0, 1 << log);
@@ -191,59 +191,97 @@ export function lz4CompressInto(src: Buffer, dst: Buffer, op: number): number {
     let ip = 0;
     let misses = 1 << SKIP_TRIGGER;
     while (ip < searchLimit) {
-      const seq = read32(src, ip);
+      const seq = sv.getInt32(ip, true);
       const h = hash4(seq, shift);
       const candidate = table[h]! - 1;
       table[h] = ip + 1;
       if (
         candidate < 0 ||
         ip - candidate > MAX_OFFSET ||
-        read32(src, candidate) !== seq
+        sv.getInt32(candidate, true) !== seq
       ) {
         ip += misses++ >>> SKIP_TRIGGER;
         continue;
       }
       misses = 1 << SKIP_TRIGGER;
-      // Extend the match backward over the literals, then forward.
+      // Extend the match backward over the literals.
       let start = ip;
       let ref = candidate;
       while (start > anchor && ref > 0 && src[start - 1] === src[ref - 1]) {
         start--;
         ref--;
       }
-      let length = ip - start + MIN_MATCH;
-      while (
-        start + length < matchLimit &&
-        src[start + length] === src[ref + length]
-      ) {
-        length++;
+      // Extend it forward 4 bytes at a time: the lowest set bit of the xor
+      // gives the first byte that differs.
+      let p = ip + MIN_MATCH;
+      let q = candidate + MIN_MATCH;
+      let mismatch = false;
+      while (p + 4 <= matchLimit) {
+        const x = sv.getInt32(p, true) ^ sv.getInt32(q, true);
+        if (x !== 0) {
+          p += (31 - Math.clz32(x & -x)) >>> 3;
+          mismatch = true;
+          break;
+        }
+        p += 4;
+        q += 4;
+      }
+      if (!mismatch) {
+        while (p < matchLimit && src[p] === src[q]) {
+          p++;
+          q++;
+        }
       }
       // Sequence: token, literals, offset, match length.
       const literals = start - anchor;
-      const matchCode = length - MIN_MATCH;
-      const tokenPos = op++;
-      dst[tokenPos] =
+      const matchCode = p - start - MIN_MATCH;
+      dst[op++] =
         ((literals >= 15 ? 15 : literals) << 4) |
         (matchCode >= 15 ? 15 : matchCode);
-      if (literals >= 15) op = writeLength(dst, op, literals - 15);
-      copyBytes(dst, op, src, anchor, start);
-      op += literals;
+      if (literals >= 15) {
+        let rest = literals - 15;
+        while (rest >= 255) {
+          dst[op++] = 255;
+          rest -= 255;
+        }
+        dst[op++] = rest;
+      }
+      if (literals < LONG_COPY) {
+        for (let i = anchor; i < start; i++) dst[op++] = src[i]!;
+      } else {
+        src.copy(dst, op, anchor, start);
+        op += literals;
+      }
       const offset = start - ref;
       dst[op++] = offset & 0xff;
       dst[op++] = offset >>> 8;
-      if (matchCode >= 15) op = writeLength(dst, op, matchCode - 15);
-      ip = start + length;
+      if (matchCode >= 15) {
+        let rest = matchCode - 15;
+        while (rest >= 255) {
+          dst[op++] = 255;
+          rest -= 255;
+        }
+        dst[op++] = rest;
+      }
+      ip = p;
       anchor = ip;
       // Index a position inside the match to find the next match faster.
       if (ip - 2 < searchLimit && ip >= 2) {
-        table[hash4(read32(src, ip - 2), shift)] = ip - 2 + 1;
+        table[hash4(sv.getInt32(ip - 2, true), shift)] = ip - 2 + 1;
       }
     }
   }
   // The last literals.
   const literals = n - anchor;
   dst[op++] = (literals >= 15 ? 15 : literals) << 4;
-  if (literals >= 15) op = writeLength(dst, op, literals - 15);
-  copyBytes(dst, op, src, anchor, n);
+  if (literals >= 15) {
+    let rest = literals - 15;
+    while (rest >= 255) {
+      dst[op++] = 255;
+      rest -= 255;
+    }
+    dst[op++] = rest;
+  }
+  src.copy(dst, op, anchor, n);
   return op + literals;
 }
