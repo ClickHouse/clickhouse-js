@@ -1,3 +1,4 @@
+import type { HeapProfiler } from "node:inspector";
 import { Session } from "node:inspector/promises";
 import { PerformanceObserver } from "node:perf_hooks";
 import { latencyStats, type LatencyStats } from "../transport/stats";
@@ -81,12 +82,13 @@ export class AllocationSampler {
       includeObjectsCollectedByMajorGC: true,
       includeObjectsCollectedByMinorGC: true,
     });
+    let profile: HeapProfiler.SamplingHeapProfile;
     try {
       await fn();
     } finally {
       // Stop sampling in finally so the session stays clean even on error.
+      ({ profile } = await this.session.post("HeapProfiler.stopSampling"));
     }
-    const { profile } = await this.session.post("HeapProfiler.stopSampling");
     let total = 0;
     for (const sample of profile.samples) {
       total += sample.size;
