@@ -29,7 +29,8 @@ npm i
 
 Required for TLS tests.
 The generated certificates assume TLS requests use `server.clickhouseconnect.test` as the hostname.
-See [tls.test.ts](packages/client-node/__tests__/tls/tls.test.ts) for more details.
+See the [HTTP TLS tests](packages/client-node/__tests__/tls/tls.test.ts) and
+the [native TLS tests](packages/client-native/__tests__/tls/tls.test.ts).
 
 ```bash
 sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
@@ -53,10 +54,11 @@ everyone in the community can safely benefit from your contribution.
 
 We use [Vitest](https://vitest.dev/) as the test runner and the testing framework. It covers a variety of testing needs, including unit and integration tests, and supports Node.js, Web environments, and edge runtimes.
 
-The repository keeps two Vitest configuration files, embedded in the client packages:
+Each client package has a Vitest configuration.
 
 - `packages/client-node/vitest.config.ts` - Tests for the Node.js client package
 - `packages/client-web/vitest.config.ts` - Tests for the Web client package
+- `packages/client-native/vitest.config.mts` - Tests for the native TCP client
 
 The shared (common) sources live in `packages/client-common` and are bundled into both clients; the common specs are run as part of the Node.js and Web test suites, so the common code is covered without a separate config. Each config supports multiple test modes controlled by the `TEST_MODE` environment variable, allowing different test scenarios (unit, integration, TLS, etc.) to be run with a single configuration file.
 
@@ -95,6 +97,9 @@ npm run test:node:unit
 
 # Run Web unit tests (also runs the common unit tests)
 npm run test:web:unit
+
+# Run native TCP client unit tests
+npm run test:native:unit
 ```
 
 ### Running integration tests
@@ -134,8 +139,26 @@ npm run test:node:integration
 Run the tests (Web):
 
 ```bash
-npm run test:web
+npm run test:web:integration
 ```
+
+#### Native TCP integration tests
+
+Start the single-node and TLS test services. The TLS tests use the hostname
+mapping from [setup](#add-etchosts-entry).
+
+```bash
+docker compose up -d clickhouse clickhouse_tls
+npm run test:native:integration
+npm run test:native:integration:tls
+npm run test:native:dist
+```
+
+The `dist` check builds the native package, installs its npm tarball in a
+temporary directory, and runs a TCP query through the installed package.
+Use `CLICKHOUSE_NATIVE_URL` and `CLICKHOUSE_HTTP_URL` to select a different
+server for the native integration tests. The `dist` check uses
+`CLICKHOUSE_NATIVE_URL`.
 
 #### Running TLS integration tests
 
@@ -210,13 +233,27 @@ Typecheck + Lint + Node.js client unit tests
 └─ Web client integration tests (Cloud)
 ```
 
+The native workflow runs unit, integration, and TLS tests across its Node.js
+and ClickHouse version matrix. The `dist` workflow also tests the installed
+native tarball.
+
 ## Test Coverage
 
 The average reported test coverage is above 90%. We generally aim towards this threshold, if it deems reasonable.
 
-Currently, automatic coverage reports are disabled.
-See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177), as it should be restored in the scope of that issue.
+See [#177](https://github.com/ClickHouse/clickhouse-js/issues/177) for automatic
+coverage reporting for the HTTP clients.
+
+Use `npm run test:native:coverage` with the native test services running to
+report coverage for the native implementation. The HTTP client reports cover
+the shared sources. Vitest prints coverage in the terminal and
+writes an LCOV report to `coverage/client-native`. The native workflow runs
+this command on Node.js 24 with the latest stable ClickHouse server.
 
 ## Running upstream ClickHouse SQL tests
 
-The [`tests/clickhouse-test-runner`](tests/clickhouse-test-runner) directory contains a Node.js port of `clickhouse-client` that lets `tests/clickhouse-test` from `ClickHouse/ClickHouse` exercise the JS client against the upstream SQL test suite. This harness helps validate that `@clickhouse/client` behaves correctly against real ClickHouse tests. See the [clickhouse-test-runner README](tests/clickhouse-test-runner/README.md) for setup and usage instructions.
+The [`tests/clickhouse-test-runner`](tests/clickhouse-test-runner) harness lets
+`tests/clickhouse-test` from `ClickHouse/ClickHouse` run upstream SQL tests
+through `@clickhouse/client` and `@clickhouse/client-native`. See the
+[runner README](tests/clickhouse-test-runner/README.md#running-against-the-upstream-test-suite)
+for setup and commands. The `native` backend uses a dedicated allowlist in CI.

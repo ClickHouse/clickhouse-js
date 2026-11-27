@@ -233,6 +233,7 @@ export class ClickHouseClient<Stream = unknown> {
       config,
       logger,
       config.impl.handle_specific_url_params ?? null,
+      config.impl.url_options,
     );
     this.connectionParams = getConnectionParams(configWithURL, logger);
     this.clientClickHouseSettings = this.connectionParams.clickhouse_settings;
@@ -711,7 +712,16 @@ function getServerPort(url: URL): number {
   if (url.port !== "") {
     return Number(url.port);
   }
-  return url.protocol === "https:" ? 443 : 80;
+  switch (url.protocol) {
+    case "https:":
+      return 443;
+    case "tcp:":
+      return 9000;
+    case "tcps:":
+      return 9440;
+    default:
+      return 80;
+  }
 }
 
 /** Records HTTP status and the `X-ClickHouse-Summary` counters on the span

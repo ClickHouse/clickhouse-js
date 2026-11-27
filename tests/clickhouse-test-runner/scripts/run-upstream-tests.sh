@@ -16,8 +16,9 @@ case "${TEST_RUNNER_BACKEND}" in
   passthrough) default_list="${RUNNER_DIR}/upstream-allowlist.txt" ;;
   rowbinary) default_list="${RUNNER_DIR}/rowbinary-allowlist.txt" ;;
   json) default_list="${RUNNER_DIR}/json-allowlist.txt" ;;
+  native) default_list="${RUNNER_DIR}/native-allowlist.txt" ;;
   *)
-    echo "Error: unknown TEST_RUNNER_BACKEND '${TEST_RUNNER_BACKEND}' (expected passthrough, rowbinary or json)." >&2
+    echo "Error: unknown TEST_RUNNER_BACKEND '${TEST_RUNNER_BACKEND}' (expected passthrough, rowbinary, json or native)." >&2
     exit 1
     ;;
 esac
@@ -146,5 +147,12 @@ cd "${UPSTREAM_CLICKHOUSE_DIR}"
 # "No such file or directory" or "Connection reset by peer"), and reports the
 # test as OK when it passes then. A flaky test would then look stable and
 # could get into the allowlist. With this flag, each failure fails the run.
+# --no-long (native backend): its allowlist leaves out the long tests, and
+# the flag keeps a long test that matches a selector from running.
+backend_flags=()
+if [[ "${TEST_RUNNER_BACKEND}" == "native" ]]; then
+  backend_flags+=(--no-long)
+fi
 exec python3 tests/clickhouse-test --no-stateful --no-random-settings \
-  --no-random-merge-tree-settings --dont_retry_failures "$@" -- "${selectors[@]}"
+  --no-random-merge-tree-settings --dont_retry_failures \
+  ${backend_flags[@]+"${backend_flags[@]}"} "$@" -- "${selectors[@]}"

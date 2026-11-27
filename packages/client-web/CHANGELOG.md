@@ -1,5 +1,9 @@
 # 1.25.1
 
+## Improvements
+
+- (Web only) The bundled URL parser supports transport-specific defaults (`url_options`), keeping `http` / `https` and `http://localhost:8123` for `@clickhouse/client-web`, and suppresses the HTTP-only `send_progress_in_http_headers` warning on non-HTTP URLs.
+
 ## Migration Notes
 
 - `ClickHouseError.message` no longer ends with the whitespace before the error type (`Table x already exists.` instead of `Table x already exists. `). `code` and `type` do not change. If your code compares the exact message text, update it. ([#1181])

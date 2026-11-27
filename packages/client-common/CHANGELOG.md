@@ -1,3 +1,13 @@
+# 1.24.0
+
+## New features
+
+- A client implementation can accept URL protocols other than `http` and `https`. The new optional `impl.url_options` field (the `URLOptions` type) gives the default URL and the accepted protocols; `createUrl` and `prepareConfigWithURL` take it as an optional last argument. Without it, the behavior does not change (`HttpURLOptions`: `http://localhost:8123`, `http` and `https`). The `server.port` span attribute uses the default ports 9000 and 9440 for `tcp:` and `tcps:` URLs. The package also exports the `ConnCommandParams` type. `@clickhouse/client-native` uses these additions.
+
+## Improvements
+
+- The warning about `request_timeout` without `send_progress_in_http_headers` is logged only for `http:` and `https:` URLs. The progress headers are a feature of the HTTP interface.
+
 # 1.23.0
 
 ## Migration Notes

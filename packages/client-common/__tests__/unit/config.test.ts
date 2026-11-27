@@ -568,6 +568,18 @@ describe("config", () => {
     });
 
     describe("request_timeout warnings for progress headers", () => {
+      it("should not warn for a URL that is not HTTP", async () => {
+        const spyLogger = new SpyLogger();
+        getConnectionParams(
+          {
+            url: new URL("tcp://my.host:9000/"),
+            request_timeout: 120_000,
+          },
+          spyLogger,
+        );
+        expect(spyLogger.warnings).toHaveLength(0);
+      });
+
       it("should warn when request_timeout is high but send_progress_in_http_headers is not enabled", async () => {
         const spyLogger = new SpyLogger();
         getConnectionParams(
@@ -909,6 +921,61 @@ describe("config", () => {
       expect(() => createUrl("tcp://localhost:8443")).toThrowError(
         "ClickHouse URL protocol must be either http or https. Got: tcp:",
       );
+    });
+
+    describe("with the URL options of an implementation", () => {
+      const urlOptions = {
+        default_url: "tcp://localhost:9000",
+        protocols: ["tcp:", "tcps:"],
+      };
+
+      it("should use the default URL of the implementation", async () => {
+        expect(createUrl(undefined, urlOptions)).toEqual(
+          new URL("tcp://localhost:9000"),
+        );
+      });
+
+      it("should accept the protocols of the implementation", async () => {
+        expect(createUrl("tcp://my.host:9001", urlOptions).port).toBe("9001");
+        expect(createUrl("tcps://bob:secret@my.host", urlOptions)).toEqual(
+          new URL("tcps://bob:secret@my.host"),
+        );
+      });
+
+      it("should name the protocols of the implementation in the errors", async () => {
+        expect(() =>
+          createUrl("http://localhost:8123", urlOptions),
+        ).toThrowError(
+          "ClickHouse URL protocol must be either tcp or tcps. Got: http:",
+        );
+        expect(() => createUrl("foo", urlOptions)).toThrow(
+          expect.objectContaining({
+            message: expect.stringContaining(
+              "Expected format: tcp[s]://[username:password@]hostname:port",
+            ),
+          }),
+        );
+        expect(() =>
+          createUrl("foo", {
+            default_url: "a://x",
+            protocols: ["a:", "b:", "c:"],
+          }),
+        ).toThrow(
+          expect.objectContaining({
+            message: expect.stringContaining("Expected format: a|b|c://"),
+          }),
+        );
+      });
+
+      it("should keep the HTTP message without the options", async () => {
+        expect(() => createUrl("foo")).toThrow(
+          expect.objectContaining({
+            message: expect.stringContaining(
+              "Expected format: http[s]://[username:password@]hostname:port",
+            ),
+          }),
+        );
+      });
     });
   });
 

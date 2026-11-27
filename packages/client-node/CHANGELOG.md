@@ -1,5 +1,9 @@
 # 1.26.0
 
+## Improvements
+
+- (Node.js only) The bundled URL parser supports transport-specific defaults (`url_options`), keeping `http` / `https` and `http://localhost:8123` for `@clickhouse/client`, and suppresses the HTTP-only `send_progress_in_http_headers` warning on non-HTTP URLs.
+
 ## Migration Notes
 
 - Node.js 20.x reached [end of life](https://endoflife.date/nodejs) on 2026-04-30 and is no longer supported. The `engines.node` floor of `@clickhouse/client` was raised from `>=20` to `>=22`. Node.js 22.x, 24.x, and 26.x are supported and exercised in CI. An install on Node.js 20 now emits an `EBADENGINE` warning. ([#1124])

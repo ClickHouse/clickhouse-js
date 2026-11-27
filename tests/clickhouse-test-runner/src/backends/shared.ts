@@ -7,6 +7,10 @@ import {
   type ClickHouseSettings,
   type DataFormat,
 } from "@clickhouse/client";
+import {
+  ClickHouseError as NativeClickHouseError,
+  createClient as createNativeClient,
+} from "@clickhouse/client-native";
 import { resolveHttpPort, type ParsedArgs } from "../args.js";
 import {
   leadingKeyword,
@@ -38,12 +42,22 @@ const ANALYSIS_ERROR = ": In scope ";
 export class ShimError extends Error {}
 
 /**
+ * How a session reaches the server: `http` with @clickhouse/client and a
+ * `session_id`, or `native` with @clickhouse/client-native, where the one TCP
+ * connection is the session.
+ */
+export type Transport = "http" | "native";
+
+type NativeClickHouseClient = ReturnType<typeof createNativeClient>;
+
+/**
  * The state of one shim invocation: one server session, as clickhouse-client
  * has. `SET`, `USE` and temporary tables last for the whole invocation.
  */
 export class Session {
   readonly sessionId = `clickhouse-js-test-runner-${randomUUID()}`;
-  private client: ClickHouseClient;
+  private client: ClickHouseClient | NativeClickHouseClient;
+  private readonly transport: Transport;
   /**
    * The command-line settings that go with each request, as clickhouse-client
    * sends them. A `SET` of the same setting in the test removes it from here,
@@ -56,9 +70,14 @@ export class Session {
   private readonly args: ParsedArgs;
   private readonly logPath: string;
 
-  constructor(args: ParsedArgs, logPath: string) {
+  constructor(
+    args: ParsedArgs,
+    logPath: string,
+    transport: Transport = "http",
+  ) {
     this.args = args;
     this.logPath = logPath;
+    this.transport = transport;
     appendLog(logPath, "session_id=" + this.sessionId);
     this.settings = commandLineSettings(args);
     this.timeZone = this.settings.get("session_timezone") ?? null;
@@ -70,7 +89,20 @@ export class Session {
         : null;
   }
 
-  private makeClient(database: string): ClickHouseClient {
+  private makeClient(
+    database: string,
+  ): ClickHouseClient | NativeClickHouseClient {
+    if (this.transport === "native") {
+      return createNativeClient({
+        url: `${this.args.secure ? "tcps" : "tcp"}://${this.args.host}:${this.args.port}`,
+        username: this.args.user,
+        password: this.args.password,
+        database,
+        // The TCP connection is the session: keep one for the whole script.
+        max_open_connections: 1,
+        log: { level: ClickHouseLogLevel.OFF },
+      });
+    }
     const proto = this.args.secure ? "https" : "http";
     const port = resolveHttpPort(this.args.port, this.args.secure);
     return createClient({
@@ -86,8 +118,19 @@ export class Session {
     });
   }
 
+  /** The HTTP client of the session, for the backends that decode HTTP results. */
   get current(): ClickHouseClient {
-    return this.client;
+    if (this.transport !== "http") {
+      throw new ShimError("this backend needs the HTTP transport");
+    }
+    return this.client as ClickHouseClient;
+  }
+
+  /** The native client of the session, or null over HTTP. */
+  get native(): NativeClickHouseClient | null {
+    return this.transport === "native"
+      ? (this.client as NativeClickHouseClient)
+      : null;
   }
 
   /**
@@ -103,6 +146,17 @@ export class Session {
       // The DataFormat type of the client does not list the RowBinary formats,
       // but the server accepts every format name here.
       default_format: defaultFormat as DataFormat,
+    };
+  }
+
+  /**
+   * {@link requestSettings} as plain values, for the native client: its
+   * settings type is its own copy of the common one.
+   */
+  plainRequestSettings(defaultFormat: "TabSeparated"): Record<string, string> {
+    return {
+      ...Object.fromEntries(this.settings),
+      default_format: defaultFormat,
     };
   }
 
@@ -228,11 +282,15 @@ export class Session {
       if (db === null) {
         throw new ShimError(`cannot read the database name of ${sql}`);
       }
-      // The client sends its `database` with each request, and that database
-      // replaces the current database of the session. A user makes a client
-      // with the new database; the session stays the same.
-      await this.client.close();
-      this.client = this.makeClient(db);
+      // Over HTTP, the client sends its `database` with each request, and that
+      // database replaces the current database of the session. A user makes a
+      // client with the new database; the session stays the same. Over the
+      // native protocol, the server already switched the database of the
+      // connection, and a new client would open a new session.
+      if (this.transport === "http") {
+        await this.client.close();
+        this.client = this.makeClient(db);
+      }
       appendLog(this.logPath, "database=" + db);
     } else if (keyword === "SET") {
       for (const [name, value] of Object.entries(parseSetAssignments(sql))) {
@@ -263,7 +321,9 @@ function commandLineSettings(args: ParsedArgs): Map<string, string> {
 
 /** The ClickHouse error code of an error of the client, or undefined. */
 export function errorCode(err: unknown): number | undefined {
-  if (err instanceof ClickHouseError) {
+  // @clickhouse/client-native builds its own copy of the common sources, so
+  // its ClickHouseError is a different class.
+  if (err instanceof ClickHouseError || err instanceof NativeClickHouseError) {
     const n = Number(err.code);
     return Number.isInteger(n) ? n : undefined;
   }

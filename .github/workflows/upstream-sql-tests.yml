@@ -24,12 +24,16 @@ on:
       - main
     paths:
       - "tests/clickhouse-test-runner/**"
+      - "packages/client-native/**"
+      - "packages/client-common/**"
       - ".github/workflows/upstream-sql-tests.yml"
       # A change of only the documents does not change a test result.
       - "!tests/clickhouse-test-runner/**/*.md"
   pull_request:
     paths:
       - "tests/clickhouse-test-runner/**"
+      - "packages/client-native/**"
+      - "packages/client-common/**"
       - ".github/workflows/upstream-sql-tests.yml"
       # A change of only the documents does not change a test result.
       - "!tests/clickhouse-test-runner/**/*.md"
@@ -64,8 +68,10 @@ jobs:
         # the TabSeparated text again, so each value goes through the decoder.
         # json: read the rows with query() and ResultSet.json(), the default
         # read path of the client, and write the TabSeparated text again.
+        # native: connect over TCP with @clickhouse/client-native, decode
+        # Native blocks, and write the TabSeparated text in JS.
         # Each backend has its own allowlist; run-upstream-tests.sh selects it.
-        backend: [passthrough, rowbinary, json]
+        backend: [passthrough, rowbinary, json, native]
         # Round-robin shards of the allowlist. Change SHARD_TOTAL below
         # together with this list.
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

@@ -20,9 +20,10 @@ async function main(): Promise<void> {
   appendLog(logPath, "=== clickhouse-client invocation ===");
   appendLog(logPath, "timestamp=" + new Date().toISOString());
 
+  const backend = process.env["TEST_RUNNER_BACKEND"] ?? "passthrough";
   let args;
   try {
-    args = parseArgs(argv);
+    args = parseArgs(argv, backend === "native" ? "tcp" : "http");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     process.stderr.write("Error: " + msg + "\n");
@@ -78,19 +79,20 @@ async function main(): Promise<void> {
     appendLog(logPath, "query=" + stmt.sql);
   }
 
-  // Backend selection is via env (the upstream runner controls argv): the
-  // RowBinary backend exercises the @clickhouse/rowbinary decode path; the
-  // default passthrough backend streams ClickHouse's own TabSeparated text.
-  // Reject an unknown value rather than silently falling back to passthrough,
-  // which would hide a typo'd TEST_RUNNER_BACKEND in CI.
-  const backend = process.env["TEST_RUNNER_BACKEND"] ?? "passthrough";
+  // The backend is chosen by env (the upstream runner controls argv). The
+  // RowBinary and JSON backends exercise the client's decoders over HTTP; the
+  // default passthrough backend streams ClickHouse's own TabSeparated text;
+  // the native backend runs the statements through @clickhouse/client-native
+  // over TCP. Reject an unknown value rather than silently falling back to
+  // passthrough, which would hide a typo'd TEST_RUNNER_BACKEND in CI.
   if (
     backend !== "passthrough" &&
     backend !== "rowbinary" &&
-    backend !== "json"
+    backend !== "json" &&
+    backend !== "native"
   ) {
     process.stderr.write(
-      `Error: unknown TEST_RUNNER_BACKEND "${backend}" (expected "passthrough", "rowbinary" or "json")\n`,
+      `Error: unknown TEST_RUNNER_BACKEND "${backend}" (expected "passthrough", "rowbinary", "json" or "native")\n`,
     );
     process.exitCode = 1;
     return;
@@ -103,7 +105,7 @@ async function main(): Promise<void> {
     } else if (backend === "json") {
       await executeWithJson({ args, statements, logPath });
     } else {
-      await executeWithClient({ args, statements, logPath });
+      await executeWithClient({ args, statements, logPath }, backend);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

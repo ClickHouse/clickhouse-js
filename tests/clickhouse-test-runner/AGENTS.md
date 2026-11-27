@@ -2,7 +2,7 @@
 
 Guidance for the [`clickhouse-test-runner`](.) harness. See the [repo-root `AGENTS.md`](../../AGENTS.md) for cross-cutting guidance, and [`README.md`](README.md) for how the harness works and how to run it.
 
-This harness runs the ClickHouse core SQL tests (`tests/queries/0_stateless`) through `@clickhouse/client`. It has the same design as the harnesses of `clickhouse-cs`, `clickhouse-connect` and `clickhouse-cpp`.
+This harness runs the ClickHouse core SQL tests (`tests/queries/0_stateless`) through `@clickhouse/client` and `@clickhouse/client-native`. It has the same design as the harnesses of `clickhouse-cs`, `clickhouse-connect` and `clickhouse-cpp`.
 
 ## The goal
 
@@ -11,7 +11,7 @@ The goal is to find bugs in the client. To pass more tests is not the goal. A fa
 ## Rules
 
 1. **Find the cause of a failure before you do anything with the test.** A test fails for one of three causes:
-   - **The client**: `@clickhouse/client` (the HTTP transport, sessions, settings, query parameters, error parsing, and for the `json` backend `ResultSet.json()`) or, for the `rowbinary` backend, `@clickhouse/rowbinary`. The decoding backends also use `@clickhouse/datatype-parser`. This is what the harness is for.
+   - **The client**: `@clickhouse/client` (the HTTP transport, sessions, settings, query parameters, error parsing, and for the `json` backend `ResultSet.json()`) or, for the `rowbinary` backend, `@clickhouse/rowbinary`, or, for the `native` backend, `@clickhouse/client-native` (the native TCP protocol, the Native decoder and its text output). The decoding backends also use `@clickhouse/datatype-parser`. This is what the harness is for.
    - **The shim** (the program in this directory). It does not do what `clickhouse-client` does.
    - **The environment.** The test cannot pass through any client on this server (see [Environment causes](#environment-causes)).
 2. **The default for a client bug is a fix in the client**, in a PR of its own, with a regression test in the package (read the `AGENTS.md` of the package first) and a changelog entry. In the same PR, enable the tests of its known-failure group and update the counts. Keep changes to harness logic in a separate PR. A PR that changes only a client does not start the harness workflow: add the `tests:run-core-sql` label (see the README, CI).
@@ -33,9 +33,11 @@ Do these steps in this order. Build once from the repository root (`npm install 
      tests/clickhouse-test-runner/scripts/run-upstream-tests.sh
    UPSTREAM_TEST_LIST=<(echo <test>) TEST_RUNNER_BACKEND=json \
      tests/clickhouse-test-runner/scripts/run-upstream-tests.sh
+   UPSTREAM_TEST_LIST=<(echo <test>) TEST_RUNNER_BACKEND=native \
+     tests/clickhouse-test-runner/scripts/run-upstream-tests.sh
    ```
 
-   A test that passes with `passthrough` and fails with `rowbinary` points to `@clickhouse/rowbinary` or to the TSV writer of the shim ([`src/tsv-serialize.ts`](src/tsv-serialize.ts)), not to the transport. A test that fails only with `json` points to `ResultSet.json()` or to the JSON writer ([`src/json-serialize.ts`](src/json-serialize.ts)).
+   A test that passes with `passthrough` and fails with `rowbinary` points to `@clickhouse/rowbinary` or to the TSV writer of the shim ([`src/tsv-serialize.ts`](src/tsv-serialize.ts)), not to the transport. A test that fails only with `json` points to `ResultSet.json()` or to the JSON writer ([`src/json-serialize.ts`](src/json-serialize.ts)). A test that fails only with `native` points to `@clickhouse/client-native`.
 
 2. **Run the test through the real `clickhouse-client`** in the server container, on the same server:
 
