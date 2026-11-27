@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import * as http from "http";
 import type { AddressInfo } from "net";
 import type { ClickHouseClient } from "@clickhouse/client-common";
-import { createTestClient } from "@test/utils/client";
+import { createSimpleTestClient } from "@test/utils/simple_client";
 import { blockEventLoop } from "../utils/event_loop";
 
 // `SocketPool.request()` starts with `await sleep(0)`. This test fails without it.
@@ -50,7 +50,7 @@ describe("[Node.js] SocketPool waits one timer tick before each request: overdue
         resolve((current.address() as AddressInfo).port);
       });
     });
-    client = createTestClient({
+    client = createSimpleTestClient({
       url: `http://127.0.0.1:${port}`,
       keep_alive: {
         enabled: true,

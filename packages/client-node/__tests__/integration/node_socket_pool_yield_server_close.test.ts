@@ -1,7 +1,7 @@
 import { afterEach, describe, it } from "vitest";
 import fs from "fs";
 import type { ClickHouseClient } from "@clickhouse/client-common";
-import { createTestClient } from "@test/utils/client";
+import { createSimpleTestClient } from "@test/utils/simple_client";
 import {
   blockEventLoop,
   startServerInWorker,
@@ -72,7 +72,7 @@ describe("[Node.js] SocketPool waits one timer tick before each request: server 
     eagerlyDestroyStaleSockets?: boolean,
   ): Promise<ClickHouseClient> {
     server = await startServerInWorker(serverCode);
-    client = createTestClient({
+    client = createSimpleTestClient({
       url: `http://127.0.0.1:${server.port}`,
       keep_alive: {
         enabled: true,

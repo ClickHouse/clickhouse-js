@@ -5,7 +5,7 @@ import {
   ClickHouseLogLevel,
   type ClickHouseClient,
 } from "@clickhouse/client-common";
-import { createTestClient } from "@test/utils/client";
+import { createSimpleTestClient } from "@test/utils/simple_client";
 
 // `SocketPool.request()` starts with `await sleep(0)`. This test fails without it.
 //
@@ -37,7 +37,7 @@ describe("[Node.js] SocketPool waits one timer tick before each request: loop of
         resolve((current.address() as AddressInfo).port);
       });
     });
-    client = createTestClient({
+    client = createSimpleTestClient({
       url: `http://127.0.0.1:${port}`,
       // The client logs each aborted request.
       log: { level: ClickHouseLogLevel.OFF },
