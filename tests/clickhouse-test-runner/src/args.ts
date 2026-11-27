@@ -14,6 +14,8 @@ export interface ParsedArgs {
   multiquery: boolean;
   help: boolean;
   serverSettings: Record<string, string>;
+  /** `--param_<name>=<value>`: query parameters, by name. */
+  params: Record<string, string>;
   rawArgv: string[];
 }
 
@@ -77,6 +79,7 @@ const USAGE_TEXT = [
   "      --send_logs_level VALUE  Server log level to send with result",
   "      --max_insert_threads VALUE",
   "                               Max insert threads setting",
+  "      --param_<name>=<value>   Query parameter for {<name>:<type>}",
   "  -s, --secure                 Use TLS",
   "  -m, --multiline              (ignored, accepted for compatibility)",
   '  -n, --multiquery             (ignored: multiple ";"-separated queries always run)',
@@ -138,6 +141,7 @@ export function parseArgs(
     multiquery: false,
     help: false,
     serverSettings: {},
+    params: {},
     rawArgv: [...argv],
   };
 
@@ -210,6 +214,12 @@ export function parseArgs(
             i++;
           }
         }
+      }
+      if (name.startsWith("param_") && name.length > "param_".length) {
+        // As clickhouse-client: a query parameter, not a setting.
+        parsed.params[name.slice("param_".length)] = value ?? "";
+        i++;
+        continue;
       }
       const settingName = name.split("-").join("_");
       if (classifySetting(settingName) === "server") {

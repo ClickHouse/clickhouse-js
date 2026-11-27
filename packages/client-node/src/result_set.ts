@@ -10,7 +10,8 @@ import type {
   Row,
 } from "./common/index";
 import {
-  extractErrorAtTheEndOfChunk,
+  errorFromExceptionBlock,
+  matchExceptionBlockStart,
   defaultJSONHandling,
   EXCEPTION_TAG_HEADER_NAME,
   CARET_RETURN,
@@ -26,8 +27,20 @@ import { Buffer } from "buffer";
 import type { Readable, TransformCallback } from "stream";
 import Stream, { Transform } from "stream";
 import { getAsText } from "./utils";
+import { createJSONEachRowErrorDetector } from "./common/utils/stream";
 
 const NEWLINE = 0x0a as const;
+
+/** The last byte of the incomplete row, or `undefined` if it is empty. */
+function lastByte(chunks: Buffer[]): number | undefined {
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const chunk = chunks[i]!;
+    if (chunk.length > 0) {
+      return chunk[chunk.length - 1];
+    }
+  }
+  return undefined;
+}
 
 /** {@link Stream.Readable} with additional types for the `on(data)` method and the async iterator.
  * Everything else is an exact copy from stream.d.ts */
@@ -73,6 +86,8 @@ export class ResultSet<
   private readonly log_error: (error: Error) => void;
   private readonly jsonHandling: JSONHandling;
   private _consumed = false;
+  /** The stream that {@link stream} returns, if it was called. */
+  private rowStream: RowsTransform | undefined;
   /**
    * The stream of the response body.
    *
@@ -217,19 +232,107 @@ export class ResultSet<
     validateStreamFormat(this.format);
 
     const incompleteChunks: Buffer[] = [];
+    // The bytes from the start of a row up to a `\r\n` that can open a
+    // mid-stream exception block, when the chunk ends before it is possible to
+    // decide. The first bytes of the next chunk decide.
+    let undecidedBytes: Buffer | undefined;
+    // A mid-stream exception block, collected until it is complete.
+    let exceptionBlock: Buffer | undefined;
     const logError = this.log_error;
     const exceptionTag = this.exceptionTag;
     const jsonHandling = this.jsonHandling;
+    const toRow = (bytes: Buffer): Row => {
+      const text = bytes.toString();
+      return {
+        text,
+        json<T>(): T {
+          return jsonHandling.parse(text);
+        },
+      };
+    };
+    const detectJSONError = createJSONEachRowErrorDetector(this.format);
+    const isJSONFormat = isStreamableJSONFamily(this.format as DataFormat);
+    const source = this.consume();
+    // Completes a transform step, with the server error if there is one.
+    // After an error, the rest of the response is not read: the server
+    // aborts the connection after the error, so the source is detached and
+    // destroyed. The rows before the error stay in the buffer of `toRows`
+    // until the consumer reads them; then `toRows` fails with the error.
+    const callbackAfterRows = (
+      callback: TransformCallback,
+      error: Error | undefined,
+    ) => {
+      if (error === undefined) {
+        return callback();
+      }
+      failAfterRows(error);
+      callback();
+    };
+    // The error that `failAfterRows` logged and recorded on the span.
+    let reportedError: Error | undefined;
+    const failAfterRows = (error: Error) => {
+      source.unpipe(toRows);
+      source.destroy();
+      // `toRows` is destroyed when `close()` came first, for example from a
+      // 'data' listener that `push` called: the consumer does not get the
+      // error, so it is not reported.
+      if (!toRows.failed && !toRows.destroyed) {
+        // Log the error and end the span now: the consumer can stop before
+        // it reads the rows before the error, and then `toRows` never fails.
+        reportedError = error;
+        logError(error);
+        resultSet.finishSpan(error);
+      }
+      toRows.failAfterRows(error);
+    };
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const resultSet = this;
-    const toRows = new Transform({
+    const toRows = new RowsTransform({
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
         callback: TransformCallback,
       ) {
+        if (toRows.failed) {
+          // A chunk that was buffered before the error. Ignore it.
+          return callback();
+        }
         resultSet.span_bytes += chunk.length;
+
+        if (exceptionBlock !== undefined && exceptionTag !== undefined) {
+          exceptionBlock = Buffer.concat([exceptionBlock, chunk]);
+          return callbackAfterRows(
+            callback,
+            errorFromExceptionBlock(exceptionBlock, exceptionTag),
+          );
+        }
         const rows: Row[] = [];
+
+        if (undecidedBytes !== undefined && exceptionTag !== undefined) {
+          // The kept bytes are a row, its `\r\n`, and the start of a possible
+          // exception block opening. Decide with the first bytes of the chunk.
+          const rowEnd = undecidedBytes.indexOf(NEWLINE);
+          const afterRow = undecidedBytes.subarray(rowEnd + 1);
+          if (
+            afterRow.indexOf(NEWLINE) === -1 &&
+            matchExceptionBlockStart(
+              chunk,
+              0,
+              exceptionTag,
+              afterRow.length,
+            ) === "none"
+          ) {
+            // Not an exception block: the kept row is complete, and the bytes
+            // after it start the next row. Scan the chunk without a copy.
+            rows.push(toRow(undecidedBytes.subarray(0, rowEnd)));
+            if (afterRow.length > 0) {
+              incompleteChunks.push(afterRow);
+            }
+          } else {
+            chunk = Buffer.concat([undecidedBytes, chunk]);
+          }
+          undecidedBytes = undefined;
+        }
 
         let lastIdx = 0;
         let currentChunkPart: Buffer;
@@ -246,13 +349,43 @@ export class ResultSet<
             }
             break;
           } else {
-            // Check for exception in the chunk (only after 25.11)
+            // Check for a mid-stream exception block (only after 25.11). The
+            // `\r`-before-`\n` test is a cheap pre-filter; the block is only
+            // confirmed by its opening marker and the random tag, so a stray
+            // `\r\n` in a successful response body (binary Parquet, CRLF
+            // CSV/TSV rows) is not a false positive. The block can be split
+            // across chunks: it is collected until it is complete, and its
+            // bytes are never emitted as rows.
             if (
               exceptionTag !== undefined &&
-              idx >= 1 &&
-              chunk[idx - 1] === CARET_RETURN
+              (idx > 0 ? chunk[idx - 1] : lastByte(incompleteChunks)) ===
+                CARET_RETURN
             ) {
-              return callback(extractErrorAtTheEndOfChunk(chunk, exceptionTag));
+              const match = matchExceptionBlockStart(
+                chunk,
+                idx + 1,
+                exceptionTag,
+              );
+              if (match !== "none") {
+                if (rows.length > 0) {
+                  resultSet.addSpanRows(rows.length);
+                  this.push(rows);
+                }
+                if (match === "partial") {
+                  incompleteChunks.push(chunk.subarray(lastIdx));
+                  undecidedBytes = Buffer.concat(incompleteChunks);
+                  incompleteChunks.length = 0;
+                  return callback();
+                }
+                // The rest of the response is the exception block. A row that
+                // is cut by it, if any, is incomplete and is dropped.
+                incompleteChunks.length = 0;
+                exceptionBlock = chunk.subarray(idx + 1);
+                return callbackAfterRows(
+                  callback,
+                  errorFromExceptionBlock(exceptionBlock, exceptionTag),
+                );
+              }
             }
 
             if (incompleteChunks.length > 0) {
@@ -265,15 +398,87 @@ export class ResultSet<
               currentChunkPart = chunk.subarray(lastIdx, idx);
             }
 
-            const text = currentChunkPart.toString();
-            rows.push({
-              text,
-              json<T>(): T {
-                return jsonHandling.parse(text);
-              },
-            });
+            const row = toRow(currentChunkPart);
+            const error = detectJSONError?.(row.text);
+            if (error) {
+              if (rows.length > 0) {
+                resultSet.addSpanRows(rows.length);
+                this.push(rows);
+              }
+              return callbackAfterRows(callback, error);
+            }
+            rows.push(row);
             lastIdx = idx + 1; // skipping newline character
           }
+        }
+        callback();
+      },
+      flush(callback: TransformCallback) {
+        // With an error, the callback is not called: it would end the
+        // readable side before the stream fails.
+        if (toRows.failed) {
+          return;
+        }
+        if (exceptionBlock !== undefined && exceptionTag !== undefined) {
+          const error = errorFromExceptionBlock(
+            exceptionBlock,
+            exceptionTag,
+            true,
+          );
+          return error === undefined ? callback() : failAfterRows(error);
+        }
+        if (undecidedBytes !== undefined) {
+          // The bytes are a row, its `\r\n`, and the start of a possible
+          // exception block opening (see `matchExceptionBlockStart`).
+          const rows: Row[] = [];
+          if (sourceError === undefined) {
+            // The response ended before these bytes could complete an
+            // exception block opening. Without the tag, they cannot be told
+            // from data, so they are rows (e.g. the end of a CRLF-terminated
+            // CSV/TSV response).
+            let lastIdx = 0;
+            while (true) {
+              const idx = undecidedBytes.indexOf(NEWLINE, lastIdx);
+              if (idx === -1) {
+                // The bytes after the last newline are not a complete row.
+                // They are dropped, the same as `incompleteChunks` at the end.
+                break;
+              }
+              rows.push(toRow(undecidedBytes.subarray(lastIdx, idx)));
+              lastIdx = idx + 1;
+            }
+          } else {
+            // A network error cut the response here, so the bytes can be
+            // cut data or a cut exception block opening: no rule can tell
+            // every case. The bytes after the `\r\n` are dropped (they are
+            // an incomplete row, or the marker). The row before it is kept:
+            // it is a complete CRLF row. Except: in JSON formats, a row never
+            // ends with `\r`; and an empty row followed by marker bytes is
+            // the opening after a complete row.
+            const rowEnd = undecidedBytes.indexOf(NEWLINE);
+            const hasMarkerBytes = rowEnd + 1 < undecidedBytes.length;
+            const isEmptyRow = rowEnd === 1; // only the `\r`
+            if (!isJSONFormat && !(isEmptyRow && hasMarkerBytes)) {
+              rows.push(toRow(undecidedBytes.subarray(0, rowEnd)));
+            }
+          }
+          if (rows.length > 0) {
+            resultSet.addSpanRows(rows.length);
+            this.push(rows);
+          }
+        }
+        if (detectJSONError !== undefined && incompleteChunks.length > 0) {
+          // An error row is the last row, and the server can end the
+          // response without a newline after it.
+          const error = detectJSONError(
+            Buffer.concat(incompleteChunks).toString(),
+          );
+          if (error !== undefined) {
+            return failAfterRows(error);
+          }
+        }
+        if (sourceError !== undefined) {
+          return failAfterRows(sourceError);
         }
         callback();
       },
@@ -281,23 +486,53 @@ export class ResultSet<
       objectMode: true,
     });
 
-    const pipeline = Stream.pipeline(
-      this.consume(),
-      toRows,
-      function pipelineCb(err) {
-        if (
-          err &&
-          err.name !== "AbortError" &&
-          err.message !== resultSetClosedMessage
-        ) {
-          logError(err);
-          resultSet.finishSpan(err);
-        } else {
-          resultSet.finishSpan();
-        }
-      },
-    );
-    return pipeline as any;
+    // Not `Stream.pipeline`: it destroys `toRows` when the source fails, and
+    // a destroyed stream discards the rows in its buffer. The server aborts
+    // the connection after a mid-stream error. With a slow consumer, the
+    // chunk with the error can still be in the write buffer of `toRows` at
+    // that time. Thus, `toRows` first processes the chunks that it has, and
+    // fails with the server error, if it finds one, or with the source error.
+    let sourceError: Error | undefined;
+    // `finished` also reports a source that is already destroyed, and a
+    // source that closes with no error (`ERR_STREAM_PREMATURE_CLOSE`).
+    // It calls back in the 'error' event, while the source has its buffer.
+    Stream.finished(source, { writable: false }, (err) => {
+      if (!err || toRows.failed || toRows.writableEnded) {
+        return;
+      }
+      if (err.name === "AbortError" || err.message === resultSetClosedMessage) {
+        // The caller stopped the query: do not give more rows.
+        toRows.destroy(err);
+        return;
+      }
+      sourceError = err;
+      source.unpipe(toRows);
+      // A destroyed stream discards its buffer, but still has it when it
+      // emits 'error'. With a slow consumer, the buffer holds the end of the
+      // response, with the server error.
+      for (let chunk = source.read(); chunk !== null; chunk = source.read()) {
+        toRows.write(chunk);
+      }
+      toRows.end();
+    });
+    // Releases the socket when the consumer stops before the end.
+    toRows.on("close", () => source.destroy());
+    Stream.finished(toRows, { readable: false }, (err) => {
+      if (
+        err &&
+        err !== reportedError &&
+        err.name !== "AbortError" &&
+        err.message !== resultSetClosedMessage
+      ) {
+        logError(err);
+        resultSet.finishSpan(err);
+      } else {
+        resultSet.finishSpan();
+      }
+    });
+    source.pipe(toRows);
+    this.rowStream = toRows;
+    return toRows as any;
   }
 
   /** See {@link BaseResultSet.close}. */
@@ -312,6 +547,11 @@ export class ResultSet<
     if (!this._stream.destroyed) {
       this._stream.on("error", ignoreClosureError);
       this._stream.destroy(new Error(resultSetClosedMessage));
+    }
+    // After a mid-stream error, the source is already destroyed, but the
+    // stream of rows can still have rows and the pending error.
+    if (this.rowStream !== undefined && !this.rowStream.destroyed) {
+      this.rowStream.destroy(new Error(resultSetClosedMessage));
     }
     this.finishSpan();
   }
@@ -345,6 +585,54 @@ export class ResultSet<
       jsonHandling,
       span,
     );
+  }
+}
+
+/**
+ * A `Transform` that fails with a mid-stream error only after the consumer
+ * reads the rows in its buffer. A destroyed stream discards its buffer, so
+ * `callback(err)` in `transform` drops the rows that the consumer has not
+ * read yet, for example when the consumer is slower than the network.
+ */
+class RowsTransform extends Transform {
+  private pendingError: Error | undefined;
+
+  /** `true` after {@link failAfterRows}. */
+  get failed(): boolean {
+    return this.pendingError !== undefined;
+  }
+
+  /** Fails the stream with `error` when its buffer is empty. The first error
+   *  is kept. */
+  failAfterRows(error: Error): void {
+    this.pendingError ??= error;
+    this.failIfRead();
+  }
+
+  // All the read paths (`for await`, `'data'`, `'readable'` with `read()`,
+  // `pipe`) call `read()`. When it returns the last rows, the stream fails
+  // after the caller gets them: a caller that reads once for each
+  // 'readable' event does not call `read()` again.
+  override read(size?: number) {
+    const result = super.read(size);
+    if (this.pendingError !== undefined && this.readableLength === 0) {
+      if (result === null) {
+        this.failIfRead();
+      } else {
+        process.nextTick(() => this.failIfRead());
+      }
+    }
+    return result;
+  }
+
+  private failIfRead(): void {
+    if (
+      this.pendingError !== undefined &&
+      this.readableLength === 0 &&
+      !this.destroyed
+    ) {
+      this.destroy(this.pendingError);
+    }
   }
 }
 
