@@ -15,6 +15,7 @@ import type {
 } from "../common/index";
 import {
   buildMultipartBody,
+  extractIdentifierParams,
   serializeQueryParamsForUrl,
   formatQueryParams,
   isCredentialsAuth,
@@ -206,7 +207,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       (params.use_multipart_params_auto ??
         this.params.use_multipart_params_auto)
     ) {
-      const entries = serializeQueryParamsForUrl(queryParams);
+      const entries = serializeQueryParamsForUrl(queryParams, params.query);
       if (entries === null) {
         useMultipart = true;
       } else {
@@ -219,6 +220,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
       // When using multipart, query_params are sent in the multipart body
       query_params: useMultipart ? undefined : params.query_params,
       param_entries: urlParamEntries,
+      query_text: params.query,
       session_id: params.session_id,
       clickhouse_settings,
       query_id,
@@ -244,8 +246,12 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     if (useMultipart && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
       const parts: Record<string, string> = { query: params.query };
+      const identifierParams = extractIdentifierParams(params.query);
       for (const [key, value] of Object.entries(params.query_params)) {
-        parts[`param_${key}`] = formatQueryParams({ value });
+        parts[`param_${key}`] = formatQueryParams({
+          value,
+          escapeString: !identifierParams.has(key),
+        });
       }
       body = buildMultipartBody(parts, boundary);
       headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
@@ -561,6 +567,7 @@ export abstract class NodeBaseConnection implements Connection<Stream.Readable> 
     );
     const toSearchParamsOptions = {
       query: sendQueryInParams ? params.query : undefined,
+      query_text: params.query,
       database: this.params.database,
       query_params: params.query_params,
       session_id: params.session_id,

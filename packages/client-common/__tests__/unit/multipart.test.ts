@@ -157,4 +157,17 @@ describe("serializeQueryParamsForUrl", () => {
       }),
     ).toBeNull();
   });
+
+  it("should skip string escaping only for Identifier parameters when query is provided", () => {
+    const raw = "it's\\col\tx";
+    expect(
+      serializeQueryParamsForUrl(
+        { name: raw, text: raw },
+        "SELECT 1 AS {name:Identifier} WHERE s = {text:String}",
+      ),
+    ).toEqual([
+      ["param_name", raw],
+      ["param_text", "it\\'s\\\\col\\tx"],
+    ]);
+  });
 });

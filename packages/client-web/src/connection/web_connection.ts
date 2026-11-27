@@ -12,6 +12,7 @@ import type {
 } from "../common/index";
 import {
   buildMultipartBody,
+  extractIdentifierParams,
   serializeQueryParamsForUrl,
   formatQueryParams,
   isCredentialsAuth,
@@ -77,7 +78,7 @@ export class WebConnection implements Connection<ReadableStream> {
       (params.use_multipart_params_auto ??
         this.params.use_multipart_params_auto)
     ) {
-      const entries = serializeQueryParamsForUrl(queryParams);
+      const entries = serializeQueryParamsForUrl(queryParams, params.query);
       if (entries === null) {
         useMultipart = true;
       } else {
@@ -90,6 +91,7 @@ export class WebConnection implements Connection<ReadableStream> {
       clickhouse_settings,
       query_params: useMultipart ? undefined : params.query_params,
       param_entries: urlParamEntries,
+      query_text: params.query,
       session_id: params.session_id,
       role: params.role,
       query_id,
@@ -106,8 +108,12 @@ export class WebConnection implements Connection<ReadableStream> {
     if (useMultipart && params.query_params !== undefined) {
       const boundary = `----clickhouse-js-${crypto.randomUUID()}`;
       const multipartParts: Record<string, string> = { query: params.query };
+      const identifierParams = extractIdentifierParams(params.query);
       for (const [key, value] of Object.entries(params.query_params)) {
-        multipartParts[`param_${key}`] = formatQueryParams({ value });
+        multipartParts[`param_${key}`] = formatQueryParams({
+          value,
+          escapeString: !identifierParams.has(key),
+        });
       }
       body = buildMultipartBody(multipartParts, boundary);
       headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
@@ -302,6 +308,7 @@ export class WebConnection implements Connection<ReadableStream> {
       database: this.params.database,
       clickhouse_settings: params.clickhouse_settings,
       query_params: params.query_params,
+      query_text: params.query,
       session_id: params.session_id,
       role: params.role,
       query_id,

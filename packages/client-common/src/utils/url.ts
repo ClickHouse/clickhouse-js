@@ -1,4 +1,8 @@
-import { formatQueryParams, formatQuerySettings } from "../data_formatter";
+import {
+  extractIdentifierParams,
+  formatQueryParams,
+  formatQuerySettings,
+} from "../data_formatter";
 import type { ClickHouseSettings } from "../settings";
 
 export function transformUrl({
@@ -38,6 +42,8 @@ interface ToSearchParamsOptions {
    *  used as-is instead of serializing {@link query_params} again. */
   param_entries?: [string, string][];
   query?: string;
+  /** SQL query text used only to inspect parameter types (not sent in URL search params). */
+  query_text?: string;
   session_id?: string;
   query_id: string;
   role?: string | Array<string>;
@@ -46,6 +52,7 @@ interface ToSearchParamsOptions {
 export function toSearchParams({
   database,
   query,
+  query_text,
   query_params,
   param_entries,
   clickhouse_settings,
@@ -60,8 +67,12 @@ export function toSearchParams({
   } else {
     entries = [["query_id", query_id]];
     if (query_params !== undefined) {
+      const identifierParams = extractIdentifierParams(query_text ?? query);
       for (const [key, value] of Object.entries(query_params)) {
-        const formattedParam = formatQueryParams({ value });
+        const formattedParam = formatQueryParams({
+          value,
+          escapeString: !identifierParams.has(key),
+        });
         entries.push([`param_${key}`, formattedParam]);
       }
     }

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { formatQueryParams, TupleParam } from "../../src/index";
+import {
+  extractIdentifierParams,
+  formatQueryParams,
+  TupleParam,
+} from "../../src/index";
 
 describe("formatQueryParams", () => {
   it("formats null", () => {
@@ -296,5 +300,66 @@ describe("formatQueryParams", () => {
         value: [new Date(Date.UTC(2023, 4, 5)), "foo", 42, null],
       }),
     ).toBe("['2023-05-05','foo',42,NULL]");
+  });
+
+  it("leaves top-level strings unescaped when escapeString is false", () => {
+    const raw = "e\\f'g\th\ni\rj`k";
+    expect(
+      formatQueryParams({
+        value: raw,
+        escapeString: false,
+      }),
+    ).toBe(raw);
+    expect(
+      formatQueryParams({
+        value: ["it's\\a"],
+        escapeString: false,
+      }),
+    ).toBe("['it\\'s\\\\a']");
+  });
+});
+
+describe("extractIdentifierParams", () => {
+  it("extracts Identifier placeholders including whitespace around tokens", () => {
+    const ids = extractIdentifierParams(
+      "SELECT 1 AS {name:Identifier}, {  col_1 : Identifier  }, {val:String}",
+    );
+    expect([...ids].sort()).toEqual(["col_1", "name"]);
+  });
+
+  it("excludes parameter names also bound to non-Identifier types", () => {
+    const ids = extractIdentifierParams(
+      "SELECT 1 AS {x:Identifier} WHERE y = {x:String}",
+    );
+    expect(ids.size).toBe(0);
+  });
+
+  it("ignores placeholders inside SQL quotes, comments, and dollar-quoted strings", () => {
+    const query = [
+      "SELECT",
+      "  '{in_sq:Identifier}',",
+      "  'escaped\\'quote {in_sq_esc:Identifier} ''doubled'' {in_sq_dbl:Identifier}',",
+      '  "{in_dq:Identifier}",',
+      "  `{in_bt:Identifier}`,",
+      "  -- {in_dash_comment:Identifier}",
+      "  // {in_slash_comment:Identifier}",
+      "  #! {in_shebang_comment:Identifier}",
+      "  # {in_hash_comment:Identifier}",
+      "  /* outer /* nested {in_block_comment:Identifier} */ still comment {still:Identifier} */",
+      "  $tag${in_dollar:Identifier}$tag$,",
+      "  $${in_empty_dollar:Identifier}$$,",
+      "  1 AS {real_col:Identifier}",
+    ].join("\n");
+    expect([...extractIdentifierParams(query)]).toEqual(["real_col"]);
+  });
+
+  it("handles quoted braces inside placeholder type arguments", () => {
+    const withFakeInEnum =
+      "SELECT {e:Enum8('} {value:Identifier}' = 1)}, {value:String}";
+    expect(extractIdentifierParams(withFakeInEnum).size).toBe(0);
+
+    const followedByIdentifier =
+      "SELECT {e:Enum8('}''{' = 1)}, 1 AS {col:Identifier}";
+    expect([...extractIdentifierParams(followedByIdentifier)]).toEqual(["col"]);
   });
 });

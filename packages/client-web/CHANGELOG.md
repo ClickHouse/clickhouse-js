@@ -13,6 +13,7 @@
 - `ResultSet.stream()` and `ResultSet.json()` now detect in-band error rows in `JSONEachRow` and `JSONStringsEachRow` when `http_write_exception_in_output_format` is enabled. They report the server error instead of returning it as data, including when `exception` is the only result column. Real data in a column named `exception` stays as data, even if its value looks like a server error. ([#1168])
 - Export the `ResultStream`, `WithResponseHeaders`, `PingParamsWithEndpoint` and `PingParamsWithSelectQuery` types from `@clickhouse/client-web`. The public API uses them: `ResultStream` is the return type of `ResultSet.stream()`, `WithResponseHeaders` is part of `CommandResult` and `ExecResult`, and the two ping types are the members of the `PingParams` union. Before, you could not import them from the package root. This completes the fix for [#997] that started in [#1024]. Thanks to [@Saitgalin](https://github.com/Saitgalin), who found these types in [#998]. ([#1119])
 - In `JSONEachRow` and `JSONStringsEachRow`, an in-band error row at the end of the response with no newline after it is now detected. Before, the client did not read the bytes after the last newline, so the result was incomplete and there was no error. ClickHouse writes the newline, so this is a defensive fix. ([#1182])
+- String values bound to `{name:Identifier}` `query_params` are no longer string-escaped with backslashes when sent in URL search params or multipart form bodies. Previously, quotes, backslashes, tabs, and newlines in `Identifier` values were escaped as string literals, causing aliases and dynamic column lookups to miss or include literal backslashes. ([#1238])
 
 [#975]: https://github.com/ClickHouse/clickhouse-js/pull/975
 [#997]: https://github.com/ClickHouse/clickhouse-js/issues/997
@@ -24,6 +25,7 @@
 [#1174]: https://github.com/ClickHouse/clickhouse-js/pull/1174
 [#1181]: https://github.com/ClickHouse/clickhouse-js/pull/1181
 [#1182]: https://github.com/ClickHouse/clickhouse-js/pull/1182
+[#1238]: https://github.com/ClickHouse/clickhouse-js/pull/1238
 
 # 1.25.0
 

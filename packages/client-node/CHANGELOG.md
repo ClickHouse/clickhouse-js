@@ -19,6 +19,7 @@
 - (Node.js only) With Node.js 24.22.0 and later 24.x releases, and with Node.js 26.9.0 and later 26.x releases, an insert from an object-mode stream (for example `JSONEachRow`) with non-ASCII text, such as `é` or `日本語`, could stop after about 64 KiB of the request body and fail with a timeout. The cause is a bug in `http.ClientRequest` of these Node.js releases ([nodejs/node#66781]): it waited for a `'drain'` event that did not come when the client wrote strings. The client now writes the encoded rows as Buffers. Earlier Node.js releases, for example 22.x, were not affected. Node.js fixed the bug in [nodejs/node#66782], but Node.js 24.22.3 and 26.13.1 do not have that fix. ([#1148])
 - (Node.js only) `ResultSet.stream()` and `ResultSet.json()` no longer lose rows when a mid-stream error comes and the consumer is slower than the network. Before, the stream failed when the client found the error, and Node.js then discarded the rows that the consumer did not read yet. Also, the server closes the connection after the error, and the response stream discarded its buffer, which can hold the end of the response with the error: the consumer then got `Error: aborted` (`ECONNRESET`) instead of the `ClickHouseError`. Now the consumer gets all the rows before the error, then the server error, with `for await`, `'data'` listeners and `'readable'` with `read()`, also with response compression. In our test (100k rows, then the error, 1 ms for each batch), the old client failed with `Error: aborted` after 77–79% of the rows, and with gzip compression after 27–55% of the rows. A network error also comes after the rows that were received before it. ([#1182])
 - In `JSONEachRow` and `JSONStringsEachRow`, an in-band error row at the end of the response with no newline after it is now detected. Before, the client did not read the bytes after the last newline, so the result was incomplete and there was no error. ClickHouse writes the newline, so this is a defensive fix. ([#1182])
+- String values bound to `{name:Identifier}` `query_params` are no longer string-escaped with backslashes when sent in URL search params or multipart form bodies. Previously, quotes, backslashes, tabs, and newlines in `Identifier` values were escaped as string literals, causing aliases and dynamic column lookups to miss or include literal backslashes. ([#1238])
 
 [#975]: https://github.com/ClickHouse/clickhouse-js/pull/975
 [#988]: https://github.com/ClickHouse/clickhouse-js/issues/988
@@ -32,6 +33,7 @@
 [#1174]: https://github.com/ClickHouse/clickhouse-js/pull/1174
 [#1181]: https://github.com/ClickHouse/clickhouse-js/pull/1181
 [#1182]: https://github.com/ClickHouse/clickhouse-js/pull/1182
+[#1238]: https://github.com/ClickHouse/clickhouse-js/pull/1238
 [nodejs/node#66781]: https://github.com/nodejs/node/issues/66781
 [nodejs/node#66782]: https://github.com/nodejs/node/pull/66782
 

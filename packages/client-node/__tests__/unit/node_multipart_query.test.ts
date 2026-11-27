@@ -298,4 +298,119 @@ describe("[Node.js] Multipart query params", () => {
       expect(options.headers["Content-Type"]).toBeUndefined();
     });
   });
+
+  describe("Identifier parameter serialization", () => {
+    const rawIdentifier = "it's\\col\t1";
+    const escapedString = "it\\'s\\\\col\\t1";
+    const identifierQuery =
+      "SELECT 1 AS {name:Identifier} WHERE s = {text:String}";
+
+    it("should leave Identifier param unescaped in URL mode", async () => {
+      const adapter = buildHttpConnection({});
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const selectPromise = adapter.query({
+        query: identifierQuery,
+        query_params: { name: rawIdentifier, text: rawIdentifier },
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url] = httpRequestStub.mock.calls[0];
+      expect(url.searchParams.get("query")).toBeNull();
+      expect(url.searchParams.get("param_name")).toBe(rawIdentifier);
+      expect(url.searchParams.get("param_text")).toBe(escapedString);
+    });
+
+    it("should leave Identifier param unescaped in multipart body mode", async () => {
+      vi.restoreAllMocks();
+      let receivedBody = "";
+      const server = Http.createServer((req, res) => {
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk: Buffer) => chunks.push(chunk));
+        req.on("end", () => {
+          receivedBody = Buffer.concat(chunks).toString("utf8");
+          res.writeHead(200, { "x-clickhouse-query-id": "test-id" });
+          res.end("ok");
+        });
+      });
+      await new Promise<void>((resolve) =>
+        server.listen(0, "127.0.0.1", resolve),
+      );
+      const { port } = server.address() as { port: number };
+      const adapter = buildHttpConnection({
+        url: new URL(`http://127.0.0.1:${port}`),
+        compression: {
+          decompress_response: undefined,
+          compress_request: undefined,
+        },
+        use_multipart_params: true,
+      });
+      try {
+        const result = await adapter.query({
+          query: identifierQuery,
+          query_params: { name: rawIdentifier, text: rawIdentifier },
+        });
+        await new Promise<void>((resolve) => {
+          result.stream.on("end", resolve);
+          result.stream.resume();
+        });
+      } finally {
+        server.closeAllConnections();
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      }
+
+      expect(receivedBody).toContain(
+        `Content-Disposition: form-data; name="param_name"\r\n\r\n${rawIdentifier}\r\n`,
+      );
+      expect(receivedBody).toContain(
+        `Content-Disposition: form-data; name="param_text"\r\n\r\n${escapedString}\r\n`,
+      );
+    });
+
+    it("should leave Identifier param unescaped with use_multipart_params_auto", async () => {
+      const adapter = buildHttpConnection({
+        use_multipart_params_auto: true,
+      });
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const selectPromise = adapter.query({
+        query: identifierQuery,
+        query_params: { name: rawIdentifier, text: rawIdentifier },
+      });
+      await emitResponseBody(request, "ok");
+      await selectPromise;
+
+      const [url, options] = httpRequestStub.mock.calls[0];
+      expect(options.headers["Content-Type"]).toBeUndefined();
+      expect(url.searchParams.get("param_name")).toBe(rawIdentifier);
+      expect(url.searchParams.get("param_text")).toBe(escapedString);
+    });
+
+    it("should leave Identifier param unescaped in command() URL params", async () => {
+      const adapter = buildHttpConnection({});
+      const request = stubClientRequest();
+      const httpRequestStub = vi
+        .spyOn(Http, "request")
+        .mockReturnValue(request);
+
+      const cmdPromise = adapter.command({
+        query: "SELECT 1 AS {name:Identifier} WHERE s = {text:String}",
+        query_params: { name: rawIdentifier, text: rawIdentifier },
+      });
+      await emitResponseBody(request, "ok");
+      await cmdPromise;
+
+      const [url] = httpRequestStub.mock.calls[0];
+      expect(url.searchParams.get("query")).toBeNull();
+      expect(url.searchParams.get("param_name")).toBe(rawIdentifier);
+      expect(url.searchParams.get("param_text")).toBe(escapedString);
+    });
+  });
 });

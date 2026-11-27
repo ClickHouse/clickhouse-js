@@ -9,11 +9,13 @@ export function formatQueryParams({
   value,
   wrapStringInQuotes,
   printNullAsKeyword,
+  escapeString,
 }: FormatQueryParamsOptions): string {
   return formatQueryParamsInternal({
     value,
     wrapStringInQuotes,
     printNullAsKeyword,
+    escapeString,
     isInArrayOrTuple: false,
   });
 }
@@ -22,6 +24,7 @@ function formatQueryParamsInternal({
   value,
   wrapStringInQuotes,
   printNullAsKeyword,
+  escapeString = true,
   isInArrayOrTuple,
 }: FormatQueryParamsOptions & { isInArrayOrTuple: boolean }): string {
   if (value === null || value === undefined) {
@@ -41,6 +44,9 @@ function formatQueryParamsInternal({
     return value ? "1" : "0";
   }
   if (typeof value === "string") {
+    if (!escapeString) {
+      return wrapStringInQuotes ? `'${value}'` : value;
+    }
     let result = "";
     for (let i = 0; i < value.length; i++) {
       switch (value.charCodeAt(i)) {
@@ -152,6 +158,169 @@ interface FormatQueryParamsOptions {
   wrapStringInQuotes?: boolean;
   // For tuples/arrays, it is required to print NULL instead of \N
   printNullAsKeyword?: boolean;
+  // Set to false for {name:Identifier} placeholders sent verbatim by the server.
+  escapeString?: boolean;
+}
+
+const EMPTY_IDENTIFIER_PARAMS: ReadonlySet<string> = new Set();
+const DOLLAR_TAG_RE = /\$[A-Za-z0-9_]*\$/y;
+const WHITESPACE_RE = /\s/;
+const INVALID_NAME_CHAR_RE = /[\s:{}'"`\\]/;
+
+function startsLineComment(query: string, index: number): boolean {
+  return (
+    query.startsWith("--", index) ||
+    query.startsWith("//", index) ||
+    query.startsWith("#!", index) ||
+    query.startsWith("# ", index)
+  );
+}
+
+function parsePlaceholder(
+  query: string,
+  openBrace: number,
+): { name: string; type: string; end: number } | null {
+  const len = query.length;
+  let i = openBrace + 1;
+
+  while (i < len && WHITESPACE_RE.test(query[i] ?? "")) {
+    i++;
+  }
+  const nameStart = i;
+  while (i < len && !INVALID_NAME_CHAR_RE.test(query[i] ?? "")) {
+    i++;
+  }
+  if (i === nameStart) {
+    return null;
+  }
+  const name = query.slice(nameStart, i);
+
+  while (i < len && WHITESPACE_RE.test(query[i] ?? "")) {
+    i++;
+  }
+  if (query[i] !== ":") {
+    return null;
+  }
+  i++;
+
+  const typeStart = i;
+  while (i < len) {
+    const ch = query[i];
+    if (ch === "'" || ch === '"' || ch === "`") {
+      i = skipQuotedToken(query, i, ch);
+      continue;
+    }
+    if (ch === "{") {
+      return null;
+    }
+    if (ch === "}") {
+      const type = query.slice(typeStart, i).trim();
+      return type ? { name, type, end: i + 1 } : null;
+    }
+    i++;
+  }
+  return null;
+}
+
+function skipQuotedToken(query: string, start: number, quote: string): number {
+  let i = start + 1;
+  const len = query.length;
+  while (i < len) {
+    const ch = query[i];
+    if (ch === "\\") {
+      i += 2;
+    } else if (ch === quote) {
+      if (i + 1 < len && query[i + 1] === quote) {
+        i += 2;
+      } else {
+        return i + 1;
+      }
+    } else {
+      i++;
+    }
+  }
+  return len;
+}
+
+function skipBlockComment(query: string, start: number): number {
+  let depth = 1;
+  let i = start + 2;
+  const len = query.length;
+  while (i < len && depth > 0) {
+    if (query[i] === "/" && query[i + 1] === "*") {
+      depth++;
+      i += 2;
+    } else if (query[i] === "*" && query[i + 1] === "/") {
+      depth--;
+      i += 2;
+    } else {
+      i++;
+    }
+  }
+  return i;
+}
+
+/** Return parameter names bound exclusively to `{name:Identifier}` placeholders. */
+export function extractIdentifierParams(
+  query: string | undefined,
+): ReadonlySet<string> {
+  if (!query || !query.includes("Identifier")) {
+    return EMPTY_IDENTIFIER_PARAMS;
+  }
+
+  const identifierParams = new Set<string>();
+  const otherParams = new Set<string>();
+  const len = query.length;
+  let i = 0;
+
+  while (i < len) {
+    const ch = query[i];
+    if (ch === "'" || ch === '"' || ch === "`") {
+      i = skipQuotedToken(query, i, ch);
+      continue;
+    }
+    if (startsLineComment(query, i)) {
+      const nl = query.indexOf("\n", i + 2);
+      i = nl === -1 ? len : nl + 1;
+      continue;
+    }
+    if (ch === "/" && query[i + 1] === "*") {
+      i = skipBlockComment(query, i);
+      continue;
+    }
+    if (ch === "$") {
+      DOLLAR_TAG_RE.lastIndex = i;
+      const tagMatch = DOLLAR_TAG_RE.exec(query);
+      if (tagMatch) {
+        const tag = tagMatch[0];
+        const closeIdx = query.indexOf(tag, i + tag.length);
+        if (closeIdx !== -1) {
+          i = closeIdx + tag.length;
+          continue;
+        }
+      }
+      i++;
+      continue;
+    }
+    if (ch === "{") {
+      const parsed = parsePlaceholder(query, i);
+      if (parsed !== null) {
+        if (parsed.type === "Identifier") {
+          identifierParams.add(parsed.name);
+        } else {
+          otherParams.add(parsed.name);
+        }
+        i = parsed.end;
+        continue;
+      }
+    }
+    i++;
+  }
+
+  for (const name of otherParams) {
+    identifierParams.delete(name);
+  }
+  return identifierParams;
 }
 
 const TabASCII = 9;
