@@ -46,3 +46,12 @@ example the per-request `use_multipart_params` resolution and the `param_*` mult
 loop. **Do not flag this node/web duplication as something to consolidate**, and prefer keeping each
 client self-contained over adding shared helpers that only exist to remove the duplication. Genuinely
 platform-agnostic primitives (like `buildMultipartBody`) still belong in `client-common`.
+
+## Unchecked escapes
+
+Each `as` cast, non-null assertion (`!`) or `Buffer.allocUnsafe` gets a `// SAFETY:` comment that names the earlier check that makes it sound. Prefer a documented `!` to `@ts-ignore` or to a second defensive `throw`.
+
+```ts
+// SAFETY: split.length === 2 is checked above
+const [name, type] = split as [string, string];
+```

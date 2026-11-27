@@ -27,7 +27,18 @@ To classify an issue (its impacts, its area, and its native classes), follow [`.
 
 A vulnerability that is not public yet goes into a private security report (**Security** → **Report a vulnerability**), never into an issue or a pull request. The classification skill defines such a vulnerability, and the priority skill says how to handle the public issue.
 
+## When writing code, docs and comments
+
+These rules come from review feedback that contributors accepted again and again:
+
+- Docs, skills and evals name only things that exist in the repository: skills under `skills/`, packages by their published names (`@clickhouse/client`, not `@clickhouse/client-node`), workflow file names, manifest fields and page slugs.
+- When you change code, update the comments that describe it (numbers, the use of a function). Remove dead code together with its docs. Keep the format of logged fields that other tools parse.
+- Run `npx prettier --write` on every file that you add or change: CI runs `npm run prettier:check` on the whole repository.
+- Keep each PR to one concern. Put unrelated renames or restructuring into a separate PR. Start a non-trivial feature, or a change to low-level behavior, with an issue.
+
 ## When reviewing code changes
+
+To review a change locally (your own branch, a PR, or uncommitted changes), follow [`.claude/skills/review/SKILL.md`](.claude/skills/review/SKILL.md). The review criteria are in [`.claude/skills/review/review-core.md`](.claude/skills/review/review-core.md). The aspects below are the minimum that every review evaluates.
 
 For every pull request review, make sure to provide an evaluation of the following aspects:
 
