@@ -164,7 +164,63 @@ interface FormatQueryParamsOptions {
 
 const EMPTY_IDENTIFIER_PARAMS: ReadonlySet<string> = new Set();
 const DOLLAR_TAG_RE = /\$[A-Za-z0-9_]*\$/y;
-const PLACEHOLDER_RE = /\s*([^\s:{}'"`\\]+)\s*:\s*([^{}]+?)\s*\}/y;
+const WHITESPACE_RE = /\s/;
+const INVALID_NAME_CHAR_RE = /[\s:{}'"`\\]/;
+
+function startsLineComment(query: string, index: number): boolean {
+  return (
+    query.startsWith("--", index) ||
+    query.startsWith("//", index) ||
+    query.startsWith("#!", index) ||
+    query.startsWith("# ", index)
+  );
+}
+
+function parsePlaceholder(
+  query: string,
+  openBrace: number,
+): { name: string; type: string; end: number } | null {
+  const len = query.length;
+  let i = openBrace + 1;
+
+  while (i < len && WHITESPACE_RE.test(query[i] ?? "")) {
+    i++;
+  }
+  const nameStart = i;
+  while (i < len && !INVALID_NAME_CHAR_RE.test(query[i] ?? "")) {
+    i++;
+  }
+  if (i === nameStart) {
+    return null;
+  }
+  const name = query.slice(nameStart, i);
+
+  while (i < len && WHITESPACE_RE.test(query[i] ?? "")) {
+    i++;
+  }
+  if (query[i] !== ":") {
+    return null;
+  }
+  i++;
+
+  const typeStart = i;
+  while (i < len) {
+    const ch = query[i];
+    if (ch === "'" || ch === '"' || ch === "`") {
+      i = skipQuotedToken(query, i, ch);
+      continue;
+    }
+    if (ch === "{") {
+      return null;
+    }
+    if (ch === "}") {
+      const type = query.slice(typeStart, i).trim();
+      return type ? { name, type, end: i + 1 } : null;
+    }
+    i++;
+  }
+  return null;
+}
 
 function skipQuotedToken(query: string, start: number, quote: string): number {
   let i = start + 1;
@@ -223,7 +279,7 @@ export function extractIdentifierParams(
       i = skipQuotedToken(query, i, ch);
       continue;
     }
-    if (ch === "-" && query[i + 1] === "-") {
+    if (startsLineComment(query, i)) {
       const nl = query.indexOf("\n", i + 2);
       i = nl === -1 ? len : nl + 1;
       continue;
@@ -247,16 +303,14 @@ export function extractIdentifierParams(
       continue;
     }
     if (ch === "{") {
-      PLACEHOLDER_RE.lastIndex = i + 1;
-      const match = PLACEHOLDER_RE.exec(query);
-      const name = match?.[1];
-      if (match && name !== undefined) {
-        if (match[2] === "Identifier") {
-          identifierParams.add(name);
+      const parsed = parsePlaceholder(query, i);
+      if (parsed !== null) {
+        if (parsed.type === "Identifier") {
+          identifierParams.add(parsed.name);
         } else {
-          otherParams.add(name);
+          otherParams.add(parsed.name);
         }
-        i = PLACEHOLDER_RE.lastIndex;
+        i = parsed.end;
         continue;
       }
     }

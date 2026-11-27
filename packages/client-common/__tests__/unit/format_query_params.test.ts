@@ -341,12 +341,25 @@ describe("extractIdentifierParams", () => {
       "  'escaped\\'quote {in_sq_esc:Identifier} ''doubled'' {in_sq_dbl:Identifier}',",
       '  "{in_dq:Identifier}",',
       "  `{in_bt:Identifier}`,",
-      "  -- {in_line_comment:Identifier}",
+      "  -- {in_dash_comment:Identifier}",
+      "  // {in_slash_comment:Identifier}",
+      "  #! {in_shebang_comment:Identifier}",
+      "  # {in_hash_comment:Identifier}",
       "  /* outer /* nested {in_block_comment:Identifier} */ still comment {still:Identifier} */",
       "  $tag${in_dollar:Identifier}$tag$,",
       "  $${in_empty_dollar:Identifier}$$,",
       "  1 AS {real_col:Identifier}",
     ].join("\n");
     expect([...extractIdentifierParams(query)]).toEqual(["real_col"]);
+  });
+
+  it("handles quoted braces inside placeholder type arguments", () => {
+    const withFakeInEnum =
+      "SELECT {e:Enum8('} {value:Identifier}' = 1)}, {value:String}";
+    expect(extractIdentifierParams(withFakeInEnum).size).toBe(0);
+
+    const followedByIdentifier =
+      "SELECT {e:Enum8('}''{' = 1)}, 1 AS {col:Identifier}";
+    expect([...extractIdentifierParams(followedByIdentifier)]).toEqual(["col"]);
   });
 });
