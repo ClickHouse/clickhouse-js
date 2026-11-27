@@ -122,7 +122,7 @@ export class SocketPool {
     // Tests that fail without it: `__tests__/integration/node_socket_pool_yield_*.test.ts` and,
     // in `node_abort_request.test.ts`, "cancels a select query before it is sent" and
     // "cancels an insert query before it is sent".
-    // The pull request that added this comment has the measurements.
+    // The measurements: https://github.com/ClickHouse/clickhouse-js/pull/1239
     await sleep(0);
     const { log_writer, query_id, log_level } = params;
     const currentStackTrace = this.params.capture_enhanced_stack_trace
