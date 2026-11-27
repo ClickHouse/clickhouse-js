@@ -106,8 +106,23 @@ export class SocketPool {
     params: RequestParams,
     op: ConnOperation,
   ): Promise<RequestResult> {
-    // allows the event loop to process the idle socket timers, if the CPU load is high
-    // otherwise, we can occasionally get an expired socket, see https://github.com/ClickHouse/clickhouse-js/issues/294
+    // Wait for one timer tick (Node.js makes `setTimeout(0)` 1 ms) before each request.
+    // It costs about 1 ms per request. Do not remove it: before the agent picks a free socket,
+    // the event loop runs the due timers and, almost always, a poll phase. Without it, after a
+    // blocked event loop:
+    // - an overdue idle socket timer does not run, and the request can get a socket that the
+    //   server closed ("socket hang up"), see https://github.com/ClickHouse/clickhouse-js/issues/294;
+    // - Node.js does not see a server close on an idle socket younger than `idle_socket_ttl`;
+    // - unsolicited bytes on an idle socket become the response to the next request.
+    // Also, a loop of requests aborted right after the call starves the event loop, and such
+    // an abort gives the client's own error instead of an `AbortError`.
+    // `setImmediate` is not sufficient: it runs before the next timers phase, and from an I/O
+    // callback also before the next poll phase.
+    // `eagerly_destroy_stale_sockets` checks only the socket age, so it does not replace this wait.
+    // Tests that fail without it: `__tests__/integration/node_socket_pool_yield_*.test.ts` and,
+    // in `node_abort_request.test.ts`, "cancels a select query before it is sent" and
+    // "cancels an insert query before it is sent".
+    // The pull request that added this comment has the measurements.
     await sleep(0);
     const { log_writer, query_id, log_level } = params;
     const currentStackTrace = this.params.capture_enhanced_stack_trace
