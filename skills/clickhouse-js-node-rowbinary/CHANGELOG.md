@@ -13,6 +13,12 @@
 
 [#1124]: https://github.com/ClickHouse/clickhouse-js/pull/1124
 
+## Bug fixes
+
+- A type string with `Enum` elements that have no number, such as `Enum8('a', 'b')` or `Enum8('a' = 5, 'b')`, now decodes to the element name. Before, `typeStringToReader` and `astToReader` returned the stringified number (`"2"` for `'b'`), and `Enum('a', 'b')` failed with `unsupported RowBinary type: Enum`. The numbers follow the server rules, and `Enum(...)` is read as `Enum16` when a number does not fit in `Int8`. Types that come from the server always have explicit numbers, so `RowBinaryWithNamesAndTypes` was not affected. A codec that the skill generated from an earlier version keeps the old behavior. Generate it again to get the fix. ([#1145])
+
+[#1145]: https://github.com/ClickHouse/clickhouse-js/pull/1145
+
 # 0.2.0
 
 ## New features

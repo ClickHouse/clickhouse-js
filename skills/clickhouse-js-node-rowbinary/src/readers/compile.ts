@@ -187,13 +187,23 @@ function dataTypeReader(node: Node): Reader<unknown> {
       return readDecimal128(literalInt(requireArg(node, 0)));
     case "Decimal256":
       return readDecimal256(literalInt(requireArg(node, 0)));
-    // A bare `Enum8`/`Enum16` (no explicit values — only reachable from a
-    // hand-written type string) has no names to resolve, so the reader falls
-    // back to the stringified underlying int.
+    // An enum that reaches this fold has elements without a number, such as
+    // `Enum8('a', 'b')`. Only a hand-written type string can have this form:
+    // the server always sends explicit numbers. A bare `Enum8`/`Enum16` has no
+    // names to resolve, so its reader returns the stringified underlying int.
     case "Enum8":
-      return readEnum8(new Map());
+      return readEnum8(autoEnumNameMap(node));
     case "Enum16":
-      return readEnum16(new Map());
+      return readEnum16(autoEnumNameMap(node));
+    case "Enum": {
+      if (node.arguments.length === 0) break;
+      // The server stores `Enum(...)` as Enum8 when every number fits in Int8.
+      const map = autoEnumNameMap(node);
+      for (const value of map.keys()) {
+        if (value < -128 || value > 127) return readEnum16(map);
+      }
+      return readEnum8(map);
+    }
 
     default: {
       // Interval<Unit> (IntervalSecond, IntervalDay, …): all decode to the
@@ -201,9 +211,9 @@ function dataTypeReader(node: Node): Reader<unknown> {
       if (node.name.startsWith("Interval")) return readInterval;
       const leaf = NULLARY[node.name];
       if (leaf !== undefined) return leaf;
-      throw new RowBinaryTypeError(`unsupported RowBinary type: ${node.name}`);
     }
   }
+  throw new RowBinaryTypeError(`unsupported RowBinary type: ${node.name}`);
 }
 
 /** Folds a `Tuple(...)` — named (object) when every element is named, else positional (array). */
@@ -254,6 +264,28 @@ function nestedReader(node: Node): Reader<unknown> {
 function enumNameMap(node: Node): ReadonlyMap<number, string> {
   const map = new Map<number, string>();
   for (const ev of node.values) map.set(Number(ev.value), ev.name);
+  return map;
+}
+
+/**
+ * Builds the value -> name map of an enum whose elements do not all have a
+ * number, with the numbers the server assigns (`autoAssignNumberForEnum`): the
+ * element at position `i` gets `base + i`, where `base` is the number of the
+ * first element, or 1 when the first element has none.
+ */
+function autoEnumNameMap(node: Node): ReadonlyMap<number, string> {
+  const map = new Map<number, string>();
+  const first = node.arguments[0];
+  const base =
+    first?.kind === NodeKind.Function ? literalInt(first.arguments[1]!) : 1;
+  node.arguments.forEach((arg, i) => {
+    if (arg.kind === NodeKind.Function) {
+      // `'name' = number`, parsed as the `equals` operator.
+      map.set(literalInt(arg.arguments[1]!), arg.arguments[0]!.value);
+    } else {
+      map.set(base + i, arg.value);
+    }
+  });
   return map;
 }
 
